@@ -1,141 +1,108 @@
-# 🚀 Welcome to Z.ai Code Scaffold
+# 🚀 SACMS: Multi-Tenant Startup & Content Management System
 
-A modern, production-ready web application scaffold powered by cutting-edge technologies, designed to accelerate your development with [Z.ai](https://chat.z.ai)'s AI-powered coding assistance.
+SACMS is a high-performance, production-ready multi-tenant headless CMS designed for startup ecosystems. It provides a robust foundation for managing isolated tenant workspaces, dynamic content modeling, and integrated subscription billing.
 
-## ✨ Technology Stack
+## ✨ Core Features
 
-This scaffold provides a robust foundation built with:
+### 🏢 Multi-Tenant Architecture
+- **Isolated Workspaces**: Each tenant has their own secure dashboard and data isolation.
+- **Tenant Management**: Super Admin controls tenant lifecycle, roles, and assignments.
+- **White-labeling**: Custom branding, colors, and dashboard personalization for each tenant.
 
-### 🎯 Core Framework
-- **⚡ Next.js 16** - The React framework for production with App Router
-- **📘 TypeScript 5** - Type-safe JavaScript for better developer experience
-- **🎨 Tailwind CSS 4** - Utility-first CSS framework for rapid UI development
+### 🏗️ Dynamic Content Modeling (Headless CMS)
+- **Content Types**: Define custom collections (e.g., Blog, Products) with flexible fields.
+- **Single Types**: Perfect for static pages like "About Us" or "Landing Page".
+- **Global Schemas**: Super Admin can create "Startup Schemas" that are automatically available across all tenants.
+- **Component System**: Reusable nested field structures (Components) for complex data layouts.
+- **Rich Field Types**: Text, Rich Text, Media, Relations, Select, Boolean, Date, and more.
 
-### 🧩 UI Components & Styling
-- **🧩 shadcn/ui** - High-quality, accessible components built on Radix UI
-- **🎯 Lucide React** - Beautiful & consistent icon library
-- **🌈 Framer Motion** - Production-ready motion library for React
-- **🎨 Next Themes** - Perfect dark mode in 2 lines of code
+### 💳 Subscription & Billing (Midtrans Integrated)
+- **Flexible Plans**: Main workspace plans (Starter, Pro, Business) managed globally.
+- **Add-on System**: Individual feature upgrades like "Daily Backup" or "Additional Storage".
+- **Midtrans Integration**: Seamless payment flow with Snap (QRIS, E-wallet, Virtual Accounts).
+- **Billing History**: Automated invoice generation and payment tracking for every tenant.
 
-### 📋 Forms & Validation
-- **🎣 React Hook Form** - Performant forms with easy validation
-- **✅ Zod** - TypeScript-first schema validation
+### 🔐 Enterprise-Grade Security & Monitoring
+- **RBAC**: Role-Based Access Control (Owner, Admin, Editor, Viewer).
+- **NextAuth.js**: Secure authentication flows.
+- **Sentry**: Full-stack error tracking and performance monitoring.
+- **Audit Logs**: Track critical actions across the platform.
 
-### 🔄 State Management & Data Fetching
-- **🐻 Zustand** - Simple, scalable state management
-- **🔄 TanStack Query** - Powerful data synchronization for React
-- **🌐 Fetch** - Promise-based HTTP request
+## 🛠️ Technology Stack
 
-### 🗄️ Database & Backend
-- **🗄️ Prisma** - Next-generation TypeScript ORM
-- **🔐 NextAuth.js** - Complete open-source authentication solution
+- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
+- **Language**: [TypeScript](https://www.typescriptlang.org/)
+- **ORM**: [Prisma](https://www.prisma.io/)
+- **Database**: PostgreSQL
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/)
+- **Payment**: [Midtrans](https://midtrans.com/)
+- **Auth**: [NextAuth.js](https://next-auth.js.org/)
+- **Monitoring**: [Sentry](https://sentry.io/)
 
-### 🎨 Advanced UI Features
-- **📊 TanStack Table** - Headless UI for building tables and datagrids
-- **🖱️ DND Kit** - Modern drag and drop toolkit for React
-- **📊 Recharts** - Redefined chart library built with React and D3
-- **🖼️ Sharp** - High performance image processing
+## 🚀 Getting Started
 
-### 🌍 Internationalization & Utilities
-- **🌍 Next Intl** - Internationalization library for Next.js
-- **📅 Date-fns** - Modern JavaScript date utility library
-- **🪝 ReactUse** - Collection of essential React hooks for modern development
+### 1. Prerequisites
+- [Node.js](https://nodejs.org/) (v20+)
+- [Bun](https://bun.sh/) (Recommended)
+- PostgreSQL database
 
-## 🎯 Why This Scaffold?
-
-- **🏎️ Fast Development** - Pre-configured tooling and best practices
-- **🎨 Beautiful UI** - Complete shadcn/ui component library with advanced interactions
-- **🔒 Type Safety** - Full TypeScript configuration with Zod validation
-- **📱 Responsive** - Mobile-first design principles with smooth animations
-- **🗄️ Database Ready** - Prisma ORM configured for rapid backend development
-- **🔐 Auth Included** - NextAuth.js for secure authentication flows
-- **📊 Data Visualization** - Charts, tables, and drag-and-drop functionality
-- **🌍 i18n Ready** - Multi-language support with Next Intl
-- **🚀 Production Ready** - Optimized build and deployment settings
-- **🤖 AI-Friendly** - Structured codebase perfect for AI assistance
-
-## 🚀 Quick Start
-
+### 2. Environment Setup
+Copy `.env.example` to `.env` and fill in the required variables:
 ```bash
-# Install dependencies
+# Database
+DATABASE_URL="postgresql://..."
+
+# NextAuth
+NEXTAUTH_SECRET="..."
+NEXTAUTH_URL="http://localhost:3000"
+
+# Midtrans (Sandbox/Production)
+MIDTRANS_SERVER_KEY="SB-Mid-server-..."
+MIDTRANS_CLIENT_KEY="SB-Mid-client-..."
+MIDTRANS_MODE="sandbox"
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="SB-Mid-client-..."
+
+# Sentry
+NEXT_PUBLIC_SENTRY_DSN="..."
+```
+
+### 3. Installation & Database
+```bash
 bun install
+bun prisma generate
+bun prisma migrate dev
+```
 
-# Start development server
+### 4. Initial Seeding
+Run the following scripts to set up the base ecosystem:
+```bash
+# Setup base content types
+bun run scripts/setup-startup-management-models.ts
+
+# Seed initial pricing and plans
+bun run scripts/reseed-pricing.ts
+
+# Assign permissions
+bun run scripts/seed-permissions.ts
+```
+
+### 5. Run Development
+```bash
 bun run dev
-
-# Build for production
-bun run build
-
-# Start production server
-bun start
 ```
 
-Open [http://localhost:3000](http://localhost:3000) to see your application running.
+## 📂 Project Structure
 
-## 🤖 Powered by Z.ai
+- `src/app/admin`: Super Admin global management dashboard.
+- `src/app/dashboard/[tenant]`: Isolated tenant workspace dashboard.
+- `src/components/cms`: Core CMS engine components (Field renderers, Schema builders).
+- `src/lib/payment`: Payment provider abstraction (Midtrans implementation).
+- `scripts/`: Utility scripts for maintenance, seeding, and debugging.
 
-This scaffold is optimized for use with [Z.ai](https://chat.z.ai) - your AI assistant for:
+## 🤝 Contributing
 
-- **💻 Code Generation** - Generate components, pages, and features instantly
-- **🎨 UI Development** - Create beautiful interfaces with AI assistance  
-- **🔧 Bug Fixing** - Identify and resolve issues with intelligent suggestions
-- **📝 Documentation** - Auto-generate comprehensive documentation
-- **🚀 Optimization** - Performance improvements and best practices
-
-Ready to build something amazing? Start chatting with Z.ai at [chat.z.ai](https://chat.z.ai) and experience the future of AI-powered development!
-
-## 📁 Project Structure
-
-```
-src/
-├── app/                 # Next.js App Router pages
-├── components/          # Reusable React components
-│   └── ui/             # shadcn/ui components
-├── hooks/              # Custom React hooks
-└── lib/                # Utility functions and configurations
-```
-
-## 🎨 Available Features & Components
-
-This scaffold includes a comprehensive set of modern web development tools:
-
-### 🧩 UI Components (shadcn/ui)
-- **Layout**: Card, Separator, Aspect Ratio, Resizable Panels
-- **Forms**: Input, Textarea, Select, Checkbox, Radio Group, Switch
-- **Feedback**: Alert, Toast (Sonner), Progress, Skeleton
-- **Navigation**: Breadcrumb, Menubar, Navigation Menu, Pagination
-- **Overlay**: Dialog, Sheet, Popover, Tooltip, Hover Card
-- **Data Display**: Badge, Avatar, Calendar
-
-### 📊 Advanced Data Features
-- **Tables**: Powerful data tables with sorting, filtering, pagination (TanStack Table)
-- **Charts**: Beautiful visualizations with Recharts
-- **Forms**: Type-safe forms with React Hook Form + Zod validation
-
-### 🎨 Interactive Features
-- **Animations**: Smooth micro-interactions with Framer Motion
-- **Drag & Drop**: Modern drag-and-drop functionality with DND Kit
-- **Theme Switching**: Built-in dark/light mode support
-
-### 🔐 Backend Integration
-- **Authentication**: Ready-to-use auth flows with NextAuth.js
-- **Database**: Type-safe database operations with Prisma
-- **API Client**: HTTP requests with Fetch + TanStack Query
-- **State Management**: Simple and scalable with Zustand
-
-### 🌍 Production Features
-- **Internationalization**: Multi-language support with Next Intl
-- **Image Optimization**: Automatic image processing with Sharp
-- **Type Safety**: End-to-end TypeScript with Zod validation
-- **Essential Hooks**: 100+ useful React hooks with ReactUse for common patterns
-
-## 🤝 Get Started with Z.ai
-
-1. **Clone this scaffold** to jumpstart your project
-2. **Visit [chat.z.ai](https://chat.z.ai)** to access your AI coding assistant
-3. **Start building** with intelligent code generation and assistance
-4. **Deploy with confidence** using the production-ready setup
+This project is optimized for AI-assisted development. Use the built-in scripts and structured patterns to extend functionality.
 
 ---
 
-Built with ❤️ for the developer community. Supercharged by [Z.ai](https://chat.z.ai) 🚀
+Built with ❤️ for the startup community. Powered by SACMS.
