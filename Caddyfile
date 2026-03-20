@@ -1,0 +1,60 @@
+:81 {
+	@transform_port_query {
+		query XTransformPort=*
+	}
+
+	handle @transform_port_query {
+		reverse_proxy localhost:{query.XTransformPort} {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	handle {
+		reverse_proxy localhost:3000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Custom Domain Support
+#
+# When a tenant registers a custom domain (e.g. api.myclient.com) and points
+# its DNS A/CNAME record to this server, Caddy picks up the request here,
+# obtains a TLS certificate automatically (requires ports 80/443 open and a
+# valid public domain), and forwards the request to Next.js with the original
+# Host header intact.
+#
+# Next.js middleware then detects that the Host doesn't match APP_HOST and
+# rewrites the path to /api/domain/... so the catch-all route can resolve
+# the tenant and serve the response.
+#
+# To enable this block:
+#   1. Make sure ports 80 and 443 are open and reachable from the internet.
+#   2. Set the ACME email in your Caddy global options:
+#        { email admin@yourcompany.com }
+#   3. Point tenant custom domains to this server's IP via A record.
+#   4. Caddy will auto-provision TLS certificates via Let's Encrypt.
+#
+# For development / local testing without a public IP, you can use:
+#   http://api.localtest.me { ... }   (resolves to 127.0.0.1)
+# ─────────────────────────────────────────────────────────────────────────────
+{$CUSTOM_DOMAIN_HOST:} {
+	# Only activate this block when CUSTOM_DOMAIN_HOST env var is set.
+	# In production, Caddy is invoked with something like:
+	#   CUSTOM_DOMAIN_HOST=:443 caddy run
+	# and individual tenant domains are handled by the block below.
+
+	reverse_proxy localhost:3000 {
+		header_up Host {host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+		header_up X-Real-IP {remote_host}
+	}
+}

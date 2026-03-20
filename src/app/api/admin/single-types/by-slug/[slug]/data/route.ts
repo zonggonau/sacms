@@ -1,0 +1,174 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/database"
+
+/**
+ * POST /api/admin/single-types/by-slug/[slug]/data
+ * Create or update single type data for platform-level content (system tenant)
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const { slug } = await params
+    const body = await request.json()
+    const { data } = body
+
+    if (!data) {
+      return NextResponse.json({ error: "Data is required" }, { status: 400 })
+    }
+
+    // Get single type
+    const singleType = await db.singleType.findUnique({
+      where: { slug },
+      include: {
+        fields: true,
+      },
+    })
+
+    if (!singleType) {
+      return NextResponse.json({ error: "Single type not found" }, { status: 404 })
+    }
+
+    // Get or create system tenant for platform-level content
+    let systemTenant = await db.tenant.findFirst({
+      where: { slug: "system" },
+    })
+
+    if (!systemTenant) {
+      systemTenant = await db.tenant.create({
+        data: {
+          name: "System",
+          slug: "system",
+          description: "Platform-level content",
+          status: "active",
+          plan: "enterprise",
+        },
+      })
+    }
+
+    // Check if assignment already exists
+    let assignment = await db.tenantSingleTypeAssignment.findUnique({
+      where: {
+        tenantId_singleTypeId: {
+          tenantId: systemTenant.id,
+          singleTypeId: singleType.id,
+        },
+      },
+    })
+
+    if (assignment) {
+      // Update existing assignment
+      assignment = await db.tenantSingleTypeAssignment.update({
+        where: {
+          tenantId_singleTypeId: {
+            tenantId: systemTenant.id,
+            singleTypeId: singleType.id,
+          },
+        },
+        data: {
+          data: JSON.stringify(data),
+          publishedAt: new Date(),
+          updatedAt: new Date(),
+        },
+      })
+    } else {
+      // Create new assignment
+      assignment = await db.tenantSingleTypeAssignment.create({
+        data: {
+          tenantId: systemTenant.id,
+          singleTypeId: singleType.id,
+          enabled: true,
+          data: JSON.stringify(data),
+          publishedAt: new Date(),
+        },
+      })
+    }
+
+    return NextResponse.json({
+      assignment,
+      singleType,
+    })
+  } catch (error) {
+    console.error("Error saving single type data:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
+/**
+ * GET /api/admin/single-types/by-slug/[slug]/data
+ * Get single type data for system tenant
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ slug: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    if (session.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const { slug } = await params
+
+    // Get single type
+    const singleType = await db.singleType.findUnique({
+      where: { slug },
+    })
+
+    if (!singleType) {
+      return NextResponse.json({ error: "Single type not found" }, { status: 404 })
+    }
+
+    // Get system tenant
+    const systemTenant = await db.tenant.findFirst({
+      where: { slug: "system" },
+    })
+
+    if (!systemTenant) {
+      return NextResponse.json({ error: "System tenant not found" }, { status: 404 })
+    }
+
+    // Get assignment
+    const assignment = await db.tenantSingleTypeAssignment.findUnique({
+      where: {
+        tenantId_singleTypeId: {
+          tenantId: systemTenant.id,
+          singleTypeId: singleType.id,
+        },
+      },
+    })
+
+    return NextResponse.json({
+      assignment,
+      singleType,
+      data: assignment?.data ? JSON.parse(assignment.data) : null,
+    })
+  } catch (error) {
+    console.error("Error fetching single type data:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}

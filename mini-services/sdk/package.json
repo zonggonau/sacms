@@ -1,0 +1,17 @@
+{
+  "name": "@contentflow/sdk",
+  "version": "1.0.0",
+  "description": "TypeScript SDK for ContentFlow headless CMS",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch"
+  },
+  "keywords": ["contentflow", "cms", "headless", "sdk"],
+  "license": "MIT",
+  "devDependencies": {
+    "typescript": "^5.5.0"
+  }
+}

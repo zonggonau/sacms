@@ -1,0 +1,175 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/database"
+import { validateBody } from "@/lib/validate"
+import { z } from "zod/v4"
+import { randomBytes } from "crypto"
+
+const createTenantSchema = z.object({
+  name: z.string().min(2).max(100),
+  description: z.string().max(500).optional().nullable(),
+  plan: z.string().optional(),
+  status: z.string().optional(),
+})
+
+/**
+ * Generate a random unique slug (10 chars alphanumeric)
+ */
+async function generateUniqueSlug(): Promise<string> {
+  const slug = randomBytes(5).toString("hex") // 10 characters
+  const existing = await db.tenant.findUnique({ where: { slug } })
+  if (existing) return generateUniqueSlug()
+  return slug
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Only super admin can access all tenants
+    if (session.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const tenants = await db.tenant.findMany({
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        plan: true,
+        description: true,
+        logo: true,
+        createdAt: true,
+        updatedAt: true,
+        _count: {
+          select: {
+            members: true,
+            contentTypeAssignments: true,
+            singleTypeAssignments: true,
+            componentAssignments: true,
+            media: true,
+            apiTokens: true,
+          },
+        },
+        apiTokens: {
+          select: {
+            id: true,
+            token: true,
+            type: true,
+            expiresAt: true,
+          },
+          orderBy: { createdAt: "desc" },
+          take: 1,
+        },
+        subscriptions: {
+          where: { status: "active" },
+          select: {
+            id: true,
+            plan: true,
+            status: true,
+            currentPeriodEnd: true,
+            invoices: {
+              select: {
+                id: true,
+                amount: true,
+                status: true,
+                paidAt: true,
+                createdAt: true,
+              },
+              orderBy: { createdAt: "desc" },
+              take: 1,
+            },
+          },
+          take: 1,
+        },
+        members: {
+          select: {
+            user: {
+              select: { id: true, name: true, email: true },
+            },
+            role: true,
+          },
+          where: { role: "owner" },
+          take: 1,
+        },
+      },
+      orderBy: {
+        createdAt: "desc",
+      },
+    })
+
+    return NextResponse.json({ tenants })
+  } catch (error) {
+    console.error("Error fetching tenants:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    // Only super admin can create tenants
+    if (session.user.role !== "super_admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const result = await validateBody(request, createTenantSchema)
+    if ("error" in result) return result.error
+    const { name, description, plan, status } = result.data
+
+    // 1. Auto-generate unique slug
+    const slug = await generateUniqueSlug()
+
+    // 2. Create tenant and initial subscription in transaction
+    const tenant = await db.$transaction(async (tx) => {
+      const newTenant = await tx.tenant.create({
+        data: {
+          name,
+          slug,
+          description: description || null,
+          plan: plan || "starter",
+          status: status || "active",
+        },
+      })
+
+      // Create subscription with 7-day trial
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialEndDate.getDate() + 7)
+
+      await tx.subscription.create({
+        data: {
+          userId: session.user.id, // Assigned to the admin who created it
+          tenantId: newTenant.id,
+          plan: plan || "starter",
+          status: "trialing",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: trialEndDate,
+        },
+      })
+
+      return newTenant
+    })
+
+    return NextResponse.json({ tenant })
+  } catch (error) {
+    console.error("Error creating tenant:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}

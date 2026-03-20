@@ -1,0 +1,78 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://contentflow:contentflow@postgres:5432/contentflow
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-me}
+      - NEXTAUTH_URL=http://localhost:3000
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: contentflow
+      POSTGRES_PASSWORD: contentflow
+      POSTGRES_DB: contentflow
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U contentflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Database backup — runs daily at 2am
+  db-backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: contentflow
+      PGPASSWORD: contentflow
+      PGDATABASE: contentflow
+    volumes:
+      - ./db/backups:/backups
+    entrypoint: >
+      sh -c '
+        while true; do
+          STAMP=$$(date +%Y%m%d_%H%M%S)
+          pg_dump -Fc > /backups/contentflow_$$STAMP.dump
+          # Keep only last 7 daily backups
+          ls -t /backups/contentflow_*.dump | tail -n +8 | xargs rm -f 2>/dev/null
+          echo "[$$STAMP] Backup complete"
+          sleep 86400
+        done
+      '
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

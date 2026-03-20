@@ -1,0 +1,16 @@
+{
+  "crons": [
+    {
+      "path": "/api/admin/billing/generate-invoices",
+      "schedule": "0 0 * * *"
+    },
+    {
+      "path": "/api/cron/publish",
+      "schedule": "*/5 * * * *"
+    },
+    {
+      "path": "/api/cron/webhook-retry",
+      "schedule": "*/2 * * * *"
+    }
+  ]
+}

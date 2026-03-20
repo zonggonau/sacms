@@ -1,0 +1,365 @@
+openapi: 3.1.0
+info:
+  title: ContentFlow Public API
+  version: 1.0.0
+  description: |
+    Headless CMS API for querying and mutating content.
+    All requests require `Authorization: Bearer <token>` header.
+  contact:
+    name: ContentFlow
+servers:
+  - url: "{baseUrl}"
+    variables:
+      baseUrl:
+        default: http://localhost:3000
+
+security:
+  - BearerAuth: []
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      description: API token prefixed with `cf_`
+
+  schemas:
+    Pagination:
+      type: object
+      properties:
+        page:
+          type: integer
+          example: 1
+        pageSize:
+          type: integer
+          example: 25
+        total:
+          type: integer
+          example: 150
+        totalPages:
+          type: integer
+          example: 6
+
+    ContentEntry:
+      type: object
+      properties:
+        id:
+          type: string
+        data:
+          type: object
+          additionalProperties: true
+        locale:
+          type: string
+          example: en
+        status:
+          type: string
+          enum: [DRAFT, IN_REVIEW, APPROVED, SCHEDULED, PUBLISHED, ARCHIVED, REJECTED]
+        publishedAt:
+          type: string
+          format: date-time
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+
+  parameters:
+    TenantSlug:
+      name: tenant
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Tenant slug identifier
+
+    ContentTypeSlug:
+      name: contentType
+      in: path
+      required: true
+      schema:
+        type: string
+      description: Content type slug
+
+    LocaleQuery:
+      name: locale
+      in: query
+      schema:
+        type: string
+      description: Filter by locale (e.g. `en`, `id`)
+
+    SearchQuery:
+      name: search
+      in: query
+      schema:
+        type: string
+      description: Full-text search keyword
+
+    SortQuery:
+      name: sort
+      in: query
+      schema:
+        type: string
+      description: "Sort field and direction (e.g. `createdAt:desc`)"
+
+    FieldsQuery:
+      name: fields
+      in: query
+      schema:
+        type: string
+      description: Comma-separated list of fields to return
+
+    PopulateQuery:
+      name: populate
+      in: query
+      schema:
+        type: string
+      description: Comma-separated relations to expand
+
+    PaginationPage:
+      name: "pagination[page]"
+      in: query
+      schema:
+        type: integer
+        default: 1
+
+    PaginationPageSize:
+      name: "pagination[pageSize]"
+      in: query
+      schema:
+        type: integer
+        default: 25
+        minimum: 1
+        maximum: 100
+
+paths:
+  /api/public/{tenant}/content/{contentType}:
+    get:
+      summary: List content entries
+      description: |
+        Query entries with filtering, sorting, pagination, field selection, and full-text search.
+        Only returns PUBLISHED entries by default.
+
+        **Filter operators**: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$contains`,
+        `$startsWith`, `$endsWith`, `$in`, `$notIn`, `$null`, `$notNull`, `$or`, `$and`
+
+        Example: `?filters[category][$eq]=tutorial&filters[price][$gte]=100`
+      operationId: listEntries
+      tags: [Content]
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+        - $ref: "#/components/parameters/ContentTypeSlug"
+        - $ref: "#/components/parameters/LocaleQuery"
+        - $ref: "#/components/parameters/SearchQuery"
+        - $ref: "#/components/parameters/SortQuery"
+        - $ref: "#/components/parameters/FieldsQuery"
+        - $ref: "#/components/parameters/PopulateQuery"
+        - $ref: "#/components/parameters/PaginationPage"
+        - $ref: "#/components/parameters/PaginationPageSize"
+      responses:
+        "200":
+          description: List of entries
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/ContentEntry"
+                  meta:
+                    type: object
+                    properties:
+                      contentType:
+                        type: object
+                        properties:
+                          name:
+                            type: string
+                          slug:
+                            type: string
+                      pagination:
+                        $ref: "#/components/schemas/Pagination"
+        "401":
+          description: Invalid or missing API token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "403":
+          description: Token does not have access to this tenant
+        "429":
+          description: Rate limit exceeded
+
+  /api/public/{tenant}/content/{contentType}/{entryId}:
+    get:
+      summary: Get single entry by ID
+      operationId: getEntry
+      tags: [Content]
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+        - $ref: "#/components/parameters/ContentTypeSlug"
+        - name: entryId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Entry data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    $ref: "#/components/schemas/ContentEntry"
+        "404":
+          description: Entry not found
+
+  /api/public/{tenant}/single/{singleType}:
+    get:
+      summary: Get single type content
+      operationId: getSingleType
+      tags: [Single Types]
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+        - name: singleType
+          in: path
+          required: true
+          schema:
+            type: string
+        - $ref: "#/components/parameters/LocaleQuery"
+      responses:
+        "200":
+          description: Single type data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                    additionalProperties: true
+                  meta:
+                    type: object
+    put:
+      summary: Update single type content
+      description: Requires `full-access` API token
+      operationId: updateSingleType
+      tags: [Single Types]
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+        - name: singleType
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: Updated single type
+        "403":
+          description: Read-only token cannot mutate
+
+  /api/public/{tenant}/graphql:
+    post:
+      summary: Execute GraphQL query or mutation
+      description: |
+        Mutations require `full-access` API token.
+        Schema is dynamically generated from tenant's content types.
+      operationId: graphql
+      tags: [GraphQL]
+      parameters:
+        - $ref: "#/components/parameters/TenantSlug"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query:
+                  type: string
+                  example: "{ articles { data { id title } } }"
+                variables:
+                  type: object
+                  additionalProperties: true
+      responses:
+        "200":
+          description: GraphQL response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+                  errors:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message:
+                          type: string
+        "403":
+          description: Mutation attempted with read-only token
+
+  /api/auth/register:
+    post:
+      summary: Register a new user
+      operationId: register
+      tags: [Auth]
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, email, password]
+              properties:
+                name:
+                  type: string
+                  minLength: 1
+                  maxLength: 100
+                email:
+                  type: string
+                  format: email
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                tenantName:
+                  type: string
+                  minLength: 2
+                  maxLength: 100
+                tenantSlug:
+                  type: string
+                  minLength: 2
+                  maxLength: 50
+                  pattern: "^[a-z0-9][a-z0-9-]*[a-z0-9]$"
+      responses:
+        "201":
+          description: User created successfully
+        "400":
+          description: Validation error or duplicate user/tenant
+        "429":
+          description: Rate limit exceeded
