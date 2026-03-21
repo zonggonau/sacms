@@ -8,7 +8,7 @@ import {
   Plus, MoreVertical, Edit, Trash2, Box, Puzzle, 
   Globe, Layout, ArrowRight, Loader2, Search,
   Filter, CheckCircle2, AlertCircle, ShieldCheck,
-  Package, Tags, Info
+  Package, Tags, Info, Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -41,6 +41,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
+import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
 import { cn } from "@/lib/utils"
 
 interface Component {
@@ -64,6 +65,7 @@ export default function ComponentsPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
   const [componentToDelete, setComponentToDelete] = useState<Component | null>(null)
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
 
@@ -135,14 +137,23 @@ export default function ComponentsPage() {
               <h1 className="text-3xl font-extrabold tracking-tight">Components</h1>
               <p className="text-muted-foreground">Reusable data structures for nested content fields.</p>
             </div>
-            <Button 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-              asChild
-            >
-              <Link href={`/dashboard/${tenantSlug}/components/new`}>
-                <Plus className="mr-2 h-4 w-4" /> Create Component
-              </Link>
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold"
+                onClick={() => setIsAIModalOpen(true)}
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> AI Generate
+              </Button>
+              <Button 
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                asChild
+              >
+                <Link href={`/dashboard/${tenantSlug}/components/new`}>
+                  <Plus className="mr-2 h-4 w-4" /> Create Component
+                </Link>
+              </Button>
+            </div>
           </div>
 
           {/* Stats Bar */}
@@ -285,6 +296,14 @@ export default function ComponentsPage() {
           </div>
         </div>
       </main>
+
+      <SchemaGeneratorDialog
+        tenantSlug={tenantSlug}
+        type="component"
+        open={isAIModalOpen}
+        onOpenChange={setIsAIModalOpen}
+        onSuccess={fetchComponents}
+      />
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!componentToDelete} onOpenChange={() => setComponentToDelete(null)}>

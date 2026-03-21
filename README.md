@@ -43,7 +43,6 @@ SACMS is a high-performance, production-ready multi-tenant headless CMS designed
 
 ### 1. Prerequisites
 - [Node.js](https://nodejs.org/) (v20+)
-- [Bun](https://bun.sh/) (Recommended)
 - PostgreSQL database
 
 ### 2. Environment Setup
@@ -68,27 +67,27 @@ NEXT_PUBLIC_SENTRY_DSN="..."
 
 ### 3. Installation & Database
 ```bash
-bun install
-bun prisma generate
-bun prisma migrate dev
+npm install
+npx prisma generate
+npx prisma migrate dev
 ```
 
 ### 4. Initial Seeding
 Run the following scripts to set up the base ecosystem:
 ```bash
 # Setup base content types
-bun run scripts/setup-startup-management-models.ts
+npx tsx scripts/setup-startup-management-models.ts
 
 # Seed initial pricing and plans
-bun run scripts/reseed-pricing.ts
+npx tsx scripts/reseed-pricing.ts
 
 # Assign permissions
-bun run scripts/seed-permissions.ts
+npx tsx scripts/seed-permissions.ts
 ```
 
 ### 5. Run Development
 ```bash
-bun run dev
+npm run dev
 ```
 
 ## 📂 Project Structure

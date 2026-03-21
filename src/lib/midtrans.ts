@@ -1,4 +1,5 @@
 import Midtrans from 'midtrans-client'
+import crypto from 'crypto'
 
 interface CustomerDetails {
   email: string
@@ -101,7 +102,6 @@ export function verifyNotificationSignature(
     const serverKey = process.env.MIDTRANS_SERVER_KEY!
     
     // Create SHA512 signature
-    const crypto = require('crypto')
     const signature = crypto
       .createHash('sha512')
       .update(orderId + statusCode + grossAmount + serverKey)

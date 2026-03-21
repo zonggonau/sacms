@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
+  serverExternalPackages: ["node:inspector"],
 };
 
 export default withSentryConfig(nextConfig, {

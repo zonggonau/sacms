@@ -144,7 +144,9 @@ export default async function HomePage() {
     { title: "REST + GraphQL", description: "Auto-generated APIs with filtering.", icon: "Code2", tag: "API" },
   ]
 
-  const pricingPlans = (cmsData?.pricing || []).length > 0 ? cmsData!.pricing.map(p => {
+  const workplacePlans = (cmsData?.pricing || []).filter(p => p.type === "workspace")
+  
+  const pricingPlans = workplacePlans.length > 0 ? workplacePlans.map(p => {
     let featuresArray: string[] = []
     const rawFeatures = p.features
 

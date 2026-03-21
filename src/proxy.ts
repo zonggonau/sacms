@@ -7,10 +7,10 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
   .split(":")[0] // strip port
 
 /**
- * Security middleware: adds security headers, CORS, API versioning,
+ * Security proxy: adds security headers, CORS, API versioning,
  * and custom domain routing for white-label tenants.
  */
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
 

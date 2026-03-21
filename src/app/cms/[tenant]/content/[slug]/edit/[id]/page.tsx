@@ -72,7 +72,7 @@ export default function CMSEditEntryPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug || !contentTypeSlug || !entryId) return
+      if (!tenantSlug || !contentTypeSlug || !entryId || contentType) return
       try {
         const [ctRes, entryRes, locRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
@@ -101,8 +101,9 @@ export default function CMSEditEntryPage() {
         setLoading(false)
       }
     }
-    if (session?.user) fetchData()
-  }, [tenantSlug, contentTypeSlug, entryId, session])
+    if (status === "authenticated") fetchData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug, contentTypeSlug, entryId, status])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
@@ -140,10 +141,23 @@ export default function CMSEditEntryPage() {
   const renderField = (field: Field) => {
     const value = formData[field.slug]
     let options: string[] = []
+    
     if (field.options) {
-      const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-      if (Array.isArray(opts)) options = opts
-      else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim())
+      let opts = field.options
+      if (typeof field.options === 'string' && (field.options.startsWith('[') || field.options.startsWith('{'))) {
+        try {
+          opts = JSON.parse(field.options)
+        } catch (e) {
+          console.warn("Failed to parse JSON options for field:", field.slug, e)
+          opts = field.options
+        }
+      }
+      
+      if (Array.isArray(opts)) {
+        options = opts
+      } else if (typeof opts === 'string') {
+        options = opts.split(",").filter(Boolean).map(o => o.trim())
+      }
     }
 
     const LabelWithAI = () => (

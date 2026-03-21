@@ -30,6 +30,7 @@ import { BooleanField } from "@/components/content/field-renderers/boolean-field
 import { DateField } from "@/components/content/field-renderers/date-field"
 import { SelectField } from "@/components/content/field-renderers/select-field"
 import { MediaField } from "@/components/content/field-renderers/media-field"
+import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { MediaMultipleField } from "@/components/content/field-renderers/media-multiple-field"
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { RelationField } from "@/components/content/field-renderers/relation-field"
@@ -74,7 +75,7 @@ export default function EditEntryPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug || !contentTypeSlug || !entryId) return
+      if (!tenantSlug || !contentTypeSlug || !entryId || contentType) return
       try {
         const [ctRes, entRes, locRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
@@ -105,8 +106,9 @@ export default function EditEntryPage() {
         setLoading(false)
       }
     }
-    if (session?.user) fetchData()
-  }, [tenantSlug, contentTypeSlug, entryId, session])
+    if (status === "authenticated") fetchData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug, contentTypeSlug, entryId, status])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)

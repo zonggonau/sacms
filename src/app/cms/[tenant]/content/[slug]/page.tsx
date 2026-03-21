@@ -15,6 +15,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Separator } from "@/components/ui/separator"
 import { CMSSidebar } from "@/components/cms/cms-sidebar"
 import { 
   DropdownMenu, 
@@ -59,6 +60,11 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; ic
   PUBLISHED: { label: "Published",  dot: "bg-emerald-500", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
   ARCHIVED:  { label: "Archived",   dot: "bg-orange-500",  bg: "bg-orange-50 text-orange-700 border-orange-200", icon: Archive },
   IN_REVIEW: { label: "In Review",  dot: "bg-blue-500",    bg: "bg-blue-50 text-blue-700 border-blue-200", icon: Clock },
+}
+
+function stripHtml(html: string) {
+  if (!html) return ""
+  return html.replace(/<[^>]*>?/gm, '').replace(/&nbsp;/g, ' ')
 }
 
 export default function CMSContentTypeEntriesPage() {
@@ -264,8 +270,12 @@ export default function CMSContentTypeEntriesPage() {
                     )}
                   </button>
                 </TableHead>
-                <TableHead className="w-[80px] font-bold text-[10px] uppercase tracking-wider">Cover</TableHead>
-                <TableHead className="font-bold text-[10px] uppercase tracking-wider">Title / Info</TableHead>
+                {/* Dynamic Headers from Content Type Fields */}
+                {contentType?.fields.slice(0, 5).map(field => (
+                  <TableHead key={field.id} className="font-bold text-[10px] uppercase tracking-wider">
+                    {field.name}
+                  </TableHead>
+                ))}
                 <TableHead className="font-bold text-[10px] uppercase tracking-wider text-center">Status</TableHead>
                 <TableHead className="font-bold text-[10px] uppercase tracking-wider">Last Modified</TableHead>
                 <TableHead className="text-right pr-6 font-bold text-[10px] uppercase tracking-wider">Actions</TableHead>
@@ -274,7 +284,7 @@ export default function CMSContentTypeEntriesPage() {
             <TableBody>
               {filteredEntries.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-32 text-muted-foreground">
+                  <TableCell colSpan={(contentType?.fields.slice(0, 5).length || 0) + 4} className="text-center py-32 text-muted-foreground">
                     <div className="flex flex-col items-center gap-3">
                       <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
                         <Search className="h-8 w-8 opacity-20" />
@@ -288,8 +298,6 @@ export default function CMSContentTypeEntriesPage() {
                 filteredEntries.map((entry) => {
                   const data = entry.data || {}
                   const statusCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.DRAFT
-                  const title = data.judul_berita || data.judul || data.title || "Untitled Entry"
-                  const coverUrl = data.cover || data.image || data.thumbnail
                   
                   return (
                     <TableRow key={entry.id} className={cn(
@@ -305,28 +313,56 @@ export default function CMSContentTypeEntriesPage() {
                           )}
                         </button>
                       </TableCell>
-                      <TableCell>
-                        <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-muted-foreground/10 shadow-sm">
-                          {coverUrl ? (
-                            <img src={coverUrl} alt="" className="w-full h-full object-cover" />
-                          ) : (
-                            <ImageIcon className="h-5 w-5 text-muted-foreground/30" />
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm font-bold text-foreground block max-w-[400px] truncate">{title}</span>
-                        <div className="flex items-center gap-2 mt-1">
-                          <Badge variant="outline" className="text-[8px] font-black tracking-widest bg-muted/50 border-none">
-                            ID-{entry.id.substring(0,6).toUpperCase()}
-                          </Badge>
-                          {data.kategori && (
-                            <span className="text-[10px] text-muted-foreground font-medium flex items-center gap-1">
-                              <ChevronRight className="h-2.5 w-2.5" /> {typeof data.kategori === 'object' ? 'Custom' : data.kategori}
-                            </span>
-                          )}
-                        </div>
-                      </TableCell>
+                      
+                      {/* Dynamic Cells based on Fields */}
+                      {contentType?.fields.slice(0, 5).map(field => {
+                        const val = data[field.slug]
+                        
+                        // Deteksi tipe media lebih luas
+                        const isMedia = [
+                          'media', 'image', 'file', 'mediaMultiple', 'gallery', 'picture'
+                        ].includes(field.type.toLowerCase())
+                        
+                        const isRichText = [
+                          'richtext', 'textarea', 'markdown', 'longtext'
+                        ].includes(field.type.toLowerCase())
+                        
+                        return (
+                          <TableCell key={field.id} className="py-4">
+                            {isMedia ? (
+                              <div className="w-12 h-12 rounded-xl bg-muted flex items-center justify-center overflow-hidden border border-muted-foreground/10 shadow-sm group-hover:border-emerald-200 transition-colors">
+                                {val ? (
+                                  <img 
+                                    src={Array.isArray(val) ? val[0] : String(val)} 
+                                    alt="" 
+                                    className="w-full h-full object-cover" 
+                                    onError={(e) => {
+                                      (e.target as HTMLImageElement).src = ""
+                                      (e.target as HTMLImageElement).className = "hidden"
+                                    }}
+                                  />
+                                ) : (
+                                  <ImageIcon className="h-5 w-5 text-muted-foreground/20" />
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-sm font-semibold text-foreground truncate max-w-[200px]">
+                                  {val ? (isRichText ? stripHtml(String(val)) : String(val)) : "-"}
+                                </span>
+                                {field.slug === contentType.fields[0]?.slug && (
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[9px] font-black tracking-widest text-muted-foreground/40 uppercase bg-muted/30 px-1 rounded">
+                                      ID: {entry.id.substring(0,8)}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
+                          </TableCell>
+                        )
+                      })}
+
                       <TableCell className="text-center">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

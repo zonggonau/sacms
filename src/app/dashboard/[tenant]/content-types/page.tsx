@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { 
   Plus, MoreVertical, Edit, Trash2, FileText, Database, 
   Globe, Lock, Layout, ArrowRight, Loader2, Search,
-  Filter, CheckCircle2, AlertCircle
+  Filter, CheckCircle2, AlertCircle, Sparkles
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -37,6 +37,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
+import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
 import { cn } from "@/lib/utils"
 
 interface ContentType {
@@ -59,6 +60,7 @@ export default function ContentTypesPage() {
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; contentType: ContentType | null }>({
     open: false,
@@ -151,12 +153,21 @@ export default function ContentTypesPage() {
               <h1 className="text-3xl font-extrabold tracking-tight">Content Schemas</h1>
               <p className="text-muted-foreground">Manage data structures and collection definitions.</p>
             </div>
-            <Button 
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
-              onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/new`)}
-            >
-              <Plus className="mr-2 h-4 w-4" /> Create New Schema
-            </Button>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold"
+                onClick={() => setIsAIModalOpen(true)}
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> AI Generate
+              </Button>
+              <Button 
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/new`)}
+              >
+                <Plus className="mr-2 h-4 w-4" /> Create New Schema
+              </Button>
+            </div>
           </div>
 
           {/* Schema Stats */}
@@ -319,6 +330,14 @@ export default function ContentTypesPage() {
           </div>
         </div>
       </main>
+
+      <SchemaGeneratorDialog
+        tenantSlug={tenantSlug}
+        type="schema"
+        open={isAIModalOpen}
+        onOpenChange={setIsAIModalOpen}
+        onSuccess={fetchContentTypes}
+      />
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>

@@ -85,7 +85,7 @@ export default function SingleTypeDetailPage() {
   }, [status, router])
 
   const fetchData = async () => {
-    if (!tenantSlug || !singleTypeSlug) return
+    if (!tenantSlug || !singleTypeSlug || singleType) return
     setLoading(true)
     try {
       const [stRes, locRes] = await Promise.all([
@@ -111,8 +111,9 @@ export default function SingleTypeDetailPage() {
   }
 
   useEffect(() => {
-    if (session?.user) fetchData()
-  }, [tenantSlug, singleTypeSlug, session])
+    if (status === "authenticated") fetchData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug, singleTypeSlug, status])
 
   const handleSave = async (publishNow: boolean = false) => {
     if (!singleType) return

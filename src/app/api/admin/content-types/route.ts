@@ -18,6 +18,9 @@ export async function GET() {
     }
 
     const contentTypes = await db.contentType.findMany({
+      where: {
+        tenantId: null, // Only global/system content types
+      },
       include: {
         fields: {
           orderBy: { order: "asc" },

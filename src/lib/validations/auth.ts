@@ -1,4 +1,5 @@
 import { z } from "zod/v4"
+import { slugSchema } from "./common.ts"
 
 export const registerSchema = z.object({
   name: z.string().min(1).max(100),
@@ -8,6 +9,7 @@ export const registerSchema = z.object({
     (v) => (v === "" ? undefined : v),
     z.string().min(2).max(100).optional()
   ),
+  tenantSlug: slugSchema.optional(),
 })
 
 export type RegisterInput = z.infer<typeof registerSchema>

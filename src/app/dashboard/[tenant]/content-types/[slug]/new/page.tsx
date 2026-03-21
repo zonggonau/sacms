@@ -79,7 +79,7 @@ export default function CreateEntryPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug || !contentTypeSlug) return
+      if (!tenantSlug || !contentTypeSlug || contentType) return
       try {
         const [ctRes, locRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
@@ -105,8 +105,9 @@ export default function CreateEntryPage() {
         setLoading(false)
       }
     }
-    if (session?.user) fetchData()
-  }, [tenantSlug, contentTypeSlug, session])
+    if (status === "authenticated") fetchData()
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tenantSlug, contentTypeSlug, status])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)

@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Save, Eye, EyeOff, FileText, Plus, Edit2, Trash2, Loader2 } from "lucide-react"
+import { Save, Eye, EyeOff, FileText, Plus, Edit2, Trash2, Loader2, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import {
@@ -23,6 +23,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
+import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -55,6 +56,7 @@ export default function SingleTypesPage({
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [loading, setLoading] = useState(true)
   const [tenantSlug, setTenantSlug] = useState<string>("")
+  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
 
   const tenants = session?.user?.tenants || []
   const isSuperAdmin = session?.user?.role === "super_admin"
@@ -192,12 +194,21 @@ export default function SingleTypesPage({
             Manage your single types (singleton content)
           </p>
         </div>
-        <Button asChild>
-          <Link href={`/dashboard/${tenantSlug}/single-types/new`}>
-            <Plus className="mr-2 h-4 w-4" />
-            Buat Single Type
-          </Link>
-        </Button>
+        <div className="flex items-center gap-3">
+          <Button 
+            variant="outline"
+            className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold"
+            onClick={() => setIsAIModalOpen(true)}
+          >
+            <Sparkles className="mr-2 h-4 w-4" /> AI Generate
+          </Button>
+          <Button asChild>
+            <Link href={`/dashboard/${tenantSlug}/single-types/new`}>
+              <Plus className="mr-2 h-4 w-4" />
+              Buat Single Type
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {singleTypes.length === 0 ? (
@@ -363,6 +374,14 @@ export default function SingleTypesPage({
       )}
         </div>
       </main>
+
+      <SchemaGeneratorDialog
+        tenantSlug={tenantSlug}
+        type="single-type"
+        open={isAIModalOpen}
+        onOpenChange={setIsAIModalOpen}
+        onSuccess={() => fetchSingleTypes(tenantSlug)}
+      />
     </div>
   )
 }
