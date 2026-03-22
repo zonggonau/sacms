@@ -35,6 +35,35 @@ export async function setCache(key: string, data: any, ttlSeconds: number = CACH
 }
 
 /**
+ * Utility to fetch data with a cache-aside pattern.
+ * If data exists in cache, return it. Otherwise, fetch it, cache it, and return it.
+ */
+export async function withCache<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+  ttlSeconds: number = CACHE_TTL
+): Promise<T> {
+  const cachedData = await getCache<T>(key)
+  if (cachedData !== null) {
+    return cachedData
+  }
+
+  const freshData = await fetcher()
+  if (freshData !== null && freshData !== undefined) {
+    await setCache(key, freshData, ttlSeconds)
+  }
+  
+  return freshData
+}
+
+/**
+ * Generate a consistent cache key for content.
+ */
+export function generateContentCacheKey(tenantSlug: string, type: string, identifier?: string): string {
+  return `content:${tenantSlug}:${type}${identifier ? `:${identifier}` : ''}`
+}
+
+/**
  * Invalidate/delete cache by exact key.
  */
 export async function invalidateCache(key: string): Promise<void> {

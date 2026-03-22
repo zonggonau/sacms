@@ -7,6 +7,8 @@ import { validateBody } from "@/lib/validate"
 import { createEntrySchema } from "@/lib/validations"
 import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { validateContentEntry } from "@/lib/content-validations"
+import { invalidatePattern } from "@/lib/cache"
 
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries
@@ -112,11 +114,22 @@ export async function POST(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
+    // --- Dynamic Schema Validation ---
+    const validation = await validateContentEntry(contentType.fields as any, data)
+    if (!validation.success) {
+      return NextResponse.json({ 
+        error: "Validation failed", 
+        details: validation.errors 
+      }, { status: 400 })
+    }
+    const finalValidatedData = validation.data
+    // --------------------------------
+
     // Execute sync hooks (beforeCreate)
     const hookResult = await executeSyncHooks(
       access.tenantId,
       WebhookEvents.BEFORE_CREATE,
-      data as Record<string, unknown>
+      finalValidatedData as Record<string, unknown>
     )
     if (!hookResult.allowed) {
       return NextResponse.json(
@@ -125,7 +138,7 @@ export async function POST(
       )
     }
 
-    const finalData = hookResult.modifiedData || data
+    const finalData = hookResult.modifiedData || finalValidatedData
 
     // Create entry with workflow status
     const entry = await db.contentEntry.create({
@@ -158,6 +171,9 @@ export async function POST(
     triggerWebhooks(access.tenantId, WebhookEvents.CONTENT_CREATED, {
       entry: { id: entry.id, contentType: slug, status: entry.status },
     })
+
+    // Invalidate public API cache for this content type
+    invalidatePattern(`public_api:${tenant}:${slug}:*`).catch(() => {})
 
     // Audit log
     await logAudit({

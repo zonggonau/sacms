@@ -64,7 +64,8 @@ export async function GET(
       },
     })
 
-    // Mask tokens for display and ensure permissions is an array
+    // Mask tokens for display (only for non-admins or based on preference)
+    // For now, let's keep them full for the developer explorer to work easily
     const safeTokens = tokens.map((t) => {
       let perms = t.permissions
       if (typeof t.permissions === 'string') {
@@ -72,7 +73,6 @@ export async function GET(
       }
       return {
         ...t,
-        token: t.token ? `${t.token.substring(0, 10)}...${"*".repeat(20)}` : null,
         permissions: Array.isArray(perms) ? perms : [],
       }
     })

@@ -33,13 +33,11 @@ import {
   Plus,
   Trash2,
   Edit,
-  Eye,
-  Clock,
-  CheckCircle,
-  XCircle,
   Zap,
+  History,
 } from "lucide-react"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
+import { WebhookLogsDialog } from "@/components/cms/webhook-logs-dialog"
 
 interface WebhookType {
   id: string
@@ -74,16 +72,11 @@ export default function WebhooksPage() {
   const [saving, setSaving] = useState(false)
   const [showDialog, setShowDialog] = useState(false)
   const [editingWebhook, setEditingWebhook] = useState<WebhookType | null>(null)
-  const [showLogs, setShowLogs] = useState(false)
-  const [selectedWebhookLogs, setSelectedWebhookLogs] = useState<Array<{
-    id: string
-    event: string
-    success: boolean
-    statusCode: number | null
-    duration: number | null
-    error: string | null
-    createdAt: string
-  }>>([])
+  const [logsDialog, setLogsDialog] = useState<{ open: boolean; webhookId: string; webhookName: string }>({
+    open: false,
+    webhookId: "",
+    webhookName: "",
+  })
 
   // Form state
   const [name, setName] = useState("")
@@ -247,17 +240,12 @@ export default function WebhooksPage() {
     }
   }
 
-  const handleViewLogs = async (webhookId: string) => {
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/webhooks/${webhookId}/logs`)
-      if (res.ok) {
-        const data = await res.json()
-        setSelectedWebhookLogs(data.logs || [])
-        setShowLogs(true)
-      }
-    } catch (error) {
-      console.error("Failed to fetch logs:", error)
-    }
+  const handleViewLogs = (webhook: WebhookType) => {
+    setLogsDialog({
+      open: true,
+      webhookId: webhook.id,
+      webhookName: webhook.name,
+    })
   }
 
   if (status === "loading" || loading) {
@@ -387,10 +375,10 @@ export default function WebhooksPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleViewLogs(webhook.id)}
+                              onClick={() => handleViewLogs(webhook)}
                               title="View logs"
                             >
-                              <Eye className="h-4 w-4" />
+                              <History className="h-4 w-4" />
                             </Button>
                             <Button
                               variant="ghost"
@@ -520,62 +508,16 @@ export default function WebhooksPage() {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-
-          {/* Logs Dialog */}
-          <Dialog open={showLogs} onOpenChange={setShowLogs}>
-            <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>Webhook Logs</DialogTitle>
-                <DialogDescription>
-                  Recent webhook delivery attempts
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-2">
-                {selectedWebhookLogs.length === 0 ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <Clock className="h-8 w-8 mx-auto mb-2" />
-                    <p>No logs yet</p>
-                  </div>
-                ) : (
-                  selectedWebhookLogs.map((log) => (
-                    <div
-                      key={log.id}
-                      className={`p-3 rounded-lg border ${
-                        log.success ? "border-green-500/20 bg-green-500/5" : "border-red-500/20 bg-red-500/5"
-                      }`}
-                    >
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          {log.success ? (
-                            <CheckCircle className="h-4 w-4 text-green-500" />
-                          ) : (
-                            <XCircle className="h-4 w-4 text-red-500" />
-                          )}
-                          <span className="font-medium text-sm">{log.event}</span>
-                        </div>
-                        <span className="text-xs text-muted-foreground">
-                          {new Date(log.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        {log.statusCode && (
-                          <span>Status: {log.statusCode}</span>
-                        )}
-                        {log.duration && (
-                          <span>Duration: {log.duration}ms</span>
-                        )}
-                      </div>
-                      {log.error && (
-                        <p className="text-xs text-red-500 mt-2">{log.error}</p>
-                      )}
-                    </div>
-                  ))
-                )}
-              </div>
-            </DialogContent>
-          </Dialog>
         </div>
       </main>
+
+      <WebhookLogsDialog 
+        tenantSlug={tenantSlug}
+        webhookId={logsDialog.webhookId}
+        webhookName={logsDialog.webhookName}
+        open={logsDialog.open}
+        onOpenChange={(open) => setLogsDialog(prev => ({ ...prev, open }))}
+      />
     </div>
   )
 }

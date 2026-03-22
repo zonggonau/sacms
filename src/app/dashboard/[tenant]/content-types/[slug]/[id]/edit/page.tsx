@@ -37,6 +37,7 @@ import { RelationField } from "@/components/content/field-renderers/relation-fie
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 
 interface Field {
   id: string
@@ -198,6 +199,22 @@ export default function EditEntryPage() {
                   <SelectItem value="ARCHIVED">Archived</SelectItem>
                 </SelectContent>
               </Select>
+
+              <ContentHistorySidebar 
+                tenantSlug={tenantSlug}
+                contentTypeSlug={contentTypeSlug}
+                entryId={entryId}
+                onRestoreSuccess={(newData) => setFormData(newData)}
+              />
+
+              <Button 
+                variant="outline" 
+                onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
+                className="h-9 rounded-xl font-bold"
+              >
+                <Eye className="mr-2 h-4 w-4" /> Preview
+              </Button>
+
               <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-card">
                 Update as {entryStatus}
               </Button>

@@ -40,6 +40,7 @@ import { SelectField } from "@/components/content/field-renderers/select-field"
 import { MediaField } from "@/components/content/field-renderers/media-field"
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
+import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { cn } from "@/lib/utils"
 
 interface Field {
@@ -151,20 +152,41 @@ export default function SingleTypeDetailPage() {
     }
 
     switch (field.type) {
-      case "text": return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
-      case "textarea": return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "richText": return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "markdown": return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} className="font-mono text-xs" />
-      case "number": return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "boolean": return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "date": return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "datetime": return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      case "select": return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} />
-      case "media": return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
+      case "text": 
+        return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
+      case "textarea": 
+        return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "richText": 
+        return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "markdown": 
+        return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder="Enter markdown..." />
+      case "number": 
+      case "integer":
+      case "decimal":
+      case "float":
+        return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type={field.type as any} />
+      case "boolean": 
+        return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "date": 
+        return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "datetime": 
+      case "timestamp":
+        return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type={field.type as any} />
+      case "select": 
+        return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} />
+      case "media": 
+        return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="image" />
+      case "file":
+        return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="file" />
+      case "json":
+      case "color":
+      case "location":
+        return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type={field.type} required={field.required} />
       case "component":
-        const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={opts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={opts?.repeatable} />
-      default: return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
+        const compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        return <ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={compOpts?.repeatable} />
+      default: 
+        return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }
   }
 

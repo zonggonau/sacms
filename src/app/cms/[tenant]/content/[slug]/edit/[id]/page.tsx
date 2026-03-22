@@ -36,6 +36,8 @@ import { RelationField } from "@/components/content/field-renderers/relation-fie
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
+import { SEOAnalyzerPanel } from "@/components/cms/seo-analyzer-panel"
 
 interface Field {
   id: string
@@ -215,6 +217,22 @@ export default function CMSEditEntryPage() {
               <SelectItem value="ARCHIVED">Archived</SelectItem>
             </SelectContent>
           </Select>
+          
+          <ContentHistorySidebar 
+            tenantSlug={tenantSlug}
+            contentTypeSlug={contentTypeSlug}
+            entryId={entryId}
+            onRestoreSuccess={(newData) => setFormData(newData)}
+          />
+
+          <Button 
+            variant="outline" 
+            onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
+            className="h-9 rounded-xl font-bold border-muted-foreground/20 bg-card hover:bg-muted/50"
+          >
+            <Eye className="mr-2 h-4 w-4" /> Preview
+          </Button>
+
           <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-card rounded-xl font-bold h-10 border-emerald-100 hover:bg-emerald-50">
             Save Changes
           </Button>
@@ -259,6 +277,11 @@ export default function CMSEditEntryPage() {
               </div>
             </CardContent>
           </Card>
+
+          <SEOAnalyzerPanel 
+            data={formData} 
+            fields={contentType?.fields || []} 
+          />
         </div>
       </div>
     </div>

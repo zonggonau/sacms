@@ -122,7 +122,7 @@ export default function RegisterPage() {
             <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
               <Database className="w-5 h-5 text-white" />
             </div>
-            <span className="text-xl font-bold text-white">ContentFlow</span>
+            <span className="text-xl font-bold text-white">SaCMS</span>
           </Link>
         </div>
         <div className="relative space-y-6">

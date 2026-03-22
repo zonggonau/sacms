@@ -10,8 +10,10 @@ import { Separator } from "@/components/ui/separator"
 import { 
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
-  Package, History, ExternalLink, FileText
+  History, ExternalLink, FileText, BarChart3,
+  HardDrive, Users, Database, Package
 } from "lucide-react"
+import { Progress } from "@/components/ui/progress"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -41,6 +43,7 @@ export default function TenantSubscriptionsPage() {
   const [subscription, setSubscription] = useState<Subscription | null>(null)
   const [invoices, setInvoices] = useState<Invoice[]>([])
   const [plans, setPlans] = useState<any[]>([])
+  const [usage, setUsage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
@@ -49,10 +52,11 @@ export default function TenantSubscriptionsPage() {
   const fetchBillingData = async () => {
     if (!tenantSlug) return
     try {
-      const [subRes, invRes, plansRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/subscription/prorate`), // Using prorate to get current sub info
+      const [subRes, invRes, plansRes, usageRes] = await Promise.all([
+        fetch(`/api/tenant/${tenantSlug}/subscription/prorate`),
         fetch(`/api/tenant/${tenantSlug}/invoices`),
-        fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`)
+        fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`),
+        fetch(`/api/tenant/${tenantSlug}/billing/usage`)
       ])
       
       if (subRes.ok) {
@@ -66,6 +70,10 @@ export default function TenantSubscriptionsPage() {
       if (plansRes.ok) {
         const data = await plansRes.json()
         setPlans(data.plans || [])
+      }
+      if (usageRes.ok) {
+        const data = await usageRes.json()
+        setUsage(data.usage || [])
       }
     } catch (err) {
       console.error("Billing fetch error:", err)
@@ -155,6 +163,58 @@ export default function TenantSubscriptionsPage() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Usage Limits Section */}
+          <div className="space-y-4">
+            <h2 className="text-xl font-black uppercase tracking-tight text-muted-foreground/70 flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" /> Resource Usage
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {usage.map((item) => {
+                const percentage = Math.min(100, (item.current / item.limit) * 100)
+                const isNearingLimit = percentage > 80
+                
+                const formatValue = (val: number, unit: string) => {
+                  if (unit === "bytes") {
+                    const gb = val / (1024 * 1024 * 1024)
+                    return gb >= 1 ? `${gb.toFixed(1)} GB` : `${(val / (1024 * 1024)).toFixed(0)} MB`
+                  }
+                  return val.toLocaleString()
+                }
+
+                return (
+                  <Card key={item.label} className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                    <CardContent className="p-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-muted-foreground">
+                          {item.unit === "entries" ? <Database className="h-4 w-4" /> : 
+                           item.unit === "bytes" ? <HardDrive className="h-4 w-4" /> : <Users className="h-4 w-4" />}
+                          <span className="text-xs font-bold uppercase tracking-widest">{item.label}</span>
+                        </div>
+                        {isNearingLimit && <AlertCircle className="h-4 w-4 text-orange-500 animate-pulse" />}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <div className="flex items-end justify-between">
+                          <p className="text-2xl font-black">{formatValue(item.current, item.unit)}</p>
+                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Limit: {formatValue(item.limit, item.unit)}</p>
+                        </div>
+                        <Progress value={percentage} className="h-1.5 bg-muted">
+                          <div 
+                            className={cn(
+                              "h-full transition-all rounded-full",
+                              percentage > 90 ? "bg-red-500" : percentage > 70 ? "bg-orange-500" : "bg-primary"
+                            )}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </Progress>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+          </div>
 
           {/* Main Plans Grid */}
           <div className="space-y-4">

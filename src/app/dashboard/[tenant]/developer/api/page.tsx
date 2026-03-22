@@ -11,7 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Play, Copy, Check, Send, Globe, Database, 
   Terminal, Code2, Zap, Key, Loader2, RefreshCw,
-  Search, Info, Link as LinkIcon, ChevronRight
+  Search, Info, Link as LinkIcon, ChevronRight,
+  FileDown
 } from "lucide-react"
 import {
   Select,
@@ -25,6 +26,7 @@ import {
 import { Textarea } from "@/components/ui/textarea"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { JsonViewer } from "@/components/ui/json-viewer"
+import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 
 interface ApiKey {
@@ -54,54 +56,148 @@ export default function ApiExplorerPage() {
 
   const [activeProtocol, setActiveProtocol] = useState<"rest" | "graphql">("rest")
   const [method, setMethod] = useState("GET")
-  const [endpoint, setEndpoint] = useState(`/api/public/${tenantSlug}/content`)
+  const [endpoint, setEndpoint] = useState("")
   const [requestBody, setRequestBody] = useState('{\n  "data": {}\n}')
   const [gqlQuery, setGqlQuery] = useState('query {\n  # Start typing your query...\n}')
-  
-  const [response, setResponse] = useState<any>(null)
-  const [loading, setLoading] = useState(false)
-  const [copied, setCopied] = useState(false)
-
-  // Resources for Auto-Discovery
-  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
-  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
-  const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
-  const [selectedKey, setSelectedKey] = useState<string>("")
-
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
+    if (tenantSlug) {
+      setEndpoint(`/api/public/${tenantSlug}/content`)
+    }
+  }, [tenantSlug])
+  
+  const [response, setResponse] = useState<any>(null)
+  const [gqlSchemaInfo, setGqlSchemaInfo] = useState<any>(null)
+  const [loading, setLoading] = useState(false)
+  const [loadingSchema, setLoadingSchema] = useState(false)
+
+  const [contentTypes, setContentTypes] = useState<ContentType[]>([])
+  const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
+  const [selectedKey, setSelectedKey] = useState("")
+  const [exporting, setExporting] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  const tenants = (session?.user as any)?.tenants || []
+
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/login")
+    }
   }, [status, router])
 
   useEffect(() => {
-    async function fetchResources() {
-      if (!tenantSlug || !session?.user) return
+    const fetchData = async () => {
+      if (!tenantSlug || status !== "authenticated") return
       try {
-        const [tokenRes, ctRes, stRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/api-tokens`),
+        const [ctRes, stRes, akRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/content-types`),
-          fetch(`/api/tenant/${tenantSlug}/single-types`)
+          fetch(`/api/tenant/${tenantSlug}/single-types`),
+          fetch(`/api/tenant/${tenantSlug}/api-tokens`)
         ])
         
-        if (tokenRes.ok) {
-          const data = await tokenRes.json()
-          setApiKeys(data.tokens || [])
-        }
         if (ctRes.ok) {
-          const data = await ctRes.json()
-          setContentTypes(data.contentTypes || data || [])
+          const ctData = await ctRes.json()
+          setContentTypes(ctData || [])
         }
+        
         if (stRes.ok) {
-          const data = await stRes.json()
-          setSingleTypes(data.singleTypes || data || [])
+          const stData = await stRes.json()
+          setSingleTypes(stData || [])
+        }
+        
+        if (akRes.ok) {
+          const akData = await akRes.json()
+          const tokens = akData.tokens || []
+          setApiKeys(tokens)
+          // Don't auto-set masked tokens
+          if (tokens.length > 0 && !selectedKey) {
+            const firstToken = tokens[0].token
+            if (firstToken && !firstToken.includes("*")) {
+              setSelectedKey(firstToken)
+            }
+          }
         }
       } catch (err) {
-        console.error("Failed to load API resources", err)
+        console.error("Error fetching data", err)
       }
     }
-    if (session?.user) fetchResources()
-  }, [tenantSlug, session])
+
+    fetchData()
+  }, [tenantSlug, status])
+
+  const handleDownloadOpenApi = async () => {
+    setExporting(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/developer/openapi`)
+      if (!res.ok) throw new Error("Failed to export OpenAPI")
+      
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${tenantSlug}-openapi.yaml`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast({ title: "OpenAPI Exported Successfully" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Export Failed", description: err.message })
+    } finally {
+      setExporting(false)
+    }
+  }
+
+  const fetchGqlSchema = async () => {
+    if (!selectedKey || activeProtocol !== "graphql") return
+    setLoadingSchema(true)
+    try {
+      const introspectionQuery = `
+        query IntrospectionQuery {
+          __schema {
+            queryType { name }
+            mutationType { name }
+            types {
+              name
+              kind
+              fields {
+                name
+                type {
+                  name
+                  kind
+                  ofType { name kind }
+                }
+              }
+            }
+          }
+        }
+      `
+      const res = await fetch(`/api/public/${tenantSlug}/graphql`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${selectedKey}`
+        },
+        body: JSON.stringify({ query: introspectionQuery })
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setGqlSchemaInfo(data.data?.__schema)
+      }
+    } catch (err) {
+      console.error("Failed to fetch GQL schema", err)
+    } finally {
+      setLoadingSchema(false)
+    }
+  }
+
+  useEffect(() => {
+    if (activeProtocol === "graphql" && selectedKey) {
+      fetchGqlSchema()
+    }
+  }, [activeProtocol, selectedKey])
 
   const handleQuickSelect = (value: string) => {
     const [m, type, slug] = value.split('|')
@@ -114,6 +210,15 @@ export default function ApiExplorerPage() {
   }
 
   const handleSendRequest = async () => {
+    if (!selectedKey) {
+      toast({
+        variant: "destructive",
+        title: "Authentication Required",
+        description: "Please select or enter an API Key to test the public endpoints."
+      })
+      return
+    }
+    
     setLoading(true)
     setResponse(null)
     
@@ -182,16 +287,40 @@ export default function ApiExplorerPage() {
               <h1 className="text-3xl font-extrabold tracking-tight">API Explorer</h1>
               <p className="text-muted-foreground">Automated endpoint testing for your content schemas.</p>
             </div>
-            <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-2xl border shadow-sm">
-              <Key className="h-4 w-4 text-amber-500" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Active Auth Token</span>
-                <Input 
-                  placeholder="Paste your API Key here..." 
-                  value={selectedKey}
-                  onChange={e => setSelectedKey(e.target.value)}
-                  className="h-7 w-[250px] text-[10px] font-mono border-none bg-muted/50"
-                />
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                className="bg-card font-bold border-emerald-100 text-emerald-700 hover:bg-emerald-50 h-11"
+                onClick={handleDownloadOpenApi}
+                disabled={exporting}
+              >
+                {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
+                Export OpenAPI
+              </Button>
+              <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-2xl border shadow-sm h-11">
+                <Key className="h-4 w-4 text-amber-500" />
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Active Auth Token</span>
+                  <div className="flex items-center gap-2">
+                    <Select value={selectedKey} onValueChange={setSelectedKey}>
+                      <SelectTrigger className="h-6 min-w-[200px] text-[10px] font-mono border-none bg-muted/50 focus-visible:ring-0 p-0 px-2">
+                        <SelectValue placeholder="Select API Key..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {apiKeys.length === 0 && (
+                          <div className="p-2 text-[10px] text-muted-foreground text-center">
+                            No API Keys found
+                          </div>
+                        )}
+                        {apiKeys.map(key => (
+                          <SelectItem key={key.id} value={key.token} className="text-[10px] font-mono">
+                            <span className="font-bold">{key.name}</span>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -343,9 +472,71 @@ export default function ApiExplorerPage() {
               </div>
             </div>
 
-            {/* Right: Response Panel */}
+            {/* Right: Response & Schema Panel */}
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm bg-card h-full min-h-[500px] flex flex-col overflow-hidden">
+              {/* GraphQL Schema Explorer (Only shown for GQL) */}
+              {activeProtocol === "graphql" && (
+                <Card className="border-none shadow-sm bg-card overflow-hidden">
+                  <CardHeader className="bg-muted/20 border-b py-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Database className="h-3 w-3" /> Schema Explorer
+                      </CardTitle>
+                      {loadingSchema && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <ScrollArea className="h-[300px]">
+                      {!selectedKey ? (
+                        <div className="p-8 text-center opacity-40">
+                          <Key className="h-8 w-8 mx-auto mb-2" />
+                          <p className="text-[10px] font-bold uppercase">Enter API Key to load schema</p>
+                        </div>
+                      ) : !gqlSchemaInfo ? (
+                        <div className="p-8 text-center opacity-40">
+                          <RefreshCw className="h-8 w-8 mx-auto mb-2 animate-spin" />
+                          <p className="text-[10px] font-bold uppercase">Fetching Schema...</p>
+                        </div>
+                      ) : (
+                        <div className="p-4 space-y-4">
+                          {/* Queries */}
+                          <div className="space-y-2">
+                            <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest bg-emerald-50 px-2 py-1 rounded w-fit">Available Queries</p>
+                            <div className="space-y-1.5 pl-1">
+                              {gqlSchemaInfo.types.find((t: any) => t.name === gqlSchemaInfo.queryType.name)?.fields.map((f: any) => (
+                                <div key={f.name} className="flex items-center gap-2 group">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+                                  <span className="text-xs font-mono font-bold text-foreground">{f.name}</span>
+                                  <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
+                                    : {f.type.name || f.type.ofType?.name || 'Object'}
+                                  </span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                          
+                          {/* Mutations */}
+                          {gqlSchemaInfo.mutationType && (
+                            <div className="space-y-2">
+                              <p className="text-[9px] font-black uppercase text-blue-600 tracking-widest bg-blue-50 px-2 py-1 rounded w-fit">Available Mutations</p>
+                              <div className="space-y-1.5 pl-1">
+                                {gqlSchemaInfo.types.find((t: any) => t.name === gqlSchemaInfo.mutationType.name)?.fields.map((f: any) => (
+                                  <div key={f.name} className="flex items-center gap-2 group">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                                    <span className="text-xs font-mono font-bold text-foreground">{f.name}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              )}
+
+              <Card className="border-none shadow-sm bg-card flex-1 min-h-[400px] flex flex-col overflow-hidden">
                 <CardHeader className="bg-muted/20 border-b flex flex-row items-center justify-between space-y-0">
                   <CardTitle className="text-base font-bold flex items-center gap-2">
                     <Terminal className="h-4 w-4 text-muted-foreground" /> Server Response

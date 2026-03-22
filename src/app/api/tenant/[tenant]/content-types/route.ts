@@ -53,7 +53,17 @@ export async function GET(
     // Get content types owned by this tenant
     const availableContentTypes = await db.contentType.findMany({
       where: {
-        tenantId: tenantId,
+        OR: [
+          { tenantId: tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: tenantId,
+                enabled: true
+              }
+            }
+          }
+        ]
       },
       include: {
         fields: {

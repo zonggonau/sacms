@@ -40,13 +40,16 @@ export async function GET(
     // Filter: Only show published global single types or those explicitly assigned to this tenant
     const availableSingleTypes = singleTypes.filter(st => {
       const isGlobal = st.tenants.length === 0
+      const isAssignedToThisTenant = st.tenants.some(t => t.tenantId === access.tenantId && t.enabled)
+      
+      if (isAssignedToThisTenant) return true
+      
+      // If not assigned to this tenant, only show if it's a global template (not assigned to ANY tenant)
       if (isGlobal) {
-        // Global single types only visible if published (non-super_admin) or if user is super_admin
         return isSuperAdmin || st.isPublished === true
       }
       
-      // Tenant-specific single types: visible if assigned to this tenant
-      return st.tenants.some(t => t.tenantId === access.tenantId && t.enabled)
+      return false
     })
 
     // Get data for each single type (if exists for this tenant)

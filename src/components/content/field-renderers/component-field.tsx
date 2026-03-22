@@ -10,12 +10,24 @@ import { Textarea } from "@/components/ui/textarea"
 import { Plus, Trash2, ChevronDown, ChevronUp, GripVertical, Loader2 } from "lucide-react"
 import { cn } from "@/lib/utils"
 
+import { TextField } from "./text-field"
+import { TextareaField } from "./textarea-field"
+import { NumberField } from "./number-field"
+import { DateTimeField } from "./datetime-field"
+import { BooleanField } from "./boolean-field"
+import { DateField } from "./date-field"
+import { SelectField } from "./select-field"
+import { MediaField } from "./media-field"
+import { RichTextField } from "./rich-text-field"
+import { AdvancedField } from "./advanced-fields"
+
 interface FieldDefinition {
   id: string
   name: string
   slug: string
   type: string
   required: boolean
+  options?: any
 }
 
 interface ComponentDefinition {
@@ -28,7 +40,7 @@ interface ComponentDefinition {
 interface ComponentFieldProps {
   tenantSlug: string
   componentSlug: string
-  value: any // Could be an object or an array of objects
+  value: any 
   onChange: (val: any) => void
   label: React.ReactNode
   repeatable?: boolean
@@ -41,7 +53,7 @@ export function ComponentField({
   onChange,
   label,
   repeatable = false
-}) {
+}: ComponentFieldProps) {
   const [definition, setDefinition] = useState<ComponentDefinition | null>(null)
   const [loading, setLoading] = useState(true)
   const [expandedIndices, setExpandedIndices] = useState<Set<number>>(new Set([0]))
@@ -100,30 +112,65 @@ export function ComponentField({
     setExpandedIndices(next)
   }
 
+  const renderInnerField = (field: FieldDefinition, data: any, index: number | null) => {
+    const fieldValue = data?.[field.slug]
+    const onFieldChange = (val: any) => handleFieldChange(index, field.slug, val)
+
+    let selectOptions: string[] = []
+    if (field.options) {
+      const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+      if (Array.isArray(opts)) selectOptions = opts
+      else if (typeof opts === 'string') selectOptions = opts.split(",").map(o => o.trim())
+    }
+
+    switch (field.type) {
+      case "text": 
+        return <TextField value={fieldValue as string} onChange={onFieldChange} required={field.required} placeholder={field.name} />
+      case "textarea": 
+        return <TextareaField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
+      case "richText": 
+        return <RichTextField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
+      case "markdown": 
+        return <TextareaField value={fieldValue as string} onChange={onFieldChange} required={field.required} placeholder="Enter markdown..." />
+      case "number": 
+      case "integer":
+      case "decimal":
+      case "float":
+        return <NumberField value={fieldValue as any} onChange={onFieldChange} required={field.required} type={field.type as any} />
+      case "boolean": 
+        return <BooleanField value={fieldValue as boolean} onChange={onFieldChange} required={field.required} />
+      case "date": 
+        return <DateField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
+      case "datetime": 
+      case "timestamp":
+        return <DateTimeField value={fieldValue as string} onChange={onFieldChange} required={field.required} type={field.type as any} />
+      case "select": 
+        return <SelectField value={fieldValue as string} onChange={onFieldChange} options={selectOptions} required={field.required} />
+      case "media": 
+        return <MediaField value={fieldValue as string} onChange={onFieldChange} tenantSlug={tenantSlug} type="image" />
+      case "file":
+        return <MediaField value={fieldValue as string} onChange={onFieldChange} tenantSlug={tenantSlug} type="file" />
+      case "json":
+      case "color":
+      case "location":
+        return <AdvancedField value={fieldValue} onChange={onFieldChange} type={field.type} required={field.required} />
+      default: 
+        return <Input value={fieldValue as string || ""} onChange={e => onFieldChange(e.target.value)} />
+    }
+  }
+
   if (loading) return <div className="flex items-center gap-2 text-xs text-muted-foreground"><Loader2 className="h-3 w-3 animate-spin" /> Loading component structure...</div>
   if (!definition) return <div className="text-xs text-destructive">Error: Component "{componentSlug}" not found.</div>
 
   const renderInnerFields = (data: any, index: number | null = null) => {
     return (
-      <div className="space-y-4 py-2">
+      <div className="space-y-6 py-2">
         {definition.fields.map((field) => (
-          <div key={field.id} className="space-y-1.5">
-            <Label className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground/80">
+          <div key={field.id} className="space-y-2">
+            <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground/60">
               {field.name} {field.required && <span className="text-destructive">*</span>}
             </Label>
-            {field.type === "textarea" ? (
-              <Textarea 
-                value={data?.[field.slug] || ""} 
-                onChange={(e) => handleFieldChange(index, field.slug, e.target.value)}
-                className="bg-background min-h-[80px]"
-              />
-            ) : (
-              <Input 
-                value={data?.[field.slug] || ""} 
-                onChange={(e) => handleFieldChange(index, field.slug, e.target.value)}
-                className="bg-background h-9"
-              />
-            )}
+            {renderInnerField(field, data, index)}
           </div>
         ))}
       </div>

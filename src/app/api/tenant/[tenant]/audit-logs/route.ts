@@ -57,6 +57,15 @@ export async function GET(
       db.auditLog.count({ where }),
       db.auditLog.findMany({
         where,
+        include: {
+          user: {
+            select: {
+              name: true,
+              email: true,
+              image: true,
+            },
+          },
+        },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,

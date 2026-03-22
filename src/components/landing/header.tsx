@@ -17,7 +17,8 @@ export function LandingHeader() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <Database className="w-4.5 h-4.5 text-white" />
           </div>
-          <span className="text-lg font-bold tracking-tight">ContentFlow</span>
+          <Link href="/"><span className="text-lg font-bold tracking-tight">SaCMS</span></Link>
+          
           <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] px-1.5 py-0">v1.0</Badge>
         </div>
 
@@ -25,12 +26,14 @@ export function LandingHeader() {
           {[
             { label: "Features", href: "#features" },
             { label: "Pricing", href: "#pricing" },
-            { label: "Docs", href: "/docs" },
-            { label: "Blog", href: "/blog" },
+            { label: "Docs", href: "/docs", external: true },
+            { label: "Blog", href: "/blog", external: true },
           ].map((item) => (
             <Link
               key={item.label}
               href={item.href}
+              target={item.external ? "_blank" : undefined}
+              rel={item.external ? "noopener noreferrer" : undefined}
               className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground rounded-md hover:bg-muted transition-colors"
             >
               {item.label}

@@ -23,6 +23,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
+import { Progress } from "@/components/ui/progress"
+import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist"
 
 interface AssignedContentType {
   id: string
@@ -76,6 +78,7 @@ export default function TenantDashboardPage() {
 
   const [contentTypes, setContentTypes] = useState<AssignedContentType[]>([])
   const [stats, setStats] = useState<TenantStats | null>(null)
+  const [usage, setUsage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
@@ -91,9 +94,10 @@ export default function TenantDashboardPage() {
     async function fetchData() {
       if (!tenantSlug || !session?.user) return
       try {
-        const [ctRes, statsRes] = await Promise.all([
+        const [ctRes, statsRes, usageRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/content-types`),
           fetch(`/api/tenant/${tenantSlug}/stats`),
+          fetch(`/api/tenant/${tenantSlug}/billing/usage`),
         ])
         
         // If API returns 403 or 404, then redirect
@@ -116,6 +120,13 @@ export default function TenantDashboardPage() {
             recentEntries: statsData.recentEntries || []
           })
         }
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          console.log("[Dashboard] Usage data received:", usageData)
+          setUsage(usageData.usage || [])
+        } else {
+          console.error("[Dashboard] Failed to fetch usage data:", usageRes.status)
+        }
       } catch (err) {
         console.error("Failed to fetch dashboard data:", err)
       } finally {
@@ -124,6 +135,10 @@ export default function TenantDashboardPage() {
     }
     if (session?.user) fetchData()
   }, [tenantSlug, session])
+
+  const usageAlerts = useMemo(() => {
+    return usage.filter(u => (u.current / u.limit) >= 0.9)
+  }, [usage])
 
   const totalEntries = useMemo(() => {
     if (!stats?.entries) return 0
@@ -184,6 +199,75 @@ export default function TenantDashboardPage() {
                 </Button>
               </Link>
             </div>
+          </div>
+
+          <OnboardingChecklist 
+            tenantSlug={tenantSlug} 
+            stats={{
+              contentTypeCount: stats?.contentTypeCount ?? 0,
+              mediaCount: stats?.mediaCount ?? 0,
+              memberCount: stats?.memberCount ?? 1,
+              apiTokenCount: stats?.apiTokenCount ?? 0,
+              totalEntries: totalEntries
+            }} 
+          />
+
+          {/* Quota Usage Alerts */}
+          {usageAlerts.length > 0 && (
+            <div className="bg-red-50 border border-red-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <div className="flex items-center gap-4 text-center md:text-left">
+                <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-6 w-6 text-red-600 animate-bounce" />
+                </div>
+                <div>
+                  <p className="text-sm font-black text-red-950 uppercase tracking-tight">Resource Limit Reached</p>
+                  <p className="text-xs text-red-800 font-medium">You have used over 90% of your {usageAlerts.map(u => u.label).join(", ")} quota.</p>
+                </div>
+              </div>
+              <Link href={`/dashboard/${tenantSlug}/subscriptions`}>
+                <Button className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs h-11 px-8 rounded-xl shadow-lg shadow-red-200">
+                  Upgrade Plan Now
+                </Button>
+              </Link>
+            </div>
+          )}
+
+          {/* Usage Summary Cards (Horizontal) */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {(usage && usage.length > 0 ? usage : [
+              { label: "Content Entries", current: 0, limit: 100, unit: "entries" },
+              { label: "Media Storage", current: 0, limit: 104857600, unit: "bytes" },
+              { label: "Team Members", current: 1, limit: 3, unit: "users" }
+            ]).map((item) => {
+              const percentage = Math.min(100, (item.current / item.limit) * 100)
+              const formatValue = (val: number, unit: string) => {
+                if (unit === "bytes") {
+                  const mb = val / (1024 * 1024)
+                  return mb >= 1024 ? `${(mb / 1024).toFixed(1)}GB` : `${mb.toFixed(0)}MB`
+                }
+                return val.toLocaleString()
+              }
+
+              return (
+                <Card key={item.label} className="border-none bg-card shadow-sm rounded-2xl overflow-hidden">
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{item.label}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">{formatValue(item.current, item.unit)} / {formatValue(item.limit, item.unit)}</span>
+                    </div>
+                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className={cn(
+                          "h-full transition-all duration-500",
+                          percentage > 90 ? "bg-red-500" : percentage > 70 ? "bg-orange-500" : "bg-emerald-500"
+                        )}
+                        style={{ width: `${percentage}%` }}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+              )
+            })}
           </div>
 
           {/* Alert Queue */}

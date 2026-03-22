@@ -7,6 +7,8 @@ import { validateBody } from "@/lib/validate"
 import { updateEntrySchema } from "@/lib/validations"
 import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { validateContentEntry } from "@/lib/content-validations"
+import { invalidatePattern } from "@/lib/cache"
 
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries/[id]
@@ -102,6 +104,20 @@ export async function PATCH(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
+    // --- Dynamic Schema Validation ---
+    if (data) {
+      const validation = await validateContentEntry(contentType.fields as any, data)
+      if (!validation.success) {
+        return NextResponse.json({ 
+          error: "Validation failed", 
+          details: validation.errors 
+        }, { status: 400 })
+      }
+      // Replace data with validated/cleaned data
+      Object.assign(data, validation.data)
+    }
+    // --------------------------------
+
     // Check entry exists and belongs to this tenant
     const existing = await db.contentEntry.findFirst({
       where: { id, contentTypeId: contentType.id, tenantId: access.tenantId },
@@ -161,10 +177,13 @@ export async function PATCH(
 
     // Fire async webhook
     triggerWebhooks(access.tenantId, WebhookEvents.CONTENT_UPDATED, {
-      entry: { id: entry.id, contentType: slug, status: entry.status },
+      entry: { id, contentType: slug, status: entry.status },
     })
 
-    logAudit({
+    // Invalidate public API cache for this content type
+    invalidatePattern(`public_api:${tenant}:${slug}:*`).catch(() => {})
+
+    // Audit log
       tenantId: access.tenantId,
       userId: session.user.id,
       action: AuditAction.CONTENT_UPDATED,
@@ -248,6 +267,9 @@ export async function DELETE(
     triggerWebhooks(access.tenantId, WebhookEvents.CONTENT_DELETED, {
       entry: { id, contentType: slug },
     })
+
+    // Invalidate public API cache for this content type
+    invalidatePattern(`public_api:${tenant}:${slug}:*`).catch(() => {})
 
     logAudit({
       tenantId: access.tenantId,

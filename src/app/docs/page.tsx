@@ -1,6 +1,6 @@
 "use client"
 
-import Head from "next/head"
+import Script from "next/script"
 
 /**
  * API Documentation Page
@@ -10,25 +10,16 @@ import Head from "next/head"
 export default function DocsPage() {
   return (
     <>
-      <div 
-        id="api-reference" 
+      <div
+        id="api-reference"
         data-url="/api/docs/openapi"
       />
-      <script
+      <Script
         id="scalar-script"
-        dangerouslySetInnerHTML={{
-          __html: `
-            const script = document.createElement('script');
-            script.src = 'https://cdn.jsdelivr.net/npm/@scalar/api-reference';
-            script.onload = () => {
-              // The reference will auto-render on the element with id="api-reference"
-            };
-            document.head.appendChild(script);
-          `,
-        }}
+        src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"
+        strategy="afterInteractive"
       />
-      <style dangerouslySetInnerHTML={{
-        __html: `
+      <style dangerouslySetInnerHTML={{        __html: `
           body {
             margin: 0;
             padding: 0;
