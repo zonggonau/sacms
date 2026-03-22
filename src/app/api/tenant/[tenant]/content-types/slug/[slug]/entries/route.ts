@@ -176,7 +176,7 @@ export async function POST(
     invalidatePattern(`public_api:${tenant}:${slug}:*`).catch(() => {})
 
     // Audit log
-    await logAudit({
+    logAudit({
       tenantId: access.tenantId,
       userId: session.user.id,
       action: AuditAction.CONTENT_CREATED,

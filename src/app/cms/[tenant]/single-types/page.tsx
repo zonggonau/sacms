@@ -103,7 +103,11 @@ export default function CMSSingleTypesPage() {
               </TableHeader>
               <TableBody>
                 {singleTypes.map((st) => (
-                  <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors">
+                  <TableRow 
+                    key={st.id} 
+                    className="group hover:bg-muted/5 transition-colors cursor-pointer"
+                    onClick={() => router.push(`/cms/${tenantSlug}/single-types/${st.slug}`)}
+                  >
                     <TableCell className="pl-6">
                       <div className="flex items-center gap-3">
                         <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
@@ -136,7 +140,10 @@ export default function CMSSingleTypesPage() {
                       <Button 
                         size="sm" 
                         className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs"
-                        onClick={() => router.push(`/cms/${tenantSlug}/single-types/${st.slug}/edit`)}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          router.push(`/cms/${tenantSlug}/single-types/${st.slug}/edit`)
+                        }}
                       >
                         <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit Content
                       </Button>

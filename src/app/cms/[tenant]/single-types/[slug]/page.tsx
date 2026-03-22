@@ -21,8 +21,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CMSSidebar } from "@/components/cms/cms-sidebar"
 import { toast } from "@/hooks/use-toast"
+
+// Field Renderers
 import { TextField } from "@/components/content/field-renderers/text-field"
 import { TextareaField } from "@/components/content/field-renderers/textarea-field"
 import { NumberField } from "@/components/content/field-renderers/number-field"
@@ -35,6 +36,7 @@ import { MediaMultipleField } from "@/components/content/field-renderers/media-m
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { ButtonField } from "@/components/content/field-renderers/button-field"
+import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
 interface Field {
@@ -104,11 +106,10 @@ export default function CMSEditSingleTypePage() {
   const handleSave = async (publish: boolean = false) => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/single-types`, {
-        method: "PUT",
+      const res = await fetch(`/api/tenant/${tenantSlug}/single-types/${singleType?.id}`, {
+        method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          singleTypeId: singleType?.id,
           data: formData,
           publish
         }),
@@ -142,8 +143,8 @@ export default function CMSEditSingleTypePage() {
     }
 
     const LabelWithAI = () => (
-      <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-bold">{field.name} {field.required && "*"}</span>
+      <div className="flex items-center justify-between mb-1">
+        <span className="text-sm font-bold text-foreground/80">{field.name} {field.required && "*"}</span>
         {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
           <AIAssistantDialog
             tenantSlug={tenantSlug}
@@ -157,19 +158,43 @@ export default function CMSEditSingleTypePage() {
     )
 
     switch (field.type) {
-      case "text": return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} />
-      case "textarea": return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} />
-      case "richText": return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} />
-      case "number": return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} />
-      case "boolean": return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} />
-      case "date": return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} />
-      case "select": return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} label={field.name} />
-      case "media": return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} label={field.name} />
-      case "button": return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+      case "text": 
+        return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} placeholder={field.name} />
+      case "textarea": 
+        return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} />
+      case "richText": 
+        return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} />
+      case "markdown": 
+        return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={<LabelWithAI />} placeholder="Enter markdown..." />
+      case "number": 
+      case "integer":
+      case "decimal":
+      case "float":
+        return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} type={field.type as any} />
+      case "boolean": 
+        return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} />
+      case "date": 
+        return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} />
+      case "datetime": 
+      case "timestamp":
+        return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} label={field.name} type={field.type as any} />
+      case "select": 
+        return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} label={field.name} />
+      case "media": 
+        return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} label={field.name} type="image" />
+      case "file":
+        return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} label={field.name} type="file" />
+      case "button": 
+        return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+      case "json":
+      case "color":
+      case "location":
+        return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type={field.type} required={field.required} label={field.name} />
       case "component":
-        const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={opts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={opts?.repeatable} />
-      default: return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
+        const compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        return <ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={compOpts?.repeatable} />
+      default: 
+        return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }
   }
 
@@ -179,10 +204,10 @@ export default function CMSEditSingleTypePage() {
     <div className="p-6 lg:p-10 space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}/single-types`)}><ArrowLeft className="h-5 w-5" /></Button>
           <div>
             <h1 className="text-3xl font-extrabold tracking-tight text-emerald-700">{singleType?.name}</h1>
-            <p className="text-muted-foreground">Editing static page content</p>
+            <p className="text-muted-foreground text-sm">Editing static page content</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -210,11 +235,18 @@ export default function CMSEditSingleTypePage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-8 space-y-8">
-              {singleType?.fields.map(field => (
-                <div key={field.id}>
-                  {renderField(field)}
+              {singleType?.fields.length === 0 ? (
+                <div className="text-center py-20 opacity-30">
+                  <Globe className="h-16 w-16 mx-auto mb-4" />
+                  <p className="font-bold">No fields configured for this page.</p>
                 </div>
-              ))}
+              ) : (
+                singleType?.fields.map(field => (
+                  <div key={field.id} className="space-y-2">
+                    {renderField(field)}
+                  </div>
+                ))
+              )}
             </CardContent>
           </Card>
         </div>
@@ -235,6 +267,15 @@ export default function CMSEditSingleTypePage() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-3xl flex gap-3 text-emerald-700 shadow-sm">
+            <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+              <Save className="h-4 w-4" />
+            </div>
+            <p className="text-[11px] leading-relaxed font-medium">
+              Changes saved here will affect the public API for <strong>{singleTypeSlug}</strong> after publishing.
+            </p>
+          </div>
         </div>
       </div>
     </div>

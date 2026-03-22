@@ -184,6 +184,7 @@ export async function PATCH(
     invalidatePattern(`public_api:${tenant}:${slug}:*`).catch(() => {})
 
     // Audit log
+    logAudit({
       tenantId: access.tenantId,
       userId: session.user.id,
       action: AuditAction.CONTENT_UPDATED,

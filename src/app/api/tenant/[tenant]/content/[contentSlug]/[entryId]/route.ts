@@ -5,6 +5,7 @@ import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateBody } from "@/lib/validate"
 import { updateContentEntrySchema } from "@/lib/validations"
+import { revalidatePath } from "next/cache"
 
 type Params = {
   tenant: string
