@@ -27,8 +27,9 @@ WORKDIR /app
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 nextjs
+# Bun image is Debian-based, use groupadd/useradd instead of Alpine's addgroup/adduser
+RUN groupadd --system --gid 1001 nodejs
+RUN useradd --system --uid 1001 --gid nodejs nextjs
 
 # The builder now has everything ready in .next/standalone
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
