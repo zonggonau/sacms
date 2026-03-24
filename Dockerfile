@@ -17,6 +17,9 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN bun run build
+# Manual copy within builder to ensure standalone structure is correct
+RUN cp -r .next/static .next/standalone/.next/static
+RUN cp -r public .next/standalone/public
 
 # Production image
 FROM base AS runner
@@ -27,9 +30,11 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-COPY --from=builder /app/public ./public
+# The builder now has everything ready in .next/standalone
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# static and public were copied inside standalone, so we only need to copy from builder's standalone
+# but to be safe and clear, we can also copy directly if needed, but Next.js expects them in specific paths
+# Actually, the runner stage usually needs them as siblings to server.js in standalone mode.
 
 USER nextjs
 EXPOSE 3000
