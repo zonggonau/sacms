@@ -1,6 +1,6 @@
 services:
   app:
-    image: ghcr.io/${GITHUB_REPOSITORY_OWNER}/sacms:latest
+    image: ghcr.io/zonggonau/sacms:latest
     ports:
       - "3000:3000"
     environment:
