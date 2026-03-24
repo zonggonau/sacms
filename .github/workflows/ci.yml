@@ -1,10 +1,14 @@
-name: CI
+name: CI/CD
 
 on:
   push:
     branches: [main, develop]
   pull_request:
     branches: [main]
+
+permissions:
+  contents: read
+  packages: write
 
 jobs:
   lint:
@@ -51,18 +55,60 @@ jobs:
           NEXTAUTH_SECRET: "ci-secret-placeholder"
           NEXTAUTH_URL: "http://localhost:3000"
 
-  docker:
-    name: Docker Build
+  docker-push:
+    name: Build and Push Docker Image
     needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
-      - uses: docker/setup-buildx-action@v3
-      - uses: docker/build-push-action@v6
+      
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
         with:
           context: .
-          push: false
-          tags: contentflow:latest
+          push: true
+          tags: |
+            ghcr.io/${{ github.repository_owner }}/sacms:${{ github.ref_name }}
+            ghcr.io/${{ github.repository_owner }}/sacms:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
+
+  deploy:
+    name: Deploy to Server
+    needs: [docker-push]
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    steps:
+      - name: Executing remote ssh commands using password
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          script: |
+            # Login ke GHCR di server (gunakan Token GitHub)
+            echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+            
+            # Navigasi ke folder projek (Sesuaikan path ini di server Anda)
+            cd ~/sacms || mkdir -p ~/sacms && cd ~/sacms
+            
+            # Pull image terbaru
+            docker compose pull app
+            
+            # Re-deploy (ini akan build layer yang berubah dan hapus cache internal)
+            docker compose up -d
+            
+            # Membersihkan image lama yang gantung (dangling images)
+            docker image prune -f
