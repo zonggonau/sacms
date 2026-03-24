@@ -87,7 +87,19 @@ jobs:
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/main' || github.ref == 'heads/Main' || github.ref == 'refs/heads/develop'
     steps:
-      - name: Executing remote ssh commands using password
+      - uses: actions/checkout@v4
+
+      - name: Copy docker-compose.yml to server
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.SERVER_HOST }}
+          username: ${{ secrets.SERVER_USER }}
+          key: ${{ secrets.SERVER_SSH_KEY }}
+          port: ${{ secrets.SERVER_PORT || 22 }}
+          source: "docker-compose.yml"
+          target: "~/sacms"
+
+      - name: Executing remote ssh commands
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST }}
@@ -95,8 +107,14 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
+            # Check for Docker installation
+            if ! command -v docker &> /dev/null; then
+              echo "Docker is not installed on the server. Please install it first."
+              exit 1
+            fi
+
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            cd ~/sacms || mkdir -p ~/sacms && cd ~/sacms
+            cd ~/sacms
             docker compose pull app
             docker compose up -d
             docker image prune -f
