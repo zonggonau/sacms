@@ -33,6 +33,8 @@ RUN useradd --system --uid 1001 --gid nodejs nextjs
 
 # The builder now has everything ready in .next/standalone
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+# Copy prisma directory for migrations and schema access
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 # static and public were copied inside standalone, so we only need to copy from builder's standalone
 # but to be safe and clear, we can also copy directly if needed, but Next.js expects them in specific paths
 # Actually, the runner stage usually needs them as siblings to server.js in standalone mode.
