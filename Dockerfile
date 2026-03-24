@@ -31,6 +31,9 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs nextjs
 
+# Install @prisma/config for prisma 7 cli support in production
+RUN bun add @prisma/config
+
 # The builder now has everything ready in .next/standalone
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # Copy prisma directory for migrations and schema access
