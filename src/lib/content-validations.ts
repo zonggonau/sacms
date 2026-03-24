@@ -22,7 +22,9 @@ export function generateContentSchema(fields: Field[]) {
       case "textarea":
       case "richText":
       case "select":
-        fieldSchema = z.string()
+        fieldSchema = z.string({ 
+          required_error: `${field.name} is required` 
+        })
         if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
         break
 

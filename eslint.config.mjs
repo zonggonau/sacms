@@ -1,3 +1,4 @@
+import js from "@eslint/js";
 import { FlatCompat } from "@eslint/eslintrc";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
@@ -10,7 +11,7 @@ const compat = new FlatCompat({
 });
 
 const eslintConfig = [
-  ...compat.extends("next/core-web-vitals", "next/typescript"),
+  js.configs.recommended,
   {
     rules: {
       // TypeScript rules
@@ -20,16 +21,6 @@ const eslintConfig = [
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/prefer-as-const": "off",
       "@typescript-eslint/no-unused-disable-directive": "off",
-      
-      // React rules
-      "react-hooks/exhaustive-deps": "off",
-      "react/no-unescaped-entities": "off",
-      "react/display-name": "off",
-      "react/prop-types": "off",
-      
-      // Next.js rules
-      "@next/next/no-img-element": "off",
-      "@next/next/no-html-link-for-pages": "off",
       
       // General JavaScript rules
       "prefer-const": "off",
@@ -49,10 +40,10 @@ const eslintConfig = [
   },
   {
     ignores: [
-      "node_modules/**",
-      ".next/**",
-      "out/**",
-      "build/**",
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/out/**",
+      "**/build/**",
       "next-env.d.ts",
       "examples/**",
       "skills/**"
