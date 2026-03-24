@@ -17,35 +17,42 @@ export function generateContentSchema(fields: Field[]) {
   fields.forEach((field) => {
     let fieldSchema: z.ZodTypeAny
 
+    const requiredParams = field.required ? { required_error: `${field.name} is required` } : {}
+
     switch (field.type) {
       case "text":
       case "textarea":
       case "richText":
       case "select":
-        fieldSchema = z.string({ 
-          required_error: `${field.name} is required` 
-        })
+        fieldSchema = z.string(requiredParams)
         if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
+        if (field.required) {
+          fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
+        }
         break
 
       case "email":
-        fieldSchema = z.string().email({ message: `Invalid email format in ${field.name}` })
+        fieldSchema = z.string(requiredParams).email({ message: `Invalid email format in ${field.name}` })
+        if (field.required) {
+          fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
+        }
         break
 
       case "number":
       case "integer":
         fieldSchema = z.number({ 
+          ...requiredParams,
           invalid_type_error: `${field.name} must be a number` 
         })
         break
 
       case "boolean":
-        fieldSchema = z.boolean()
+        fieldSchema = z.boolean(requiredParams)
         break
 
       case "date":
       case "datetime":
-        fieldSchema = z.string().or(z.date()) // Accepts string ISO or Date object
+        fieldSchema = z.string(requiredParams).or(z.date(requiredParams)) // Accepts string ISO or Date object
         break
 
       case "json":
@@ -56,18 +63,11 @@ export function generateContentSchema(fields: Field[]) {
         fieldSchema = z.any()
     }
 
-    // Handle requirement
+    // Post-processing for requirement (only for types that didn't handle it in switch)
     if (field.required) {
-      if (field.type === "text" || field.type === "textarea" || field.type === "richText") {
-        fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
-      } else if (field.type === "number" || field.type === "integer") {
-        fieldSchema = z.number({ 
-          required_error: `${field.name} is required`,
-          invalid_type_error: `${field.name} must be a number` 
-        })
-      } else if (field.type === "boolean") {
-        fieldSchema = z.boolean({ required_error: `${field.name} is required` })
-      } else {
+      if (field.type !== "text" && field.type !== "textarea" && field.type !== "richText" && 
+          field.type !== "select" && field.type !== "email" && field.type !== "number" && 
+          field.type !== "integer" && field.type !== "boolean") {
         fieldSchema = fieldSchema.refine((val) => val !== null && val !== undefined && val !== "", {
           message: `${field.name} is required`,
         })
