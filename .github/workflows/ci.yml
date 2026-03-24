@@ -16,26 +16,24 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run lint
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun x prisma generate
+      - run: bun run lint
 
   test:
     name: Test
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run test
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun x prisma generate
+      - run: bun run test
 
   build:
     name: Build
@@ -43,13 +41,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: oven-sh/setup-bun@v2
         with:
-          node-version: 20
-          cache: 'npm'
-      - run: npm ci
-      - run: npx prisma generate
-      - run: npm run build
+          bun-version: latest
+      - run: bun install --frozen-lockfile
+      - run: bun x prisma generate
+      - run: bun run build
         env:
           DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
           NEXTAUTH_SECRET: "ci-secret-placeholder"
@@ -59,7 +56,7 @@ jobs:
     name: Build and Push Docker Image
     needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'heads/Main' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
       
@@ -88,7 +85,7 @@ jobs:
     name: Deploy to Server
     needs: [docker-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/main' || github.ref == 'heads/Main' || github.ref == 'refs/heads/develop'
     steps:
       - name: Executing remote ssh commands using password
         uses: appleboy/ssh-action@v1.0.3
@@ -98,17 +95,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
-            # Login ke GHCR di server (gunakan Token GitHub)
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
-            
-            # Navigasi ke folder projek (Sesuaikan path ini di server Anda)
             cd ~/sacms || mkdir -p ~/sacms && cd ~/sacms
-            
-            # Pull image terbaru
             docker compose pull app
-            
-            # Re-deploy (ini akan build layer yang berubah dan hapus cache internal)
             docker compose up -d
-            
-            # Membersihkan image lama yang gantung (dangling images)
             docker image prune -f

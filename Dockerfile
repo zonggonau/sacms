@@ -1,19 +1,14 @@
-FROM node:20-alpine AS base
+FROM oven/bun:1 AS base
 
 # Install dependencies only when needed
 FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
 WORKDIR /app
 
 # Install dependencies based on the preferred package manager
-COPY package.json package-lock.json* ./
+COPY package.json bun.lock ./
 COPY prisma ./prisma/
-RUN \
-  if [ -f package-lock.json ]; then npm ci; \
-  else npm install; \
-  fi
-RUN npx prisma generate
+RUN bun install --frozen-lockfile
+RUN bun x prisma generate
 
 # Build the application
 FROM base AS builder
@@ -21,7 +16,7 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
-RUN npm run build
+RUN bun run build
 
 # Production image
 FROM base AS runner
