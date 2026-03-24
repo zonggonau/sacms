@@ -166,10 +166,12 @@ export const PLAN_PRICES: Record<string, number> = {
 export type PlanType = keyof typeof PLAN_PRICES
 
 /**
- * Calculate period end date based on plan
+ * Calculate period end date based on plan and interval
  */
-export function calculatePeriodEndDate(plan: PlanType): Date {
-  const days = plan === 'enterprise' ? 365 : 30 // Enterprise = yearly, others = monthly
+export function calculatePeriodEndDate(plan: PlanType, interval: 'month' | 'year' = 'month'): Date {
+  if (plan === 'free') return new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+  
+  const days = interval === 'year' ? 365 : 30
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000)
 }
 

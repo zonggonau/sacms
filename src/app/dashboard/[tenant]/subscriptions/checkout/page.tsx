@@ -24,6 +24,7 @@ export default function CheckoutPage() {
   
   const tenantSlug = params?.tenant as string
   const planId = searchParams.get("plan")
+  const interval = (searchParams.get("interval") as 'month' | 'year') || 'month'
 
   const [plan, setPlan] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -82,7 +83,8 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          tenantId: currentTenant.id
+          tenantId: currentTenant.id,
+          interval: interval
         }),
       })
 
@@ -162,16 +164,20 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <p className="font-bold text-lg">{plan.name}</p>
-                        <p className="text-xs text-muted-foreground uppercase font-black tracking-widest">Monthly Billing</p>
+                        <p className="text-xs text-muted-foreground uppercase font-black tracking-widest">{interval === 'year' ? 'Yearly Billing' : 'Monthly Billing'}</p>
                       </div>
                     </div>
-                    <p className="text-xl font-black">{formatPrice(plan.price)}</p>
+                    <p className="text-xl font-black">{formatPrice(interval === 'year' ? plan.price * 12 : plan.price)}</p>
                   </div>
 
                   <div className="space-y-3">
                     <div className="flex justify-between text-sm">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span className="font-medium">{formatPrice(plan.price)}</span>
+                      <span className="text-muted-foreground">Subtotal ({interval === 'year' ? '12 months' : '1 month'})</span>
+                      <span className="font-medium">{formatPrice(interval === 'year' ? plan.price * 12 : plan.price)}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                      <span className="text-muted-foreground">PPN (11%)</span>
+                      <span className="font-medium">{formatPrice(Math.round((interval === 'year' ? plan.price * 12 : plan.price) * 0.11))}</span>
                     </div>
                     <div className="flex justify-between text-sm">
                       <span className="text-muted-foreground">Platform Fee</span>
@@ -180,7 +186,7 @@ export default function CheckoutPage() {
                     <Separator className="my-2" />
                     <div className="flex justify-between">
                       <span className="text-lg font-bold">Total Amount</span>
-                      <span className="text-2xl font-black text-primary">{formatPrice(plan.price)}</span>
+                      <span className="text-2xl font-black text-primary">{formatPrice(Math.round((interval === 'year' ? plan.price * 12 : plan.price) * 1.11))}</span>
                     </div>
                   </div>
                 </CardContent>

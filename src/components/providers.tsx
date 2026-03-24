@@ -1,7 +1,6 @@
 "use client"
 
 import { SessionProvider as NextAuthSessionProvider } from "next-auth/react"
-import { ThemeProvider } from "next-themes"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 
@@ -47,16 +46,9 @@ function BrandingProvider({ children }: { children: React.ReactNode }) {
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <NextAuthSessionProvider>
-      <ThemeProvider
-        attribute="class"
-        defaultTheme="system"
-        enableSystem
-        disableTransitionOnChange
-      >
-        <BrandingProvider>
-          {children}
-        </BrandingProvider>
-      </ThemeProvider>
+      <BrandingProvider>
+        {children}
+      </BrandingProvider>
     </NextAuthSessionProvider>
   )
 }

@@ -13,7 +13,20 @@ interface WhatsAppButtonProps {
 export function WhatsAppButton({ phone, message, label, isActive }: WhatsAppButtonProps) {
   if (!isActive || !phone) return null
 
-  const waUrl = `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(message || "")}`
+  // Helper to strip HTML tags and common entities
+  const cleanMessage = (html: string) => {
+    if (!html) return ""
+    return html
+      .replace(/<[^>]*>?/gm, '') // Strip HTML tags
+      .replace(/&nbsp;/g, ' ')    // Replace &nbsp;
+      .replace(/&amp;/g, '&')     // Replace &amp;
+      .replace(/&quot;/g, '"')    // Replace &quot;
+      .replace(/&lt;/g, '<')      // Replace &lt;
+      .replace(/&gt;/g, '>')      // Replace &gt;
+      .trim()
+  }
+
+  const waUrl = `https://wa.me/${phone.replace(/[^0-9]/g, "")}?text=${encodeURIComponent(cleanMessage(message || ""))}`
 
   return (
     <a

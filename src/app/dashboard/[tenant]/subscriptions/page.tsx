@@ -45,6 +45,7 @@ export default function TenantSubscriptionsPage() {
   const [plans, setPlans] = useState<any[]>([])
   const [usage, setUsage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
   const currentTenant = useMemo(() => tenants.find(t => t.slug === tenantSlug), [tenants, tenantSlug])
@@ -132,37 +133,36 @@ export default function TenantSubscriptionsPage() {
           <Card className="border-none shadow-xl bg-primary text-primary-foreground overflow-hidden rounded-3xl">
             <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
             <CardContent className="p-8 relative">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <div className="space-y-4">
-                  <Badge className="bg-white/20 text-white hover:bg-white/30 border-none font-black px-3 py-1 uppercase tracking-widest text-[10px]">
-                    Current Subscription
-                  </Badge>
-                  <h2 className="text-4xl font-black">{currentPlan?.name || subscription?.plan || "Standard Plan"}</h2>
-                  <div className="flex flex-wrap gap-6 text-sm font-medium opacity-90">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4" />
-                      Status: <span className="font-bold uppercase tracking-widest text-xs">{subscription?.status || "Active"}</span>
-                    </div>
-                    {subscription?.currentPeriodEnd && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4" />
-                        Next Billing: <span className="font-bold">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</span>
-                      </div>
-                    )}
-                  </div>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
+            <div className="space-y-4">
+              <Badge className="bg-white/20 text-white hover:bg-white/30 border-none font-black px-3 py-1 uppercase tracking-widest text-[10px]">
+                Current Subscription
+              </Badge>
+              <h2 className="text-4xl font-black">{currentPlan?.name || subscription?.plan || "Standard Plan"}</h2>
+              <div className="flex flex-wrap gap-6 text-sm font-medium opacity-90">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-4 w-4" />
+                  Status: <span className="font-bold uppercase tracking-widest text-xs">{subscription?.status || "Active"}</span>
                 </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right hidden md:block">
-                    <p className="text-xs font-bold uppercase opacity-60">Monthly cost</p>
-                    <p className="text-2xl font-black">{formatPrice(currentPlan?.price || 0)}</p>
+                {subscription?.currentPeriodEnd && (
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4" />
+                    Next Billing: <span className="font-bold">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</span>
                   </div>
-                  <Button variant="secondary" className="h-12 px-8 font-bold rounded-2xl shadow-lg">
-                    Manage Billing
-                  </Button>
-                </div>
+                )}
               </div>
-            </CardContent>
-          </Card>
+            </div>
+            <div className="flex items-center gap-4">
+              <div className="text-right hidden md:block">
+                <p className="text-xs font-bold uppercase opacity-60">Yearly cost</p>
+                <p className="text-2xl font-black">{formatPrice((currentPlan?.price || 0) * (subscription?.plan === 'free' ? 0 : 12))}</p>
+              </div>
+              <Button variant="secondary" className="h-12 px-8 font-bold rounded-2xl shadow-lg">
+                Manage Billing
+              </Button>
+            </div>
+            </div>
+            </CardContent>          </Card>
 
           {/* Usage Limits Section */}
           <div className="space-y-4">
@@ -217,11 +217,36 @@ export default function TenantSubscriptionsPage() {
           </div>
 
           {/* Main Plans Grid */}
-          <div className="space-y-4">
-            <h2 className="text-xl font-black uppercase tracking-tight text-muted-foreground/70">Upgrade your Workspace</h2>
+          <div className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <h2 className="text-xl font-black uppercase tracking-tight text-muted-foreground/70">Upgrade your Workspace</h2>
+              
+              <div className="flex items-center p-1 bg-muted/50 rounded-2xl border w-fit">
+                <Button 
+                  variant={billingInterval === 'month' ? "default" : "ghost"} 
+                  size="sm" 
+                  className={cn("rounded-xl px-6 font-bold", billingInterval === 'month' && "shadow-lg")}
+                  onClick={() => setBillingInterval('month')}
+                >
+                  Monthly
+                </Button>
+                <Button 
+                  variant={billingInterval === 'year' ? "default" : "ghost"} 
+                  size="sm" 
+                  className={cn("rounded-xl px-6 font-bold", billingInterval === 'year' && "shadow-lg")}
+                  onClick={() => setBillingInterval('year')}
+                >
+                  Yearly <Badge className="ml-2 bg-emerald-500 hover:bg-emerald-600 border-none text-[8px] h-4">-15%</Badge>
+                </Button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {mainPlans.map((plan) => {
                 const isCurrent = plan.id === subscription?.plan
+                const displayPrice = billingInterval === 'year' ? plan.price * 12 : plan.price
+                const label = billingInterval === 'year' ? '/yr' : '/mo'
+
                 return (
                   <Card key={plan.id} className={cn(
                     "border-none shadow-md rounded-3xl overflow-hidden relative group transition-all duration-300 hover:shadow-2xl flex flex-col",
@@ -233,14 +258,41 @@ export default function TenantSubscriptionsPage() {
                       </div>
                     )}
                     <CardHeader className="p-8 pt-6 space-y-4">
-                      <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
-                      <div className="flex items-baseline gap-1 mt-4">
-                        <span className="text-3xl font-black">{formatPrice(plan.price)}</span>
-                        <span className="text-xs text-muted-foreground">/mo</span>
+                      <div className="flex justify-between items-start">
+                        <p className="text-xs font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
+                        {billingInterval === 'year' && <Badge variant="secondary" className="text-[10px] font-bold uppercase tracking-tight h-5">Annual</Badge>}
                       </div>
+                      <div className="flex items-baseline gap-1 mt-4">
+                        <span className="text-3xl font-black">{formatPrice(displayPrice)}</span>
+                        <span className="text-xs text-muted-foreground">{label}</span>
+                      </div>
+                      {billingInterval === 'year' && <p className="text-[10px] text-muted-foreground font-medium italic">Equivalent to {formatPrice(plan.price)}/mo</p>}
                     </CardHeader>
                     <CardContent className="p-8 pt-0 space-y-8 flex-1 flex flex-col">
                       <Separator className="bg-muted/50" />
+                      
+                      {/* Plan Details / Limits */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Schemas</p>
+                          <p className="text-sm font-bold">{plan.maxContentTypes > 100 ? "Unlimited" : plan.maxContentTypes}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Entries</p>
+                          <p className="text-sm font-bold">{plan.maxContentEntries?.toLocaleString() || "Basic"}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Team</p>
+                          <p className="text-sm font-bold">{plan.maxTeamMembers > 100 ? "Unlimited" : plan.maxTeamMembers}</p>
+                        </div>
+                        <div className="space-y-1">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">API Calls</p>
+                          <p className="text-sm font-bold">{plan.maxApiCalls > 1000000 ? "Unlimited" : (plan.maxApiCalls?.toLocaleString() || "Standard")}</p>
+                        </div>
+                      </div>
+
+                      <Separator className="bg-muted/50" />
+
                       <ul className="space-y-4 flex-1">
                         {plan.features.map((feature: string) => (
                           <li key={feature} className="flex items-start gap-3 text-sm font-medium">
@@ -256,7 +308,7 @@ export default function TenantSubscriptionsPage() {
                           "w-full h-12 font-bold rounded-2xl",
                           isCurrent ? "bg-muted text-muted-foreground cursor-not-allowed" : "bg-card hover:bg-muted text-foreground border-2 border-muted"
                         )}
-                        onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}`)}
+                        onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
                         disabled={isCurrent}
                       >
                         {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}

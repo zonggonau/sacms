@@ -17,7 +17,7 @@ export function LandingHeader() {
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <Database className="w-4.5 h-4.5 text-white" />
           </div>
-          <Link href="/"><span className="text-lg font-bold tracking-tight">SaCMS</span></Link>
+          <Link href="/"><span className="text-lg font-bold tracking-tight">NokenStack</span></Link>
           
           <Badge variant="secondary" className="hidden sm:inline-flex text-[10px] px-1.5 py-0">v1.0</Badge>
         </div>

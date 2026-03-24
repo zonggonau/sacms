@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, checkoutSchema)
     if ("error" in result) return result.error
-    const { planId, tenantId } = result.data
+    const { planId, tenantId, interval } = result.data
 
     // Get tenant and verify access
     const tenant = await db.tenant.findUnique({
@@ -86,18 +86,25 @@ export async function POST(request: NextRequest) {
           }
         }
         const data = d as any
-        amount = Number(data.price) || 0
+        const monthlyPrice = Number(data.price) || 0
+        amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
         planName = data.name || planId
         isAddon = data.type === "addons"
       } else {
         // Fallback to old hardcoded prices if not found in DB
-        amount = PLAN_PRICES[planId as PlanType] || 0
+        const monthlyPrice = PLAN_PRICES[planId as PlanType] || 0
+        amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
       }
     } else {
-      amount = PLAN_PRICES[planId as PlanType] || 0
+      const monthlyPrice = PLAN_PRICES[planId as PlanType] || 0
+      amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
     }
 
     const orderId = `${isAddon ? 'ADD' : 'SUB'}-${tenantId}-${Date.now()}`
+
+    // Calculate PPN (11%)
+    const vatAmount = Math.round(amount * 0.11)
+    const totalAmount = amount + vatAmount
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
@@ -112,7 +119,7 @@ export async function POST(request: NextRequest) {
           plan: isAddon ? "free" : planId, // Default to free if buying addon first
           status: 'pending',
           currentPeriodStart: new Date(),
-          currentPeriodEnd: calculatePeriodEndDate(planId as PlanType),
+          currentPeriodEnd: calculatePeriodEndDate(planId as PlanType, interval as any),
         },
       })
     } else {
@@ -122,7 +129,7 @@ export async function POST(request: NextRequest) {
           where: { id: subscription.id },
           data: {
             plan: planId,
-            currentPeriodEnd: calculatePeriodEndDate(planId as PlanType),
+            currentPeriodEnd: calculatePeriodEndDate(planId as PlanType, interval as any),
           },
         })
       }
@@ -132,7 +139,7 @@ export async function POST(request: NextRequest) {
     const transaction = await db.paymentTransaction.create({
       data: {
         orderId,
-        amount,
+        amount: totalAmount,
         status: 'pending',
         subscriptionId: subscription.id,
         // Store addon info in rawResponse for later processing in webhook
@@ -144,17 +151,25 @@ export async function POST(request: NextRequest) {
     const provider = getPaymentProvider()
     const paymentResult = await provider.createPayment({
       orderId,
-      amount,
+      amount: totalAmount,
       customer: {
         email: session.user.email,
         firstName: session.user.name || 'User',
       },
-      items: [{
-        id: planId,
-        name: isAddon ? `${planName} Add-on` : `${planName} Plan`,
-        price: amount,
-        quantity: 1,
-      }],
+      items: [
+        {
+          id: planId,
+          name: isAddon ? `${planName} Add-on` : `${planName} Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`,
+          price: amount,
+          quantity: 1,
+        },
+        {
+          id: 'VAT-11',
+          name: 'PPN (11%)',
+          price: vatAmount,
+          quantity: 1,
+        }
+      ],
     })
 
     return NextResponse.json({
