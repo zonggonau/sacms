@@ -31,14 +31,10 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs nextjs
 
-# Install @prisma/config for prisma 7 cli support in production
-RUN bun add @prisma/config
-
 # The builder now has everything ready in .next/standalone
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 # Copy prisma directory for migrations and schema access
 COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 # static and public were copied inside standalone, so we only need to copy from builder's standalone
 # but to be safe and clear, we can also copy directly if needed, but Next.js expects them in specific paths
 # Actually, the runner stage usually needs them as siblings to server.js in standalone mode.
