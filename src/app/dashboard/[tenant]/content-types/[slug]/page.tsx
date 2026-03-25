@@ -1,11 +1,11 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, XCircle, MoreHorizontal,
-  ImageIcon, Calendar, Loader2, Send
+  ImageIcon, Calendar, Loader2, Send, Search, X
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -14,6 +14,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { 
   DropdownMenu, 
@@ -56,6 +57,7 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; ic
   PUBLISHED: { label: "Published",  dot: "bg-emerald-500", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
   ARCHIVED:  { label: "Archived",   dot: "bg-orange-500",  bg: "bg-orange-50 text-orange-700 border-orange-200", icon: Archive },
   IN_REVIEW: { label: "In Review",  dot: "bg-blue-500",    bg: "bg-blue-50 text-blue-700 border-blue-200", icon: Clock },
+  SCHEDULED: { label: "Scheduled",  dot: "bg-purple-500",  bg: "bg-purple-50 text-purple-700 border-purple-200", icon: Calendar },
 }
 
 export default function ContentTypeEntriesPage() {
@@ -68,15 +70,27 @@ export default function ContentTypeEntriesPage() {
   const [contentType, setContentType] = useState<ContentType | null>(null)
   const [entries, setEntries] = useState<Entry[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
 
   const tenants = session?.user?.tenants || []
 
-  const fetchData = async () => {
+  // Debounce search term
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchTerm)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchTerm])
+
+  const fetchData = useCallback(async () => {
     if (!tenantSlug || !contentTypeSlug) return
     try {
+      setLoading(true)
+      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ""
       const [ctRes, entriesRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries`)
+        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries?page=1&pageSize=50${searchParam}`)
       ])
       
       if (ctRes.ok) setContentType(await ctRes.json())
@@ -94,11 +108,11 @@ export default function ContentTypeEntriesPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, contentTypeSlug, debouncedSearch])
 
   useEffect(() => {
     if (session?.user) fetchData()
-  }, [tenantSlug, contentTypeSlug, session])
+  }, [fetchData, session])
 
   const handleStatusChange = async (entryId: string, newStatus: string) => {
     try {
@@ -136,7 +150,7 @@ export default function ContentTypeEntriesPage() {
     }
   }
 
-  if (loading) {
+  if (loading && entries.length === 0) {
     return (
       <div className="flex min-h-screen">
         <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
@@ -153,7 +167,7 @@ export default function ContentTypeEntriesPage() {
       <main className="flex-1 overflow-auto">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => router.back()}>
                 <ArrowLeft className="h-5 w-5" />
@@ -163,13 +177,37 @@ export default function ContentTypeEntriesPage() {
                 <p className="text-muted-foreground">Manage your collection entries</p>
               </div>
             </div>
-            <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}>
-              <Plus className="mr-2 h-4 w-4" /> New Entry
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className="relative w-full sm:w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Search entries..."
+                  className="pl-9 pr-9 h-10 rounded-xl bg-card border-none shadow-sm focus-visible:ring-primary"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                {searchTerm && (
+                  <button 
+                    onClick={() => setSearchTerm("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
+              <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-10 rounded-xl font-bold" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}>
+                <Plus className="mr-2 h-4 w-4" /> New Entry
+              </Button>
+            </div>
           </div>
 
           <Card className="border-none shadow-sm overflow-hidden bg-card">
             <CardContent className="p-0">
+              {loading && entries.length > 0 && (
+                <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              )}
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow>
@@ -186,7 +224,7 @@ export default function ContentTypeEntriesPage() {
                   {entries.length === 0 ? (
                     <TableRow>
                       <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
-                        No entries found.
+                        {debouncedSearch ? "No entries match your search." : "No entries found."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -199,7 +237,7 @@ export default function ContentTypeEntriesPage() {
                       
                       // Find a media field for preview
                       const mediaField = contentType?.fields.find(f => f.type === 'media' || f.type === 'mediaMultiple')
-                      const coverUrl = mediaField ? data[mediaField.slug] : null
+                      const coverUrl = mediaField ? (Array.isArray(data[mediaField.slug]) ? data[mediaField.slug][0] : data[mediaField.slug]) : null
                       
                       return (
                         <TableRow key={entry.id} className="group hover:bg-muted/5 transition-colors">
@@ -253,9 +291,12 @@ export default function ContentTypeEntriesPage() {
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
+                          <TableCell className="text-xs text-muted-foreground">
+                            {new Date(entry.updatedAt).toLocaleDateString()}
+                          </TableCell>
                           <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600" onClick={() => {}}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
                                 <Eye className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/${entry.id}/edit`)}>

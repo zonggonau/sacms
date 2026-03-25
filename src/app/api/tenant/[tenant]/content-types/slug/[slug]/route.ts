@@ -24,18 +24,31 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get content type by slug
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // In our system, provisioned content types have slugs like `${tenantId}-${baseSlug}`
+    // We should try to find by that first, then fall back to the literal slug.
+    let contentType = await db.contentType.findFirst({
+      where: {
+        OR: [
+          { slug: `${access.tenantId}-${slug}` },
+          { slug: slug }
+        ]
+      },
       include: {
         fields: {
           orderBy: { order: 'asc' },
         },
+        tenants: {
+          where: { tenantId: access.tenantId }
+        }
       },
     })
 
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
+    // Security check: Ensure this content type is assigned to this tenant
+    // (A content type is assigned if it either belongs directly to the tenant OR has an entry in TenantContentTypeAssignment)
+    const isAssigned = contentType && (contentType.tenantId === access.tenantId || contentType.tenants.length > 0)
+
+    if (!contentType || !isAssigned) {
+      return NextResponse.json({ error: "Content type not found or not assigned" }, { status: 404 })
     }
 
     return NextResponse.json(contentType)

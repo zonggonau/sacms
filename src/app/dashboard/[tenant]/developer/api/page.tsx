@@ -361,12 +361,12 @@ export default function ApiExplorerPage() {
                             <SelectGroup>
                               <SelectLabel className="text-[10px] uppercase font-black opacity-50">Collection Types</SelectLabel>
                               {contentTypes.map(ct => (
-                                <SelectItem key={`get-${ct.slug}`} value={`GET|content|${ct.slug}`}>
+                                <SelectItem key={`get-${ct.id}`} value={`GET|content|${ct.slug}`}>
                                   <span className="font-bold text-emerald-600 mr-2">GET</span> List all {ct.name}
                                 </SelectItem>
                               ))}
                               {contentTypes.map(ct => (
-                                <SelectItem key={`post-${ct.slug}`} value={`POST|content|${ct.slug}`}>
+                                <SelectItem key={`post-${ct.id}`} value={`POST|content|${ct.slug}`}>
                                   <span className="font-bold text-blue-600 mr-2">POST</span> Create {ct.name}
                                 </SelectItem>
                               ))}
@@ -374,7 +374,7 @@ export default function ApiExplorerPage() {
                             <SelectGroup className="mt-2 pt-2 border-t">
                               <SelectLabel className="text-[10px] uppercase font-black opacity-50">Single Types</SelectLabel>
                               {singleTypes.map(st => (
-                                <SelectItem key={`get-st-${st.slug}`} value={`GET|single|${st.slug}`}>
+                                <SelectItem key={`get-st-${st.id}`} value={`GET|single|${st.slug}`}>
                                   <span className="font-bold text-emerald-600 mr-2">GET</span> Read {st.name}
                                 </SelectItem>
                               ))}

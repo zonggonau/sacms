@@ -6,6 +6,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateBody } from "@/lib/validate"
 import { registerSchema } from "@/lib/validations"
 import { randomBytes } from "crypto"
+import { provisionTenant } from "@/lib/tenant-provisioning"
 
 /**
  * Generate a random unique slug (10 chars alphanumeric)
@@ -144,6 +145,9 @@ export async function POST(request: NextRequest) {
 
       return { user, tenant }
     })
+
+    // Provision default content types and demo data
+    await provisionTenant(result.tenant.id)
 
     await logAudit({
       userId: result.user.id,

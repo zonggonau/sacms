@@ -6,6 +6,7 @@ import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { randomBytes } from "crypto"
+import { provisionTenant } from "@/lib/tenant-provisioning"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -102,6 +103,9 @@ export async function POST(request: NextRequest) {
 
       return newTenant
     })
+
+    // Provision default content types and demo data
+    await provisionTenant(tenant.id)
 
     await logAudit({
       tenantId: tenant.id,

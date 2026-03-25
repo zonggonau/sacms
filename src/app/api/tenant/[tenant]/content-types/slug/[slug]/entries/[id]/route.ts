@@ -33,6 +33,7 @@ export async function GET(
     // Get content type by slug
     const contentType = await db.contentType.findUnique({
       where: { slug },
+      include: { fields: true },
     })
 
     if (!contentType) {
@@ -98,6 +99,7 @@ export async function PATCH(
     // Get content type by slug
     const contentType = await db.contentType.findUnique({
       where: { slug },
+      include: { fields: true },
     })
 
     if (!contentType) {

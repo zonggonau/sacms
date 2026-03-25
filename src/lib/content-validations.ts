@@ -56,6 +56,12 @@ export function generateContentSchema(fields: Field[]) {
         break
 
       case "json":
+      case "relation":
+      case "component":
+      case "media":
+      case "mediaMultiple":
+      case "tags":
+      case "file":
         fieldSchema = z.any()
         break
 
@@ -63,12 +69,20 @@ export function generateContentSchema(fields: Field[]) {
         fieldSchema = z.any()
     }
 
-    // Post-processing for requirement (only for types that didn't handle it in switch)
+    // Post-processing for requirement
     if (field.required) {
-      if (field.type !== "text" && field.type !== "textarea" && field.type !== "richText" && 
-          field.type !== "select" && field.type !== "email" && field.type !== "number" && 
-          field.type !== "integer" && field.type !== "boolean") {
-        fieldSchema = fieldSchema.refine((val) => val !== null && val !== undefined && val !== "", {
+      const basicTypes = ["text", "textarea", "richText", "select", "email", "number", "integer", "boolean"]
+      const jsonTypes = ["json", "relation", "component", "media", "mediaMultiple", "tags", "file"]
+
+      if (!basicTypes.includes(field.type)) {
+        // For non-basic types (JSON, relations, etc.), check for null/undefined/empty
+        fieldSchema = fieldSchema.refine((val) => {
+          if (val === null || val === undefined) return false
+          if (typeof val === 'string' && val.trim() === "") return false
+          if (Array.isArray(val) && val.length === 0) return false
+          if (typeof val === 'object' && Object.keys(val).length === 0 && !(val instanceof Date)) return false
+          return true
+        }, {
           message: `${field.name} is required`,
         })
       }

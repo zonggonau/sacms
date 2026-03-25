@@ -24,9 +24,15 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get component by slug
-    const component = await db.component.findUnique({
-      where: { slug },
+    // Find component owned by this tenant OR global templates
+    const component = await db.component.findFirst({
+      where: {
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null }
+        ]
+      },
       include: {
         fields: {
           orderBy: {
@@ -43,9 +49,10 @@ export async function GET(
     // Parse options from JSON strings
     const componentWithParsedOptions = {
       ...component,
+      isGlobal: component.tenantId === null,
       fields: component.fields.map((field: any) => ({
         ...field,
-        options: field.options ? JSON.parse(field.options) : undefined,
+        options: field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : undefined,
       })),
     }
 

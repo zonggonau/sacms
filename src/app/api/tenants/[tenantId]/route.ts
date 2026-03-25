@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { deleteTenantStorage } from "@/lib/r2"
 
 export async function DELETE(
   request: NextRequest,
@@ -28,9 +29,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Only owners can delete a workspace" }, { status: 403 })
     }
 
-    const tenantName = member?.tenant.name || "Unknown"
+    const tenant = member?.tenant || await db.tenant.findUnique({ where: { id: tenantId } })
+    const tenantName = tenant?.name || "Unknown"
+    const tenantSlug = tenant?.slug || ""
 
-    // Delete tenant (Cascade will handle members, entries, etc.)
+    // 1. Delete physical assets from storage (R2 or Local)
+    if (tenantSlug) {
+      await deleteTenantStorage(tenantSlug)
+    }
+
+    // 2. Delete tenant from database (Cascade will handle members, entries, etc.)
     await db.tenant.delete({
       where: { id: tenantId }
     })

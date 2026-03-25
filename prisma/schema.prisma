@@ -109,6 +109,8 @@ model Tenant {
   locales           TenantLocale[]
   contentEntries    ContentEntry[]
   contentTypes      ContentType[]
+  singleTypes       SingleType[]
+  components        Component[]
 
   @@map("tenants")
 }
@@ -270,17 +272,20 @@ model ContentReviewAssignment {
 
 model SingleType {
   id          String   @id @default(cuid())
+  tenantId    String?  // Null means it's a system/global template
   name        String
-  slug        String   @unique
+  slug        String
   description String?
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   // Relations
+  tenant  Tenant?           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fields  SingleTypeField[]
   tenants TenantSingleTypeAssignment[]
   
+  @@unique([tenantId, slug])
   @@map("single_types")
 }
 
@@ -309,6 +314,7 @@ model TenantSingleTypeAssignment {
   id            String   @id @default(cuid())
   tenantId      String
   singleTypeId  String
+  locale        String   @default("en")
   enabled       Boolean  @default(true)
   data          Json?    // Native JSON for tenant-specific content data
   publishedAt   DateTime?
@@ -318,7 +324,7 @@ model TenantSingleTypeAssignment {
   tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   singleType SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
   
-  @@unique([tenantId, singleTypeId])
+  @@unique([tenantId, singleTypeId, locale])
   @@map("tenant_single_type_assignments")
 }
 
@@ -326,17 +332,20 @@ model TenantSingleTypeAssignment {
 
 model Component {
   id          String   @id @default(cuid())
+  tenantId    String?  // Null means global
   name        String
-  slug        String   @unique
+  slug        String
   description String?
   category    String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   
   // Relations
+  tenant  Tenant?             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fields  ComponentField[]
   tenants TenantComponentAssignment[]
   
+  @@unique([tenantId, slug])
   @@map("components")
 }
 
@@ -366,7 +375,7 @@ model TenantComponentAssignment {
   tenantId    String
   componentId String
   enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
+  createdAt    DateTime @default(now())
   
   tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)

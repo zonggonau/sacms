@@ -86,6 +86,12 @@ export async function PATCH(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
+    // Delete existing fields first to avoid unique constraint collisions (contentTypeId, slug)
+    // during the update transaction.
+    await db.contentTypeField.deleteMany({
+      where: { contentTypeId: id }
+    })
+
     // Update content type
     const contentType = await db.contentType.update({
       where: { id },
@@ -93,7 +99,6 @@ export async function PATCH(
         name,
         description,
         fields: {
-          deleteMany: {}, // Delete all existing fields
           create: fields?.map((field: Record<string, unknown>, index: number) => ({
             name: field.name as string,
             slug: field.slug as string,

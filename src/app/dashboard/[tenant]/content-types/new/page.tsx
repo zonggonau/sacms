@@ -463,7 +463,7 @@ export default function NewContentTypePage() {
                   <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="required" 
-                      checked={editingField?.required} 
+                      checked={editingField?.required || false} 
                       onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)} 
                       className="rounded-md h-5 w-5"
                     />
@@ -472,7 +472,7 @@ export default function NewContentTypePage() {
                   <div className="flex items-center space-x-3">
                     <Checkbox 
                       id="unique" 
-                      checked={editingField?.unique} 
+                      checked={editingField?.unique || false} 
                       onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)} 
                       className="rounded-md h-5 w-5"
                     />

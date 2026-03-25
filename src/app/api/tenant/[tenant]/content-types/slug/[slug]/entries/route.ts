@@ -33,6 +33,7 @@ export async function GET(
     // Get content type by slug
     const contentType = await db.contentType.findUnique({
       where: { slug },
+      include: { fields: true },
     })
 
     if (!contentType) {
@@ -45,6 +46,7 @@ export async function GET(
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "25")))
     const status = searchParams.get("status")
     const locale = searchParams.get("locale")
+    const search = searchParams.get("search")
 
     // Build where clause
     const where: Record<string, unknown> = {
@@ -54,15 +56,66 @@ export async function GET(
     if (status) where.status = status
     if (locale) where.locale = locale
 
-    const [entries, total] = await Promise.all([
-      db.contentEntry.findMany({
-        where,
-        orderBy: { createdAt: "desc" },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      db.contentEntry.count({ where }),
-    ])
+    let entries: any[]
+    let total: number
+
+    if (search) {
+      // Use raw query for full-text search using pg_tsvector
+      const whereParts: string[] = [
+        `"contentTypeId" = $1`,
+        `"tenantId" = $2`,
+      ]
+      const queryParams: unknown[] = [contentType.id, access.tenantId]
+      let paramIdx = 3
+
+      if (status) {
+        whereParts.push(`"status" = $${paramIdx}`)
+        queryParams.push(status)
+        paramIdx++
+      }
+
+      if (locale) {
+        whereParts.push(`"locale" = $${paramIdx}`)
+        queryParams.push(locale)
+        paramIdx++
+      }
+
+      // Sanitize search input
+      const safeSearch = search.replace(/[&|!():*<>'"\\]/g, " ").trim().slice(0, 200)
+      if (safeSearch) {
+        whereParts.push(`("searchVector" @@ plainto_tsquery('simple', $${paramIdx}) OR "data"::text ILIKE $${paramIdx + 1})`)
+        queryParams.push(safeSearch, `%${safeSearch}%`)
+        paramIdx += 2
+      }
+
+      const whereClause = whereParts.join(" AND ")
+
+      const countResult = await db.$queryRawUnsafe<[{ count: bigint }]>(
+        `SELECT COUNT(*) as count FROM "content_entries" WHERE ${whereClause}`,
+        ...queryParams
+      )
+      total = Number(countResult[0].count)
+
+      entries = await db.$queryRawUnsafe(
+        `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY "createdAt" DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+        ...queryParams,
+        pageSize,
+        (page - 1) * pageSize
+      )
+    } else {
+      // Simple query
+      const [rawEntries, count] = await Promise.all([
+        db.contentEntry.findMany({
+          where,
+          orderBy: { createdAt: "desc" },
+          skip: (page - 1) * pageSize,
+          take: pageSize,
+        }),
+        db.contentEntry.count({ where }),
+      ])
+      entries = rawEntries
+      total = count
+    }
 
     return NextResponse.json({
       entries,
@@ -108,6 +161,7 @@ export async function POST(
     // Get content type by slug
     const contentType = await db.contentType.findUnique({
       where: { slug },
+      include: { fields: true },
     })
 
     if (!contentType) {

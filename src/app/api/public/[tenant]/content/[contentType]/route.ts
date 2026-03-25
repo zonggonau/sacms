@@ -227,8 +227,15 @@ export async function GET(
       total = count
     }
 
-    // Parse & shape response data
-    const parsedEntries = entries.map((entry: any) => {
+    // --- Relation Population & Data Shaping ---
+    const relationFields = contentType.fields.filter(f => f.type === "relation")
+    const populateParam = parsePopulate(searchParams)
+    
+    // We'll populate if either 'populate' param is used or by default if simple relations exist
+    // For now, let's auto-populate all first-level relations for better DX
+    const fieldsToPopulate = relationFields.map(f => f.slug)
+
+    const parsedEntries = await Promise.all(entries.map(async (entry: any) => {
       let parsedData: Record<string, unknown>
       try {
         parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
@@ -236,7 +243,50 @@ export async function GET(
         parsedData = {}
       }
 
-      const shaped = applyFieldSelection(parsedData, selectedFields)
+      // Populate relations
+      const populatedData = { ...parsedData }
+      for (const fieldSlug of fieldsToPopulate) {
+        const relationId = parsedData[fieldSlug]
+        if (typeof relationId === 'string' && relationId.length > 10) { // Looks like a CUID/UUID
+          // Fetch the related entry
+          const relatedEntry = await db.contentEntry.findUnique({
+            where: { id: relationId },
+            select: { id: true, data: true, locale: true, status: true }
+          })
+          
+          if (relatedEntry) {
+            let relatedData: any = {}
+            try {
+              relatedData = typeof relatedEntry.data === 'string' ? JSON.parse(relatedEntry.data) : relatedEntry.data
+            } catch {
+              relatedData = {}
+            }
+            
+            populatedData[fieldSlug] = {
+              id: relatedEntry.id,
+              ...relatedData,
+              locale: relatedEntry.locale,
+              status: relatedEntry.status
+            }
+          }
+        } else if (Array.isArray(relationId)) {
+          // Handle multi-relation (if any)
+          const relatedEntries = await db.contentEntry.findMany({
+            where: { id: { in: relationId.filter(id => typeof id === 'string') } },
+            select: { id: true, data: true, locale: true, status: true }
+          })
+          
+          populatedData[fieldSlug] = relatedEntries.map(re => {
+            let rd: any = {}
+            try {
+              rd = typeof re.data === 'string' ? JSON.parse(re.data) : re.data
+            } catch { rd = {} }
+            return { id: re.id, ...rd, locale: re.locale, status: re.status }
+          })
+        }
+      }
+
+      const shaped = applyFieldSelection(populatedData, selectedFields)
 
       return {
         id: entry.id,
@@ -247,7 +297,8 @@ export async function GET(
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       }
-    })
+    }))
+    // ------------------------------------------
 
     // Update last used (fire and forget)
     db.apiToken.update({

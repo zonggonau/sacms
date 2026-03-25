@@ -1,16 +1,16 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
-  FileText, Edit2, Eye, EyeOff, Save, 
-  Loader2, ArrowLeft, Layers, CheckCircle2, Clock
+  FileText, Edit2, Eye, Loader2, ArrowLeft, 
+  Layers, CheckCircle2, Clock, Search, X
 } from "lucide-react"
-import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -28,13 +28,14 @@ interface SingleType {
 }
 
 export default function CMSSingleTypesPage() {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   const params = useParams()
   const tenantSlug = params?.tenant as string
 
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [loading, setLoading] = useState(true)
+  const [searchTerm, setSearchTerm] = useState("")
 
   const fetchSingleTypes = async () => {
     if (!tenantSlug) return
@@ -46,7 +47,7 @@ export default function CMSSingleTypesPage() {
       }
     } catch (error) {
       console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to load static pages" })
+      toast({ variant: "destructive", title: "Error", description: "Failed to load pages" })
     } finally {
       setLoading(false)
     }
@@ -56,7 +57,14 @@ export default function CMSSingleTypesPage() {
     if (session?.user) fetchSingleTypes()
   }, [tenantSlug, session])
 
-  if (loading) {
+  const filteredSingleTypes = useMemo(() => {
+    return singleTypes.filter(st => 
+      st.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+      st.slug.toLowerCase().includes(searchTerm.toLowerCase())
+    )
+  }, [singleTypes, searchTerm])
+
+  if (loading && singleTypes.length === 0) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
@@ -65,84 +73,103 @@ export default function CMSSingleTypesPage() {
   }
 
   return (
-    <div className="p-6 lg:p-10 space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)}>
-            <ArrowLeft className="h-5 w-5" />
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)} className="rounded-full hover:bg-emerald-50">
+            <ArrowLeft className="h-5 w-5 text-emerald-600" />
           </Button>
           <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Static Pages</h1>
-            <p className="text-muted-foreground">Manage single-entry content types (e.g. About, Contact)</p>
+            <h1 className="text-4xl font-black tracking-tight text-slate-900">Static Pages</h1>
+            <p className="text-muted-foreground font-medium mt-1">Update singleton content like Navbars, Footers, and Landing Pages.</p>
           </div>
         </div>
       </div>
 
-      {singleTypes.length === 0 ? (
-        <Card className="border-dashed border-2 bg-card/50">
-          <CardContent className="flex flex-col items-center justify-center py-20">
-            <Layers className="h-12 w-12 text-muted-foreground/20 mb-4" />
-            <h3 className="text-lg font-bold">No Static Pages Found</h3>
-            <p className="text-sm text-muted-foreground text-center max-w-xs">
-              This workspace doesn't have any single-entry content types assigned yet.
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search pages..." 
+            className="pl-9 rounded-xl bg-card border-none shadow-sm h-11"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          {searchTerm && (
+            <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+              <X className="h-4 w-4" />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {filteredSingleTypes.length === 0 ? (
+        <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden py-20">
+          <CardContent className="flex flex-col items-center justify-center text-center">
+            <div className="w-20 h-20 rounded-3xl bg-muted/30 flex items-center justify-center mb-6">
+              <FileText className="h-10 w-10 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-xl font-bold text-slate-900">No Pages Found</h3>
+            <p className="text-muted-foreground max-w-xs mt-2 font-medium">
+              {searchTerm ? `No results for "${searchTerm}"` : "You don't have any static pages to manage yet."}
             </p>
           </CardContent>
         </Card>
       ) : (
-        <Card className="border-none shadow-sm overflow-hidden bg-card rounded-2xl">
+        <Card className="border-none shadow-sm overflow-hidden bg-card rounded-3xl">
           <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-muted/30">
                 <TableRow>
-                  <TableHead className="pl-6 font-bold text-[10px] uppercase tracking-widest">Page Name</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-widest">Identifier</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
-                  <TableHead className="font-bold text-[10px] uppercase tracking-widest">Last Modified</TableHead>
-                  <TableHead className="text-right pr-6 font-bold text-[10px] uppercase tracking-widest">Action</TableHead>
+                  <TableHead className="pl-8 font-black text-[10px] uppercase tracking-widest">Page Name</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest">Slug</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest">Status</TableHead>
+                  <TableHead className="font-black text-[10px] uppercase tracking-widest">Last Updated</TableHead>
+                  <TableHead className="text-right pr-8 font-black text-[10px] uppercase tracking-widest">Action</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {singleTypes.map((st) => (
+                {filteredSingleTypes.map((st) => (
                   <TableRow 
                     key={st.id} 
                     className="group hover:bg-muted/5 transition-colors cursor-pointer"
                     onClick={() => router.push(`/cms/${tenantSlug}/single-types/${st.slug}`)}
                   >
-                    <TableCell className="pl-6">
+                    <TableCell className="pl-8 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center text-emerald-600">
-                          <FileText className="h-4.5 w-4.5" />
+                        <div className="w-10 h-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600 group-hover:bg-emerald-600 group-hover:text-white transition-all">
+                          <FileText className="h-5 w-5" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-sm font-bold text-foreground">{st.name}</span>
-                          <span className="text-[10px] text-muted-foreground truncate max-w-[200px]">{st.description || 'No description'}</span>
+                          <span className="font-bold text-slate-900 group-hover:text-emerald-700 transition-colors">{st.name}</span>
+                          <span className="text-[10px] text-muted-foreground truncate max-w-[200px] font-medium">{st.description || 'Manage page content'}</span>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell className="font-mono text-[10px] uppercase text-muted-foreground tracking-tight">
-                      {st.slug}
+                    <TableCell>
+                      <code className="text-[10px] font-bold bg-muted px-2 py-1 rounded-lg text-muted-foreground">/{st.slug}</code>
                     </TableCell>
                     <TableCell>
-                      {st.publishedAt ? (
-                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 text-[9px] font-black uppercase">
-                          <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Published
-                        </Badge>
-                      ) : (
-                        <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[9px] font-black uppercase">
-                          <Clock className="h-2.5 w-2.5 mr-1" /> Draft
-                        </Badge>
-                      )}
+                      <Badge className={cn(
+                        "rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase border",
+                        st.publishedAt 
+                          ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                          : "bg-slate-100 text-slate-600 border-slate-200"
+                      )}>
+                        <span className={cn("mr-1.5 h-1 w-1 rounded-full inline-block", st.publishedAt ? "bg-emerald-500" : "bg-slate-400")} />
+                        {st.publishedAt ? "Published" : "Draft"}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-xs font-medium text-muted-foreground">
+                    <TableCell className="text-xs font-medium text-slate-500">
                       {new Date(st.updatedAt).toLocaleDateString()}
                     </TableCell>
-                    <TableCell className="text-right pr-6">
+                    <TableCell className="text-right pr-8">
                       <Button 
                         size="sm" 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs"
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-100"
                         onClick={(e) => {
                           e.stopPropagation()
-                          router.push(`/cms/${tenantSlug}/single-types/${st.slug}/edit`)
+                          router.push(`/cms/${tenantSlug}/single-types/${st.slug}`)
                         }}
                       >
                         <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit Content

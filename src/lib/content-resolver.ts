@@ -24,12 +24,16 @@ export async function resolveContentData(
         resolvedData[field.slug] = await Promise.all(
           value.map((id) => resolveRelation(tenantId, id))
         )
-      } else {
+      } else if (typeof value === 'string' && value.length > 0) {
         resolvedData[field.slug] = await resolveRelation(tenantId, value)
       }
     } else if (field.type === "component") {
       // Resolve component fields
-      const options = typeof field.options === "string" ? JSON.parse(field.options) : field.options
+      let options = field.options
+      if (typeof field.options === "string") {
+        try { options = JSON.parse(field.options) } catch { options = {} }
+      }
+      
       const componentSlug = options?.componentSlug
       const repeatable = options?.repeatable || false
 
@@ -44,7 +48,7 @@ export async function resolveContentData(
             resolvedData[field.slug] = await Promise.all(
               value.map((item) => resolveContentData(tenantId, item, component.fields))
             )
-          } else {
+          } else if (!repeatable && value && typeof value === 'object') {
             resolvedData[field.slug] = await resolveContentData(tenantId, value, component.fields)
           }
         }

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useCallback } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
@@ -85,8 +85,8 @@ export default function SingleTypeDetailPage() {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
-  const fetchData = async () => {
-    if (!tenantSlug || !singleTypeSlug || singleType) return
+  const fetchData = useCallback(async () => {
+    if (!tenantSlug || !singleTypeSlug) return
     setLoading(true)
     try {
       const [stRes, locRes] = await Promise.all([
@@ -109,18 +109,21 @@ export default function SingleTypeDetailPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [tenantSlug, singleTypeSlug])
 
   useEffect(() => {
-    if (status === "authenticated") fetchData()
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tenantSlug, singleTypeSlug, status])
+    if (status === "authenticated") {
+      setSingleType(null) // Reset state before fetching new data
+      setFormData({})
+      fetchData()
+    }
+  }, [fetchData, status, singleTypeSlug])
 
   const handleSave = async (publishNow: boolean = false) => {
-    if (!singleType) return
+    if (!singleTypeSlug) return
     setSaving(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types/${singleType.id}`, {
+      const response = await fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
@@ -129,8 +132,19 @@ export default function SingleTypeDetailPage() {
         }),
       })
       if (!response.ok) throw new Error("Save failed")
-      toast({ title: publishNow ? "Published!" : "Draft Saved" })
-      fetchData()
+      
+      toast({ 
+        title: publishNow ? "Published Successfully!" : "Draft Saved",
+        className: publishNow ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
+      })
+      
+      if (publishNow) {
+        // Redirect to list page after publish
+        router.push(`/dashboard/${tenantSlug}/single-types`)
+      } else {
+        // Refresh data if only saving draft
+        fetchData()
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to save content" })
     } finally {
@@ -145,10 +159,16 @@ export default function SingleTypeDetailPage() {
   const renderField = (field: Field) => {
     const value = formData[field.slug]
     let options: string[] = []
+    
     if (field.options) {
-      const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-      if (Array.isArray(opts)) options = opts
-      else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim())
+      try {
+        const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        if (Array.isArray(opts)) options = opts
+        else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim())
+      } catch (e) {
+        console.warn(`Failed to parse options for field ${field.slug}:`, e)
+        if (typeof field.options === 'string') options = field.options.split(",").map(o => o.trim())
+      }
     }
 
     switch (field.type) {
@@ -181,9 +201,12 @@ export default function SingleTypeDetailPage() {
       case "json":
       case "color":
       case "location":
-        return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type={field.type} required={field.required} />
+        return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type={field.type} required={field.required} label={field.name} />
       case "component":
-        const compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        let compOpts: any = {}
+        try {
+          compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        } catch { compOpts = {} }
         return <ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={compOpts?.repeatable} />
       default: 
         return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />

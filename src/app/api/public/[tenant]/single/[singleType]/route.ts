@@ -52,9 +52,18 @@ export async function GET(
       return NextResponse.json({ error: "API token expired" }, { status: 401 })
     }
 
-    // Get single type
-    const singleType = await db.singleType.findUnique({
-      where: { slug: singleTypeSlug },
+    // Get single type (prefer tenant-specific over global)
+    const singleType = await db.singleType.findFirst({
+      where: { 
+        slug: singleTypeSlug,
+        OR: [
+          { tenantId: apiToken.tenantId },
+          { tenantId: null }
+        ]
+      },
+      orderBy: {
+        tenantId: { sort: 'desc', nulls: 'last' }
+      },
       include: {
         fields: { orderBy: { order: "asc" } },
       },
@@ -64,12 +73,17 @@ export async function GET(
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
+    // Parse query parameters
+    const { searchParams } = new URL(request.url)
+    const locale = searchParams.get("locale") || "en"
+
     // Check if single type is assigned to tenant
     const assignment = await db.tenantSingleTypeAssignment.findUnique({
       where: {
-        tenantId_singleTypeId: {
+        tenantId_singleTypeId_locale: {
           tenantId: apiToken.tenantId,
           singleTypeId: singleType.id,
+          locale,
         },
       },
     })
@@ -88,7 +102,10 @@ export async function GET(
     })
 
     // Return content
-    const rawData = assignment.data ? JSON.parse(assignment.data) : {}
+    let rawData: any = {}
+    if (assignment.data) {
+      rawData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
+    }
     
     // Resolve dynamic data (Relations and Components)
     const resolvedData = await resolveContentData(
@@ -158,9 +175,18 @@ export async function PUT(
       return NextResponse.json({ error: "Token does not match tenant" }, { status: 403 })
     }
 
-    // Get single type
-    const singleType = await db.singleType.findUnique({
-      where: { slug: singleTypeSlug },
+    // Get single type (prefer tenant-specific over global)
+    const singleType = await db.singleType.findFirst({
+      where: { 
+        slug: singleTypeSlug,
+        OR: [
+          { tenantId: apiToken.tenantId },
+          { tenantId: null }
+        ]
+      },
+      orderBy: {
+        tenantId: { sort: 'desc', nulls: 'last' }
+      },
     })
 
     if (!singleType) {
@@ -170,9 +196,10 @@ export async function PUT(
     // Check assignment
     const assignment = await db.tenantSingleTypeAssignment.findUnique({
       where: {
-        tenantId_singleTypeId: {
+        tenantId_singleTypeId_locale: {
           tenantId: apiToken.tenantId,
           singleTypeId: singleType.id,
+          locale: "en", // Default to en for PUT, or we could pass it in body
         },
       },
     })

@@ -3,6 +3,8 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  ListObjectsV2Command,
+  DeleteObjectsCommand,
 } from "@aws-sdk/client-s3"
 import sharp from "sharp"
 import fs from "fs"
@@ -27,26 +29,19 @@ const s3 = new S3Client({
 
 /**
  * Check if R2 is configured.
- * In production, R2 MUST be configured. In development, it can fall back to local disk.
  */
 export function isR2Configured(): boolean {
   return !!(R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY)
 }
 
 /**
- * Generate a storage key for a file based on specific requirement:
- * Format: upload/{tenantSlug}/.{extension}/{sanitized_filename}_{timestamp}.{ext}
+ * Generate a storage key for a file.
  */
-function generateStorageKey(
-  tenantSlug: string,
-  filename: string
-): string {
+function generateStorageKey(tenantSlug: string, filename: string): string {
   const parts = filename.split(".")
   const ext = parts.pop()?.toLowerCase() || "bin"
   const baseName = parts.join(".").replace(/[^a-z0-9]/gi, "_").toLowerCase()
   const timestamp = Date.now()
-  
-  // Requirement: /upload/[tenant]/.[extension]/[namafile]
   return `upload/${tenantSlug}/.${ext}/${baseName}_${timestamp}.${ext}`
 }
 
@@ -54,13 +49,8 @@ function generateStorageKey(
  * Build CDN URL from storage key.
  */
 function buildUrl(key: string): string {
-  if (R2_PUBLIC_URL) {
-    return `${R2_PUBLIC_URL}/${key}`
-  }
-  if (R2_ACCOUNT_ID) {
-    return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`
-  }
-  // Local development fallback URL
+  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL}/${key}`
+  if (R2_ACCOUNT_ID) return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`
   return `/api/media/serve?key=${key}`
 }
 
@@ -84,7 +74,6 @@ export async function uploadToR2(
 ): Promise<UploadResult> {
   const storageKey = generateStorageKey(tenantSlug, filename)
 
-  // Upload original
   await s3.send(
     new PutObjectCommand({
       Bucket: R2_BUCKET,
@@ -99,7 +88,6 @@ export async function uploadToR2(
   let width: number | null = null
   let height: number | null = null
 
-  // Generate thumbnails for images
   if (mimeType.startsWith("image/") && mimeType !== "image/svg+xml") {
     try {
       const metadata = await sharp(buffer).metadata()
@@ -111,14 +99,7 @@ export async function uploadToR2(
       const thumbBuffer = await sharp(buffer)
         .resize(150, undefined, { withoutEnlargement: true })
         .toBuffer()
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: thumbKey,
-          Body: thumbBuffer,
-          ContentType: mimeType,
-        })
-      )
+      await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: thumbKey, Body: thumbBuffer, ContentType: mimeType }))
       thumbnailUrl = buildUrl(thumbKey)
 
       // Medium (600px)
@@ -126,33 +107,18 @@ export async function uploadToR2(
       const medBuffer = await sharp(buffer)
         .resize(600, undefined, { withoutEnlargement: true })
         .toBuffer()
-      await s3.send(
-        new PutObjectCommand({
-          Bucket: R2_BUCKET,
-          Key: medKey,
-          Body: medBuffer,
-          ContentType: mimeType,
-        })
-      )
+      await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: medKey, Body: medBuffer, ContentType: mimeType }))
       mediumUrl = buildUrl(medKey)
     } catch (e) {
       console.error("Thumbnail generation failed:", e)
     }
   }
 
-  return {
-    url: buildUrl(storageKey),
-    storageKey,
-    thumbnailUrl,
-    mediumUrl,
-    width,
-    height,
-  }
+  return { url: buildUrl(storageKey), storageKey, thumbnailUrl, mediumUrl, width, height }
 }
 
 /**
- * Fallback: Upload to local disk (public/uploads)
- * Structure remains the same: upload/[tenant]/.[extension]/[filename]
+ * Fallback: Upload to local disk.
  */
 export async function uploadToLocal(
   tenantSlug: string,
@@ -162,11 +128,7 @@ export async function uploadToLocal(
 ): Promise<UploadResult> {
   const storageKey = generateStorageKey(tenantSlug, filename)
   const fullPath = path.join(process.cwd(), "public", storageKey)
-  
-  // Ensure directory exists
   fs.mkdirSync(path.dirname(fullPath), { recursive: true })
-  
-  // Write original
   fs.writeFileSync(fullPath, buffer)
 
   let thumbnailUrl: string | null = null
@@ -178,57 +140,74 @@ export async function uploadToLocal(
       const metadata = await sharp(buffer).metadata()
       width = metadata.width ?? null
       height = metadata.height ?? null
-
       const thumbKey = storageKey.replace(/(\.[^.]+)$/, "_thumb$1")
       const thumbPath = path.join(process.cwd(), "public", thumbKey)
-      await sharp(buffer)
-        .resize(150, undefined, { withoutEnlargement: true })
-        .toFile(thumbPath)
+      await sharp(buffer).resize(150, undefined, { withoutEnlargement: true }).toFile(thumbPath)
       thumbnailUrl = `/${thumbKey}`
     } catch (e) {
       console.error("Local thumbnail failed:", e)
     }
   }
 
-  return {
-    url: `/${storageKey}`,
-    storageKey,
-    thumbnailUrl,
-    mediumUrl: null,
-    width,
-    height,
-  }
+  return { url: `/${storageKey}`, storageKey, thumbnailUrl, mediumUrl: null, width, height }
 }
 
 /**
- * Delete a file (and its thumbnails) from storage.
+ * Delete a single file from storage.
  */
 export async function deleteFromStorage(storageKey: string): Promise<void> {
-  // If R2 is configured, delete from R2
   if (isR2Configured()) {
     const keys = [
       storageKey,
       storageKey.replace(/(\.[^.]+)$/, "_thumb$1"),
       storageKey.replace(/(\.[^.]+)$/, "_medium$1"),
     ]
-
     await Promise.all(
-      keys.map((key) =>
-        s3
-          .send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key }))
-          .catch(() => {})
-      )
+      keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })).catch(() => {}))
     )
   } else {
-    // Delete from local disk
     try {
       const fullPath = path.join(process.cwd(), "public", storageKey)
       if (fs.existsSync(fullPath)) fs.unlinkSync(fullPath)
-      
       const thumbPath = path.join(process.cwd(), "public", storageKey.replace(/(\.[^.]+)$/, "_thumb$1"))
       if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath)
     } catch (e) {
       console.error("Local delete failed:", e)
+    }
+  }
+}
+
+/**
+ * Delete all files associated with a tenant (full directory cleanup).
+ */
+export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
+  const prefix = `upload/${tenantSlug}/`
+
+  if (isR2Configured()) {
+    try {
+      const listCommand = new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: prefix })
+      const list = await s3.send(listCommand)
+
+      if (list.Contents && list.Contents.length > 0) {
+        const deleteCommand = new DeleteObjectsCommand({
+          Bucket: R2_BUCKET,
+          Delete: { Objects: list.Contents.map((obj) => ({ Key: obj.Key })) },
+        })
+        await s3.send(deleteCommand)
+        console.log(`[Storage] Deleted ${list.Contents.length} objects for tenant: ${tenantSlug}`)
+      }
+    } catch (e) {
+      console.error(`[Storage] R2 cleanup failed for tenant ${tenantSlug}:`, e)
+    }
+  } else {
+    try {
+      const tenantPath = path.join(process.cwd(), "public", "upload", tenantSlug)
+      if (fs.existsSync(tenantPath)) {
+        fs.rmSync(tenantPath, { recursive: true, force: true })
+        console.log(`[Storage] Deleted local directory for tenant: ${tenantSlug}`)
+      }
+    } catch (e) {
+      console.error(`[Storage] Local cleanup failed for tenant ${tenantSlug}:`, e)
     }
   }
 }
