@@ -11,6 +11,7 @@ import { provisionTenant } from "@/lib/tenant-provisioning"
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
   description: z.string().max(500).optional(),
+  plan: z.string().optional(),
 })
 
 async function generateUniqueSlug(): Promise<string> {
@@ -78,7 +79,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
-    const { name, description } = result.data
+    const { name, description, plan = "free" } = result.data
 
     const slug = await generateUniqueSlug()
 
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
           name,
           slug,
           description,
-          plan: "free",
+          plan,
           status: "active",
         }
       })
@@ -98,6 +99,21 @@ export async function POST(request: NextRequest) {
           tenantId: newTenant.id,
           userId: session.user.id,
           role: "owner",
+        }
+      })
+
+      // Create initial subscription
+      const trialEndDate = new Date()
+      trialEndDate.setDate(trialEndDate.getDate() + 7)
+
+      await tx.subscription.create({
+        data: {
+          userId: session.user.id,
+          tenantId: newTenant.id,
+          plan,
+          status: plan === "free" ? "active" : "trialing",
+          currentPeriodStart: new Date(),
+          currentPeriodEnd: plan === "free" ? null : trialEndDate,
         }
       })
 

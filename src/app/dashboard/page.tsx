@@ -74,8 +74,36 @@ export default function WorkspaceSelectionPage() {
 
   const [newTenant, setNewMember] = useState({
     name: "",
-    description: ""
+    description: "",
+    plan: "free"
   })
+
+  const plans = [
+    { 
+      id: "free", name: "Free", price: "Rp 0", 
+      desc: "For small personal projects", 
+      features: ["10 Content Schemas", "500 Entries"],
+      color: "bg-slate-100 text-slate-700 border-slate-200"
+    },
+    { 
+      id: "starter", name: "Starter", price: "Rp 499k", 
+      desc: "Perfect for growing sites", 
+      features: ["25 Content Schemas", "5,000 Entries"],
+      color: "bg-blue-50 text-blue-700 border-blue-100"
+    },
+    { 
+      id: "pro", name: "Business Pro", price: "Rp 1.499k", 
+      desc: "Advanced features for teams", 
+      features: ["50 Content Schemas", "50,000 Entries"],
+      color: "bg-emerald-50 text-emerald-700 border-emerald-100"
+    },
+    { 
+      id: "enterprise", name: "Enterprise", price: "Custom", 
+      desc: "Isolated DB & Maximum security", 
+      features: ["Dedicated Database", "Unlimited Content"],
+      color: "bg-purple-50 text-purple-700 border-purple-100"
+    }
+  ]
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -202,12 +230,12 @@ export default function WorkspaceSelectionPage() {
                 <Plus className="mr-2 h-5 w-5" /> New Workspace
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden">
+            <DialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden max-w-2xl">
               <DialogHeader className="p-8 bg-muted/30 border-b">
-                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Create Workspace</DialogTitle>
-                <DialogDescription>A workspace is where you manage specific projects and team members.</DialogDescription>
+                <DialogTitle className="text-2xl font-black uppercase tracking-tight">Launch New Workspace</DialogTitle>
+                <DialogDescription>Choose a name and a plan that fits your project needs.</DialogDescription>
               </DialogHeader>
-              <form onSubmit={handleCreateTenant} className="p-8 space-y-6">
+              <form onSubmit={handleCreateTenant} className="p-8 space-y-8">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Workspace Name</Label>
                   <Input 
@@ -218,15 +246,58 @@ export default function WorkspaceSelectionPage() {
                     className="h-12 bg-muted/30 border-none text-lg rounded-xl focus-visible:ring-primary shadow-inner"
                   />
                 </div>
-                <div className="p-4 bg-primary/5 rounded-xl border border-primary/10">
-                  <p className="text-[10px] font-bold text-primary uppercase">Note</p>
-                  <p className="text-[11px] text-muted-foreground mt-1 leading-relaxed">A unique URL slug will be generated automatically for your workspace. New workspaces include a <strong>7-day trial</strong> of the Starter plan.</p>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Select a Subscription Plan</Label>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {plans.map((plan) => (
+                      <div 
+                        key={plan.id}
+                        onClick={() => setNewMember({...newTenant, plan: plan.id})}
+                        className={cn(
+                          "cursor-pointer p-4 rounded-2xl border-2 transition-all relative group",
+                          newTenant.plan === plan.id 
+                            ? "border-primary bg-primary/5 shadow-md scale-[1.02]" 
+                            : "border-muted hover:border-muted-foreground/30 bg-card"
+                        )}
+                      >
+                        {newTenant.plan === plan.id && (
+                          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1 shadow-lg">
+                            <CheckCircle2 className="h-4 w-4" />
+                          </div>
+                        )}
+                        <div className="flex justify-between items-start mb-1">
+                          <span className="font-black uppercase text-xs tracking-tight">{plan.name}</span>
+                          <span className="font-bold text-xs text-primary">{plan.price}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.desc}</p>
+                        <div className="flex flex-wrap gap-1">
+                          {plan.features.map(f => (
+                            <Badge key={f} variant="outline" className="text-[8px] font-bold px-1.5 py-0 bg-muted/50 border-none">
+                              {f}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
+
+                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
+                  <p className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-2">
+                    <Clock className="h-3 w-3" />
+                    Trial Period
+                  </p>
+                  <p className="text-[11px] text-amber-800/70 mt-1 leading-relaxed">
+                    All paid plans (Starter, Pro) include a <strong>7-day free trial</strong>. You can cancel or change plans anytime from your workspace settings.
+                  </p>
+                </div>
+
                 <DialogFooter className="pt-4">
                   <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-primary font-bold rounded-xl h-12 px-8">
+                  <Button type="submit" disabled={isSubmitting} className="bg-primary font-bold rounded-xl h-12 px-10 shadow-lg shadow-primary/20">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 fill-current" />}
-                    Launch Workspace
+                    Create {newTenant.plan.toUpperCase()} Workspace
                   </Button>
                 </DialogFooter>
               </form>

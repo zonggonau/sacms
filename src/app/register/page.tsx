@@ -22,8 +22,6 @@ export default function RegisterPage() {
     name: "",
     email: "",
     password: "",
-    tenantName: "",
-    tenantSlug: "",
     agreeTerms: false,
   })
 
@@ -42,13 +40,6 @@ export default function RegisterPage() {
     checkFirstUser()
   }, [])
 
-  const generateSlug = (name: string) => {
-    return name
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/(^-|-$)/g, "")
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -57,16 +48,9 @@ export default function RegisterPage() {
       return
     }
 
-    if (!isFirstUser && !formData.tenantName) {
-      toast({ title: "Error", description: "Please fill in workspace name", variant: "destructive" })
-      return
-    }
-
     setLoading(true)
 
     try {
-      // Use explicit slug if provided, otherwise generate from name
-      const slug = formData.tenantSlug || generateSlug(formData.tenantName)
       const response = await fetch("/api/auth/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -74,8 +58,6 @@ export default function RegisterPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
-          ...(formData.tenantName ? { tenantName: formData.tenantName } : {}),
-          ...(slug ? { tenantSlug: slug } : {}),
         }),
       })
 
@@ -89,7 +71,7 @@ export default function RegisterPage() {
         title: "Success!",
         description: data.isFirstUser 
           ? "Super Admin account created. Please sign in."
-          : "Account created. Please sign in.",
+          : "Account created. You can create your workspace after signing in.",
       })
 
       router.push("/login")
@@ -206,34 +188,6 @@ export default function RegisterPage() {
                 </Button>
               </div>
             </div>
-
-            {!isFirstUser && (
-              <div className="pt-3 border-t space-y-4">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="text-sm font-medium">Your Workspace</h3>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="tenantName">Workspace Name</Label>
-                  <Input
-                    id="tenantName" type="text" placeholder="My Company"
-                    value={formData.tenantName}
-                    onChange={(e) => {
-                      const name = e.target.value
-                      setFormData({ 
-                        ...formData, 
-                        tenantName: name,
-                        tenantSlug: generateSlug(name) // Auto-update slug
-                      })
-                    }}
-                    required className="h-10"
-                  />
-                  <p className="text-[10px] text-muted-foreground italic">
-                    A unique URL slug will be generated automatically for you.
-                  </p>
-                </div>
-              </div>
-            )}
 
             <div className="flex items-start space-x-2">
               <Checkbox id="terms" checked={formData.agreeTerms} onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })} className="mt-0.5" />

@@ -136,22 +136,22 @@ model ContentType {
   id          String   @id @default(cuid())
   tenantId    String?  // Null means it's a system/global template, non-null means it belongs to a startup
   name        String
-  slug        String   @unique
+  slug        String
   description String?
   isPublished Boolean  @default(false)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-  
+
   // Relations
   tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   fields      ContentTypeField[]
   entries     ContentEntry[]
   tenants     TenantContentTypeAssignment[]
-  
+
+  @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("content_types")
 }
-
 model ContentTypeField {
   id            String  @id @default(cuid())
   contentTypeId String

@@ -86,14 +86,41 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    // For subsequent users, require tenant information
+    // If tenantName is NOT provided, create ONLY the user
     if (!tenantName) {
-      return NextResponse.json(
-        { error: "Workspace name is required" },
-        { status: 400 }
-      )
+      const user = await db.user.create({
+        data: {
+          email,
+          name,
+          password: hashedPassword,
+          role: "user",
+        },
+      })
+
+      await logAudit({
+        userId: user.id,
+        action: AuditAction.REGISTER,
+        entity: "User",
+        entityId: user.id,
+        data: { role: "user", hasTenant: false },
+        ipAddress: ip,
+      })
+
+      return NextResponse.json({
+        success: true,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        isFirstUser: false,
+        hasTenant: false,
+        message: "Account created successfully. You can create a workspace after signing in.",
+      })
     }
 
+    // If tenantName IS provided, create user + tenant (legacy/optional path)
     // Auto-generate unique slug
     const tenantSlug = await generateUniqueSlug()
 

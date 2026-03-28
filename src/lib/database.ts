@@ -5,10 +5,21 @@ const globalForPrisma = globalThis as unknown as {
   tenantClients: Map<string, PrismaClient> | undefined
 }
 
-// Reset the instance once to ensure we pick up the new schema fields
-if (globalForPrisma.prisma && !('role' in globalForPrisma.prisma)) {
-  console.log('Detected old Prisma instance, resetting cache...')
-  globalForPrisma.prisma = undefined
+// Reset logic to pick up schema changes in dev
+if (globalForPrisma.prisma) {
+  try {
+    // Try to access the new field to see if the client is up to date
+    // We use a dummy query that won't execute but triggers validation if we were to run it
+    // or just check the internal dmmf if available. 
+    // Actually, the simplest way is to check if we've already done this reset in this process.
+    if (!(globalThis as any).__prisma_reset_v2) {
+       console.log('[Prisma] Forcing client refresh for new schema fields...')
+       globalForPrisma.prisma = undefined
+       ;(globalThis as any).__prisma_reset_v2 = true
+    }
+  } catch (e) {
+    globalForPrisma.prisma = undefined
+  }
 }
 
 /**

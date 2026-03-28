@@ -53,18 +53,8 @@ export default function LoginPage() {
 
       if (user?.role === "super_admin") {
         router.push("/admin")
-      } else if (user?.tenants && user.tenants.length === 1) {
-        // Only one tenant, check role in that tenant
-        const tenant = user.tenants[0]
-        const cmsRoles = ["editor", "contributor", "viewer"]
-        
-        if (cmsRoles.includes(tenant.role)) {
-          router.push(`/cms/${tenant.slug}`)
-        } else {
-          router.push(`/dashboard/${tenant.slug}`)
-        }
       } else {
-        // Multiple tenants or no tenants, let them choose at /dashboard
+        // Redirect everyone else to /dashboard (Workplace selection)
         router.push("/dashboard")
       }
       
