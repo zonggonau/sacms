@@ -11,6 +11,7 @@ const createTenantSchema = z.object({
   description: z.string().max(500).optional().nullable(),
   plan: z.string().optional(),
   status: z.string().optional(),
+  databaseUrl: z.string().url().optional().or(z.literal("")),
 })
 
 /**
@@ -43,6 +44,7 @@ export async function GET(request: NextRequest) {
         slug: true,
         status: true,
         plan: true,
+        databaseUrl: true,
         description: true,
         logo: true,
         createdAt: true,
@@ -129,7 +131,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
-    const { name, description, plan, status } = result.data
+    const { name, description, plan, status, databaseUrl } = result.data
 
     // 1. Auto-generate unique slug
     const slug = await generateUniqueSlug()
@@ -143,6 +145,7 @@ export async function POST(request: NextRequest) {
           description: description || null,
           plan: plan || "starter",
           status: status || "active",
+          databaseUrl: databaseUrl || null,
         },
       })
 

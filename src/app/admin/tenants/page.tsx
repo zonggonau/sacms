@@ -47,6 +47,7 @@ interface Tenant {
   slug: string
   status: string
   plan: string
+  databaseUrl: string | null
   description: string | null
   createdAt: string
   _count: {
@@ -78,7 +79,8 @@ export default function AdminTenantsPage() {
     slug: "",
     description: "",
     plan: "free",
-    status: "active"
+    status: "active",
+    databaseUrl: ""
   })
 
   useEffect(() => {
@@ -195,7 +197,8 @@ export default function AdminTenantsPage() {
       slug: tenant.slug,
       description: tenant.description || "",
       plan: tenant.plan,
-      status: tenant.status
+      status: tenant.status,
+      databaseUrl: tenant.databaseUrl || ""
     })
     setIsEditOpen(true)
   }
@@ -263,6 +266,11 @@ export default function AdminTenantsPage() {
                   <div className="space-y-2">
                     <Label htmlFor="desc">Description</Label>
                     <Textarea id="desc" placeholder="Brief description..." value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="dbUrl">Dedicated Database URL (Optional)</Label>
+                    <Input id="dbUrl" placeholder="postgresql://user:pass@host:5432/dbname" value={formData.databaseUrl} onChange={e => setFormData({...formData, databaseUrl: e.target.value})} />
+                    <p className="text-[10px] text-muted-foreground italic">Leave empty to use the shared platform database.</p>
                   </div>
                   <div className="p-3 bg-primary/5 rounded-xl border border-primary/10">
                     <p className="text-[10px] font-bold text-primary uppercase">Automation</p>
@@ -473,6 +481,11 @@ export default function AdminTenantsPage() {
               <div className="space-y-2">
                 <Label htmlFor="edit-desc">Description</Label>
                 <Textarea id="edit-desc" value={formData.description} onChange={e => setFormData({...formData, description: e.target.value})} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-dbUrl">Dedicated Database URL (Optional)</Label>
+                <Input id="edit-dbUrl" placeholder="postgresql://user:pass@host:5432/dbname" value={formData.databaseUrl} onChange={e => setFormData({...formData, databaseUrl: e.target.value})} />
+                <p className="text-[10px] text-muted-foreground italic">Update this to move tenant to a dedicated database instance.</p>
               </div>
               <DialogFooter>
                 <Button type="button" variant="outline" onClick={() => setIsEditOpen(false)}>Cancel</Button>

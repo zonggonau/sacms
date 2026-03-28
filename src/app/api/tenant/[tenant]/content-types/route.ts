@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { createContentTypeSchema } from "@/lib/validations"
@@ -29,9 +29,11 @@ export async function GET(
     }
 
     const tenantId = access.tenantId
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenantSlug)
 
     // Get content types owned by this tenant
-    const availableContentTypes = await db.contentType.findMany({
+    const availableContentTypes = await tenantDb.contentType.findMany({
       where: {
         OR: [
           { tenantId: tenantId },
@@ -58,7 +60,7 @@ export async function GET(
     // Get entry counts for each content type
     const contentTypesWithCounts = await Promise.all(
       availableContentTypes.map(async (contentType) => {
-        const entryCount = await db.contentEntry.count({
+        const entryCount = await tenantDb.contentEntry.count({
           where: {
             contentTypeId: contentType.id,
             tenantId: tenantId,
@@ -98,9 +100,9 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant } = await params
+    const { tenant: tenantSlug } = await params
 
-    const access = await getTenantAccess(session, tenant)
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     if (access.role !== "admin" && access.role !== "owner") {
@@ -114,8 +116,11 @@ export async function POST(
     if ("error" in result) return result.error
     const { name, slug, description, fields } = result.data
 
-    // Check if slug is already taken (globally or by this tenant)
-    const existingContentType = await db.contentType.findUnique({
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    // Check if slug is already taken (in this tenant's DB)
+    const existingContentType = await tenantDb.contentType.findUnique({
       where: { slug },
     })
 
@@ -127,16 +132,16 @@ export async function POST(
     }
 
     // Create tenant-specific content type and assign it to the tenant
-    const contentType = await db.contentType.create({
+    const contentType = await tenantDb.contentType.create({
       data: {
         tenantId: access.tenantId, // Direct ownership
         name,
         slug,
         description,
         isPublished: true,
-        fields: fields
-          ? {
-              create: fields.map((field: Record<string, unknown>, index: number) => ({
+        fields: {
+          create: fields
+            ? fields.map((field: Record<string, unknown>, index: number) => ({
                 name: field.name as string,
                 slug: field.slug as string,
                 type: field.type as string,
@@ -146,9 +151,9 @@ export async function POST(
                 jsonPath: (field.jsonPath as string) || null,
                 relationSlug: (field.relationSlug as string) || null,
                 order: index,
-              })),
-            }
-          : undefined,
+              }))
+            : undefined,
+        },
         tenants: {
           create: {
             tenantId: access.tenantId,

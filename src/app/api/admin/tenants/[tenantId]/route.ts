@@ -10,6 +10,7 @@ const updateTenantSchema = z.object({
   status: z.enum(["active", "suspended", "deleted"]).optional(),
   plan: z.enum(["free", "starter", "pro", "enterprise"]).optional(),
   description: z.string().max(500).optional().nullable(),
+  databaseUrl: z.string().url().optional().or(z.literal("")).nullable(),
 })
 
 export async function GET(
@@ -25,7 +26,16 @@ export async function GET(
     const { tenantId } = await params
     const tenant = await db.tenant.findUnique({
       where: { id: tenantId },
-      include: {
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        status: true,
+        plan: true,
+        databaseUrl: true,
+        description: true,
+        createdAt: true,
+        updatedAt: true,
         _count: {
           select: {
             members: true,
@@ -61,9 +71,12 @@ export async function PATCH(
     const result = await validateBody(request, updateTenantSchema)
     if ("error" in result) return result.error
 
+    const data = { ...result.data }
+    if (data.databaseUrl === "") data.databaseUrl = null
+
     const tenant = await db.tenant.update({
       where: { id: tenantId },
-      data: result.data,
+      data,
     })
 
     return NextResponse.json({ tenant })
