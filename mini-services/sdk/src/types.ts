@@ -1,4 +1,4 @@
-/** Filter operators supported by the ContentFlow API */
+/** Filter operators supported by the SaCMS API */
 export interface FilterOperators {
   $eq?: string | number | boolean
   $ne?: string | number | boolean
@@ -67,7 +67,7 @@ export interface GraphQLResponse<T = Record<string, unknown>> {
   errors?: Array<{ message: string; locations?: unknown[]; path?: string[] }>
 }
 
-export interface ContentFlowConfig {
+export interface SaCMSConfig {
   baseUrl: string
   tenant: string
   token: string

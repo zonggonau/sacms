@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { 
   Plus, MoreVertical, Edit, Trash2, Database, 
   Search, ShieldCheck, Layers, Globe, Package,
-  ArrowRight, Loader2, Info
+  ArrowRight, Loader2, Info, Copy, ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -224,6 +224,7 @@ export default function ContentTypesPage() {
                       <TableHead className="font-bold text-[10px] uppercase text-center">Fields</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase text-center">Tenants</TableHead>
                       <TableHead className="font-bold text-[10px] uppercase text-center">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase text-center">API</TableHead>
                       <TableHead className="text-right pr-6"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -253,6 +254,20 @@ export default function ContentTypesPage() {
                           >
                             {ct.isPublished ? "Live" : "Draft"}
                           </Badge>
+                        </TableCell>
+                        <TableCell className="text-center" onClick={(e) => e.stopPropagation()}>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 px-2 font-black uppercase text-[9px] rounded-lg gap-1.5"
+                            onClick={() => {
+                              const url = `${window.location.origin}/api/public/content/${ct.slug}`
+                              navigator.clipboard.writeText(url)
+                              toast({ title: "API URL Copied", description: ct.slug })
+                            }}
+                          >
+                            <Copy className="h-3 w-3" /> Copy URL
+                          </Button>
                         </TableCell>
                         <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>

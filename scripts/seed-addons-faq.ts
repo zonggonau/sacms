@@ -5,10 +5,10 @@ async function main() {
   console.log("🌱 Menambah data addons dan menyempurnakan seed...")
 
   const tenant = await prisma.tenant.findFirst()
-  const addonCt = await prisma.contentType.findUnique({ where: { slug: "noken-addons" } })
+  const addonCt = await prisma.contentType.findUnique({ where: { slug: "sacms-addons" } })
 
   if (!tenant || !addonCt) {
-    console.error("❌ Pastikan setup-noken-cms.ts sudah dijalankan sebelumnya.")
+    console.error("❌ Pastikan setup-sacms.ts sudah dijalankan sebelumnya.")
     return
   }
 
@@ -31,11 +31,11 @@ async function main() {
   }
 
   // 2. FAQ Data (Jika belum ada)
-  const faqCt = await prisma.contentType.findUnique({ where: { slug: "noken-faq" } })
+  const faqCt = await prisma.contentType.findUnique({ where: { slug: "sacms-faq" } })
   if (faqCt) {
     const faqs = [
       { question: "Apa itu Headless CMS?", answer: "Headless CMS adalah penyedia konten yang hanya menyediakan datanya melalui API, memisahkan konten dari tampilan (frontend), sehingga Anda bisa menampilkan konten tersebut di mana saja." },
-      { question: "Apakah NokenStack buatan lokal?", answer: "Ya, NokenStack sepenuhnya dirancang dan dibangun oleh tim insinyur perangkat lunak dari Jayapura, Papua." },
+      { question: "Apakah SaCMS buatan lokal?", answer: "Ya, SaCMS sepenuhnya dirancang dan dibangun oleh tim insinyur perangkat lunak dari Jayapura, Papua." },
       { question: "Bagaimana dengan keamanan data?", answer: "Kami menggunakan enkripsi tingkat tinggi dan audit log untuk memastikan setiap perubahan data terlacak dan aman." },
       { question: "Apakah ada dukungan untuk bahasa daerah?", answer: "AI Generator kami mendukung konteks lokal, termasuk kustomisasi untuk kebutuhan konten dalam bahasa daerah di Papua." },
     ]

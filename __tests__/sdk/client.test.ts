@@ -1,16 +1,16 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { ContentFlow, ContentFlowError } from "../../mini-services/sdk/src/client"
+import { SaCMS, SaCMSError } from "../../mini-services/sdk/src/client"
 
 // Mock global fetch
 const mockFetch = vi.fn()
 vi.stubGlobal("fetch", mockFetch)
 
-describe("ContentFlow SDK", () => {
-  let cf: ContentFlow
+describe("SaCMS SDK", () => {
+  let cf: SaCMS
 
   beforeEach(() => {
     vi.clearAllMocks()
-    cf = new ContentFlow({
+    cf = new SaCMS({
       baseUrl: "https://api.example.com",
       tenant: "my-tenant",
       token: "cf_test_token",
@@ -20,7 +20,7 @@ describe("ContentFlow SDK", () => {
 
   describe("constructor", () => {
     it("strips trailing slashes from baseUrl", () => {
-      const cf2 = new ContentFlow({
+      const cf2 = new SaCMS({
         baseUrl: "https://api.example.com///",
         tenant: "test",
         token: "tok",
@@ -232,14 +232,14 @@ describe("ContentFlow SDK", () => {
   })
 
   describe("error handling", () => {
-    it("throws ContentFlowError on non-ok response", async () => {
+    it("throws SaCMSError on non-ok response", async () => {
       mockFetch.mockResolvedValueOnce({
         ok: false,
         status: 403,
         text: () => Promise.resolve(JSON.stringify({ error: "Forbidden" })),
       })
 
-      await expect(cf.collection("articles").findMany()).rejects.toThrow(ContentFlowError)
+      await expect(cf.collection("articles").findMany()).rejects.toThrow(SaCMSError)
     })
 
     it("includes status code in error", async () => {
@@ -253,8 +253,8 @@ describe("ContentFlow SDK", () => {
         await cf.collection("articles").findOne("missing")
         expect.fail("Should have thrown")
       } catch (err) {
-        expect(err).toBeInstanceOf(ContentFlowError)
-        expect((err as ContentFlowError).status).toBe(404)
+        expect(err).toBeInstanceOf(SaCMSError)
+        expect((err as SaCMSError).status).toBe(404)
       }
     })
 

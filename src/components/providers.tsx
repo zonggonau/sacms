@@ -29,7 +29,7 @@ function BrandingProvider({ children }: { children: React.ReactNode }) {
             document.documentElement.style.setProperty('--primary-foreground', '#ffffff')
           }
           if (data.brandName) {
-            document.title = `${data.brandName} - ContentFlow`
+            document.title = `${data.brandName} - SaCMS`
           }
         }
       } catch (error) {

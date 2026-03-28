@@ -103,7 +103,7 @@ export function GlobalAdminSidebar() {
             <DatabaseIcon className="w-4.5 h-4.5 text-white" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold">ContentFlow</span>
+            <span className="text-sm font-bold">SaCMS</span>
             <span className="text-[11px] text-muted-foreground">Platform Admin</span>
           </div>
         </Link>

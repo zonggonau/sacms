@@ -1,6 +1,6 @@
-export { ContentFlow, ContentFlowError } from "./client"
+export { SaCMS, SaCMSError } from "./client"
 export type {
-  ContentFlowConfig,
+  SaCMSConfig,
   FindManyParams,
   FindSingleParams,
   CollectionResponse,

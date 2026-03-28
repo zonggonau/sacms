@@ -1,19 +1,19 @@
-# @contentflow/sdk
+# @sacms/sdk
 
-TypeScript SDK for the ContentFlow headless CMS.
+TypeScript SDK for the SaCMS headless CMS.
 
 ## Installation
 
 ```bash
-npm install @contentflow/sdk
+npm install @sacms/sdk
 ```
 
 ## Usage
 
 ```typescript
-import { ContentFlow } from "@contentflow/sdk";
+import { SaCMS } from "@sacms/sdk";
 
-const cf = new ContentFlow({
+const cf = new SaCMS({
   baseUrl: "https://your-domain.com",
   tenant: "my-workspace",
   token: "cf_xxxxx",
@@ -63,12 +63,12 @@ const result = await cf.graphql(`
 ## Error Handling
 
 ```typescript
-import { ContentFlowError } from "@contentflow/sdk";
+import { SaCMSError } from "@sacms/sdk";
 
 try {
   await cf.collection("articles").findMany();
 } catch (err) {
-  if (err instanceof ContentFlowError) {
+  if (err instanceof SaCMSError) {
     console.error(`HTTP ${err.status}: ${err.message}`);
   }
 }

@@ -100,7 +100,7 @@ export default function SdkDocsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CodeBlock id="install" code={`npm install @contentflow/sdk`} />
+                  <CodeBlock id="install" code={`npm install @sacms/sdk`} />
                 </CardContent>
               </Card>
 
@@ -110,9 +110,9 @@ export default function SdkDocsPage() {
                   <CardDescription className="text-xs">Initialize the SDK and fetch content</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <CodeBlock id="init" code={`import { ContentFlow } from '@contentflow/sdk'
+                  <CodeBlock id="init" code={`import { SaCMS } from '@sacms/sdk'
 
-const cf = new ContentFlow({
+const cf = new SaCMS({
   baseUrl: '${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}',
   tenant: '${tenantSlug}',
   token: 'cf_xxxxx',  // Your API token
@@ -300,7 +300,7 @@ const cf = new ContentFlow({
                 {
                   title: "Create Entry (Mutation)", code: `mutation {
   createArticle(data: {
-    title: "Getting Started with ContentFlow"
+    title: "Getting Started with SaCMS"
     slug: "getting-started"
     category: "tutorial"
     content: "..."
@@ -395,7 +395,7 @@ articles.data.forEach(article => {
                   <CardTitle className="text-sm">Response Types</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CodeBlock id="response-types" code={`interface ContentFlowResponse<T> {
+                  <CodeBlock id="response-types" code={`interface SaCMSResponse<T> {
   data: T[]
   meta: {
     pagination: {

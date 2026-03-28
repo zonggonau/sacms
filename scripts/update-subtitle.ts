@@ -2,11 +2,11 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("🔄 Memperbarui subjudul Noken Hero...")
+  console.log("🔄 Memperbarui subjudul SaCMS Hero...")
 
-  const heroCt = await prisma.contentType.findUnique({ where: { slug: "noken-hero" } })
+  const heroCt = await prisma.contentType.findUnique({ where: { slug: "sacms-hero" } })
   if (!heroCt) {
-    console.error("❌ Content Type noken-hero tidak ditemukan.")
+    console.error("❌ Content Type sacms-hero tidak ditemukan.")
     return
   }
 
@@ -23,7 +23,7 @@ async function main() {
   
   const newData = {
     ...currentData,
-    subtitle: "NokenStack adalah Headless CMS berperforma tinggi yang dirancang khusus oleh Engineer Papua. Solusi modern untuk skalabilitas, keamanan, dan transformasi digital instansi atau Website di Tanah Papua."
+    subtitle: "SaCMS adalah Headless CMS berperforma tinggi yang dirancang khusus oleh Engineer Papua. Solusi modern untuk skalabilitas, keamanan, dan transformasi digital instansi atau Website di Tanah Papua."
   }
 
   await prisma.contentEntry.update({

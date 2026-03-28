@@ -42,7 +42,7 @@ import { WhatsAppButton } from "@/components/landing/whatsapp-button"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "NokenStack - Headless CMS Modern Karya Anak Papua",
+  title: "SaCMS - Headless CMS Modern Karya Anak Papua",
   description: "Infrastruktur digital berperforma tinggi dengan AI Generator dan native multi-tenancy untuk transformasi digital instansi Anda.",
 }
 
@@ -57,7 +57,7 @@ async function getLandingData() {
     where: {
       status: "PUBLISHED",
       contentType: {
-        slug: { in: ["noken-hero", "noken-features", "noken-pricing", "noken-addons", "noken-workflow", "noken-faq", "platform-whatsapp"] }
+        slug: { in: ["sacms-hero", "sacms-features", "sacms-pricing", "sacms-addons", "sacms-workflow", "sacms-faq", "sacms-whatsapp", "sacms-about", "sacms-owners"] }
       }
     },
     include: { contentType: true },
@@ -70,19 +70,23 @@ async function getLandingData() {
   }
 
   return {
-    hero: parseData(entries.find(e => e.contentType.slug === "noken-hero")),
-    features: entries.filter(e => e.contentType.slug === "noken-features").map(parseData),
-    pricing: entries.filter(e => e.contentType.slug === "noken-pricing").map(parseData),
-    addons: entries.filter(e => e.contentType.slug === "noken-addons").map(parseData),
-    workflow: entries.filter(e => e.contentType.slug === "noken-workflow").map(parseData),
-    faq: entries.filter(e => e.contentType.slug === "noken-faq").map(parseData),
-    whatsapp: parseData(entries.find(e => e.contentType.slug === "platform-whatsapp")),
+    hero: parseData(entries.find(e => e.contentType.slug === "sacms-hero")),
+    features: entries.filter(e => e.contentType.slug === "sacms-features").map(parseData),
+    pricing: entries.filter(e => e.contentType.slug === "sacms-pricing").map(parseData),
+    addons: entries.filter(e => e.contentType.slug === "sacms-addons").map(parseData),
+    workflow: entries.filter(e => e.contentType.slug === "sacms-workflow").map(parseData),
+    faq: entries.filter(e => e.contentType.slug === "sacms-faq").map(parseData),
+    whatsapp: parseData(entries.find(e => e.contentType.slug === "sacms-whatsapp")),
+    about: parseData(entries.find(e => e.contentType.slug === "sacms-about")),
+    owners: entries.filter(e => e.contentType.slug === "sacms-owners").map(parseData),
   }
 }
 
 export default async function HomePage() {
   const data = await getLandingData()
   const wa = data.whatsapp || { phone: "6281234567890", message: "Halo!", label: "Chat WhatsApp", is_active: true }
+  const about = data.about || { title: "Misi SaCMS", content: "Membangun masa depan digital Papua.", image: "https://images.unsplash.com/photo-1517048676732-d65bc937f952?auto=format&fit=crop&q=80" }
+  const owners = data.owners || []
 
   const formatCurrency = (val: any) => {
     if (!val) return "0"
@@ -94,13 +98,13 @@ export default async function HomePage() {
   }
 
   // Fallbacks if data is empty
-  const hero = data.hero || {
-    badge_text: "🚀 Infrastruktur Digital Karya Anak Papua",
-    title: "INFRASTRUKTUR UNTUK Masa Depan.",
-    subtitle: "NokenStack adalah Headless CMS berperforma tinggi yang dirancang khusus oleh putra-putri Papua. Solusi modern untuk skalabilitas, keamanan, dan transformasi digital instansi Anda.",
-    cta_primary_text: "Mulai Trial Sekarang",
-    cta_secondary_text: "Dokumentasi SDK"
-  }
+const hero = data.hero || {
+  badge_text: "🚀 Solusi Infrastruktur Digital dari Papua",
+  title: "INFRASTRUKTUR DIGITAL UNTUK MASA DEPAN",
+  subtitle: "SaCMS adalah Headless CMS berperforma tinggi yang dikembangkan oleh talenta Papua. Dirancang untuk mendukung skalabilitas, keamanan, dan akselerasi transformasi digital bagi organisasi modern.",
+  cta_primary_text: "Mulai Uji Coba",
+  cta_secondary_text: "Lihat Dokumentasi"
+}
 
   return (
     <div className="min-h-screen flex flex-col bg-background font-sans">
@@ -184,6 +188,32 @@ export default async function HomePage() {
           </div>
         </section>
 
+        {/* About Section */}
+        <section id="about" className="py-24 overflow-hidden">
+          <div className="container">
+            <div className="flex flex-col md:flex-row items-center gap-16">
+              <div className="flex-1 relative">
+                <div className="absolute -top-10 -left-10 w-32 h-32 bg-emerald-500/10 rounded-full blur-3xl" />
+                <div className="relative rounded-[3rem] overflow-hidden shadow-2xl border-4 border-white dark:border-slate-800">
+                  <img src={about.image} alt="About SaCMS" className="w-full h-auto object-cover aspect-[4/3]" />
+                </div>
+              </div>
+              <div className="flex-1 space-y-8">
+                <Badge variant="outline" className="border-emerald-500/20 text-emerald-600">Misi Kami</Badge>
+                <h2 className="text-4xl md:text-5xl font-black tracking-tight leading-tight uppercase text-slate-900 dark:text-white">
+                  {about.title}
+                </h2>
+                <p className="text-xl text-muted-foreground leading-relaxed font-medium">
+                  {about.content}
+                </p>
+                <div className="pt-4">
+                  <Link href="/register"><Button size="lg" className="rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 px-8">Pelajari Lebih Lanjut</Button></Link>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Pricing Section */}
         <section id="pricing" className="py-24 border-y border-slate-100 dark:border-slate-800">
           <div className="container">
@@ -219,7 +249,7 @@ export default async function HomePage() {
             </div>
 
             {/* Addons Dynamic */}
-            <div className="max-w-5xl mx-auto">
+            <div className="max-w-5xl mx-auto mb-24">
               <div className="flex flex-col md:flex-row items-center justify-between gap-8 p-8 md:p-12 rounded-[3rem] bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800">
                 <div className="max-w-sm text-center md:text-left">
                   <h3 className="text-2xl font-black uppercase tracking-tight mb-2">Layanan Tambahan (Add-ons)</h3>
@@ -243,6 +273,30 @@ export default async function HomePage() {
                   })}
                 </div>
               </div>
+            </div>
+
+            {/* Owners Section */}
+            <div className="max-w-4xl mx-auto pt-12">
+               <div className="text-center mb-12">
+                 <h3 className="text-2xl font-black uppercase tracking-tight mb-4 text-slate-900 dark:text-white">Dibalik SaCMS.</h3>
+               </div>
+               <div className="grid md:grid-cols-2 gap-8">
+                 {owners.map((owner: any, i: number) => (
+                   <Card key={i} className="p-8  border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900/40 hover:scale-[1.02] transition-all shadow-sm border-b-4 border-b-emerald-500/20 flex flex-col">
+                      <div className="flex flex-col items-center gap-4 mb-8 text-center">
+                        <img src={owner.avatar} alt={owner.name} className="w-[300px] h-[300px] rounded-xl object-cover bg-emerald-500/10 p-1 border-2 border-emerald-500/20" />
+                        <div>
+                          <h4 className="font-black text-xl uppercase tracking-tight text-slate-900 dark:text-white">{owner.name}</h4>
+                          <p className="text-emerald-600 dark:text-emerald-400 font-bold text-sm uppercase tracking-wider">{owner.role}</p>
+                        </div>
+                      </div>
+                      <div 
+                        className="text-muted-foreground font-medium leading-relaxed italic text-base text-center py-1 prose prose-sm dark:prose-invert max-w-full break-words overflow-hidden"
+                        dangerouslySetInnerHTML={{ __html: owner.bio }}
+                      />
+                   </Card>
+                 ))}
+               </div>
             </div>
           </div>
         </section>
@@ -314,9 +368,9 @@ export default async function HomePage() {
         <div className="container flex flex-col md:flex-row justify-between items-center gap-8">
           <div className="flex items-center gap-2">
             <div className="w-8 h-8 rounded bg-emerald-600 flex items-center justify-center"><Database className="w-5 h-5 text-white" /></div>
-            <span className="font-bold text-xl tracking-tighter uppercase text-slate-900 dark:text-white">NokenStack</span>
+            <span className="font-bold text-xl tracking-tighter uppercase text-slate-900 dark:text-white">SaCMS</span>
           </div>
-          <p className="text-xs text-muted-foreground font-medium italic text-center">© {new Date().getFullYear()} NokenStack Engineering. Dibuat dengan ❤️ oleh Anak Papua.</p>
+          <p className="text-xs text-muted-foreground font-medium italic text-center">© {new Date().getFullYear()} SaCMS Engineering. Dibuat dengan ❤️ oleh Anak Papua.</p>
           <div className="flex gap-8 grayscale opacity-50">
              <span className="text-[10px] font-black tracking-widest italic">#PAPUADIGITAL</span>
              <span className="text-[10px] font-black tracking-widest italic">#SACODE</span>

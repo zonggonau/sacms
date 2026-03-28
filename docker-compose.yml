@@ -4,7 +4,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://contentflow:contentflow@postgres:5432/contentflow
+      - DATABASE_URL=postgresql://sacms:sacms@postgres:5432/sacms
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-me}
       - NEXTAUTH_URL=http://localhost:3000
       - REDIS_URL=redis://redis:6379
@@ -20,13 +20,13 @@ services:
     ports:
       - "5432:5432"
     environment:
-      POSTGRES_USER: contentflow
-      POSTGRES_PASSWORD: contentflow
-      POSTGRES_DB: contentflow
+      POSTGRES_USER: sacms
+      POSTGRES_PASSWORD: sacms
+      POSTGRES_DB: sacms
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U contentflow"]
+      test: ["CMD-SHELL", "pg_isready -U sacms"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -50,18 +50,18 @@ services:
     image: postgres:16-alpine
     environment:
       PGHOST: postgres
-      PGUSER: contentflow
-      PGPASSWORD: contentflow
-      PGDATABASE: contentflow
+      PGUSER: sacms
+      PGPASSWORD: sacms
+      PGDATABASE: sacms
     volumes:
       - ./db/backups:/backups
     entrypoint: >
       sh -c '
         while true; do
           STAMP=$$(date +%Y%m%d_%H%M%S)
-          pg_dump -Fc > /backups/contentflow_$$STAMP.dump
+          pg_dump -Fc > /backups/sacms_$$STAMP.dump
           # Keep only last 7 daily backups
-          ls -t /backups/contentflow_*.dump | tail -n +8 | xargs rm -f 2>/dev/null
+          ls -t /backups/sacms_*.dump | tail -n +8 | xargs rm -f 2>/dev/null
           echo "[$$STAMP] Backup complete"
           sleep 86400
         done

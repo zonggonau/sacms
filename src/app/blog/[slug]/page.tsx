@@ -120,14 +120,14 @@ export default async function BlogPostPage({ params }: { params: Promise<{ slug:
             </Button>
           </div>
           <Link href="/register">
-            <Button className="bg-primary font-bold rounded-xl">Start Building with ContentFlow</Button>
+            <Button className="bg-primary font-bold rounded-xl">Start Building with SaCMS</Button>
           </Link>
         </div>
       </main>
 
       <footer className="border-t py-10">
         <div className="container text-center text-xs text-muted-foreground">
-          &copy; {new Date().getFullYear()} ContentFlow Blog. All rights reserved.
+          &copy; {new Date().getFullYear()} SaCMS Blog. All rights reserved.
         </div>
       </footer>
     </div>

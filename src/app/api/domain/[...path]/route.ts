@@ -107,7 +107,7 @@ async function handler(request: NextRequest, context: Context) {
     "Access-Control-Allow-Headers",
     "Authorization, Content-Type"
   )
-  responseHeaders.set("X-Served-By", "ContentFlow")
+  responseHeaders.set("X-Served-By", "SaCMS")
   responseHeaders.set("X-Tenant", tenant.slug)
 
   const body = await proxyResponse.arrayBuffer()

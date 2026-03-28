@@ -61,7 +61,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
 
 /**
  * Gets the effective plan configuration for a tenant.
- * It tries to fetch dynamic config from CMS (noken-pricing), 
+ * It tries to fetch dynamic config from CMS (sacms-pricing), 
  * falling back to DEFAULT_LIMITS.
  */
 export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig> {
@@ -75,7 +75,7 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   try {
     const pricingEntry = await db.contentEntry.findFirst({
       where: {
-        contentType: { slug: "noken-pricing" },
+        contentType: { slug: "sacms-pricing" },
         status: "PUBLISHED",
       },
     })
@@ -84,7 +84,7 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
     // but Prisma Json filtering can be tricky. For now, we find all and match in JS.
     const allPricing = await db.contentEntry.findMany({
       where: {
-        contentType: { slug: "noken-pricing" },
+        contentType: { slug: "sacms-pricing" },
         status: "PUBLISHED",
       },
     })

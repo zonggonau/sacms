@@ -35,7 +35,7 @@ async function main() {
         status: "PUBLISHED",
         data: {
           phone: "6281234567890",
-          message: "Halo ContentFlow, saya ingin tanya seputar layanan headless CMS.",
+          message: "Halo SaCMS, saya ingin tanya seputar layanan headless CMS.",
           label: "Chat with us",
           is_active: true
         }

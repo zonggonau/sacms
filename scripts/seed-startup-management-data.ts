@@ -81,7 +81,7 @@ async function main() {
         data: {
           name: "CEO of Tech Papua",
           company: "Papua Startup",
-          quote: "ContentFlow is the missing piece in our multi-tenant architecture. It's incredibly fast and flexible.",
+          quote: "SaCMS is the missing piece in our multi-tenant architecture. It's incredibly fast and flexible.",
           rating: 5
         }
       }

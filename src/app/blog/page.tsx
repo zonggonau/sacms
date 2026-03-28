@@ -49,7 +49,7 @@ export default async function BlogIndexPage() {
             </span>
           </h1>
           <p className="text-lg text-muted-foreground leading-relaxed">
-            Latest news, tutorials, and success stories from the founders building on ContentFlow.
+            Latest news, tutorials, and success stories from the founders building on SaCMS.
           </p>
         </div>
 
@@ -103,7 +103,7 @@ export default async function BlogIndexPage() {
       <footer className="border-t py-12">
         <div className="container text-center">
           <p className="text-xs text-muted-foreground">
-            &copy; {new Date().getFullYear()} ContentFlow. Built with passion for founders.
+            &copy; {new Date().getFullYear()} SaCMS. Built with passion for founders.
           </p>
         </div>
       </footer>

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
@@ -8,12 +10,18 @@ export async function POST(
   { params }: { params: Promise<{ tenant: string; contentSlug: string }> }
 ) {
   try {
-    const { tenant: tenantSlug, contentSlug } = await params
-    const { tenant, user, isSuperAdmin } = await getTenantAccess(tenantSlug)
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    const { tenant: tenantSlug, contentSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+
+    if (!access || !access.tenant) {
+      return NextResponse.json({ error: "Tenant not found or access denied" }, { status: 404 })
     }
+
+    const { tenant } = access
+    const user = session.user
 
     const body = await request.json()
     const { ids, action } = body

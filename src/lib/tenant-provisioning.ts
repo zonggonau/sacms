@@ -55,6 +55,16 @@ const STARTER_SINGLE_TYPES = [
       { name: "Menu Links", slug: "links", type: "json", required: true },
       { name: "Show Login Button", slug: "showLogin", type: "boolean", required: false },
     ]
+  },
+  {
+    name: "Footer",
+    slug: "footer",
+    description: "Manage your site's footer content and social links",
+    fields: [
+      { name: "Copyright Text", slug: "copyright", type: "text", required: true },
+      { name: "Social Links", slug: "socialLinks", type: "json", required: false },
+      { name: "Footer Description", slug: "description", type: "textarea", required: false },
+    ]
   }
 ]
 
@@ -163,6 +173,14 @@ export async function provisionTenant(tenantId: string) {
       if (st.slug === "navbar") {
         initialData.links = [{ label: "Home", url: "/" }, { label: "Blog", url: "/blog" }]
         initialData.showLogin = true
+      }
+      if (st.slug === "footer") {
+        initialData.copyright = `© ${new Date().getFullYear()} My Workspace. All rights reserved.`
+        initialData.socialLinks = [
+          { platform: "Twitter", url: "https://twitter.com" },
+          { platform: "GitHub", url: "https://github.com" }
+        ]
+        initialData.description = "Built with SaCMS - The first Headless CMS from Papua."
       }
 
       await db.tenantSingleTypeAssignment.create({

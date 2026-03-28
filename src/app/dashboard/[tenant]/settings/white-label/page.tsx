@@ -229,7 +229,7 @@ export default function WhiteLabelPage() {
                 Branding
               </CardTitle>
               <CardDescription>
-                Override the default ContentFlow branding for your tenant.
+                Override the default SaCMS branding for your tenant.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -487,7 +487,7 @@ export default function WhiteLabelPage() {
                   <Separator />
                   <div className="space-y-2 text-sm text-muted-foreground">
                     <p className="font-medium text-foreground">
-                      Point your DNS to ContentFlow
+                      Point your DNS to SaCMS
                     </p>
                     <p>
                       After verification, create an{" "}

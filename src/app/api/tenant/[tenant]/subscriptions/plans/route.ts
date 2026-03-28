@@ -6,14 +6,14 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
-    // 1. Fetch Noken Pricing (Main Workspace Plans)
+    // 1. Fetch SaCMS Pricing (Main Workspace Plans)
     const pricingContentType = await db.contentType.findUnique({
-      where: { slug: "noken-pricing" }
+      where: { slug: "sacms-pricing" }
     })
 
-    // 2. Fetch Noken Addons
+    // 2. Fetch SaCMS Addons
     const addonContentType = await db.contentType.findUnique({
-      where: { slug: "noken-addons" }
+      where: { slug: "sacms-addons" }
     })
 
     let plans: any[] = []

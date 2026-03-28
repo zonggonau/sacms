@@ -21,34 +21,14 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant } = await params
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
 
-    const isSuperAdmin = session.user.role === "super_admin"
-
-    // Verify user has access to this tenant (or is super_admin)
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        userId: session.user.id,
-        tenant: { slug: tenant },
-      },
-      include: {
-        tenant: true,
-      },
-    })
-
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
     }
 
-    // For super_admin without membership, look up the tenant directly
-    let tenantId = membership?.tenantId
-    if (!tenantId) {
-      const tenantRecord = await db.tenant.findUnique({ where: { slug: tenant } })
-      if (!tenantRecord) {
-        return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-      }
-      tenantId = tenantRecord.id
-    }
+    const tenantId = access.tenantId
 
     // Get content types owned by this tenant
     const availableContentTypes = await db.contentType.findMany({

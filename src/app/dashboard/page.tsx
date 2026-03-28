@@ -172,7 +172,7 @@ export default function WorkspaceSelectionPage() {
       <nav className="h-16 bg-card border-b px-6 flex items-center justify-between sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black shadow-sm">CF</div>
-          <span className="font-bold tracking-tight">ContentFlow</span>
+          <span className="font-bold tracking-tight">SaCMS</span>
         </div>
         <div className="flex items-center gap-4">
           {isSuperAdmin && (
@@ -404,7 +404,7 @@ export default function WorkspaceSelectionPage() {
             <a href="#" className="hover:text-primary transition-colors">Support</a>
             <a href="#" className="hover:text-primary transition-colors">Privacy</a>
           </div>
-          <p className="text-[10px] text-muted-foreground opacity-50 italic">ContentFlow v0.2.0 &middot; Secure Multi-tenant Infrastructure</p>
+          <p className="text-[10px] text-muted-foreground opacity-50 italic">SaCMS v0.2.0 &middot; Secure Multi-tenant Infrastructure</p>
         </footer>
       </main>
 

@@ -1,7 +1,7 @@
 {
-  "name": "@contentflow/sdk",
+  "name": "@sacms/sdk",
   "version": "1.0.0",
-  "description": "TypeScript SDK for ContentFlow headless CMS",
+  "description": "TypeScript SDK for SaCMS headless CMS",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": ["dist"],
@@ -9,7 +9,7 @@
     "build": "tsc",
     "dev": "tsc --watch"
   },
-  "keywords": ["contentflow", "cms", "headless", "sdk"],
+  "keywords": ["sacms", "cms", "headless", "sdk"],
   "license": "MIT",
   "devDependencies": {
     "typescript": "^5.5.0"

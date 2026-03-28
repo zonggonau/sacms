@@ -69,7 +69,7 @@ export interface BaseEntry {
   }
 
   // Add Registry for dynamic lookup
-  output += `export interface ContentFlowRegistry {\n`
+  output += `export interface SaCMSRegistry {\n`
   for (const ct of contentTypes) {
     output += `  "${ct.slug}": ${toPascalCase(ct.slug)}\n`
   }

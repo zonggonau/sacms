@@ -1,5 +1,5 @@
 import type {
-  ContentFlowConfig,
+  SaCMSConfig,
   FindManyParams,
   FindSingleParams,
   CollectionResponse,
@@ -10,13 +10,13 @@ import type {
   MutateParams,
 } from "./types"
 
-export class ContentFlow {
+export class SaCMS {
   private baseUrl: string
   private tenant: string
   private token: string
   private defaultLocale?: string
 
-  constructor(config: ContentFlowConfig) {
+  constructor(config: SaCMSConfig) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "")
     this.tenant = config.tenant
     this.token = config.token
@@ -72,7 +72,7 @@ export class ContentFlow {
       } catch {
         message = body
       }
-      throw new ContentFlowError(message, res.status)
+      throw new SaCMSError(message, res.status)
     }
     return res.json() as Promise<T>
   }
@@ -90,7 +90,7 @@ export class ContentFlow {
 
 class CollectionClient {
   constructor(
-    private cf: ContentFlow,
+    private cf: SaCMS,
     private slug: string
   ) {}
 
@@ -165,7 +165,7 @@ class CollectionClient {
 
 class SingleClient {
   constructor(
-    private cf: ContentFlow,
+    private cf: SaCMS,
     private slug: string
   ) {}
 
@@ -198,13 +198,13 @@ class SingleClient {
   }
 }
 
-export class ContentFlowError extends Error {
+export class SaCMSError extends Error {
   constructor(
     message: string,
     public status: number
   ) {
     super(message)
-    this.name = "ContentFlowError"
+    this.name = "SaCMSError"
   }
 }
 

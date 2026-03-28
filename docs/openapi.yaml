@@ -1,12 +1,12 @@
 openapi: 3.1.0
 info:
-  title: ContentFlow Public API
+  title: SaCMS Public API
   version: 1.0.0
   description: |
     Headless CMS API for querying and mutating content.
     All requests require `Authorization: Bearer <token>` header.
   contact:
-    name: ContentFlow
+    name: SaCMS
 servers:
   - url: "{baseUrl}"
     variables:

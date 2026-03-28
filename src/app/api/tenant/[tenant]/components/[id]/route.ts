@@ -145,25 +145,22 @@ export async function DELETE(
       )
     }
 
-    // Check if component exists and its tenant assignments
+    // Check if component exists and its ownership
     const existingComponent = await db.component.findUnique({
       where: { id },
-      include: {
-        tenants: true,
-      }
     })
 
     if (!existingComponent) {
       return NextResponse.json({ error: "Component not found" }, { status: 404 })
     }
 
-    // Check if it's a global component or assigned to other tenants
-    const isGlobal = existingComponent.tenants.length === 0 || existingComponent.tenants.length > 1
-    const isOwnedByOther = existingComponent.tenants.length === 1 && existingComponent.tenants[0].tenantId !== access.tenantId
+    // Verify ownership
+    const isGlobal = existingComponent.tenantId === null
+    const isOwnedByOther = existingComponent.tenantId !== null && existingComponent.tenantId !== access.tenantId
 
     if (isGlobal || isOwnedByOther) {
       return NextResponse.json(
-        { error: "Global components cannot be deleted by tenant admins" },
+        { error: "Global or shared components cannot be deleted by tenant admins" },
         { status: 403 }
       )
     }

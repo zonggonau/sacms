@@ -16,12 +16,6 @@ export async function GET(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Fetch tenant plan explicitly since getTenantAccess doesn't return it
-    const tenant = await db.tenant.findUnique({
-      where: { id: access.tenantId },
-      select: { plan: true }
-    })
-
     // 1. Get Current Counts with individual try-catch or safe handling
     let entryCount = 0
     let mediaCount = 0
@@ -48,7 +42,7 @@ export async function GET(
     }
 
     // 2. Define Limits based on Plan
-    const rawPlan = tenant?.plan || "free"
+    const rawPlan = access.tenant.plan || "free"
     const plan = rawPlan.toLowerCase()
     
     const LIMITS: Record<string, any> = {

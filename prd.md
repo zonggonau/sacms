@@ -1,4 +1,4 @@
-# PRD: ContentFlow v1.0 — Alternatif Strapi untuk SaaS Headless CMS
+# PRD: SaCMS v1.0 — Alternatif Strapi untuk SaaS Headless CMS
 
 **Author:** System Architect
 **Date:** 15 Maret 2026
@@ -15,7 +15,7 @@ Strapi adalah headless CMS open-source paling populer, tetapi memiliki keterbata
 
 ### Proposed Solution
 
-**ContentFlow** adalah SaaS Headless CMS yang menawarkan:
+**SaCMS** adalah SaaS Headless CMS yang menawarkan:
 - Multi-tenant native (apa yang tidak bisa dilakukan Strapi)
 - Billing & subscription built-in (Midtrans + payment gateway)
 - AI-powered content generation
@@ -150,8 +150,8 @@ Strapi adalah headless CMS open-source paling populer, tetapi memiliki keterbata
 
 #### Epic 7: TypeScript SDK
 
-**US-7.1** Sebagai Developer, saya ingin menggunakan SDK type-safe untuk mengakses ContentFlow API.
-- AC: NPM package `@contentflow/sdk` tersedia
+**US-7.1** Sebagai Developer, saya ingin menggunakan SDK type-safe untuk mengakses SaCMS API.
+- AC: NPM package `@sacms/sdk` tersedia
 - AC: Auto-generated types berdasarkan content type schema
 - AC: Method: `cf.articles.findMany()`, `cf.articles.findOne(id)`, `cf.articles.create(data)`
 - AC: Filter API: `cf.articles.findMany({ filters: { category: { $eq: 'tutorial' } } })`
@@ -178,7 +178,7 @@ Strapi adalah headless CMS open-source paling populer, tetapi memiliki keterbata
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                        CONTENTFLOW v1.0                         │
+│                        SACMS v1.0                         │
 │                                                                 │
 │  ┌──────────┐  ┌──────────┐  ┌──────────┐  ┌──────────┐      │
 │  │  Admin    │  │  Tenant  │  │  Public  │  │  Webhook │      │
@@ -442,12 +442,12 @@ Sync hooks: webhook dipanggil dan response ditunggu (max 5 detik). Jika webhook 
 ### 3.7 TypeScript SDK Design
 
 ```typescript
-// Installation: npm install @contentflow/sdk
+// Installation: npm install @sacms/sdk
 
-import { ContentFlow } from '@contentflow/sdk'
+import { SaCMS } from '@sacms/sdk'
 
-const cf = new ContentFlow({
-  baseUrl: 'https://api.contentflow.dev',
+const cf = new SaCMS({
+  baseUrl: 'https://api.sacms.dev',
   tenant: 'my-workspace',
   token: 'cf_xxxxx',
   locale: 'id', // default locale
@@ -532,11 +532,11 @@ Fallback: Jika Redis tidak tersedia, fallback ke in-memory (development mode).
 
 ---
 
-## 4. Competitive Analysis: ContentFlow vs Market
+## 4. Competitive Analysis: SaCMS vs Market
 
 ### 4.1 Feature Comparison Matrix
 
-| Feature | Strapi | Contentful | Sanity | Payload CMS | **ContentFlow** |
+| Feature | Strapi | Contentful | Sanity | Payload CMS | **SaCMS** |
 |---------|--------|------------|--------|-------------|-----------------|
 | **Open Source** | ✅ | ❌ | ❌ | ✅ | ❌ (SaaS) |
 | **Multi-Tenant Native** | ❌ | ❌ | ❌ | ❌ | ✅ |
@@ -557,7 +557,7 @@ Fallback: Jika Redis tidak tersedia, fallback ke in-memory (development mode).
 | **Audit Log** | ❌ | ✅ | ✅ | ✅ | ✅ |
 | **Self-Hosted Option** | ✅ | ❌ | ❌ | ✅ | ❌ (v1.0) |
 
-### 4.2 ContentFlow Unique Advantages
+### 4.2 SaCMS Unique Advantages
 
 1. **Multi-Tenant Native** — Satu-satunya headless CMS yang natively mendukung multi-workspace tanpa konfigurasi tambahan
 2. **Payment Integration (Indonesia)** — Midtrans built-in, cocok untuk pasar Southeast Asia
@@ -592,7 +592,7 @@ Fallback: Jika Redis tidak tersedia, fallback ke in-memory (development mode).
 | 9 | i18n Content Management (locale per entry, multilanguage editor) | 🔴 Critical |
 | 10 | GraphQL Mutations (create, update, delete, publish) | 🟠 High |
 | 11 | Full-text Search (pg_tsvector) | 🟠 High |
-| 12 | TypeScript SDK (@contentflow/sdk) | 🟠 High |
+| 12 | TypeScript SDK (@sacms/sdk) | 🟠 High |
 | 13 | Scheduled publishing (cron-based) | 🟠 High |
 | 14 | Synchronous content hooks | 🟡 Medium |
 

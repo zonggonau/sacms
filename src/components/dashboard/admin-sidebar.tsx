@@ -115,7 +115,7 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
             <DatabaseIcon className="w-5 h-5 text-white" />
           </div>
           <div className="flex flex-col">
-            <span className="text-lg font-bold">ContentFlow</span>
+            <span className="text-lg font-bold">SaCMS</span>
             <span className="text-xs text-muted-foreground">Super Admin</span>
           </div>
         </Link>

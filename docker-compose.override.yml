@@ -5,7 +5,8 @@ services:
       dockerfile: Dockerfile
     environment:
       - NEXTAUTH_SECRET=a_very_long_random_string_for_development_purposes
-      - NODE_ENV=development
-    # We can also mount the source for live-reload if we want dev mode in docker, 
-    # but the current Dockerfile is optimized for production build (server.js).
-    # For now, let's just build the current state.
+      - NODE_ENV=production
+      - NEXT_TELEMETRY_DISABLED=1
+      - SENTRY_IGNORE_API_RESOLUTION_ERROR=1
+      - SENTRY_DISABLE_SERVER_SIDE_SOURCE_MAPS=1
+

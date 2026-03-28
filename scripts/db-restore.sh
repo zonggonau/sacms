@@ -10,7 +10,7 @@ set -euo pipefail
 if [ -z "${1:-}" ]; then
   echo "Usage: $0 <backup_file>"
   echo "Available backups:"
-  ls -lt db/backups/contentflow_*.dump 2>/dev/null || echo "  No backups found"
+  ls -lt db/backups/sacms_*.dump 2>/dev/null || echo "  No backups found"
   exit 1
 fi
 

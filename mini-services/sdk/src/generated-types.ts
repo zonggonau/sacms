@@ -22,7 +22,7 @@ export interface Homepage extends BaseEntry {
   judul: string
 }
 
-export interface ContentFlowRegistry {
+export interface SaCMSRegistry {
   "blog": Blog
   "homepage": Homepage
 }

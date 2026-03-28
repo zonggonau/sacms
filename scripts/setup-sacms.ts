@@ -2,7 +2,7 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("🚀 Menginisialisasi Content Types untuk NokenStack...")
+  console.log("🚀 Menginisialisasi Content Types untuk SaCMS...")
 
   const tenant = await prisma.tenant.findFirst()
   if (!tenant) {
@@ -56,8 +56,8 @@ async function main() {
 
   // 1. HERO CONFIG
   const heroCt = await syncContentType({
-    name: "Noken Hero",
-    slug: "noken-hero",
+    name: "SaCMS Hero",
+    slug: "sacms-hero",
     description: "Konfigurasi bagian atas halaman utama",
     fields: [
       { name: "Badge Text", slug: "badge_text", type: "text", order: 0 },
@@ -70,8 +70,8 @@ async function main() {
 
   // 2. FEATURES
   const featureCt = await syncContentType({
-    name: "Noken Features",
-    slug: "noken-features",
+    name: "SaCMS Features",
+    slug: "sacms-features",
     fields: [
       { name: "Title", slug: "title", type: "text", order: 0 },
       { name: "Description", slug: "description", type: "textarea", order: 1 },
@@ -83,8 +83,8 @@ async function main() {
 
   // 3. PRICING (DENGAN FIELD TEKNIS)
   const pricingCt = await syncContentType({
-    name: "Noken Pricing",
-    slug: "noken-pricing",
+    name: "SaCMS Pricing",
+    slug: "sacms-pricing",
     fields: [
       { name: "Plan Name", slug: "name", type: "text", order: 0 },
       { name: "Plan Slug", slug: "plan_slug", type: "text", order: 1 },
@@ -106,8 +106,8 @@ async function main() {
 
   // 4. ADDONS
   const addonCt = await syncContentType({
-    name: "Noken Addons",
-    slug: "noken-addons",
+    name: "SaCMS Addons",
+    slug: "sacms-addons",
     fields: [
       { name: "Title", slug: "title", type: "text", order: 0 },
       { name: "Addon Slug", slug: "addon_slug", type: "text", order: 1 },
@@ -120,8 +120,8 @@ async function main() {
 
   // 5. WORKFLOW
   const workflowCt = await syncContentType({
-    name: "Noken Workflow",
-    slug: "noken-workflow",
+    name: "SaCMS Workflow",
+    slug: "sacms-workflow",
     fields: [
       { name: "Step Number", slug: "step", type: "text", order: 0 },
       { name: "Title", slug: "title", type: "text", order: 1 },
@@ -132,8 +132,8 @@ async function main() {
 
   // 6. FAQ
   const faqCt = await syncContentType({
-    name: "Noken FAQ",
-    slug: "noken-faq",
+    name: "SaCMS FAQ",
+    slug: "sacms-faq",
     fields: [
       { name: "Question", slug: "question", type: "text", order: 0 },
       { name: "Answer", slug: "answer", type: "textarea", order: 1 },
@@ -142,14 +142,40 @@ async function main() {
 
   // 7. WHATSAPP CONFIG
   const waCt = await syncContentType({
-    name: "Noken WhatsApp",
-    slug: "platform-whatsapp",
+    name: "SaCMS WhatsApp",
+    slug: "sacms-whatsapp",
     description: "Konfigurasi tombol chat WhatsApp mengambang",
     fields: [
       { name: "Phone Number", slug: "phone", type: "text", order: 0, required: true },
       { name: "Initial Message", slug: "message", type: "textarea", order: 1 },
       { name: "Button Label", slug: "label", type: "text", order: 2 },
       { name: "Is Active", slug: "is_active", type: "boolean", order: 3 },
+    ]
+  })
+
+  // 8. ABOUT SECTION
+  const aboutCt = await syncContentType({
+    name: "SaCMS About",
+    slug: "sacms-about",
+    description: "Tentang platform dan misi kami",
+    fields: [
+      { name: "Title", slug: "title", type: "text", order: 0 },
+      { name: "Content", slug: "content", type: "textarea", order: 1 },
+      { name: "Image URL", slug: "image", type: "text", order: 2 },
+    ]
+  })
+
+  // 9. OWNERS / FOUNDERS SECTION
+  const ownerCt = await syncContentType({
+    name: "SaCMS Owners",
+    slug: "sacms-owners",
+    description: "Profil pendiri dan tim inti",
+    fields: [
+      { name: "Name", slug: "name", type: "text", order: 0 },
+      { name: "Role", slug: "role", type: "text", order: 1 },
+      { name: "Bio", slug: "bio", type: "textarea", order: 2 },
+      { name: "Avatar URL", slug: "avatar", type: "text", order: 3 },
+      { name: "Social Links", slug: "social", type: "json", order: 4 },
     ]
   })
 
@@ -250,7 +276,7 @@ async function main() {
 
   // WhatsApp Seeding
   const waEntry = await prisma.contentEntry.findFirst({
-    where: { contentType: { slug: "platform-whatsapp" } }
+    where: { contentType: { slug: "sacms-whatsapp" } }
   })
 
   if (!waEntry) {
@@ -261,7 +287,7 @@ async function main() {
         status: "PUBLISHED",
         data: {
           phone: "6281234567890",
-          message: "Halo NokenStack, saya ingin tanya seputar layanan Headless CMS.",
+          message: "Halo SaCMS, saya ingin tanya seputar layanan Headless CMS.",
           label: "Chat with us",
           is_active: true
         }

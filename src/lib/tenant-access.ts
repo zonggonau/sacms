@@ -4,6 +4,12 @@ import { db } from "@/lib/database"
 interface TenantAccess {
   tenantId: string
   role: string
+  tenant: {
+    id: string
+    name: string
+    slug: string
+    plan: string
+  }
 }
 
 /**
@@ -19,10 +25,19 @@ export async function getTenantAccess(
   if (session.user.role === "super_admin") {
     const tenant = await db.tenant.findUnique({
       where: { slug: tenantSlug },
-      select: { id: true },
+      select: { id: true, name: true, slug: true, plan: true },
     })
     if (!tenant) return null
-    return { tenantId: tenant.id, role: "owner" }
+    return { 
+      tenantId: tenant.id, 
+      role: "owner",
+      tenant: {
+        id: tenant.id,
+        name: tenant.name,
+        slug: tenant.slug,
+        plan: tenant.plan
+      }
+    }
   }
 
   // Regular users need a membership
@@ -34,9 +49,21 @@ export async function getTenantAccess(
     select: {
       tenantId: true,
       role: true,
+      tenant: {
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          plan: true
+        }
+      }
     },
   })
 
-  if (!membership) return null
-  return { tenantId: membership.tenantId, role: membership.role }
+  if (!membership || !membership.tenant) return null
+  return { 
+    tenantId: membership.tenantId, 
+    role: membership.role,
+    tenant: membership.tenant
+  }
 }

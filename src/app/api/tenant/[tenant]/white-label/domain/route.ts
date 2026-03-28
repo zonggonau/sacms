@@ -63,7 +63,7 @@ export async function GET(
       dnsVerification: tenantRecord.customDomain
         ? {
             type: "TXT",
-            name: `_contentflow-verify.${tenantRecord.customDomain}`,
+            name: `_sacms-verify.${tenantRecord.customDomain}`,
             value: verificationToken,
           }
         : null,
@@ -149,7 +149,7 @@ export async function PUT(
       customDomainStatus: "pending",
       dnsVerification: {
         type: "TXT",
-        name: `_contentflow-verify.${customDomain}`,
+        name: `_sacms-verify.${customDomain}`,
         value: verificationToken,
       },
     })
@@ -210,7 +210,7 @@ export async function POST(
           error: "DNS TXT record not found. Please add the verification record and try again.",
           dnsVerification: {
             type: "TXT",
-            name: `_contentflow-verify.${customDomain}`,
+            name: `_sacms-verify.${customDomain}`,
             value: expectedToken,
           },
         },
@@ -237,20 +237,20 @@ export async function POST(
  * Uses tenantId + a server-side secret so it can't be forged.
  */
 function buildVerificationToken(tenantId: string): string {
-  const secret = process.env.NEXTAUTH_SECRET || "contentflow-domain-verify"
+  const secret = process.env.NEXTAUTH_SECRET || "sacms-domain-verify"
   // Simple deterministic token: no crypto needed for DNS TXT records
-  return `contentflow-verify=${Buffer.from(`${tenantId}:${secret}`)
+  return `sacms-verify=${Buffer.from(`${tenantId}:${secret}`)
     .toString("base64")
     .replace(/[^a-zA-Z0-9]/g, "")
     .slice(0, 32)}`
 }
 
 /**
- * Check if a DNS TXT record exists under `_contentflow-verify.<domain>`.
+ * Check if a DNS TXT record exists under `_sacms-verify.<domain>`.
  */
 async function verifyDnsTxt(domain: string, expectedValue: string): Promise<boolean> {
   try {
-    const records = await resolveTxt(`_contentflow-verify.${domain}`)
+    const records = await resolveTxt(`_sacms-verify.${domain}`)
     // records is string[][] — flatten and check
     return records.flat().some((r) => r === expectedValue)
   } catch {

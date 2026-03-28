@@ -121,7 +121,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantSlug, tenants = [] }: Sid
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <DatabaseIcon className="w-5 h-5 text-white" />
           </div>
-          <span className="text-lg font-bold">ContentFlow</span>
+          <span className="text-lg font-bold">SaCMS</span>
         </Link>
       </div>
 

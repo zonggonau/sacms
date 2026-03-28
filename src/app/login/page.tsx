@@ -113,7 +113,7 @@ export default function LoginPage() {
           </div>
         </div>
         <p className="relative text-xs text-white/50">
-          &copy; {new Date().getFullYear()} ContentFlow. All rights reserved.
+          &copy; {new Date().getFullYear()} SaCMS. All rights reserved.
         </p>
       </div>
 
@@ -125,7 +125,7 @@ export default function LoginPage() {
               <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
                 <Database className="w-5 h-5 text-white" />
               </div>
-              <span className="text-xl font-bold">ContentFlow</span>
+              <span className="text-xl font-bold">SaCMS</span>
             </Link>
           </div>
 

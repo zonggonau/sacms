@@ -340,7 +340,7 @@ export default function TenantSettingsPage() {
                       <Label htmlFor="workspace-slug">Workspace URL</Label>
                       <div className="flex items-center">
                         <span className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0">
-                          contentflow.io/
+                          sacms.io/
                         </span>
                         <Input
                           id="workspace-slug"

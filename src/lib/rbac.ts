@@ -9,7 +9,7 @@ import { authOptions } from "./auth.ts"
  */
 
 /**
- * Standard Permissions in ContentFlow
+ * Standard Permissions in SaCMS
  */
 export const PERMISSIONS = {
   CONTENT_READ: "content.read",

@@ -4,9 +4,9 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("🔄 Memperbaiki format harga di database...")
 
-  const pricingCt = await prisma.contentType.findUnique({ where: { slug: "noken-pricing" } })
+  const pricingCt = await prisma.contentType.findUnique({ where: { slug: "sacms-pricing" } })
   if (!pricingCt) {
-    console.error("❌ Content Type noken-pricing tidak ditemukan.")
+    console.error("❌ Content Type sacms-pricing tidak ditemukan.")
     return
   }
 

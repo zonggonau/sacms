@@ -13,7 +13,7 @@ import { Switch } from "@/components/ui/switch"
 import { 
   Loader2, Settings, Save, Database, Globe, Bell, 
   Shield, Server, Construction, Mail, HardDrive, Cpu, 
-  Info, AlertTriangle, RefreshCw
+  Info, AlertTriangle, RefreshCw, Key, Copy
 } from "lucide-react"
 import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { useToast } from "@/hooks/use-toast"
@@ -35,18 +35,29 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false)
 
   const [settings, setSettings] = useState({
-    siteName: "ContentFlow",
+    siteName: "SaCMS",
     siteUrl: "http://localhost:3000",
     description: "Multi-tenant Content Management System",
-    email: "admin@contentflow.com",
+    email: "admin@sacms.com",
     allowRegistration: "true",
     requireEmailVerification: "true",
     defaultTenantPlan: "free",
     maxTenants: "100",
     maxUsersPerTenant: "10",
     maintenanceMode: "false",
-    maintenanceMessage: "System is currently undergoing maintenance. Please check back soon."
+    maintenanceMessage: "System is currently undergoing maintenance. Please check back soon.",
+    systemApiKey: ""
   })
+
+  const generateApiKey = () => {
+    const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
+    let result = "cf_"
+    for (let i = 0; i < 32; i++) {
+      result += chars.charAt(Math.floor(Math.random() * chars.length))
+    }
+    setSettings({ ...settings, systemApiKey: result })
+    toast({ title: "API Key Generated", description: "Remember to save changes to apply." })
+  }
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -257,6 +268,57 @@ export default function AdminSettingsPage() {
                     <Label className="text-xs">Default Users/Tenant</Label>
                     <Input type="number" value={settings.maxUsersPerTenant} onChange={e => setSettings({...settings, maxUsersPerTenant: e.target.value})} />
                   </div>
+                </CardContent>
+              </Card>
+
+              {/* Global API Access */}
+              <Card className="border-none shadow-sm bg-primary/5">
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Key className="h-4 w-4 text-primary" />
+                    Global API Access
+                  </CardTitle>
+                  <CardDescription className="text-[10px]">Manage the master key for public content API</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="global-api-key" className="text-[10px] font-bold uppercase tracking-tight">System API Key</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input 
+                          id="global-api-key" 
+                          value={settings.systemApiKey} 
+                          readOnly 
+                          placeholder="No key generated"
+                          className="pr-9 font-mono text-xs bg-white h-9" 
+                        />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-primary"
+                          onClick={() => {
+                            if (settings.systemApiKey) {
+                              navigator.clipboard.writeText(settings.systemApiKey)
+                              toast({ title: "Copied", description: "API key copied to clipboard" })
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        className="h-9 w-9 shrink-0 border-primary/20 hover:bg-primary hover:text-primary-foreground"
+                        onClick={generateApiKey}
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+                  <p className="text-[9px] text-muted-foreground italic leading-tight">
+                    This key allows public read access to all system/global content types without tenant restrictions.
+                  </p>
                 </CardContent>
               </Card>
 

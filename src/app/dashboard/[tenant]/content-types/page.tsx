@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { 
   Plus, MoreVertical, Edit, Trash2, FileText, Database, 
   Globe, Lock, Layout, ArrowRight, Loader2, Search,
-  Filter, CheckCircle2, AlertCircle, Sparkles
+  Filter, CheckCircle2, AlertCircle, Sparkles, ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -379,5 +379,3 @@ export default function ContentTypesPage() {
     </div>
   )
 }
-
-import { ShieldCheck } from "lucide-react"

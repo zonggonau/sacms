@@ -333,7 +333,7 @@ export default function GlobalAdminDashboard() {
                 </div>
                 <Separator className="my-4 bg-emerald-200/50" />
                 <p className="text-[10px] text-muted-foreground italic text-center">
-                  ContentFlow v0.2.0 &middot; Running on production-grade infrastructure
+                  SaCMS v0.2.0 &middot; Running on production-grade infrastructure
                 </p>
               </CardContent>
             </Card>
