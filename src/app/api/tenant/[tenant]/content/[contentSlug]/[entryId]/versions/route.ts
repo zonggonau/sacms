@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
+import { getTenantAccess } from "@/lib/tenant-access"
 
 type Params = {
   tenant: string
@@ -16,38 +17,29 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, contentSlug, entryId } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [{ tenantId: tenantId }, { tenantId: null }]
+      }
     })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
 
-    const contentType = await db.contentType.findUnique({ where: { slug: contentSlug } })
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
-    }
-
-    const entry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenant.id },
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenantId },
     })
-    if (!entry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 })
-    }
+    if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
-    const versions = await db.contentVersion.findMany({
+    const versions = await tenantDb.contentVersion.findMany({
       where: { contentEntryId: entryId },
       orderBy: { version: "desc" },
     })
@@ -66,58 +58,45 @@ export async function POST(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, contentSlug, entryId } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [{ tenantId: tenantId }, { tenantId: null }]
+      }
     })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
 
-    const contentType = await db.contentType.findUnique({ where: { slug: contentSlug } })
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
-    }
-
-    const existingEntry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenant.id },
+    const existingEntry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenantId },
     })
-    if (!existingEntry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 })
-    }
+    if (!existingEntry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
     const body = await request.json()
     const { versionId } = body
 
-    if (!versionId) {
-      return NextResponse.json({ error: "versionId is required" }, { status: 400 })
-    }
+    if (!versionId) return NextResponse.json({ error: "versionId is required" }, { status: 400 })
 
-    // Find the version to restore
-    const targetVersion = await db.contentVersion.findFirst({
+    // Find the version to restore in the tenant-specific DB
+    const targetVersion = await tenantDb.contentVersion.findFirst({
       where: { id: versionId, contentEntryId: entryId },
     })
-    if (!targetVersion) {
-      return NextResponse.json({ error: "Version not found" }, { status: 404 })
-    }
+    if (!targetVersion) return NextResponse.json({ error: "Version not found" }, { status: 404 })
 
     // Restore and create a new version record
-    const entry = await db.$transaction(async (tx) => {
+    const entry = await tenantDb.$transaction(async (tx) => {
       const updatedEntry = await tx.contentEntry.update({
         where: { id: entryId },
         data: {
-          data: targetVersion.data,
+          data: targetVersion.data as any,
           publishedAt: existingEntry.publishedAt,
           updatedBy: session.user.id,
         },
@@ -133,7 +112,7 @@ export async function POST(
         data: {
           contentEntryId: entryId,
           version: (latestVersion?.version ?? 0) + 1,
-          data: targetVersion.data,
+          data: targetVersion.data as any,
           publishedAt: existingEntry.publishedAt,
           changeType: "updated",
           changedBy: session.user.id,

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { createSingleTypeSchema } from "@/lib/validations"
@@ -19,35 +19,37 @@ export async function GET(
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const isSuperAdmin = session.user.role === "super_admin"
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
 
-    // Fetch Single Types owned by this tenant OR global templates
+    // Fetch Single Types definitions from Master DB
     const singleTypes = await db.singleType.findMany({
       where: {
         OR: [
-          { tenantId: access.tenantId },
+          { tenantId: tenantId },
           { tenantId: null }
         ]
       },
       include: {
-        fields: { orderBy: { order: 'asc' } },
-        tenants: { where: { tenantId: access.tenantId } }
+        fields: { orderBy: { order: 'asc' } }
       },
       orderBy: { name: 'asc' }
     })
 
-    // Map data from assignment table and deduplicate by slug
+    // Fetch assignments from the tenant-specific database
+    const assignments = await tenantDb.tenantSingleTypeAssignment.findMany({
+      where: { tenantId: tenantId }
+    })
+
+    // Map data and deduplicate by slug
     const singleTypesMap = new Map()
 
     for (const st of singleTypes) {
-      // Find assignment for this specific tenant (stores the content)
-      const assignment = st.tenants[0] || await db.tenantSingleTypeAssignment.findFirst({
-        where: { tenantId: access.tenantId, singleTypeId: st.id }
-      })
+      const assignment = assignments.find(a => a.singleTypeId === st.id)
 
       let parsedData = {}
       if (assignment?.data) {
@@ -63,7 +65,7 @@ export async function GET(
         isGlobal: st.tenantId === null,
       }
 
-      // If we don't have this slug yet, or the new one is tenant-specific (overriding global null)
+      // Overriding global with tenant-specific if slug matches
       if (!singleTypesMap.has(st.slug) || st.tenantId !== null) {
         singleTypesMap.set(st.slug, mappedSt)
       }
@@ -88,31 +90,34 @@ export async function POST(
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     if (access.role !== "admin" && access.role !== "owner") {
       return NextResponse.json({ error: "Unauthorized role" }, { status: 403 })
     }
 
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+
     const result = await validateBody(request, createSingleTypeSchema)
     if ("error" in result) return result.error
     const { name, slug, description, fields } = result.data
 
-    // Check uniqueness within tenant scope
-    const existing = await db.singleType.findFirst({
-      where: { tenantId: access.tenantId, slug }
+    // Check uniqueness within tenant scope in tenant database
+    const existing = await tenantDb.singleType.findFirst({
+      where: { tenantId: tenantId, slug }
     })
 
     if (existing) {
       return NextResponse.json({ error: "Slug already exists in this workspace" }, { status: 400 })
     }
 
-    // Create tenant-owned single type
-    const singleType = await db.singleType.create({
+    // Create tenant-owned single type in the tenant database
+    const singleType = await tenantDb.singleType.create({
       data: {
-        tenantId: access.tenantId,
+        tenantId: tenantId,
         name,
         slug,
         description,
@@ -132,7 +137,7 @@ export async function POST(
         },
         tenants: {
           create: {
-            tenantId: access.tenantId,
+            tenantId: tenantId,
             enabled: true,
           }
         }
@@ -157,73 +162,57 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const { tenant } = await params
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+
     const result = await validateBody(request, saveSingleTypeDataSchema)
     if ("error" in result) return result.error
     const { singleTypeId, data, publish } = result.data
 
-    if (!singleTypeId) {
-      return NextResponse.json({ error: "singleTypeId is required" }, { status: 400 })
-    }
+    if (!singleTypeId) return NextResponse.json({ error: "singleTypeId is required" }, { status: 400 })
 
-    const access = await getTenantAccess(session, tenant)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
-    // Find or create assignment for this tenant
-    const existingAssignment = await db.tenantSingleTypeAssignment.findFirst({
-      where: {
-        tenantId: access.tenantId,
-        singleTypeId,
-      },
-      include: {
-        singleType: true,
-      },
+    // Find or create assignment in the tenant-specific database
+    const existingAssignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
+      where: { tenantId: tenantId, singleTypeId },
+      include: { singleType: true },
     })
 
     let assignment
     if (!existingAssignment) {
-      // Create assignment if it doesn't exist
-      assignment = await db.tenantSingleTypeAssignment.create({
+      assignment = await tenantDb.tenantSingleTypeAssignment.create({
         data: {
-          tenantId: access.tenantId,
+          tenantId: tenantId,
           singleTypeId,
           enabled: true,
           data: data ? JSON.stringify(data) : null,
           publishedAt: publish ? new Date() : null,
         },
-        include: {
-          singleType: true,
-        },
+        include: { singleType: true },
       })
     } else {
-      // Update existing assignment
-      assignment = await db.tenantSingleTypeAssignment.update({
+      assignment = await tenantDb.tenantSingleTypeAssignment.update({
         where: { id: existingAssignment.id },
         data: {
           data: data ? JSON.stringify(data) : undefined,
           publishedAt: publish ? new Date() : undefined,
         },
-        include: {
-          singleType: true,
-        },
+        include: { singleType: true },
       })
     }
 
     return NextResponse.json({
       ...assignment.singleType,
-      data: assignment.data ? JSON.parse(assignment.data) : null,
+      data: assignment.data ? JSON.parse(assignment.data as string) : null,
       publishedAt: assignment.publishedAt,
     })
   } catch (error) {
     console.error("Error updating tenant single type:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

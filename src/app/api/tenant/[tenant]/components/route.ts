@@ -26,10 +26,28 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get all components with their tenant assignments
+    // Get all components available to this tenant:
+    // 1. Global components (tenantId is null)
+    // 2. Components owned by this tenant (tenantId matches)
+    // 3. Components explicitly assigned to this tenant via TenantComponentAssignment
     const components = await db.component.findMany({
+      where: {
+        OR: [
+          { tenantId: null },
+          { tenantId: access.tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: access.tenantId
+              }
+            }
+          }
+        ]
+      },
       include: {
-        fields: true,
+        fields: {
+          orderBy: { order: 'asc' }
+        },
         tenants: true,
       },
       orderBy: {
@@ -37,25 +55,10 @@ export async function GET(
       },
     })
 
-    // Filter: Only show global components (0 tenant assignments) or tenant-specific ones (1 assignment = this tenant)
-    const availableComponents = components.filter(c => {
-      const tenantAssignments = c.tenants
-      if (tenantAssignments.length === 0) {
-        // Global component - available to all tenants
-        return true
-      }
-      if (tenantAssignments.length === 1 && tenantAssignments[0].tenantId === access.tenantId) {
-        // Tenant-specific component created by this tenant
-        return true
-      }
-      // Component assigned to other tenant(s) - not available
-      return false
-    })
-
     // Add isGlobal flag to each component
-    const componentsWithFlag = availableComponents.map(component => ({
+    const componentsWithFlag = components.map(component => ({
       ...component,
-      isGlobal: component.tenants.length === 0,
+      isGlobal: component.tenantId === null && component.tenants.length === 0,
     }))
 
     return NextResponse.json(componentsWithFlag)
@@ -114,6 +117,7 @@ export async function POST(
     // Create tenant-specific component and assign it to tenant
     const component = await db.component.create({
       data: {
+        tenantId: access.tenantId, // Set direct ownership
         name,
         slug,
         description,

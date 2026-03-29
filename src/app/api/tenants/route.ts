@@ -12,6 +12,8 @@ const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
   description: z.string().max(500).optional(),
   plan: z.string().optional(),
+  aiPrompt: z.string().max(2000).optional(),
+  websiteType: z.string().optional(),
 })
 
 async function generateUniqueSlug(): Promise<string> {
@@ -79,7 +81,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
-    const { name, description, plan = "free" } = result.data
+    const { name, description, plan = "free", aiPrompt, websiteType } = result.data
 
     const slug = await generateUniqueSlug()
 
@@ -121,7 +123,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Provision default content types and demo data
-    await provisionTenant(tenant.id)
+    await provisionTenant(tenant.id, aiPrompt, websiteType)
 
     await logAudit({
       tenantId: tenant.id,

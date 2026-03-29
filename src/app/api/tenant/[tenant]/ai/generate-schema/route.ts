@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { GoogleGenerativeAI } from "@google/generative-ai"
-
-const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || ""
-const genAI = new GoogleGenerativeAI(apiKey)
+import { safeGenerateContent } from "@/lib/ai"
 
 export async function POST(
   request: NextRequest,
@@ -16,8 +13,8 @@ export async function POST(
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
@@ -25,12 +22,8 @@ export async function POST(
     const { prompt } = await request.json()
     if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI service not configured (GEMINI_API_KEY or AI_API_KEY missing)" }, { status: 500 })
-    }
-
     const systemPrompt = `
-      You are a SaCMS Schema Architect. Your job is to take a user description and turn it into a valid JSON schema for a Headless CMS.
+      You are a SaCMS Schema Architect. Your job is to take a user description and turn it into a valid JSON schema for a Headless CMS Content Type.
       
       The output MUST be a JSON object with:
       - name: A human-readable name (e.g., "Blog Post")
@@ -39,73 +32,50 @@ export async function POST(
       - fields: An array of field objects, each with:
         - name: Field display name (e.g., "Main Image")
         - slug: Field slug (e.g., "main_image")
-        - type: One of: "text", "textarea", "richText", "number", "boolean", "date", "media", "select"
+        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select", "uid", "relation"
         - required: boolean
         - unique: boolean (usually false unless it's a slug or ID)
-        - options: null, or a comma-separated string for "select" type (e.g., "Draft, Published, Archived")
+        - options: null, or a JSON string for options
 
       User Request: "${prompt}"
 
       Respond ONLY with the JSON object. No markdown, no explanation.
     `
 
-    // Use model names confirmed available in your account
-    const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest", "gemini-2.0-flash-lite"]
-    let lastError: any = null
-    let responseText = ""
-    let wasQuotaExceeded = false
+    // Use the robust AI utility with model fallback and quota handling
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS schema for: ${prompt}`, {
+      responseMimeType: "application/json"
+    })
 
-    for (const modelName of modelsToTry) {
-      try {
-        console.log(`AI Attempting with model: ${modelName}`)
-        const model = genAI.getGenerativeModel({ model: modelName })
-        const result = await model.generateContent(systemPrompt)
-        responseText = result.response.text()
-        if (responseText) break 
-      } catch (error: any) {
-        lastError = error
-        console.warn(`Model ${modelName} failed:`, error.message)
-        
-        if (error.status === 429) {
-          wasQuotaExceeded = true
-          // Quota is usually per-key, so trying other models might not help, 
-          // but we continue just in case some models have separate quotas.
-          continue
-        }
-        if (error.status === 404) continue 
-        throw error 
-      }
-    }
-
-    if (!responseText) {
-      const isQuota = wasQuotaExceeded || lastError?.status === 429 || lastError?.message?.includes("429")
-      return NextResponse.json({ 
-        error: isQuota 
-          ? "AI Quota exceeded. Google restricts free tier usage. Please wait 1 minute and try again." 
-          : `AI service error: ${lastError?.message || "Unknown error"}`
-      }, { status: isQuota ? 429 : (lastError?.status || 500) })
-    }
-
-    console.log("AI Response:", responseText)
+    console.log(`[AI Schema] Generated using model: ${aiResult.model}`)
     
     let schema
     try {
-      const cleaned = responseText.replace(/```json|```/g, "").trim()
-      schema = JSON.parse(cleaned)
+      schema = JSON.parse(aiResult.text)
     } catch (e) {
-      console.error("AI returned invalid JSON:", responseText)
+      console.error("AI returned invalid JSON:", aiResult.text)
       return NextResponse.json({ error: "AI returned invalid schema format. Please try again." }, { status: 500 })
     }
 
-    const existing = await db.contentType.findUnique({
-      where: { slug: schema.slug }
+    // Resolve the correct DB client (Shared or Isolated)
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    // Check for existing slug within this tenant's scope
+    const existing = await tenantDb.contentType.findUnique({
+      where: { 
+        tenantId_slug: {
+          tenantId: access.tenantId,
+          slug: schema.slug
+        }
+      }
     })
 
     if (existing) {
       schema.slug = `${schema.slug}-${Math.random().toString(36).slice(2, 7)}`
     }
 
-    const contentType = await db.contentType.create({
+    // Create the content type in the correct database
+    const contentType = await tenantDb.contentType.create({
       data: {
         tenantId: access.tenantId,
         name: schema.name,
@@ -116,7 +86,7 @@ export async function POST(
           create: schema.fields.map((f: any, index: number) => ({
             name: f.name,
             slug: f.slug,
-            type: f.type,
+            type: f.type === 'number' ? 'integer' : f.type, // Map 'number' to 'integer'
             required: !!f.required,
             unique: !!f.unique,
             options: f.options ? (typeof f.options === 'string' ? f.options : JSON.stringify(f.options)) : null,

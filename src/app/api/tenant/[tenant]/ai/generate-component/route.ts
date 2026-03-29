@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { GoogleGenerativeAI } from "@google/generative-ai"
-
-const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || ""
-const genAI = new GoogleGenerativeAI(apiKey)
+import { safeGenerateContent } from "@/lib/ai"
 
 export async function POST(
   request: NextRequest,
@@ -16,18 +13,14 @@ export async function POST(
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
     const { prompt } = await request.json()
     if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
-
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
-    }
 
     const systemPrompt = `
       You are a SaCMS Component Architect. Your job is to take a user description and turn it into a valid JSON component definition.
@@ -41,71 +34,61 @@ export async function POST(
       - fields: An array of field objects, each with:
         - name: Field display name (e.g., "Meta Description")
         - slug: Field slug (e.g., "meta_description")
-        - type: One of: "text", "textarea", "richText", "number", "boolean", "date", "media", "select"
+        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select"
         - required: boolean
-        - options: null, or a comma-separated string for "select" type
+        - unique: boolean (usually false)
+        - options: null, or a JSON string for options
 
       User Request: "${prompt}"
 
       Respond ONLY with the JSON object. No markdown, no explanation.
     `
 
-    // Try multiple models
-    const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"]
-    let lastError: any = null
-    let responseText = ""
+    // Use robust model rotation and error handling
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS component for: ${prompt}`, {
+      responseMimeType: "application/json"
+    })
 
-    for (const modelName of modelsToTry) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName })
-        const result = await model.generateContent(systemPrompt)
-        responseText = result.response.text()
-        if (responseText) break
-      } catch (error: any) {
-        lastError = error
-        if (error.status === 429 || error.status === 404) continue
-        throw error
-      }
-    }
-
-    if (!responseText) {
-      const isQuota = lastError?.status === 429 || lastError?.message?.includes("429")
-      return NextResponse.json({ 
-        error: isQuota 
-          ? "AI Quota exceeded. Please wait 1 minute and try again." 
-          : "AI service unavailable." 
-      }, { status: isQuota ? 429 : 500 })
-    }
+    console.log(`[AI Component] Generated using model: ${aiResult.model}`)
 
     let schema
     try {
-      const cleaned = responseText.replace(/```json|```/g, "").trim()
-      schema = JSON.parse(cleaned)
+      schema = JSON.parse(aiResult.text)
     } catch (e) {
-      return NextResponse.json({ error: "AI returned invalid format. Please try again." }, { status: 500 })
+      console.error("AI returned invalid JSON:", aiResult.text)
+      return NextResponse.json({ error: "AI returned invalid component format. Please try again." }, { status: 500 })
     }
 
-    // 1. Check if slug already exists
-    const existing = await db.component.findUnique({
-      where: { slug: schema.slug }
+    // Resolve the correct DB client (Shared or Isolated)
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    // Check for existing slug within this tenant's scope (Fixed unique constraint)
+    const existing = await tenantDb.component.findUnique({
+      where: { 
+        tenantId_slug: {
+          tenantId: access.tenantId,
+          slug: schema.slug
+        }
+      }
     })
 
     if (existing) {
       schema.slug = `${schema.slug}-${Math.random().toString(36).slice(2, 7)}`
     }
 
-    // 2. Create the Component
-    const component = await db.component.create({
+    // Create the Component in the correct database
+    const component = await tenantDb.component.create({
       data: {
+        tenantId: access.tenantId,
         name: schema.name,
         slug: schema.slug,
         description: schema.description,
-        category: schema.category,
+        category: schema.category || "General",
         fields: {
           create: schema.fields.map((f: any, index: number) => ({
             name: f.name,
             slug: f.slug,
-            type: f.type,
+            type: f.type === 'number' ? 'integer' : f.type,
             required: !!f.required,
             options: f.options ? (typeof f.options === 'string' ? f.options : JSON.stringify(f.options)) : null,
             order: index,
@@ -122,6 +105,13 @@ export async function POST(
     return NextResponse.json(component)
   } catch (error: any) {
     console.error("AI Component Generation Error:", error)
+    
+    if (error.status === 429 || error.message?.includes("429") || error.message?.includes("quota")) {
+      return NextResponse.json({ 
+        error: "AI Quota exceeded. Please wait a few seconds and try again." 
+      }, { status: 429 })
+    }
+
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }

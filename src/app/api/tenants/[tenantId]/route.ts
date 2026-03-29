@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { deleteTenantStorage } from "@/lib/r2"
+import { dropEnterpriseDb } from "@/lib/enterprise-db"
 
 export async function DELETE(
   request: NextRequest,
@@ -30,21 +31,30 @@ export async function DELETE(
     }
 
     const tenant = member?.tenant || await db.tenant.findUnique({ where: { id: tenantId } })
-    const tenantName = tenant?.name || "Unknown"
-    const tenantSlug = tenant?.slug || ""
+    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+
+    const tenantName = tenant.name
+    const tenantSlug = tenant.slug
+    const databaseUrl = tenant.databaseUrl
 
     // 1. Delete physical assets from storage (R2 or Local)
     if (tenantSlug) {
       await deleteTenantStorage(tenantSlug)
     }
 
-    // 2. Delete tenant from database (Cascade will handle members, entries, etc.)
+    // 2. Drop dedicated database if exists (Hybrid Multitenancy)
+    if (databaseUrl) {
+      console.log(`[Tenant Deletion] Dropping dedicated DB for ${tenantSlug}`)
+      await dropEnterpriseDb(databaseUrl)
+    }
+
+    // 3. Delete tenant from master database (Cascade will handle members, entries, etc.)
     await db.tenant.delete({
       where: { id: tenantId }
     })
 
     // Log Audit
-    await logAudit({
+    logAudit({
       userId: session.user.id,
       action: AuditAction.TENANT_DELETED,
       entity: "Tenant",

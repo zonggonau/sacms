@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
+import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateBody } from "@/lib/validate"
 import { updateContentEntrySchema } from "@/lib/validations"
@@ -20,37 +21,32 @@ export async function GET(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, contentSlug, entryId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [
+          { tenantId: tenantId },
+          { tenantId: null }
+        ]
+      }
     })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
 
-    const contentType = await db.contentType.findUnique({ where: { slug: contentSlug } })
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
-    }
-
-    const entry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenant.id },
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenantId },
     })
 
-    if (!entry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 })
-    }
+    if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
     return NextResponse.json({ entry })
   } catch (error) {
@@ -66,47 +62,41 @@ export async function PUT(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, contentSlug, entryId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [
+          { tenantId: tenantId },
+          { tenantId: null }
+        ]
+      }
     })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
 
-    const contentType = await db.contentType.findUnique({ where: { slug: contentSlug } })
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
-    }
-
-    const existingEntry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenant.id },
+    const existingEntry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenantId },
     })
-    if (!existingEntry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 })
-    }
+    if (!existingEntry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
     const result = await validateBody(request, updateContentEntrySchema)
     if ("error" in result) return result.error
     const { data, publish } = result.data
 
-    // Determine change type
     let changeType = "updated"
     if (publish === true && !existingEntry.publishedAt) changeType = "published"
     else if (publish === false && existingEntry.publishedAt) changeType = "unpublished"
 
-    const entry = await db.$transaction(async (tx) => {
+    const entry = await tenantDb.$transaction(async (tx) => {
       const updatedEntry = await tx.contentEntry.update({
         where: { id: entryId },
         data: {
@@ -116,14 +106,12 @@ export async function PUT(
         },
       })
 
-      // Get latest version number
       const latestVersion = await tx.contentVersion.findFirst({
         where: { contentEntryId: entryId },
         orderBy: { version: "desc" },
         select: { version: true },
       })
 
-      // Save new version
       await tx.contentVersion.create({
         data: {
           contentEntryId: entryId,
@@ -138,15 +126,12 @@ export async function PUT(
       return updatedEntry
     })
 
-    // Invalidate Public API Cache for this content type
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentSlug}:*`)
-    
-    // Clear Next.js cache for homepage
     revalidatePath("/")
 
     logAudit({
-      tenantId: tenant.id,
+      tenantId: tenantId,
       userId: session.user.id,
       action: changeType === "published" ? AuditAction.CONTENT_PUBLISHED
         : changeType === "unpublished" ? AuditAction.CONTENT_UNPUBLISHED
@@ -170,48 +155,40 @@ export async function DELETE(
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, contentSlug, entryId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [
+          { tenantId: tenantId },
+          { tenantId: null }
+        ]
+      }
     })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
 
-    const contentType = await db.contentType.findUnique({ where: { slug: contentSlug } })
-    if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
-    }
-
-    const entry = await db.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenant.id },
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId: tenantId },
     })
-    if (!entry) {
-      return NextResponse.json({ error: "Entry not found" }, { status: 404 })
-    }
+    if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
-    await db.contentEntry.delete({ where: { id: entryId } })
+    await tenantDb.contentEntry.delete({ where: { id: entryId } })
 
-    // Invalidate Public API Cache for this content type
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentSlug}:*`)
-    
-    // Clear Next.js cache for homepage
     revalidatePath("/")
 
     logAudit({
-      tenantId: tenant.id,
+      tenantId: tenantId,
       userId: session.user.id,
       action: AuditAction.CONTENT_DELETED,
       entity: "ContentEntry",

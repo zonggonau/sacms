@@ -121,7 +121,12 @@ export async function POST(
 
     // Check if slug is already taken (in this tenant's DB)
     const existingContentType = await tenantDb.contentType.findUnique({
-      where: { slug },
+      where: { 
+        tenantId_slug: {
+          tenantId: access.tenantId,
+          slug: slug
+        }
+      },
     })
 
     if (existingContentType) {

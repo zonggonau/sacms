@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 
 /**
  * GET /api/admin/entries/[id]
@@ -20,7 +20,16 @@ export async function GET(
 
     const { id } = await params
 
-    const entry = await db.contentEntry.findUnique({
+    // 1. Resolve tenant DB
+    const masterEntry = await db.contentEntry.findUnique({
+      where: { id },
+      select: { tenantId: true }
+    })
+    if (!masterEntry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
+    
+    const tenantDb = await getTenantDbById(masterEntry.tenantId)
+
+    const entry = await tenantDb.contentEntry.findUnique({
       where: { id },
       include: {
         contentType: {
@@ -73,8 +82,17 @@ export async function PATCH(
     const body = await request.json()
     const { data, status: entryStatus, locale, publish } = body
 
-    // Check if entry exists
-    const existingEntry = await db.contentEntry.findUnique({
+    // 1. Resolve tenant DB
+    const masterEntry = await db.contentEntry.findUnique({
+      where: { id },
+      select: { tenantId: true }
+    })
+    if (!masterEntry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
+    
+    const tenantDb = await getTenantDbById(masterEntry.tenantId)
+
+    // Check if entry exists in the correct DB
+    const existingEntry = await tenantDb.contentEntry.findUnique({
       where: { id },
     })
 
@@ -93,7 +111,7 @@ export async function PATCH(
       publishedAt = null
     }
 
-    const updatedEntry = await db.contentEntry.update({
+    const updatedEntry = await tenantDb.contentEntry.update({
       where: { id },
       data: {
         ...(data && { data: typeof data === 'string' ? data : JSON.stringify(data) }),
@@ -131,7 +149,16 @@ export async function DELETE(
 
     const { id } = await params
 
-    await db.contentEntry.delete({
+    // 1. Resolve tenant DB
+    const masterEntry = await db.contentEntry.findUnique({
+      where: { id },
+      select: { tenantId: true }
+    })
+    if (!masterEntry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
+    
+    const tenantDb = await getTenantDbById(masterEntry.tenantId)
+
+    await tenantDb.contentEntry.delete({
       where: { id },
     })
 

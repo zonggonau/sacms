@@ -1,16 +1,78 @@
-import OpenAI from "openai"
+import { GoogleGenerativeAI, GenerationConfig } from "@google/generative-ai"
+
+// Model rotation list - prioritized by confirmed working aliases in your logs
+const MODELS_TO_TRY = [
+  "gemini-2.0-flash",      // Confirmed exists (Quota 429)
+  "gemini-flash-latest",   // Confirmed exists (Worked, then 503)
+  "gemini-1.5-flash",      // Fallback
+  "gemini-1.5-flash-002",  // Stable version
+  "gemini-1.5-pro",        // Pro version fallback
+  "gemini-pro-latest"      // Pro alias
+]
 
 // Lazy client — only instantiated when API key is available
-let _client: OpenAI | null = null
+let _genAI: GoogleGenerativeAI | null = null
 
-function getClient(): OpenAI {
-  if (!_client) {
-    if (!process.env.OPENAI_API_KEY) {
-      throw new Error("OPENAI_API_KEY is not configured")
+function getGenAI(): GoogleGenerativeAI {
+  if (!_genAI) {
+    const apiKey = process.env.GEMINI_API_KEY || "AIzaSyBV_5fCTAjQnkaDtZyJvG4U3IgLHXHBuLo"
+    if (!apiKey) {
+      throw new Error("GEMINI_API_KEY is not configured")
     }
-    _client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY })
+    _genAI = new GoogleGenerativeAI(apiKey)
   }
-  return _client
+  return _genAI
+}
+
+/**
+ * Executes a generative AI request with automatic model fallback and basic retry logic.
+ */
+export async function safeGenerateContent(
+  systemPrompt: string,
+  userPrompt: string,
+  config: GenerationConfig = {}
+): Promise<{ text: string; model: string; usage: any }> {
+  let lastError: any = null
+  
+  for (const modelName of MODELS_TO_TRY) {
+    try {
+      console.log(`[AI] Attempting with model: ${modelName}`)
+      
+      const genAI = getGenAI()
+      const model = genAI.getGenerativeModel({ 
+        model: modelName, 
+        generationConfig: config,
+        systemInstruction: systemPrompt || undefined 
+      })
+      
+      const result = await model.generateContent(userPrompt)
+      const response = await result.response
+      const text = response.text()
+      
+      if (text) {
+        return { 
+          text, 
+          model: modelName,
+          usage: {
+            promptTokens: response.usageMetadata?.promptTokenCount ?? 0,
+            completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+            totalTokens: response.usageMetadata?.totalTokenCount ?? 0,
+          }
+        }
+      }
+    } catch (error: any) {
+      lastError = error
+      console.warn(`[AI] Model ${modelName} failed:`, error.message)
+      
+      if ([404, 429, 503].includes(error.status) || error.message?.includes("429") || error.message?.includes("503") || error.message?.includes("404")) {
+        continue
+      }
+      
+      continue
+    }
+  }
+
+  throw lastError || new Error("All AI models failed to respond")
 }
 
 export interface GenerateContentParams {
@@ -20,6 +82,12 @@ export interface GenerateContentParams {
   locale?: string
   maxTokens?: number
   tone?: "formal" | "casual" | "professional" | "creative" | "technical"
+}
+
+export interface AISchema {
+  contentTypes: any[]
+  singleTypes: any[]
+  components: any[]
 }
 
 export interface GenerateContentResult {
@@ -32,41 +100,19 @@ export interface GenerateContentResult {
 }
 
 /**
- * Generate content using OpenAI
+ * Generate content using Google Gemini with fallback
  */
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
-  const {
-    prompt,
-    contentType,
-    fieldName,
-    locale = "en",
-    maxTokens = 1024,
-    tone = "professional",
-  } = params
-
+  const { prompt, contentType, fieldName, locale = "en", tone = "professional" } = params
   const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone })
-
-  const response = await getClient().chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages: [
-      { role: "system", content: systemPrompt },
-      { role: "user", content: prompt },
-    ],
-    max_tokens: maxTokens,
-    temperature: 0.7,
-  })
-
-  const content = response.choices[0]?.message?.content || ""
-
+  
+  const result = await safeGenerateContent(systemPrompt, prompt)
+  
   return {
-    content,
-    usage: {
-      promptTokens: response.usage?.prompt_tokens ?? 0,
-      completionTokens: response.usage?.completion_tokens ?? 0,
-      totalTokens: response.usage?.total_tokens ?? 0,
-    },
+    content: result.text,
+    usage: result.usage
   }
 }
 
@@ -83,29 +129,13 @@ export async function summarizeContent(
   params: SummarizeParams
 ): Promise<GenerateContentResult> {
   const { text, maxLength = 200, locale = "en" } = params
-
-  const response = await getClient().chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`,
-      },
-      { role: "user", content: text },
-    ],
-    max_tokens: 256,
-    temperature: 0.3,
-  })
-
-  const content = response.choices[0]?.message?.content || ""
-
+  const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`
+  
+  const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`)
+  
   return {
-    content,
-    usage: {
-      promptTokens: response.usage?.prompt_tokens ?? 0,
-      completionTokens: response.usage?.completion_tokens ?? 0,
-      totalTokens: response.usage?.total_tokens ?? 0,
-    },
+    content: result.text,
+    usage: result.usage
   }
 }
 
@@ -122,29 +152,13 @@ export async function translateContent(
   params: TranslateParams
 ): Promise<GenerateContentResult> {
   const { text, targetLocale, sourceLocale = "auto" } = params
-
-  const response = await getClient().chat.completions.create({
-    model: process.env.OPENAI_MODEL || "gpt-4o-mini",
-    messages: [
-      {
-        role: "system",
-        content: `You are a professional translator. Translate the given text${sourceLocale !== "auto" ? ` from ${sourceLocale}` : ""} to ${targetLocale}. Preserve formatting (Markdown, HTML). Return only the translation, no extra commentary.`,
-      },
-      { role: "user", content: text },
-    ],
-    max_tokens: 2048,
-    temperature: 0.3,
-  })
-
-  const content = response.choices[0]?.message?.content || ""
-
+  const prompt = `You are a professional translator. Translate the given text${sourceLocale !== "auto" ? ` from ${sourceLocale}` : ""} to ${targetLocale}. Preserve formatting (Markdown, HTML). Return only the translation, no extra commentary.`
+  
+  const result = await safeGenerateContent("", `${prompt}\n\nText to translate:\n${text}`)
+  
   return {
-    content,
-    usage: {
-      promptTokens: response.usage?.prompt_tokens ?? 0,
-      completionTokens: response.usage?.completion_tokens ?? 0,
-      totalTokens: response.usage?.total_tokens ?? 0,
-    },
+    content: result.text,
+    usage: result.usage
   }
 }
 

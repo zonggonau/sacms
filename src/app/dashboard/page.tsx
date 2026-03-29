@@ -75,8 +75,18 @@ export default function WorkspaceSelectionPage() {
   const [newTenant, setNewMember] = useState({
     name: "",
     description: "",
-    plan: "free"
+    plan: "free",
+    aiPrompt: "",
+    websiteType: "blog"
   })
+
+  const websiteTypes = [
+    { id: "blog", name: "Blog / News", icon: LayoutDashboard, desc: "Standard posts, categories, and authors" },
+    { id: "ecommerce", name: "E-commerce", icon: Search, desc: "Products, categories, and simple orders" },
+    { id: "portfolio", name: "Portfolio", icon: Settings, desc: "Projects, services, and testimonials" },
+    { id: "corporate", name: "Corporate", icon: Building2, desc: "Services, team, and company info" },
+    { id: "custom", name: "AI Custom", icon: Zap, desc: "Let AI design your specific needs" },
+  ]
 
   const plans = [
     { 
@@ -246,6 +256,52 @@ export default function WorkspaceSelectionPage() {
                     className="h-12 bg-muted/30 border-none text-lg rounded-xl focus-visible:ring-primary shadow-inner"
                   />
                 </div>
+
+                <div className="space-y-4">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Website Type</Label>
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+                    {websiteTypes.map((type) => (
+                      <div 
+                        key={type.id}
+                        onClick={() => setNewMember({...newTenant, websiteType: type.id})}
+                        className={cn(
+                          "cursor-pointer p-3 rounded-2xl border-2 transition-all flex flex-col items-center text-center gap-2",
+                          newTenant.websiteType === type.id 
+                            ? "border-primary bg-primary/5 shadow-md" 
+                            : "border-muted hover:border-muted-foreground/30 bg-card"
+                        )}
+                      >
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl flex items-center justify-center transition-all",
+                          newTenant.websiteType === type.id ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+                        )}>
+                          <type.icon className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-0.5">
+                          <p className="text-[10px] font-black uppercase tracking-tight">{type.name}</p>
+                          <p className="text-[8px] text-muted-foreground leading-tight hidden md:block">{type.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {newTenant.websiteType === 'custom' && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1 flex items-center gap-2">
+                      <Zap className="h-3 w-3 text-primary fill-primary" />
+                      AI Workspace Generator
+                    </Label>
+                    <textarea 
+                      placeholder="Describe your website (e.g. 'A travel agency with destination guides, booking forms, and a team page'). The AI will generate professional content types for you." 
+                      value={newTenant.aiPrompt}
+                      onChange={e => setNewMember({...newTenant, aiPrompt: e.target.value})}
+                      className="w-full min-h-[100px] p-4 bg-primary/5 border-none text-sm rounded-xl focus:ring-2 focus:ring-primary outline-none transition-all placeholder:text-muted-foreground/50 italic"
+                      required={newTenant.websiteType === 'custom'}
+                    />
+                    <p className="text-[10px] text-muted-foreground px-1 italic">Our AI Skill Agent will design professional schemas, relations, and components based on your description.</p>
+                  </div>
+                )}
 
                 <div className="space-y-4">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Select a Subscription Plan</Label>

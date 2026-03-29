@@ -54,3 +54,34 @@ export async function provisionEnterpriseDb(tenantSlug: string) {
     throw error
   }
 }
+
+/**
+ * Drop a dedicated tenant database
+ */
+export async function dropEnterpriseDb(databaseUrl: string) {
+  try {
+    // Extract database name from URL
+    const dbName = databaseUrl.split("/").pop()?.split("?")[0]
+    if (!dbName) throw new Error("Could not extract database name from URL")
+
+    console.log(`[Enterprise] Dropping database: ${dbName}...`)
+
+    // 1. Force disconnect all users from the target database
+    // This is necessary because DROP DATABASE fails if there are active connections
+    await db.$executeRawUnsafe(`
+      SELECT pg_terminate_backend(pg_stat_activity.pid)
+      FROM pg_stat_activity
+      WHERE pg_stat_activity.datname = '${dbName}'
+        AND pid <> pg_backend_pid();
+    `)
+
+    // 2. Drop the database
+    await db.$executeRawUnsafe(`DROP DATABASE IF EXISTS "${dbName}"`)
+    
+    console.log(`  ✅ Database ${dbName} dropped.`)
+    return true
+  } catch (error) {
+    console.error(`[Enterprise Deletion Error]`, error)
+    return false
+  }
+}

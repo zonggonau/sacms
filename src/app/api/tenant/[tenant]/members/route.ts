@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions, hashPassword } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
+import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 
@@ -22,17 +23,15 @@ export async function GET(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
-    })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
 
-    const members = await db.tenantMember.findMany({
-      where: { tenantId: tenant.id },
+    // Fetch members from the tenant-specific database
+    const members = await tenantDb.tenantMember.findMany({
+      where: { tenantId: tenantId },
       include: {
         user: {
           select: { id: true, name: true, email: true, image: true, role: true },
@@ -43,6 +42,7 @@ export async function GET(
 
     return NextResponse.json({ members })
   } catch (error) {
+    console.error("Error fetching members:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -57,49 +57,72 @@ export async function POST(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
-    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const requester = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id, role: { in: ["owner", "admin"] } },
-    })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!requester && !isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (access.role !== "admin" && access.role !== "owner") {
+      return NextResponse.json({ error: "Only admins and owners can add members" }, { status: 403 })
+    }
+
+    const tenantId = access.tenantId
+    const tenantDb = await getTenantDb(tenantSlug)
 
     const result = await validateBody(request, createMemberSchema)
     if ("error" in result) return result.error
     const { email, role, name, password } = result.data
 
-    // 1. Find or Create User
+    // 1. Find or Create User in Master DB
     let user = await db.user.findUnique({ where: { email } })
     
     if (!user) {
       if (!password) {
-        return NextResponse.json({ error: "User not found. Provide a password to create a new user account." }, { status: 400 })
+        return NextResponse.json({ error: "User not found. Provide a password to create a new account." }, { status: 400 })
       }
-      // Create a new platform user
       const hashedPassword = await hashPassword(password)
       user = await db.user.create({
         data: {
           email,
           name: name || email.split('@')[0],
           password: hashedPassword,
-          role: "user", // Default platform role
+          role: "user",
         }
       })
     }
 
-    // 2. Check if already a member
+    // 2. Sync User to dedicated DB (if isolated)
+    if (tenantDb !== db) {
+      console.log(`[Members] Syncing user ${email} to dedicated DB`)
+      await tenantDb.user.upsert({
+        where: { id: user.id },
+        update: {
+          email: user.email,
+          name: user.name,
+          password: user.password,
+          role: user.role,
+          image: user.image
+        },
+        create: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          password: user.password,
+          role: user.role,
+          image: user.image
+        }
+      })
+    }
+
+    // 3. Check if already a member in Master DB
     const existingMember = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: user.id },
+      where: { tenantId: tenantId, userId: user.id },
     })
 
     if (existingMember) return NextResponse.json({ error: "User is already a member" }, { status: 400 })
 
-    // 3. Link to tenant
+    // 4. Create membership in Master DB
     const member = await db.tenantMember.create({
       data: {
-        tenantId: tenant.id,
+        tenantId: tenantId,
         userId: user.id,
         role: role,
       },
@@ -107,6 +130,25 @@ export async function POST(
         user: { select: { id: true, name: true, email: true, image: true } },
       },
     })
+
+    // 5. Sync Membership to dedicated DB (if isolated)
+    if (tenantDb !== db) {
+      await tenantDb.tenantMember.upsert({
+        where: {
+          tenantId_userId: {
+            tenantId: tenantId,
+            userId: user.id
+          }
+        },
+        update: { role: role },
+        create: {
+          id: member.id,
+          tenantId: tenantId,
+          userId: user.id,
+          role: role
+        }
+      })
+    }
 
     return NextResponse.json({ member })
   } catch (error) {

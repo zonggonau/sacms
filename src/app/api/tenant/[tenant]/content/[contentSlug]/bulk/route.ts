@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 
@@ -22,6 +22,7 @@ export async function POST(
 
     const { tenant } = access
     const user = session.user
+    const tenantDb = await getTenantDb(tenantSlug)
 
     const body = await request.json()
     const { ids, action } = body
@@ -30,8 +31,14 @@ export async function POST(
       return NextResponse.json({ error: "No IDs provided" }, { status: 400 })
     }
 
-    const contentType = await db.contentType.findUnique({
-      where: { slug: contentSlug },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentSlug,
+        OR: [
+          { tenantId: tenant.id },
+          { tenantId: null }
+        ]
+      },
     })
 
     if (!contentType) {
@@ -43,7 +50,7 @@ export async function POST(
 
     switch (action) {
       case "publish":
-        result = await db.contentEntry.updateMany({
+        result = await tenantDb.contentEntry.updateMany({
           where: {
             id: { in: ids },
             tenantId: tenant.id,
@@ -58,7 +65,7 @@ export async function POST(
         break
 
       case "unpublish":
-        result = await db.contentEntry.updateMany({
+        result = await tenantDb.contentEntry.updateMany({
           where: {
             id: { in: ids },
             tenantId: tenant.id,
@@ -73,7 +80,7 @@ export async function POST(
         break
 
       case "delete":
-        result = await db.contentEntry.deleteMany({
+        result = await tenantDb.contentEntry.deleteMany({
           where: {
             id: { in: ids },
             tenantId: tenant.id,
@@ -87,7 +94,7 @@ export async function POST(
     }
 
     // Log Audit
-    await logAudit({
+    logAudit({
       tenantId: tenant.id,
       userId: user?.id,
       action: `content.bulk_${action}`,
