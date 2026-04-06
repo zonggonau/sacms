@@ -74,7 +74,7 @@ export default function TenantDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const tenantSlug = params?.tenant as string
+  const tenantId = params?.tenant as string
 
   const [contentTypes, setContentTypes] = useState<AssignedContentType[]>([])
   const [stats, setStats] = useState<TenantStats | null>(null)
@@ -82,7 +82,7 @@ export default function TenantDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
-  const currentTenant = useMemo(() => tenants.find((t) => t.slug === tenantSlug), [tenants, tenantSlug])
+  const currentTenant = useMemo(() => tenants.find((t) => t.id === tenantId), [tenants, tenantId])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -92,12 +92,12 @@ export default function TenantDashboardPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug || !session?.user) return
+      if (!tenantId || !session?.user) return
       try {
         const [ctRes, statsRes, usageRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/content-types`),
-          fetch(`/api/tenant/${tenantSlug}/stats`),
-          fetch(`/api/tenant/${tenantSlug}/billing/usage`),
+          fetch(`/api/tenant/${tenantId}/content-types`),
+          fetch(`/api/tenant/${tenantId}/stats`),
+          fetch(`/api/tenant/${tenantId}/billing/usage`),
         ])
         
         // If API returns 403 or 404, then redirect
@@ -134,7 +134,7 @@ export default function TenantDashboardPage() {
       }
     }
     if (session?.user) fetchData()
-  }, [tenantSlug, session])
+  }, [tenantId, session])
 
   const usageAlerts = useMemo(() => {
     return usage.filter(u => (u.current / u.limit) >= 0.9)
@@ -155,18 +155,18 @@ export default function TenantDashboardPage() {
 
   return (
     <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} />
+      <TenantSidebar tenantId={tenantId} />
       <main className="flex-1 min-h-screen overflow-auto">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">{currentTenant?.name || tenantSlug}</h1>
+              <h1 className="text-3xl font-extrabold tracking-tight">{currentTenant?.name || tenantId}</h1>
               <p className="text-muted-foreground">Welcome back to your content workspace.</p>
             </div>
             <div className="flex gap-2">
-              <Link href={`/cms/${tenantSlug}`}>
+              <Link href={`/cms/${tenantId}`}>
                 <Button className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-200 dark:shadow-none font-bold">
                   <Sparkles className="h-4 w-4 mr-2 fill-current" />
                   CMS Studio
@@ -184,7 +184,7 @@ export default function TenantDashboardPage() {
                     <DropdownMenuItem disabled>No content types available</DropdownMenuItem>
                   ) : (
                     contentTypes.map(ct => (
-                      <DropdownMenuItem key={ct.id} onClick={() => router.push(`/dashboard/${tenantSlug}/content/${ct.slug}/new`)}>
+                      <DropdownMenuItem key={ct.id} onClick={() => router.push(`/dashboard/${tenantId}/content/${ct.slug}/new`)}>
                         <Database className="mr-2 h-4 w-4 text-muted-foreground" />
                         {ct.name}
                       </DropdownMenuItem>
@@ -192,7 +192,7 @@ export default function TenantDashboardPage() {
                   )}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Link href={`/dashboard/${tenantSlug}/media`}>
+              <Link href={`/dashboard/${tenantId}/media`}>
                 <Button variant="outline" className="bg-card">
                   <Upload className="h-4 w-4 mr-2" />
                   Upload Media
@@ -202,7 +202,7 @@ export default function TenantDashboardPage() {
           </div>
 
           <OnboardingChecklist 
-            tenantSlug={tenantSlug} 
+            tenantId={tenantId} 
             stats={{
               contentTypeCount: stats?.contentTypeCount ?? 0,
               mediaCount: stats?.mediaCount ?? 0,
@@ -224,7 +224,7 @@ export default function TenantDashboardPage() {
                   <p className="text-xs text-red-800 font-medium">You have used over 90% of your {usageAlerts.map(u => u.label).join(", ")} quota.</p>
                 </div>
               </div>
-              <Link href={`/dashboard/${tenantSlug}/subscriptions`}>
+              <Link href={`/dashboard/${tenantId}/subscriptions`}>
                 <Button className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs h-11 px-8 rounded-xl shadow-lg shadow-red-200">
                   Upgrade Plan Now
                 </Button>
@@ -272,7 +272,7 @@ export default function TenantDashboardPage() {
 
           {/* Alert Queue */}
           {stats?.entries && (stats.entries as any).in_review > 0 && (
-            <Link href={`/dashboard/${tenantSlug}/system/audit`}>
+            <Link href={`/dashboard/${tenantId}/system/audit`}>
               <div className="flex items-center gap-4 p-4 rounded-2xl border border-amber-200 bg-amber-50/50 shadow-sm hover:bg-amber-50 transition-colors group">
                 <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
                   <AlertTriangle className="h-5 w-5 text-amber-600" />
@@ -289,10 +289,10 @@ export default function TenantDashboardPage() {
           {/* Quick Stats Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Assets", value: stats?.mediaCount ?? 0, icon: ImageIcon, color: "text-blue-500", bg: "bg-blue-50", href: `/dashboard/${tenantSlug}/media` },
-              { label: "Team Size", value: stats?.memberCount ?? 1, icon: Users, color: "text-purple-500", bg: "bg-purple-50", href: `/dashboard/${tenantSlug}/users` },
-              { label: "Active Webhooks", value: stats?.webhookCount ?? 0, icon: Webhook, color: "text-orange-500", bg: "bg-orange-50", href: `/dashboard/${tenantSlug}/webhooks` },
-              { label: "API Keys", value: stats?.apiTokenCount ?? 0, icon: Key, color: "text-emerald-500", bg: "bg-emerald-50", href: `/dashboard/${tenantSlug}/api-keys` },
+              { label: "Assets", value: stats?.mediaCount ?? 0, icon: ImageIcon, color: "text-blue-500", bg: "bg-blue-50", href: `/dashboard/${tenantId}/media` },
+              { label: "Team Size", value: stats?.memberCount ?? 1, icon: Users, color: "text-purple-500", bg: "bg-purple-50", href: `/dashboard/${tenantId}/users` },
+              { label: "Active Webhooks", value: stats?.webhookCount ?? 0, icon: Webhook, color: "text-orange-500", bg: "bg-orange-50", href: `/dashboard/${tenantId}/webhooks` },
+              { label: "API Keys", value: stats?.apiTokenCount ?? 0, icon: Key, color: "text-emerald-500", bg: "bg-emerald-50", href: `/dashboard/${tenantId}/api-keys` },
             ].map((kpi) => (
               <Link key={kpi.label} href={kpi.href}>
                 <Card className="hover:shadow-md transition-all cursor-pointer border-none bg-card group">
@@ -372,7 +372,7 @@ export default function TenantDashboardPage() {
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {contentTypes.map((ct) => (
-                      <Link key={ct.id} href={`/dashboard/${tenantSlug}/content/${ct.slug}`}>
+                      <Link key={ct.id} href={`/dashboard/${tenantId}/content/${ct.slug}`}>
                         <Card className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer group bg-card border-none shadow-sm">
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between">
@@ -416,7 +416,7 @@ export default function TenantDashboardPage() {
                       {stats.recentEntries.map((entry) => {
                         const cfg = STATUS_CONFIG[entry.status.toLowerCase()] || STATUS_CONFIG.draft
                         return (
-                          <Link key={entry.id} href={`/dashboard/${tenantSlug}/content/${entry.contentTypeSlug}`}>
+                          <Link key={entry.id} href={`/dashboard/${tenantId}/content/${entry.contentTypeSlug}`}>
                             <div className="flex items-center justify-between p-4 hover:bg-muted/50 transition-colors">
                               <div className="min-w-0">
                                 <p className="text-xs font-bold truncate text-foreground">{entry.contentType}</p>
@@ -445,7 +445,7 @@ export default function TenantDashboardPage() {
                   <CardTitle className="text-xs font-bold uppercase text-primary tracking-widest">Developer Resources</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-2">
-                  <Link href={`/dashboard/${tenantSlug}/developer/api`}>
+                  <Link href={`/dashboard/${tenantId}/developer/api`}>
                     <div className="flex items-center gap-3 p-2.5 rounded-xl bg-card border border-primary/10 hover:border-primary/30 transition-all group">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                         <Zap className="h-4 w-4" />
@@ -457,7 +457,7 @@ export default function TenantDashboardPage() {
                       <ArrowRight className="h-3 w-3 text-primary opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </Link>
-                  <Link href={`/dashboard/${tenantSlug}/developer/sdk`}>
+                  <Link href={`/dashboard/${tenantId}/developer/sdk`}>
                     <div className="flex items-center gap-3 p-2.5 rounded-xl bg-card border border-primary/10 hover:border-primary/30 transition-all group">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
                         <BookOpen className="h-4 w-4" />

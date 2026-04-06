@@ -26,12 +26,15 @@ export async function GET(
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
-    // Fetch Single Types definitions from Master DB
-    const singleTypes = await db.singleType.findMany({
+    // Fetch Single Types definitions from dynamic DB client (shared or dedicated)
+    const singleTypes = await tenantDb.singleType.findMany({
       where: {
         OR: [
           { tenantId: tenantId },
-          { tenantId: null }
+          { 
+            tenantId: null,
+            tenants: { some: { tenantId: tenantId, enabled: true } }
+          }
         ]
       },
       include: {

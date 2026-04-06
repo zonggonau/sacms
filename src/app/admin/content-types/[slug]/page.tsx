@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
   Plus, ArrowLeft, FileText, Edit, Trash2, MoreVertical, 
-  Loader2, Globe, ImageIcon, Search, Layout, Calendar
+  Loader2, Globe, ImageIcon, Search, Layout, Calendar,
+  Sparkles, Wand2
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -34,6 +35,7 @@ import {
 } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
 import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { cn } from "@/lib/utils"
@@ -76,6 +78,11 @@ export default function ContentTypeEntriesPage() {
   })
   const [deleting, setDeleting] = useState(false)
 
+  // AI Generator State
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [generatingAI, setGeneratingAI] = useState(false)
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -106,6 +113,90 @@ export default function ContentTypeEntriesPage() {
       console.error(error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleAIGenerate = async () => {
+    if (!aiPrompt || !contentType) return
+    setGeneratingAI(true)
+    const isTemplate = slug === 'templates'
+    
+    try {
+      const res = await fetch("/api/admin/ai/generate-template", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+            prompt: aiPrompt, 
+            isTemplate,
+            contentType: !isTemplate ? contentType : undefined
+        })
+      })
+      
+      if (res.ok) {
+        const result = await res.json()
+        
+        if (isTemplate) {
+            // Logic for Architecture/Template generation
+            const entryData = {
+                name: aiPrompt.substring(0, 30) + (aiPrompt.length > 30 ? "..." : ""),
+                description: `AI Generated architecture for: ${aiPrompt}`,
+                icon: "Sparkles",
+                template_id: `ai-${Date.now()}`,
+                kategori_website: aiPrompt.toLowerCase().includes("gov") ? "Government" : 
+                                 aiPrompt.toLowerCase().includes("shop") || aiPrompt.toLowerCase().includes("ecommerce") ? "E-commerce" :
+                                 aiPrompt.toLowerCase().includes("news") || aiPrompt.toLowerCase().includes("portal") ? "News & Portal" : "Custom",
+                schema_template: result.schema
+            }
+
+            const createRes = await fetch(`/api/admin/content-types/by-slug/${slug}/entries`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    data: entryData,
+                    status: "PUBLISHED",
+                    locale: "en"
+                })
+            })
+
+            if (createRes.ok) {
+                toast({ title: "Template Generated!", description: "AI has successfully designed your CMS architecture." })
+                setAiDialogOpen(false)
+                setAiPrompt("")
+                fetchData()
+            }
+        } else {
+            // Logic for Content Entry generation
+            const entriesToCreate = result.entries || []
+            let successCount = 0
+
+            for (const entryData of entriesToCreate) {
+                const createRes = await fetch(`/api/admin/content-types/by-slug/${slug}/entries`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        data: entryData,
+                        status: "PUBLISHED",
+                        locale: "en"
+                    })
+                })
+                if (createRes.ok) successCount++
+            }
+
+            if (successCount > 0) {
+                toast({ title: "Content Generated!", description: `AI has successfully written ${successCount} entries for ${contentType.name}.` })
+                setAiDialogOpen(false)
+                setAiPrompt("")
+                fetchData()
+            }
+        }
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "AI Error", description: err.error })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to connect to AI" })
+    } finally {
+      setGeneratingAI(false)
     }
   }
 
@@ -161,9 +252,18 @@ export default function ContentTypeEntriesPage() {
                 <p className="text-muted-foreground text-sm uppercase font-mono tracking-tighter">Global Data Manager &middot; /{contentType.slug}</p>
               </div>
             </div>
-            <Button onClick={() => router.push(`/admin/content-types/${slug}/new`)} className="bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20">
-              <Plus className="mr-2 h-4 w-4" /> Create Global Entry
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => setAiDialogOpen(true)}
+                className="border-primary/20 hover:bg-primary/5 text-primary font-bold shadow-sm"
+              >
+                <Sparkles className="mr-2 h-4 w-4" /> AI Generator
+              </Button>
+              <Button onClick={() => router.push(`/admin/content-types/${slug}/new`)} className="bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20">
+                <Plus className="mr-2 h-4 w-4" /> Create Global Entry
+              </Button>
+            </div>
           </div>
 
           <Card className="border-none shadow-sm overflow-hidden bg-card">
@@ -247,6 +347,52 @@ export default function ContentTypeEntriesPage() {
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setDeleteDialog({ open: false, entry: null })} className="rounded-xl h-11">Cancel</Button>
             <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="rounded-xl h-11 font-bold">Delete Permanently</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
+              <Sparkles className="h-6 w-6 text-primary" />
+              {slug === 'templates' ? 'AI Architect' : 'AI Content Writer'}
+            </DialogTitle>
+            <DialogDescription>
+              {slug === 'templates' 
+                ? 'Describe the system you want to build. AI will generate the architecture.' 
+                : `Describe what content you want to generate for ${contentType.name}.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="space-y-2">
+              <label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+                {slug === 'templates' ? 'What are we building?' : 'What content should I write?'}
+              </label>
+              <Textarea 
+                placeholder={slug === 'templates' 
+                    ? "e.g. A News Portal with categories and featured articles..." 
+                    : `e.g. Write 3 pricing plans for a SaaS startup...`}
+                value={aiPrompt}
+                onChange={e => setAiPrompt(e.target.value)}
+                className="min-h-[120px] bg-muted/30 border-none rounded-2xl resize-none focus-visible:ring-primary shadow-inner"
+              />
+            </div>
+            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex gap-3 items-start">
+              <Wand2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+              <p className="text-[11px] text-primary/80 leading-relaxed font-medium">
+                {slug === 'templates' 
+                    ? "AI will follow the Master Template standard for compatibility." 
+                    : `AI will automatically fill fields like ${contentType.fields.slice(0, 2).map(f => f.name).join(', ')} etc.`}
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setAiDialogOpen(false)} disabled={generatingAI} className="rounded-xl font-bold">Cancel</Button>
+            <Button onClick={handleAIGenerate} disabled={generatingAI || !aiPrompt} className="bg-primary hover:bg-primary/90 font-bold rounded-xl h-11 px-8 shadow-lg shadow-primary/20">
+              {generatingAI ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
+              {generatingAI ? "Processing..." : "Generate with AI"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

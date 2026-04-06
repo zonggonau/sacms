@@ -37,7 +37,7 @@ import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 
 interface TenantSidebarProps {
-  tenantSlug: string
+  tenantId: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
 }
 
@@ -56,7 +56,7 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId }: TenantSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
@@ -72,12 +72,12 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
   }, [])
 
   const currentTenant = liveTenants.length > 0 
-    ? liveTenants.find((t) => t.slug === tenantSlug) 
-    : (session?.user?.tenants || []).find((t: any) => t.slug === tenantSlug)
+    ? liveTenants.find((t) => t.id === tenantId) 
+    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
 
   const href = (path: string) => {
-    if (path === "/cms-redirect") return `/cms/${tenantSlug}`
-    return `/dashboard/${tenantSlug}${path}`
+    if (path === "/cms-redirect") return `/cms/${tenantId}`
+    return `/dashboard/${tenantId}${path}`
   }
 
   const isActive = (item: NavItem) => {
@@ -105,9 +105,9 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
   // Fetch assigned content types for this tenant
   useEffect(() => {
     async function fetchContentTypes() {
-      if (!tenantSlug) return
+      if (!tenantId) return
       try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/content-types`)
+        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
         if (res.ok) {
           const data = await res.json()
           setAssignedContentTypes(data.contentTypes || [])
@@ -117,7 +117,7 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
       }
     }
     fetchContentTypes()
-  }, [tenantSlug])
+  }, [tenantId])
 
   const navSections: NavSection[] = [
     {
@@ -186,7 +186,7 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
                 {currentTenant?.role || "member"}
               </Badge>
             </div>
-            <span className="text-[10px] text-muted-foreground font-mono">/{tenantSlug}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">/{tenantId}</span>
           </div>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", workspaceSwitcherOpen && "rotate-180")} />
         </button>
@@ -197,11 +197,11 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
             {liveTenants.map((t) => (
               <Link
                 key={t.id}
-                href={`/dashboard/${t.slug}`}
+                href={`/dashboard/${t.id}`}
                 onClick={() => { setMobileOpen(false); setWorkspaceSwitcherOpen(false) }}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors",
-                  t.slug === tenantSlug
+                  t.id === tenantId
                     ? "bg-primary/10 text-primary font-bold"
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
                 )}
@@ -210,7 +210,7 @@ export function TenantSidebar({ tenantSlug }: TenantSidebarProps) {
                   {t.name[0].toUpperCase()}
                 </div>
                 <span className="truncate">{t.name}</span>
-                {t.slug === tenantSlug && <ChevronRight className="ml-auto h-3 w-3 text-primary" />}
+                {t.id === tenantId && <ChevronRight className="ml-auto h-3 w-3 text-primary" />}
               </Link>
             ))}
             

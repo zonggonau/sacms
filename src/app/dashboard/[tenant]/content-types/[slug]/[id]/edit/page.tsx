@@ -56,6 +56,7 @@ interface Field {
   slug: string
   type: string
   required: boolean
+  localizable: boolean
   options: any
   relationSlug?: string
 }
@@ -78,6 +79,16 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   REJECTED: { label: "Rejected", color: "bg-red-500", icon: AlertCircle },
 }
 
+const TRANSITIONS: Record<string, string[]> = {
+  DRAFT: ["IN_REVIEW", "PUBLISHED"],
+  IN_REVIEW: ["APPROVED", "REJECTED"],
+  APPROVED: ["PUBLISHED", "SCHEDULED"],
+  SCHEDULED: ["PUBLISHED", "DRAFT"],
+  PUBLISHED: ["ARCHIVED", "DRAFT"],
+  ARCHIVED: ["DRAFT"],
+  REJECTED: ["DRAFT"],
+}
+
 export default function EditEntryPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -91,6 +102,7 @@ export default function EditEntryPage() {
   const [contentType, setContentType] = useState<ContentType | null>(null)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [entryStatus, setEntryStatus] = useState<string>("DRAFT")
+  const [reviewComment, setReviewComment] = useState<string | null>(null)
   const [locale, setLocale] = useState<string>("en")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
@@ -112,6 +124,7 @@ export default function EditEntryPage() {
           const data = await entRes.json()
           const entry = data.entry
           setEntryStatus(entry.status)
+          setReviewComment(entry.reviewComment)
           setLocale(entry.locale)
           if (entry.scheduledAt) setScheduledAt(new Date(entry.scheduledAt))
           
@@ -134,11 +147,14 @@ export default function EditEntryPage() {
     if (status === "authenticated") fetchData()
   }, [tenantSlug, contentTypeSlug, entryId, status])
 
+  const allowedNextStatuses = useMemo(() => {
+    const next = TRANSITIONS[entryStatus] || []
+    return Array.from(new Set([entryStatus, ...next]))
+  }, [entryStatus])
+
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
     
-    // If publishNow is true, status is PUBLISHED. 
-    // If not, use the current entryStatus, but if scheduledAt is set, it might need to be SCHEDULED.
     let targetStatus = publishNow ? "PUBLISHED" : entryStatus
     if (!publishNow && scheduledAt && targetStatus !== "ARCHIVED") {
       targetStatus = "SCHEDULED"
@@ -158,7 +174,11 @@ export default function EditEntryPage() {
 
       if (res.ok) {
         toast({ title: publishNow ? "Published Successfully!" : "Entry Updated" })
-        router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
+        if (publishNow) {
+          router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
+        } else {
+          router.refresh()
+        }
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Error", description: err.error })
@@ -181,73 +201,54 @@ export default function EditEntryPage() {
     if (field.options) {
       let opts = field.options
       if (typeof field.options === 'string') {
-        // Only try to parse if it looks like JSON (starts with [ or {)
         if (field.options.trim().startsWith('[') || field.options.trim().startsWith('{')) {
-          try {
-            opts = JSON.parse(field.options)
-          } catch (e) {
-            console.warn(`Failed to parse options for field ${field.slug} as JSON, using as raw string.`)
-            opts = field.options
-          }
+          try { opts = JSON.parse(field.options) } catch (e) { opts = field.options }
         }
       }
       
-      if (Array.isArray(opts)) {
-        options = opts
-      } else if (typeof opts === 'string') {
-        options = opts.split(",").map(o => o.trim()).filter(Boolean)
-      }
+      if (Array.isArray(opts)) options = opts
+      else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim()).filter(Boolean)
     }
 
     switch (field.type) {
       case "text":
-        // Heuristic: if it's a text field but named hashtag/hastag/tags, use TagsField
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
           return <TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} placeholder={`Add ${field.name.toLowerCase()}...`} />
         }
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
-      
       case "slug":
       case "uid":
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
-      
       case "email":
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder="email@example.com" type="email" />
-
       case "textarea":
       case "markdown":
         return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      
       case "richText":
         return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      
       case "number":
       case "integer":
         return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      
       case "boolean":
         return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      
       case "date":
       case "datetime":
       case "time":
         return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
-      
       case "select":
         return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} />
-      
       case "tags":
       case "hashtags":
         return <TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} placeholder={`Add ${field.name.toLowerCase()}...`} />
-
       case "media":
       case "file":
         return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
-      
       case "mediaMultiple":
         return <MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
-
       case "relation":
+        const rOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        const isMulti = rOpts?.relationType === "oneToMany" || rOpts?.relationType === "manyToMany"
+        
         return (
           <RelationSelectField 
             value={value as any} 
@@ -256,31 +257,46 @@ export default function EditEntryPage() {
             targetSlug={field.relationSlug || ""}
             label={field.name}
             required={field.required}
+            multiple={isMulti}
           />
         )
-
       case "button":
         return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
-      
       case "component":
-        const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={opts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={opts?.repeatable} />
-      
+        const cOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        return <ComponentField tenantSlug={tenantSlug} componentSlug={cOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={cOpts?.repeatable} />
       case "json":
         return <AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
-      
       case "color":
         return <AdvancedField type="color" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
-      
       case "location":
         return <AdvancedField type="location" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
-
       default:
         return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }
   }
 
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+
+  if (!contentType) {
+    return (
+      <div className="flex min-h-screen bg-muted/10">
+        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+        <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mb-6 text-red-500">
+            <AlertCircle className="h-10 w-10" />
+          </div>
+          <h2 className="text-2xl font-black uppercase tracking-tight">Content Type Not Found</h2>
+          <p className="text-muted-foreground mt-2 max-w-sm">
+            We couldn't find the structure for <strong>{contentTypeSlug}</strong>. It might have been deleted or moved.
+          </p>
+          <Button variant="outline" className="mt-8 rounded-xl font-bold" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+          </Button>
+        </main>
+      </div>
+    )
+  }
 
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
@@ -304,18 +320,25 @@ export default function EditEntryPage() {
             </div>
             <div className="flex items-center gap-2">
               <Select value={entryStatus} onValueChange={setEntryStatus}>
-                <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-xl border-none shadow-sm">
-                  <SelectValue />
+                <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-xl border-none shadow-sm h-10">
+                  <div className="flex items-center gap-2">
+                    <statusCfg.icon className="h-3.5 w-3.5" />
+                    <SelectValue />
+                  </div>
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
-                  {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
-                    <SelectItem key={val} value={val} className="text-xs font-bold uppercase">
-                      <div className="flex items-center gap-2">
-                        <cfg.icon className="h-3 w-3" />
-                        {cfg.label}
-                      </div>
-                    </SelectItem>
-                  ))}
+                <SelectContent className="rounded-xl border-none shadow-2xl">
+                  {allowedNextStatuses.map(val => {
+                    const cfg = STATUS_CONFIG[val]
+                    if (!cfg) return null
+                    return (
+                      <SelectItem key={val} value={val} className="text-xs font-bold uppercase p-3">
+                        <div className="flex items-center gap-2">
+                          <cfg.icon className="h-3.5 w-3.5" />
+                          {cfg.label}
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
                 </SelectContent>
               </Select>
 
@@ -334,15 +357,27 @@ export default function EditEntryPage() {
                 <Eye className="mr-2 h-4 w-4" /> Preview
               </Button>
 
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-10 rounded-xl font-bold">
+              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-10 rounded-xl font-bold px-6">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                Save & Publish
+                Publish Now
               </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
+              {entryStatus === "REJECTED" && reviewComment && (
+                <div className="bg-red-50 border border-red-100 rounded-2xl p-6 flex gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-red-100 flex items-center justify-center text-red-600 shrink-0">
+                    <AlertCircle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black uppercase text-red-600 tracking-wider">Reviewer Comment</h4>
+                    <p className="text-red-800 text-sm mt-1 font-medium italic">"{reviewComment}"</p>
+                  </div>
+                </div>
+              )}
+
               <Card className="border-none shadow-sm bg-card overflow-hidden rounded-2xl">
                 <CardHeader className="border-b bg-muted/5 p-6">
                   <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
@@ -351,7 +386,19 @@ export default function EditEntryPage() {
                   {contentType?.fields.map(field => (
                     <div key={field.id} className="space-y-3">
                       <div className="flex items-center justify-between">
-                        <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+                          {field.localizable && (
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <Globe className="h-3.5 w-3.5 text-primary/60 cursor-help" />
+                              </PopoverTrigger>
+                              <PopoverContent className="w-60 p-3 rounded-xl shadow-xl border-none text-[10px] font-bold uppercase tracking-tight text-primary">
+                                This field is localizable. Changes only affect the current locale ({locale.toUpperCase()}).
+                              </PopoverContent>
+                            </Popover>
+                          )}
+                        </div>
                         <Badge variant="outline" className="text-[9px] opacity-50 uppercase tracking-widest font-black">{field.type}</Badge>
                       </div>
                       {renderField(field)}

@@ -156,8 +156,8 @@ export function SchemaGeneratorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white">
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl max-h-[90vh] flex flex-col">
+        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white shrink-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
               <Sparkles className="h-6 w-6 text-white" />
@@ -171,7 +171,7 @@ export function SchemaGeneratorDialog({
           </div>
         </div>
 
-        <div className="p-8 space-y-6 bg-card">
+        <div className="p-8 space-y-6 bg-card overflow-y-auto flex-1">
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">

@@ -75,8 +75,11 @@ export async function GET(
     }
 
     // Get content type
-    const contentType = await db.contentType.findUnique({
-      where: { slug: contentTypeSlug },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentTypeSlug,
+        tenantId: null 
+      },
       include: {
         fields: { orderBy: { order: "asc" } },
         tenants: true
@@ -88,12 +91,14 @@ export async function GET(
     }
 
     // Verify it is a global content type (or explicitly allowed for global access)
-    // In this context, we'll allow access if it's a system/global type
-    const isGlobal = contentType.tenantId === null || contentType.tenants.length === 0
+    // We'll allow access if it's explicitly published and exists in the global/system context
+    // or if it's explicitly assigned to the system tenant
+    const isGlobal = contentType.tenantId === null || contentType.tenants.some(t => t.tenant.slug === "system")
     
-    if (!isGlobal) {
+    // For now, let's just ensure it exists and is published
+    if (!contentType.isPublished) {
       return NextResponse.json(
-        { error: "This endpoint is only for global/system content types" },
+        { error: "Content type is not published" },
         { status: 403 }
       )
     }

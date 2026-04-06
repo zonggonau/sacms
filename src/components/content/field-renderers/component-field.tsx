@@ -19,6 +19,7 @@ import { DateField } from "./date-field"
 import { SelectField } from "./select-field"
 import { MediaField } from "./media-field"
 import { RichTextField } from "./rich-text-field"
+import { RelationSelectField } from "./relation-select-field"
 import { AdvancedField } from "./advanced-fields"
 
 interface FieldDefinition {
@@ -146,6 +147,20 @@ export function ComponentField({
         return <DateTimeField value={fieldValue as string} onChange={onFieldChange} required={field.required} type={field.type as any} />
       case "select": 
         return <SelectField value={fieldValue as string} onChange={onFieldChange} options={selectOptions} required={field.required} />
+      case "relation":
+        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
+        return (
+          <RelationSelectField 
+            value={fieldValue as any} 
+            onChange={onFieldChange} 
+            tenantSlug={tenantSlug}
+            targetSlug={(field as any).relationSlug || relOpts?.targetSlug || ""}
+            label={field.name}
+            required={field.required}
+            multiple={isMultiple}
+          />
+        )
       case "media": 
         return <MediaField value={fieldValue as string} onChange={onFieldChange} tenantSlug={tenantSlug} type="image" />
       case "file":

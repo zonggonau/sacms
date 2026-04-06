@@ -24,8 +24,11 @@ export async function GET(
 
     const { slug } = await params
 
-    const singleType = await db.singleType.findUnique({
-      where: { slug },
+    const singleType = await db.singleType.findFirst({
+      where: { 
+        slug,
+        tenantId: null 
+      },
       include: {
         fields: {
           orderBy: {

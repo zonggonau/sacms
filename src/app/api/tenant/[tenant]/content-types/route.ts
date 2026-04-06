@@ -67,8 +67,25 @@ export async function GET(
           },
         })
 
+        // Parse options for each field from JSON string to object
+        const formattedFields = contentType.fields.map(field => {
+          let parsedOptions = field.options
+          if (typeof field.options === 'string') {
+            try {
+              parsedOptions = JSON.parse(field.options)
+            } catch (e) {
+              parsedOptions = {}
+            }
+          }
+          return {
+            ...field,
+            options: parsedOptions
+          }
+        })
+
         return {
           ...contentType,
+          fields: formattedFields,
           entryCount,
           isGlobal: false, // Since they are owned by the tenant
         }
@@ -120,12 +137,10 @@ export async function POST(
     const tenantDb = await getTenantDb(tenantSlug)
 
     // Check if slug is already taken (in this tenant's DB)
-    const existingContentType = await tenantDb.contentType.findUnique({
+    const existingContentType = await tenantDb.contentType.findFirst({
       where: { 
-        tenantId_slug: {
-          tenantId: access.tenantId,
-          slug: slug
-        }
+        tenantId: access.tenantId,
+        slug: slug
       },
     })
 

@@ -64,8 +64,11 @@ export async function POST(request: NextRequest) {
     const { name, slug, description, category, fields } = result.data
 
     // Check if slug already exists
-    const existing = await db.component.findUnique({
-      where: { slug }
+    const existing = await db.component.findFirst({
+      where: { 
+        slug,
+        tenantId: null // Check global components
+      }
     })
 
     if (existing) {

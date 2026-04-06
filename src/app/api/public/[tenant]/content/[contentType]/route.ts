@@ -95,12 +95,18 @@ export async function GET(
       return NextResponse.json({ error: "API token expired" }, { status: 401 })
     }
 
-    // Get content type with fields
-    const contentType = await db.contentType.findUnique({
-      where: { slug: contentTypeSlug },
+    // Get content type with fields (must belong to this tenant or be global and assigned to this tenant)
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug: contentTypeSlug,
+        OR: [
+          { tenantId: apiToken.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: apiToken.tenantId, enabled: true } } }
+        ]
+      },
       include: {
         fields: { orderBy: { order: "asc" } },
-        tenants: true, // Include assignments to check if it's global or tenant-specific
+        tenants: true,
       },
     })
 
@@ -186,7 +192,7 @@ export async function GET(
         // Sanitize search input — strip characters that could disrupt tsquery
         const safeSearch = search.replace(/[&|!():*<>'"\\]/g, " ").trim().slice(0, 200)
         if (safeSearch) {
-          whereParts.push(`("searchVector" @@ plainto_tsquery('simple', $${paramIdx}) OR "data"::text ILIKE $${paramIdx + 1})`)
+          whereParts.push(`("searchVector" @@ plainto_tsquery('english', $${paramIdx}) OR "data"::text ILIKE $${paramIdx + 1})`)
           queryParams.push(safeSearch, `%${safeSearch}%`)
           paramIdx += 2
         }
@@ -227,15 +233,62 @@ export async function GET(
       total = count
     }
 
-    // --- Relation Population & Data Shaping ---
+    // --- Optimized Relation Population (Fix N+1) ---
     const relationFields = contentType.fields.filter(f => f.type === "relation")
     const populateParam = parsePopulate(searchParams)
     
-    // We'll populate if either 'populate' param is used or by default if simple relations exist
-    // For now, let's auto-populate all first-level relations for better DX
-    const fieldsToPopulate = relationFields.map(f => f.slug)
+    // Determine which fields to populate (defaults to all first-level relations if not specified)
+    const fieldsToPopulate = populateParam === "*" 
+      ? relationFields.map(f => f.slug)
+      : Array.isArray(populateParam) 
+        ? populateParam.filter(p => relationFields.some(rf => rf.slug === p))
+        : relationFields.map(f => f.slug)
 
-    const parsedEntries = await Promise.all(entries.map(async (entry: any) => {
+    // 1. Collect all unique relation IDs from all entries
+    const allRelatedIds = new Set<string>()
+    entries.forEach((entry: any) => {
+      let parsedData: Record<string, unknown> = {}
+      try {
+        parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
+      } catch { return }
+
+      for (const fieldSlug of fieldsToPopulate) {
+        const val = parsedData[fieldSlug]
+        if (typeof val === 'string' && val.length > 10) {
+          allRelatedIds.add(val)
+        } else if (Array.isArray(val)) {
+          val.forEach(id => {
+            if (typeof id === 'string') allRelatedIds.add(id)
+          })
+        }
+      }
+    })
+
+    // 2. Batch fetch all related entries in ONE query
+    const relatedEntriesMap = new Map<string, any>()
+    if (allRelatedIds.size > 0) {
+      const relatedEntries = await db.contentEntry.findMany({
+        where: { id: { in: Array.from(allRelatedIds) } },
+        select: { id: true, data: true, locale: true, status: true }
+      })
+      
+      relatedEntries.forEach(re => {
+        let rd: any = {}
+        try {
+          rd = typeof re.data === 'string' ? JSON.parse(re.data as string) : re.data
+        } catch { rd = {} }
+        
+        relatedEntriesMap.set(re.id, {
+          id: re.id,
+          ...rd,
+          locale: re.locale,
+          status: re.status
+        })
+      })
+    }
+
+    // 3. Map relations back to entries (Synchronously)
+    const parsedEntries = entries.map((entry: any) => {
       let parsedData: Record<string, unknown>
       try {
         parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
@@ -243,46 +296,15 @@ export async function GET(
         parsedData = {}
       }
 
-      // Populate relations
       const populatedData = { ...parsedData }
       for (const fieldSlug of fieldsToPopulate) {
-        const relationId = parsedData[fieldSlug]
-        if (typeof relationId === 'string' && relationId.length > 10) { // Looks like a CUID/UUID
-          // Fetch the related entry
-          const relatedEntry = await db.contentEntry.findUnique({
-            where: { id: relationId },
-            select: { id: true, data: true, locale: true, status: true }
-          })
-          
-          if (relatedEntry) {
-            let relatedData: any = {}
-            try {
-              relatedData = typeof relatedEntry.data === 'string' ? JSON.parse(relatedEntry.data) : relatedEntry.data
-            } catch {
-              relatedData = {}
-            }
-            
-            populatedData[fieldSlug] = {
-              id: relatedEntry.id,
-              ...relatedData,
-              locale: relatedEntry.locale,
-              status: relatedEntry.status
-            }
-          }
-        } else if (Array.isArray(relationId)) {
-          // Handle multi-relation (if any)
-          const relatedEntries = await db.contentEntry.findMany({
-            where: { id: { in: relationId.filter(id => typeof id === 'string') } },
-            select: { id: true, data: true, locale: true, status: true }
-          })
-          
-          populatedData[fieldSlug] = relatedEntries.map(re => {
-            let rd: any = {}
-            try {
-              rd = typeof re.data === 'string' ? JSON.parse(re.data) : re.data
-            } catch { rd = {} }
-            return { id: re.id, ...rd, locale: re.locale, status: re.status }
-          })
+        const val = parsedData[fieldSlug]
+        if (typeof val === 'string') {
+          populatedData[fieldSlug] = relatedEntriesMap.get(val) || val
+        } else if (Array.isArray(val)) {
+          populatedData[fieldSlug] = val.map(id => 
+            typeof id === 'string' ? (relatedEntriesMap.get(id) || id) : id
+          )
         }
       }
 
@@ -297,8 +319,8 @@ export async function GET(
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       }
-    }))
-    // ------------------------------------------
+    })
+    // ----------------------------------------------
 
     // Update last used (fire and forget)
     db.apiToken.update({

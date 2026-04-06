@@ -34,6 +34,7 @@ import { MediaMultipleField } from "@/components/content/field-renderers/media-m
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
+import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 
 interface Field {
   id: string
@@ -168,6 +169,7 @@ export default function AdminEditEntryPage({
       case "date": return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "select": return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} />
       case "media": return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug="system" />
+      case "json": return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type="json" required={field.required} />
       case "button": return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
       case "component":
         const opts = safeParse(field.options)

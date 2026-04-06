@@ -5,10 +5,12 @@ import path from "path"
 /**
  * Script to generate TypeScript interfaces for the SDK based on ContentTypes in the database.
  * This provides end-to-end type safety for API consumers.
+ * 
+ * Run: npx tsx scripts/generate-sdk-types.ts
  */
 
 async function generate() {
-  console.log("Generating SDK types...")
+  console.log("🚀 Generating SDK types...")
 
   const contentTypes = await db.contentType.findMany({
     include: {
@@ -30,7 +32,7 @@ async function generate() {
 export interface BaseEntry {
   id: string
   locale: string
-  status: string
+  status: "DRAFT" | "IN_REVIEW" | "APPROVED" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED" | "REJECTED"
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -38,14 +40,14 @@ export interface BaseEntry {
 
 `
 
-  // Generate Collection Types
+  // Generate Collection Interfaces
   for (const ct of contentTypes) {
     const interfaceName = toPascalCase(ct.slug)
     output += `/** ${ct.name} (${ct.description || "No description"}) */\n`
     output += `export interface ${interfaceName} extends BaseEntry {\n`
     
     for (const field of ct.fields) {
-      const tsType = mapFieldToTS(field.type, field.relationSlug)
+      const tsType = mapFieldToTS(field.type, field.relationSlug, field.options)
       const optional = field.required ? "" : "?"
       output += `  ${field.slug}${optional}: ${tsType}\n`
     }
@@ -53,14 +55,14 @@ export interface BaseEntry {
     output += `}\n\n`
   }
 
-  // Generate Single Types
+  // Generate Single Type Interfaces
   for (const st of singleTypes) {
     const interfaceName = toPascalCase(st.slug)
     output += `/** ${st.name} (Single Type: ${st.description || "No description"}) */\n`
     output += `export interface ${interfaceName} extends BaseEntry {\n`
     
     for (const field of st.fields) {
-      const tsType = mapFieldToTS(field.type, field.relationSlug)
+      const tsType = mapFieldToTS(field.type, field.relationSlug, field.options)
       const optional = field.required ? "" : "?"
       output += `  ${field.slug}${optional}: ${tsType}\n`
     }
@@ -68,20 +70,24 @@ export interface BaseEntry {
     output += `}\n\n`
   }
 
-  // Add Registry for dynamic lookup
+  // Add SaCMSRegistry for type inference in the main client
   output += `export interface SaCMSRegistry {\n`
+  output += `  collections: {\n`
   for (const ct of contentTypes) {
-    output += `  "${ct.slug}": ${toPascalCase(ct.slug)}\n`
+    output += `    "${ct.slug}": ${toPascalCase(ct.slug)}\n`
   }
+  output += `  };\n`
+  output += `  singles: {\n`
   for (const st of singleTypes) {
-    output += `  "${st.slug}": ${toPascalCase(st.slug)}\n`
+    output += `    "${st.slug}": ${toPascalCase(st.slug)}\n`
   }
+  output += `  };\n`
   output += `}\n`
 
   const outputPath = path.join(process.cwd(), "mini-services/sdk/src/generated-types.ts")
   fs.writeFileSync(outputPath, output)
   
-  console.log(`Successfully generated ${contentTypes.length + singleTypes.length} types to ${outputPath}`)
+  console.log(`✅ Successfully generated ${contentTypes.length + singleTypes.length} types to ${outputPath}`)
 }
 
 function toPascalCase(str: string) {
@@ -90,23 +96,42 @@ function toPascalCase(str: string) {
     .replace(/^(.)/, (m, chr) => chr.toUpperCase())
 }
 
-function mapFieldToTS(type: string, relationSlug?: string | null): string {
+function mapFieldToTS(type: string, relationSlug?: string | null, options?: any): string {
   switch (type) {
     case "integer":
     case "decimal":
     case "biginteger":
     case "float":
+    case "number":
       return "number"
     case "boolean":
       return "boolean"
     case "json":
       return "any"
+    case "enumeration":
+    case "select":
+      // Handle options from JSON
+      let enumOpts: string[] = []
+      if (options && typeof options === 'object') {
+        if (Array.isArray(options.enumOptions)) enumOpts = options.enumOptions
+        else if (Array.isArray(options.options)) enumOpts = options.options
+      }
+      
+      if (enumOpts.length > 0) {
+        return enumOpts.map((o: string) => `"${o}"`).join(" | ")
+      }
+      return "string"
+    case "date":
+    case "datetime":
+    case "timestamp":
+      return "string" // Dates are usually ISO strings in JSON responses
     case "media":
-      return "{ url: string, name: string, mimeType: string, size: number }"
+      return "{ url: string; name: string; mimeType: string; size: number; width?: number; height?: number; thumbnailUrl?: string; mediumUrl?: string }"
     case "mediaMultiple":
-      return "Array<{ url: string, name: string, mimeType: string, size: number }>"
+      return "Array<{ url: string; name: string; mimeType: string; size: number; width?: number; height?: number; thumbnailUrl?: string; mediumUrl?: string }>"
     case "relation":
-      return relationSlug ? `${toPascalCase(relationSlug)} | string` : "any"
+      const target = relationSlug ? toPascalCase(relationSlug) : "any"
+      return `${target} | string`
     default:
       return "string"
   }

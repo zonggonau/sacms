@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { updateComponentSchema } from "@/lib/validations"
@@ -38,8 +38,11 @@ export async function PATCH(
     const body = result.data
     const { name, slug, description, category, fields } = body
 
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
     // Check if component exists
-    const existingComponent = await db.component.findUnique({
+    const existingComponent = await tenantDb.component.findUnique({
       where: { id },
     })
 
@@ -49,8 +52,14 @@ export async function PATCH(
 
     // Check if new slug is already taken by another component
     if (slug !== existingComponent.slug) {
-      const slugConflict = await db.component.findUnique({
-        where: { slug },
+      const slugConflict = await tenantDb.component.findFirst({
+        where: { 
+          slug,
+          OR: [
+            { tenantId: access.tenantId },
+            { tenantId: null }
+          ]
+        },
       })
 
       if (slugConflict) {
@@ -62,12 +71,12 @@ export async function PATCH(
     }
 
     // Delete existing fields
-    await db.componentField.deleteMany({
+    await tenantDb.componentField.deleteMany({
       where: { componentId: id },
     })
 
     // Update component and create new fields
-    const updatedComponent = await db.component.update({
+    const updatedComponent = await tenantDb.component.update({
       where: { id },
       data: {
         name,
@@ -82,7 +91,7 @@ export async function PATCH(
                 type: field.type as string,
                 required: field.required as boolean || false,
                 unique: (field.unique as boolean) || false,
-                options: field.options ? JSON.stringify(field.options) : null,
+                options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : null,
                 jsonPath: (field.jsonPath as string) || null,
                 relationSlug: (field.relationSlug as string) || null,
                 order: index,
@@ -104,7 +113,7 @@ export async function PATCH(
       ...updatedComponent,
       fields: updatedComponent.fields.map((field: any) => ({
         ...field,
-        options: field.options ? JSON.parse(field.options) : undefined,
+        options: field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : undefined,
       })),
     }
 
@@ -145,8 +154,11 @@ export async function DELETE(
       )
     }
 
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
     // Check if component exists and its ownership
-    const existingComponent = await db.component.findUnique({
+    const existingComponent = await tenantDb.component.findUnique({
       where: { id },
     })
 
@@ -166,7 +178,7 @@ export async function DELETE(
     }
 
     // Delete component (cascade delete will handle fields and tenant assignments)
-    await db.component.delete({
+    await tenantDb.component.delete({
       where: { id },
     })
 

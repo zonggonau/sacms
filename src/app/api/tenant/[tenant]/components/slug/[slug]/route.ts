@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 
 /**
@@ -24,13 +24,19 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Find component owned by this tenant OR global templates
-    const component = await db.component.findFirst({
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenant)
+
+    // Find component owned by this tenant OR global templates in tenant database
+    const component = await tenantDb.component.findFirst({
       where: {
         slug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null }
+          { 
+            tenantId: null,
+            tenants: { some: { tenantId: access.tenantId, enabled: true } }
+          }
         ]
       },
       include: {

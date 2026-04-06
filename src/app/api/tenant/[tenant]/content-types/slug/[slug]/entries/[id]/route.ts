@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { updateEntrySchema } from "@/lib/validations"
@@ -30,9 +30,18 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get content type by slug
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get content type by slug from tenant database
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: { fields: true },
     })
 
@@ -40,8 +49,8 @@ export async function GET(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
-    // Get entry
-    const entry = await db.contentEntry.findFirst({
+    // Get entry from tenant database
+    const entry = await tenantDb.contentEntry.findFirst({
       where: {
         id,
         contentTypeId: contentType.id,
@@ -96,9 +105,18 @@ export async function PATCH(
 
     const { data, status, scheduledAt } = result.data
 
-    // Get content type by slug
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get content type by slug from tenant database
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: { fields: true },
     })
 
@@ -120,8 +138,8 @@ export async function PATCH(
     }
     // --------------------------------
 
-    // Check entry exists and belongs to this tenant
-    const existing = await db.contentEntry.findFirst({
+    // Check entry exists and belongs to this tenant in tenant database
+    const existing = await tenantDb.contentEntry.findFirst({
       where: { id, contentTypeId: contentType.id, tenantId: access.tenantId },
     })
 
@@ -151,27 +169,27 @@ export async function PATCH(
     const updateData: Record<string, unknown> = {
       updatedBy: session.user.id,
     }
-    if (data) updateData.data = JSON.stringify(data)
+    if (data) updateData.data = data as any
     if (status) updateData.status = status
     if (scheduledAt !== undefined) updateData.scheduledAt = scheduledAt
 
-    // Update entry
-    const entry = await db.contentEntry.update({
+    // Update entry in tenant database
+    const entry = await tenantDb.contentEntry.update({
       where: { id },
       data: updateData,
     })
 
-    // Create version
-    const lastVersion = await db.contentVersion.findFirst({
+    // Create version in tenant database
+    const lastVersion = await tenantDb.contentVersion.findFirst({
       where: { contentEntryId: id },
       orderBy: { version: "desc" },
     })
 
-    await db.contentVersion.create({
+    await tenantDb.contentVersion.create({
       data: {
         contentEntryId: id,
         version: (lastVersion?.version || 0) + 1,
-        data: entry.data,
+        data: entry.data as any,
         changeType: "updated",
         changedBy: session.user.id,
       },
@@ -232,17 +250,26 @@ export async function DELETE(
       )
     }
 
-    // Get content type by slug to verify it exists
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get content type by slug from tenant database
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      }
     })
 
     if (!contentType) {
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
-    // Check if entry exists and belongs to this tenant
-    const entry = await db.contentEntry.findFirst({
+    // Check if entry exists and belongs to this tenant in tenant database
+    const entry = await tenantDb.contentEntry.findFirst({
       where: { id, contentTypeId: contentType.id, tenantId: access.tenantId },
     })
 
@@ -263,12 +290,12 @@ export async function DELETE(
       )
     }
 
-    // Delete the entry
-    await db.contentEntry.delete({ where: { id } })
+    // Delete the entry in tenant database
+    await tenantDb.contentEntry.delete({ where: { id } })
 
     // Fire async webhook
     triggerWebhooks(access.tenantId, WebhookEvents.CONTENT_DELETED, {
-      entry: { id, contentType: slug },
+      entry: { id: entry.id, contentType: slug },
     })
 
     // Invalidate public API cache for this content type

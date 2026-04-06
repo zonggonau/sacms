@@ -35,7 +35,7 @@ import { signOut, useSession } from "next-auth/react"
 
 interface SidebarProps {
   isSuperAdmin: boolean
-  tenantSlug?: string
+  tenantId?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
 }
 
@@ -80,7 +80,7 @@ const tenantAdminNavItems = [
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 
-export function DashboardSidebar({ isSuperAdmin, tenantSlug, tenants = [] }: SidebarProps) {
+export function DashboardSidebar({ isSuperAdmin, tenantId, tenants = [] }: SidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
@@ -98,7 +98,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantSlug, tenants = [] }: Sid
     if (isSuperAdmin) {
       return href
     }
-    return `/dashboard/${tenantSlug}${href}`
+    return `/dashboard/${tenantId}${href}`
   }
 
   const toggleItem = (title: string) => {
@@ -135,10 +135,10 @@ export function DashboardSidebar({ isSuperAdmin, tenantSlug, tenants = [] }: Sid
             {tenants.map((t) => (
               <Link
                 key={t.id}
-                href={`/dashboard/${t.slug}`}
+                href={`/dashboard/${t.id}`}
                 className={cn(
                   "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                  t.slug === tenantSlug
+                  t.id === tenantId
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-muted"
                 )}

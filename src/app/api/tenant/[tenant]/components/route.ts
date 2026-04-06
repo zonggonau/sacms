@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { createComponentSchema } from "@/lib/validations"
@@ -26,11 +26,11 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenant)
+
     // Get all components available to this tenant:
-    // 1. Global components (tenantId is null)
-    // 2. Components owned by this tenant (tenantId matches)
-    // 3. Components explicitly assigned to this tenant via TenantComponentAssignment
-    const components = await db.component.findMany({
+    const components = await tenantDb.component.findMany({
       where: {
         OR: [
           { tenantId: null },
@@ -38,7 +38,8 @@ export async function GET(
           {
             tenants: {
               some: {
-                tenantId: access.tenantId
+                tenantId: access.tenantId,
+                enabled: true
               }
             }
           }
@@ -58,7 +59,7 @@ export async function GET(
     // Add isGlobal flag to each component
     const componentsWithFlag = components.map(component => ({
       ...component,
-      isGlobal: component.tenantId === null && component.tenants.length === 0,
+      isGlobal: component.tenantId === null,
     }))
 
     return NextResponse.json(componentsWithFlag)
@@ -102,9 +103,18 @@ export async function POST(
     if ("error" in result) return result.error
     const { name, slug, description, category, fields } = result.data
 
-    // Check if slug is already taken (globally or by this tenant)
-    const existingComponent = await db.component.findUnique({
-      where: { slug },
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
+    // Check if slug is already taken (in this tenant's context)
+    const existingComponent = await tenantDb.component.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null }
+        ]
+      },
     })
 
     if (existingComponent) {
@@ -115,7 +125,7 @@ export async function POST(
     }
 
     // Create tenant-specific component and assign it to tenant
-    const component = await db.component.create({
+    const component = await tenantDb.component.create({
       data: {
         tenantId: access.tenantId, // Set direct ownership
         name,
@@ -140,6 +150,7 @@ export async function POST(
         tenants: {
           create: {
             tenantId: access.tenantId,
+            enabled: true,
           },
         },
       },

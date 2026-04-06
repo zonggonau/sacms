@@ -27,8 +27,11 @@ export async function GET(
     const tenantId = searchParams.get("tenantId")
 
     // Get content type
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        tenantId: null 
+      },
       select: { id: true, name: true, slug: true },
     })
 
@@ -97,8 +100,11 @@ export async function POST(
     }
 
     // Get content type
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        tenantId: null 
+      },
       include: {
         fields: true,
       },

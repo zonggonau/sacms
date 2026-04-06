@@ -3,6 +3,7 @@
 import { SessionProvider as NextAuthSessionProvider } from "next-auth/react"
 import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
+import { ThemeProvider } from "next-themes"
 
 /**
  * BrandingProvider applies tenant-specific branding (colors, names) 
@@ -10,15 +11,15 @@ import { useParams } from "next/navigation"
  */
 function BrandingProvider({ children }: { children: React.ReactNode }) {
   const params = useParams()
-  const tenantSlug = params?.tenant as string
+  const tenantId = params?.tenant as string
   const [brandColor, setBrandColor] = useState<string | null>(null)
 
   useEffect(() => {
-    if (!tenantSlug) return
+    if (!tenantId) return
 
     async function fetchBranding() {
       try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/white-label`)
+        const res = await fetch(`/api/tenant/${tenantId}/white-label`)
         if (res.ok) {
           const data = await res.json()
           if (data.primaryColor) {
@@ -38,17 +39,24 @@ function BrandingProvider({ children }: { children: React.ReactNode }) {
     }
 
     fetchBranding()
-  }, [tenantSlug])
+  }, [tenantId])
 
   return <>{children}</>
 }
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <NextAuthSessionProvider>
-      <BrandingProvider>
-        {children}
-      </BrandingProvider>
-    </NextAuthSessionProvider>
+    <ThemeProvider
+      attribute="class"
+      defaultTheme="system"
+      enableSystem
+      disableTransitionOnChange
+    >
+      <NextAuthSessionProvider>
+        <BrandingProvider>
+          {children}
+        </BrandingProvider>
+      </NextAuthSessionProvider>
+    </ThemeProvider>
   )
 }

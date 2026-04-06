@@ -3,10 +3,11 @@ import { GoogleGenerativeAI, GenerationConfig } from "@google/generative-ai"
 // Model rotation list - prioritized by confirmed working aliases in your logs
 const MODELS_TO_TRY = [
   "gemini-2.0-flash",      // Confirmed exists (Quota 429)
-  "gemini-flash-latest",   // Confirmed exists (Worked, then 503)
   "gemini-1.5-flash",      // Fallback
   "gemini-1.5-flash-002",  // Stable version
+  "gemini-flash-latest",   // Confirmed exists (Worked, then 503)
   "gemini-1.5-pro",        // Pro version fallback
+  "gemini-1.5-pro-002",    // Stable Pro version
   "gemini-pro-latest"      // Pro alias
 ]
 
@@ -24,6 +25,8 @@ function getGenAI(): GoogleGenerativeAI {
   return _genAI
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
 /**
  * Executes a generative AI request with automatic model fallback and basic retry logic.
  */
@@ -35,41 +38,55 @@ export async function safeGenerateContent(
   let lastError: any = null
   
   for (const modelName of MODELS_TO_TRY) {
-    try {
-      console.log(`[AI] Attempting with model: ${modelName}`)
-      
-      const genAI = getGenAI()
-      const model = genAI.getGenerativeModel({ 
-        model: modelName, 
-        generationConfig: config,
-        systemInstruction: systemPrompt || undefined 
-      })
-      
-      const result = await model.generateContent(userPrompt)
-      const response = await result.response
-      const text = response.text()
-      
-      if (text) {
-        return { 
-          text, 
-          model: modelName,
-          usage: {
-            promptTokens: response.usageMetadata?.promptTokenCount ?? 0,
-            completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
-            totalTokens: response.usageMetadata?.totalTokenCount ?? 0,
+    let attempts = 0
+    const maxAttempts = 3
+    
+    while (attempts < maxAttempts) {
+      try {
+        console.log(`[AI] Attempting with model: ${modelName} (Attempt ${attempts + 1}/${maxAttempts})`)
+        
+        const genAI = getGenAI()
+        const model = genAI.getGenerativeModel({ 
+          model: modelName, 
+          generationConfig: config,
+          systemInstruction: systemPrompt || undefined 
+        })
+        
+        const result = await model.generateContent(userPrompt)
+        const response = await result.response
+        const text = response.text()
+        
+        if (text) {
+          return { 
+            text, 
+            model: modelName,
+            usage: {
+              promptTokens: response.usageMetadata?.promptTokenCount ?? 0,
+              completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
+              totalTokens: response.usageMetadata?.totalTokenCount ?? 0,
+            }
           }
         }
+      } catch (error: any) {
+        lastError = error
+        attempts++
+        
+        const status = error.status || (error.message?.includes("429") ? 429 : error.message?.includes("503") ? 503 : 500)
+        console.warn(`[AI] Model ${modelName} failed (Status: ${status}):`, error.message)
+        
+        if (status === 429 || status === 503) {
+          // Exponential backoff: 2s, 4s, 8s...
+          const waitTime = Math.pow(2, attempts) * 1000
+          console.log(`[AI] Rate limited or server error. Retrying in ${waitTime}ms...`)
+          await sleep(waitTime)
+          continue // Try again with same model
+        }
+        
+        // For other errors (like 404/not found), break and try next model
+        break
       }
-    } catch (error: any) {
-      lastError = error
-      console.warn(`[AI] Model ${modelName} failed:`, error.message)
-      
-      if ([404, 429, 503].includes(error.status) || error.message?.includes("429") || error.message?.includes("503") || error.message?.includes("404")) {
-        continue
-      }
-      
-      continue
     }
+    // If we reached here, current model exhausted attempts or had a fatal error, try next model
   }
 
   throw lastError || new Error("All AI models failed to respond")

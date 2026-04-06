@@ -24,8 +24,11 @@ export async function GET(
 
     const { slug } = await params
 
-    const component = await db.component.findUnique({
-      where: { slug },
+    const component = await db.component.findFirst({
+      where: { 
+        slug,
+        tenantId: null 
+      },
       include: {
         fields: {
           orderBy: {

@@ -47,6 +47,7 @@ import { MediaMultipleField } from "@/components/content/field-renderers/media-m
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { RelationSelectField } from "@/components/content/field-renderers/relation-select-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
+import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 
 interface Field {
   id: string
@@ -237,6 +238,8 @@ export default function CreateEntryPage() {
         return <MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
 
       case "relation":
+        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <RelationSelectField 
             value={value as any} 
@@ -245,6 +248,7 @@ export default function CreateEntryPage() {
             targetSlug={field.relationSlug || ""}
             label={field.name}
             required={field.required}
+            multiple={isMultiple}
           />
         )
 
@@ -270,6 +274,26 @@ export default function CreateEntryPage() {
   }
 
   if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+
+  if (!contentType) {
+    return (
+      <div className="flex min-h-screen bg-muted/10">
+        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+        <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
+          <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mb-6 text-red-500">
+            <AlertCircle className="h-10 w-10" />
+          </div>
+          <h2 className="text-2xl font-black uppercase tracking-tight">Content Type Not Found</h2>
+          <p className="text-muted-foreground mt-2 max-w-sm">
+            We couldn't find the structure for <strong>{contentTypeSlug}</strong>. It might have been deleted or moved.
+          </p>
+          <Button variant="outline" className="mt-8 rounded-xl font-bold" onClick={() => router.back()}>
+            <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
+          </Button>
+        </main>
+      </div>
+    )
+  }
 
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 

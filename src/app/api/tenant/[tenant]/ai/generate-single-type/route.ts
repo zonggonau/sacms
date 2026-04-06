@@ -92,7 +92,15 @@ export async function POST(
       if (schema.nestedComponents && Array.isArray(schema.nestedComponents)) {
         for (const comp of schema.nestedComponents) {
           // Check if component slug exists
-          const existingComp = await tx.component.findUnique({ where: { slug: comp.slug } })
+          const existingComp = await tx.component.findFirst({
+            where: { 
+              slug: comp.slug,
+              OR: [
+                { tenantId: access.tenantId },
+                { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+              ]
+            }
+          })
           const finalCompSlug = existingComp ? `${comp.slug}-${Math.random().toString(36).slice(2, 5)}` : comp.slug
           
           await tx.component.create({
@@ -128,7 +136,15 @@ export async function POST(
       }
 
       // 2. Check Single Type slug
-      const existingST = await tx.singleType.findUnique({ where: { slug: schema.slug } })
+      const existingST = await tx.singleType.findFirst({
+        where: { 
+          slug: schema.slug,
+          OR: [
+            { tenantId: access.tenantId },
+            { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          ]
+        }
+      })
       const finalSTSlug = existingST ? `${schema.slug}-${Math.random().toString(36).slice(2, 5)}` : schema.slug
 
       // 3. Create the Single Type

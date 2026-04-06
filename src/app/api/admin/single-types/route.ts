@@ -64,8 +64,11 @@ export async function POST(request: NextRequest) {
     const { name, slug, description, fields } = result.data
 
     // Check if slug already exists
-    const existing = await db.singleType.findUnique({
-      where: { slug }
+    const existing = await db.singleType.findFirst({
+      where: { 
+        slug,
+        tenantId: null // Check global single types
+      }
     })
 
     if (existing) {

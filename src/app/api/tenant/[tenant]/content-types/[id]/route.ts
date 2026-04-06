@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { updateContentTypeSchema } from "@/lib/validations"
+
+/**
+ * GET /api/tenant/[tenant]/content-types/[id]
+ * Get a content type by ID
+ */
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string; id: string }> }
@@ -21,8 +26,11 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
     // Get content type
-    const contentType = await db.contentType.findUnique({
+    const contentType = await tenantDb.contentType.findUnique({
       where: { id },
       include: {
         fields: {
@@ -77,8 +85,11 @@ export async function PATCH(
     const body = result.data
     const { name, description, fields } = body
 
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
     // Check if content type exists
-    const existingContentType = await db.contentType.findUnique({
+    const existingContentType = await tenantDb.contentType.findUnique({
       where: { id },
     })
 
@@ -88,12 +99,12 @@ export async function PATCH(
 
     // Delete existing fields first to avoid unique constraint collisions (contentTypeId, slug)
     // during the update transaction.
-    await db.contentTypeField.deleteMany({
+    await tenantDb.contentTypeField.deleteMany({
       where: { contentTypeId: id }
     })
 
     // Update content type
-    const contentType = await db.contentType.update({
+    const contentType = await tenantDb.contentType.update({
       where: { id },
       data: {
         name,
@@ -154,8 +165,11 @@ export async function DELETE(
       )
     }
 
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
     // Check if content type exists
-    const existingContentType = await db.contentType.findUnique({
+    const existingContentType = await tenantDb.contentType.findUnique({
       where: { id },
       include: {
         tenants: true,
@@ -167,10 +181,8 @@ export async function DELETE(
     }
 
     // Check if it's a global content type or assigned to other tenants
-    // Global types have 0 assignments (available to all) or > 1 assignments.
-    // Tenant-specific types have exactly 1 assignment (this tenant).
-    const isGlobal = existingContentType.tenants.length === 0 || existingContentType.tenants.length > 1
-    const isOwnedByOther = existingContentType.tenants.length === 1 && existingContentType.tenants[0].tenantId !== access.tenantId
+    const isGlobal = existingContentType.tenantId === null
+    const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
 
     if (isGlobal || isOwnedByOther) {
       return NextResponse.json(
@@ -180,7 +192,7 @@ export async function DELETE(
     }
 
     // Delete content type (this will cascade delete fields and related data)
-    await db.contentType.delete({
+    await tenantDb.contentType.delete({
       where: { id },
     })
 

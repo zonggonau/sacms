@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 
 /**
@@ -24,13 +24,16 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get single type by slug and tenant scope
-    const singleType = await db.singleType.findFirst({
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get single type by slug and tenant scope from tenant database
+    const singleType = await tenantDb.singleType.findFirst({
       where: { 
         slug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
         ]
       },
       include: {
@@ -49,9 +52,8 @@ export async function GET(
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
-    // Get the assignment/data for this tenant
-    // Using findFirst to be safe if schema/DB unique keys are slightly different
-    const assignment = await db.tenantSingleTypeAssignment.findFirst({
+    // Get the assignment/data for this tenant from tenant database
+    const assignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
       where: {
         tenantId: access.tenantId,
         singleTypeId: singleType.id,
@@ -61,7 +63,7 @@ export async function GET(
     // Parse options from JSON strings and data
     const singleTypeWithData = {
       ...singleType,
-      isGlobal: singleType.tenants.length === 0,
+      isGlobal: singleType.tenantId === null,
       data: assignment?.data ? (typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data) : {},
       publishedAt: assignment?.publishedAt || null,
       fields: singleType.fields.map((field: any) => ({
@@ -99,13 +101,16 @@ export async function PATCH(
     const body = await request.json()
     const { data, publish, locale = "en" } = body
 
-    // Get single type to find its ID (scoped to tenant)
-    const singleType = await db.singleType.findFirst({
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get single type to find its ID (scoped to tenant) in tenant database
+    const singleType = await tenantDb.singleType.findFirst({
       where: { 
         slug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
         ]
       },
     })
@@ -114,9 +119,8 @@ export async function PATCH(
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
-    // Update the tenant assignment data
-    // We use upsert because the assignment record might not exist yet
-    const assignment = await db.tenantSingleTypeAssignment.upsert({
+    // Update the tenant assignment data in tenant database
+    const assignment = await tenantDb.tenantSingleTypeAssignment.upsert({
       where: {
         tenantId_singleTypeId_locale: {
           tenantId: access.tenantId,

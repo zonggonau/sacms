@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { createEntrySchema } from "@/lib/validations"
@@ -30,9 +30,18 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get content type by slug
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // Use dynamic DB client (shared or dedicated)
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: { fields: true },
     })
 
@@ -90,13 +99,13 @@ export async function GET(
 
       const whereClause = whereParts.join(" AND ")
 
-      const countResult = await db.$queryRawUnsafe<[{ count: bigint }]>(
+      const countResult = await tenantDb.$queryRawUnsafe<[{ count: bigint }]>(
         `SELECT COUNT(*) as count FROM "content_entries" WHERE ${whereClause}`,
         ...queryParams
       )
       total = Number(countResult[0].count)
 
-      entries = await db.$queryRawUnsafe(
+      entries = await tenantDb.$queryRawUnsafe(
         `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY "createdAt" DESC LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         ...queryParams,
         pageSize,
@@ -105,13 +114,13 @@ export async function GET(
     } else {
       // Simple query
       const [rawEntries, count] = await Promise.all([
-        db.contentEntry.findMany({
+        tenantDb.contentEntry.findMany({
           where,
           orderBy: { createdAt: "desc" },
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),
-        db.contentEntry.count({ where }),
+        tenantDb.contentEntry.count({ where }),
       ])
       entries = rawEntries
       total = count
@@ -158,9 +167,18 @@ export async function POST(
 
     const { data, status, locale, scheduledAt } = result.data
 
-    // Get content type by slug
-    const contentType = await db.contentType.findUnique({
-      where: { slug },
+    // Use dynamic DB client
+    const tenantDb = await getTenantDb(tenant)
+
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: { fields: true },
     })
 
@@ -195,7 +213,7 @@ export async function POST(
     const finalData = hookResult.modifiedData || finalValidatedData
 
     // Create entry with workflow status
-    const entry = await db.contentEntry.create({
+    const entry = await tenantDb.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
         tenantId: access.tenantId,
@@ -210,7 +228,7 @@ export async function POST(
     })
 
     // Create initial version
-    await db.contentVersion.create({
+    await tenantDb.contentVersion.create({
       data: {
         contentEntryId: entry.id,
         version: 1,

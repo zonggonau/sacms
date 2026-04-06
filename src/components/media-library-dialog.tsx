@@ -151,7 +151,7 @@ export function MediaLibraryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl w-[95vw] h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+      <DialogContent className="lg:max-w-6xl w-[90vw] h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
         <DialogHeader className="p-6 bg-muted/20 border-b">
           <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
             <ImageIcon className="h-5 w-5 text-primary" />

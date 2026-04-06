@@ -5,10 +5,9 @@ import type {
   CollectionResponse,
   SingleResponse,
   GraphQLResponse,
-  Filters,
-  FilterOperators,
   MutateParams,
 } from "./types"
+import type { SaCMSRegistry } from "./generated-types"
 
 export class SaCMS {
   private baseUrl: string
@@ -26,6 +25,8 @@ export class SaCMS {
   /**
    * Access a collection content type for querying or mutating entries.
    */
+  collection<K extends keyof SaCMSRegistry["collections"]>(slug: K): CollectionClient<SaCMSRegistry["collections"][K]>
+  collection<T = Record<string, unknown>>(slug: string): CollectionClient<T>
   collection(slug: string) {
     return new CollectionClient(this, slug)
   }
@@ -33,6 +34,8 @@ export class SaCMS {
   /**
    * Access a single type for querying its content.
    */
+  single<K extends keyof SaCMSRegistry["singles"]>(slug: K): SingleClient<SaCMSRegistry["singles"][K]>
+  single<T = Record<string, unknown>>(slug: string): SingleClient<T>
   single(slug: string) {
     return new SingleClient(this, slug)
   }
@@ -88,7 +91,7 @@ export class SaCMS {
   }
 }
 
-class CollectionClient {
+class CollectionClient<T> {
   constructor(
     private cf: SaCMS,
     private slug: string
@@ -97,7 +100,7 @@ class CollectionClient {
   /**
    * Query multiple entries with filtering, sorting, pagination, and field selection.
    */
-  async findMany<T = Record<string, unknown>>(
+  async findMany(
     params?: FindManyParams
   ): Promise<CollectionResponse<T>> {
     const qs = buildQueryString(params, this.cf.getDefaultLocale())
@@ -109,7 +112,7 @@ class CollectionClient {
   /**
    * Get a single entry by ID.
    */
-  async findOne<T = Record<string, unknown>>(id: string): Promise<{ data: T }> {
+  async findOne(id: string): Promise<{ data: T }> {
     return this.cf.request<{ data: T }>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}/${encodeURIComponent(id)}`
     )
@@ -118,7 +121,7 @@ class CollectionClient {
   /**
    * Create a new entry (requires full-access token).
    */
-  async create<T = Record<string, unknown>>(params: MutateParams): Promise<{ data: T }> {
+  async create(params: MutateParams): Promise<{ data: T }> {
     return this.cf.request<{ data: T }>(
       `/api/public/${this.cf.getTenant()}/content/${this.slug}`,
       {
@@ -135,7 +138,7 @@ class CollectionClient {
   /**
    * Update an entry by ID (requires full-access token).
    */
-  async update<T = Record<string, unknown>>(
+  async update(
     id: string,
     params: MutateParams
   ): Promise<{ data: T }> {
@@ -163,7 +166,7 @@ class CollectionClient {
   }
 }
 
-class SingleClient {
+class SingleClient<T> {
   constructor(
     private cf: SaCMS,
     private slug: string
@@ -172,7 +175,7 @@ class SingleClient {
   /**
    * Get the single type content.
    */
-  async find<T = Record<string, unknown>>(
+  async find(
     params?: FindSingleParams
   ): Promise<SingleResponse<T>> {
     const locale = params?.locale ?? this.cf.getDefaultLocale()
@@ -185,7 +188,7 @@ class SingleClient {
   /**
    * Update the single type content (requires full-access token).
    */
-  async update<T = Record<string, unknown>>(
+  async update(
     data: Record<string, unknown>
   ): Promise<SingleResponse<T>> {
     return this.cf.request<SingleResponse<T>>(

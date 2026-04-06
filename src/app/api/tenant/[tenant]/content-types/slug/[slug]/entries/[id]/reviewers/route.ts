@@ -52,7 +52,16 @@ export async function GET(
     }
 
     // Verify entry exists
-    const contentType = await db.contentType.findUnique({ where: { slug } })
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      }
+    })
     if (!contentType) {
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
@@ -109,7 +118,16 @@ export async function POST(
     if ("error" in result) return result.error
 
     // Verify entry exists
-    const contentType = await db.contentType.findUnique({ where: { slug } })
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      }
+    })
     if (!contentType) {
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
@@ -185,7 +203,16 @@ export async function PATCH(
     if ("error" in result) return result.error
 
     // Verify entry exists and is IN_REVIEW
-    const contentType = await db.contentType.findUnique({ where: { slug } })
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      }
+    })
     if (!contentType) {
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }

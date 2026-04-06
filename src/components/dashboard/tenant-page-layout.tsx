@@ -8,7 +8,7 @@ import { Loader2 } from "lucide-react"
 
 interface TenantPageLayoutProps {
   children: ReactNode
-  tenantSlug: string
+  tenantId: string
   title?: string
   description?: string
   actions?: ReactNode
@@ -23,7 +23,7 @@ interface ContentType {
 
 export function TenantPageLayout({
   children,
-  tenantSlug,
+  tenantId,
   title,
   description,
   actions,
@@ -44,10 +44,10 @@ export function TenantPageLayout({
 
   useEffect(() => {
     async function fetchContentTypes() {
-      if (!tenantSlug || !session?.user) return
+      if (!tenantId || !session?.user) return
 
       try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/content-types`)
+        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
         
         if (res.ok) {
           const data = await res.json()
@@ -65,7 +65,7 @@ export function TenantPageLayout({
     if (session?.user) {
       fetchContentTypes()
     }
-  }, [tenantSlug, session])
+  }, [tenantId, session])
 
   if (status === "loading") {
     return (
@@ -77,7 +77,7 @@ export function TenantPageLayout({
 
   return (
     <div className="flex min-h-screen bg-background">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+      <TenantSidebar tenantId={tenantId} tenants={tenants} />
       <main className="flex-1 min-h-screen overflow-auto">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
           {header && (title || actions) && (

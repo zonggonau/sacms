@@ -2,17 +2,16 @@
 
 import { useMemo } from "react"
 import { 
-  CheckCircle2, Circle, Database, FileText, 
-  ImageIcon, Users, Key, ArrowRight, PartyPopper
+  CheckCircle2, Circle, ArrowRight, Database, 
+  ImageIcon, Sparkles, Users, Key, Rocket
 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
-import { cn } from "@/lib/utils"
+import { Button } from "@/components/ui/button"
 import Link from "next/link"
+import { cn } from "@/lib/utils"
 
 interface OnboardingChecklistProps {
-  tenantSlug: string
+  tenantId: string
   stats: {
     contentTypeCount: number
     mediaCount: number
@@ -22,130 +21,118 @@ interface OnboardingChecklistProps {
   }
 }
 
-export function OnboardingChecklist({ tenantSlug, stats }: OnboardingChecklistProps) {
+export function OnboardingChecklist({ tenantId, stats }: OnboardingChecklistProps) {
   const steps = useMemo(() => [
     {
-      id: "schema",
-      title: "Define your data structure",
-      description: "Create your first Content Type to start managing data.",
+      id: "schemas",
+      title: "Create Content Schemas",
+      description: "Define the structure for your content collections.",
+      isCompleted: stats.contentTypeCount > 0,
       icon: Database,
-      completed: stats.contentTypeCount > 0,
-      href: `/dashboard/${tenantSlug}/content-types`
+      href: `/dashboard/${tenantId}/content-types`
     },
     {
       id: "media",
-      title: "Setup your media library",
-      description: "Upload images or files to use in your content.",
+      title: "Upload Assets",
+      description: "Add images and files to your media library.",
+      isCompleted: stats.mediaCount > 0,
       icon: ImageIcon,
-      completed: stats.mediaCount > 0,
-      href: `/dashboard/${tenantSlug}/media`
+      href: `/dashboard/${tenantId}/media`
     },
     {
       id: "content",
-      title: "Create your first entry",
-      description: "Fill in data for the content types you've created.",
-      icon: FileText,
-      completed: stats.totalEntries > 0,
-      href: `/cms/${tenantSlug}`
+      title: "Publish First Entry",
+      description: "Create and publish your first content item in the Studio.",
+      isCompleted: stats.totalEntries > 0,
+      icon: Sparkles,
+      href: `/cms/${tenantId}`
     },
     {
       id: "team",
-      title: "Invite your team",
-      description: "Collaborate by adding editors or admins to your workspace.",
+      title: "Invite Your Team",
+      description: "Add collaborators to your workspace.",
+      isCompleted: stats.memberCount > 1,
       icon: Users,
-      completed: stats.memberCount > 1,
-      href: `/dashboard/${tenantSlug}/users`
+      href: `/dashboard/${tenantId}/users`
     },
     {
       id: "api",
       title: "Connect via API",
-      description: "Generate an API key to consume content in your apps.",
+      description: "Generate a token to fetch content in your app.",
+      isCompleted: stats.apiTokenCount > 0,
       icon: Key,
-      completed: stats.apiTokenCount > 0,
-      href: `/dashboard/${tenantSlug}/api-keys`
+      href: `/dashboard/${tenantId}/api-keys`
     }
-  ], [tenantSlug, stats])
+  ], [tenantId, stats])
 
-  const completedCount = steps.filter(s => s.completed).length
+  const completedCount = steps.filter(s => s.isCompleted).length
   const progress = (completedCount / steps.length) * 100
-  const isFinished = completedCount === steps.length
 
-  if (isFinished) return null
+  if (progress === 100) return null
 
   return (
-    <Card className="border-none shadow-xl bg-gradient-to-br from-indigo-600 to-violet-700 text-white rounded-[2rem] overflow-hidden relative">
-      <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl" />
-      <CardContent className="p-8 relative">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-          {/* Left: Progress Info */}
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black tracking-tight">Complete your Setup</h2>
-              <p className="text-indigo-100 text-sm font-medium leading-relaxed">
-                Follow these steps to unlock the full potential of SaCMS for your workspace.
-              </p>
-            </div>
-            
-            <div className="space-y-3">
-              <div className="flex items-center justify-between text-xs font-black uppercase tracking-widest text-indigo-200">
-                <span>Workspace Readiness</span>
-                <span>{Math.round(progress)}%</span>
-              </div>
-              <div className="h-2 w-full bg-white/20 rounded-full overflow-hidden">
-                <div 
-                  className="h-full bg-emerald-400 transition-all duration-1000" 
-                  style={{ width: `${progress}%` }} 
-                />
-              </div>
-            </div>
-
-            <div className="pt-4">
-              <div className="p-4 rounded-2xl bg-white/10 border border-white/10 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-emerald-400 flex items-center justify-center shadow-lg">
-                  <PartyPopper className="h-5 w-5 text-emerald-900" />
-                </div>
-                <p className="text-xs font-bold text-indigo-50">
-                  {completedCount} of {steps.length} steps completed
-                </p>
-              </div>
-            </div>
+    <div className="bg-card border-none shadow-sm rounded-3xl p-6 lg:p-8 space-y-6">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <Rocket className="h-5 w-5 text-primary" />
+            <h3 className="text-xl font-black uppercase tracking-tight">Quick Start Guide</h3>
           </div>
-
-          {/* Right: Steps Checklist */}
-          <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
-            {steps.map((step) => (
-              <Link key={step.id} href={step.href}>
-                <div className={cn(
-                  "p-4 rounded-2xl border transition-all group cursor-pointer h-full",
-                  step.completed 
-                    ? "bg-white/5 border-emerald-500/30 opacity-60" 
-                    : "bg-white/10 border-white/10 hover:bg-white/20 hover:border-white/30"
-                )}>
-                  <div className="flex items-start gap-4">
-                    <div className={cn(
-                      "w-10 h-10 rounded-xl flex items-center justify-center shrink-0",
-                      step.completed ? "bg-emerald-500 text-white" : "bg-indigo-500 text-white"
-                    )}>
-                      {step.completed ? <CheckCircle2 className="h-5 w-5" /> : <step.icon className="h-5 w-5" />}
-                    </div>
-                    <div className="flex-1 space-y-1">
-                      <p className={cn("text-sm font-black", step.completed && "line-through text-indigo-200")}>
-                        {step.title}
-                      </p>
-                      <p className="text-[10px] font-medium text-indigo-100 leading-tight">
-                        {step.description}
-                      </p>
-                    </div>
-                    {!step.completed && (
-                      <ArrowRight className="h-4 w-4 text-white/40 group-hover:translate-x-1 transition-transform" />
-                    )}
-                  </div>
-                </div>
-              </Link>
-            ))}
+          <p className="text-sm text-muted-foreground">Follow these steps to launch your content ecosystem.</p>
+        </div>
+        <div className="flex items-center gap-4 bg-muted/30 px-4 py-2 rounded-2xl">
+          <div className="text-right">
+            <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Overall Progress</p>
+            <p className="text-lg font-black text-primary leading-none">{Math.round(progress)}%</p>
+          </div>
+          <div className="w-24">
+            <Progress value={progress} className="h-2" />
           </div>
         </div>
-      </CardContent>
-    </Card>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+        {steps.map((step) => (
+          <Link 
+            key={step.id} 
+            href={step.href}
+            className={cn(
+              "group relative p-4 rounded-2xl border-2 transition-all flex flex-col h-full",
+              step.isCompleted 
+                ? "bg-primary/5 border-primary/20" 
+                : "bg-card border-muted hover:border-primary/30"
+            )}
+          >
+            <div className="flex items-center justify-between mb-3">
+              <div className={cn(
+                "p-2 rounded-xl",
+                step.isCompleted ? "bg-primary text-primary-foreground shadow-md" : "bg-muted text-muted-foreground"
+              )}>
+                <step.icon className="h-4 w-4" />
+              </div>
+              {step.isCompleted ? (
+                <CheckCircle2 className="h-5 w-5 text-primary" />
+              ) : (
+                <Circle className="h-5 w-5 text-muted-foreground/30" />
+              )}
+            </div>
+            
+            <div className="flex-1 space-y-1">
+              <p className={cn("text-xs font-black uppercase tracking-tight", step.isCompleted ? "text-primary" : "text-foreground")}>
+                {step.title}
+              </p>
+              <p className="text-[10px] text-muted-foreground leading-snug line-clamp-2">
+                {step.description}
+              </p>
+            </div>
+
+            <div className="mt-4 pt-3 border-t flex items-center justify-between group-hover:translate-x-1 transition-transform">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70">Go to Setup</span>
+              <ArrowRight className="h-3 w-3 text-primary/70" />
+            </div>
+          </Link>
+        ))}
+      </div>
+    </div>
   )
 }

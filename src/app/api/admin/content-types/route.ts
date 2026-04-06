@@ -70,8 +70,11 @@ export async function POST(request: NextRequest) {
     const { name, slug, description, fields } = result.data
 
     // Check if slug is already taken
-    const existingContentType = await db.contentType.findUnique({
-      where: { slug },
+    const existingContentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        tenantId: null, // Check global content types
+      },
     })
 
     if (existingContentType) {

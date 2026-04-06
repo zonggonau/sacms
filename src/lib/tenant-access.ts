@@ -19,12 +19,12 @@ interface TenantAccess {
  */
 export async function getTenantAccess(
   session: Session,
-  tenantSlug: string
+  tenantId: string
 ): Promise<TenantAccess | null> {
   // Super admin can access any tenant
   if (session.user.role === "super_admin") {
     const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+      where: { id: tenantId },
       select: { id: true, name: true, slug: true, plan: true },
     })
     if (!tenant) return null
@@ -44,7 +44,7 @@ export async function getTenantAccess(
   const membership = await db.tenantMember.findFirst({
     where: {
       userId: session.user.id,
-      tenant: { slug: tenantSlug },
+      tenantId: tenantId,
     },
     select: {
       tenantId: true,

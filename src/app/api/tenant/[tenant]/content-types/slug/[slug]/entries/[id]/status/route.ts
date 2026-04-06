@@ -37,8 +37,16 @@ export async function PATCH(
 
     const { status: newStatus, comment, scheduledAt } = result.data
 
-    // Get content type
-    const contentType = await db.contentType.findUnique({ where: { slug } })
+    // Get content type by slug that belongs to this tenant or is global and assigned to this tenant
+    const contentType = await db.contentType.findFirst({
+      where: { 
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      }
+    })
     if (!contentType) {
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }

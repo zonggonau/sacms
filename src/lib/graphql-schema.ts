@@ -133,8 +133,14 @@ export function buildDynamicResolvers(tenantId: string) {
             args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string }
           ) => {
             // Try as content type first
-            const contentType = await db.contentType.findUnique({
-              where: { slug: prop },
+            const contentType = await db.contentType.findFirst({
+              where: { 
+                slug: prop,
+                OR: [
+                  { tenantId },
+                  { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+                ]
+              },
             })
             if (contentType) {
               return resolveContentCollection(tenantId, contentType.id, args)
@@ -230,7 +236,15 @@ async function resolveContentCollection(
 }
 
 async function resolveContentEntryById(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findUnique({ where: { slug } })
+  const contentType = await db.contentType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!contentType) return null
 
   const entry = await db.contentEntry.findFirst({
@@ -254,7 +268,15 @@ async function resolveMutationCreate(
   slug: string,
   args: { data: any; locale?: string; status?: string }
 ) {
-  const contentType = await db.contentType.findUnique({ where: { slug } })
+  const contentType = await db.contentType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const entry = await db.contentEntry.create({
@@ -283,7 +305,15 @@ async function resolveMutationUpdate(
   slug: string,
   args: { id: string; data: any }
 ) {
-  const contentType = await db.contentType.findUnique({ where: { slug } })
+  const contentType = await db.contentType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await db.contentEntry.findFirst({
@@ -308,7 +338,15 @@ async function resolveMutationUpdate(
 }
 
 async function resolveMutationDelete(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findUnique({ where: { slug } })
+  const contentType = await db.contentType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await db.contentEntry.findFirst({
@@ -321,7 +359,15 @@ async function resolveMutationDelete(tenantId: string, slug: string, id: string)
 }
 
 async function resolveMutationPublish(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findUnique({ where: { slug } })
+  const contentType = await db.contentType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
   const existing = await db.contentEntry.findFirst({
@@ -349,7 +395,15 @@ async function resolveMutationPublish(tenantId: string, slug: string, id: string
 }
 
 async function resolveSingleType(tenantId: string, slug: string) {
-  const singleType = await db.singleType.findUnique({ where: { slug } })
+  const singleType = await db.singleType.findFirst({
+    where: { 
+      slug,
+      OR: [
+        { tenantId },
+        { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+      ]
+    }
+  })
   if (!singleType) return null
 
   const assignment = await db.tenantSingleTypeAssignment.findUnique({

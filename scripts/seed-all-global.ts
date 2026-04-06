@@ -11,7 +11,7 @@ async function main() {
   }
 
   const getCT = async (slug: string) => {
-    const ct = await prisma.contentType.findUnique({ where: { slug } })
+    const ct = await prisma.contentType.findFirst({ where: { slug } })
     if (!ct) {
       console.warn(`⚠️ Content Type ${slug} not found, skipping...`)
       return null

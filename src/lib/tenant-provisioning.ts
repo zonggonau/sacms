@@ -1,6 +1,5 @@
 import { db, getTenantDbById } from "./database"
 import { provisionEnterpriseDb } from "./enterprise-db"
-import { generateAISchema } from "./ai-schema-generator"
 import { STARTER_KITS } from "./starter-kits"
 
 /**
@@ -48,10 +47,12 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
     if (tenant.databaseUrl) {
       console.log(`[Provisioning] Syncing tenant, owner, and membership to dedicated DB for ${tenant.slug}`)
       
+      // Ensure the tenant exists in the dedicated DB
       await tenantDb.tenant.upsert({
         where: { id: tenant.id },
         update: {
           name: tenant.name,
+          slug: tenant.slug, // Added slug to update just in case
           plan: tenant.plan,
           status: tenant.status,
           databaseUrl: tenant.databaseUrl
@@ -72,6 +73,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
       })
 
       if (ownerMember && ownerMember.user) {
+        // Sync the owner user to the dedicated DB
         await tenantDb.user.upsert({
           where: { id: ownerMember.userId },
           update: {
@@ -91,6 +93,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
           }
         })
 
+        // Sync the membership to the dedicated DB
         await tenantDb.tenantMember.upsert({
           where: {
             tenantId_userId: {
@@ -107,169 +110,208 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
           }
         })
       }
+      
+      // Sync all global locales to the dedicated DB to ensure localized fields work
+      const globalLocales = await db.tenantLocale.findMany({ where: { tenantId } })
+      for (const loc of globalLocales) {
+        await tenantDb.tenantLocale.upsert({
+          where: { tenantId_locale: { tenantId, locale: loc.locale } },
+          update: { name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled },
+          create: { tenantId, locale: loc.locale, name: loc.name, isDefault: loc.isDefault, isEnabled: loc.isEnabled }
+        })
+      }
     }
 
-    // 2. Generate Architecture (AI-Driven or Starter Kit)
+    // 2. Generate Architecture (DB Template or Starter Kit)
     let contentTypes: any[] = []
     let singleTypes: any[] = []
     let components: any[] = []
 
-    if (websiteType && STARTER_KITS[websiteType]) {
-      console.log(`[Provisioning] Using Manual Starter Kit: ${websiteType}`)
-      const kit = STARTER_KITS[websiteType]
+    if (websiteType && websiteType !== 'custom') {
+      console.log(`[Provisioning] Searching for DB Template: ${websiteType}`)
+      // Try to find a template in the database first
+      const templateCt = await db.contentType.findFirst({
+        where: { slug: "templates", tenantId: null }
+      })
+
+      if (templateCt) {
+        const entries = await db.contentEntry.findMany({
+          where: { contentTypeId: templateCt.id, status: "PUBLISHED" }
+        })
+
+        const dbTemplate = entries.find(e => {
+          const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
+          // Match by database entry ID, template_id, or slug/name
+          return e.id === websiteType || 
+                 d.template_id === websiteType || 
+                 (!d.template_id && (d.slug === websiteType || d.name === websiteType || d.nama_template === websiteType))
+        })
+
+        if (dbTemplate) {
+          const d = typeof dbTemplate.data === 'string' ? JSON.parse(dbTemplate.data) : dbTemplate.data
+          const schema = d.schema_template || {}
+          console.log(`[Provisioning] Found DB Template: ${d.name || d.nama_template}`)
+          contentTypes = schema.contentTypes || []
+          singleTypes = schema.singleTypes || []
+          components = schema.components || []
+        }
+      }
+    }
+
+    // If still empty, try static starter kits
+    if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0) {
+      if (websiteType && STARTER_KITS[websiteType]) {
+        console.log(`[Provisioning] Using Static Starter Kit: ${websiteType}`)
+        const kit = STARTER_KITS[websiteType]
+        contentTypes = kit.contentTypes || []
+        singleTypes = kit.singleTypes || []
+        components = kit.components || []
+      }
+    }
+
+    // Ultimate fallback if still empty
+    if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0) {
+      console.log("[Provisioning] No template found, falling back to basic blog starter kit")
+      const kit = STARTER_KITS.blog
       contentTypes = kit.contentTypes
       singleTypes = kit.singleTypes
       components = kit.components
-    } else {
-      // If no prompt, generate based on workspace name
-      const effectivePrompt = aiPrompt && aiPrompt.trim().length > 5 
-        ? aiPrompt 
-        : `A professional website named "${tenant.name}". Create a complete, high-quality CMS structure with standard blog, categories, and site settings.`
-
-      console.log(`[Provisioning] Designing architecture via AI for prompt: ${effectivePrompt.substring(0, 100)}...`)
-      
-      try {
-        const aiSchema = await generateAISchema(effectivePrompt)
-        contentTypes = aiSchema.contentTypes || []
-        singleTypes = aiSchema.singleTypes || []
-        components = aiSchema.components || []
-        
-        console.log(`[Provisioning] AI designed: ${contentTypes.length} Content Types, ${singleTypes.length} Single Types, ${components.length} Components`)
-      } catch (aiError) {
-        console.error("[Provisioning] AI Design failed, falling back to basic blog", aiError)
-        const kit = STARTER_KITS.blog
-        contentTypes = kit.contentTypes
-        singleTypes = kit.singleTypes
-        components = kit.components
-      }
     }
 
     // 3. Create Components
     for (const comp of components) {
-      await tenantDb.component.upsert({
-        where: {
-          tenantId_slug: {
-            tenantId,
-            slug: comp.slug
-          }
-        },
-        update: {},
-        create: {
-          tenantId,
-          name: comp.name,
-          slug: comp.slug,
-          category: comp.category || "General",
-          fields: {
-            create: comp.fields.map((f: any, idx: number) => ({
-              name: f.name,
-              slug: f.slug,
-              type: f.type,
-              required: !!f.required,
-              order: idx,
-              options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
-            }))
-          }
+      await tenantDb.$transaction(async (tx) => {
+        const existing = await tx.component.findFirst({
+          where: { tenantId, slug: comp.slug }
+        })
+
+        if (!existing) {
+          await tx.component.create({
+            data: {
+              tenantId,
+              name: comp.name,
+              slug: comp.slug,
+              category: comp.category || "General",
+              fields: {
+                create: comp.fields.map((f: any, idx: number) => ({
+                  name: f.name,
+                  slug: f.slug,
+                  type: f.type,
+                  required: !!f.required,
+                  order: idx,
+                  options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
+                }))
+              }
+            }
+          })
         }
       })
     }
 
     // 4. Create Collection Types
     for (const ct of contentTypes) {
-      const contentType = await tenantDb.contentType.upsert({
-        where: {
-          tenantId_slug: {
-            tenantId,
-            slug: ct.slug
-          }
-        },
-        update: {},
-        create: {
-          tenantId,
-          name: ct.name,
-          slug: ct.slug,
-          description: ct.description || "",
-          isPublished: true,
-          fields: {
-            create: ct.fields.map((f: any, idx: number) => ({
-              name: f.name,
-              slug: f.slug,
-              type: f.type,
-              required: !!f.required,
-              order: idx,
-              relationSlug: f.relationSlug || null,
-              options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
-            }))
-          }
-        }
-      })
+      await tenantDb.$transaction(async (tx) => {
+        const existing = await tx.contentType.findFirst({
+          where: { tenantId, slug: ct.slug }
+        })
 
-      await tenantDb.tenantContentTypeAssignment.upsert({
-        where: {
-          tenantId_contentTypeId: {
-            tenantId,
-            contentTypeId: contentType.id
-          }
-        },
-        update: { enabled: true },
-        create: {
-          tenantId,
-          contentTypeId: contentType.id,
-          enabled: true
+        if (!existing) {
+          const contentType = await tx.contentType.create({
+            data: {
+              tenantId,
+              name: ct.name,
+              slug: ct.slug,
+              description: ct.description || "",
+              isPublished: true,
+              fields: {
+                create: ct.fields.map((f: any, idx: number) => ({
+                  name: f.name,
+                  slug: f.slug,
+                  type: f.type,
+                  required: !!f.required,
+                  order: idx,
+                  relationSlug: f.relationSlug || null,
+                  options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
+                }))
+              }
+            }
+          })
+
+          await tx.tenantContentTypeAssignment.upsert({
+            where: {
+              tenantId_contentTypeId: {
+                tenantId,
+                contentTypeId: contentType.id
+              }
+            },
+            update: { enabled: true },
+            create: {
+              tenantId,
+              contentTypeId: contentType.id,
+              enabled: true
+            }
+          })
         }
       })
     }
 
     // 5. Create Single Types
     for (const st of singleTypes) {
-      const singleType = await tenantDb.singleType.upsert({
-        where: {
-          tenantId_slug: {
-            tenantId,
-            slug: st.slug
-          }
-        },
-        update: {},
-        create: {
-          tenantId,
-          name: st.name,
-          slug: st.slug,
-          description: st.description || "",
-          isPublished: true,
-          fields: {
-            create: st.fields.map((f: any, idx: number) => ({
-              name: f.name,
-              slug: f.slug,
-              type: f.type,
-              required: !!f.required,
-              order: idx,
-              options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
-            }))
-          }
-        }
-      })
+      await tenantDb.$transaction(async (tx) => {
+        const existing = await tx.singleType.findFirst({
+          where: { tenantId, slug: st.slug }
+        })
 
-      // Set initial data for site identity types
-      const initialData: any = {}
-      if (st.slug.includes("identity") || st.slug.includes("site") || st.slug.includes("setting")) {
-        initialData.brandName = tenant.name
-        initialData.siteName = tenant.name
-      }
+        if (!existing) {
+          const singleType = await tx.singleType.create({
+            data: {
+              tenantId,
+              name: st.name,
+              slug: st.slug,
+              description: st.description || "",
+              isPublished: true,
+              fields: {
+                create: st.fields.map((f: any, idx: number) => {
+                  const optionsObj = typeof f.options === 'string' ? JSON.parse(f.options || '{}') : (f.options || {})
+                  if (f.componentSlug) optionsObj.componentSlug = f.componentSlug
+                  
+                  return {
+                    name: f.name,
+                    slug: f.slug,
+                    type: f.type,
+                    required: !!f.required,
+                    order: idx,
+                    options: JSON.stringify(optionsObj),
+                  }
+                })
+              }
+            }
+          })
 
-      await tenantDb.tenantSingleTypeAssignment.upsert({
-        where: {
-          tenantId_singleTypeId_locale: {
-            tenantId,
-            singleTypeId: singleType.id,
-            locale: "en"
+          // Set initial data for site identity types
+          const initialData: any = {}
+          if (st.slug.includes("identity") || st.slug.includes("site") || st.slug.includes("setting")) {
+            initialData.brandName = tenant.name
+            initialData.siteName = tenant.name
           }
-        },
-        update: { enabled: true },
-        create: {
-          tenantId,
-          singleTypeId: singleType.id,
-          enabled: true,
-          data: JSON.stringify(initialData),
-          publishedAt: new Date()
+
+          await tx.tenantSingleTypeAssignment.upsert({
+            where: {
+              tenantId_singleTypeId_locale: {
+                tenantId,
+                singleTypeId: singleType.id,
+                locale: "en"
+              }
+            },
+            update: { enabled: true },
+            create: {
+              tenantId,
+              singleTypeId: singleType.id,
+              enabled: true,
+              data: JSON.stringify(initialData),
+              publishedAt: new Date()
+            }
+          })
         }
       })
     }
