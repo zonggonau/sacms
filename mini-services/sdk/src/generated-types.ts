@@ -6,7 +6,7 @@
 export interface BaseEntry {
   id: string
   locale: string
-  status: string
+  status: "DRAFT" | "IN_REVIEW" | "APPROVED" | "SCHEDULED" | "PUBLISHED" | "ARCHIVED" | "REJECTED"
   publishedAt: string | null
   createdAt: string
   updatedAt: string
@@ -23,6 +23,10 @@ export interface Homepage extends BaseEntry {
 }
 
 export interface SaCMSRegistry {
-  "blog": Blog
-  "homepage": Homepage
+  collections: {
+    "blog": Blog
+  };
+  singles: {
+    "homepage": Homepage
+  };
 }

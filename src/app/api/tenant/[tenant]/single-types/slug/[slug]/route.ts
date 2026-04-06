@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * GET /api/tenant/[tenant]/single-types/slug/[slug]
@@ -113,10 +114,27 @@ export async function PATCH(
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
         ]
       },
+      include: { fields: true }
     })
 
     if (!singleType) {
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
+    }
+
+    // Process auto-generated slugs
+    let processedData = data
+    if (data) {
+      const dataObj = typeof data === 'string' ? JSON.parse(data) : data
+      const updatedData = await processAutoSlugs(
+        access.tenantId,
+        singleType.id,
+        singleType.fields,
+        dataObj,
+        undefined,
+        'single',
+        tenantDb
+      )
+      processedData = JSON.stringify(updatedData)
     }
 
     // Update the tenant assignment data in tenant database
@@ -129,14 +147,14 @@ export async function PATCH(
         }
       },
       update: {
-        data: typeof data === 'string' ? data : JSON.stringify(data),
+        data: processedData,
         publishedAt: publish ? new Date() : undefined,
       },
       create: {
         tenantId: access.tenantId,
         singleTypeId: singleType.id,
         locale: locale || "en",
-        data: typeof data === 'string' ? data : JSON.stringify(data),
+        data: processedData,
         publishedAt: publish ? new Date() : null,
       },
     })

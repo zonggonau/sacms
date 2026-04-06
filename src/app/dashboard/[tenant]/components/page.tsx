@@ -58,7 +58,7 @@ export default function ComponentsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const tenantSlug = params?.tenant as string
+  const tenantId = params?.tenant as string
   
   const [components, setComponents] = useState<Component[]>([])
   const [loading, setLoading] = useState(true)
@@ -70,9 +70,9 @@ export default function ComponentsPage() {
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
 
   const fetchComponents = async () => {
-    if (!tenantSlug) return
+    if (!tenantId) return
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/components`)
+      const response = await fetch(`/api/tenant/${tenantId}/components`)
       if (!response.ok) throw new Error("Failed to load components")
       const data = await response.json()
       setComponents(data || [])
@@ -86,7 +86,7 @@ export default function ComponentsPage() {
 
   useEffect(() => {
     if (session?.user) fetchComponents()
-  }, [tenantSlug, session])
+  }, [tenantId, session])
 
   const filteredComponents = useMemo(() => {
     return components.filter(c => 
@@ -100,7 +100,7 @@ export default function ComponentsPage() {
     if (!componentToDelete) return
     setIsDeleting(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/components/${componentToDelete.id}`, {
+      const response = await fetch(`/api/tenant/${tenantId}/components/${componentToDelete.id}`, {
         method: "DELETE",
       })
       if (!response.ok) throw new Error("Delete failed")
@@ -117,7 +117,7 @@ export default function ComponentsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+        <TenantSidebar tenantId={tenantId} tenants={tenants} />
         <main className="flex-1 min-h-screen flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </main>
@@ -127,7 +127,7 @@ export default function ComponentsPage() {
 
   return (
     <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+      <TenantSidebar tenantId={tenantId} tenants={tenants} />
       <main className="flex-1 overflow-auto">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
@@ -149,7 +149,7 @@ export default function ComponentsPage() {
                 className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
                 asChild
               >
-                <Link href={`/dashboard/${tenantSlug}/components/new`}>
+                <Link href={`/dashboard/${tenantId}/components/new`}>
                   <Plus className="mr-2 h-4 w-4" /> Create Component
                 </Link>
               </Button>
@@ -256,7 +256,7 @@ export default function ComponentsPage() {
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/${tenantSlug}/components/${component.slug}`}>
+                                <Link href={`/dashboard/${tenantId}/components/${component.slug}`}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit Details
                                 </Link>
                               </DropdownMenuItem>
@@ -298,7 +298,7 @@ export default function ComponentsPage() {
       </main>
 
       <SchemaGeneratorDialog
-        tenantSlug={tenantSlug}
+        tenantId={tenantId}
         type="component"
         open={isAIModalOpen}
         onOpenChange={setIsAIModalOpen}

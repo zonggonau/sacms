@@ -7,6 +7,7 @@ import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { randomBytes } from "crypto"
 import { provisionTenant } from "@/lib/tenant-provisioning"
+import { slugify } from "@/lib/slug"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -17,9 +18,15 @@ const createTenantSchema = z.object({
 })
 
 async function generateUniqueSlug(): Promise<string> {
-  const slug = randomBytes(5).toString("hex")
+  const slug = randomBytes(8).toString("hex") // 16 characters
+  
+  // Check if slug already exists
   const existing = await db.tenant.findUnique({ where: { slug } })
-  if (existing) return generateUniqueSlug()
+  
+  if (existing) {
+    return generateUniqueSlug()
+  }
+  
   return slug
 }
 

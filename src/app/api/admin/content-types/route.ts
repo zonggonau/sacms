@@ -99,8 +99,9 @@ export async function POST(request: NextRequest) {
                 type: field.type as string,
                 required: field.required as boolean || false,
                 unique: field.unique as boolean || false,
-                options: field.options ? JSON.stringify(field.options) : null,
-                order: index,
+                options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : null,
+                order: typeof field.order === 'number' ? field.order : index,
+                relationSlug: field.relationSlug as string || null,
               })),
             }
           : undefined,

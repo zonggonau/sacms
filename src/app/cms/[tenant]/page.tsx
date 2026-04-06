@@ -36,16 +36,16 @@ export default function CMSDashboardPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const tenantSlug = params?.tenant as string
+  const tenantId = params?.tenant as string
 
   const [stats, setStats] = useState<CMSStats | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug) return
+      if (!tenantId) return
       try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/stats`)
+        const res = await fetch(`/api/tenant/${tenantId}/stats`)
         if (res.ok) {
           setStats(await res.json())
         }
@@ -56,7 +56,7 @@ export default function CMSDashboardPage() {
       }
     }
     fetchData()
-  }, [tenantSlug])
+  }, [tenantId])
 
   if (loading) {
     return (
@@ -82,7 +82,7 @@ export default function CMSDashboardPage() {
           </div>
           <div>
             <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Workspace</p>
-            <p className="font-bold">{tenantSlug}</p>
+            <p className="font-bold">{tenantId}</p>
           </div>
         </div>
       </div>
@@ -147,7 +147,7 @@ export default function CMSDashboardPage() {
                       )}>
                         {entry.status}
                       </Badge>
-                      <Link href={`/cms/${tenantSlug}/content/${entry.contentTypeSlug}`}>
+                      <Link href={`/cms/${tenantId}/content/${entry.contentTypeSlug}`}>
                         <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-emerald-50 hover:text-emerald-600">
                           <ArrowRight className="h-4 w-4" />
                         </Button>
@@ -174,7 +174,7 @@ export default function CMSDashboardPage() {
                 You can use the **AI Content Assistant** inside any text field to help you generate headlines, translate copy, or summarize long articles in seconds.
               </p>
               <Button variant="secondary" className="w-full font-bold text-emerald-700 rounded-xl h-10 shadow-lg" asChild>
-                <Link href={`/cms/${tenantSlug}/media`}>Explore Media</Link>
+                <Link href={`/cms/${tenantId}/media`}>Explore Media</Link>
               </Button>
             </CardContent>
           </Card>

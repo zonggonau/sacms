@@ -6,6 +6,8 @@ import type {
   SingleResponse,
   GraphQLResponse,
   MutateParams,
+  Filters,
+  FilterOperators,
 } from "./types"
 import type { SaCMSRegistry } from "./generated-types"
 

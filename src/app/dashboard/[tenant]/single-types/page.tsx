@@ -64,7 +64,7 @@ export default function SingleTypesPage({
   const router = useRouter()
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [loading, setLoading] = useState(true)
-  const [tenantSlug, setTenantSlug] = useState<string>("")
+  const [tenantId, setTenantId] = useState<string>("")
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
 
@@ -97,7 +97,7 @@ export default function SingleTypesPage({
   useEffect(() => {
     const init = async () => {
       const { tenant } = await params
-      setTenantSlug(tenant)
+      setTenantId(tenant)
       await fetchSingleTypes(tenant)
     }
     init()
@@ -112,7 +112,7 @@ export default function SingleTypesPage({
 
   const handlePublishToggle = async (singleType: SingleType, publish: boolean) => {
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types`, {
+      const response = await fetch(`/api/tenant/${tenantId}/single-types`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -129,7 +129,7 @@ export default function SingleTypesPage({
         className: publish ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
       })
 
-      await fetchSingleTypes(tenantSlug)
+      await fetchSingleTypes(tenantId)
     } catch (error) {
       toast({
         variant: "destructive",
@@ -141,7 +141,7 @@ export default function SingleTypesPage({
 
   const handleDelete = async (singleType: SingleType) => {
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types/${singleType.id}`, {
+      const response = await fetch(`/api/tenant/${tenantId}/single-types/${singleType.id}`, {
         method: "DELETE",
       })
 
@@ -152,7 +152,7 @@ export default function SingleTypesPage({
         description: `${singleType.name} has been removed.`,
       })
 
-      await fetchSingleTypes(tenantSlug)
+      await fetchSingleTypes(tenantId)
     } catch (error) {
       toast({
         variant: "destructive",
@@ -165,7 +165,7 @@ export default function SingleTypesPage({
   if (loading && singleTypes.length === 0) {
     return (
       <div className="flex min-h-screen bg-muted/10">
-        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+        <TenantSidebar tenantId={tenantId} tenants={tenants} />
         <main className="flex-1 flex items-center justify-center">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </main>
@@ -175,7 +175,7 @@ export default function SingleTypesPage({
 
   return (
     <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
+      <TenantSidebar tenantId={tenantId} tenants={tenants} />
       <main className="flex-1 overflow-auto">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
           
@@ -197,7 +197,7 @@ export default function SingleTypesPage({
               </Button>
               <Button 
                 className="rounded-xl bg-primary hover:bg-primary/90 font-bold px-6 shadow-lg shadow-primary/20"
-                onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/new`)}
+                onClick={() => router.push(`/dashboard/${tenantId}/single-types/new`)}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Single Type
               </Button>
@@ -295,7 +295,7 @@ export default function SingleTypesPage({
                   </TableHeader>
                   <TableBody>
                     {filteredSingleTypes.map((st) => (
-                      <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/${st.slug}/edit`)}>
+                      <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantId}/single-types/${st.slug}`)}>
                         <TableCell className="pl-8 py-5">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-500 group-hover:bg-primary group-hover:text-white transition-all">
@@ -342,7 +342,7 @@ export default function SingleTypesPage({
                           <div className="flex justify-end gap-1">
                             {/* Edit Content Button */}
                             <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 hover:bg-primary/10 hover:text-primary" asChild>
-                              <Link href={`/dashboard/${tenantSlug}/single-types/${st.slug}`}>
+                              <Link href={`/dashboard/${tenantId}/single-types/${st.slug}`}>
                                 <Edit2 className="h-4 w-4" />
                               </Link>
                             </Button>
@@ -350,7 +350,7 @@ export default function SingleTypesPage({
                             {/* Schema Button */}
                             {(!st.isGlobal || isSuperAdmin) && (
                               <Button variant="ghost" size="icon" className="rounded-full h-9 w-9 hover:bg-blue-50 hover:text-blue-600" asChild title="Edit Schema">
-                                <Link href={`/dashboard/${tenantSlug}/single-types/${st.slug}/edit`}>
+                                <Link href={`/dashboard/${tenantId}/single-types/${st.slug}/edit`}>
                                   <ChevronRight className="h-4 w-4" />
                                 </Link>
                               </Button>
@@ -410,11 +410,11 @@ export default function SingleTypesPage({
       </main>
 
       <SchemaGeneratorDialog
-        tenantSlug={tenantSlug}
+        tenantId={tenantId}
         type="single-type"
         open={isAIModalOpen}
         onOpenChange={setIsAIModalOpen}
-        onSuccess={() => fetchSingleTypes(tenantSlug)}
+        onSuccess={() => fetchSingleTypes(tenantId)}
       />
     </div>
   )

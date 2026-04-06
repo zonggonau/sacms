@@ -35,6 +35,7 @@ import { RichTextField } from "@/components/content/field-renderers/rich-text-fi
 import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { SlugField } from "@/components/content/field-renderers/slug-field"
 
 interface Field {
   id: string
@@ -162,6 +163,20 @@ export default function AdminEditEntryPage({
 
     switch (field.type) {
       case "text": return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
+      case "slug":
+      case "uid":
+        const sourceFieldName = (contentType?.fields.find(f => f.slug === 'title') || contentType?.fields.find(f => f.slug === 'name'))?.slug
+        const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
+        return (
+          <SlugField 
+            value={value as string} 
+            onChange={v => handleFieldChange(field.slug, v)} 
+            required={field.required} 
+            placeholder={field.name}
+            sourceValue={sourceValue}
+            autoGenerate={false}
+          />
+        )
       case "textarea": return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "richText": return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "number": return <NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />

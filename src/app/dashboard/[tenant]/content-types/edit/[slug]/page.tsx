@@ -35,16 +35,34 @@ import {
   Settings2,
   GripVertical,
   Layers,
-  Search,
   Zap,
 } from "lucide-react"
 import Link from "next/link"
 import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
+import { FIELD_TYPES } from "@/lib/field-types"
 import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
+
+// DnD Kit Imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface Field {
   id: string
@@ -61,6 +79,8 @@ interface Field {
   // Component fields
   componentSlug: string
   repeatable: boolean
+  autoGenerate?: boolean
+  sourceField?: string
 }
 
 interface ContentType {
@@ -71,6 +91,77 @@ interface ContentType {
   isPublished: boolean
   isGlobal: boolean
   fields: Field[]
+}
+
+// Sortable Item Component
+function SortableFieldItem({ 
+  field, 
+  onEdit, 
+  onDelete 
+}: { 
+  field: Field, 
+  onEdit: (f: Field) => void, 
+  onDelete: (id: string) => void 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: field.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const fieldTypeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
+  const Icon = fieldTypeInfo?.icon || Zap
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm"
+    >
+      <div 
+        {...attributes} 
+        {...listeners} 
+        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-md text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5 shrink-0">
+        <Icon className="h-5 w-5" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm truncate">{field.name}</span>
+          {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-red-100 text-red-500 bg-red-50 font-black">REQ</Badge>}
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+          <span className="uppercase">{field.type}</span>
+          <span>&middot;</span>
+          <span>/{field.slug}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => onEdit(field)}>
+          <Settings2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-red-50" onClick={() => onDelete(field.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 export default function EditContentTypePage({
@@ -99,6 +190,14 @@ export default function EditContentTypePage({
 
   const tenants = session?.user?.tenants || []
 
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
@@ -115,13 +214,15 @@ export default function EditContentTypePage({
         setSlug(data.slug)
         setDescription(data.description || "")
         
-        const mappedFields = data.fields.map((f: any) => {
+        const mappedFields = (data.fields || []).map((f: any) => {
           let extra: any = {
             relationType: "",
             targetModel: "",
             targetSlug: "",
             componentSlug: "",
             repeatable: false,
+            autoGenerate: false,
+            sourceField: "",
           }
           if (f.options) {
             try {
@@ -133,6 +234,9 @@ export default function EditContentTypePage({
               } else if (f.type === "component") {
                 extra.componentSlug = opts.componentSlug || ""
                 extra.repeatable = opts.repeatable || false
+              } else if (f.type === "slug") {
+                extra.autoGenerate = opts.autoGenerate || false
+                extra.sourceField = opts.sourceField || ""
               }
             } catch {}
           }
@@ -156,7 +260,7 @@ export default function EditContentTypePage({
 
   const selectType = (type: string) => {
     const newField: Field = {
-      id: Date.now().toString(),
+      id: `field-${Date.now()}`,
       name: "",
       slug: "",
       type: type,
@@ -168,6 +272,8 @@ export default function EditContentTypePage({
       targetSlug: "",
       componentSlug: "",
       repeatable: false,
+      autoGenerate: type === "slug",
+      sourceField: "",
     }
     setEditingField(newField)
     setIsTypeSelectorOpen(false)
@@ -177,6 +283,21 @@ export default function EditContentTypePage({
   const editField = (field: Field) => {
     setEditingField({ ...field })
     setIsConfigModalOpen(true)
+  }
+
+  const removeField = (id: string) => {
+    setFields(fields.filter(f => f.id !== id))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
   }
 
   const saveFieldConfig = () => {
@@ -196,25 +317,28 @@ export default function EditContentTypePage({
     setEditingField(null)
   }
 
-  const removeField = (id: string) => {
-    setFields(fields.filter(f => f.id !== id))
-  }
-
   const serializeFieldOptions = (field: Field) => {
+    let options: Record<string, any> = {}
+    
+    try {
+      options = field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : {}
+    } catch (e) {
+      options = {}
+    }
+
     if (field.type === "relation") {
-      return JSON.stringify({
-        relationType: field.relationType,
-        targetModel: field.targetModel,
-        targetSlug: field.targetSlug,
-      })
+      options.relationType = field.relationType
+      options.targetModel = field.targetModel
+      options.targetSlug = field.targetSlug
+    } else if (field.type === "component") {
+      options.componentSlug = field.componentSlug
+      options.repeatable = field.repeatable
+    } else if (field.type === "slug") {
+      options.autoGenerate = field.autoGenerate
+      options.sourceField = field.sourceField
     }
-    if (field.type === "component") {
-      return JSON.stringify({
-        componentSlug: field.componentSlug,
-        repeatable: field.repeatable,
-      })
-    }
-    return field.options
+    
+    return options
   }
 
   const handleUpdateSchema = async () => {
@@ -324,35 +448,27 @@ export default function EditContentTypePage({
                 </Button>
               </div>
 
-              <div className="space-y-2">
-                {fields.map((field, index) => {
-                  const fieldTypeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
-                  const Icon = fieldTypeInfo?.icon || Zap
-                  return (
-                    <div key={field.id} className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm">
-                      <div className="cursor-grab text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"><GripVertical className="h-4 w-4" /></div>
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5")}>
-                        <Icon className="h-5 w-5" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-bold text-sm truncate">{field.name}</span>
-                          {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-red-100 text-red-500 bg-red-50 font-black">REQ</Badge>}
-                        </div>
-                        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                          <span className="uppercase">{field.type}</span>
-                          <span>&middot;</span>
-                          <span>/{field.slug}</span>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => editField(field)}><Settings2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-red-50" onClick={() => removeField(field.id)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+              <DndContext 
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext 
+                  items={fields.map(f => f.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-2">
+                    {fields.map(field => (
+                      <SortableFieldItem 
+                        key={field.id} 
+                        field={field} 
+                        onEdit={editField} 
+                        onDelete={removeField} 
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
             </div>
           </div>
         </div>
@@ -452,6 +568,42 @@ export default function EditContentTypePage({
                 </div>
               )}
 
+              {editingField?.type === "slug" && (
+                <div className="p-4 bg-muted/20 rounded-2xl space-y-4">
+                  <div className="flex items-center space-x-3">
+                    <Checkbox 
+                      id="autoGenerate" 
+                      checked={editingField?.autoGenerate} 
+                      onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} 
+                    />
+                    <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer">Auto-generate from another field</Label>
+                  </div>
+                  {editingField?.autoGenerate && (
+                    <div className="space-y-2">
+                      <Label className="text-xs font-bold">Source Field</Label>
+                      <Select 
+                        value={editingField.sourceField || ""} 
+                        onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
+                      >
+                        <SelectTrigger className="bg-card border-none h-11 rounded-xl font-bold">
+                          <SelectValue placeholder="Select a field" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-none shadow-2xl">
+                          {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
+                            <SelectItem key={f.slug} value={f.slug} className="rounded-lg font-bold">
+                              {f.name} ({f.slug})
+                            </SelectItem>
+                          ))}
+                          {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).length === 0 && (
+                            <div className="p-2 text-xs text-muted-foreground italic">No text fields available</div>
+                          )}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4 pt-2">
                 <div className="flex items-center space-x-2 p-3 bg-muted/10 rounded-xl">
                   <Checkbox 
@@ -475,19 +627,7 @@ export default function EditContentTypePage({
 
           <DialogFooter className="p-6 bg-muted/20 gap-2 shrink-0">
             <Button variant="ghost" onClick={() => setIsConfigModalOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-            <Button onClick={() => {
-              if (!editingField?.name || !editingField?.slug) {
-                toast({ variant: "destructive", title: "Error", description: "Name and Slug are required" })
-                return
-              }
-              const isEdit = fields.some(f => f.id === editingField.id)
-              if (isEdit) {
-                setFields(fields.map(f => f.id === editingField.id ? editingField : f))
-              } else {
-                setFields([...fields, editingField])
-              }
-              setIsConfigModalOpen(false)
-            }} className="rounded-xl font-bold px-8 bg-primary shadow-lg shadow-primary/20">
+            <Button onClick={saveFieldConfig} className="rounded-xl font-bold px-8 bg-primary shadow-lg shadow-primary/20">
               {fields.some(f => f.id === (editingField?.id || "")) ? "Update Field" : "Add Field"}
             </Button>
           </DialogFooter>

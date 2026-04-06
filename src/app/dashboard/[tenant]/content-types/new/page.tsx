@@ -60,6 +60,8 @@ interface Field {
   // Component fields
   componentSlug: string
   repeatable: boolean
+  autoGenerate?: boolean
+  sourceField?: string
 }
 
 export default function NewContentTypePage() {
@@ -113,6 +115,8 @@ export default function NewContentTypePage() {
       targetSlug: "",
       componentSlug: "",
       repeatable: false,
+      autoGenerate: type === "slug",
+      sourceField: "",
     }
     setEditingField(newField)
     setIsTypeSelectorOpen(false)
@@ -146,20 +150,27 @@ export default function NewContentTypePage() {
   }
 
   const serializeFieldOptions = (field: Field) => {
+    let options: Record<string, any> = {}
+    
+    try {
+      options = field.options ? JSON.parse(field.options) : {}
+    } catch (e) {
+      options = {}
+    }
+
     if (field.type === "relation") {
-      return JSON.stringify({
-        relationType: field.relationType,
-        targetModel: field.targetModel,
-        targetSlug: field.targetSlug,
-      })
+      options.relationType = field.relationType
+      options.targetModel = field.targetModel
+      options.targetSlug = field.targetSlug
+    } else if (field.type === "component") {
+      options.componentSlug = field.componentSlug
+      options.repeatable = field.repeatable
+    } else if (field.type === "slug") {
+      options.autoGenerate = field.autoGenerate
+      options.sourceField = field.sourceField
     }
-    if (field.type === "component") {
-      return JSON.stringify({
-        componentSlug: field.componentSlug,
-        repeatable: field.repeatable,
-      })
-    }
-    return field.options
+    
+    return Object.keys(options).length > 0 ? JSON.stringify(options) : field.options
   }
 
   const handleSaveSchema = async () => {
@@ -456,6 +467,42 @@ export default function NewContentTypePage() {
                       onComponentSlugChange={(v) => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)}
                       onRepeatableChange={(v) => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)}
                     />
+                  </div>
+                )}
+
+                {editingField?.type === "slug" && (
+                  <div className="p-4 bg-muted/20 rounded-2xl space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox 
+                        id="autoGenerate" 
+                        checked={editingField?.autoGenerate} 
+                        onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} 
+                      />
+                      <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer">Auto-generate from another field</Label>
+                    </div>
+                    {editingField?.autoGenerate && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold">Source Field</Label>
+                        <Select 
+                          value={editingField.sourceField || ""} 
+                          onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
+                        >
+                          <SelectTrigger className="bg-card border-none h-11 rounded-xl font-bold">
+                            <SelectValue placeholder="Select a field" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-none shadow-2xl">
+                            {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
+                              <SelectItem key={f.slug} value={f.slug} className="rounded-lg font-bold">
+                                {f.name} ({f.slug})
+                              </SelectItem>
+                            ))}
+                            {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).length === 0 && (
+                              <div className="p-2 text-xs text-muted-foreground italic">No text fields available</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 )}
 

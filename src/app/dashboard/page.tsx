@@ -220,7 +220,7 @@ export default function WorkspaceSelectionPage() {
       if (res.ok) {
         const data = await res.json()
         toast({ title: "Workspace Created!", description: "Launching your dashboard..." })
-        window.location.href = `/dashboard/${data.tenant.slug}`
+        window.location.href = `/dashboard/${data.tenant.id}`
       } else {
         const data = await res.json()
         toast({ variant: "destructive", title: "Creation Failed", description: data.error })

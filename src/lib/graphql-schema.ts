@@ -1,4 +1,5 @@
 import { db } from "@/lib/database"
+import { processAutoSlugs } from "@/lib/slug"
 
 // Dynamically build GraphQL schema from content types and single types
 export async function buildDynamicTypeDefs(tenantId: string, includeMutations = false): Promise<string> {
@@ -275,15 +276,23 @@ async function resolveMutationCreate(
         { tenantId },
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
-    }
+    },
+    include: { fields: true }
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
+
+  const dataWithSlugs = await processAutoSlugs(
+    tenantId,
+    contentType.id,
+    contentType.fields,
+    args.data
+  )
 
   const entry = await db.contentEntry.create({
     data: {
       contentTypeId: contentType.id,
       tenantId,
-      data: args.data,
+      data: dataWithSlugs as any,
       locale: args.locale ?? "en",
       status: (args.status as "DRAFT" | "PUBLISHED") ?? "DRAFT",
     },
@@ -312,7 +321,8 @@ async function resolveMutationUpdate(
         { tenantId },
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
-    }
+    },
+    include: { fields: true }
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
@@ -321,9 +331,18 @@ async function resolveMutationUpdate(
   })
   if (!existing) throw new Error("Entry not found")
 
+  const fullData = { ...(existing.data as any), ...args.data }
+  const dataWithSlugs = await processAutoSlugs(
+    tenantId,
+    contentType.id,
+    contentType.fields,
+    fullData,
+    args.id
+  )
+
   const updated = await db.contentEntry.update({
     where: { id: args.id },
-    data: { data: args.data, updatedAt: new Date() },
+    data: { data: dataWithSlugs as any, updatedAt: new Date() },
   })
 
   return {

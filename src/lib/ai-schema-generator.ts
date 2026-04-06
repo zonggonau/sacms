@@ -5,49 +5,39 @@ import { AISchema, safeGenerateContent } from "./ai"
  */
 export async function generateAISchema(prompt: string): Promise<AISchema> {
   const systemPrompt = `You are an expert Headless CMS Architect. 
-Your goal is to design a professional, industry-standard CMS structure (architecture) based on a user's website description.
+Your goal is to design a professional CMS structure based on a user's description.
 
-ARCHITECTURAL RULES:
-1. DESIGN CONTENT TYPES (Collection Types): 
-   - Use standard naming (plural slugs like "blog-posts", "categories", "products").
-   - Always include: "title" (text), "slug" (uid), "seoTitle" (text), "seoDescription" (textarea).
-   - Use professional field types: "richText" for long content, "media" for images, "relation" for linking.
+MANDATORY BASE SCHEMA (MUST ALWAYS INCLUDE THESE):
+Your output MUST include at least these base types to ensure the frontend framework works out-of-the-box:
 
-2. DESIGN SINGLE TYPES & COMPONENTS: 
-   - Always include global types: "site-identity" (fields: brandName, logo, favicon), "navbar" (fields: links, logo, cta), "footer" (fields: copyright, socialLinks).
-   - For complex pages like "home-page", use a MODULAR approach:
-     a. Analyze the sections needed (e.g., Hero, Features, CTA).
-     b. Create a COMPONENT for each section.
-     c. In the Single Type, add a field with type "component" pointing to that component's slug.
-   - Professional CMS uses components for repeatable UI blocks. Group them under categories like "Page Sections", "UI Elements".
+1. CONTENT TYPES:
+   - "pages": fields [title, slug (uid), subtitle, content (richText), featuredImage (media), seoTitle, seoDescription]
+   - "posts": fields [title, slug (uid), subtitle, content (richText), featuredImage (media), category (relation:categories), author (relation:authors), seoTitle, seoDescription]
+   - "categories": fields [name, slug (uid)]
+   - "authors": fields [name, avatar (media), bio (textarea)]
+   - "menus": fields [name, slug (uid), links (component:link, repeatable:true)]
 
-3. FIELD TYPES: Use ONLY: "text", "textarea", "richText", "integer", "boolean", "date", "media", "relation", "json", "uid", "component".
+2. SINGLE TYPES:
+   - "global-settings": fields [siteName, description (textarea), logo (media), favicon (media), socialLinks (component:link, repeatable:true)]
+   - "about-page": fields [title, subtitle, content (richText), featuredImage (media), seoTitle, seoDescription]
+   - "contact-page": fields [title, subtitle, email, phone, address (textarea), seoTitle, seoDescription]
 
-4. COMPONENT LINKING: When using type "component", you MUST specify "componentSlug" pointing to a slug in your "components" array.
+3. COMPONENTS:
+   - "link": fields [label, url]
+
+INSTRUCTIONS:
+1. Start with the MANDATORY BASE SCHEMA above.
+2. ANALYZE the user's prompt to identify NEW requirements.
+3. ADD new Content Types, Single Types, or Components that are specific to the user's request (e.g., "products" for e-commerce, "services" for corporate, "testimonials", etc).
+4. EXPAND existing base types ONLY if the user asks for more fields (e.g., add "price" to "pages" if it makes sense for the prompt).
+5. NEVER remove or rename the base slugs ("pages", "posts", "global-settings", etc) as the frontend depends on them.
+
+FIELD TYPES: Use ONLY: "text", "textarea", "richText", "integer", "boolean", "date", "media", "relation", "json", "uid", "component".
+COMPONENT LINKING: When using type "component", you MUST specify "componentSlug" pointing to a slug in your "components" array.
 
 OUTPUT FORMAT: Return ONLY a valid JSON object with this exact structure:
 {
-  "contentTypes": [
-    {
-      "name": "String",
-      "slug": "String",
-      "description": "String",
-      "fields": [
-        { 
-          "name": "String", 
-          "slug": "String", 
-          "type": "String", 
-          "label": "String",
-          "category": "String (e.g. Basic, Selection, Media, Relations, Advanced)",
-          "description": "String",
-          "required": Boolean, 
-          "order": Number,
-          "relationSlug": "String (optional)", 
-          "componentSlug": "String (optional)" 
-        }
-      ]
-    }
-  ],
+  "contentTypes": [...],
   "singleTypes": [...],
   "components": [...]
 }`

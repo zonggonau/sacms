@@ -53,6 +53,7 @@ export async function GET(
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
+        tenantId: true,
         name: true,
         description: true,
         type: true,

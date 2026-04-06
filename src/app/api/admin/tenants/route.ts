@@ -5,6 +5,7 @@ import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { randomBytes } from "crypto"
+import { slugify } from "@/lib/slug"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -15,12 +16,22 @@ const createTenantSchema = z.object({
 })
 
 /**
- * Generate a random unique slug (10 chars alphanumeric)
+ * Generate a unique slug based on name
  */
-async function generateUniqueSlug(): Promise<string> {
-  const slug = randomBytes(5).toString("hex") // 10 characters
+async function generateUniqueSlug(name: string): Promise<string> {
+  const baseSlug = slugify(name) || "workspace"
+  let slug = baseSlug
+  
   const existing = await db.tenant.findUnique({ where: { slug } })
-  if (existing) return generateUniqueSlug()
+  
+  if (existing) {
+    const suffix = randomBytes(3).toString("hex")
+    slug = `${baseSlug}-${suffix}`
+    
+    const secondCheck = await db.tenant.findUnique({ where: { slug } })
+    if (secondCheck) return generateUniqueSlug(name)
+  }
+  
   return slug
 }
 
@@ -133,8 +144,8 @@ export async function POST(request: NextRequest) {
     if ("error" in result) return result.error
     const { name, description, plan, status, databaseUrl } = result.data
 
-    // 1. Auto-generate unique slug
-    const slug = await generateUniqueSlug()
+    // 1. Auto-generate unique slug based on name
+    const slug = await generateUniqueSlug(name)
 
     // 2. Create tenant and initial subscription in transaction
     const tenant = await db.$transaction(async (tx) => {

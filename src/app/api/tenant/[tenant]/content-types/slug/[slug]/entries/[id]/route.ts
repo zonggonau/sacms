@@ -9,6 +9,7 @@ import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateContentEntry } from "@/lib/content-validations"
 import { invalidatePattern } from "@/lib/cache"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries/[id]
@@ -145,6 +146,26 @@ export async function PATCH(
 
     if (!existing) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 })
+    }
+
+    // Process auto-generated slugs
+    if (data) {
+      const fullData = { ...(existing.data as any), ...data }
+      const dataWithSlugs = await processAutoSlugs(
+        access.tenantId,
+        contentType.id,
+        contentType.fields,
+        fullData,
+        id,
+        'content',
+        tenantDb
+      )
+      // Only update fields that were in the original data or were auto-generated slugs
+      for (const field of contentType.fields) {
+        if (dataWithSlugs[field.slug] !== (existing.data as any)[field.slug]) {
+          data[field.slug] = dataWithSlugs[field.slug]
+        }
+      }
     }
 
     // Execute sync hooks (beforeUpdate)

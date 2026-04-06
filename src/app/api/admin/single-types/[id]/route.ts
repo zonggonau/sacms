@@ -82,8 +82,11 @@ export async function PATCH(
 
     // If slug is being changed, check if new slug is unique
     if (body.slug && body.slug !== existing.slug) {
-      const slugExists = await db.singleType.findUnique({
-        where: { slug: body.slug },
+      const slugExists = await db.singleType.findFirst({
+        where: { 
+          slug: body.slug,
+          tenantId: null 
+        },
       })
 
       if (slugExists) {

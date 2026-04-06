@@ -38,8 +38,17 @@ export async function resolveContentData(
       const repeatable = options?.repeatable || false
 
       if (componentSlug) {
-        const component = await db.component.findUnique({
-          where: { slug: componentSlug },
+        const component = await db.component.findFirst({
+          where: { 
+            slug: componentSlug,
+            OR: [
+              { tenantId: tenantId },
+              { tenantId: null }
+            ]
+          },
+          orderBy: {
+            tenantId: { sort: 'desc', nulls: 'last' }
+          },
           include: { fields: true },
         })
 

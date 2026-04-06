@@ -171,8 +171,8 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
 
     // Ultimate fallback if still empty
     if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0) {
-      console.log("[Provisioning] No template found, falling back to basic blog starter kit")
-      const kit = STARTER_KITS.blog
+      console.log("[Provisioning] No template found, falling back to sacms-starter")
+      const kit = STARTER_KITS["sacms-starter"]
       contentTypes = kit.contentTypes
       singleTypes = kit.singleTypes
       components = kit.components
@@ -272,8 +272,14 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               isPublished: true,
               fields: {
                 create: st.fields.map((f: any, idx: number) => {
-                  const optionsObj = typeof f.options === 'string' ? JSON.parse(f.options || '{}') : (f.options || {})
-                  if (f.componentSlug) optionsObj.componentSlug = f.componentSlug
+                  let optionsObj = {}
+                  try {
+                    optionsObj = typeof f.options === 'string' ? JSON.parse(f.options || '{}') : (f.options || {})
+                  } catch (e) {
+                    optionsObj = f.options || {}
+                  }
+                  
+                  if (f.componentSlug) (optionsObj as any).componentSlug = f.componentSlug
                   
                   return {
                     name: f.name,
@@ -281,7 +287,8 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
                     type: f.type,
                     required: !!f.required,
                     order: idx,
-                    options: JSON.stringify(optionsObj),
+                    relationSlug: f.relationSlug || null,
+                    options: optionsObj,
                   }
                 })
               }

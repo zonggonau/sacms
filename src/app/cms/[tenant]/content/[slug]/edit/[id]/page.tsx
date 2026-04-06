@@ -47,6 +47,7 @@ import { ComponentField } from "@/components/content/field-renderers/component-f
 import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { TagsField } from "@/components/content/field-renderers/tags-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 
@@ -213,7 +214,23 @@ export default function CMSEditEntryPage() {
       
       case "slug":
       case "uid":
-        return <div className="space-y-2"><LabelWithAI /><TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} /></div>
+        // Find source field for auto-generation (usually 'title' or 'name')
+        const sourceFieldName = (contentType?.fields.find(f => f.slug === 'title') || contentType?.fields.find(f => f.slug === 'name'))?.slug
+        const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
+        
+        return (
+          <div className="space-y-2">
+            <SlugField 
+              label={<LabelWithAI />}
+              value={value as string} 
+              onChange={v => handleFieldChange(field.slug, v)} 
+              required={field.required} 
+              placeholder={field.name}
+              sourceValue={sourceValue}
+              autoGenerate={false} // Default to false for editing existing entries
+            />
+          </div>
+        )
       
       case "textarea":
       case "markdown":

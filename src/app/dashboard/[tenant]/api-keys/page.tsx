@@ -38,6 +38,7 @@ import { useToast } from "@/hooks/use-toast"
 
 interface ApiToken {
   id: string
+  tenantId: string
   name: string
   token: string
   permissions: string[]
@@ -92,18 +93,18 @@ export default function TenantApiKeysPage() {
     }
   }, [tenantSlug, session])
 
-  const handleCopyKey = async (token: string) => {
+  const handleCopyKey = async (token: string, label: string = "API key") => {
     try {
       await navigator.clipboard.writeText(token)
       toast({
         title: "Copied!",
-        description: "API key copied to clipboard",
+        description: `${label} copied to clipboard`,
       })
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Error",
-        description: "Failed to copy API key",
+        description: `Failed to copy ${label.toLowerCase()}`,
       })
     }
   }
@@ -380,6 +381,7 @@ export default function TenantApiKeysPage() {
                     <TableRow>
                       <TableHead>Name</TableHead>
                       <TableHead>Key</TableHead>
+                      <TableHead>Tenant ID</TableHead>
                       <TableHead>Permissions</TableHead>
                       <TableHead>Created</TableHead>
                       <TableHead>Last Used</TableHead>
@@ -398,14 +400,29 @@ export default function TenantApiKeysPage() {
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <code className="text-sm bg-muted px-2 py-1 rounded">
-                              {apiKey.token.substring(0, 20)}...
+                              {apiKey.token.substring(0, 15)}...
                             </code>
                             <Button
                               variant="ghost"
                               size="icon"
                               onClick={() => handleCopyKey(apiKey.token)}
                             >
-                              <Copy className="h-4 w-4" />
+                              <Copy className="h-3 w-3" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center gap-2">
+                            <code className="text-sm bg-muted/50 px-2 py-1 rounded text-xs">
+                              {apiKey.tenantId}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleCopyKey(apiKey.tenantId, "Tenant ID")}
+                              className="h-7 w-7"
+                            >
+                              <Copy className="h-3 w-3" />
                             </Button>
                           </div>
                         </TableCell>

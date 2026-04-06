@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * POST /api/admin/single-types/by-slug/[slug]/data
@@ -31,8 +32,11 @@ export async function POST(
     }
 
     // Get single type
-    const singleType = await db.singleType.findUnique({
-      where: { slug },
+    const singleType = await db.singleType.findFirst({
+      where: { 
+        slug,
+        tenantId: null
+      },
       include: {
         fields: true,
       },
@@ -69,6 +73,18 @@ export async function POST(
       },
     })
 
+    // Process auto-generated slugs
+    const existingData = assignment?.data ? (typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data) : {}
+    const fullData = { ...existingData, ...data }
+    const dataWithSlugs = await processAutoSlugs(
+      systemTenant.id,
+      singleType.id,
+      singleType.fields,
+      fullData,
+      assignment?.id,
+      'single'
+    )
+
     if (assignment) {
       // Update existing assignment
       assignment = await db.tenantSingleTypeAssignment.update({
@@ -79,7 +95,7 @@ export async function POST(
           },
         },
         data: {
-          data: JSON.stringify(data),
+          data: JSON.stringify(dataWithSlugs),
           publishedAt: new Date(),
           updatedAt: new Date(),
         },
@@ -91,7 +107,7 @@ export async function POST(
           tenantId: systemTenant.id,
           singleTypeId: singleType.id,
           enabled: true,
-          data: JSON.stringify(data),
+          data: JSON.stringify(dataWithSlugs),
           publishedAt: new Date(),
         },
       })
@@ -132,8 +148,11 @@ export async function GET(
     const { slug } = await params
 
     // Get single type
-    const singleType = await db.singleType.findUnique({
-      where: { slug },
+    const singleType = await db.singleType.findFirst({
+      where: { 
+        slug,
+        tenantId: null
+      },
     })
 
     if (!singleType) {

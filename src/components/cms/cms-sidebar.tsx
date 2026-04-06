@@ -26,10 +26,10 @@ import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 
 interface CMSSidebarProps {
-  tenantSlug: string
+  tenantId: string
 }
 
-export function CMSSidebar({ tenantSlug }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
@@ -37,7 +37,7 @@ export function CMSSidebar({ tenantSlug }: CMSSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [assignedContentTypes, setAssignedContentTypes] = useState<any[]>([])
 
-  const href = (path: string) => `/cms/${tenantSlug}${path}`
+  const href = (path: string) => `/cms/${tenantId}${path}`
 
   useEffect(() => {
     setMounted(true)
@@ -47,7 +47,7 @@ export function CMSSidebar({ tenantSlug }: CMSSidebarProps) {
   useEffect(() => {
     async function fetchContentTypes() {
       try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/content-types`)
+        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
         if (res.ok) {
           const data = await res.json()
           // API returns an array directly, not data.contentTypes
@@ -57,8 +57,8 @@ export function CMSSidebar({ tenantSlug }: CMSSidebarProps) {
         console.error("Failed to fetch content types:", error)
       }
     }
-    if (tenantSlug) fetchContentTypes()
-  }, [tenantSlug])
+    if (tenantId) fetchContentTypes()
+  }, [tenantId])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })

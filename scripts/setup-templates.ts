@@ -103,6 +103,42 @@ async function main() {
           { name: "Nama Situs", slug: "site_name", type: "text", required: true, order: 0 },
           { name: "Logo", slug: "logo", type: "media", order: 1 }
         ]
+      },
+      {
+        name: "Navbar",
+        slug: "navbar",
+        fields: [
+          { name: "Nama Brand", slug: "brandName", type: "text", required: true, order: 0 },
+          { name: "Logo Navbar", slug: "logo", type: "media", order: 1 },
+          { name: "Slogan", slug: "slogan", type: "text", order: 2 },
+          { name: "Menu Navigasi", slug: "menuItems", type: "component", required: true, options: { componentSlug: "nav-item-l1", repeatable: true }, order: 3 },
+          { name: "Tombol CTA Label", slug: "ctaLabel", type: "text", order: 4 },
+          { name: "Tombol CTA Link", slug: "ctaLink", type: "text", order: 5 },
+        ]
+      },
+      {
+        name: "Footer",
+        slug: "footer",
+        fields: [
+          { name: "Deskripsi Footer", slug: "description", type: "textarea", order: 0 },
+          { name: "Teks Copyright", slug: "copyright", type: "text", order: 1 },
+          { name: "Link Sections", slug: "sections", type: "component", required: false, options: { componentSlug: "footer-section", repeatable: true }, order: 2 },
+          { name: "Link Sosial Media", slug: "socialLinks", type: "component", required: false, options: { componentSlug: "link", repeatable: true }, order: 3 },
+        ]
+      },
+      {
+        name: "Beranda",
+        slug: "homepage",
+        fields: [
+          { 
+            name: "Konten Beranda", 
+            slug: "blocks", 
+            type: "component", 
+            required: false, 
+            options: { repeatable: true, metadata: { isDynamicZone: true } },
+            order: 0 
+          },
+        ]
       }
     ]
   }

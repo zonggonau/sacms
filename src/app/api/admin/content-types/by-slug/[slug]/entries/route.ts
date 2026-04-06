@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * GET /api/admin/content-types/by-slug/[slug]/entries
@@ -131,6 +132,14 @@ export async function POST(
       })
     }
 
+    // Process auto-generated slugs
+    const dataWithSlugs = await processAutoSlugs(
+      systemTenant.id,
+      contentType.id,
+      contentType.fields,
+      typeof data === 'string' ? JSON.parse(data) : data
+    )
+
     // Determine status and publication date
     const finalStatus = publish ? "PUBLISHED" : (entryStatus || "DRAFT")
     const publishedAt = finalStatus === "PUBLISHED" ? new Date() : null
@@ -141,7 +150,7 @@ export async function POST(
         contentTypeId: contentType.id,
         tenantId: systemTenant.id,
         locale: locale || "en",
-        data: typeof data === 'string' ? data : JSON.stringify(data),
+        data: dataWithSlugs as any,
         status: finalStatus,
         publishedAt,
         createdBy: session.user.id,

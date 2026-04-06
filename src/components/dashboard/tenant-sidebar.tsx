@@ -37,7 +37,8 @@ import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 
 interface TenantSidebarProps {
-  tenantId: string
+  tenantId?: string
+  tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
 }
 
@@ -56,7 +57,8 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantId }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantSidebarProps) {
+  const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()

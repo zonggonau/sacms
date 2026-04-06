@@ -48,11 +48,16 @@ if (process.env.NODE_ENV !== 'production') globalForPrisma.tenantClients = tenan
  * - If tenant has a custom databaseUrl, returns a dedicated Prisma client.
  * - Otherwise, returns the shared (master) database client.
  */
-export async function getTenantDb(tenantSlug: string, forceFresh = false): Promise<PrismaClient> {
+export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): Promise<PrismaClient> {
   // 1. Check if it's the master tenant or shared
-  const tenant = await db.tenant.findUnique({
-    where: { slug: tenantSlug },
-    select: { id: true, databaseUrl: true }
+  const tenant = await db.tenant.findFirst({
+    where: { 
+      OR: [
+        { id: tenantIdOrSlug },
+        { slug: tenantIdOrSlug }
+      ]
+    },
+    select: { id: true, databaseUrl: true, slug: true }
   })
 
   // 2. Fallback to Shared DB if no custom URL or tenant not found
@@ -68,7 +73,7 @@ export async function getTenantDb(tenantSlug: string, forceFresh = false): Promi
   }
 
   // 4. Create and cache new dedicated client for Enterprise/Gov
-  console.log(`[Database] Initializing dedicated DB client for tenant: ${tenantSlug}`)
+  console.log(`[Database] Initializing dedicated DB client for tenant: ${tenant.slug}`)
   const client = new PrismaClient({
     datasources: {
       db: { url: dbUrl }

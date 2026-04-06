@@ -40,30 +40,8 @@ const GLOBAL_COMPONENTS: ComponentDefinition[] = [
       { name: "Keywords", slug: "keywords", type: "text", required: false },
       { name: "OG Image", slug: "ogImage", type: "media", required: false },
     ]
-  },
-  {
-    name: "Button",
-    slug: "button",
-    category: "Elements",
-    fields: [
-      { name: "Label", slug: "label", type: "text", required: true },
-      { name: "Link", slug: "link", type: "text", required: true },
-      { name: "Variant", slug: "variant", type: "select", required: true, options: { choices: ["primary", "secondary", "outline", "ghost"] } },
-    ]
   }
 ]
-
-const SITE_IDENTITY: ContentTypeDefinition = {
-  name: "Site Identity",
-  slug: "identity",
-  description: "Global site identity and metadata",
-  fields: [
-    { name: "Site Name", slug: "siteName", type: "text", required: true },
-    { name: "Site Description", slug: "siteDescription", type: "textarea", required: false },
-    { name: "Logo", slug: "logo", type: "media", required: false },
-    { name: "Favicon", slug: "favicon", type: "media", required: false },
-  ]
-}
 
 const SEO_FIELDS: FieldDefinition[] = [
   { name: "SEO Title", slug: "seoTitle", type: "text", required: false },
@@ -72,9 +50,9 @@ const SEO_FIELDS: FieldDefinition[] = [
 ]
 
 export const STARTER_KITS: Record<string, StarterKit> = {
-  blog: {
-    name: "Blog & News",
-    description: "Standard blog structure with posts, categories, and authors.",
+  "sacms-starter": {
+    name: "SaCMS Full Kit (Framework Ready)",
+    description: "Complete dynamic boilerplate. Optimized for component-based rendering.",
     contentTypes: [
       {
         name: "Authors",
@@ -99,186 +77,153 @@ export const STARTER_KITS: Record<string, StarterKit> = {
         fields: [
           { name: "Title", slug: "title", type: "text", required: true },
           { name: "Slug", slug: "slug", type: "uid", required: true },
-          { name: "Featured Image", slug: "image", type: "media", required: false },
-          { name: "Excerpt", slug: "excerpt", type: "textarea", required: true },
+          { name: "Subtitle", slug: "subtitle", type: "text", required: false },
           { name: "Content", slug: "content", type: "richText", required: true },
+          { name: "Featured Image", slug: "featuredImage", type: "media", required: false },
           { name: "Category", slug: "category", type: "relation", relationSlug: "categories", required: true },
           { name: "Author", slug: "author", type: "relation", relationSlug: "authors", required: true },
-          { name: "Published Date", slug: "publishedDate", type: "date", required: true },
           ...SEO_FIELDS
         ]
       }
     ],
     singleTypes: [
-      SITE_IDENTITY,
+      {
+        name: "Global Settings",
+        slug: "global-settings",
+        fields: [
+          { name: "Site Name", slug: "siteName", type: "text", required: true },
+          { name: "Description", slug: "description", type: "textarea", required: false },
+          { name: "Logo", slug: "logo", type: "media", required: false },
+          { name: "Favicon", slug: "favicon", type: "media", required: false },
+          { name: "Social Links", slug: "socialLinks", type: "component", required: false, options: { componentSlug: "link", repeatable: true } },
+        ]
+      },
+      {
+        name: "Navbar",
+        slug: "navbar",
+        fields: [
+          { name: "Brand Name", slug: "brandName", type: "text", required: true },
+          { name: "Logo", slug: "logo", type: "media", required: false },
+          { name: "Slogan", slug: "slogan", type: "text", required: false },
+          { name: "Menu Items", slug: "menuItems", type: "component", required: true, options: { componentSlug: "nav-item-l1", repeatable: true } },
+          { name: "CTA Label", slug: "ctaLabel", type: "text", required: false },
+          { name: "CTA Link", slug: "ctaLink", type: "text", required: false },
+        ]
+      },
+      {
+        name: "Footer",
+        slug: "footer",
+        fields: [
+          { name: "Description", slug: "description", type: "textarea", required: false },
+          { name: "Copyright Text", slug: "copyright", type: "text", required: false },
+          { name: "Sections", slug: "sections", type: "component", required: false, options: { componentSlug: "footer-section", repeatable: true } },
+          { name: "Social Links", slug: "socialLinks", type: "component", required: false, options: { componentSlug: "link", repeatable: true } },
+        ]
+      },
       {
         name: "Homepage",
         slug: "homepage",
         fields: [
-          { name: "Hero Title", slug: "heroTitle", type: "text", required: true },
-          { name: "Hero Description", slug: "heroDescription", type: "textarea", required: true },
-          { name: "Featured Post", slug: "featuredPost", type: "relation", relationSlug: "posts", required: false },
+          { 
+            name: "Blocks", 
+            slug: "blocks", 
+            type: "component", 
+            required: false, 
+            options: { repeatable: true, metadata: { isDynamicZone: true } } 
+          },
           ...SEO_FIELDS
-        ]
-      }
-    ],
-    components: GLOBAL_COMPONENTS
-  },
-  ecommerce: {
-    name: "E-commerce",
-    description: "Product catalog, categories, and simple ordering structure.",
-    contentTypes: [
-      {
-        name: "Products",
-        slug: "products",
-        fields: [
-          { name: "Name", slug: "name", type: "text", required: true },
-          { name: "Slug", slug: "slug", type: "uid", required: true },
-          { name: "Price", slug: "price", type: "integer", required: true },
-          { name: "Images", slug: "images", type: "media", required: true },
-          { name: "Description", slug: "description", type: "richText", required: true },
-          { name: "Stock", slug: "stock", type: "integer", required: true },
-          { name: "Category", slug: "category", type: "relation", relationSlug: "categories", required: true },
-          ...SEO_FIELDS
-        ]
-      },
-      {
-        name: "Product Categories",
-        slug: "categories",
-        fields: [
-          { name: "Name", slug: "name", type: "text", required: true },
-          { name: "Slug", slug: "slug", type: "uid", required: true },
-          { name: "Icon", slug: "icon", type: "media", required: false },
-          ...SEO_FIELDS
-        ]
-      }
-    ],
-    singleTypes: [
-      SITE_IDENTITY,
-      {
-        name: "Store Config",
-        slug: "store-config",
-        fields: [
-          { name: "Currency", slug: "currency", type: "text", required: true },
-          { name: "Support Email", slug: "supportEmail", type: "text", required: true },
-          { name: "Enable Reviews", slug: "enableReviews", type: "boolean", required: false },
         ]
       }
     ],
     components: [
       ...GLOBAL_COMPONENTS,
       {
-        name: "Product Spec",
-        slug: "spec",
-        category: "Commerce",
+        name: "Link",
+        slug: "link",
+        category: "Navigation",
         fields: [
           { name: "Label", slug: "label", type: "text", required: true },
-          { name: "Value", slug: "value", type: "text", required: true },
-        ]
-      }
-    ]
-  },
-  portfolio: {
-    name: "Portfolio",
-    description: "Showcase your work with projects, services, and testimonials.",
-    contentTypes: [
-      {
-        name: "Projects",
-        slug: "projects",
-        fields: [
-          { name: "Title", slug: "title", type: "text", required: true },
-          { name: "Slug", slug: "slug", type: "uid", required: true },
-          { name: "Thumbnail", slug: "thumbnail", type: "media", required: true },
-          { name: "Gallery", slug: "gallery", type: "media", required: false },
-          { name: "Description", slug: "description", type: "richText", required: true },
-          { name: "Client", slug: "client", type: "text", required: false },
-          { name: "Completion Date", slug: "date", type: "date", required: false },
-          ...SEO_FIELDS
+          { name: "URL", slug: "url", type: "text", required: true },
         ]
       },
       {
-        name: "Services",
-        slug: "services",
+        name: "Nav Item Level 1",
+        slug: "nav-item-l1",
+        category: "Navigation",
         fields: [
-          { name: "Title", slug: "title", type: "text", required: true },
-          { name: "Icon", slug: "icon", type: "media", required: true },
-          { name: "Description", slug: "textarea", type: "textarea", required: true },
+          { name: "Label", slug: "label", type: "text", required: true },
+          { name: "URL", slug: "url", type: "text", required: false },
+          { name: "Sub Menu", slug: "children", type: "component", required: false, options: { componentSlug: "nav-item-l2", repeatable: true } },
         ]
       },
       {
-        name: "Testimonials",
-        slug: "testimonials",
+        name: "Nav Item Level 2",
+        slug: "nav-item-l2",
+        category: "Navigation",
         fields: [
-          { name: "Author", slug: "author", type: "text", required: true },
-          { name: "Company", slug: "company", type: "text", required: false },
-          { name: "Quote", slug: "quote", type: "textarea", required: true },
-          { name: "Avatar", slug: "avatar", type: "media", required: false },
+          { name: "Label", slug: "label", type: "text", required: true },
+          { name: "URL", slug: "url", type: "text", required: false },
+          { name: "Sub Menu", slug: "children", type: "component", required: false, options: { componentSlug: "link", repeatable: true } },
         ]
-      }
-    ],
-    singleTypes: [
-      SITE_IDENTITY,
+      },
       {
-        name: "About Me",
-        slug: "about-me",
+        name: "Footer Section",
+        slug: "footer-section",
+        category: "Navigation",
         fields: [
-          { name: "Bio", slug: "bio", type: "richText", required: true },
-          { name: "CV File", slug: "cv", type: "media", required: false },
-          ...SEO_FIELDS
+          { name: "Title", slug: "title", type: "text", required: true },
+          { name: "Links", slug: "links", type: "component", required: true, options: { componentSlug: "link", repeatable: true } },
         ]
-      }
-    ],
-    components: GLOBAL_COMPONENTS
-  },
-  corporate: {
-    name: "Corporate / Company Profile",
-    description: "Complete structure for professional business websites.",
-    contentTypes: [
+      },
       {
-        name: "Services",
-        slug: "services",
+        name: "Hero Section",
+        slug: "hero",
+        category: "Page Sections",
         fields: [
           { name: "Title", slug: "title", type: "text", required: true },
           { name: "Description", slug: "description", type: "textarea", required: true },
-          { name: "Icon", slug: "icon", type: "media", required: false },
-          ...SEO_FIELDS
+          { name: "CTA Label", slug: "ctaLabel", type: "text", required: false },
+          { name: "CTA URL", slug: "ctaUrl", type: "text", required: false },
+          { name: "Image", slug: "image", type: "media", required: false },
         ]
       },
       {
-        name: "Team Members",
-        slug: "team",
-        fields: [
-          { name: "Name", slug: "name", type: "text", required: true },
-          { name: "Position", slug: "position", type: "text", required: true },
-          { name: "Photo", slug: "photo", type: "media", required: true },
-          { name: "LinkedIn", slug: "linkedin", type: "text", required: false },
-        ]
-      },
-      {
-        name: "Case Studies",
-        slug: "case-studies",
+        name: "Features Grid",
+        slug: "features",
+        category: "Page Sections",
         fields: [
           { name: "Title", slug: "title", type: "text", required: true },
-          { name: "Challenge", slug: "challenge", type: "textarea", required: true },
-          { name: "Solution", slug: "solution", type: "textarea", required: true },
-          { name: "Result", slug: "result", type: "textarea", required: true },
-          ...SEO_FIELDS
+          { name: "Description", slug: "description", type: "textarea", required: false },
+          { name: "Items", slug: "items", type: "component", required: true, options: { componentSlug: "feature-item", repeatable: true } },
         ]
-      }
-    ],
-    singleTypes: [
-      SITE_IDENTITY,
+      },
       {
-        name: "Contact Info",
-        slug: "contact",
+        name: "Feature Item",
+        slug: "feature-item",
+        category: "UI Elements",
         fields: [
-          { name: "Address", slug: "address", type: "textarea", required: true },
-          { name: "Phone", slug: "phone", type: "text", required: true },
-          { name: "Email", slug: "email", type: "text", required: true },
-          { name: "Google Maps URL", slug: "maps", type: "text", required: false },
+          { name: "Title", slug: "title", type: "text", required: true },
+          { name: "Description", slug: "description", type: "textarea", required: true },
+          { name: "Icon", slug: "icon", type: "text", required: false },
+        ]
+      },
+      {
+        name: "Post List",
+        slug: "post-list",
+        category: "Page Sections",
+        fields: [
+          { name: "Title", slug: "title", type: "text", required: true },
+          { name: "Limit", slug: "limit", type: "integer", required: false },
+        ]
+      },
+      {
+        name: "Rich Text Block",
+        slug: "rich-text",
+        category: "Page Sections",
+        fields: [
+          { name: "Content", slug: "content", type: "richText", required: true },
         ]
       }
-    ],
-    components: GLOBAL_COMPONENTS
+    ]
   }
 }

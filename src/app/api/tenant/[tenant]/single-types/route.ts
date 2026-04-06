@@ -6,6 +6,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { createSingleTypeSchema } from "@/lib/validations"
 import { saveSingleTypeDataSchema } from "@/lib/validations"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * GET /api/tenant/[tenant]/single-types
@@ -180,10 +181,39 @@ export async function PUT(
 
     if (!singleTypeId) return NextResponse.json({ error: "singleTypeId is required" }, { status: 400 })
 
+    // Find the single type with fields to process slugs
+    const singleType = await tenantDb.singleType.findFirst({
+      where: {
+        id: singleTypeId,
+        OR: [
+          { tenantId: tenantId },
+          { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
+        ]
+      },
+      include: { fields: true }
+    })
+
+    if (!singleType) {
+      return NextResponse.json({ error: "Single type not found" }, { status: 404 })
+    }
+
+    // Process auto-generated slugs
+    let processedData = data
+    if (data) {
+      processedData = await processAutoSlugs(
+        tenantId,
+        singleTypeId,
+        singleType.fields,
+        data,
+        undefined,
+        'single',
+        tenantDb
+      )
+    }
+
     // Find or create assignment in the tenant-specific database
     const existingAssignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
       where: { tenantId: tenantId, singleTypeId },
-      include: { singleType: true },
     })
 
     let assignment
@@ -193,7 +223,7 @@ export async function PUT(
           tenantId: tenantId,
           singleTypeId,
           enabled: true,
-          data: data ? JSON.stringify(data) : null,
+          data: processedData ? JSON.stringify(processedData) : null,
           publishedAt: publish ? new Date() : null,
         },
         include: { singleType: true },
@@ -202,7 +232,7 @@ export async function PUT(
       assignment = await tenantDb.tenantSingleTypeAssignment.update({
         where: { id: existingAssignment.id },
         data: {
-          data: data ? JSON.stringify(data) : undefined,
+          data: processedData ? JSON.stringify(processedData) : undefined,
           publishedAt: publish ? new Date() : undefined,
         },
         include: { singleType: true },

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -38,13 +38,30 @@ import {
   Zap,
   Database,
 } from "lucide-react"
-import Link from "next/link"
 import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
-import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+
+// DnD Kit Imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 interface Field {
   id: string
@@ -53,12 +70,83 @@ interface Field {
   type: string
   required: boolean
   unique: boolean
-  options: string | null
+  options: string | Record<string, any> | null
   relationType: string
   targetModel: string
   targetSlug: string
   componentSlug: string
   repeatable: boolean
+  autoGenerate?: boolean
+  sourceField?: string
+}
+
+// Sortable Item Component
+function SortableFieldItem({ 
+  field, 
+  onEdit, 
+  onDelete 
+}: { 
+  field: Field, 
+  onEdit: (f: Field) => void, 
+  onDelete: (id: string) => void 
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: field.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
+  const Icon = typeInfo?.icon || Zap
+
+  return (
+    <div 
+      ref={setNodeRef} 
+      style={style}
+      className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm"
+    >
+      <div 
+        {...attributes} 
+        {...listeners} 
+        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-md"
+      >
+        <GripVertical className="h-4 w-4 text-muted-foreground" />
+      </div>
+
+      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5 shrink-0">
+        <Icon className="h-5 w-5" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm truncate">{field.name}</span>
+          {field.required && <Badge className="text-[8px] h-3.5 bg-red-50 text-red-500 border-red-100 uppercase">REQ</Badge>}
+        </div>
+        <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">
+          {field.type} &middot; /{field.slug}
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onEdit(field)}>
+          <Settings2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onDelete(field.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
 }
 
 export default function NewGlobalContentTypePage() {
@@ -78,6 +166,14 @@ export default function NewGlobalContentTypePage() {
   const [editingField, setEditingField] = useState<Field | null>(null)
   const [typeSearch, setTypeSearch] = useState("")
 
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
@@ -87,7 +183,7 @@ export default function NewGlobalContentTypePage() {
       const generatedSlug = name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")
       setSlug(generatedSlug)
     }
-  }, [name])
+  }, [name, editingField])
 
   const generateFieldSlug = (value: string) => {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
@@ -95,7 +191,7 @@ export default function NewGlobalContentTypePage() {
 
   const selectType = (type: string) => {
     const newField: Field = {
-      id: Date.now().toString(),
+      id: `field-${Date.now()}`,
       name: "",
       slug: "",
       type: type,
@@ -107,6 +203,8 @@ export default function NewGlobalContentTypePage() {
       targetSlug: "",
       componentSlug: "",
       repeatable: false,
+      autoGenerate: type === "slug",
+      sourceField: "",
     }
     setEditingField(newField)
     setIsTypeSelectorOpen(false)
@@ -116,6 +214,21 @@ export default function NewGlobalContentTypePage() {
   const editField = (field: Field) => {
     setEditingField({ ...field })
     setIsConfigModalOpen(true)
+  }
+
+  const deleteField = (id: string) => {
+    setFields(fields.filter(f => f.id !== id))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
   }
 
   const saveFieldConfig = () => {
@@ -130,9 +243,23 @@ export default function NewGlobalContentTypePage() {
   }
 
   const serializeFieldOptions = (field: Field) => {
-    if (field.type === "relation") return JSON.stringify({ relationType: field.relationType, targetModel: field.targetModel, targetSlug: field.targetSlug })
-    if (field.type === "component") return JSON.stringify({ componentSlug: field.componentSlug, repeatable: field.repeatable })
-    return field.options
+    const options: Record<string, any> = typeof field.options === "string" 
+      ? (field.options ? JSON.parse(field.options) : {}) 
+      : (field.options || {})
+
+    if (field.type === "relation") {
+      options.relationType = field.relationType
+      options.targetModel = field.targetModel
+      options.targetSlug = field.targetSlug
+    } else if (field.type === "component") {
+      options.componentSlug = field.componentSlug
+      options.repeatable = field.repeatable
+    } else if (field.type === "slug") {
+      options.autoGenerate = field.autoGenerate
+      options.sourceField = field.sourceField
+    }
+    
+    return options
   }
 
   const handleSaveSchema = async () => {
@@ -226,35 +353,34 @@ export default function NewGlobalContentTypePage() {
                   <p className="font-bold">No attributes defined</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {fields.map(field => {
-                    const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
-                    const Icon = typeInfo?.icon || Zap
-                    return (
-                      <div key={field.id} className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5"><Icon className="h-5 w-5" /></div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm truncate">{field.name}</span>
-                            {field.required && <Badge className="text-[8px] h-3.5 bg-red-50 text-red-500 border-red-100 uppercase">REQ</Badge>}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">{field.type} &middot; /{field.slug}</div>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editField(field)}><Settings2 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setFields(fields.filter(f => f.id !== field.id))}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <DndContext 
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext 
+                    items={fields.map(f => f.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {fields.map(field => (
+                        <SortableFieldItem 
+                          key={field.id} 
+                          field={field} 
+                          onEdit={editField} 
+                          onDelete={deleteField} 
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </div>
         </div>
       </main>
 
-      {/* Type Selector */}
+      {/* Type Selector Modal */}
       <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
         <DialogContent className="max-w-2xl p-0 border-none shadow-2xl rounded-3xl overflow-hidden">
           <div className="flex flex-col max-h-[85vh]">
@@ -319,6 +445,41 @@ export default function NewGlobalContentTypePage() {
                 )}
                 {editingField?.type === "relation" && <div className="p-4 bg-muted/20 rounded-2xl"><RelationFieldConfig context="contentType" relationType={editingField.relationType} targetModel={editingField.targetModel} targetSlug={editingField.targetSlug} onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)} onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)} onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)} /></div>}
                 {editingField?.type === "component" && <div className="p-4 bg-muted/20 rounded-2xl"><ComponentFieldConfig componentSlug={editingField.componentSlug} repeatable={editingField.repeatable} onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)} onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)} /></div>}
+                {editingField?.type === "slug" && (
+                  <div className="p-4 bg-muted/20 rounded-2xl space-y-4">
+                    <div className="flex items-center space-x-3">
+                      <Checkbox 
+                        id="autoGenerate" 
+                        checked={editingField?.autoGenerate} 
+                        onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} 
+                      />
+                      <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer">Auto-generate from another field</Label>
+                    </div>
+                    {editingField?.autoGenerate && (
+                      <div className="space-y-2">
+                        <Label className="text-xs font-bold">Source Field</Label>
+                        <Select 
+                          value={editingField.sourceField || ""} 
+                          onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
+                        >
+                          <SelectTrigger className="bg-card border-none h-11 rounded-xl font-bold">
+                            <SelectValue placeholder="Select a field" />
+                          </SelectTrigger>
+                          <SelectContent className="rounded-xl border-none shadow-2xl">
+                            {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
+                              <SelectItem key={f.slug} value={f.slug} className="rounded-lg font-bold">
+                                {f.name} ({f.slug})
+                              </SelectItem>
+                            ))}
+                            {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).length === 0 && (
+                              <div className="p-2 text-xs text-muted-foreground italic">No text fields available</div>
+                            )}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
+                )}
                 <div className="flex items-center gap-6 p-4 bg-muted/20 rounded-2xl mt-4">
                   <div className="flex items-center space-x-3"><Checkbox id="required" checked={editingField?.required} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)} /><Label htmlFor="required" className="text-xs font-bold cursor-pointer">Required</Label></div>
                   <div className="flex items-center space-x-3"><Checkbox id="unique" checked={editingField?.unique} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)} /><Label htmlFor="unique" className="text-xs font-bold cursor-pointer">Unique</Label></div>

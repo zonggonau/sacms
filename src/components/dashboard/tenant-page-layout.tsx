@@ -8,7 +8,8 @@ import { Loader2 } from "lucide-react"
 
 interface TenantPageLayoutProps {
   children: ReactNode
-  tenantId: string
+  tenantId?: string
+  tenantSlug?: string
   title?: string
   description?: string
   actions?: ReactNode
@@ -23,12 +24,14 @@ interface ContentType {
 
 export function TenantPageLayout({
   children,
-  tenantId,
+  tenantId: propId,
+  tenantSlug,
   title,
   description,
   actions,
   header = true,
 }: TenantPageLayoutProps) {
+  const tenantId = propId || tenantSlug
   const { data: session, status } = useSession()
   const router = useRouter()
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])

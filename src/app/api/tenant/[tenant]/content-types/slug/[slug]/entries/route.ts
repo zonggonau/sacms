@@ -9,6 +9,7 @@ import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateContentEntry } from "@/lib/content-validations"
 import { invalidatePattern } from "@/lib/cache"
+import { processAutoSlugs } from "@/lib/slug"
 
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries
@@ -197,11 +198,22 @@ export async function POST(
     const finalValidatedData = validation.data
     // --------------------------------
 
+    // Process auto-generated slugs
+    const dataWithSlugs = await processAutoSlugs(
+      access.tenantId,
+      contentType.id,
+      contentType.fields,
+      finalValidatedData as Record<string, any>,
+      undefined,
+      'content',
+      tenantDb
+    )
+
     // Execute sync hooks (beforeCreate)
     const hookResult = await executeSyncHooks(
       access.tenantId,
       WebhookEvents.BEFORE_CREATE,
-      finalValidatedData as Record<string, unknown>
+      dataWithSlugs as Record<string, unknown>
     )
     if (!hookResult.allowed) {
       return NextResponse.json(
@@ -210,7 +222,7 @@ export async function POST(
       )
     }
 
-    const finalData = hookResult.modifiedData || finalValidatedData
+    const finalData = hookResult.modifiedData || dataWithSlugs
 
     // Create entry with workflow status
     const entry = await tenantDb.contentEntry.create({
