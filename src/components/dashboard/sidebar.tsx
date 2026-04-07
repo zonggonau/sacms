@@ -36,6 +36,7 @@ import { signOut, useSession } from "next-auth/react"
 interface SidebarProps {
   isSuperAdmin: boolean
   tenantId?: string
+  tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
 }
 
@@ -80,7 +81,8 @@ const tenantAdminNavItems = [
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 
-export function DashboardSidebar({ isSuperAdmin, tenantId, tenants = [] }: SidebarProps) {
+export function DashboardSidebar({ isSuperAdmin, tenantId: propId, tenantSlug, tenants = [] }: SidebarProps) {
+  const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()

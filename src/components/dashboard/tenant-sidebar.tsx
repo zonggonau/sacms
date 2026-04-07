@@ -74,8 +74,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
   }, [])
 
   const currentTenant = liveTenants.length > 0 
-    ? liveTenants.find((t) => t.id === tenantId) 
-    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
+    ? liveTenants.find((t) => t.id === tenantId || t.slug === tenantId) 
+    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId || t.slug === tenantId)
 
   const href = (path: string) => {
     if (path === "/cms-redirect") return `/cms/${tenantId}`

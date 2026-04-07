@@ -5,6 +5,7 @@ import { db } from "@/lib/database"
 import { randomBytes } from "crypto"
 import { validateBody } from "@/lib/validate"
 import { createApiTokenSchema } from "@/lib/validations"
+import { getTenantAccess } from "@/lib/tenant-access"
 
 // Generate a secure random token
 function generateToken(): string {
@@ -23,33 +24,18 @@ export async function GET(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant: tenantSlug } = await params
+    const { tenant: tenantIdOrSlug } = await params
+    const access = await getTenantAccess(session, tenantIdOrSlug)
 
-    // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
     }
 
-    // Check access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+    const tenantId = access.tenantId
 
     // Get API tokens (without showing actual token value for security)
     const tokens = await db.apiToken.findMany({
-      where: { tenantId: tenant.id },
+      where: { tenantId: tenantId },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,
@@ -100,29 +86,21 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant: tenantSlug } = await params
+    const { tenant: tenantIdOrSlug } = await params
+    const access = await getTenantAccess(session, tenantIdOrSlug)
 
-    // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
     }
 
-    // Check access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    if (access.role !== "admin" && access.role !== "owner") {
+      return NextResponse.json(
+        { error: "Only tenant admins and owners can create API tokens" },
+        { status: 403 }
+      )
     }
+
+    const tenantId = access.tenantId
 
     const result = await validateBody(request, createApiTokenSchema)
     if ("error" in result) return result.error
@@ -134,7 +112,7 @@ export async function POST(
     // Create API token
     const apiToken = await db.apiToken.create({
       data: {
-        tenantId: tenant.id,
+        tenantId: tenantId,
         name: name as string,
         description: (description as string) || null,
         token,

@@ -72,10 +72,11 @@ export default function SingleTypesPage({
   const isSuperAdmin = session?.user?.role === "super_admin"
 
   const fetchSingleTypes = useCallback(async (tenant: string) => {
+    if (!tenant || tenant === "undefined") return
     try {
       setLoading(true)
       const response = await fetch(`/api/tenant/${tenant}/single-types`)
-      if (response.status === 403 || response.status === 404) {
+      if (response.status === 403) {
         router.push("/dashboard")
         return
       }
@@ -97,8 +98,10 @@ export default function SingleTypesPage({
   useEffect(() => {
     const init = async () => {
       const { tenant } = await params
-      setTenantId(tenant)
-      await fetchSingleTypes(tenant)
+      if (tenant && tenant !== "undefined") {
+        setTenantId(tenant)
+        await fetchSingleTypes(tenant)
+      }
     }
     init()
   }, [params, fetchSingleTypes])

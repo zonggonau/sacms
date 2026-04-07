@@ -82,7 +82,10 @@ export default function TenantDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
-  const currentTenant = useMemo(() => tenants.find((t) => t.id === tenantId), [tenants, tenantId])
+  const currentTenant = useMemo(() => 
+    tenants.find((t) => t.id === tenantId || t.slug === tenantId), 
+    [tenants, tenantId]
+  )
 
   useEffect(() => {
     if (status === "unauthenticated") {
