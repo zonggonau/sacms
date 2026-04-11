@@ -7,7 +7,7 @@ import type {
   VerifyWebhookRequest,
   VerifyWebhookResult,
   TransactionStatusResult,
-} from "./provider.ts"
+} from "./provider"
 
 function mapMidtransStatus(
   transactionStatus: string

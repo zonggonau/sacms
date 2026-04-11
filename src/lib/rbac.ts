@@ -1,6 +1,6 @@
-import { db } from "./database.ts"
+import { db } from "./database"
 import { getServerSession } from "next-auth"
-import { authOptions } from "./auth.ts"
+import { authOptions } from "./auth"
 
 /**
  * RBAC Helper
@@ -83,8 +83,13 @@ export async function checkPermission(
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return { allowed: false }
 
-  const tenant = await db.tenant.findUnique({
-    where: { slug: tenantSlug }
+  const tenant = await db.tenant.findFirst({
+    where: {
+      OR: [
+        { slug: tenantSlug },
+        { id: tenantSlug }
+      ]
+    }
   })
 
   if (!tenant) return { allowed: false }

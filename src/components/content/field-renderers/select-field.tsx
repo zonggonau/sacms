@@ -11,6 +11,11 @@ import {
 } from "@/components/ui/select"
 import { Loader2 } from "lucide-react"
 
+interface SelectOption {
+  label: string
+  value: string
+}
+
 interface SelectFieldProps {
   value: string
   onChange: (value: string) => void
@@ -18,7 +23,7 @@ interface SelectFieldProps {
   placeholder?: string
   required?: boolean
   error?: string
-  options?: string[]
+  options?: (string | SelectOption)[]
   jsonPath?: string // Path to fetch JSON data (e.g., "/api/categories")
   tenantSlug?: string // For API calls
 }
@@ -34,7 +39,7 @@ export function SelectField({
   jsonPath,
   tenantSlug,
 }: SelectFieldProps) {
-  const [dynamicOptions, setDynamicOptions] = useState<string[]>(options)
+  const [dynamicOptions, setDynamicOptions] = useState<(string | SelectOption)[]>(options)
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
@@ -51,7 +56,20 @@ export function SelectField({
           const data = await response.json()
           // Handle different data formats
           const opts = Array.isArray(data) ? data : data.options || []
-          setDynamicOptions(opts)
+          
+          // Normalize options to handle objects from API
+          const normalizedOpts = opts.map((opt: any) => {
+            if (typeof opt === 'string') return opt
+            if (typeof opt === 'object' && opt !== null) {
+              return {
+                label: opt.label || opt.name || opt.title || String(Object.values(opt)[0]),
+                value: String(opt.value || opt.id || opt.slug || Object.values(opt)[0])
+              }
+            }
+            return String(opt)
+          })
+          
+          setDynamicOptions(normalizedOpts)
         }
       } catch (error) {
         console.error("Error fetching options:", error)
@@ -89,11 +107,17 @@ export function SelectField({
               No options available
             </SelectItem>
           ) : (
-            dynamicOptions.map((option) => (
-              <SelectItem key={option} value={option}>
-                {option}
-              </SelectItem>
-            ))
+            dynamicOptions.map((option, index) => {
+              const optLabel = typeof option === 'string' ? option : option.label
+              const optValue = typeof option === 'string' ? option : option.value
+              const optKey = typeof option === 'string' ? `opt-${index}-${option}` : `opt-${index}-${option.value}`
+              
+              return (
+                <SelectItem key={optKey} value={optValue}>
+                  {optLabel}
+                </SelectItem>
+              )
+            })
           )}
         </SelectContent>
       </Select>

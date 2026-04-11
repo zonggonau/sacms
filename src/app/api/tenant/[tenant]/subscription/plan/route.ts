@@ -29,8 +29,10 @@ export async function PATCH(
     }
 
     // Find tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
       include: {
         members: true,
       },

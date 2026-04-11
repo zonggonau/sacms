@@ -1,5 +1,5 @@
 import { z } from "zod/v4"
-import { slugSchema } from "./common.ts"
+import { slugSchema } from "./common"
 
 // Create tenant
 export const createTenantSchema = z.object({

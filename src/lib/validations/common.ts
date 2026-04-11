@@ -15,7 +15,7 @@ export const sortSchema = z
 // Locale
 export const localeSchema = z
   .string()
-  .regex(/^[a-z]{2}(-[A-Z]{2})?$/, "Locale format: en, id, en-US")
+  .regex(/^[a-z]{2,3}(-[A-Z]{2})?$/, "Locale format: en, id, ban, en-US")
   .default("en")
 
 // CUID

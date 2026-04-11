@@ -23,8 +23,10 @@ export async function POST(
     const { cancelAtPeriodEnd = true } = body
 
     // Find tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
       include: {
         members: true,
       },
@@ -145,8 +147,10 @@ export async function GET(
     const { tenant: tenantSlug } = await params
 
     // Find tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
       include: {
         members: true,
       },

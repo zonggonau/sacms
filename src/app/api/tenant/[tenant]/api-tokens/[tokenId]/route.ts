@@ -18,8 +18,10 @@ export async function DELETE(
     const { tenant: tenantSlug, tokenId } = await params
 
     // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
     })
 
     if (!tenant) {
@@ -82,8 +84,10 @@ export async function GET(
     const { tenant: tenantSlug, tokenId } = await params
 
     // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
     })
 
     if (!tenant) {

@@ -6,6 +6,7 @@ import {
   ListObjectsV2Command,
   DeleteObjectsCommand,
 } from "@aws-sdk/client-s3"
+import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import sharp from "sharp"
 import fs from "fs"
 import path from "path"
@@ -185,16 +186,34 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
 
   if (isR2Configured()) {
     try {
-      const listCommand = new ListObjectsV2Command({ Bucket: R2_BUCKET, Prefix: prefix })
-      const list = await s3.send(listCommand)
+      let continuationToken: string | undefined = undefined
+      let totalDeleted = 0
 
-      if (list.Contents && list.Contents.length > 0) {
-        const deleteCommand = new DeleteObjectsCommand({
+      do {
+        const listCommand = new ListObjectsV2Command({
           Bucket: R2_BUCKET,
-          Delete: { Objects: list.Contents.map((obj) => ({ Key: obj.Key })) },
+          Prefix: prefix,
+          ContinuationToken: continuationToken,
         })
-        await s3.send(deleteCommand)
-        console.log(`[Storage] Deleted ${list.Contents.length} objects for tenant: ${tenantSlug}`)
+        const list = await s3.send(listCommand)
+
+        if (list.Contents && list.Contents.length > 0) {
+          const deleteCommand = new DeleteObjectsCommand({
+            Bucket: R2_BUCKET,
+            Delete: {
+              Objects: list.Contents.map((obj) => ({ Key: obj.Key })),
+              Quiet: true,
+            },
+          })
+          await s3.send(deleteCommand)
+          totalDeleted += list.Contents.length
+        }
+
+        continuationToken = list.NextContinuationToken
+      } while (continuationToken)
+
+      if (totalDeleted > 0) {
+        console.log(`[Storage] Deleted ${totalDeleted} objects for tenant: ${tenantSlug}`)
       }
     } catch (e) {
       console.error(`[Storage] R2 cleanup failed for tenant ${tenantSlug}:`, e)
@@ -210,4 +229,20 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
       console.error(`[Storage] Local cleanup failed for tenant ${tenantSlug}:`, e)
     }
   }
+}
+
+/**
+ * Generate a presigned URL for private R2 objects.
+ */
+export async function generatePresignedUrl(storageKey: string, expiresIn = 3600): Promise<string> {
+  if (isR2Configured()) {
+    const command = new GetObjectCommand({
+      Bucket: R2_BUCKET,
+      Key: storageKey,
+    })
+    return getSignedUrl(s3, command, { expiresIn })
+  }
+  
+  // Fallback for local storage: internal proxy route
+  return `/api/media/serve?key=${storageKey}`
 }

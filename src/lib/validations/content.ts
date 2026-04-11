@@ -1,5 +1,5 @@
 import { z } from "zod/v4"
-import { contentStatusSchema, cuidSchema } from "./common.ts"
+import { contentStatusSchema, cuidSchema } from "./common"
 
 // Create content entry
 export const createEntrySchema = z.object({

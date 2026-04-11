@@ -23,7 +23,7 @@ export async function GET(
 
     const { tenant: tenantSlug, webhookId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] } })
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
@@ -65,7 +65,7 @@ export async function PUT(
 
     const { tenant: tenantSlug, webhookId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] } })
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
@@ -138,7 +138,7 @@ export async function DELETE(
 
     const { tenant: tenantSlug, webhookId } = await params
 
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] } })
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }

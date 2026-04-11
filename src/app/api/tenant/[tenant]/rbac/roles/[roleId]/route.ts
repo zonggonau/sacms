@@ -15,8 +15,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
     })
 
     if (!tenant) {

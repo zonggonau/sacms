@@ -112,6 +112,9 @@ model Tenant {
   contentTypes      ContentType[]
   singleTypes       SingleType[]
   components        Component[]
+  auditLogs         AuditLog[]
+  settings          Setting[]
+  apiRequests       ApiRequest[]
 
   @@map("tenants")
 }
@@ -476,6 +479,8 @@ model AuditLog {
   userAgent String?
   createdAt DateTime @default(now())
   
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@map("audit_logs")
 }
 
@@ -489,6 +494,8 @@ model Setting {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
   @@map("settings")
 }
 
@@ -513,6 +520,8 @@ model ApiRequest {
   duration  Int      // milliseconds
   apiKeyId  String?
   createdAt DateTime @default(now())
+
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_requests")
 }
@@ -553,6 +562,7 @@ model Media {
   caption      String?
   width        Int?
   height       Int?
+  isPrivate    Boolean  @default(false)
   metadata     Json?    // Native JSON for additional metadata
   uploadedBy   String?
   createdAt    DateTime @default(now())

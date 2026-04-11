@@ -19,7 +19,7 @@ export async function PATCH(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, memberId } = await params
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] } })
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
     // Check if requester is admin/owner
@@ -86,7 +86,7 @@ export async function DELETE(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, memberId } = await params
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] } })
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
     const requester = await db.tenantMember.findFirst({

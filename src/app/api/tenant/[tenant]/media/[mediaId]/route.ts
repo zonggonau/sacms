@@ -14,7 +14,14 @@ export async function PATCH(
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const { tenant: tenantSlug, mediaId } = await params
-    const tenant = await db.tenant.findUnique({ where: { slug: tenantSlug } })
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: tenantSlug },
+          { id: tenantSlug }
+        ]
+      }
+    })
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
 
     const membership = await db.tenantMember.findFirst({
@@ -57,8 +64,13 @@ export async function DELETE(
     const { tenant: tenantSlug, mediaId } = await params
 
     // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: tenantSlug },
+          { id: tenantSlug }
+        ]
+      }
     })
 
     if (!tenant) {
@@ -124,8 +136,13 @@ export async function GET(
     const { tenant: tenantSlug, mediaId } = await params
 
     // Get tenant
-    const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [
+          { slug: tenantSlug },
+          { id: tenantSlug }
+        ]
+      }
     })
 
     if (!tenant) {

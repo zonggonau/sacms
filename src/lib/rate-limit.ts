@@ -121,3 +121,20 @@ export const RATE_LIMITS = {
   /** Dashboard API: 300 requests per minute per user */
   api: { limit: 300, windowSeconds: 60 },
 } as const
+
+/**
+ * Returns rate limit configuration based on tenant plan.
+ */
+export function getTenantRateLimit(plan: string): RateLimitConfig {
+  switch (plan.toLowerCase()) {
+    case "enterprise":
+      return { limit: 2000, windowSeconds: 60 } // 2000 RPM
+    case "pro":
+      return { limit: 1000, windowSeconds: 60 } // 1000 RPM
+    case "starter":
+      return { limit: 500, windowSeconds: 60 } // 500 RPM
+    case "free":
+    default:
+      return { limit: 100, windowSeconds: 60 } // 100 RPM
+  }
+}

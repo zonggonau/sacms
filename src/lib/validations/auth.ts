@@ -1,5 +1,5 @@
 import { z } from "zod/v4"
-import { slugSchema } from "./common.ts"
+import { slugSchema } from "./common"
 
 export const registerSchema = z.object({
   name: z.string().min(1).max(100),

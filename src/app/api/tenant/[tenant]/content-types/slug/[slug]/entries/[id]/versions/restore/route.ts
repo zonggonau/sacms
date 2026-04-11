@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 
@@ -20,18 +20,21 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant, slug, id } = await params
+    const { tenant: tenantSlug, slug, id } = await params
     const { versionId } = await request.json()
 
     if (!versionId) {
       return NextResponse.json({ error: "Version ID is required" }, { status: 400 })
     }
 
-    const access = await getTenantAccess(session, tenant)
+    const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Get the version data
-    const version = await db.contentVersion.findFirst({
+    // Resolve tenant DB
+    const tenantDb = await getTenantDb(tenantSlug)
+
+    // Get the version data (Versions are usually in the same DB as the entry)
+    const version = await tenantDb.contentVersion.findFirst({
       where: {
         id: versionId,
         contentEntryId: id,
@@ -43,7 +46,7 @@ export async function POST(
     }
 
     // Update the entry with version data
-    const updatedEntry = await db.contentEntry.update({
+    const updatedEntry = await tenantDb.contentEntry.update({
       where: { id },
       data: {
         data: version.data as any,
@@ -52,12 +55,12 @@ export async function POST(
     })
 
     // Create a new version record for this restore action
-    const lastVersionNum = await db.contentVersion.findFirst({
+    const lastVersionNum = await tenantDb.contentVersion.findFirst({
       where: { contentEntryId: id },
       orderBy: { version: "desc" },
     })
 
-    await db.contentVersion.create({
+    await tenantDb.contentVersion.create({
       data: {
         contentEntryId: id,
         version: (lastVersionNum?.version || 0) + 1,
