@@ -36,6 +36,11 @@ interface AssignedContentType {
 }
 
 interface TenantStats {
+  tenant?: {
+    id: string
+    name: string
+    slug: string
+  }
   contentTypeCount: number
   singleTypeCount: number
   totalEntries: number
@@ -82,10 +87,12 @@ export default function TenantDashboardPage() {
   const [loading, setLoading] = useState(true)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
-  const currentTenant = useMemo(() => 
-    tenants.find((t) => t.id === tenantId || t.slug === tenantId), 
-    [tenants, tenantId]
-  )
+  const currentTenant = useMemo(() => {
+    // Priority 1: From stats API (most up-to-date)
+    if (stats?.tenant) return stats.tenant
+    // Priority 2: From session (initial load)
+    return tenants.find((t) => t.id === tenantId || t.slug === tenantId)
+  }, [tenants, tenantId, stats?.tenant])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -103,10 +110,11 @@ export default function TenantDashboardPage() {
           fetch(`/api/tenant/${tenantId}/billing/usage`),
         ])
         
-        // If API returns 403 or 404, then redirect
+        // If API returns 403 or 404, then log it but don't redirect yet so we can debug
         if (ctRes.status === 403 || ctRes.status === 404) {
-          router.push("/dashboard")
-          return
+          console.error(`[Dashboard] API returned ${ctRes.status} for tenant ${tenantId}`);
+          // router.push("/dashboard")
+          // return
         }
 
         if (ctRes.ok) {
@@ -157,16 +165,16 @@ export default function TenantDashboardPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
+    <div className="flex h-screen overflow-hidden bg-muted/10">
       <TenantSidebar tenantId={tenantId} />
-      <main className="flex-1 min-h-screen overflow-auto">
+      <main className="flex-1 overflow-y-auto">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight">{currentTenant?.name || tenantId}</h1>
-              <p className="text-muted-foreground">Welcome back to your content workspace.</p>
+              <p className="text-muted-foreground">Welcome back to <strong>{currentTenant?.name || "your"}</strong> content workspace.</p>
             </div>
             <div className="flex gap-2">
               <Link href={`/cms/${tenantId}`}>

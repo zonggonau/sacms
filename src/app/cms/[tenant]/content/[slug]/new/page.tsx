@@ -50,6 +50,7 @@ import { TagsField } from "@/components/content/field-renderers/tags-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { AISmartFill } from "@/components/content/ai-smart-fill"
 
 interface Field {
   id: string
@@ -167,6 +168,13 @@ export default function CMSCreateEntryPage() {
     setFormData(prev => ({ ...prev, [slug]: value }))
   }
 
+  const handleAISmartFill = (data: Record<string, any>) => {
+    setFormData(prev => ({
+      ...prev,
+      ...data
+    }))
+  }
+
   const renderField = (field: Field) => {
     const value = formData[field.slug]
     let options: string[] = []
@@ -184,15 +192,6 @@ export default function CMSCreateEntryPage() {
     const LabelWithAI = () => (
       <div className="flex items-center justify-between">
         <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
-        {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
-          <AIAssistantDialog
-            tenantSlug={tenantSlug}
-            contentTypeSlug={contentTypeSlug}
-            fieldName={field.name}
-            currentValue={value as string}
-            onApply={(content) => handleFieldChange(field.slug, content)}
-          />
-        )}
       </div>
     )
 
@@ -306,6 +305,13 @@ export default function CMSCreateEntryPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <AISmartFill 
+              tenantSlug={tenantSlug} 
+              contentTypeName={contentType?.name || ""} 
+              schema={contentType?.fields || []}
+              onApply={handleAISmartFill}
+            />
+
             <Select value={entryStatus} onValueChange={setEntryStatus}>
               <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-xl border-none shadow-sm h-11">
                 <SelectValue />
@@ -416,10 +422,10 @@ export default function CMSCreateEntryPage() {
             <div className="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl text-white shadow-xl shadow-emerald-100">
               <div className="flex items-center gap-2 mb-3">
                 <Zap className="h-5 w-5 fill-white" />
-                <h4 className="font-black uppercase text-xs tracking-widest">CMS Tip</h4>
+                <h4 className="font-black uppercase text-xs tracking-widest">AI Power</h4>
               </div>
               <p className="text-[11px] leading-relaxed font-medium opacity-90">
-                Use the AI Assistant icon next to text fields to automatically generate or polish your content.
+                Use <strong>AI Smart Fill</strong> at the top to populate the entire form from a single prompt or draft.
               </p>
             </div>
           </div>

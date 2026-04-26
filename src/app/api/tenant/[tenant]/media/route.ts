@@ -3,6 +3,7 @@ import { db, getTenantDb } from "@/lib/database"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
 import { isR2Configured, uploadToR2, uploadToLocal } from "@/lib/r2"
+import { getTenantPlanConfig } from "@/lib/tenant-plan"
 import type { Media } from "@prisma/client"
 
 // GET - List all media for tenant
@@ -52,6 +53,24 @@ export async function POST(
 
     const tenantDb = await getTenantDb(tenantSlug)
     const uploadedMedia: Media[] = []
+
+    // Check storage limit
+    const planConfig = await getTenantPlanConfig(tenantId)
+    const maxStorageBytes = planConfig.max_storage * 1024 * 1024
+    
+    const currentUsage = await tenantDb.media.aggregate({
+      where: { tenantId },
+      _sum: { size: true }
+    })
+    
+    const currentUsageBytes = currentUsage._sum.size || 0
+    const newFilesSizeBytes = files.reduce((acc, file) => acc + file.size, 0)
+
+    if (currentUsageBytes + newFilesSizeBytes > maxStorageBytes) {
+      return NextResponse.json({ 
+        error: `Storage limit exceeded. Your plan allows ${planConfig.max_storage}MB.` 
+      }, { status: 403 })
+    }
 
     for (const file of files) {
       const mimeType = file.type || "application/octet-stream"

@@ -5,6 +5,63 @@ import { db } from "@/lib/database"
 import { calculateProratedAmount, PLAN_PRICES } from "@/lib/midtrans"
 
 /**
+ * GET /api/tenant/[tenant]/subscription/prorate
+ * Get current subscription details
+ */
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { tenant: tenantSlug } = await params
+
+    // Find tenant
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
+      },
+      include: {
+        members: true,
+      },
+    })
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    }
+
+    // Check if user is a member
+    const membership = tenant.members.find((m) => m.userId === session.user.id)
+    const isSuperAdmin = session.user.role === "super_admin"
+
+    if (!membership && !isSuperAdmin) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // Get existing subscription
+    const subscription = await db.subscription.findFirst({
+      where: { tenantId: tenant.id },
+      orderBy: { createdAt: "desc" },
+    })
+
+    return NextResponse.json({
+      subscription: subscription || { plan: "free", status: "active", currentPeriodEnd: null }
+    })
+  } catch (error) {
+    console.error("Error fetching subscription:", error)
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
+/**
  * POST /api/tenant/[tenant]/subscription/prorate
  * Calculate prorated amount for plan upgrade
  */

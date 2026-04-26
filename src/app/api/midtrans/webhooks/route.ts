@@ -73,9 +73,15 @@ export async function POST(request: NextRequest) {
 
       // Only update main plan if it's a regular subscription (orderId starts with SUB)
       // If it starts with ADD, it's an addon purchase
+      // If it starts with ACC, it's an account upgrade
       if (orderId.startsWith("SUB")) {
         await db.tenant.update({
-          where: { id: transaction.subscription!.tenantId },
+          where: { id: transaction.subscription!.tenantId! },
+          data: { plan: transaction.subscription!.plan },
+        })
+      } else if (orderId.startsWith("ACC")) {
+        await db.user.update({
+          where: { id: transaction.subscription!.userId },
           data: { plan: transaction.subscription!.plan },
         })
       } else if (orderId.startsWith("ADD")) {

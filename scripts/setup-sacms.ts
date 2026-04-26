@@ -12,18 +12,33 @@ async function main() {
 
   // Helper untuk mengelola Content Type dan Field-nya secara robust
   const syncContentType = async (data: { name: string, slug: string, description?: string, fields: any[] }) => {
-    // 1. Upsert Content Type (tanpa menyentuh fields di sini)
-    const ct = await prisma.contentType.upsert({
-      where: { slug: data.slug },
-      update: { name: data.name, description: data.description },
-      create: {
-        name: data.name,
-        slug: data.slug,
-        description: data.description,
+    // 1. Find or Create/Update Content Type (tanpa menyentuh fields di sini)
+    let ct = await prisma.contentType.findFirst({
+      where: {
         tenantId: null,
-        isPublished: true,
+        slug: data.slug
       }
     })
+
+    if (ct) {
+      ct = await prisma.contentType.update({
+        where: { id: ct.id },
+        data: { 
+          name: data.name, 
+          description: data.description 
+        }
+      })
+    } else {
+      ct = await prisma.contentType.create({
+        data: {
+          name: data.name,
+          slug: data.slug,
+          description: data.description,
+          tenantId: null,
+          isPublished: true,
+        }
+      })
+    }
 
     // 2. Sync Fields
     for (const field of data.fields) {
@@ -176,6 +191,20 @@ async function main() {
       { name: "Bio", slug: "bio", type: "textarea", order: 2 },
       { name: "Avatar URL", slug: "avatar", type: "text", order: 3 },
       { name: "Social Links", slug: "social", type: "json", order: 4 },
+    ]
+  })
+
+  // 10. TESTIMONIALS
+  const testimonialCt = await syncContentType({
+    name: "SaCMS Testimonials",
+    slug: "sacms-testimonials",
+    description: "Testimoni dari pengguna dan partner",
+    fields: [
+      { name: "Name", slug: "name", type: "text", order: 0 },
+      { name: "Role", slug: "role", type: "text", order: 1 },
+      { name: "Content", slug: "content", type: "textarea", order: 2 },
+      { name: "Avatar URL", slug: "avatar", type: "text", order: 3 },
+      { name: "Rating", slug: "rating", type: "integer", order: 4 },
     ]
   })
 

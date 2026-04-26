@@ -12,6 +12,60 @@ export interface PlanConfig {
   support_level: string
 }
 
+export interface UserPlanConfig {
+  plan_slug: string
+  max_workspaces: number
+  max_storage_per_workspace: number // in MB
+}
+
+export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
+  free: {
+    plan_slug: "free",
+    max_workspaces: 1,
+    max_storage_per_workspace: 100,
+  },
+  starter: {
+    plan_slug: "starter",
+    max_workspaces: 1,
+    max_storage_per_workspace: 500,
+  },
+  standard: {
+    plan_slug: "standard",
+    max_workspaces: 5,
+    max_storage_per_workspace: 1024,
+  },
+  standar: { // Alias for Indonesian
+    plan_slug: "standard",
+    max_workspaces: 5,
+    max_storage_per_workspace: 1024,
+  },
+  professional: {
+    plan_slug: "professional",
+    max_workspaces: 20,
+    max_storage_per_workspace: 5120,
+  },
+  profesional: { // Alias for Indonesian
+    plan_slug: "professional",
+    max_workspaces: 20,
+    max_storage_per_workspace: 5120,
+  },
+  business: {
+    plan_slug: "business",
+    max_workspaces: 50,
+    max_storage_per_workspace: 20480,
+  },
+  bisnis: { // Alias for Indonesian
+    plan_slug: "business",
+    max_workspaces: 50,
+    max_storage_per_workspace: 20480,
+  },
+  unlimited: {
+    plan_slug: "unlimited",
+    max_workspaces: 999999,
+    max_storage_per_workspace: 102400,
+  },
+}
+
 export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   free: {
     plan_slug: "free",
@@ -160,4 +214,18 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
   if (tenant?.plan === "enterprise") return true
 
   return false
+}
+
+/**
+ * Gets the plan configuration for a user.
+ */
+export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { plan: true },
+  })
+
+  if (!user) return USER_PLAN_LIMITS.free
+
+  return USER_PLAN_LIMITS[user.plan] || USER_PLAN_LIMITS.free
 }

@@ -36,7 +36,8 @@ export const updateContentEntrySchema = z.object({
 
 export const checkoutSchema = z.object({
   planId: z.string().min(1),
-  tenantId: z.string().min(1),
+  tenantId: z.string().min(1).optional(),
+  type: z.enum(["workspace", "account"]).optional().default("workspace"),
   interval: z.enum(["month", "year"]).optional().default("month"),
 })
 

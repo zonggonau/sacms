@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +13,8 @@ import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const plan = searchParams.get("plan") || "free"
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [checkingUsers, setCheckingUsers] = useState(true)
@@ -58,6 +60,7 @@ export default function RegisterPage() {
           name: formData.name,
           email: formData.email,
           password: formData.password,
+          plan: plan,
         }),
       })
 
@@ -74,7 +77,7 @@ export default function RegisterPage() {
           : "Account created. You can create your workspace after signing in.",
       })
 
-      router.push("/login")
+      router.push(`/login?email=${formData.email}`)
     } catch (error) {
       toast({
         title: "Error",

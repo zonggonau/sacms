@@ -15,13 +15,14 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
+    const { tenant: tenantSlug } = await params
+    console.log(`[API-DEBUG] Fetching content-types for tenant: ${tenantSlug}`);
     const session = await getServerSession(authOptions)
 
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const { tenant: tenantSlug } = await params
     const access = await getTenantAccess(session, tenantSlug)
 
     if (!access) {

@@ -442,6 +442,12 @@ export default function MediaLibraryPage() {
                       alt={previewMedia.alt || previewMedia.name}
                       className="max-w-full max-h-full object-contain shadow-2xl rounded-sm"
                     />
+                  ) : previewMedia?.mimeType === "application/pdf" ? (
+                    <iframe
+                      src={`${previewMedia.url}#toolbar=0`}
+                      className="w-full h-full min-h-[500px] md:min-h-[600px] border-none bg-white rounded-sm"
+                      title="PDF Preview"
+                    />
                   ) : (
                     <div className="flex flex-col items-center gap-4 text-white/40">
                       {previewMedia && (() => { const Icon = getFileIcon(previewMedia.mimeType); return <Icon className="h-20 w-20" /> })()}
@@ -452,6 +458,9 @@ export default function MediaLibraryPage() {
 
                 {/* Sidebar Right */}
                 <div className="w-full md:w-[320px] bg-card p-6 flex flex-col border-l">
+                  <DialogHeader className="sr-only">
+                    <DialogTitle>Media Detail: {previewMedia?.originalName}</DialogTitle>
+                  </DialogHeader>
                   <div className="flex-1 space-y-6 overflow-y-auto">
                     <div>
                       <h3 className="text-lg font-black tracking-tight truncate">{previewMedia?.originalName}</h3>

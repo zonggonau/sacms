@@ -102,7 +102,7 @@ export default function CMSEditEntryPage() {
       setLoading(true)
       const [ctRes, entRes, locRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`),
+        fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}?locale=${locale}`),
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
@@ -111,8 +111,14 @@ export default function CMSEditEntryPage() {
         const data = await entRes.json()
         const entry = data.entry
         setEntryStatus(entry.status)
-        setLocale(entry.locale)
-        if (entry.scheduledAt) setScheduledAt(new Date(entry.scheduledAt))
+        // Only update locale if it's explicitly returned from server
+        // to avoid infinite loops if the state differs
+        if (data.isNewTranslation) {
+          toast({
+            title: `Translating to ${locale.toUpperCase()}`,
+            description: "Showing base content as a template.",
+          })
+        }
         
         let parsedData = entry.data
         if (typeof entry.data === 'string') {
@@ -129,7 +135,7 @@ export default function CMSEditEntryPage() {
     } finally {
       setLoading(false)
     }
-  }, [tenantSlug, contentTypeSlug, entryId])
+  }, [tenantSlug, contentTypeSlug, entryId, locale])
 
   useEffect(() => {
     if (status === "authenticated") fetchData()
@@ -144,13 +150,13 @@ export default function CMSEditEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
-        method: "PATCH",
+      const res = await fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}`, {
+        method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           data: formData,
           status: targetStatus,
-          locale,
+          locale, // Send current locale to the backend
           scheduledAt: scheduledAt?.toISOString() || null
         }),
       })

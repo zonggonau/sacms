@@ -10,7 +10,7 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
  * Security proxy: adds security headers, CORS, API versioning,
  * and custom domain routing for white-label tenants.
  */
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
 

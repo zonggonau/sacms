@@ -4,10 +4,20 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("🌱 Seeding ALL Global SaCMS Content...")
 
-  const tenant = await prisma.tenant.findFirst()
+  let tenant = await prisma.tenant.findFirst({
+    where: { slug: "sacms-global" }
+  })
+
   if (!tenant) {
-    console.error("❌ No tenant found. Please register first.")
-    return
+    console.log("  Creating 'sacms-global' tenant...")
+    tenant = await prisma.tenant.create({
+      data: {
+        name: "SaCMS Global",
+        slug: "sacms-global",
+        plan: "enterprise",
+        status: "active"
+      }
+    })
   }
 
   const getCT = async (slug: string) => {
@@ -55,26 +65,27 @@ async function main() {
       { title: "Multi-Tenant Native", description: "Isolasi data aman antar organisasi dalam satu infrastruktur terpusat.", icon: "Users", is_main: true, tag: "Architecture" },
       { title: "AI Content Generator", description: "Tulis konten berkualitas tinggi secara instan dengan bantuan AI terintegrasi.", icon: "Sparkles", is_main: true, tag: "Productivity" },
       { title: "API-First approach", description: "Kirim konten Anda ke platform mana pun (Web, Mobile, IoT) via REST atau GraphQL.", icon: "Code2", is_main: true, tag: "Developer" },
-      { title: "Media Library", description: "Manajemen aset cloud dengan optimasi gambar otomatis menggunakan Cloudflare R2.", icon: "Image", is_main: false, tag: "Media" },
-      { title: "Role-Based Access", description: "Kontrol akses pengguna secara granular untuk keamanan data yang maksimal.", icon: "Shield", is_main: false, tag: "Security" }
+      { title: "Media Library", description: "Manajemen aset cloud dengan optimasi gambar otomatis menggunakan Cloudflare R2.", icon: "ImageIcon", is_main: false, tag: "Media" },
+      { title: "Role-Based Access", description: "Kontrol akses pengguna secara granular untuk keamanan data yang maksimal.", icon: "Lock", is_main: false, tag: "Security" },
+      { title: "Real-time Webhooks", description: "Sinkronkan konten Anda dengan layanan eksternal secara instan melalui sistem webhook.", icon: "Webhook", is_main: false, tag: "Integration" }
     ])
 
     // 3. PRICING
     await clearAndSeed("sacms-pricing", [
       { 
-        name: "Starter", plan_slug: "starter", price: "499.000", description: "Sempurna untuk proyek kecil dan tim lokal.", 
+        name: "Starter", plan_slug: "starter", price: "499000", description: "Sempurna untuk proyek kecil dan tim lokal.", 
         features_list: ["10 Content Schemas", "5.000 Content Entries", "5 Team Members", "100.000 API Calls"], 
         max_content_types: 10, max_content_entries: 5000, max_team_members: 5, max_api_calls: 100000, 
         max_storage: 1024, max_locales: 1, audit_log_retention: 0, support_level: "Email", is_popular: false, button_text: "Pilih Starter" 
       },
       { 
-        name: "Business", plan_slug: "pro", price: "1.499.000", description: "Untuk instansi dengan kebutuhan konten yang intensif.", 
+        name: "Business", plan_slug: "pro", price: "1499000", description: "Untuk instansi dengan kebutuhan konten yang intensif.", 
         features_list: ["50 Content Schemas", "50.000 Content Entries", "20 Team Members", "1.000.000 API Calls", "Audit Logs (7 Days)"], 
         max_content_types: 50, max_content_entries: 50000, max_team_members: 20, max_api_calls: 1000000, 
         max_storage: 10240, max_locales: 5, audit_log_retention: 7, support_level: "Priority", is_popular: true, button_text: "Pilih Business" 
       },
       { 
-        name: "Enterprise", plan_slug: "enterprise", price: "Custom", description: "Performa maksimal untuk infrastruktur skala nasional.", 
+        name: "Enterprise", plan_slug: "enterprise", price: "2499000", description: "Performa maksimal untuk infrastruktur skala nasional.", 
         features_list: ["Unlimited Schemas", "Unlimited Entries", "Unlimited Members", "Custom SLA", "Audit Logs (Unlimited)"], 
         max_content_types: 999, max_content_entries: 999999, max_team_members: 999, max_api_calls: 99999999, 
         max_storage: 102400, max_locales: 99, audit_log_retention: 9999, support_level: "24/7 Dedicated", is_popular: false, button_text: "Hubungi Kami" 
@@ -85,21 +96,23 @@ async function main() {
     await clearAndSeed("sacms-addons", [
       { title: "AI Content Pack", addon_slug: "ai-pack", feature_key: "ai_generation", price_label: "+Rp 150k/bln", description: "Tingkatkan limit AI generation untuk produksi konten massal.", icon: "Sparkles" },
       { title: "Custom Domain", addon_slug: "custom-domain", feature_key: "white_label", price_label: "+Rp 50k/bln", description: "Gunakan domain kustom untuk admin panel dan API.", icon: "Globe" },
-      { title: "Priority Support", addon_slug: "support-pro", feature_key: "priority_support", price_label: "+Rp 200k/bln", description: "Dukungan teknis prioritas melalui WhatsApp dan Zoom.", icon: "Headset" }
+      { title: "Priority Support", addon_slug: "support-pro", feature_key: "priority_support", price_label: "+Rp 200k/bln", description: "Dukungan teknis prioritas melalui WhatsApp dan Zoom.", icon: "Zap" }
     ])
 
     // 5. WORKFLOW
     await clearAndSeed("sacms-workflow", [
-      { step: "01", title: "Registrasi Workspace", description: "Daftar dan buat workspace khusus untuk organisasi Anda dalam hitungan detik.", icon: "UserPlus" },
+      { step: "01", title: "Registrasi Workspace", description: "Daftar dan buat workspace khusus untuk organisasi Anda dalam hitungan detik.", icon: "Users" },
       { step: "02", title: "Bangun Struktur Data", description: "Gunakan Content Builder untuk menentukan skema data (News, Blog, Products, dll).", icon: "Layout" },
-      { step: "03", title: "Input & Kelola Konten", description: "Tulis konten Anda dengan Rich Text Editor yang modern dan intuitif.", icon: "FileEdit" },
+      { step: "03", title: "Input & Kelola Konten", description: "Tulis konten Anda dengan Rich Text Editor yang modern dan intuitif.", icon: "Code2" },
       { step: "04", title: "Konsumsi via API", description: "Hubungkan konten ke website atau aplikasi mobile Anda melalui API yang cepat.", icon: "Zap" }
     ])
 
     // 6. FAQ
     await clearAndSeed("sacms-faq", [
       { question: "Apa itu Headless CMS?", answer: "Headless CMS adalah sistem manajemen konten back-end saja yang bertindak sebagai repositori konten, membuat konten dapat diakses melalui API untuk ditampilkan di perangkat apa pun." },
-      { question: "Apakah SaCMS mendukung multi-bahasa?", answer: "Ya, SaCMS memiliki fitur i18n native yang memungkinkan Anda mengelola konten dalam berbagai bahasa seperti Indonesia, Inggris, dan bahasa daerah lainnya." }
+      { question: "Apakah SaCMS mendukung multi-bahasa?", answer: "Ya, SaCMS memiliki fitur i18n native yang memungkinkan Anda mengelola konten dalam berbagai bahasa seperti Indonesia, Inggris, dan bahasa daerah lainnya." },
+      { question: "Bagaimana dengan keamanan data?", answer: "Kami menggunakan enkripsi tingkat tinggi dan isolasi database untuk setiap tenant enterprise guna memastikan data Anda tetap aman dan privat." },
+      { question: "Apakah bisa integrasi dengan WordPress?", answer: "SaCMS adalah pengganti WordPress yang lebih modern. Namun, Anda dapat menarik data dari SaCMS ke WordPress menggunakan API kami jika diperlukan." }
     ])
 
     // 7. WHATSAPP
@@ -127,11 +140,36 @@ async function main() {
         social: { linkedin: "https://linkedin.com/in/cristoperz", github: "https://github.com/cristoperz" }
       },
       { 
-        name: "Tim Engineering SaCode", 
-        role: "Core Contributors", 
-        bio: "<p>Kolektif pengembang berbakat dari komunitas SaCode yang berkomitmen pada inovasi teknologi dan standar kualitas kode internasional.</p>",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=SaCode",
-        social: { website: "https://sacode.web.id" }
+        name: "Januar Fonda", 
+        role: "Core Developer", 
+        bio: "<p>Pengembang Fullstack yang fokus pada performa dan skalabilitas sistem. Berkomitmen untuk menghadirkan pengalaman pengguna terbaik melalui teknologi modern.</p>",
+        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
+        social: { github: "https://github.com/januarfonda" }
+      }
+    ])
+
+    // 10. TESTIMONIALS
+    await clearAndSeed("sacms-testimonials", [
+      { 
+        name: "Budi Santoso", 
+        role: "CTO @ Startup Lokal", 
+        content: "SaCMS sangat membantu tim kami dalam mengelola konten aplikasi mobile tanpa harus membangun backend dari nol. Performa API-nya luar biasa!",
+        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi",
+        rating: 5
+      },
+      { 
+        name: "Ani Wijaya", 
+        role: "Digital Marketing Manager", 
+        content: "Fitur AI Generator-nya benar-benar penghemat waktu. Kami bisa memproduksi draft konten blog dalam hitungan detik.",
+        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ani",
+        rating: 5
+      },
+      { 
+        name: "Samuel Lukas", 
+        role: "Fullstack Developer", 
+        content: "Dokumentasi API-nya sangat lengkap dan mudah dipahami. Multi-tenancy native-nya membuat pengelolaan banyak client jadi jauh lebih simpel.",
+        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Samuel",
+        rating: 5
       }
     ])
 

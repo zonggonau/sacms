@@ -64,17 +64,19 @@ export default function CMSMediaPage() {
 
   return (
     <div className="p-6 lg:p-10 space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-extrabold tracking-tight">Media Library</h1>
-          <p className="text-muted-foreground">Manage your images and documents</p>
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-extrabold tracking-tight">Media Library</h1>
+            <p className="text-muted-foreground">Manage your images and documents</p>
+          </div>
+          <Button 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
+            onClick={() => setIsLibraryOpen(true)}
+          >
+            <Upload className="mr-2 h-4 w-4" /> Upload Media
+          </Button>
         </div>
-        <Button 
-          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
-          onClick={() => setIsLibraryOpen(true)}
-        >
-          <Upload className="mr-2 h-4 w-4" /> Upload Media
-        </Button>
       </div>
 
       <Card className="border-none shadow-sm bg-card">

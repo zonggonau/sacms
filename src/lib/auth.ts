@@ -103,6 +103,7 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          plan: user.plan,
           tenants: user.tenants.map((t) => ({
             id: t.tenant.id,
             slug: t.tenant.slug,
@@ -118,6 +119,7 @@ export const authOptions: NextAuthOptions = {
       if (user) {
         token.id = user.id
         token.role = user.role || "user"
+        token.plan = user.plan || "free"
         token.tenants = user.tenants || []
       }
       // For OAuth sign-in, load user data from DB
@@ -130,6 +132,7 @@ export const authOptions: NextAuthOptions = {
         })
         if (dbUser) {
           token.role = dbUser.role
+          token.plan = dbUser.plan
           token.tenants = dbUser.tenants.map((t) => ({
             id: t.tenant.id,
             slug: t.tenant.slug,
@@ -144,6 +147,7 @@ export const authOptions: NextAuthOptions = {
       if (token) {
         session.user.id = token.id as string
         session.user.role = token.role as string
+        session.user.plan = token.plan as string
         session.user.tenants = token.tenants as Array<{
           id: string
           slug: string
@@ -176,6 +180,7 @@ export const authOptions: NextAuthOptions = {
 declare module "next-auth" {
   interface User {
     role: string
+    plan: string
     tenants: Array<{
       id: string
       slug: string
@@ -189,6 +194,7 @@ declare module "next-auth" {
       email: string
       name: string
       role: string
+      plan: string
       tenants: Array<{
         id: string
         slug: string
@@ -203,6 +209,7 @@ declare module "next-auth/jwt" {
   interface JWT {
     id: string
     role: string
+    plan: string
     tenants: Array<{
       id: string
       slug: string

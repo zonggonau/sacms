@@ -107,35 +107,82 @@ export async function GET(
     const { searchParams } = new URL(request.url)
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "25")))
-    const status = searchParams.get("status") || "PUBLISHED"
+    const status = (searchParams.get("status") || "PUBLISHED").toUpperCase()
     const { field: sortField, order: sortOrder } = parseSort(searchParams)
     const allowedFieldNames = new Set(contentType.fields.map((f) => f.slug))
     const selectedFields = parseFieldSelection(searchParams, allowedFieldNames)
+    const populate = parsePopulate(searchParams)
 
-    // Build WHERE
-    const baseWhere: any = {
-      contentTypeId: contentType.id,
-      status,
+    // Advanced Filtering via SQL
+    const { conditions, orGroups } = parseFilters(searchParams, allowedFieldNames)
+    const { fragments, params: sqlParams } = buildFilterSQL(conditions, orGroups, 3) // Start from $3 because $1=$contentTypeId, $2=$status
+
+    let whereClause = `WHERE "contentTypeId" = $1 AND "status" = $2`
+    if (fragments.length > 0) {
+      whereClause += ` AND ${fragments.join(" AND ")}`
     }
 
-    // Fetch entries
-    const [entries, total] = await Promise.all([
-      db.contentEntry.findMany({
-        where: baseWhere,
-        orderBy: { [sortField]: sortOrder },
-        skip: (page - 1) * pageSize,
-        take: pageSize,
-      }),
-      db.contentEntry.count({ where: baseWhere }),
-    ])
+    // Execute Raw Query for IDs and Pagination
+    const queryParams = [contentType.id, status, ...sqlParams]
+    
+    // Sort logic for raw SQL
+    const sanitizedSortField = allowedFieldNames.has(sortField) 
+      ? `"data"->>'${sortField}'` 
+      : `"${sortField}"`
+    
+    const entriesRaw = await db.$queryRawUnsafe<any[]>(
+      `SELECT id FROM "content_entries" 
+       ${whereClause} 
+       ORDER BY ${sanitizedSortField} ${sortOrder.toUpperCase()} 
+       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}`,
+      ...queryParams,
+      pageSize,
+      (page - 1) * pageSize
+    )
 
-    // Data Shaping
-    const parsedEntries = entries.map((entry: any) => {
+    const totalRaw = await db.$queryRawUnsafe<any[]>(
+      `SELECT COUNT(*)::int as count FROM "content_entries" ${whereClause}`,
+      ...queryParams
+    )
+    const total = totalRaw[0]?.count || 0
+
+    // Fetch full data for selected IDs to include relations if needed
+    const entryIds = entriesRaw.map(e => e.id)
+    const entries = await db.contentEntry.findMany({
+      where: { id: { in: entryIds } },
+      orderBy: { [sortField]: sortOrder },
+    })
+
+    // Data Shaping & Populate Logic
+    const parsedEntries = await Promise.all(entries.map(async (entry: any) => {
       let parsedData: any
       try {
         parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
       } catch {
         parsedData = {}
+      }
+
+      // Populate logic (simple implementation)
+      if (populate) {
+        const fieldsToPopulate = contentType.fields.filter(f => 
+          f.type === "relation" && (populate === "*" || populate.includes(f.slug))
+        )
+
+        for (const field of fieldsToPopulate) {
+          const relationValue = parsedData[field.slug]
+          if (relationValue) {
+            // If it's an ID or array of IDs, fetch from target content type
+            const targetIds = Array.isArray(relationValue) ? relationValue : [relationValue]
+            const relatedEntries = await db.contentEntry.findMany({
+              where: { id: { in: targetIds } },
+              select: { id: true, data: true, createdAt: true }
+            })
+            
+            parsedData[field.slug] = Array.isArray(relationValue) 
+              ? relatedEntries.map(re => ({ id: re.id, ...(typeof re.data === 'string' ? JSON.parse(re.data) : re.data) }))
+              : relatedEntries[0] ? { id: relatedEntries[0].id, ...(typeof relatedEntries[0].data === 'string' ? JSON.parse(relatedEntries[0].data) : relatedEntries[0].data) } : null
+          }
+        }
       }
 
       const shaped = applyFieldSelection(parsedData, selectedFields)
@@ -147,7 +194,7 @@ export async function GET(
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
       }
-    })
+    }))
 
     const responsePayload = {
       data: parsedEntries,

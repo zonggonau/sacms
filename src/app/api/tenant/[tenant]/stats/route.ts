@@ -72,6 +72,7 @@ export async function GET(request: NextRequest, context: Context) {
     const totalEntries = entriesByStatus ? Object.values(statusMap).reduce((a, b) => (a as number) + (b as number), 0) : 0
 
     return NextResponse.json({
+      tenant: access.tenant,
       contentTypeCount,
       singleTypeCount,
       totalEntries,

@@ -142,9 +142,9 @@ export default function ContentTypesPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
+    <div className="flex h-screen overflow-hidden bg-muted/10">
       <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 overflow-y-auto">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           {/* Header */}

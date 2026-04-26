@@ -7,25 +7,47 @@ export async function GET(
 ) {
   try {
     // 1. Fetch SaCMS Pricing (Main Workspace Plans)
-    const pricingContentType = await db.contentType.findUnique({
+    const pricingContentType = await db.contentType.findFirst({
       where: { slug: "sacms-pricing" }
     })
+    console.log("Pricing Content Type:", pricingContentType?.id);
 
     // 2. Fetch SaCMS Addons
-    const addonContentType = await db.contentType.findUnique({
+    const addonContentType = await db.contentType.findFirst({
       where: { slug: "sacms-addons" }
     })
+    console.log("Addon Content Type:", addonContentType?.id);
 
     let plans: any[] = []
+
+    // 0. Add Free Plan (Base)
+    plans.push({
+      id: "free",
+      name: "Free Forever",
+      type: "workspace",
+      price: 0,
+      features: ["3 Content Schemas", "100 Content Entries", "3 Team Members", "10.000 API Calls"],
+      popular: false,
+      buttonText: "Current Plan",
+      maxContentTypes: 3,
+      maxContentEntries: 100,
+      maxTeamMembers: 3,
+      maxApiCalls: 10000,
+      maxStorage: 100,
+      maxLocales: 1,
+      auditLogRetention: 0,
+      supportLevel: "Community"
+    })
 
     if (pricingContentType) {
       const pricingEntries = await db.contentEntry.findMany({
         where: {
           contentTypeId: pricingContentType.id,
-          status: "PUBLISHED",
+          status: "PUBLISHED"
         },
         orderBy: { createdAt: "asc" }
       })
+      console.log(`Found ${pricingEntries.length} pricing entries`);
 
       const pricingPlans = pricingEntries.map(entry => {
         const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
@@ -34,22 +56,20 @@ export async function GET(
         let rawPrice = d.price || "0"
         let numericPrice = 0
         if (typeof rawPrice === 'string') {
-          numericPrice = parseInt(rawPrice.replace(/\./g, ''), 10)
+          numericPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
         } else {
-          numericPrice = Number(rawPrice)
+          numericPrice = Number(rawPrice) || 0
         }
 
         const parseFeatures = (val: any) => {
           if (Array.isArray(val)) return val
           if (typeof val === 'string' && val.trim().length > 0) {
-            // Try parsing if it's a stringified JSON array
             if (val.startsWith('[') && val.endsWith(']')) {
               try {
                 const parsed = JSON.parse(val)
                 if (Array.isArray(parsed)) return parsed
               } catch (e) {}
             }
-            // Fallback to comma separation
             return val.split(',').map(s => s.trim())
           }
           return []
@@ -58,20 +78,19 @@ export async function GET(
         return {
           id: d.plan_slug || entry.id,
           name: d.name || "Unnamed Plan",
-          type: "workspace", // Required by frontend filter
+          type: "workspace",
           price: numericPrice,
           features: parseFeatures(d.features_list),
           popular: !!d.is_popular,
           buttonText: d.button_text || "Get Started",
-          // Advanced limitation fields
-          maxContentTypes: d.max_content_types,
-          maxContentEntries: d.max_content_entries,
-          maxTeamMembers: d.max_team_members,
-          maxApiCalls: d.max_api_calls,
-          maxStorage: d.max_storage,
-          maxLocales: d.max_locales,
-          auditLogRetention: d.audit_log_retention,
-          supportLevel: d.support_level
+          maxContentTypes: parseInt(d.max_content_types, 10) || 0,
+          maxContentEntries: parseInt(d.max_content_entries, 10) || 0,
+          maxTeamMembers: parseInt(d.max_team_members, 10) || 0,
+          maxApiCalls: parseInt(d.max_api_calls, 10) || 0,
+          maxStorage: parseInt(d.max_storage, 10) || 0,
+          maxLocales: parseInt(d.max_locales, 10) || 0,
+          auditLogRetention: parseInt(d.audit_log_retention, 10) || 0,
+          supportLevel: d.support_level || "Email"
         }
       })
       plans = [...plans, ...pricingPlans]
@@ -81,7 +100,7 @@ export async function GET(
       const addonEntries = await db.contentEntry.findMany({
         where: {
           contentTypeId: addonContentType.id,
-          status: "PUBLISHED",
+          status: "PUBLISHED"
         },
         orderBy: { createdAt: "asc" }
       })
@@ -89,7 +108,6 @@ export async function GET(
       const addonPlans = addonEntries.map(entry => {
         const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
         
-        // Parse price label like "Mulai 199rb/bln" or "99rb/bln"
         let numericPrice = 0
         if (d.price_label) {
           const match = d.price_label.match(/(\d+)/)
@@ -101,9 +119,8 @@ export async function GET(
         return {
           id: d.addon_slug || entry.id,
           name: d.title || "Unnamed Addon",
-          type: "addons", // Required by frontend filter
+          type: "addons",
           price: numericPrice,
-          // Addons don't have features_list in schema yet, so use description
           features: [d.description || "Feature upgrade"],
           popular: false,
           buttonText: "Activate"

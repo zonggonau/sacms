@@ -76,6 +76,7 @@ export default function ApiExplorerPage() {
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
   const [selectedKey, setSelectedKey] = useState("")
   const [exporting, setExporting] = useState(false)
+  const [exportingPrompt, setExportingPrompt] = useState(false)
   const [copied, setCopied] = useState(false)
 
   const tenants = (session?.user as any)?.tenants || []
@@ -147,6 +148,30 @@ export default function ApiExplorerPage() {
       toast({ variant: "destructive", title: "Export Failed", description: err.message })
     } finally {
       setExporting(false)
+    }
+  }
+
+  const handleDownloadAiPrompt = async () => {
+    setExportingPrompt(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/developer/ai-prompt`)
+      if (!res.ok) throw new Error("Failed to generate AI prompt")
+      
+      const blob = await res.blob()
+      const url = window.URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${tenantSlug}-ai-prompt.md`
+      document.body.appendChild(a)
+      a.click()
+      window.URL.revokeObjectURL(url)
+      document.body.removeChild(a)
+      
+      toast({ title: "AI Prompt Downloaded" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Download Failed", description: err.message })
+    } finally {
+      setExportingPrompt(false)
     }
   }
 
@@ -288,6 +313,15 @@ export default function ApiExplorerPage() {
               <p className="text-muted-foreground">Automated endpoint testing for your content schemas.</p>
             </div>
             <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                className="bg-card font-bold border-blue-100 text-blue-700 hover:bg-blue-50 h-11"
+                onClick={handleDownloadAiPrompt}
+                disabled={exportingPrompt}
+              >
+                {exportingPrompt ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
+                Download AI Prompt
+              </Button>
               <Button 
                 variant="outline" 
                 className="bg-card font-bold border-emerald-100 text-emerald-700 hover:bg-emerald-50 h-11"
@@ -446,6 +480,50 @@ export default function ApiExplorerPage() {
                           Run Query
                         </Button>
                       </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Sample Query Builder</Label>
+                        <Select onValueChange={(value) => {
+                          const [type, ctSlug, ctName] = value.split('|')
+                          const pascalName = ctName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')
+                          
+                          let template = ''
+                          if (type === 'list') {
+                            template = `query {\n  ${ctSlug}(page: 1, limit: 10) {\n    data {\n      id\n      # Add your fields here\n    }\n    meta {\n      total\n    }\n  }\n}`
+                          } else if (type === 'create') {
+                            template = `mutation {\n  create${pascalName}(data: {\n    # name: "Example"\n  }) {\n    id\n  }\n}`
+                          } else if (type === 'update') {
+                            template = `mutation {\n  update${pascalName}(id: "ENTER_ID_HERE", data: {\n    # name: "Updated"\n  }) {\n    id\n  }\n}`
+                          }
+                          setGqlQuery(template)
+                        }}>
+                          <SelectTrigger className="h-11 bg-zinc-900 border-none hover:bg-zinc-800 transition-colors rounded-xl font-bold text-emerald-400">
+                            <div className="flex items-center gap-2">
+                              <Zap className="h-4 w-4" />
+                              <SelectValue placeholder="Build a sample query..." />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
+                            <SelectGroup>
+                              <SelectLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Common Queries</SelectLabel>
+                              {contentTypes.map(ct => (
+                                <SelectItem key={`gql-list-${ct.id}`} value={`list|${ct.slug}|${ct.name}`} className="hover:bg-zinc-800 focus:bg-zinc-800 focus:text-emerald-400">
+                                  <span className="text-emerald-500 font-bold mr-2">QUERY</span> List {ct.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                            <SelectGroup className="mt-2 pt-2 border-t border-zinc-800">
+                              <SelectLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Common Mutations</SelectLabel>
+                              {contentTypes.map(ct => (
+                                <SelectItem key={`gql-create-${ct.id}`} value={`create|${ct.slug}|${ct.name}`} className="hover:bg-zinc-800 focus:bg-zinc-800 focus:text-blue-400">
+                                  <span className="text-blue-500 font-bold mr-2">MUTATION</span> Create {ct.name}
+                                </SelectItem>
+                              ))}
+                            </SelectGroup>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
                       <div className="space-y-2">
                         <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Query Editor</Label>
                         <Textarea 

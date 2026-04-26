@@ -184,26 +184,28 @@ export default function CMSContentTypeEntriesPage() {
   return (
     <div className="p-6 lg:p-10 space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">{contentType?.name}</h1>
-            <p className="text-muted-foreground text-sm">Review and publish your content entries</p>
+      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)}>
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-extrabold tracking-tight">{contentType?.name}</h1>
+              <p className="text-muted-foreground text-sm">Review and publish your content entries</p>
+            </div>
           </div>
+          <Button 
+            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none h-11 px-6 rounded-xl font-bold" 
+            onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/new`)}
+          >
+            <Plus className="mr-2 h-5 w-5" /> New Entry
+          </Button>
         </div>
-        <Button 
-          className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-200 dark:shadow-none h-11 px-6 rounded-xl font-bold" 
-          onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/new`)}
-        >
-          <Plus className="mr-2 h-5 w-5" /> New Entry
-        </Button>
       </div>
 
       {/* Toolbar */}
-      <Card className="border-none shadow-sm bg-card rounded-2xl">
+      <Card className="border-none shadow-sm bg-card rounded-2xl sticky top-[100px] z-20">
         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">
           <div className="flex items-center gap-3 flex-1 min-w-[300px]">
             <div className="relative flex-1">

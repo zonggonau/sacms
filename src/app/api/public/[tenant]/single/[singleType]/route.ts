@@ -42,8 +42,10 @@ export async function GET(
       return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
     }
 
-    // Verify tenant matches
-    if (apiToken.tenant.slug !== tenantSlug) {
+    // Verify tenant matches (check both ID and Slug)
+    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    
+    if (!isMatchingTenant) {
       return NextResponse.json({ error: "Token does not match tenant" }, { status: 403 })
     }
 
@@ -52,8 +54,16 @@ export async function GET(
       return NextResponse.json({ error: "API token expired" }, { status: 401 })
     }
 
+    // Parse query parameters
+    const { searchParams } = new URL(request.url)
+    const locale = searchParams.get("locale") || "en"
+
+    // Get the correct DB client (Shared or Dedicated)
+    const { getTenantDb } = await import("@/lib/database")
+    const tenantDb = await getTenantDb(apiToken.tenantId)
+
     // Get single type (prefer tenant-specific over global)
-    const singleType = await db.singleType.findFirst({
+    const singleType = await tenantDb.singleType.findFirst({
       where: { 
         slug: singleTypeSlug,
         OR: [
@@ -73,12 +83,8 @@ export async function GET(
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
-    // Parse query parameters
-    const { searchParams } = new URL(request.url)
-    const locale = searchParams.get("locale") || "en"
-
     // Check if single type is assigned to tenant
-    const assignment = await db.tenantSingleTypeAssignment.findUnique({
+    const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
       where: {
         tenantId_singleTypeId_locale: {
           tenantId: apiToken.tenantId,
@@ -170,8 +176,10 @@ export async function PUT(
       return NextResponse.json({ error: "Token does not have write permission" }, { status: 403 })
     }
 
-    // Verify tenant matches
-    if (apiToken.tenant.slug !== tenantSlug) {
+    // Verify tenant matches (check both ID and Slug)
+    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    
+    if (!isMatchingTenant) {
       return NextResponse.json({ error: "Token does not match tenant" }, { status: 403 })
     }
 

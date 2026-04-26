@@ -132,9 +132,16 @@ export async function POST(
           contentTypeId: contentType.id,
           tenantId: tenantId,
           data: data as any,
+          locale: (result.data as any).locale || "en",
           publishedAt: publish ? new Date() : null,
           createdBy: session.user.id,
         },
+      })
+
+      // Set documentId to the same as id for the first locale version
+      const updatedEntry = await tx.contentEntry.update({
+        where: { id: newEntry.id },
+        data: { documentId: newEntry.id }
       })
 
       // Create initial version in the tenant DB
@@ -149,7 +156,7 @@ export async function POST(
         },
       })
 
-      return newEntry
+      return updatedEntry
     })
 
     // Invalidate Public API Cache

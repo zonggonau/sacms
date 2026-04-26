@@ -74,8 +74,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
   }, [])
 
   const currentTenant = liveTenants.length > 0 
-    ? liveTenants.find((t) => t.id === tenantId || t.slug === tenantId) 
-    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId || t.slug === tenantId)
+    ? liveTenants.find((t) => t.id === tenantId) 
+    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
 
   const href = (path: string) => {
     if (path === "/cms-redirect") return `/cms/${tenantId}`
@@ -188,7 +188,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
                 {currentTenant?.role || "member"}
               </Badge>
             </div>
-            <span className="text-[10px] text-muted-foreground font-mono">/{tenantId}</span>
+            <span className="text-[10px] text-muted-foreground font-mono">/{currentTenant?.slug || tenantId}</span>
           </div>
           <ChevronDown className={cn("h-3.5 w-3.5 text-muted-foreground shrink-0 transition-transform", workspaceSwitcherOpen && "rotate-180")} />
         </button>
@@ -321,7 +321,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
         {renderSidebarContent()}
       </aside>
 
-      <aside className="hidden md:block w-64 border-r shrink-0 sticky top-0 h-screen bg-card">
+      <aside className="hidden md:block w-64 border-r shrink-0 h-full bg-card">
         {renderSidebarContent()}
       </aside>
     </>

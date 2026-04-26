@@ -47,7 +47,10 @@ export async function POST(
       )
     }
 
-    if (apiToken.tenant.slug !== tenantSlug) {
+    // Verify tenant matches (check both ID and Slug)
+    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    
+    if (!isMatchingTenant) {
       return NextResponse.json(
         { errors: [{ message: "Token does not match tenant" }] },
         { status: 403 }
@@ -70,12 +73,15 @@ export async function POST(
     }
     const { query, variables } = validationResult.data
 
-    // Build dynamic schema for this tenant
+    // Build dynamic schema for this tenant using the correct DB client
+    const { getTenantDb } = await import("@/lib/database")
+    const tenantDb = await getTenantDb(apiToken.tenantId)
+
     // Mutations require full-access token
     const allowMutations = apiToken.type === "full-access"
-    const typeDefs = await buildDynamicTypeDefs(apiToken.tenantId, allowMutations)
+    const typeDefs = await buildDynamicTypeDefs(apiToken.tenantId, allowMutations, tenantDb)
     const schema = buildSchema(typeDefs)
-    const resolvers = buildDynamicResolvers(apiToken.tenantId)
+    const resolvers = buildDynamicResolvers(apiToken.tenantId, tenantDb)
 
     // Check if query contains mutation and token doesn't allow it
     const isMutation = /^\s*(mutation\b|mutation\s*\{)/i.test(query) || query.trim().startsWith("mutation")

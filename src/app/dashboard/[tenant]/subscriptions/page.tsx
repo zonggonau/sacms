@@ -109,10 +109,11 @@ export default function TenantSubscriptionsPage() {
   const addonPlans = plans.filter(p => p.type === "addons")
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
+    <div className="flex h-screen w-full bg-muted/10 overflow-hidden relative">
       <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+      <main className="flex-1 min-w-0 h-full overflow-y-auto overflow-x-hidden">
         <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
+
           
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

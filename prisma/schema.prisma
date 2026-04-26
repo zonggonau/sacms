@@ -3,6 +3,7 @@
 
 generator client {
   provider = "prisma-client-js"
+  output   = "./generated-client"
 }
 
 datasource db {
@@ -19,6 +20,7 @@ model User {
   password      String?
   image         String?
   role          String    @default("user") // super_admin, admin, user
+  plan          String    @default("free") // free, standard, professional, business, unlimited
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -204,6 +206,7 @@ enum ContentStatus {
 
 model ContentEntry {
   id            String        @id @default(cuid())
+  documentId    String?       // Group translations of the same entry
   contentTypeId String
   tenantId      String        // Each tenant has their own entries
   locale        String        @default("en")  // i18n locale
@@ -224,6 +227,7 @@ model ContentEntry {
   versions    ContentVersion[]
   reviewAssignments ContentReviewAssignment[]
   
+  @@index([documentId])
   @@index([tenantId, contentTypeId, status])
   @@index([tenantId, locale])
   @@index([status, scheduledAt])
@@ -410,7 +414,7 @@ model ApiKey {
 model Subscription {
   id              String   @id @default(cuid())
   userId          String
-  tenantId        String
+  tenantId        String?
   plan            String   // free, starter, pro, enterprise
   status          String   @default("active") // active, canceled, expired
   midtransCustomerId String?
@@ -420,15 +424,14 @@ model Subscription {
   cancelAtPeriodEnd  Boolean @default(false)
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
-  
+
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant   Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant   Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   invoices Invoice[]
   paymentTransactions PaymentTransaction[]
-  
+
   @@map("subscriptions")
 }
-
 model Invoice {
   id             String   @id @default(cuid())
   subscriptionId String

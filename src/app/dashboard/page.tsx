@@ -41,6 +41,7 @@ import {
 } from "@/components/ui/table"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { toast } from "@/hooks/use-toast"
 import { signOut } from "next-auth/react"
 import Link from "next/link"
@@ -66,8 +67,66 @@ export default function WorkspaceSelectionPage() {
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [isAccountPlanOpen, setIsAccountPlanOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isUpdatingUserPlan, setIsUpdatingUserPlan] = useState(false)
   const [activeView, setActiveView] = useState<'workspaces' | 'templates'>('workspaces')
+
+  const accountPlans = [
+    { id: "free", name: "Free", workspaces: 1, price: "Rp 0" },
+    { id: "standard", name: "Standard", workspaces: 5, price: "Rp 149k" },
+    { id: "professional", name: "Professional", workspaces: 20, price: "Rp 449k" },
+    { id: "business", name: "Business", workspaces: 50, price: "Rp 949k" },
+    { id: "unlimited", name: "Unlimited", workspaces: "Unlimited", price: "Custom" },
+  ]
+
+  const handleUpdateUserPlan = async (planId: string) => {
+    setIsUpdatingUserPlan(true)
+    try {
+      // If it's the free plan, we can update directly without payment
+      if (planId === "free") {
+        const res = await fetch("/api/user/plan", {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ plan: "free" }),
+        })
+        if (res.ok) {
+          toast({ title: "Account Plan Updated", description: "You are now on the Free plan." })
+          setIsAccountPlanOpen(false)
+          router.refresh()
+          return
+        }
+      }
+
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ 
+          planId: planId,
+          type: "account",
+          interval: "month" 
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.redirect_url) {
+          toast({ title: "Redirecting to Payment", description: "Please complete your payment to upgrade." })
+          window.location.href = data.redirect_url
+        } else {
+          toast({ title: "Account Plan Updated", description: `You are now on the ${planId} plan.` })
+          setIsAccountPlanOpen(false)
+          router.refresh()
+        }
+      } else {
+        const data = await res.json()
+        toast({ variant: "destructive", title: "Checkout Failed", description: data.error })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to initiate checkout." })
+    } finally {
+      setIsUpdatingUserPlan(false)
+    }
+  }
   
   // Delete State
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
@@ -82,8 +141,31 @@ export default function WorkspaceSelectionPage() {
     name: "",
     description: "",
     plan: "free",
-    websiteType: "custom"
+    websiteType: "custom",
+    isAnnual: false,
+    extraStorage: "0", // in GB
+    enableAI: false
   })
+
+  // Pricing constants for add-ons
+  const STORAGE_PRICE_GB = 5000 // 5k per GB per month
+  const AI_PRICE_MONTH = 99000 // 99k per month
+
+  const calculateTotalPrice = () => {
+    const basePlan = plans.find(p => p.id === newTenant.plan)
+    if (!basePlan) return 0
+    
+    let basePrice = basePlan.priceAmount || 0
+    if (newTenant.isAnnual) basePrice = basePrice * 10 // 2 months free for annual
+    
+    let storagePrice = (Number(newTenant.extraStorage) * STORAGE_PRICE_GB)
+    if (newTenant.isAnnual) storagePrice = storagePrice * 10
+
+    let aiPrice = newTenant.enableAI ? AI_PRICE_MONTH : 0
+    if (newTenant.isAnnual && aiPrice > 0) aiPrice = aiPrice * 10
+
+    return basePrice + storagePrice + aiPrice
+  }
 
   // Icon mapping
   const IconMap: Record<string, any> = {
@@ -127,25 +209,25 @@ export default function WorkspaceSelectionPage() {
 
   const plans = [
     { 
-      id: "free", name: "Free", price: "Rp 0", 
+      id: "free", name: "Free", price: "Rp 0", priceAmount: 0,
       desc: "For small personal projects", 
-      features: ["10 Content Schemas", "500 Entries"],
+      features: ["Unlimited Content Types", "500 Entries"],
       color: "bg-slate-100 text-slate-700 border-slate-200"
     },
     { 
-      id: "starter", name: "Starter", price: "Rp 499k", 
+      id: "starter", name: "Starter", price: "Rp 499k", priceAmount: 499000,
       desc: "Perfect for growing sites", 
-      features: ["25 Content Schemas", "5,000 Entries"],
+      features: ["Unlimited Content Types", "5,000 Entries"],
       color: "bg-blue-50 text-blue-700 border-blue-100"
     },
     { 
-      id: "pro", name: "Business Pro", price: "Rp 1.499k", 
+      id: "pro", name: "Business Pro", price: "Rp 1.499k", priceAmount: 1499000,
       desc: "Advanced features for teams", 
-      features: ["50 Content Schemas", "50,000 Entries"],
+      features: ["Unlimited Content Types", "50,000 Entries"],
       color: "bg-emerald-50 text-emerald-700 border-emerald-100"
     },
     { 
-      id: "enterprise", name: "Enterprise", price: "Custom", 
+      id: "enterprise", name: "Enterprise", price: "Custom", priceAmount: 0,
       desc: "Isolated DB & Maximum security", 
       features: ["Dedicated Database", "Unlimited Content"],
       color: "bg-purple-50 text-purple-700 border-purple-100"
@@ -277,7 +359,16 @@ export default function WorkspaceSelectionPage() {
           <span className="font-bold tracking-tight">SaCMS</span>
         </div>
         <div className="flex items-center gap-4">
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={() => setIsAccountPlanOpen(true)}
+            className="text-[10px] font-black uppercase tracking-widest h-8 rounded-lg bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all"
+          >
+            <Zap className="mr-1.5 h-3 w-3 fill-current" /> {session?.user?.plan || "Free"} Account
+          </Button>
           {isSuperAdmin && (
+
             <Link href="/admin">
               <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">
                 <ShieldCheck className="mr-2 h-4 w-4" /> PLATFORM ADMIN
@@ -765,7 +856,18 @@ export default function WorkspaceSelectionPage() {
                 </div>
 
                 <div className="space-y-4">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Select a Subscription Plan</Label>
+                  <div className="flex items-center justify-between px-1">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select a Subscription Plan</Label>
+                    <div className="flex items-center gap-2">
+                      <span className={cn("text-[10px] font-bold uppercase", !newTenant.isAnnual ? "text-primary" : "text-muted-foreground")}>Monthly</span>
+                      <Checkbox 
+                        checked={newTenant.isAnnual} 
+                        onCheckedChange={(checked) => setNewMember({...newTenant, isAnnual: checked as boolean})}
+                        className="rounded-full"
+                      />
+                      <span className={cn("text-[10px] font-bold uppercase", newTenant.isAnnual ? "text-primary" : "text-muted-foreground")}>Yearly <span className="text-emerald-500">(2 Months Free)</span></span>
+                    </div>
+                  </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {plans.map((plan) => (
                       <div 
@@ -785,7 +887,11 @@ export default function WorkspaceSelectionPage() {
                         )}
                         <div className="flex justify-between items-start mb-1">
                           <span className="font-black uppercase text-xs tracking-tight">{plan.name}</span>
-                          <span className="font-bold text-xs text-primary">{plan.price}</span>
+                          <span className="font-bold text-xs text-primary">
+                            {plan.id === "enterprise" 
+                              ? "Custom" 
+                              : `Rp ${(newTenant.isAnnual ? (plan.priceAmount! * 10 / 1000) : (plan.priceAmount! / 1000))}k${newTenant.isAnnual ? "/yr" : "/mo"}`}
+                          </span>
                         </div>
                         <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.desc}</p>
                         <div className="flex flex-wrap gap-1">
@@ -800,14 +906,61 @@ export default function WorkspaceSelectionPage() {
                   </div>
                 </div>
 
-                <div className="p-4 bg-amber-50 rounded-xl border border-amber-100">
-                  <p className="text-[10px] font-bold text-amber-700 uppercase flex items-center gap-2">
-                    <Clock className="h-3 w-3" />
-                    Trial Period
-                  </p>
-                  <p className="text-[11px] text-amber-800/70 mt-1 leading-relaxed">
-                    All paid plans include a <strong>7-day free trial</strong>. You can cancel anytime from your settings.
-                  </p>
+                {/* Add-ons Section */}
+                <div className="space-y-4 p-6 bg-muted/20 rounded-3xl border border-muted/50">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
+                    <Zap className="h-3 w-3 fill-current" /> Premium Add-ons
+                  </h4>
+                  
+                  <div className="space-y-6">
+                    {/* Storage Add-on */}
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="space-y-0.5">
+                        <Label className="text-sm font-bold">Extra Storage</Label>
+                        <p className="text-[10px] text-muted-foreground">Rp 5k/GB/month. High-speed R2 Object Storage.</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Input 
+                          type="number" 
+                          min="0"
+                          max="1000"
+                          value={newTenant.extraStorage}
+                          onChange={(e) => setNewMember({...newTenant, extraStorage: e.target.value})}
+                          className="w-20 h-9 bg-card border-muted-foreground/20 rounded-lg text-center font-bold"
+                        />
+                        <span className="text-xs font-black uppercase">GB</span>
+                      </div>
+                    </div>
+
+                    {/* AI Add-on */}
+                    <div className="flex items-center justify-between gap-4 pt-4 border-t border-muted">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2">
+                          <Label className="text-sm font-bold">AI Features</Label>
+                          <Badge className="bg-primary/10 text-primary text-[8px] h-4">Beta</Badge>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">Rp 99k/month. Auto-content generation & AI Schemas.</p>
+                      </div>
+                      <Checkbox 
+                        checked={newTenant.enableAI}
+                        onCheckedChange={(checked) => setNewMember({...newTenant, enableAI: checked as boolean})}
+                        className="h-6 w-6 rounded-lg"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-6 bg-primary text-primary-foreground rounded-3xl shadow-xl shadow-primary/20 flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Total Due Today</p>
+                    <h3 className="text-2xl font-black tracking-tight">
+                      Rp {(calculateTotalPrice() / 1000).toLocaleString()}k
+                    </h3>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[10px] font-bold uppercase opacity-80">Billing Cycle</p>
+                    <p className="text-sm font-black uppercase">{newTenant.isAnnual ? "Annual" : "Monthly"}</p>
+                  </div>
                 </div>
 
                 <DialogFooter className="pt-4">
@@ -860,6 +1013,107 @@ export default function WorkspaceSelectionPage() {
               {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
               Erase Permanently
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Account Plan Management Dialog */}
+      <Dialog open={isAccountPlanOpen} onOpenChange={setIsAccountPlanOpen}>
+        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden lg:max-w-4xl flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-10 bg-primary/5 border-b relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16" />
+            <DialogTitle className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
+              <Zap className="h-8 w-8 text-primary fill-current" /> Account Plans
+            </DialogTitle>
+            <DialogDescription className="text-base font-medium">
+              Manage your personal account limits and capabilities.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="flex-1 overflow-y-auto p-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {accountPlans.map((plan) => {
+                const isCurrent = session?.user?.plan === plan.id
+                
+                return (
+                  <Card 
+                    key={plan.id}
+                    className={cn(
+                      "rounded-[2rem] border-2 transition-all duration-300 relative group overflow-hidden",
+                      isCurrent 
+                        ? "border-primary bg-primary/[0.02] shadow-xl" 
+                        : "border-muted hover:border-primary/30 hover:shadow-lg"
+                    )}
+                  >
+                    {isCurrent && (
+                      <div className="absolute top-4 right-4 bg-primary text-primary-foreground text-[8px] font-black uppercase px-2 py-1 rounded-full shadow-lg z-10">
+                        Current
+                      </div>
+                    )}
+                    
+                    <CardContent className="p-8 space-y-6">
+                      <div className="space-y-1">
+                        <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground italic">{plan.name}</h4>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-black tracking-tighter">{plan.price}</span>
+                          <span className="text-[10px] font-bold text-muted-foreground uppercase">/ mo</span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-3">
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          </div>
+                          <span className="text-xs font-bold">{plan.workspaces} Workspaces</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          </div>
+                          <span className="text-xs font-bold">Unlimited Content Types</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
+                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          </div>
+                          <span className="text-xs font-bold">Standard Support</span>
+                        </div>
+                      </div>
+
+                      <Button 
+                        disabled={isCurrent || isUpdatingUserPlan}
+                        onClick={() => handleUpdateUserPlan(plan.id)}
+                        className={cn(
+                          "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all",
+                          isCurrent 
+                            ? "bg-muted text-muted-foreground shadow-none" 
+                            : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]"
+                        )}
+                      >
+                        {isUpdatingUserPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? "Active Plan" : `Upgrade to ${plan.name}`}
+                      </Button>
+                    </CardContent>
+                  </Card>
+                )
+              })}
+            </div>
+            
+            <div className="mt-10 p-6 rounded-3xl bg-muted/30 border border-muted flex gap-4 items-center">
+              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm">
+                <ShieldCheck className="h-6 w-6 text-primary" />
+              </div>
+              <div className="space-y-1">
+                <p className="text-xs font-black uppercase tracking-widest leading-none">Enterprise & Custom Needs</p>
+                <p className="text-[11px] text-muted-foreground font-medium italic">
+                  Looking for dedicated infrastructure, on-premise solutions, or custom SLA? <a href="#" className="text-primary font-bold hover:underline">Contact our sales team</a> for a tailored package.
+                </p>
+              </div>
+            </div>
+          </div>
+          
+          <DialogFooter className="p-8 bg-muted/10 border-t">
+            <Button variant="ghost" onClick={() => setIsAccountPlanOpen(false)} className="rounded-xl font-bold h-12 px-8">Close Manager</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

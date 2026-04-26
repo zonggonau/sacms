@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { generateContent } from "@/lib/ai"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
@@ -41,6 +42,14 @@ export async function POST(
     const access = await getTenantAccess(session, tenant)
     if (!access) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    // Check if AI is enabled for this tenant
+    const aiEnabled = await isFeatureEnabled(access.tenantId, "ENABLE_AI")
+    if (!aiEnabled) {
+      return NextResponse.json({ 
+        error: "AI features are not enabled for your plan. Please upgrade or contact support." 
+      }, { status: 403 })
     }
 
     const result = await validateBody(request, generateSchema)

@@ -22,107 +22,122 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, checkoutSchema)
     if ("error" in result) return result.error
-    const { planId, tenantId, interval } = result.data
+    const { planId, tenantId, interval, type } = result.data
 
-    // Get tenant and verify access
-    const tenant = await db.tenant.findUnique({
-      where: { id: tenantId },
-      include: { members: true },
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check if user is a member of this tenant or super admin
-    const membership = tenant.members.find(m => m.userId === session.user.id)
-    const isSuperAdmin = session.user.role === "super_admin"
-
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    // Only owner or admin can upgrade plan
-    if (membership && membership.role !== "owner" && membership.role !== "admin") {
-      return NextResponse.json(
-        { error: "Only owner or admin can manage subscription" },
-        { status: 403 }
-      )
-    }
-
-    // Get plan details from database (platform-pricing content type)
-    const pricingContentType = await db.contentType.findUnique({
-      where: { slug: "platform-pricing" }
-    })
+    const isAccountPlan = type === "account" || !tenantId
 
     let amount = 0
     let planName = planId
     let isAddon = false
+    let targetId = tenantId || session.user.id
 
-    if (pricingContentType) {
-      const planEntries = await db.contentEntry.findMany({
-        where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
-      })
-      
-      const planEntry = planEntries.find(e => {
-        let d = e.data
-        if (typeof d === 'string') {
-          try {
-            d = JSON.parse(d)
-          } catch (e) {
-            d = {}
-          }
-        }
-        return (d as any).id === planId || e.id === planId || (d as any).name?.toLowerCase() === planId.toLowerCase()
+    if (isAccountPlan) {
+      // Logic for account plan pricing
+      const monthlyPrice = PLAN_PRICES[planId] || 0
+      amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+      planName = planId.charAt(0).toUpperCase() + planId.slice(1)
+    } else {
+      // Get tenant and verify access
+      const tenant = await db.tenant.findUnique({
+        where: { id: tenantId },
+        include: { members: true },
       })
 
-      if (planEntry) {
-        let d = planEntry.data
-        if (typeof d === 'string') {
-          try {
-            d = JSON.parse(d)
-          } catch (e) {
-            d = {}
+      if (!tenant) {
+        return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+      }
+
+      // Check if user is a member of this tenant or super admin
+      const membership = tenant.members.find(m => m.userId === session.user.id)
+      const isSuperAdmin = session.user.role === "super_admin"
+
+      if (!membership && !isSuperAdmin) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      }
+
+      // Only owner or admin can upgrade plan
+      if (membership && membership.role !== "owner" && membership.role !== "admin") {
+        return NextResponse.json(
+          { error: "Only owner or admin can manage subscription" },
+          { status: 403 }
+        )
+      }
+
+      // Get plan details from database (sacms-pricing or platform-pricing content type)
+      const pricingContentType = await db.contentType.findFirst({
+        where: { slug: { in: ["sacms-pricing", "platform-pricing"] } }
+      })
+
+      if (pricingContentType) {
+        const planEntries = await db.contentEntry.findMany({
+          where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
+        })
+        
+        const planEntry = planEntries.find(e => {
+          let d = e.data
+          if (typeof d === 'string') {
+            try { d = JSON.parse(d) } catch (e) { d = {} }
           }
+          const data = d as any
+          return data.plan_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
+        })
+
+        if (planEntry) {
+          let d = planEntry.data
+          if (typeof d === 'string') {
+            try { d = JSON.parse(d) } catch (e) { d = {} }
+          }
+          const data = d as any
+          
+          let rawPrice = data.price || "0"
+          let monthlyPrice = 0
+          if (typeof rawPrice === 'string') {
+            monthlyPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
+          } else {
+            monthlyPrice = Number(rawPrice) || 0
+          }
+
+          amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+          planName = data.name || planId
+          isAddon = data.type === "addons"
+        } else {
+          const monthlyPrice = PLAN_PRICES[planId] || 0
+          amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
         }
-        const data = d as any
-        const monthlyPrice = Number(data.price) || 0
-        amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
-        planName = data.name || planId
-        isAddon = data.type === "addons"
       } else {
-        // Fallback to old hardcoded prices if not found in DB
-        const monthlyPrice = PLAN_PRICES[planId as PlanType] || 0
+        const monthlyPrice = PLAN_PRICES[planId] || 0
         amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
       }
-    } else {
-      const monthlyPrice = PLAN_PRICES[planId as PlanType] || 0
-      amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
     }
 
-    const orderId = `${isAddon ? 'ADD' : 'SUB'}-${tenantId}-${Date.now()}`
+    const orderId = isAccountPlan ? `ACC-${session.user.id}-${Date.now()}` : `${isAddon ? 'ADD' : 'SUB'}-${tenantId}-${Date.now()}`
 
     // Calculate PPN (11%)
     const vatAmount = Math.round(amount * 0.11)
     const totalAmount = amount + vatAmount
 
     // Get or create subscription
+    // Use undefined instead of null to avoid client-side validation errors if the client hasn't been regenerated yet
+    // though the DB schema now allows null.
     let subscription = await db.subscription.findFirst({
-      where: { tenantId },
+      where: isAccountPlan 
+        ? { userId: session.user.id, tenantId: { equals: null } as any } 
+        : { tenantId },
     })
 
     if (!subscription) {
       subscription = await db.subscription.create({
         data: {
           userId: session.user.id,
-          tenantId,
-          plan: isAddon ? "free" : planId, // Default to free if buying addon first
+          tenantId: (isAccountPlan ? null : tenantId) as any,
+          plan: isAddon ? "free" : planId,
           status: 'pending',
           currentPeriodStart: new Date(),
           currentPeriodEnd: calculatePeriodEndDate(planId as PlanType, interval as any),
         },
       })
-    } else {
+    }
+ else {
       // Only update main plan if it's NOT an addon
       if (!isAddon) {
         subscription = await db.subscription.update({

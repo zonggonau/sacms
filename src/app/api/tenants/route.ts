@@ -8,6 +8,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { randomBytes } from "crypto"
 import { provisionTenant } from "@/lib/tenant-provisioning"
 import { slugify } from "@/lib/slug"
+import { getUserPlanConfig } from "@/lib/tenant-plan"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -85,6 +86,18 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+
+    // Check workspace limit
+    const userPlan = await getUserPlanConfig(session.user.id)
+    const ownedWorkspaces = await db.tenantMember.count({
+      where: { userId: session.user.id, role: "owner" }
+    })
+
+    if (ownedWorkspaces >= userPlan.max_workspaces) {
+      return NextResponse.json({ 
+        error: `Limit reached. Your ${userPlan.plan_slug} plan allows maximum ${userPlan.max_workspaces} workspaces.` 
+      }, { status: 403 })
+    }
 
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error

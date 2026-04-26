@@ -2,20 +2,23 @@ import { PrismaClient } from "@prisma/client"
 const prisma = new PrismaClient()
 
 async function main() {
-  console.log("🚀 Reseeding pricing data with clean JSON...")
+  console.log("🚀 Reseeding pricing data for SaCMS Landing Page...")
 
-  const ct = await prisma.contentType.findUnique({
-    where: { slug: "platform-pricing" }
+  const ct = await prisma.contentType.findFirst({
+    where: { slug: "sacms-pricing" }
   })
 
   if (!ct) {
-    console.error("❌ Content Type 'platform-pricing' not found.")
+    console.error("❌ Content Type 'sacms-pricing' not found.")
     return
   }
 
-  const tenant = await prisma.tenant.findFirst()
+  const tenant = await prisma.tenant.findFirst({
+    where: { slug: "sacms-global" } // Usually stored in global tenant
+  }) || await prisma.tenant.findFirst()
+
   if (!tenant) {
-    console.error("❌ No tenant found.")
+    console.error("❌ No tenant found for seeding.")
     return
   }
 
@@ -26,46 +29,44 @@ async function main() {
 
   const plans = [
     { 
-      name: "Starter", 
-      price: 299000, 
+      name: "Free", 
+      price: 0, 
       is_popular: false, 
-      type: "plan",
-      features: "1 Site, 5 Content Types, 1,000 Entries, 1GB Media Storage, Content Workflow" 
+      description: "Untuk individu yang baru memulai.",
+      button_text: "Daftar Gratis",
+      features_list: "1 Workspace, 100MB Storage, 5 Content Types, 1,000 Entries, Community Support" 
     },
     { 
-      name: "Standard", 
+      name: "Standar", 
+      price: 299000, 
+      is_popular: true, 
+      description: "Pilihan terbaik untuk tim kecil.",
+      button_text: "Mulai Standar",
+      features_list: "5 Workspaces, 1GB Storage per Workspace, 20 Content Types, 10,000 Entries, Email Support" 
+    },
+    { 
+      name: "Profesional", 
       price: 799000, 
       is_popular: false, 
-      type: "plan",
-      features: "1 Site, 10 Content Types, 5,000 Entries, 3GB Media Storage" 
+      description: "Untuk bisnis yang sedang berkembang.",
+      button_text: "Mulai Profesional",
+      features_list: "20 Workspaces, 5GB Storage per Workspace, Unlimited Content Types, 50,000 Entries, Priority Support, AI Enabled" 
     },
     { 
-      name: "Pro", 
+      name: "Bisnis", 
       price: 1499000, 
-      is_popular: true, 
-      type: "plan",
-      features: "1 Site, 20 Content Types, 20,000 Entries, 10GB Media Storage, Content Workflow" 
+      is_popular: false, 
+      description: "Infrastruktur konten skala besar.",
+      button_text: "Mulai Bisnis",
+      features_list: "50 Workspaces, 20GB Storage per Workspace, Unlimited Everything, 24/7 Support, Custom Workflow, AI Tools" 
     },
     { 
-      name: "Business", 
-      price: 2499000, 
+      name: "Unlimited", 
+      price: "Hubungi Kami", 
       is_popular: false, 
-      type: "plan",
-      features: "1 Site, Unlimited Content Types, 50,000 Entries, 25GB Media Storage, Content Workflow" 
-    },
-    { 
-      name: "Daily Backup", 
-      price: 50000, 
-      is_popular: false, 
-      type: "addon",
-      features: "Automated Daily Backups, 30-day Retention, Point-in-time Recovery, One-click Restore" 
-    },
-    { 
-      name: "Additional Storage (10GB)", 
-      price: 25000, 
-      is_popular: false, 
-      type: "addon",
-      features: "10GB Extra SSD Storage, High-speed Asset Delivery, CDN Edge Caching, No Bandwidth Limits" 
+      description: "Kebutuhan kustom untuk organisasi besar.",
+      button_text: "Hubungi Kami",
+      features_list: "Unlimited Workspaces, 100GB+ Storage, Dedicated Infrastructure, Custom SLA, On-premise Option" 
     }
   ]
 
@@ -78,7 +79,7 @@ async function main() {
         data: p as any
       }
     })
-    console.log(`✅ Entry "${p.name}" created as ${p.type}.`)
+    console.log(`✅ Entry "${p.name}" created.`)
   }
 
   console.log("\n✨ Reseed complete!")

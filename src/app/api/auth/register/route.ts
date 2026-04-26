@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
 
     const validationResult = await validateBody(request, registerSchema)
     if ("error" in validationResult) return validationResult.error
-    const { name, email, password, tenantName } = validationResult.data
+    const { name, email, password, tenantName, plan = "free" } = validationResult.data as any
 
     // Check if user already exists
     const existingUser = await db.user.findUnique({
@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
           name,
           password: hashedPassword,
           role: "super_admin",
+          plan: "unlimited",
         },
       })
 
@@ -94,6 +95,7 @@ export async function POST(request: NextRequest) {
           name,
           password: hashedPassword,
           role: "user",
+          plan,
         },
       })
 
@@ -132,7 +134,8 @@ export async function POST(request: NextRequest) {
           email,
           name,
           password: hashedPassword,
-          role: "user", 
+          role: "user",
+          plan,
         },
       })
 

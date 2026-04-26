@@ -1,10 +1,16 @@
+import { PrismaClient } from "@prisma/client"
 import { db } from "@/lib/database"
 import { processAutoSlugs } from "@/lib/slug"
+import { logAudit, AuditAction } from "@/lib/audit-log"
 
 // Dynamically build GraphQL schema from content types and single types
-export async function buildDynamicTypeDefs(tenantId: string, includeMutations = false): Promise<string> {
+export async function buildDynamicTypeDefs(
+  tenantId: string, 
+  includeMutations = false,
+  _db: PrismaClient = db
+): Promise<string> {
   // Get assigned content types with fields
-  const contentTypeAssignments = await db.tenantContentTypeAssignment.findMany({
+  const contentTypeAssignments = await _db.tenantContentTypeAssignment.findMany({
     where: { tenantId, enabled: true },
     include: {
       contentType: {
@@ -14,7 +20,7 @@ export async function buildDynamicTypeDefs(tenantId: string, includeMutations = 
   })
 
   // Get assigned single types with fields
-  const singleTypeAssignments = await db.tenantSingleTypeAssignment.findMany({
+  const singleTypeAssignments = await _db.tenantSingleTypeAssignment.findMany({
     where: { tenantId, enabled: true },
     include: {
       singleType: {
@@ -54,8 +60,8 @@ type ${typeName}Collection {
 }`)
 
     queryFields.push(
-      `  ${ct.slug}(page: Int, limit: Int, sort: String, order: String, published: Boolean, locale: String, status: String): ${typeName}Collection`,
-      `  ${ct.slug}ById(id: ID!): ${typeName}`
+      `  ${sanitizeFieldName(ct.slug)}(page: Int, limit: Int, sort: String, order: String, published: Boolean, locale: String, status: String): ${typeName}Collection`,
+      `  ${sanitizeFieldName(ct.slug)}ById(id: ID!): ${typeName}`
     )
 
     if (includeMutations) {
@@ -83,7 +89,7 @@ type ${typeName} {
 ${fields}
 }`)
 
-    queryFields.push(`  ${st.slug}: ${typeName}`)
+    queryFields.push(`  ${sanitizeFieldName(st.slug)}: ${typeName}`)
   }
 
   return `
@@ -115,7 +121,7 @@ ${mutationFields.join("\n")}
 }
 
 // Build resolvers dynamically
-export function buildDynamicResolvers(tenantId: string) {
+export function buildDynamicResolvers(tenantId: string, _db: PrismaClient = db) {
   return {
     Query: new Proxy(
       {},
@@ -123,9 +129,20 @@ export function buildDynamicResolvers(tenantId: string) {
         get(_target, prop: string) {
           // Check if it's a "byId" query
           if (prop.endsWith("ById")) {
-            const slug = prop.replace("ById", "")
+            const sanitizedSlug = prop.replace("ById", "")
             return async (_parent: unknown, args: { id: string }) => {
-              return resolveContentEntryById(tenantId, slug, args.id)
+              // Find content type that matches sanitized slug
+              const allContentTypes = await _db.contentType.findMany({
+                where: { 
+                  OR: [
+                    { tenantId },
+                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+                  ]
+                }
+              })
+              const ct = allContentTypes.find(c => sanitizeFieldName(c.slug) === sanitizedSlug)
+              if (!ct) return null
+              return resolveContentEntryById(tenantId, ct.slug, args.id, _db)
             }
           }
           // Otherwise it could be a collection query or single type
@@ -133,21 +150,37 @@ export function buildDynamicResolvers(tenantId: string) {
             _parent: unknown,
             args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string }
           ) => {
-            // Try as content type first
-            const contentType = await db.contentType.findFirst({
-              where: { 
-                slug: prop,
-                OR: [
-                  { tenantId },
-                  { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
-                ]
-              },
-            })
-            if (contentType) {
-              return resolveContentCollection(tenantId, contentType.id, args)
+            // Fetch all assigned content types and single types to find match by sanitized name
+            const [contentTypes, singleTypes] = await Promise.all([
+              _db.contentType.findMany({
+                where: { 
+                  OR: [
+                    { tenantId },
+                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+                  ]
+                },
+              }),
+              _db.singleType.findMany({
+                where: { 
+                  OR: [
+                    { tenantId },
+                    { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+                  ]
+                },
+              })
+            ])
+
+            const ct = contentTypes.find(c => sanitizeFieldName(c.slug) === prop)
+            if (ct) {
+              return resolveContentCollection(tenantId, ct.id, args, _db)
             }
-            // Try as single type
-            return resolveSingleType(tenantId, prop)
+
+            const st = singleTypes.find(s => sanitizeFieldName(s.slug) === prop)
+            if (st) {
+              return resolveSingleType(tenantId, st.slug, _db)
+            }
+
+            return null
           }
         },
       }
@@ -160,28 +193,28 @@ export function buildDynamicResolvers(tenantId: string) {
           if (prop.startsWith("create")) {
             const slug = toSlug(prop.replace("create", ""))
             return async (_parent: unknown, args: { data: any; locale?: string; status?: string }) => {
-              return resolveMutationCreate(tenantId, slug, args)
+              return resolveMutationCreate(tenantId, slug, args, _db)
             }
           }
           // update{TypeName}
           if (prop.startsWith("update")) {
             const slug = toSlug(prop.replace("update", ""))
             return async (_parent: unknown, args: { id: string; data: any }) => {
-              return resolveMutationUpdate(tenantId, slug, args)
+              return resolveMutationUpdate(tenantId, slug, args, _db)
             }
           }
           // delete{TypeName}
           if (prop.startsWith("delete")) {
             const slug = toSlug(prop.replace("delete", ""))
             return async (_parent: unknown, args: { id: string }) => {
-              return resolveMutationDelete(tenantId, slug, args.id)
+              return resolveMutationDelete(tenantId, slug, args.id, _db)
             }
           }
           // publish{TypeName}
           if (prop.startsWith("publish")) {
             const slug = toSlug(prop.replace("publish", ""))
             return async (_parent: unknown, args: { id: string }) => {
-              return resolveMutationPublish(tenantId, slug, args.id)
+              return resolveMutationPublish(tenantId, slug, args.id, _db)
             }
           }
           return null
@@ -194,25 +227,26 @@ export function buildDynamicResolvers(tenantId: string) {
 async function resolveContentCollection(
   tenantId: string,
   contentTypeId: string,
-  args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string }
+  args: { page?: number; limit?: number; sort?: string; order?: string; published?: boolean; locale?: string; status?: string } = {},
+  _db: PrismaClient = db
 ) {
-  const page = args.page ?? 1
-  const limit = Math.min(args.limit ?? 25, 100)
-  const sort = args.sort ?? "createdAt"
-  const order = args.order ?? "desc"
+  const page = args?.page ?? 1
+  const limit = Math.min(args?.limit ?? 25, 100)
+  const sort = args?.sort ?? "createdAt"
+  const order = args?.order ?? "desc"
 
   const where: any = {
     contentTypeId,
     tenantId,
-    status: args.status ?? "PUBLISHED",
+    status: args?.status ?? "PUBLISHED",
   }
-  if (args.locale) where.locale = args.locale
+  if (args?.locale) where.locale = args.locale
   // Legacy support: published=false returns all statuses
-  if (args.published === false) delete where.status
+  if (args?.published === false) delete where.status
 
   const [total, entries] = await Promise.all([
-    db.contentEntry.count({ where }),
-    db.contentEntry.findMany({
+    _db.contentEntry.count({ where }),
+    _db.contentEntry.findMany({
       where,
       orderBy: { [sort]: order },
       skip: (page - 1) * limit,
@@ -236,8 +270,8 @@ async function resolveContentCollection(
   }
 }
 
-async function resolveContentEntryById(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findFirst({
+async function resolveContentEntryById(tenantId: string, slug: string, id: string, _db: PrismaClient = db) {
+  const contentType = await _db.contentType.findFirst({
     where: { 
       slug,
       OR: [
@@ -248,7 +282,7 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
   })
   if (!contentType) return null
 
-  const entry = await db.contentEntry.findFirst({
+  const entry = await _db.contentEntry.findFirst({
     where: { id, contentTypeId: contentType.id, tenantId },
   })
   if (!entry) return null
@@ -267,9 +301,11 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
 async function resolveMutationCreate(
   tenantId: string,
   slug: string,
-  args: { data: any; locale?: string; status?: string }
+  args: { data: any; locale?: string; status?: string },
+  _db: PrismaClient = db,
+  userId?: string // Optional: track who made the change
 ) {
-  const contentType = await db.contentType.findFirst({
+  const contentType = await _db.contentType.findFirst({
     where: { 
       slug,
       OR: [
@@ -285,17 +321,40 @@ async function resolveMutationCreate(
     tenantId,
     contentType.id,
     contentType.fields,
-    args.data
+    args.data,
+    undefined,
+    'collection',
+    _db
   )
 
-  const entry = await db.contentEntry.create({
-    data: {
-      contentTypeId: contentType.id,
-      tenantId,
-      data: dataWithSlugs as any,
-      locale: args.locale ?? "en",
-      status: (args.status as "DRAFT" | "PUBLISHED") ?? "DRAFT",
-    },
+  const entry = await _db.$transaction(async (tx) => {
+    const newEntry = await tx.contentEntry.create({
+      data: {
+        contentTypeId: contentType.id,
+        tenantId,
+        data: dataWithSlugs as any,
+        locale: args.locale ?? "en",
+        status: (args.status as any) ?? "DRAFT",
+        createdBy: userId,
+      },
+    })
+
+    // Set documentId to the same as id for the first version
+    const updated = await tx.contentEntry.update({
+      where: { id: newEntry.id },
+      data: { documentId: newEntry.id }
+    })
+
+    return updated
+  })
+
+  logAudit({
+    tenantId,
+    userId,
+    action: AuditAction.CONTENT_CREATED,
+    entity: "ContentEntry",
+    entityId: entry.id,
+    data: { contentType: slug, source: "graphql" }
   })
 
   return {
@@ -312,9 +371,11 @@ async function resolveMutationCreate(
 async function resolveMutationUpdate(
   tenantId: string,
   slug: string,
-  args: { id: string; data: any }
+  args: { id: string; data: any },
+  _db: PrismaClient = db,
+  userId?: string
 ) {
-  const contentType = await db.contentType.findFirst({
+  const contentType = await _db.contentType.findFirst({
     where: { 
       slug,
       OR: [
@@ -326,7 +387,7 @@ async function resolveMutationUpdate(
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
-  const existing = await db.contentEntry.findFirst({
+  const existing = await _db.contentEntry.findFirst({
     where: { id: args.id, contentTypeId: contentType.id, tenantId },
   })
   if (!existing) throw new Error("Entry not found")
@@ -337,12 +398,27 @@ async function resolveMutationUpdate(
     contentType.id,
     contentType.fields,
     fullData,
-    args.id
+    args.id,
+    'collection',
+    _db
   )
 
-  const updated = await db.contentEntry.update({
+  const updated = await _db.contentEntry.update({
     where: { id: args.id },
-    data: { data: dataWithSlugs as any, updatedAt: new Date() },
+    data: { 
+      data: dataWithSlugs as any, 
+      updatedBy: userId,
+      updatedAt: new Date() 
+    },
+  })
+
+  logAudit({
+    tenantId,
+    userId,
+    action: AuditAction.CONTENT_UPDATED,
+    entity: "ContentEntry",
+    entityId: updated.id,
+    data: { contentType: slug, source: "graphql" }
   })
 
   return {
@@ -356,8 +432,14 @@ async function resolveMutationUpdate(
   }
 }
 
-async function resolveMutationDelete(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findFirst({
+async function resolveMutationDelete(
+  tenantId: string, 
+  slug: string, 
+  id: string, 
+  _db: PrismaClient = db,
+  userId?: string
+) {
+  const contentType = await _db.contentType.findFirst({
     where: { 
       slug,
       OR: [
@@ -368,17 +450,33 @@ async function resolveMutationDelete(tenantId: string, slug: string, id: string)
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
-  const existing = await db.contentEntry.findFirst({
+  const existing = await _db.contentEntry.findFirst({
     where: { id, contentTypeId: contentType.id, tenantId },
   })
   if (!existing) throw new Error("Entry not found")
 
-  await db.contentEntry.delete({ where: { id } })
+  await _db.contentEntry.delete({ where: { id } })
+
+  logAudit({
+    tenantId,
+    userId,
+    action: AuditAction.CONTENT_DELETED,
+    entity: "ContentEntry",
+    entityId: id,
+    data: { contentType: slug, source: "graphql" }
+  })
+
   return { id, success: true }
 }
 
-async function resolveMutationPublish(tenantId: string, slug: string, id: string) {
-  const contentType = await db.contentType.findFirst({
+async function resolveMutationPublish(
+  tenantId: string, 
+  slug: string, 
+  id: string, 
+  _db: PrismaClient = db,
+  userId?: string
+) {
+  const contentType = await _db.contentType.findFirst({
     where: { 
       slug,
       OR: [
@@ -389,17 +487,27 @@ async function resolveMutationPublish(tenantId: string, slug: string, id: string
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
-  const existing = await db.contentEntry.findFirst({
+  const existing = await _db.contentEntry.findFirst({
     where: { id, contentTypeId: contentType.id, tenantId },
   })
   if (!existing) throw new Error("Entry not found")
 
-  const updated = await db.contentEntry.update({
+  const updated = await _db.contentEntry.update({
     where: { id },
     data: {
       status: "PUBLISHED",
       publishedAt: new Date(),
+      updatedBy: userId,
     },
+  })
+
+  logAudit({
+    tenantId,
+    userId,
+    action: AuditAction.CONTENT_PUBLISHED,
+    entity: "ContentEntry",
+    entityId: updated.id,
+    data: { contentType: slug, source: "graphql" }
   })
 
   return {
@@ -413,8 +521,8 @@ async function resolveMutationPublish(tenantId: string, slug: string, id: string
   }
 }
 
-async function resolveSingleType(tenantId: string, slug: string) {
-  const singleType = await db.singleType.findFirst({
+async function resolveSingleType(tenantId: string, slug: string, _db: PrismaClient = db) {
+  const singleType = await _db.singleType.findFirst({
     where: { 
       slug,
       OR: [
@@ -425,15 +533,19 @@ async function resolveSingleType(tenantId: string, slug: string) {
   })
   if (!singleType) return null
 
-  const assignment = await db.tenantSingleTypeAssignment.findUnique({
+  const assignment = await _db.tenantSingleTypeAssignment.findUnique({
     where: {
-      tenantId_singleTypeId: { tenantId, singleTypeId: singleType.id },
+      tenantId_singleTypeId_locale: { 
+        tenantId, 
+        singleTypeId: singleType.id,
+        locale: "en" // Default to en for GraphQL for now
+      },
     },
   })
   if (!assignment || !assignment.data) return null
 
   return {
-    ...(assignment.data as any),
+    ...(typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data),
     publishedAt: assignment.publishedAt?.toISOString() ?? null,
     updatedAt: assignment.updatedAt.toISOString(),
   }

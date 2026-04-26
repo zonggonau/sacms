@@ -158,9 +158,12 @@ export async function refundTransaction(orderId: string) {
  */
 export const PLAN_PRICES: Record<string, number> = {
   free: 0,
-  starter: 9000,      // Rp 9.000
-  pro: 29000,          // Rp 29.000
-  enterprise: 199000,   // Rp 199.000
+  starter: 9000,
+  standard: 149000,
+  professional: 449000,
+  business: 949000,
+  unlimited: 1999000,
+  enterprise: 2999000,
 } as const
 
 export type PlanType = keyof typeof PLAN_PRICES

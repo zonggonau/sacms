@@ -85,8 +85,10 @@ export async function GET(
       return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
     }
 
-    // Verify tenant matches
-    if (apiToken.tenant.slug !== tenantSlug) {
+    // Verify tenant matches (check both ID and Slug)
+    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    
+    if (!isMatchingTenant) {
       return NextResponse.json({ error: "Token does not match tenant" }, { status: 403 })
     }
 
@@ -95,8 +97,12 @@ export async function GET(
       return NextResponse.json({ error: "API token expired" }, { status: 401 })
     }
 
+    // Get the correct DB client (Shared or Dedicated)
+    const { getTenantDb } = await import("@/lib/database")
+    const tenantDb = await getTenantDb(apiToken.tenantId)
+
     // Get content type with fields (must belong to this tenant or be global and assigned to this tenant)
-    const contentType = await db.contentType.findFirst({
+    const contentType = await tenantDb.contentType.findFirst({
       where: { 
         slug: contentTypeSlug,
         OR: [
@@ -187,11 +193,13 @@ export async function GET(
       queryParams.push(...filterResult.params)
       paramIdx = filterResult.nextParam
 
-      // Full-text search using pg_tsvector (with ILIKE fallback for safety)
+      // Full-text search using PostgreSQL tsvector (High Performance)
       if (search) {
         // Sanitize search input — strip characters that could disrupt tsquery
         const safeSearch = search.replace(/[&|!():*<>'"\\]/g, " ").trim().slice(0, 200)
         if (safeSearch) {
+          // Priority 1: Search using optimized tsvector with GIN index (@@ operator)
+          // Priority 2: Fallback to basic ILIKE search for non-indexed fields
           whereParts.push(`("searchVector" @@ plainto_tsquery('english', $${paramIdx}) OR "data"::text ILIKE $${paramIdx + 1})`)
           queryParams.push(safeSearch, `%${safeSearch}%`)
           paramIdx += 2
@@ -200,74 +208,85 @@ export async function GET(
 
       const whereClause = whereParts.join(" AND ")
 
+      // Dynamic sorting for raw SQL
+      const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt"])
+      const sanitizedSortField = allowedFieldNames.has(sortField) 
+        ? `"data"->>'${sortField}'` 
+        : validSystemColumns.has(sortField) ? `"${sortField}"` : `"createdAt"`
+
+      const safeSortOrder = sortOrder === "asc" ? "ASC" : "DESC"
+
       // Count query
-      const countResult = await db.$queryRawUnsafe<[{ count: bigint }]>(
+      const countResult = await tenantDb.$queryRawUnsafe<[{ count: bigint }]>(
         `SELECT COUNT(*) as count FROM "content_entries" WHERE ${whereClause}`,
         ...queryParams
       )
       total = Number(countResult[0].count)
 
       // Data query with sorting and pagination
-      const validSortColumns = new Set(["createdAt", "updatedAt", "publishedAt"])
-      const safeSortField = validSortColumns.has(sortField) ? `"${sortField}"` : `"createdAt"`
-      const safeSortOrder = sortOrder === "asc" ? "ASC" : "DESC"
-
-      entries = await db.$queryRawUnsafe(
-        `SELECT * FROM "content_entries" WHERE ${whereClause} ORDER BY ${safeSortField} ${safeSortOrder} LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
+      entries = await tenantDb.$queryRawUnsafe(
+        `SELECT * FROM "content_entries" 
+         WHERE ${whereClause} 
+         ORDER BY ${sanitizedSortField} ${safeSortOrder} 
+         LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
         ...queryParams,
         pageSize,
         (page - 1) * pageSize
       )
+
     } else {
       // Simple query without advanced filters
       const [rawEntries, count] = await Promise.all([
-        db.contentEntry.findMany({
+        tenantDb.contentEntry.findMany({
           where: baseWhere,
           orderBy: { [sortField]: sortOrder },
           skip: (page - 1) * pageSize,
           take: pageSize,
         }),
-        db.contentEntry.count({ where: baseWhere }),
+        tenantDb.contentEntry.count({ where: baseWhere }),
       ])
       entries = rawEntries
       total = count
     }
 
     // --- Optimized Relation Population (Fix N+1) ---
-    const relationFields = contentType.fields.filter(f => f.type === "relation")
     const populateParam = parsePopulate(searchParams)
+    const relationFields = contentType.fields.filter(f => f.type === "relation")
     
-    // Determine which fields to populate (defaults to all first-level relations if not specified)
-    const fieldsToPopulate = populateParam === "*" 
-      ? relationFields.map(f => f.slug)
-      : Array.isArray(populateParam) 
-        ? populateParam.filter(p => relationFields.some(rf => rf.slug === p))
-        : relationFields.map(f => f.slug)
+    // Determine which fields to populate (defaults to NONE if not specified, follows Strapi)
+    let fieldsToPopulate: string[] = []
+    if (populateParam === "*") {
+      fieldsToPopulate = relationFields.map(f => f.slug)
+    } else if (Array.isArray(populateParam)) {
+      fieldsToPopulate = populateParam.filter(p => relationFields.some(rf => rf.slug === p))
+    }
 
     // 1. Collect all unique relation IDs from all entries
     const allRelatedIds = new Set<string>()
-    entries.forEach((entry: any) => {
-      let parsedData: Record<string, unknown> = {}
-      try {
-        parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
-      } catch { return }
+    if (fieldsToPopulate.length > 0) {
+      entries.forEach((entry: any) => {
+        let parsedData: Record<string, unknown> = {}
+        try {
+          parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
+        } catch { return }
 
-      for (const fieldSlug of fieldsToPopulate) {
-        const val = parsedData[fieldSlug]
-        if (typeof val === 'string' && val.length > 10) {
-          allRelatedIds.add(val)
-        } else if (Array.isArray(val)) {
-          val.forEach(id => {
-            if (typeof id === 'string') allRelatedIds.add(id)
-          })
+        for (const fieldSlug of fieldsToPopulate) {
+          const val = parsedData[fieldSlug]
+          if (typeof val === 'string' && val.length > 10) {
+            allRelatedIds.add(val)
+          } else if (Array.isArray(val)) {
+            val.forEach(id => {
+              if (typeof id === 'string') allRelatedIds.add(id)
+            })
+          }
         }
-      }
-    })
+      })
+    }
 
     // 2. Batch fetch all related entries in ONE query
     const relatedEntriesMap = new Map<string, any>()
     if (allRelatedIds.size > 0) {
-      const relatedEntries = await db.contentEntry.findMany({
+      const relatedEntries = await tenantDb.contentEntry.findMany({
         where: { id: { in: Array.from(allRelatedIds) } },
         select: { id: true, data: true, locale: true, status: true }
       })
