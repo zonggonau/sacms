@@ -38,7 +38,6 @@ import {
   Zap,
   Database,
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
 import { toast } from "@/hooks/use-toast"
@@ -297,7 +296,7 @@ export default function NewGlobalContentTypePage() {
     }
   }
 
-  if (status === "loading") return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  if (status === "loading") return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
   if (session?.user?.role !== "super_admin") {
     router.push("/dashboard")
@@ -305,9 +304,8 @@ export default function NewGlobalContentTypePage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -378,7 +376,7 @@ export default function NewGlobalContentTypePage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Type Selector Modal */}
       <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
@@ -426,7 +424,7 @@ export default function NewGlobalContentTypePage() {
                 const Icon = fieldType?.icon
                 return (
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-xl bg-card/20 flex items-center justify-center">
                       {Icon && <Icon className="h-5 w-5" />}
                     </div>
                     <DialogTitle className="text-xl font-black uppercase tracking-tight">Configure {fieldType?.label || "Field"}</DialogTitle>
@@ -441,7 +439,7 @@ export default function NewGlobalContentTypePage() {
                   <div className="space-y-2"><Label className="text-xs font-bold">API Slug *</Label><Input value={editingField?.slug || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-mono text-xs" /></div>
                 </div>
                 {(editingField?.type === "select" || editingField?.type === "tags") && (
-                  <div className="space-y-2 pt-4"><Label className="text-xs font-bold">Options (Comma separated)</Label><Input value={editingField.options || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl" /></div>
+                  <div className="space-y-2 pt-4"><Label className="text-xs font-bold">Options (Comma separated)</Label><Input value={typeof editingField.options === "string" ? editingField.options : ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl" /></div>
                 )}
                 {editingField?.type === "relation" && <div className="p-4 bg-muted/20 rounded-2xl"><RelationFieldConfig context="contentType" relationType={editingField.relationType} targetModel={editingField.targetModel} targetSlug={editingField.targetSlug} onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)} onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)} onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)} /></div>}
                 {editingField?.type === "component" && <div className="p-4 bg-muted/20 rounded-2xl"><ComponentFieldConfig componentSlug={editingField.componentSlug} repeatable={editingField.repeatable} onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)} onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)} /></div>}

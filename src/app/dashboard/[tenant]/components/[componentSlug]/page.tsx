@@ -21,7 +21,6 @@ import {
   Info,
 } from "lucide-react"
 import Link from "next/link"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { toast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
 import {
@@ -109,22 +108,20 @@ export default function ComponentDetailPage() {
   }
 
   if (loading) return (
-    <div className="flex min-h-screen">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 flex items-center justify-center">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </main>
+      </div>
     </div>
   )
 
   if (!component) return null
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-          
+
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/components`)}>
@@ -145,7 +142,7 @@ export default function ComponentDetailPage() {
                     <Trash2 className="h-4 w-4 mr-2" /> Delete
                   </Button>
                 </AlertDialogTrigger>
-                <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                <AlertDialogContent className="rounded-none border-none shadow-none">
                   <AlertDialogHeader>
                     <AlertDialogTitle className="text-xl font-black uppercase text-destructive tracking-tight">Erase "{component.name}"?</AlertDialogTitle>
                     <AlertDialogDescription className="text-sm font-medium">
@@ -153,14 +150,14 @@ export default function ComponentDetailPage() {
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter className="gap-2">
-                    <AlertDialogCancel className="rounded-xl h-10">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl h-10 font-bold">
+                    <AlertDialogCancel className="rounded-none h-10">Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-none h-10 font-bold">
                       Delete Permanently
                     </AlertDialogAction>
                   </AlertDialogFooter>
                 </AlertDialogContent>
               </AlertDialog>
-              <Button className="bg-primary hover:bg-primary/90 font-bold shadow-lg shadow-primary/20" asChild>
+              <Button className="bg-primary hover:bg-primary/90 font-bold shadow-none shadow-none" asChild>
                 <Link href={`/dashboard/${tenantSlug}/components/${componentSlug}/edit`}>
                   <Edit className="mr-2 h-4 w-4" /> Edit Schema
                 </Link>
@@ -170,7 +167,7 @@ export default function ComponentDetailPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm bg-card">
+              <Card className="border-none shadow-none bg-card">
                 <CardHeader className="border-b bg-muted/10">
                   <CardTitle className="text-lg font-bold">Defined Attributes</CardTitle>
                   <CardDescription>Structure of this reusable component</CardDescription>
@@ -187,8 +184,8 @@ export default function ComponentDetailPage() {
                         const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
                         const Icon = typeInfo?.icon || Zap
                         return (
-                          <div key={field.id} className="flex items-center gap-4 p-4 rounded-2xl bg-muted/30 border border-transparent hover:border-primary/20 transition-all">
-                            <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center text-primary shadow-sm">
+                          <div key={field.id} className="flex items-center gap-4 p-4 rounded-none bg-muted/30 border border-transparent hover:border-primary/20 transition-all">
+                            <div className="w-10 h-10 rounded-none bg-card flex items-center justify-center text-primary shadow-none">
                               <Icon className="h-5 w-5" />
                             </div>
                             <div className="flex-1 min-w-0">
@@ -209,7 +206,7 @@ export default function ComponentDetailPage() {
             </div>
 
             <div className="space-y-6">
-              <Card className="border-none shadow-sm bg-card">
+              <Card className="border-none shadow-none bg-card">
                 <CardHeader><CardTitle className="text-base font-bold">Metadata</CardTitle></CardHeader>
                 <CardContent className="space-y-4 text-xs">
                   <div className="flex justify-between border-b border-dashed pb-2">
@@ -218,7 +215,7 @@ export default function ComponentDetailPage() {
                   </div>
                   <div className="flex justify-between border-b border-dashed pb-2">
                     <span className="text-muted-foreground uppercase font-bold text-[10px]">API Slug</span>
-                    <code className="font-bold bg-muted px-1.5 py-0.5 rounded text-primary">/{component.slug}</code>
+                    <code className="font-bold bg-muted px-1.5 py-0.5 rounded-none text-primary">/{component.slug}</code>
                   </div>
                   <div className="flex justify-between border-b border-dashed pb-2">
                     <span className="text-muted-foreground uppercase font-bold text-[10px]">Field Count</span>
@@ -227,7 +224,7 @@ export default function ComponentDetailPage() {
                 </CardContent>
               </Card>
 
-              <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex gap-3 text-orange-800 shadow-sm">
+              <div className="p-4 bg-orange-50 border border-orange-100 rounded-none flex gap-3 text-orange-800 shadow-none">
                 <Info className="h-5 w-5 shrink-0" />
                 <div>
                   <p className="text-[11px] leading-relaxed font-bold uppercase tracking-tight">Usage Note</p>
@@ -237,7 +234,7 @@ export default function ComponentDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

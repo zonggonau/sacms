@@ -71,7 +71,7 @@ export function RelationJsonField({ value, onChange, tenantSlug, targetSlug, lab
       </div>
 
       {showPicker && (
-        <div className="border rounded-xl bg-muted/20 p-3 space-y-3">
+        <div className="border rounded-none bg-muted/20 p-3 space-y-3">
           <div className="relative">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
@@ -92,7 +92,7 @@ export function RelationJsonField({ value, onChange, tenantSlug, targetSlug, lab
                   <button
                     key={entry.id}
                     onClick={() => handleSelect(entry)}
-                    className="w-full text-left p-2 rounded-lg hover:bg-primary/5 hover:text-primary transition-colors text-xs font-medium border border-transparent hover:border-primary/20"
+                    className="w-full text-left p-2 rounded-none hover:bg-primary/5 hover:text-primary transition-colors text-xs font-medium border border-transparent hover:border-primary/20"
                   >
                     {entry.data?.title || entry.data?.name || entry.data?.judul || entry.id}
                   </button>

@@ -39,8 +39,6 @@ import {
   AlertTriangle,
   CheckCircle,
 } from "lucide-react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-
 export default function TenantSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -230,16 +228,15 @@ export default function TenantSettingsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center flex-1 flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 min-h-screen">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="mb-8">
@@ -620,7 +617,7 @@ export default function TenantSettingsPage() {
             </DialogContent>
           </Dialog>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

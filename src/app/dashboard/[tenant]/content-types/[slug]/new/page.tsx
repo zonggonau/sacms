@@ -28,7 +28,6 @@ import {
   PopoverTrigger,
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -273,24 +272,23 @@ export default function CreateEntryPage() {
       }
   }
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  if (loading) return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
   if (!contentType) {
     return (
-      <div className="flex min-h-screen bg-muted/10">
-        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-        <main className="flex-1 flex flex-col items-center justify-center p-8 text-center">
-          <div className="w-20 h-20 rounded-3xl bg-red-50 flex items-center justify-center mb-6 text-red-500">
+      <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex flex-col items-center justify-center p-8 text-center w-full">
+          <div className="w-20 h-20 rounded-none bg-red-50 flex items-center justify-center mb-6 text-red-500">
             <AlertCircle className="h-10 w-10" />
           </div>
           <h2 className="text-2xl font-black uppercase tracking-tight">Content Type Not Found</h2>
           <p className="text-muted-foreground mt-2 max-w-sm">
             We couldn't find the structure for <strong>{contentTypeSlug}</strong>. It might have been deleted or moved.
           </p>
-          <Button variant="outline" className="mt-8 rounded-xl font-bold" onClick={() => router.back()}>
+          <Button variant="outline" className="mt-8 rounded-none font-bold" onClick={() => router.back()}>
             <ArrowLeft className="mr-2 h-4 w-4" /> Go Back
           </Button>
-        </main>
+        </div>
       </div>
     )
   }
@@ -298,9 +296,8 @@ export default function CreateEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -317,10 +314,10 @@ export default function CreateEntryPage() {
             </div>
             <div className="flex items-center gap-2">
               <Select value={entryStatus} onValueChange={setEntryStatus}>
-                <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-xl border-none shadow-sm">
+                <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl">
+                <SelectContent className="rounded-none">
                   {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
                     <SelectItem key={val} value={val} className="text-xs font-bold uppercase">
                       <div className="flex items-center gap-2">
@@ -332,7 +329,7 @@ export default function CreateEntryPage() {
                 </SelectContent>
               </Select>
 
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-10 rounded-xl font-bold">
+              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                 Create & Publish
               </Button>
@@ -341,7 +338,7 @@ export default function CreateEntryPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm bg-card overflow-hidden rounded-2xl">
+              <Card className="border-none shadow-none bg-card overflow-hidden rounded-none">
                 <CardHeader className="border-b bg-muted/5 p-6">
                   <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
                 </CardHeader>
@@ -360,7 +357,7 @@ export default function CreateEntryPage() {
             </div>
             
             <div className="space-y-6">
-              <Card className="border-none shadow-sm bg-card rounded-2xl">
+              <Card className="border-none shadow-none bg-card rounded-none">
                 <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold">Status & Publishing</CardTitle></CardHeader>
                 <CardContent className="p-6 pt-2 space-y-6">
                   <div className="space-y-3">
@@ -370,7 +367,7 @@ export default function CreateEntryPage() {
                         <Button
                           variant={"outline"}
                           className={cn(
-                            "w-full justify-start text-left font-bold rounded-xl border-none bg-muted/30 h-11",
+                            "w-full justify-start text-left font-bold rounded-none border-none bg-muted/30 h-11",
                             !scheduledAt && "text-muted-foreground font-normal"
                           )}
                         >
@@ -378,7 +375,7 @@ export default function CreateEntryPage() {
                           {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-2xl border-none" align="start">
+                      <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border-none" align="start">
                         <Calendar
                           mode="single"
                           selected={scheduledAt}
@@ -401,8 +398,8 @@ export default function CreateEntryPage() {
                   <div className="space-y-3">
                     <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Localization</Label>
                     <Select value={locale} onValueChange={setLocale}>
-                      <SelectTrigger className="bg-muted/30 border-none h-11 rounded-xl font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
+                      <SelectTrigger className="bg-muted/30 border-none h-11 rounded-none font-bold"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-none">
                         {availableLocales.map(l => (
                           <SelectItem key={l.locale} value={l.locale} className="font-bold">{l.name} ({l.locale.toUpperCase()})</SelectItem>
                         ))}
@@ -416,7 +413,7 @@ export default function CreateEntryPage() {
                     variant="outline" 
                     onClick={() => handleSave(false)} 
                     disabled={saving} 
-                    className="w-full bg-slate-900 text-white hover:bg-slate-800 hover:text-white border-none h-11 rounded-xl font-bold shadow-lg shadow-slate-200"
+                    className="w-full bg-slate-900 text-white hover:bg-slate-800 hover:text-white border-none h-11 rounded-none font-bold shadow-none shadow-none"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                     Create Entry
@@ -426,7 +423,7 @@ export default function CreateEntryPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

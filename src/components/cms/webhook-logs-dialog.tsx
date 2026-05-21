@@ -74,16 +74,16 @@ export function WebhookLogsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl h-[80vh] flex flex-col">
-        <div className="bg-zinc-900 p-6 text-white shrink-0">
+      <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden border border-border shadow-none rounded-none h-[80vh] flex flex-col bg-card">
+        <div className="bg-muted/30 p-6 border-b border-border shrink-0">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-              <History className="h-5 w-5 text-emerald-400" />
+            <div className="w-10 h-10 rounded-none border border-border bg-orange-500 flex items-center justify-center text-white">
+              <History className="h-5 w-5" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">Delivery History</DialogTitle>
-              <DialogDescription className="text-zinc-400 font-medium">
-                Recent delivery attempts for <span className="text-emerald-400">"{webhookName}"</span>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Delivery History</DialogTitle>
+              <DialogDescription className="text-muted-foreground font-medium text-xs">
+                Recent delivery attempts for <span className="text-orange-500 font-bold">"{webhookName}"</span>
               </DialogDescription>
             </div>
           </div>
@@ -91,32 +91,32 @@ export function WebhookLogsDialog({
 
         <div className="flex-1 flex overflow-hidden bg-card">
           {/* List Section */}
-          <div className="w-1/3 border-r border-muted flex flex-col overflow-hidden">
+          <div className="w-1/3 border-r border-border flex flex-col overflow-hidden">
             <ScrollArea className="flex-1">
               {loading ? (
                 <div className="flex flex-col items-center justify-center py-20 gap-2">
-                  <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
+                  <Loader2 className="h-6 w-6 animate-spin text-orange-500" />
                   <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Loading logs...</p>
                 </div>
               ) : logs.length === 0 ? (
                 <div className="text-center py-20 opacity-30">
-                  <AlertCircle className="h-10 w-10 mx-auto mb-2" />
-                  <p className="text-xs font-bold">No logs yet</p>
+                  <AlertCircle className="h-10 w-10 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-xs font-bold text-foreground">No logs yet</p>
                 </div>
               ) : (
-                <div className="divide-y divide-muted">
+                <div className="divide-y divide-border">
                   {logs.map((log) => (
                     <button
                       key={log.id}
                       onClick={() => setSelectedLog(log)}
                       className={cn(
-                        "w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-center gap-3 group",
+                        "w-full text-left p-4 hover:bg-muted/50 transition-colors flex items-center gap-3 group rounded-none",
                         selectedLog?.id === log.id && "bg-muted"
                       )}
                     >
                       <div className={cn(
-                        "w-2 h-2 rounded-full",
-                        log.success ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.5)]"
+                        "w-2 h-2 rounded-none",
+                        log.success ? "bg-orange-500 border border-orange-600" : "bg-red-500 border border-red-600"
                       )} />
                       <div className="flex-1 min-w-0">
                         <p className="text-[10px] font-black uppercase tracking-wider text-foreground truncate">{log.event}</p>
@@ -140,11 +140,11 @@ export function WebhookLogsDialog({
                 <div className="space-y-6">
                   {/* Status Card */}
                   <div className={cn(
-                    "p-4 rounded-2xl border flex items-center justify-between",
-                    selectedLog.success ? "bg-emerald-50/50 border-emerald-100" : "bg-red-50/50 border-red-100"
+                    "p-4 rounded-none border flex items-center justify-between",
+                    selectedLog.success ? "bg-orange-500/5 border-orange-500/20" : "bg-red-500/5 border-red-500/20"
                   )}>
                     <div className="flex items-center gap-3">
-                      {selectedLog.success ? <CheckCircle2 className="h-5 w-5 text-emerald-600" /> : <XCircle className="h-5 w-5 text-red-600" />}
+                      {selectedLog.success ? <CheckCircle2 className="h-5 w-5 text-orange-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
                       <div>
                         <p className="text-xs font-black uppercase text-foreground">
                           {selectedLog.success ? "Successful Delivery" : "Delivery Failed"}
@@ -154,13 +154,13 @@ export function WebhookLogsDialog({
                         </p>
                       </div>
                     </div>
-                    <Badge variant={selectedLog.success ? "default" : "destructive"} className="font-black uppercase text-[9px] tracking-widest">
+                    <Badge variant={selectedLog.success ? "default" : "destructive"} className={cn("font-black uppercase text-[9px] tracking-widest rounded-none shadow-none border border-transparent", selectedLog.success ? "bg-orange-500 hover:bg-orange-600 text-white" : "bg-red-500 hover:bg-red-600 text-white")}>
                       {selectedLog.statusCode || "ERROR"}
                     </Badge>
                   </div>
 
                   {selectedLog.error && (
-                    <div className="p-4 rounded-2xl bg-red-950 text-red-200 border border-red-900/50 space-y-1">
+                    <div className="p-4 rounded-none bg-red-950/20 text-red-200 border border-red-900/50 space-y-1">
                       <div className="flex items-center gap-2 mb-1">
                         <AlertCircle className="h-3 w-3" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Error Detail</span>
@@ -175,7 +175,7 @@ export function WebhookLogsDialog({
                         <Terminal className="h-3 w-3" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Request Payload</span>
                       </div>
-                      <div className="rounded-2xl border bg-card p-4">
+                      <div className="rounded-none border border-border bg-card p-4">
                         <JsonViewer data={typeof selectedLog.payload === 'string' ? JSON.parse(selectedLog.payload) : selectedLog.payload} />
                       </div>
                     </div>
@@ -185,7 +185,7 @@ export function WebhookLogsDialog({
                         <ExternalLink className="h-3 w-3" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Server Response</span>
                       </div>
-                      <div className="rounded-2xl border bg-card p-4">
+                      <div className="rounded-none border border-border bg-card p-4">
                         {selectedLog.response ? (
                           <div className="text-xs font-mono break-all text-foreground whitespace-pre-wrap">
                             {selectedLog.response}
@@ -200,7 +200,7 @@ export function WebhookLogsDialog({
               </ScrollArea>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-20">
-                <Terminal className="h-16 w-16 mb-4" />
+                <Terminal className="h-16 w-16 mb-4 text-muted-foreground" />
                 <p className="text-sm font-black uppercase tracking-widest">Select a log to view details</p>
               </div>
             )}

@@ -15,7 +15,6 @@ import {
   Shield, Server, Construction, Mail, HardDrive, Cpu, 
   Info, AlertTriangle, RefreshCw, Key, Copy
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { useToast } from "@/hooks/use-toast"
 import { Separator } from "@/components/ui/separator"
 import {
@@ -110,10 +109,9 @@ export default function AdminSettingsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
@@ -124,9 +122,8 @@ export default function AdminSettingsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
           
           {/* Header */}
@@ -171,7 +168,7 @@ export default function AdminSettingsPage() {
                         id="maint-msg" 
                         value={settings.maintenanceMessage}
                         onChange={e => setSettings({...settings, maintenanceMessage: e.target.value})}
-                        className="bg-white border-amber-200 focus-visible:ring-amber-500" 
+                        className="bg-card border-amber-200 focus-visible:ring-amber-500" 
                         rows={2}
                       />
                     </div>
@@ -290,7 +287,7 @@ export default function AdminSettingsPage() {
                           value={settings.systemApiKey} 
                           readOnly 
                           placeholder="No key generated"
-                          className="pr-9 font-mono text-xs bg-white h-9" 
+                          className="pr-9 font-mono text-xs bg-card h-9" 
                         />
                         <Button 
                           variant="ghost" 
@@ -361,7 +358,7 @@ export default function AdminSettingsPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

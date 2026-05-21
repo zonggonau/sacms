@@ -71,7 +71,7 @@ export function LandingClient({
             
             <motion.p 
               variants={itemVariants}
-              className="text-lg md:text-xl text-zinc-400 font-medium max-w-2xl mx-auto leading-relaxed"
+              className="text-lg md:text-xl text-muted-foreground font-medium max-w-2xl mx-auto leading-relaxed"
             >
               {hero?.subtitle || "The enterprise-ready multi-tenant headless CMS designed for modern startups. Scale your content ecosystem across multiple workspaces effortlessly."}
             </motion.p>
@@ -83,7 +83,7 @@ export function LandingClient({
               <Button asChild size="lg" className="h-14 px-10 rounded-2xl bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-black uppercase tracking-widest text-sm shadow-xl shadow-emerald-500/20">
                 <Link href="/register">Get Started Free <ArrowRight className="ml-2 h-5 w-5" /></Link>
               </Button>
-              <Button asChild variant="outline" size="lg" className="h-14 px-10 rounded-2xl border-white/10 bg-white/5 hover:bg-white/10 text-white font-black uppercase tracking-widest text-sm">
+              <Button asChild variant="outline" size="lg" className="h-14 px-10 rounded-2xl border-white/10 bg-card/5 hover:bg-card/10 text-white font-black uppercase tracking-widest text-sm">
                 <Link href="#features">Explore Features</Link>
               </Button>
             </motion.div>
@@ -150,7 +150,7 @@ export function LandingClient({
             className="grid grid-cols-1 md:grid-cols-3 gap-8"
           >
             {testimonials.map((t, i) => (
-              <motion.div key={i} variants={itemVariants} className="p-8 rounded-[2.5rem] bg-white/5 border border-white/10 space-y-6 relative group hover:bg-white/10 transition-colors">
+              <motion.div key={i} variants={itemVariants} className="p-8 rounded-[2.5rem] bg-card/5 border border-white/10 space-y-6 relative group hover:bg-card/10 transition-colors">
                 <Quote className="absolute top-8 right-8 h-10 w-10 text-emerald-500/20" />
                 <div className="flex gap-1 text-emerald-400">
                   {[...Array(5)].map((_, j) => <Star key={j} className="h-3 w-3 fill-current" />)}
@@ -164,7 +164,7 @@ export function LandingClient({
                   </div>
                   <div>
                     <p className="font-bold text-sm">{t.name}</p>
-                    <p className="text-[10px] font-black uppercase tracking-widest text-zinc-500">{t.role || "Product Lead"}</p>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{t.role || "Product Lead"}</p>
                   </div>
                 </div>
               </motion.div>
@@ -174,7 +174,7 @@ export function LandingClient({
       </section>
 
       {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-zinc-50 dark:bg-zinc-900/50">
+      <section id="pricing" className="py-24 bg-background dark:bg-zinc-900/50">
         <div className="container mx-auto px-6">
           <div className="text-center mb-20 space-y-4">
             <h2 className="text-xs font-black uppercase tracking-[0.3em] text-emerald-600">Investment</h2>
@@ -222,7 +222,7 @@ export function LandingClient({
                             <div className="mt-1 bg-emerald-500/10 rounded-full p-0.5">
                               <Check className="w-3 h-3 text-emerald-600" />
                             </div>
-                            <span className="text-xs font-medium text-zinc-600 dark:text-zinc-400">{feature}</span>
+                            <span className="text-xs font-medium text-muted-foreground dark:text-muted-foreground">{feature}</span>
                           </li>
                         ))}
                       </ul>
@@ -232,7 +232,7 @@ export function LandingClient({
                       "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all",
                       plan.is_popular 
                         ? "bg-emerald-500 hover:bg-emerald-600 text-zinc-950 shadow-emerald-500/20" 
-                        : "bg-zinc-900 dark:bg-white text-white dark:text-zinc-950 hover:opacity-90"
+                        : "bg-zinc-900 dark:bg-card text-white dark:text-zinc-950 hover:opacity-90"
                     )}>
                       <Link href="/register">{plan.buttonText || "Get Started"}</Link>
                     </Button>

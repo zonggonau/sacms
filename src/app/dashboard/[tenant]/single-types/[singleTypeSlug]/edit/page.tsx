@@ -38,11 +38,9 @@ import {
   Zap,
 } from "lucide-react"
 import Link from "next/link"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-import { FIELD_TYPES } from "@/lib/field-types"
-import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
-import { toast } from "@/hooks/use-toast"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
+import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
+import { toast } from "@/hooks/use-toast"
 
 // DnD Kit Imports
 import {
@@ -62,23 +60,7 @@ import {
   useSortable,
 } from "@dnd-kit/sortable"
 import { CSS } from "@dnd-kit/utilities"
-
-interface Field {
-  id: string
-  name: string
-  slug: string
-  type: string
-  required: boolean
-  unique: boolean
-  options: string | Record<string, any> | null
-  relationType: string
-  targetModel: string
-  targetSlug: string
-  componentSlug: string
-  repeatable: boolean
-  autoGenerate?: boolean
-  sourceField?: string
-}
+import { FIELD_TYPES } from "@/lib/field-types"
 
 interface SingleType {
   id: string
@@ -113,24 +95,24 @@ function SortableFieldItem({
     opacity: isDragging ? 0.5 : 1,
   }
 
-  const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
-  const Icon = typeInfo?.icon || Zap
+  const fieldTypeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
+  const Icon = fieldTypeInfo?.icon || Zap
 
   return (
     <div 
       ref={setNodeRef} 
       style={style}
-      className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm"
+      className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none"
     >
       <div 
         {...attributes} 
         {...listeners} 
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-md text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"
+        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-none text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"
       >
         <GripVertical className="h-4 w-4" />
       </div>
 
-      <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5 shrink-0">
+      <div className="w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5 shrink-0">
         <Icon className="h-5 w-5" />
       </div>
 
@@ -147,10 +129,10 @@ function SortableFieldItem({
       </div>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg" onClick={() => onEdit(field)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => onEdit(field)}>
           <Settings2 className="h-4 w-4" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg text-destructive hover:bg-red-50" onClick={() => onDelete(field.id)}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-destructive hover:bg-red-50" onClick={() => onDelete(field.id)}>
           <Trash2 className="h-4 w-4" />
         </Button>
       </div>
@@ -241,8 +223,6 @@ export default function EditSingleTypePage({
     }
     if (session?.user) fetchData()
   }, [tenantSlug, singleTypeSlug, session])
-
-  const generateFieldSlug = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
 
   const selectType = (type: string) => {
     setEditingField({
@@ -362,42 +342,51 @@ export default function EditSingleTypePage({
   }
 
   if (loading) return (
-    <div className="flex min-h-screen items-center justify-center">
+    <div className="flex items-center justify-center flex-1 flex-col w-full">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   )
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={session?.user?.tenants || []} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+        
+        {/* Sticky Header */}
+        <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
+          <div className="max-w-5xl mx-auto w-full">
+            
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Link href={`/dashboard/${tenantSlug}/single-types`}>
-                <Button variant="ghost" size="icon" className="rounded-full">
+                <Button variant="ghost" size="icon" className="rounded-none">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-3xl font-black tracking-tight uppercase">Edit Single Type</h1>
+                <h1 className="text-xl font-bold text-slate-800">Edit Single Type</h1>
                 <p className="text-muted-foreground">{name} &middot; /{slug}</p>
               </div>
             </div>
-            <Button onClick={handleUpdateSchema} disabled={saving} className="bg-primary hover:bg-primary/90 font-bold px-6 shadow-lg shadow-primary/20">
+            <Button onClick={handleUpdateSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Save Changes
             </Button>
           </div>
 
+          
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-6 lg:p-8 max-w-5xl mx-auto w-full flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              <Card className="border-none shadow-sm">
-                <CardHeader><CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Identity</CardTitle></CardHeader>
+              <Card className="bg-white border border-slate-200 shadow-sm rounded-none">
+                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Identity</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Display Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-muted/30 border-none font-bold" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">API Slug</Label>
@@ -405,7 +394,7 @@ export default function EditSingleTypePage({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-muted/30 border-none text-xs" />
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
                   </div>
                 </CardContent>
               </Card>
@@ -413,10 +402,10 @@ export default function EditSingleTypePage({
 
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
                   <Layers className="h-4 w-4" /> Attributes List ({fields.length})
                 </h2>
-                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-xl font-bold bg-card border-primary/20 text-primary hover:bg-primary hover:text-white transition-all">
+                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-none font-bold bg-card border-primary/20 text-primary hover:bg-primary hover:text-white transition-all">
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Add New Field
                 </Button>
               </div>
@@ -445,7 +434,7 @@ export default function EditSingleTypePage({
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <FieldTypeSelector
         isOpen={isTypeSelectorOpen}
@@ -453,112 +442,16 @@ export default function EditSingleTypePage({
         onSelect={selectType}
       />
 
-      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-        <DialogContent className="max-w-lg max-h-[90vh] rounded-3xl border-none shadow-2xl overflow-hidden p-0 flex flex-col">
-          <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0">
-            {editingField && (
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                  {(() => {
-                    const Icon = FIELD_TYPES.find(ft => ft.type === editingField.type)?.icon || Zap
-                    return <Icon className="h-5 w-5" />
-                  })()}
-                </div>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">
-                  Configure {FIELD_TYPES.find(ft => ft.type === editingField.type)?.label || "Field"}
-                </DialogTitle>
-              </div>
-            )}
-          </DialogHeader>
-          <ScrollArea className="flex-1 bg-card">
-            <div className="p-6 space-y-6">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">Field Name *</Label>
-                  <Input 
-                    value={editingField?.name || ""} 
-                    onChange={e => {
-                      const slug = generateFieldSlug(e.target.value)
-                      setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug }) : null)
-                    }}
-                    className="bg-muted/30 border-none h-11 rounded-xl font-bold"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold">API Slug *</Label>
-                  <Input value={editingField?.slug || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-mono text-xs" />
-                </div>
-              </div>
-              {(editingField?.type === "select" || editingField?.type === "tags") && (
-                <div className="space-y-2 pt-4">
-                  <Label className="text-xs font-bold">Options (Comma separated)</Label>
-                  <Input value={editingField.options as string || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl" />
-                </div>
-              )}
-              {editingField?.type === "relation" && tenantSlug && (
-                <div className="p-4 bg-muted/20 rounded-2xl">
-                  <RelationFieldConfig
-                    tenantSlug={tenantSlug}
-                    context="singleType"
-                    relationType={editingField.relationType}
-                    targetModel={editingField.targetModel}
-                    targetSlug={editingField.targetSlug}
-                    onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)}
-                    onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)}
-                    onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)}
-                  />
-                </div>
-              )}
-              {editingField?.type === "component" && tenantSlug && (
-                <div className="p-4 bg-muted/20 rounded-2xl">
-                  <ComponentFieldConfig
-                    tenantSlug={tenantSlug}
-                    componentSlug={editingField.componentSlug}
-                    repeatable={editingField.repeatable}
-                    onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)}
-                    onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)}
-                  />
-                </div>
-              )}
-              {editingField?.type === "slug" && (
-                <div className="p-4 bg-muted/20 rounded-2xl space-y-4">
-                  <div className="flex items-center space-x-3">
-                    <Checkbox id="autoGenerate" checked={editingField?.autoGenerate} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} />
-                    <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer">Auto-generate from another field</Label>
-                  </div>
-                  {editingField?.autoGenerate && (
-                    <div className="space-y-2">
-                      <Label className="text-xs font-bold">Source Field</Label>
-                      <Select value={editingField.sourceField || ""} onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}>
-                        <SelectTrigger className="bg-card border-none h-11 rounded-xl font-bold"><SelectValue placeholder="Select a field" /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-none shadow-2xl">
-                          {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
-                            <SelectItem key={f.slug} value={f.slug} className="rounded-lg font-bold">{f.name} ({f.slug})</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
-              )}
-              <div className="grid grid-cols-2 gap-4 pt-2">
-                <div className="flex items-center space-x-2 p-3 bg-muted/10 rounded-xl">
-                  <Checkbox id="required" checked={editingField?.required} onCheckedChange={v => setEditingField(prev => prev ? ({ ...prev, required: !!v }) : null)} />
-                  <Label htmlFor="required" className="text-xs font-bold cursor-pointer">Required Field</Label>
-                </div>
-                <div className="flex items-center space-x-2 p-3 bg-muted/10 rounded-xl">
-                  <Checkbox id="unique" checked={editingField?.unique} onCheckedChange={v => setEditingField(prev => prev ? ({ ...prev, unique: !!v }) : null)} />
-                  <Label htmlFor="unique" className="text-xs font-bold cursor-pointer">Unique Field</Label>
-                </div>
-              </div>
-            </div>
-          </ScrollArea>
-          <DialogFooter className="p-6 bg-muted/20 gap-2 shrink-0">
-            <Button variant="ghost" onClick={() => setIsConfigModalOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-            <Button onClick={saveFieldConfig} className="rounded-xl font-bold px-8 bg-primary shadow-lg shadow-primary/20">Save Field</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <FieldConfigModal
+        isOpen={isConfigModalOpen}
+        onOpenChange={setIsConfigModalOpen}
+        editingField={editingField}
+        setEditingField={setEditingField}
+        fields={fields}
+        tenantSlug={tenantSlug}
+        context="singleType"
+        onSave={saveFieldConfig}
+      />
     </div>
   )
 }

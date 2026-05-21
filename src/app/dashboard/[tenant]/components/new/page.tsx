@@ -10,12 +10,12 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue
 } from "@/components/ui/select"
 import {
   Dialog,
@@ -39,27 +39,11 @@ import {
   Box,
 } from "lucide-react"
 import Link from "next/link"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
-import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
+import { FieldTypeSelector } from "@/components/cms/field-type-selector"
+import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
-
-interface Field {
-  id: string
-  name: string
-  slug: string
-  type: string
-  required: boolean
-  unique: boolean
-  options: string | null
-  relationType: string
-  targetModel: string
-  targetSlug: string
-  componentSlug: string
-  repeatable: boolean
-}
 
 const CATEGORIES = ["SEO", "Media", "Content", "Layout", "Settings", "Other"]
 
@@ -72,7 +56,7 @@ export default function NewComponentPage({
   const router = useRouter()
   const resolvedParams = use(params)
   const tenantSlug = resolvedParams.tenant
-  
+
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
@@ -84,7 +68,6 @@ export default function NewComponentPage({
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [editingField, setEditingField] = useState<Field | null>(null)
-  const [typeSearch, setTypeSearch] = useState("")
 
   const tenants = session?.user?.tenants || []
 
@@ -188,39 +171,48 @@ export default function NewComponentPage({
     }
   }
 
-  if (status === "loading") return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  if (status === "loading") return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+        
+        {/* Sticky Header */}
+        <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
+          <div className="max-w-5xl mx-auto w-full">
+            
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+              <Button variant="ghost" size="icon" className="rounded-none" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
               <div>
-                <h1 className="text-3xl font-black tracking-tight uppercase">New Component</h1>
-                <p className="text-muted-foreground text-sm">Create a reusable field group.</p>
+                <h1 className="text-xl font-bold text-slate-800">New Component</h1>
+                <p className="text-xs text-slate-500 font-medium mt-1">Create a reusable field group.</p>
               </div>
             </div>
-            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 font-bold px-6 shadow-lg shadow-primary/20">
+            <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
               Create Component
             </Button>
           </div>
 
+          
+          </div>
+        </div>
+
+        {/* Main Content */}
+        <div className="p-6 lg:p-8 max-w-5xl mx-auto w-full flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              <Card className="border-none shadow-sm">
-                <CardHeader><CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Identity</CardTitle></CardHeader>
+              <Card className="bg-white border border-slate-200 shadow-sm rounded-none">
+                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Identity</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Display Name</Label>
-                    <Input value={name} onChange={e => setName(e.target.value)} className="bg-muted/30 border-none font-bold" />
+                    <Input value={name} onChange={e => setName(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">API Slug</Label>
-                    <Input value={slug} onChange={e => setSlug(e.target.value)} className="bg-muted/30 border-none font-mono text-xs" />
+                    <Input value={slug} onChange={e => setSlug(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-mono text-xs" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Category</Label>
@@ -233,7 +225,7 @@ export default function NewComponentPage({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
-                    <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="bg-muted/30 border-none text-xs" />
+                    <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
                   </div>
                 </CardContent>
               </Card>
@@ -241,14 +233,14 @@ export default function NewComponentPage({
 
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-sm font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2"><Layers className="h-4 w-4" /> Attributes</h2>
-                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-xl font-bold bg-card border-primary/20 text-primary hover:bg-primary hover:text-white">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2"><Layers className="h-4 w-4" /> Attributes</h2>
+                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-none font-bold bg-white border-slate-200 text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-sm">
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Field
                 </Button>
               </div>
 
               {fields.length === 0 ? (
-                <div className="py-20 border-2 border-dashed rounded-3xl flex flex-col items-center justify-center opacity-30">
+                <div className="py-20 border-2 border-dashed rounded-none flex flex-col items-center justify-center opacity-30">
                   <Plus className="h-12 w-12 mb-4" />
                   <p className="font-bold">No attributes defined</p>
                 </div>
@@ -258,8 +250,8 @@ export default function NewComponentPage({
                     const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
                     const Icon = typeInfo?.icon || Zap
                     return (
-                      <div key={field.id} className="group bg-card border rounded-2xl p-4 flex items-center gap-4 hover:border-primary/50 transition-all shadow-sm">
-                        <div className="w-10 h-10 rounded-xl flex items-center justify-center text-primary bg-primary/5"><Icon className="h-5 w-5" /></div>
+                      <div key={field.id} className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none">
+                        <div className="w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5"><Icon className="h-5 w-5" /></div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <span className="font-bold text-sm truncate">{field.name}</span>
@@ -279,85 +271,24 @@ export default function NewComponentPage({
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
-      {/* Type Selector Modal */}
-      <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
-        <DialogContent className="max-w-2xl p-0 border-none shadow-2xl rounded-3xl overflow-hidden">
-          <div className="flex flex-col max-h-[85vh]">
-            <DialogHeader className="p-6 bg-muted/10 border-b shrink-0">
-              <DialogTitle className="text-xl font-black uppercase tracking-tight">Attribute Type</DialogTitle>
-              <div className="relative mt-4">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search types..." value={typeSearch} onChange={e => setTypeSearch(e.target.value)} className="pl-10 h-10 bg-card border-none rounded-xl" />
-              </div>
-            </DialogHeader>
-            <ScrollArea className="flex-1 overflow-y-auto">
-              <div className="p-6 space-y-8">
-                {FIELD_CATEGORIES.map(category => {
-                  const categoryTypes = FIELD_TYPES.filter(ft => ft.category === category && (ft.label.toLowerCase().includes(typeSearch.toLowerCase()) || ft.description.toLowerCase().includes(typeSearch.toLowerCase())))
-                  if (categoryTypes.length === 0) return null
-                  return (
-                    <div key={category} className="space-y-3">
-                      <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">{category}</h3>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {categoryTypes.map(ft => (
-                          <button key={ft.type} onClick={() => selectType(ft.type)} className="flex items-start gap-3 p-3 rounded-2xl border bg-card text-left hover:border-primary transition-all group">
-                            <div className="w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center shrink-0"><ft.icon className="h-5 w-5" /></div>
-                            <div className="min-w-0"><p className="text-sm font-bold group-hover:text-primary">{ft.label}</p><p className="text-[10px] text-muted-foreground line-clamp-1">{ft.description}</p></div>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
-            </ScrollArea>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FieldTypeSelector
+        isOpen={isTypeSelectorOpen}
+        onOpenChange={setIsTypeSelectorOpen}
+        onSelect={selectType}
+      />
 
-      {/* Config Modal */}
-      <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl border-none shadow-2xl overflow-hidden p-0">
-          <div className="flex flex-col max-h-[90vh]">
-            <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
-                  {editingField && (
-                    (() => {
-                      const Icon = FIELD_TYPES.find(ft => ft.type === editingField.type)?.icon
-                      return Icon ? <Icon className="h-5 w-5" /> : null
-                    })()
-                  )}
-                </div>
-                <DialogTitle className="text-xl font-black uppercase tracking-tight">Configure {editingField && FIELD_TYPES.find(ft => ft.type === editingField.type)?.label}</DialogTitle>
-              </div>
-            </DialogHeader>
-            <ScrollArea className="flex-1 overflow-y-auto bg-card">
-              <div className="p-6 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-xs font-bold">Field Name *</Label><Input value={editingField?.name || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug: generateFieldSlug(e.target.value) }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-bold" /></div>
-                  <div className="space-y-2"><Label className="text-xs font-bold">API Slug *</Label><Input value={editingField?.slug || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-mono text-xs" /></div>
-                </div>
-                {(editingField?.type === "select" || editingField?.type === "tags") && (
-                  <div className="space-y-2 pt-4"><Label className="text-xs font-bold">Options (Comma separated)</Label><Input value={editingField.options || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl" /></div>
-                )}
-                {editingField?.type === "relation" && <div className="p-4 bg-muted/20 rounded-2xl"><RelationFieldConfig tenantSlug={tenantSlug} context="component" relationType={editingField.relationType} targetModel={editingField.targetModel} targetSlug={editingField.targetSlug} onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)} onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)} onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)} /></div>}
-                {editingField?.type === "component" && <div className="p-4 bg-muted/20 rounded-2xl"><ComponentFieldConfig tenantSlug={tenantSlug} componentSlug={editingField.componentSlug} repeatable={editingField.repeatable} onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)} onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)} /></div>}
-                <div className="flex items-center gap-6 p-4 bg-muted/20 rounded-2xl mt-4">
-                  <div className="flex items-center space-x-3"><Checkbox id="required" checked={editingField?.required} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)} /><Label htmlFor="required" className="text-xs font-bold cursor-pointer">Required</Label></div>
-                  <div className="flex items-center space-x-3"><Checkbox id="unique" checked={editingField?.unique} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)} /><Label htmlFor="unique" className="text-xs font-bold cursor-pointer">Unique</Label></div>
-                </div>
-              </div>
-            </ScrollArea>
-            <DialogFooter className="p-6 bg-muted/10 border-t shrink-0">
-              <Button variant="outline" onClick={() => setIsConfigModalOpen(false)} className="rounded-xl h-11">Cancel</Button>
-              <Button onClick={saveFieldConfig} className="bg-primary hover:bg-primary/90 rounded-xl h-11 font-bold px-8 shadow-lg shadow-primary/20">Save Field</Button>
-            </DialogFooter>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <FieldConfigModal
+        isOpen={isConfigModalOpen}
+        onOpenChange={setIsConfigModalOpen}
+        editingField={editingField}
+        setEditingField={setEditingField}
+        fields={fields}
+        tenantSlug={tenantSlug}
+        context="component"
+        onSave={saveFieldConfig}
+      />
     </div>
   )
 }

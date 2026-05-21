@@ -60,7 +60,7 @@ export default function CMSMediaPage() {
     return media.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
   }, [media, search])
 
-  if (loading) return <div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-600" /></div>
+  if (loading) return <div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
 
   return (
     <div className="p-6 lg:p-10 space-y-6">
@@ -71,7 +71,7 @@ export default function CMSMediaPage() {
             <p className="text-muted-foreground">Manage your images and documents</p>
           </div>
           <Button 
-            className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg"
+            className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors shadow-none"
             onClick={() => setIsLibraryOpen(true)}
           >
             <Upload className="mr-2 h-4 w-4" /> Upload Media
@@ -79,7 +79,7 @@ export default function CMSMediaPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-sm bg-card">
+      <Card className="border border-border shadow-none bg-card rounded-none">
         <CardContent className="p-4">
           <div className="relative max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -87,30 +87,30 @@ export default function CMSMediaPage() {
               placeholder="Search media..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-10 bg-muted/30 border-none h-10"
+              className="pl-10 bg-muted/30 border border-border h-11 rounded-none focus-visible:ring-orange-500"
             />
           </div>
         </CardContent>
       </Card>
 
       {filteredMedia.length === 0 ? (
-        <div className="py-24 text-center text-muted-foreground bg-card rounded-3xl border-2 border-dashed">
-          <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-10" />
+        <div className="py-24 text-center text-muted-foreground bg-card rounded-none border border-dashed border-border">
+          <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-10 text-orange-500" />
           <p className="font-bold">No media assets found.</p>
-          <Button variant="link" className="text-emerald-600" onClick={() => setIsLibraryOpen(true)}>Upload your first asset</Button>
+          <Button variant="link" className="text-orange-500 hover:text-orange-600 font-bold" onClick={() => setIsLibraryOpen(true)}>Upload your first asset</Button>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {filteredMedia.map((item) => (
-            <Card key={item.id} className="group overflow-hidden border-none shadow-sm hover:shadow-md transition-all rounded-2xl bg-card">
-              <div className="aspect-square relative bg-muted flex items-center justify-center overflow-hidden">
+            <Card key={item.id} className="group overflow-hidden border border-border shadow-none transition-all rounded-none bg-card">
+              <div className="aspect-square relative bg-muted flex items-center justify-center overflow-hidden border-b border-border">
                 {item.mimeType.startsWith('image/') ? (
                   <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
                 ) : (
                   <FileText className="h-10 w-10 text-muted-foreground opacity-20" />
                 )}
                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button size="icon" variant="secondary" className="h-8 w-8 rounded-full" onClick={() => window.open(item.url, '_blank')}>
+                  <Button size="icon" variant="secondary" className="h-8 w-8 rounded-none border border-border" onClick={() => window.open(item.url, '_blank')}>
                     <ExternalLink className="h-4 w-4" />
                   </Button>
                 </div>

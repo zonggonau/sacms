@@ -28,7 +28,7 @@ export function TextareaField({
           {required && <span className="text-destructive ml-1">*</span>}
         </Label>
       )}
-      <div className={`border rounded-md overflow-hidden ${error ? "border-destructive" : ""}`}>
+      <div className={`border rounded-none overflow-hidden ${error ? "border-destructive" : ""}`}>
         <RichTextEditor
           value={value || ""}
           onChange={onChange}

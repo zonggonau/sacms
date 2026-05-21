@@ -243,7 +243,7 @@ export function AIAssistantDialog({
             </TabsContent>
 
             <TabsContent value="summarize" className="space-y-4">
-              <div className="p-4 border rounded-md bg-muted/50 text-sm">
+              <div className="p-4 border rounded-none bg-muted/50 text-sm">
                 {currentValue ? (
                   <p className="line-clamp-3">{currentValue}</p>
                 ) : (
@@ -261,7 +261,7 @@ export function AIAssistantDialog({
             </TabsContent>
           </div>
         </Tabs>
-
+ 
         {result && (
           <div className="mt-4 space-y-2">
             <div className="flex items-center justify-between">
@@ -271,7 +271,7 @@ export function AIAssistantDialog({
                 Copy
               </Button>
             </div>
-            <div className="p-4 border-2 border-emerald-100 rounded-lg bg-emerald-50/30 max-h-[200px] overflow-y-auto text-sm whitespace-pre-wrap">
+            <div className="p-4 border-2 border-emerald-100 rounded-none bg-emerald-50/30 max-h-[200px] overflow-y-auto text-sm whitespace-pre-wrap">
               {result}
             </div>
           </div>

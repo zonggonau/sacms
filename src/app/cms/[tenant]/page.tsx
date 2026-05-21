@@ -61,28 +61,28 @@ export default function CMSDashboardPage() {
   if (loading) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
 
   return (
-    <div className="p-6 lg:p-10 space-y-8">
+    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
       {/* Welcome Section */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
         <div className="space-y-1">
-          <h1 className="text-4xl font-black tracking-tight text-foreground">
+          <h1 className="text-3xl font-bold tracking-tight text-foreground">
             Hi, {session?.user?.name?.split(' ')[0]} 👋
           </h1>
-          <p className="text-muted-foreground text-lg">Ready to craft some amazing content today?</p>
+          <p className="text-muted-foreground text-sm">Ready to craft some amazing content today?</p>
         </div>
-        <div className="bg-emerald-600 rounded-2xl p-4 px-6 text-white shadow-lg shadow-emerald-200 dark:shadow-none flex items-center gap-4">
-          <div className="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center">
-            <Sparkles className="h-6 w-6" />
+        <div className="border border-border bg-card p-4 px-6 flex items-center gap-4 rounded-none shadow-none">
+          <div className="w-10 h-10 bg-orange-500 flex items-center justify-center text-white shrink-0">
+            <Sparkles className="h-5 w-5" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-widest opacity-70">Workspace</p>
-            <p className="font-bold">{tenantId}</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>
+            <p className="font-bold text-sm text-foreground">{tenantId}</p>
           </div>
         </div>
       </div>
@@ -90,18 +90,18 @@ export default function CMSDashboardPage() {
       {/* Mini Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
         {[
-          { label: "Active Collections", value: stats?.contentTypeCount ?? 0, icon: Database, color: "text-emerald-600", bg: "bg-emerald-50" },
-          { label: "Total Entries", value: stats?.totalEntries ?? 0, icon: FileText, color: "text-blue-600", bg: "bg-blue-50" },
-          { label: "Media Assets", value: stats?.mediaCount ?? 0, icon: ImageIcon, color: "text-purple-600", bg: "bg-purple-50" },
+          { label: "Active Collections", value: stats?.contentTypeCount ?? 0, icon: Database },
+          { label: "Total Entries", value: stats?.totalEntries ?? 0, icon: FileText },
+          { label: "Media Assets", value: stats?.mediaCount ?? 0, icon: ImageIcon },
         ].map((s) => (
-          <Card key={s.label} className="border-none shadow-sm bg-card">
+          <Card key={s.label} className="border border-border shadow-none bg-card rounded-none">
             <CardContent className="p-6 flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-2xl ${s.bg} flex items-center justify-center`}>
-                <s.icon className={`h-6 w-6 ${s.color}`} />
+              <div className="w-10 h-10 bg-muted flex items-center justify-center shrink-0 border border-border">
+                <s.icon className="h-5 w-5 text-muted-foreground" />
               </div>
               <div>
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{s.label}</p>
-                <p className="text-2xl font-black">{s.value}</p>
+                <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{s.label}</p>
+                <p className="text-2xl font-bold text-foreground">{s.value}</p>
               </div>
             </CardContent>
           </Card>
@@ -110,45 +110,47 @@ export default function CMSDashboardPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Recent Work */}
-        <Card className="lg:col-span-2 border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-          <CardHeader className="bg-muted/30 border-b p-6">
+        <Card className="lg:col-span-2 border border-border shadow-none bg-card rounded-none overflow-hidden">
+          <CardHeader className="bg-muted/50 border-b border-border p-6">
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-bold flex items-center gap-2">
-                <Clock className="h-5 w-5 text-emerald-600" /> Recent Content Edits
+              <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
+                <Clock className="h-4 w-4 text-orange-500" /> Recent Content Edits
               </CardTitle>
-              <Badge variant="outline" className="font-black text-[10px]">LATEST</Badge>
+              <Badge variant="outline" className="font-bold text-[9px] rounded-none px-2 py-0.5">LATEST</Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {!stats?.recentEntries || stats.recentEntries.length === 0 ? (
               <div className="py-20 text-center text-muted-foreground">
                 <PenTool className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                <p>No content has been created yet.</p>
+                <p className="text-sm">No content has been created yet.</p>
               </div>
             ) : (
-              <div className="divide-y">
+              <div className="divide-y divide-border">
                 {stats.recentEntries.map((entry) => (
                   <div key={entry.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors group">
                     <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-xl bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-emerald-500 group-hover:text-white transition-all">
-                        <FileText className="h-5 w-5" />
+                      <div className="w-9 h-9 border border-border bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-orange-500 group-hover:text-white transition-colors">
+                        <FileText className="h-4.5 w-4.5" />
                       </div>
                       <div>
                         <p className="text-sm font-bold text-foreground">{entry.contentType}</p>
-                        <p className="text-[10px] text-muted-foreground mt-1 font-medium">
+                        <p className="text-[10px] text-muted-foreground mt-0.5">
                           Last edited {new Date(entry.updatedAt).toLocaleDateString()}
                         </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-4">
-                      <Badge className={cn(
-                        "text-[9px] font-black uppercase px-2 py-0.5",
-                        entry.status === 'PUBLISHED' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'
+                      <Badge variant="outline" className={cn(
+                        "text-[9px] font-bold uppercase px-2 py-0.5 rounded-none border",
+                        entry.status === 'PUBLISHED' 
+                          ? 'border-orange-500 text-orange-500 bg-orange-500/5 dark:bg-orange-950/10' 
+                          : 'border-amber-500 text-amber-600 bg-amber-50/50 dark:bg-amber-950/20'
                       )}>
                         {entry.status}
                       </Badge>
                       <Link href={`/cms/${tenantId}/content/${entry.contentTypeSlug}`}>
-                        <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 hover:bg-emerald-50 hover:text-emerald-600">
+                        <Button variant="outline" size="icon" className="rounded-none h-8 w-8 hover:bg-muted">
                           <ArrowRight className="h-4 w-4" />
                         </Button>
                       </Link>
@@ -162,39 +164,38 @@ export default function CMSDashboardPage() {
 
         {/* Quick Tips & Status */}
         <div className="space-y-6">
-          <Card className="bg-emerald-600 text-white border-none shadow-xl rounded-3xl overflow-hidden relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-10 -mt-10 blur-2xl" />
+          <Card className="border border-border bg-card shadow-none rounded-none overflow-hidden relative">
             <CardHeader className="p-6 pb-2">
-              <CardTitle className="text-base font-bold flex items-center gap-2">
-                <Zap className="h-4 w-4 fill-current" /> Pro Tip
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <Zap className="h-4 w-4 text-orange-500 fill-current" /> Pro Tip
               </CardTitle>
             </CardHeader>
             <CardContent className="p-6 pt-0 space-y-4">
-              <p className="text-sm font-medium leading-relaxed opacity-90">
+              <p className="text-xs text-muted-foreground leading-relaxed">
                 You can use the **AI Content Assistant** inside any text field to help you generate headlines, translate copy, or summarize long articles in seconds.
               </p>
-              <Button variant="secondary" className="w-full font-bold text-emerald-700 rounded-xl h-10 shadow-lg" asChild>
+              <Button variant="outline" className="w-full font-bold rounded-none border border-border h-9 text-xs" asChild>
                 <Link href={`/cms/${tenantId}/media`}>Explore Media</Link>
               </Button>
             </CardContent>
           </Card>
 
-          <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-black uppercase tracking-widest text-muted-foreground">Workflow Overview</CardTitle>
+          <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+            <CardHeader className="pb-2 p-6 border-b border-border bg-muted/50">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Workflow Overview</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 py-4 pt-2">
+            <CardContent className="space-y-3 p-6">
               {[
-                { label: "Drafts", count: stats?.entries.draft ?? 0, color: "bg-slate-400" },
+                { label: "Drafts", count: stats?.entries.draft ?? 0, color: "bg-zinc-400" },
                 { label: "In Review", count: stats?.entries.in_review ?? 0, color: "bg-amber-500" },
-                { label: "Published", count: stats?.entries.published ?? 0, color: "bg-emerald-500" },
+                { label: "Published", count: stats?.entries.published ?? 0, color: "bg-orange-500" },
               ].map((w) => (
-                <div key={w.label} className="flex items-center justify-between p-3 rounded-2xl bg-muted/30">
+                <div key={w.label} className="flex items-center justify-between p-3 rounded-none bg-muted/20 border border-border/40">
                   <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-full", w.color)} />
-                    <span className="text-xs font-bold text-muted-foreground">{w.label}</span>
+                    <div className={cn("w-2 h-2 rounded-none", w.color)} />
+                    <span className="text-xs font-semibold text-muted-foreground">{w.label}</span>
                   </div>
-                  <span className="text-sm font-black">{w.count}</span>
+                  <span className="text-sm font-bold">{w.count}</span>
                 </div>
               ))}
             </CardContent>

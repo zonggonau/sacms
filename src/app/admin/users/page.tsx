@@ -12,7 +12,6 @@ import {
   MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle
 } from "lucide-react"
 import Link from "next/link"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import {
   Dialog,
   DialogContent,
@@ -189,10 +188,9 @@ export default function AdminUsersPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
@@ -203,9 +201,8 @@ export default function AdminUsersPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <GlobalAdminSidebar />
-      <main className="flex-1 min-h-screen overflow-auto bg-muted/10">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -462,7 +459,7 @@ export default function AdminUsersPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </div>
   )
 }

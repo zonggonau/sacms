@@ -104,12 +104,14 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           plan: user.plan,
-          tenants: user.tenants.map((t) => ({
-            id: t.tenant.id,
-            slug: t.tenant.slug,
-            name: t.tenant.name,
-            role: t.role,
-          })),
+          tenants: user.tenants
+            .filter((t) => t.tenant.slug !== "sacms-global")
+            .map((t) => ({
+              id: t.tenant.id,
+              slug: t.tenant.slug,
+              name: t.tenant.name,
+              role: t.role,
+            })),
         }
       },
     }),
@@ -133,12 +135,14 @@ export const authOptions: NextAuthOptions = {
         if (dbUser) {
           token.role = dbUser.role
           token.plan = dbUser.plan
-          token.tenants = dbUser.tenants.map((t) => ({
-            id: t.tenant.id,
-            slug: t.tenant.slug,
-            name: t.tenant.name,
-            role: t.role,
-          }))
+          token.tenants = dbUser.tenants
+            .filter((t) => t.tenant.slug !== "sacms-global")
+            .map((t) => ({
+              id: t.tenant.id,
+              slug: t.tenant.slug,
+              name: t.tenant.name,
+              role: t.role,
+            }))
         }
       }
       return token

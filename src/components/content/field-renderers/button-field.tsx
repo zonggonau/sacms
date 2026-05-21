@@ -60,7 +60,7 @@ export function ButtonField({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-muted/30 border border-dashed border-muted-foreground/20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-none bg-muted/30 border border-dashed border-muted-foreground/20">
         <div className="space-y-1.5">
           <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
             Button Label
@@ -71,7 +71,7 @@ export function ButtonField({
               value={initialValue.text}
               onChange={(e) => handleChange({ text: e.target.value })}
               placeholder="e.g. Learn More"
-              className="pl-9 h-9 bg-background border-none shadow-sm focus-visible:ring-primary"
+              className="pl-9 h-9 bg-background border-none shadow-none focus-visible:ring-primary"
             />
           </div>
         </div>
@@ -86,7 +86,7 @@ export function ButtonField({
               value={initialValue.url}
               onChange={(e) => handleChange({ url: e.target.value })}
               placeholder="https://..."
-              className="pl-9 h-9 bg-background border-none shadow-sm focus-visible:ring-primary"
+              className="pl-9 h-9 bg-background border-none shadow-none focus-visible:ring-primary"
             />
           </div>
         </div>
@@ -96,7 +96,7 @@ export function ButtonField({
             <input
               type="checkbox"
               id="target-blank"
-              className="h-3.5 w-3.5 rounded border-gray-300 text-primary focus:ring-primary"
+              className="h-3.5 w-3.5 rounded-none border-gray-300 text-primary focus:ring-primary"
               checked={initialValue.target === "_blank"}
               onChange={(e) => handleChange({ target: e.target.checked ? "_blank" : "_self" })}
             />

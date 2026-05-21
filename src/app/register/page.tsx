@@ -7,8 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Badge } from "@/components/ui/badge"
-import { Database, Loader2, Eye, EyeOff, Crown, Building2, Check } from "lucide-react"
+import { Database, Loader2, Crown } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
@@ -19,7 +18,6 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false)
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -46,7 +44,7 @@ export default function RegisterPage() {
     e.preventDefault()
     
     if (!formData.agreeTerms) {
-      toast({ title: "Error", description: "You must agree to the terms and conditions", variant: "destructive" })
+      toast({ title: "Error", description: "You must agree to the terms", variant: "destructive" })
       return
     }
 
@@ -71,10 +69,10 @@ export default function RegisterPage() {
       }
 
       toast({
-        title: "Success!",
+        title: "Success",
         description: data.isFirstUser 
           ? "Super Admin account created. Please sign in."
-          : "Account created. You can create your workspace after signing in.",
+          : "Account created.",
       })
 
       router.push(`/login?email=${formData.email}`)
@@ -91,125 +89,105 @@ export default function RegisterPage() {
 
   if (checkingUsers) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left Branding Panel */}
-      <div className="hidden lg:flex lg:w-1/2 relative bg-gradient-to-br from-emerald-600 to-teal-700 p-12 flex-col justify-between">
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(255,255,255,0.15),transparent)]" />
-        <div className="relative">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-lg bg-white/20 backdrop-blur flex items-center justify-center">
-              <Database className="w-5 h-5 text-white" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4">
+      <div className="w-full max-w-md bg-card border border-border p-8">
+        <div className="flex flex-col items-center mb-8">
+          <Link href="/" className="flex items-center gap-2 mb-6">
+            <Database className="w-6 h-6 text-orange-500" />
+            <span className="text-xl font-bold">SaCMS</span>
+          </Link>
+          <h1 className="text-2xl font-semibold mb-1">Create Account</h1>
+          <p className="text-sm text-muted-foreground">
+            {isFirstUser ? "Initialize your platform" : "Join SaCMS today"}
+          </p>
+        </div>
+
+        {isFirstUser && (
+          <div className="mb-6 p-3 border border-orange-200 bg-orange-50 flex items-center gap-3">
+            <Crown className="w-5 h-5 text-orange-500" />
+            <div>
+              <p className="text-sm font-semibold text-orange-800">Super Admin</p>
+              <p className="text-xs text-orange-600">You are the first user.</p>
             </div>
-            <span className="text-xl font-bold text-white">SaCMS</span>
+          </div>
+        )}
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
+            <Input 
+              id="name" 
+              type="text" 
+              placeholder="John Doe" 
+              value={formData.name} 
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })} 
+              required 
+              className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none" 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+            <Input 
+              id="email" 
+              type="email" 
+              placeholder="name@example.com" 
+              value={formData.email} 
+              onChange={(e) => setFormData({ ...formData, email: e.target.value })} 
+              required 
+              className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none" 
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-sm font-medium">Password</Label>
+            <Input 
+              id="password" 
+              type="password" 
+              placeholder="••••••••" 
+              value={formData.password} 
+              onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+              required 
+              minLength={8} 
+              className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none" 
+            />
+          </div>
+
+          <div className="flex items-center space-x-2 pt-2">
+            <Checkbox 
+              id="terms" 
+              checked={formData.agreeTerms} 
+              onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })} 
+              className="border-border rounded-none data-[state=checked]:bg-orange-500 data-[state=checked]:border-orange-500" 
+            />
+            <Label htmlFor="terms" className="text-sm font-normal text-muted-foreground">
+              I agree to the <Link href="#" className="text-orange-500 hover:underline">Terms</Link>
+            </Label>
+          </div>
+
+          <Button 
+            type="submit" 
+            className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-none transition-none mt-4" 
+            disabled={loading}
+          >
+            {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Register"}
+          </Button>
+        </form>
+
+        <div className="mt-8 text-center text-sm text-muted-foreground">
+          Already have an account?{" "}
+          <Link href="/login" className="text-orange-500 hover:underline">
+            Sign in
           </Link>
         </div>
-        <div className="relative space-y-6">
-          <h2 className="text-3xl font-bold text-white leading-tight">
-            Start building in minutes
-          </h2>
-          <p className="text-white/70 text-sm leading-relaxed max-w-sm">
-            Create your workspace and start defining content schemas. 
-            Your APIs are auto-generated instantly.
-          </p>
-          <div className="space-y-2.5">
-            {[
-              "Multi-tenant workspaces with team roles",
-              "REST + GraphQL with advanced filtering",
-              "Content workflow & scheduled publishing",
-              "TypeScript SDK with auto-generated types",
-              "Cloud media storage via Cloudflare R2",
-            ].map((item) => (
-              <div key={item} className="flex items-center gap-2.5 text-white/80 text-sm">
-                <Check className="w-4 h-4 text-emerald-300 shrink-0" />
-                <span>{item}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-        <p className="relative text-xs text-white/50">
-          &copy; {new Date().getFullYear()} SaCMS. All rights reserved.
-        </p>
-      </div>
 
-      {/* Right Form Panel */}
-      <div className="flex-1 flex items-center justify-center p-6 overflow-y-auto">
-        <div className="w-full max-w-sm">
-          <div className="text-center mb-6 lg:hidden">
-            <Link href="/" className="inline-flex items-center gap-2 mb-4">
-              <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Database className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold">SaCMS</span>
-            </Link>
-          </div>
-
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold">Create your account</h1>
-            <p className="text-sm text-muted-foreground mt-1">
-              {isFirstUser ? "Set up your Super Admin account" : "Get started with your free workspace"}
-            </p>
-          </div>
-
-          {isFirstUser && (
-            <div className="mb-5 p-3 rounded-lg bg-gradient-to-r from-purple-500/10 to-indigo-500/10 border border-purple-500/20">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shrink-0">
-                  <Crown className="w-4 h-4 text-white" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-purple-700 dark:text-purple-300">First User — Super Admin</p>
-                  <p className="text-xs text-muted-foreground">Full platform management access</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Full Name</Label>
-              <Input id="name" type="text" placeholder="John Doe" value={formData.name} onChange={(e) => setFormData({ ...formData, name: e.target.value })} required className="h-10" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
-              <Input id="email" type="email" placeholder="you@company.com" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} required className="h-10" />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="password">Password</Label>
-              <div className="relative">
-                <Input id="password" type={showPassword ? "text" : "password"} placeholder="Min. 8 characters" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} required minLength={8} className="h-10 pr-10" />
-                <Button type="button" variant="ghost" size="icon" className="absolute right-0 top-0 h-10 w-10" onClick={() => setShowPassword(!showPassword)}>
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                </Button>
-              </div>
-            </div>
-
-            <div className="flex items-start space-x-2">
-              <Checkbox id="terms" checked={formData.agreeTerms} onCheckedChange={(checked) => setFormData({ ...formData, agreeTerms: checked as boolean })} className="mt-0.5" />
-              <Label htmlFor="terms" className="text-xs font-normal leading-relaxed">
-                I agree to the <Link href="#" className="text-emerald-600 hover:underline">Terms of Service</Link> and <Link href="#" className="text-emerald-600 hover:underline">Privacy Policy</Link>
-              </Label>
-            </div>
-
-            <Button type="submit" className="w-full h-10 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" disabled={loading}>
-              {loading && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-              {isFirstUser ? "Create Super Admin Account" : "Create Account"}
-            </Button>
-          </form>
-
-          <p className="text-center text-sm text-muted-foreground mt-6">
-            Already have an account?{" "}
-            <Link href="/login" className="text-emerald-600 hover:underline font-medium">Sign in</Link>
-          </p>
-        </div>
       </div>
     </div>
   )

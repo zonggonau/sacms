@@ -151,26 +151,26 @@ export function MediaLibraryDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="lg:max-w-6xl w-[90vw] h-[90vh] flex flex-col p-0 overflow-hidden rounded-2xl border-none shadow-2xl">
+      <DialogContent className="lg:max-w-6xl w-[90vw] h-[90vh] flex flex-col p-0 overflow-hidden rounded-none border border-border shadow-none">
         <DialogHeader className="p-6 bg-muted/20 border-b">
           <DialogTitle className="text-xl font-black uppercase tracking-tight flex items-center gap-2">
-            <ImageIcon className="h-5 w-5 text-primary" />
+            <ImageIcon className="h-5 w-5 text-orange-500" />
             Media Library {tenantSlug && <span className="text-muted-foreground font-medium lowercase">({tenantSlug})</span>}
           </DialogTitle>
         </DialogHeader>
 
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)} className="flex-1 flex flex-col min-h-0">
           <div className="px-6 pt-4 border-b bg-card">
-            <TabsList className="bg-muted/50 p-1 rounded-xl">
-              <TabsTrigger value="library" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsList className="bg-muted/50 p-1 rounded-none border border-border">
+              <TabsTrigger value="library" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
                 <ImageIcon className="h-4 w-4 mr-2" />
                 Library
               </TabsTrigger>
-              <TabsTrigger value="upload" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <TabsTrigger value="upload" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
                 <Upload className="h-4 w-4 mr-2" />
                 Upload New
               </TabsTrigger>
-              <TabsTrigger value="url" className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <TabsTrigger value="url" className="rounded-none data-[state=active]:bg-background data-[state=active]:border data-[state=active]:border-border data-[state=active]:shadow-none">
                 <Link className="h-4 w-4 mr-2" />
                 From URL
               </TabsTrigger>
@@ -187,7 +187,7 @@ export function MediaLibraryDialog({
                     placeholder="Search assets by filename..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 h-10 bg-muted/30 border-none rounded-xl"
+                    className="pl-10 h-10 bg-muted/30 border border-border rounded-none"
                   />
                 </div>
 
@@ -201,7 +201,7 @@ export function MediaLibraryDialog({
                 ) : filteredItems.length === 0 ? (
                   <div className="flex-1 flex items-center justify-center py-20">
                     <div className="text-center">
-                      <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 rounded-none bg-muted border border-border flex items-center justify-center mx-auto mb-4">
                         <ImageIcon className="h-8 w-8 text-muted-foreground opacity-20" />
                       </div>
                       <p className="font-bold text-muted-foreground">No assets found</p>
@@ -213,7 +213,7 @@ export function MediaLibraryDialog({
                     {filteredItems.map((item) => (
                       <div
                         key={item.id}
-                        className="group relative aspect-square rounded-xl border overflow-hidden cursor-pointer hover:border-primary/50 transition-all bg-muted/20"
+                        className="group relative aspect-square rounded-none border border-border overflow-hidden cursor-pointer hover:border-orange-500 transition-all bg-muted/20"
                         onClick={() => onSelect(item)}
                       >
                         {item.type === "image" ? (
@@ -228,8 +228,8 @@ export function MediaLibraryDialog({
                             <span className="text-[10px] font-bold uppercase mt-2 text-muted-foreground/60">{item.mimeType?.split('/')[1]}</span>
                           </div>
                         )}
-                        <div className="absolute inset-0 bg-primary/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
-                          <p className="text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded backdrop-blur-sm truncate w-full">
+                        <div className="absolute inset-0 bg-orange-500/10 opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2">
+                          <p className="text-[9px] font-bold text-white bg-black/60 px-1.5 py-0.5 rounded-none backdrop-blur-sm truncate w-full">
                             {item.name}
                           </p>
                         </div>
@@ -244,7 +244,7 @@ export function MediaLibraryDialog({
             <TabsContent value="upload" className="mt-0 outline-none">
               <div className="space-y-6">
                 <div
-                  className="border-2 border-dashed rounded-2xl p-12 text-center hover:bg-muted/30 transition-all cursor-pointer border-muted-foreground/20 group"
+                  className="border-2 border-dashed rounded-none p-12 text-center hover:bg-muted/30 transition-all cursor-pointer border-border hover:border-orange-500 group"
                   onClick={() => document.getElementById("file-upload")?.click()}
                 >
                   <input
@@ -257,7 +257,7 @@ export function MediaLibraryDialog({
                   {uploadFile ? (
                     <div className="space-y-4">
                       {isUploadedImage ? (
-                        <div className="relative w-48 h-48 mx-auto rounded-xl overflow-hidden shadow-lg">
+                        <div className="relative w-48 h-48 mx-auto rounded-none border border-border overflow-hidden shadow-none">
                           <img
                             src={URL.createObjectURL(uploadFile)}
                             alt={uploadFile.name}
@@ -265,8 +265,8 @@ export function MediaLibraryDialog({
                           />
                         </div>
                       ) : (
-                        <div className="w-20 h-20 bg-primary/5 rounded-2xl flex items-center justify-center mx-auto">
-                          <FileText className="h-10 w-10 text-primary" />
+                        <div className="w-20 h-20 bg-muted border border-border rounded-none flex items-center justify-center mx-auto">
+                          <FileText className="h-10 w-10 text-orange-500" />
                         </div>
                       )}
                       <div>
@@ -281,8 +281,8 @@ export function MediaLibraryDialog({
                     </div>
                   ) : (
                     <div className="space-y-4">
-                      <div className="w-16 h-16 rounded-2xl bg-primary/5 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
-                        <Upload className="h-8 w-8 text-primary" />
+                      <div className="w-16 h-16 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mx-auto group-hover:scale-105 transition-transform">
+                        <Upload className="h-8 w-8 text-orange-500" />
                       </div>
                       <div className="space-y-1">
                         <p className="font-bold">Select files from your device</p>
@@ -299,7 +299,7 @@ export function MediaLibraryDialog({
                 <Button
                   onClick={handleUpload}
                   disabled={!uploadFile || uploading}
-                  className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold shadow-lg shadow-primary/20 rounded-xl"
+                  className="w-full h-11 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white border border-zinc-900 dark:border-zinc-100 font-bold uppercase tracking-wider rounded-none shadow-none"
                 >
                   {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Start Upload"}
                 </Button>
@@ -315,19 +315,19 @@ export function MediaLibraryDialog({
                     placeholder="https://images.unsplash.com/photo-..."
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
-                    className="h-11 bg-muted/30 border-none rounded-xl"
+                    className="h-11 bg-muted/30 border border-border rounded-none"
                   />
                 </div>
 
                 <Button
                   onClick={handleUrlSubmit}
                   disabled={!imageUrl.trim()}
-                  className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl"
+                  className="w-full h-11 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white border border-zinc-900 dark:border-zinc-100 font-bold uppercase tracking-wider rounded-none"
                 >
                   Import from URL
                 </Button>
 
-                <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex gap-3 text-primary shadow-sm">
+                <div className="p-4 bg-orange-500/5 border border-orange-500/20 rounded-none flex gap-3 text-orange-600 shadow-none">
                   <Info className="h-5 w-5 shrink-0" />
                   <p className="text-[11px] leading-relaxed">
                     Importing from a URL will link the asset directly from its source. Ensure you have the appropriate permissions to use external media.
@@ -339,7 +339,7 @@ export function MediaLibraryDialog({
         </Tabs>
         
         <div className="p-4 bg-muted/30 border-t flex justify-end gap-2">
-          <Button variant="ghost" className="rounded-xl font-bold text-xs" onClick={() => onOpenChange(false)}>Cancel</Button>
+          <Button variant="ghost" className="rounded-none border border-border hover:bg-muted font-bold text-xs" onClick={() => onOpenChange(false)}>Cancel</Button>
         </div>
       </DialogContent>
     </Dialog>

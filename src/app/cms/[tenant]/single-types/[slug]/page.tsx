@@ -121,7 +121,7 @@ export default function CMSSingleTypeDetailPage() {
       
       toast({ 
         title: publishNow ? "Published Successfully!" : "Draft Saved",
-        className: publishNow ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
+        className: publishNow ? "bg-orange-500/10 border-orange-500/30 text-orange-500 rounded-none border font-bold" : "rounded-none border border-border bg-card text-foreground"
       })
       
       if (publishNow) {
@@ -262,7 +262,7 @@ export default function CMSSingleTypeDetailPage() {
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+      <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
     </div>
   )
 
@@ -274,13 +274,13 @@ export default function CMSSingleTypeDetailPage() {
         
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}/single-types`)} className="rounded-full hover:bg-emerald-50">
-              <ArrowLeft className="h-5 w-5 text-emerald-600" />
+            <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}/single-types`)} className="rounded-none hover:bg-muted">
+              <ArrowLeft className="h-5 w-5 text-foreground" />
             </Button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-slate-900">{singleType.name}</h1>
-                <Badge variant={singleType.publishedAt ? "default" : "secondary"} className="uppercase font-black text-[10px] px-2 py-0.5 rounded-full">
+                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-zinc-50">{singleType.name}</h1>
+                <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 shadow-none border", singleType.publishedAt ? "bg-zinc-950 text-white border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50" : "bg-muted text-muted-foreground border-border")}>
                   {singleType.publishedAt ? "Live" : "Draft"}
                 </Badge>
               </div>
@@ -288,10 +288,10 @@ export default function CMSSingleTypeDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-card rounded-xl font-bold h-11 border-emerald-100 hover:bg-emerald-50">
+            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500">
               Save Draft
             </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold rounded-xl h-11 px-6">
+            <Button onClick={() => handleSave(true)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
               Publish Now
             </Button>
@@ -300,22 +300,22 @@ export default function CMSSingleTypeDetailPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="border-b bg-emerald-50/30 p-6">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="border-b border-border bg-muted/30 p-6">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-emerald-600" /> Page Editor
+                  <FileText className="h-5 w-5 text-orange-500" /> Page Editor
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-10">
                 {singleType.fields.length === 0 ? (
                   <div className="text-center py-12 opacity-40">
-                    <Zap className="h-12 w-12 mx-auto mb-4 text-emerald-600" />
+                    <Zap className="h-12 w-12 mx-auto mb-4 text-orange-500" />
                     <p className="font-bold">No fields defined for this page</p>
                   </div>
                 ) : (
                   singleType.fields.map((field) => (
                     <div key={field.id} className="relative group">
-                      <div className="absolute -left-4 top-0 bottom-0 w-1 bg-emerald-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                       {renderField(field)}
                     </div>
                   ))
@@ -325,22 +325,22 @@ export default function CMSSingleTypeDetailPage() {
           </div>
 
           <div className="space-y-6">
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="bg-muted/10 border-b p-6">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="p-6 pb-2">
                 <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-emerald-600" /> Localization
+                  <Globe className="h-4 w-4 text-orange-500" /> Localization
                 </CardTitle>
               </CardHeader>
-              <CardContent className="p-6">
+              <CardContent className="p-6 pt-2">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Target Language</Label>
                   <Select value={locale} onValueChange={setLocale}>
-                    <SelectTrigger className="bg-muted/30 border-none h-11 rounded-xl font-bold">
+                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
                       {availableLocales.map(l => (
-                        <SelectItem key={l.locale} value={l.locale} className="font-bold">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -348,17 +348,16 @@ export default function CMSSingleTypeDetailPage() {
               </CardContent>
             </Card>
 
-            <div className="p-6 bg-gradient-to-br from-emerald-500 to-teal-600 rounded-3xl text-white shadow-xl shadow-emerald-100 relative overflow-hidden">
-              <Zap className="absolute -right-4 -bottom-4 h-24 w-24 opacity-10 rotate-12" />
-              <div className="relative z-10">
-                <div className="flex items-center gap-2 mb-3">
-                  <ShieldCheck className="h-5 w-5 fill-white/20" />
-                  <h4 className="font-black uppercase text-xs tracking-widest">Isolated Content</h4>
-                </div>
-                <p className="text-[11px] leading-relaxed font-medium opacity-90">
-                  These changes are specific to <strong>{tenantSlug}</strong> and will not affect other workspaces or the global template.
-                </p>
+            <div className="p-6 bg-card border border-border rounded-none text-foreground shadow-none relative">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-orange-500 flex items-center justify-center text-white">
+                <ShieldCheck className="h-4 w-4" />
               </div>
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="font-black uppercase text-xs tracking-widest text-foreground">Isolated Content</h4>
+              </div>
+              <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
+                These changes are specific to <strong>{tenantSlug}</strong> and will not affect other workspaces or the global template.
+              </p>
             </div>
           </div>
         </div>

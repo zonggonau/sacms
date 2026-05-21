@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateContentTypeSchema } from "@/lib/validations"
+import { Prisma } from "@prisma/client"
 
 /**
  * GET /api/admin/content-types/[id]
@@ -98,8 +99,8 @@ export async function PATCH(
 
     // If slug is being changed, check if new slug is unique
     if (body.slug && body.slug !== existing.slug) {
-      const slugExists = await db.contentType.findUnique({
-        where: { slug: body.slug },
+      const slugExists = await db.contentType.findFirst({
+        where: { slug: body.slug, tenantId: null },
       })
 
       if (slugExists) {
@@ -157,7 +158,7 @@ export async function PATCH(
             type: field.type as string,
             required: (field.required as boolean) || false,
             unique: (field.unique as boolean) || false,
-            options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : null,
+            options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : Prisma.JsonNull,
             jsonPath: (field.jsonPath as string) || null,
             relationSlug: (field.relationSlug as string) || null,
             order: typeof field.order === 'number' ? field.order as number : index,

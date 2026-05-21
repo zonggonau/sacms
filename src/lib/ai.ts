@@ -1,28 +1,27 @@
-import { GoogleGenerativeAI, GenerationConfig } from "@google/generative-ai"
+import OpenAI from "openai"
 
-// Model rotation list - prioritized by confirmed working aliases in your logs
+// Menggunakan DeepSeek Chat model (DeepSeek-V3) sebagai default
 const MODELS_TO_TRY = [
-  "gemini-2.0-flash",      // Confirmed exists (Quota 429)
-  "gemini-1.5-flash",      // Fallback
-  "gemini-1.5-flash-002",  // Stable version
-  "gemini-flash-latest",   // Confirmed exists (Worked, then 503)
-  "gemini-1.5-pro",        // Pro version fallback
-  "gemini-1.5-pro-002",    // Stable Pro version
-  "gemini-pro-latest"      // Pro alias
+  "deepseek-chat", // Main DeepSeek V3 model
+  "deepseek-reasoner" // Fallback to reasoning model if needed
 ]
 
-// Lazy client — only instantiated when API key is available
-let _genAI: GoogleGenerativeAI | null = null
+// Lazy client
+let _openai: OpenAI | null = null
 
-function getGenAI(): GoogleGenerativeAI {
-  if (!_genAI) {
-    const apiKey = process.env.GEMINI_API_KEY || "AIzaSyBV_5fCTAjQnkaDtZyJvG4U3IgLHXHBuLo"
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const apiKey = process.env.DEEPSEEK_API_KEY
     if (!apiKey) {
-      throw new Error("GEMINI_API_KEY is not configured")
+      throw new Error("DEEPSEEK_API_KEY is not configured")
     }
-    _genAI = new GoogleGenerativeAI(apiKey)
+    // DeepSeek API is OpenAI compatible
+    _openai = new OpenAI({
+      baseURL: 'https://api.deepseek.com',
+      apiKey: apiKey
+    })
   }
-  return _genAI
+  return _openai
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -33,7 +32,7 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 export async function safeGenerateContent(
   systemPrompt: string,
   userPrompt: string,
-  config: GenerationConfig = {}
+  maxTokens?: number
 ): Promise<{ text: string; model: string; usage: any }> {
   let lastError: any = null
   
@@ -45,25 +44,30 @@ export async function safeGenerateContent(
       try {
         console.log(`[AI] Attempting with model: ${modelName} (Attempt ${attempts + 1}/${maxAttempts})`)
         
-        const genAI = getGenAI()
-        const model = genAI.getGenerativeModel({ 
-          model: modelName, 
-          generationConfig: config,
-          systemInstruction: systemPrompt || undefined 
+        const openai = getOpenAI()
+        
+        const messages: OpenAI.Chat.ChatCompletionMessageParam[] = []
+        if (systemPrompt) {
+          messages.push({ role: "system", content: systemPrompt })
+        }
+        messages.push({ role: "user", content: userPrompt })
+
+        const completion = await openai.chat.completions.create({
+          model: modelName,
+          messages,
+          max_tokens: maxTokens || 4000,
         })
         
-        const result = await model.generateContent(userPrompt)
-        const response = await result.response
-        const text = response.text()
+        const text = completion.choices[0]?.message?.content
         
         if (text) {
           return { 
             text, 
             model: modelName,
             usage: {
-              promptTokens: response.usageMetadata?.promptTokenCount ?? 0,
-              completionTokens: response.usageMetadata?.candidatesTokenCount ?? 0,
-              totalTokens: response.usageMetadata?.totalTokenCount ?? 0,
+              promptTokens: completion.usage?.prompt_tokens ?? 0,
+              completionTokens: completion.usage?.completion_tokens ?? 0,
+              totalTokens: completion.usage?.total_tokens ?? 0,
             }
           }
         }
@@ -82,11 +86,10 @@ export async function safeGenerateContent(
           continue // Try again with same model
         }
         
-        // For other errors (like 404/not found), break and try next model
+        // For other errors (like 400/404), break and try next model
         break
       }
     }
-    // If we reached here, current model exhausted attempts or had a fatal error, try next model
   }
 
   throw lastError || new Error("All AI models failed to respond")
@@ -101,12 +104,6 @@ export interface GenerateContentParams {
   tone?: "formal" | "casual" | "professional" | "creative" | "technical"
 }
 
-export interface AISchema {
-  contentTypes: any[]
-  singleTypes: any[]
-  components: any[]
-}
-
 export interface GenerateContentResult {
   content: string
   usage: {
@@ -117,15 +114,15 @@ export interface GenerateContentResult {
 }
 
 /**
- * Generate content using Google Gemini with fallback
+ * Generate content using DeepSeek with fallback
  */
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
-  const { prompt, contentType, fieldName, locale = "en", tone = "professional" } = params
+  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens } = params
   const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone })
   
-  const result = await safeGenerateContent(systemPrompt, prompt)
+  const result = await safeGenerateContent(systemPrompt, prompt, maxTokens)
   
   return {
     content: result.text,
@@ -148,7 +145,7 @@ export async function summarizeContent(
   const { text, maxLength = 200, locale = "en" } = params
   const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`
   
-  const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`)
+  const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`, Math.max(maxLength, 500))
   
   return {
     content: result.text,
@@ -200,7 +197,7 @@ function buildSystemPrompt(opts: {
     parts.push(`Write in locale: ${opts.locale}.`)
   }
 
-  parts.push("Return only the generated content. No extra commentary or labels.")
+  parts.push("Return only the generated content. No extra commentary or labels. Do not include markdown blocks like ```json unless explicitly asked.")
 
   return parts.join(" ")
 }

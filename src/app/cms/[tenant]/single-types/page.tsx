@@ -67,7 +67,7 @@ export default function CMSSingleTypesPage() {
   if (loading && singleTypes.length === 0) {
     return (
       <div className="min-h-[80vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
@@ -76,8 +76,8 @@ export default function CMSSingleTypesPage() {
     <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)} className="rounded-full hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors">
-            <ArrowLeft className="h-5 w-5 text-emerald-600 dark:text-emerald-500" />
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/cms/${tenantSlug}`)} className="rounded-none hover:bg-muted transition-colors">
+            <ArrowLeft className="h-5 w-5 text-foreground" />
           </Button>
           <div>
             <h1 className="text-4xl font-black tracking-tight text-foreground">Static Pages</h1>
@@ -91,7 +91,7 @@ export default function CMSSingleTypesPage() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search pages..." 
-            className="pl-9 rounded-xl bg-card border border-border shadow-sm h-11 focus-visible:ring-emerald-500"
+            className="pl-9 rounded-none bg-card border border-border h-11 focus-visible:ring-orange-500"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
           />
@@ -104,9 +104,9 @@ export default function CMSSingleTypesPage() {
       </div>
 
       {filteredSingleTypes.length === 0 ? (
-        <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden py-20">
+        <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden py-20">
           <CardContent className="flex flex-col items-center justify-center text-center">
-            <div className="w-20 h-20 rounded-3xl bg-muted/30 flex items-center justify-center mb-6">
+            <div className="w-20 h-20 rounded-none border border-border bg-muted/30 flex items-center justify-center mb-6">
               <FileText className="h-10 w-10 text-muted-foreground/40" />
             </div>
             <h3 className="text-xl font-bold text-foreground">No Pages Found</h3>
@@ -116,7 +116,7 @@ export default function CMSSingleTypesPage() {
           </CardContent>
         </Card>
       ) : (
-        <Card className="border border-border shadow-sm overflow-hidden bg-card rounded-3xl">
+        <Card className="border border-border shadow-none overflow-hidden bg-card rounded-none">
           <CardContent className="p-0">
             <Table>
               <TableHeader className="bg-muted/30">
@@ -137,26 +137,26 @@ export default function CMSSingleTypesPage() {
                   >
                     <TableCell className="pl-8 py-5">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center text-emerald-600 dark:text-emerald-500 group-hover:bg-emerald-600 group-hover:text-white transition-all shadow-sm">
+                        <div className="w-10 h-10 rounded-none bg-muted border border-border flex items-center justify-center text-foreground group-hover:bg-orange-500 group-hover:text-white transition-all">
                           <FileText className="h-5 w-5" />
                         </div>
                         <div className="flex flex-col">
-                          <span className="font-bold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-500 transition-colors">{st.name}</span>
+                          <span className="font-bold text-foreground group-hover:text-orange-500 transition-colors">{st.name}</span>
                           <span className="text-[10px] text-muted-foreground truncate max-w-[200px] font-medium">{st.description || 'Manage page content'}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell>
-                      <code className="text-[10px] font-bold bg-muted px-2 py-1 rounded-lg text-muted-foreground border border-border/50">/{st.slug}</code>
+                      <code className="text-[10px] font-bold bg-muted px-2 py-1 rounded-none text-muted-foreground border border-border">/{st.slug}</code>
                     </TableCell>
                     <TableCell>
                       <Badge className={cn(
-                        "rounded-full px-2.5 py-0.5 text-[9px] font-black uppercase border shadow-sm transition-colors",
+                        "rounded-none px-2.5 py-0.5 text-[9px] font-black uppercase border shadow-none transition-colors",
                         st.publishedAt 
-                          ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-800/50" 
+                          ? "bg-zinc-950 text-white border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50" 
                           : "bg-muted text-muted-foreground border-border"
                       )}>
-                        <span className={cn("mr-1.5 h-1 w-1 rounded-full inline-block animate-pulse", st.publishedAt ? "bg-emerald-500" : "bg-muted-foreground/50")} />
+                        <span className={cn("mr-1.5 h-1 w-1 rounded-full inline-block animate-pulse", st.publishedAt ? "bg-orange-500" : "bg-muted-foreground/50")} />
                         {st.publishedAt ? "Published" : "Draft"}
                       </Badge>
                     </TableCell>
@@ -166,7 +166,7 @@ export default function CMSSingleTypesPage() {
                     <TableCell className="text-right pr-8">
                       <Button 
                         size="sm" 
-                        className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-500/20 dark:shadow-none transition-all hover:scale-105 active:scale-95"
+                        className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 font-bold text-xs transition-colors"
                         onClick={(e) => {
                           e.stopPropagation()
                           router.push(`/cms/${tenantSlug}/single-types/${st.slug}`)

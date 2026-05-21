@@ -37,7 +37,6 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { toast } from "@/hooks/use-toast"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { cn } from "@/lib/utils"
 
 interface Entry {
@@ -229,7 +228,8 @@ export default function ContentTypeEntriesPage() {
   }
 
   if (status === "loading" || loading) return (
-    <div className="flex min-h-screen"><GlobalAdminSidebar /><main className="flex-1 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></main></div>
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div></div>
   )
 
   if (session?.user?.role !== "super_admin" || !contentType) return null
@@ -239,9 +239,8 @@ export default function ContentTypeEntriesPage() {
   const mediaField = contentType.fields.find(f => f.type === 'media' || f.type === 'mediaMultiple')
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -297,7 +296,7 @@ export default function ContentTypeEntriesPage() {
                       return (
                         <TableRow key={entry.id} className="group hover:bg-muted/5 transition-colors">
                           <TableCell className="pl-6">
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden border shadow-sm">
+                            <div className="w-10 h-10 rounded-none bg-muted flex items-center justify-center overflow-hidden border border-border shadow-sm">
                               {coverUrl ? <img src={coverUrl} alt="" className="w-full h-full object-cover" /> : <ImageIcon className="h-4 w-4 text-muted-foreground/30" />}
                             </div>
                           </TableCell>
@@ -339,20 +338,20 @@ export default function ContentTypeEntriesPage() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
 
       <Dialog open={deleteDialog.open} onOpenChange={open => setDeleteDialog({ ...deleteDialog, open })}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl">
+        <DialogContent className="rounded-none border border-border shadow-none bg-card">
           <DialogHeader><DialogTitle className="text-xl font-black uppercase text-destructive tracking-tight">Delete Entry?</DialogTitle><DialogDescription>This action cannot be undone.</DialogDescription></DialogHeader>
           <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, entry: null })} className="rounded-xl h-11">Cancel</Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="rounded-xl h-11 font-bold">Delete Permanently</Button>
+            <Button variant="outline" onClick={() => setDeleteDialog({ open: false, entry: null })} className="rounded-none border border-border h-11">Cancel</Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting} className="rounded-none border border-border h-11 font-bold">Delete Permanently</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="rounded-none border border-border shadow-none sm:max-w-[500px] max-h-[90vh] overflow-y-auto bg-card">
           <DialogHeader>
             <DialogTitle className="text-2xl font-black uppercase tracking-tight flex items-center gap-2">
               <Sparkles className="h-6 w-6 text-primary" />
@@ -375,10 +374,10 @@ export default function ContentTypeEntriesPage() {
                     : `e.g. Write 3 pricing plans for a SaaS startup...`}
                 value={aiPrompt}
                 onChange={e => setAiPrompt(e.target.value)}
-                className="min-h-[120px] bg-muted/30 border-none rounded-2xl resize-none focus-visible:ring-primary shadow-inner"
+                className="min-h-[120px] bg-muted/30 border border-border rounded-none resize-none focus-visible:ring-primary shadow-inner"
               />
             </div>
-            <div className="p-4 bg-primary/5 rounded-2xl border border-primary/10 flex gap-3 items-start">
+            <div className="p-4 bg-primary/5 rounded-none border border-primary/10 flex gap-3 items-start">
               <Wand2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
               <p className="text-[11px] text-primary/80 leading-relaxed font-medium">
                 {slug === 'templates' 
@@ -388,8 +387,8 @@ export default function ContentTypeEntriesPage() {
             </div>
           </div>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setAiDialogOpen(false)} disabled={generatingAI} className="rounded-xl font-bold">Cancel</Button>
-            <Button onClick={handleAIGenerate} disabled={generatingAI || !aiPrompt} className="bg-primary hover:bg-primary/90 font-bold rounded-xl h-11 px-8 shadow-lg shadow-primary/20">
+            <Button variant="ghost" onClick={() => setAiDialogOpen(false)} disabled={generatingAI} className="rounded-none border border-border font-bold">Cancel</Button>
+            <Button onClick={handleAIGenerate} disabled={generatingAI || !aiPrompt} className="bg-primary hover:bg-primary/90 font-bold rounded-none h-11 px-8 shadow-lg shadow-primary/20 border border-primary">
               {generatingAI ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Sparkles className="h-4 w-4 mr-2" />}
               {generatingAI ? "Processing..." : "Generate with AI"}
             </Button>

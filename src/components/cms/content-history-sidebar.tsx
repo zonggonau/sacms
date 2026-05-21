@@ -93,7 +93,7 @@ export function ContentHistorySidebar({
         toast({ 
           title: "Version Restored", 
           description: "The content has been reverted to the selected version.",
-          className: "bg-emerald-50 border-emerald-200 text-emerald-800"
+          className: "bg-muted border border-border text-foreground rounded-none shadow-none"
         })
         onRestoreSuccess(data.entry.data)
         setOpen(false)
@@ -110,19 +110,19 @@ export function ContentHistorySidebar({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant="outline" size="sm" className="h-9 rounded-xl font-bold border-emerald-100 bg-emerald-50/50 text-emerald-700 hover:bg-emerald-100">
+        <Button variant="outline" size="sm" className="h-9 rounded-none font-bold border border-border bg-card shadow-none hover:bg-muted hover:border-orange-500 transition-colors text-foreground">
           <History className="mr-2 h-4 w-4" /> History
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-6 text-white">
+      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border border-border shadow-none rounded-none bg-card">
+        <div className="bg-muted p-6 border-b border-border text-foreground">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <History className="h-5 w-5 text-white" />
+            <div className="w-10 h-10 rounded-none bg-muted border border-border flex items-center justify-center">
+              <History className="h-5 w-5 text-orange-500" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-white">Revision History</DialogTitle>
-              <DialogDescription className="text-emerald-50/80 font-medium">
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Revision History</DialogTitle>
+              <DialogDescription className="text-muted-foreground font-medium">
                 View and restore previous versions of this content.
               </DialogDescription>
             </div>
@@ -133,12 +133,12 @@ export function ContentHistorySidebar({
           <ScrollArea className="h-[500px]">
             {loading ? (
               <div className="flex flex-col items-center justify-center h-full py-20 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-emerald-500" />
+                <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading history...</p>
               </div>
             ) : versions.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground gap-3">
-                <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <div className="w-12 h-12 rounded-none border border-border bg-muted flex items-center justify-center">
                   <Clock className="h-6 w-6 opacity-20" />
                 </div>
                 <p className="font-bold text-sm">No revisions found.</p>
@@ -147,15 +147,15 @@ export function ContentHistorySidebar({
               <div className="p-6 space-y-4">
                 {versions.map((v, i) => (
                   <div key={v.id} className={cn(
-                    "relative p-4 rounded-2xl border transition-all group",
-                    i === 0 ? "border-emerald-200 bg-emerald-50/30" : "border-muted hover:border-emerald-100 hover:bg-muted/30"
+                    "relative p-4 rounded-none border transition-all group",
+                    i === 0 ? "border-zinc-900 bg-zinc-50 dark:border-zinc-50 dark:bg-zinc-900" : "border-border hover:border-orange-500 hover:bg-muted/30"
                   )}>
                     <div className="flex items-start justify-between gap-4">
                       <div className="space-y-1">
                         <div className="flex items-center gap-2">
                           <Badge variant={i === 0 ? "default" : "outline"} className={cn(
-                            "text-[10px] font-black uppercase tracking-widest px-2 py-0",
-                            i === 0 ? "bg-emerald-500" : "text-muted-foreground"
+                            "text-[10px] font-black uppercase tracking-widest px-2 py-0 rounded-none border",
+                            i === 0 ? "bg-zinc-950 text-white border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50" : "text-muted-foreground border-border"
                           )}>
                             v{v.version} {i === 0 && "(Current)"}
                           </Badge>
@@ -178,7 +178,7 @@ export function ContentHistorySidebar({
                           variant="ghost" 
                           disabled={!!restoring}
                           onClick={() => handleRestore(v.id)}
-                          className="h-8 rounded-lg font-black text-[10px] uppercase tracking-widest text-emerald-600 hover:bg-emerald-100 hover:text-emerald-700"
+                          className="h-8 rounded-none border border-border bg-card shadow-none font-black text-[10px] uppercase tracking-widest text-foreground hover:bg-muted hover:border-orange-500 transition-colors"
                         >
                           {restoring === v.id ? (
                             <Loader2 className="h-3 w-3 animate-spin mr-1" />

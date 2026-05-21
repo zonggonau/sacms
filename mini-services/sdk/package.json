@@ -6,12 +6,18 @@
   "types": "dist/index.d.ts",
   "files": ["dist"],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch"
+    "clean": "rimraf dist",
+    "build": "npm run clean && tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "publishConfig": {
+    "access": "public"
   },
   "keywords": ["sacms", "cms", "headless", "sdk"],
   "license": "MIT",
   "devDependencies": {
+    "rimraf": "^5.0.0",
     "typescript": "^5.5.0"
   }
 }

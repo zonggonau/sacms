@@ -35,7 +35,7 @@ export function MediaField({ value, onChange, type = "image", label, required, e
         ) : label
       )}
       {value ? (
-        <div className="relative border rounded-lg overflow-hidden">
+        <div className="relative border rounded-none overflow-hidden">
           {type === "image" ? (
             <img
               src={value}

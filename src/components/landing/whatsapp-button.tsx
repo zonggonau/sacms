@@ -34,12 +34,12 @@ export function WhatsAppButton({ phone, message, label, isActive }: WhatsAppButt
       target="_blank"
       rel="noopener noreferrer"
       className={cn(
-        "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-3 rounded-full bg-[#25D366] text-white shadow-2xl hover:scale-105 transition-all duration-300 group"
+        "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-none border border-border bg-card text-foreground shadow-sm hover:bg-background transition-colors group"
       )}
     >
-      <MessageCircle className="w-6 h-6 fill-current" />
+      <MessageCircle className="w-5 h-5 text-orange-500" />
       {label && (
-        <span className="font-bold text-sm max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-500 ease-in-out whitespace-nowrap">
+        <span className="font-medium text-sm max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap">
           {label}
         </span>
       )}

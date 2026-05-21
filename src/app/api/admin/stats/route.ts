@@ -18,6 +18,10 @@ export async function GET() {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
+    // System tenants are hidden from stats
+    const SYSTEM_SLUGS = ["sacms-global"]
+    const notSystemTenant = { slug: { notIn: SYSTEM_SLUGS } }
+
     const [
       contentTypes,
       singleTypes,
@@ -36,9 +40,9 @@ export async function GET() {
       db.contentType.count(),
       db.singleType.count(),
       db.component.count(),
-      db.tenant.count(),
+      db.tenant.count({ where: notSystemTenant }),
       db.user.count(),
-      db.tenant.count({ where: { status: "active" } }),
+      db.tenant.count({ where: { status: "active", ...notSystemTenant } }),
       db.subscription.count({ where: { status: "active" } }),
       db.invoice.aggregate({ where: { status: "paid" }, _sum: { amount: true } }),
       db.invoice.aggregate({
@@ -46,6 +50,7 @@ export async function GET() {
         _sum: { amount: true },
       }),
       db.tenant.findMany({
+        where: notSystemTenant,
         select: {
           id: true,
           name: true,
@@ -61,6 +66,7 @@ export async function GET() {
       db.apiToken.count(),
       db.media.count(),
       db.tenant.findMany({
+        where: notSystemTenant,
         select: {
           id: true,
           name: true,

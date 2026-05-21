@@ -146,7 +146,7 @@ export default function RBACPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center flex-1 flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
@@ -158,9 +158,9 @@ export default function RBACPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex flex-1 flex-col w-full">
       <AdminSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 min-h-screen">
+      <div className="flex-1 min-h-screen flex-col w-full">
         <div className="p-6 lg:p-8">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
@@ -295,7 +295,7 @@ export default function RBACPage() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

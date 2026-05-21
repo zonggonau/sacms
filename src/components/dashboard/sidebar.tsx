@@ -120,7 +120,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantId: propId, tenantSlug, t
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+          <div className="w-8 h-8 rounded-none bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <DatabaseIcon className="w-5 h-5 text-white" />
           </div>
           <span className="text-lg font-bold">SaCMS</span>
@@ -139,7 +139,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantId: propId, tenantSlug, t
                 key={t.id}
                 href={`/dashboard/${t.id}`}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
+                  "flex items-center gap-2 rounded-none px-3 py-2 text-sm transition-colors",
                   t.id === tenantId
                     ? "bg-primary text-primary-foreground"
                     : "hover:bg-muted"
@@ -192,7 +192,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantId: propId, tenantSlug, t
                         key={child.href}
                         href={getHref(child.href)}
                         className={cn(
-                          "block rounded-md px-3 py-2 text-sm transition-colors",
+                          "block rounded-none px-3 py-2 text-sm transition-colors",
                           pathname === getHref(child.href)
                             ? "bg-primary text-primary-foreground"
                             : "hover:bg-muted"

@@ -3,8 +3,8 @@
 import { useEffect, useState, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { 
-  Plus, MoreVertical, Edit, Trash2, FileText, Database, 
+import {
+  Plus, MoreVertical, Edit, Trash2, FileText, Database,
   Globe, Lock, Layout, ArrowRight, Loader2, Search,
   Filter, CheckCircle2, AlertCircle, Sparkles, ShieldCheck
 } from "lucide-react"
@@ -36,7 +36,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
 import { cn } from "@/lib/utils"
 
@@ -56,12 +55,12 @@ export default function ContentTypesPage() {
   const router = useRouter()
   const params = useParams()
   const tenantSlug = params?.tenant as string
-  
+
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
   const [isAIModalOpen, setIsAIModalOpen] = useState(false)
-  
+
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; contentType: ContentType | null }>({
     open: false,
     contentType: null,
@@ -95,7 +94,7 @@ export default function ContentTypesPage() {
   }, [tenantSlug, session])
 
   const filteredTypes = useMemo(() => {
-    return contentTypes.filter(ct => 
+    return contentTypes.filter(ct =>
       ct.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       ct.slug.toLowerCase().includes(searchQuery.toLowerCase())
     )
@@ -133,36 +132,34 @@ export default function ContentTypesPage() {
   if (status === "loading" || (loading && contentTypes.length === 0)) {
     return (
       <div className="flex">
-        <TenantSidebar tenantSlug={tenantSlug} />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-y-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
-          
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Content Schemas</h1>
-              <p className="text-muted-foreground">Manage data structures and collection definitions.</p>
+              <h1 className="text-xl font-bold text-slate-800">Content Schemas</h1>
+              <p className="text-xs text-slate-500 font-medium mt-1">Manage data structures and collection definitions.</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
+              <Button
                 variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
                 onClick={() => setIsAIModalOpen(true)}
               >
                 <Sparkles className="mr-2 h-4 w-4" /> AI Generate
               </Button>
-              <Button 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20"
+              <Button
+                className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/new`)}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Schema
@@ -172,9 +169,9 @@ export default function ContentTypesPage() {
 
           {/* Schema Stats */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-card border-none shadow-sm">
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center text-primary">
                   <Layout className="h-5 w-5" />
                 </div>
                 <div>
@@ -183,9 +180,9 @@ export default function ContentTypesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-none shadow-sm">
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600">
+                <div className="w-10 h-10 rounded-none bg-blue-100 flex items-center justify-center text-blue-600">
                   <Globe className="h-5 w-5" />
                 </div>
                 <div>
@@ -194,9 +191,9 @@ export default function ContentTypesPage() {
                 </div>
               </CardContent>
             </Card>
-            <Card className="bg-card border-none shadow-sm">
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
               <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center text-emerald-600">
+                <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center text-emerald-600">
                   <Plus className="h-5 w-5" />
                 </div>
                 <div>
@@ -208,16 +205,16 @@ export default function ContentTypesPage() {
           </div>
 
           {/* Filter & List Area */}
-          <Card className="border-none shadow-sm overflow-hidden bg-card">
-            <CardHeader className="bg-card border-b">
+          <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
+            <CardHeader className="bg-white border-b border-slate-200">
               <div className="flex items-center justify-between">
                 <div className="relative max-w-sm w-full">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Filter schemas..." 
+                  <Input
+                    placeholder="Filter schemas..."
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-10 h-9 bg-muted/30 border-none" 
+                    className="pl-10 h-10 bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm font-medium"
                   />
                 </div>
               </div>
@@ -231,26 +228,26 @@ export default function ContentTypesPage() {
                 </div>
               ) : (
                 <Table>
-                  <TableHeader className="bg-muted/30">
+                  <TableHeader className="bg-[#f6f6f9] border-b border-slate-200">
                     <TableRow>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest pl-6">Structure Name</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest">Source</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest text-center">Fields</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest text-center">Data Entries</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-widest text-center">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 pl-6">Structure Name</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500">Source</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Fields</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Data Entries</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Status</TableHead>
                       <TableHead className="text-right pr-6"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredTypes.map((ct) => (
-                      <TableRow 
-                        key={ct.id} 
+                      <TableRow
+                        key={ct.id}
                         className="group hover:bg-muted/5 transition-colors cursor-pointer"
                         onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${ct.slug}`)}
                       >
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-lg bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                            <div className="w-9 h-9 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                               <FileText className="h-4.5 w-4.5" />
                             </div>
                             <div className="flex flex-col">
@@ -286,7 +283,7 @@ export default function ContentTypesPage() {
                         <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none opacity-0 group-hover:opacity-100 transition-opacity">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -317,8 +314,8 @@ export default function ContentTypesPage() {
           </Card>
 
           {/* Info Banner */}
-          <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex gap-4 text-primary shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+          <div className="p-4 bg-primary/5 border border-primary/10 rounded-none flex gap-4 text-primary shadow-none">
+            <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center shrink-0">
               <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
@@ -329,7 +326,7 @@ export default function ContentTypesPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       <SchemaGeneratorDialog
         tenantSlug={tenantSlug}
@@ -341,7 +338,7 @@ export default function ContentTypesPage() {
 
       {/* Delete Dialog */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
-        <DialogContent className="rounded-2xl border-none shadow-2xl">
+        <DialogContent className="rounded-none border-none shadow-none">
           <DialogHeader>
             <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive flex items-center gap-2">
               <Trash2 className="h-5 w-5" /> Critical Action
@@ -351,7 +348,7 @@ export default function ContentTypesPage() {
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
-            <div className="p-4 bg-destructive/10 rounded-xl border border-destructive/20">
+            <div className="p-4 bg-destructive/10 rounded-none border border-destructive/20">
               <p className="text-xs font-bold text-destructive">To confirm, type the exact name of the schema below:</p>
               <p className="text-sm font-black mt-1 text-destructive">{deleteDialog.contentType?.name}</p>
             </div>
@@ -363,10 +360,10 @@ export default function ContentTypesPage() {
             />
           </div>
           <DialogFooter className="gap-2">
-            <Button variant="outline" className="rounded-xl h-10" onClick={() => setDeleteDialog({ open: false, contentType: null })}>Cancel</Button>
+            <Button variant="outline" className="rounded-none h-10" onClick={() => setDeleteDialog({ open: false, contentType: null })}>Cancel</Button>
             <Button
               variant="destructive"
-              className="rounded-xl h-10 font-bold"
+              className="rounded-none h-10 font-bold"
               onClick={handleDelete}
               disabled={deleting || deleteConfirmName !== deleteDialog.contentType?.name}
             >

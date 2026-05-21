@@ -203,13 +203,13 @@ export function ComponentField({
         )}
       </div>
 
-      <div className="bg-muted/30 rounded-2xl p-4 border border-dashed border-muted-foreground/20">
+      <div className="bg-muted/30 rounded-none p-4 border border-dashed border-muted-foreground/20">
         {!repeatable ? (
           renderInnerFields(value)
         ) : (
           <div className="space-y-3">
             {(Array.isArray(value) ? value : []).map((item, idx) => (
-              <Card key={idx} className="border-none shadow-sm overflow-hidden bg-card">
+              <Card key={idx} className="border-none shadow-none overflow-hidden bg-card">
                 <div 
                   className="flex items-center justify-between px-4 py-2 bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
                   onClick={() => toggleExpand(idx)}
@@ -243,7 +243,7 @@ export function ComponentField({
             ))}
             <Button 
               variant="outline" 
-              className="w-full border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 text-muted-foreground hover:text-primary transition-all rounded-xl h-10"
+              className="w-full border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 text-muted-foreground hover:text-primary transition-all rounded-none h-10"
               onClick={handleAddField}
             >
               <Plus className="h-4 w-4 mr-2" />

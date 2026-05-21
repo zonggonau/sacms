@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react"
 import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -211,16 +210,15 @@ export default function TenantApiKeysPage() {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center">
+      <div className="flex items-center justify-center flex-1 flex-col w-full">
         <div className="text-muted-foreground">Loading...</div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 min-h-screen">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           {/* Page Header */}
           <div className="mb-8 flex items-center justify-between">
@@ -459,7 +457,7 @@ export default function TenantApiKeysPage() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

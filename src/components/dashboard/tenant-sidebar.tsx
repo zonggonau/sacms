@@ -178,7 +178,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
           onClick={() => setWorkspaceSwitcherOpen(!workspaceSwitcherOpen)}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 cursor-pointer"
         >
-          <div className="w-8 h-8 shrink-0 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+          <div className="w-8 h-8 shrink-0 rounded-none bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-none">
             {(currentTenant?.name || "W")[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
@@ -202,7 +202,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
                 href={`/dashboard/${t.id}`}
                 onClick={() => { setMobileOpen(false); setWorkspaceSwitcherOpen(false) }}
                 className={cn(
-                  "flex items-center gap-2 rounded-md px-3 py-2 text-xs transition-colors",
+                  "flex items-center gap-2 rounded-none px-3 py-2 text-xs transition-colors",
                   t.id === tenantId
                     ? "bg-primary/10 text-primary font-bold"
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -220,7 +220,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
               <Link
                 href="/dashboard"
                 onClick={() => { setMobileOpen(false); setWorkspaceSwitcherOpen(false) }}
-                className="flex items-center gap-2 rounded-md px-3 py-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors"
+                className="flex items-center gap-2 rounded-none px-3 py-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 <span>Change Workspace</span>
@@ -250,9 +250,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
                     >
                       <div
                         className={cn(
-                          "flex items-center gap-3 rounded-xl px-3 py-2 text-sm transition-all duration-200 group",
+                          "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition-all duration-200 group",
                           active
-                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20 font-bold"
+                            ? "bg-primary text-primary-foreground shadow-none shadow-primary/20 font-bold"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                         )}
                       >
@@ -273,8 +273,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
 
       {/* Footer */}
       <div className="border-t p-3 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-xl bg-muted/30">
-          <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+        <div className="flex items-center gap-3 px-3 py-2 rounded-none bg-muted/30">
+          <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none">
             {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
           </div>
           <div className="flex-1 min-w-0">
@@ -292,7 +292,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-xl h-9 text-xs"
+          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-none h-9 text-xs"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 text-red-500" />
@@ -307,7 +307,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-background/80 backdrop-blur border shadow-md rounded-xl"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-background/80 backdrop-blur border shadow-none rounded-none"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
@@ -317,11 +317,11 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
         <div className="fixed inset-0 z-40 bg-background/80 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r transition-transform duration-300 md:hidden shadow-2xl", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r transition-transform duration-300 md:hidden shadow-none", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
         {renderSidebarContent()}
       </aside>
 
-      <aside className="hidden md:block w-64 border-r shrink-0 h-full bg-card">
+      <aside className="hidden md:block w-64 border-r shrink-0 h-screen sticky top-0 bg-card">
         {renderSidebarContent()}
       </aside>
     </>

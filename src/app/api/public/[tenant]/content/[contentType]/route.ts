@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
+import { logApiRequest } from "@/lib/monitoring"
 import {
   parseFilters,
   buildFilterSQL,
@@ -29,16 +30,31 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string; contentType: string }> }
 ) {
   try {
+    const startTime = Date.now()
     const { tenant: tenantSlug, contentType: contentTypeSlug } = await params
+    let resolvedTenantId: string | null = tenantSlug
+
+    const logResponse = (res: NextResponse) => {
+      const duration = Date.now() - startTime
+      logApiRequest({
+        tenantId: resolvedTenantId,
+        endpoint: request.nextUrl.pathname,
+        method: request.method,
+        statusCode: res.status,
+        duration,
+      }).catch(() => {})
+      return res
+    }
+
     const fullUrl = request.url
 
     // Validate API token
     const authHeader = request.headers.get("authorization")
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return NextResponse.json(
+      return logResponse(NextResponse.json(
         { error: "Missing or invalid authorization header" },
         { status: 401 }
-      )
+      ))
     }
 
     const token = authHeader.replace("Bearer ", "")
@@ -46,7 +62,7 @@ export async function GET(
     // Rate limit by token
     const rateLimitResult = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
     if (!rateLimitResult.success) {
-      return NextResponse.json(
+      return logResponse(NextResponse.json(
         { error: "Rate limit exceeded. Try again later." },
         {
           status: 429,
@@ -57,14 +73,14 @@ export async function GET(
             "Retry-After": String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
           },
         }
-      )
+      ))
     }
 
     // CHECK CACHE
     const cacheKey = `public_api:${tenantSlug}:${contentTypeSlug}:${fullUrl}`
     const cachedResponse = await getCache(cacheKey)
     if (cachedResponse) {
-      return NextResponse.json(cachedResponse, {
+      return logResponse(NextResponse.json(cachedResponse, {
         headers: {
           "X-RateLimit-Limit": String(rateLimitResult.limit),
           "X-RateLimit-Remaining": String(rateLimitResult.remaining),
@@ -72,7 +88,7 @@ export async function GET(
           "X-Cache": "HIT",
           "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
         },
-      })
+      }))
     }
 
     // Find the API token
@@ -82,19 +98,22 @@ export async function GET(
     })
 
     if (!apiToken) {
-      return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
+      return logResponse(NextResponse.json({ error: "Invalid API token" }, { status: 401 }))
     }
+
+    // Update resolved tenant ID once token is verified
+    resolvedTenantId = apiToken.tenantId
 
     // Verify tenant matches (check both ID and Slug)
     const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
     
     if (!isMatchingTenant) {
-      return NextResponse.json({ error: "Token does not match tenant" }, { status: 403 })
+      return logResponse(NextResponse.json({ error: "Token does not match tenant" }, { status: 403 }))
     }
 
     // Check if token is expired
     if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
-      return NextResponse.json({ error: "API token expired" }, { status: 401 })
+      return logResponse(NextResponse.json({ error: "API token expired" }, { status: 401 }))
     }
 
     // Get the correct DB client (Shared or Dedicated)
@@ -117,7 +136,7 @@ export async function GET(
     })
 
     if (!contentType) {
-      return NextResponse.json({ error: "Content type not found" }, { status: 404 })
+      return logResponse(NextResponse.json({ error: "Content type not found" }, { status: 404 }))
     }
 
     // A content type is available if:
@@ -127,10 +146,10 @@ export async function GET(
     const isAssigned = contentType.tenants.some(t => t.tenantId === apiToken.tenantId && t.enabled)
 
     if (!isGlobal && !isAssigned) {
-      return NextResponse.json(
+      return logResponse(NextResponse.json(
         { error: "Content type not available for this tenant" },
         { status: 403 }
-      )
+      ))
     }
 
     // Parse query parameters
@@ -140,8 +159,16 @@ export async function GET(
     const page = Math.max(1, parseInt(searchParams.get("pagination[page]") || searchParams.get("page") || "1"))
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pagination[pageSize]") || searchParams.get("pageSize") || "25")))
 
-    // Locale
-    const locale = searchParams.get("locale")
+    // Locale + fallback logic
+    const requestedLocale = searchParams.get("locale")
+    
+    // Resolve the tenant's default locale (used for fallback)
+    const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
+      where: { tenantId: apiToken.tenantId, isDefault: true },
+      select: { locale: true },
+    })
+    const defaultLocale = tenantDefaultLocale?.locale ?? "en"
+    const locale = requestedLocale ?? defaultLocale
 
     // Status (default: only PUBLISHED for public API)
     const statusParam = searchParams.get("status")
@@ -306,8 +333,67 @@ export async function GET(
       })
     }
 
-    // 3. Map relations back to entries (Synchronously)
-    const parsedEntries = entries.map((entry: any) => {
+    // 3. Map relations back to entries + availableLocales (Synchronously)
+    // Collect documentIds to batch-fetch available locales
+    const documentIds = entries
+      .map((e: any) => e.documentId as string | null)
+      .filter((id): id is string => !!id)
+
+    // Batch fetch all locale variants for the documentIds in this result set
+    const localeVariants = documentIds.length > 0
+      ? await tenantDb.contentEntry.findMany({
+          where: {
+            documentId: { in: documentIds },
+            contentTypeId: contentType.id,
+            tenantId: apiToken.tenantId,
+          },
+          select: { documentId: true, locale: true, status: true },
+        })
+      : []
+
+    // Build a map: documentId → available locales
+    const localesByDoc = new Map<string, string[]>()
+    for (const v of localeVariants) {
+      if (!v.documentId) continue
+      if (!localesByDoc.has(v.documentId)) localesByDoc.set(v.documentId, [])
+      localesByDoc.get(v.documentId)!.push(v.locale)
+    }
+
+    // Locale fallback: if locale was requested and entry has no data in that
+    // locale, attempt to fall back to the tenant's default locale
+    let finalEntries = entries
+    if (requestedLocale && requestedLocale !== defaultLocale) {
+      const entryIds = new Set(entries.map((e: any) => e.id as string))
+      // Find document IDs for entries that may have a default-locale equivalent
+      const docIdsNeedingFallback = entries
+        .filter((e: any) => {
+          const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data
+          return !data || Object.keys(data).length === 0
+        })
+        .map((e: any) => e.documentId as string | null)
+        .filter((id): id is string => !!id)
+
+      if (docIdsNeedingFallback.length > 0) {
+        const fallbacks = await tenantDb.contentEntry.findMany({
+          where: {
+            documentId: { in: docIdsNeedingFallback },
+            locale: defaultLocale,
+            contentTypeId: contentType.id,
+            tenantId: apiToken.tenantId,
+          },
+        })
+        const fallbackMap = new Map(fallbacks.map((f) => [f.documentId, f]))
+        finalEntries = entries.map((e: any) =>
+          !entryIds.has(e.id) && e.documentId && fallbackMap.has(e.documentId)
+            ? fallbackMap.get(e.documentId)!
+            : e
+        )
+      }
+    } else {
+      finalEntries = entries
+    }
+
+    const parsedEntries = finalEntries.map((entry: any) => {
       let parsedData: Record<string, unknown>
       try {
         parsedData = typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
@@ -333,6 +419,7 @@ export async function GET(
         id: entry.id,
         ...shaped,
         locale: entry.locale,
+        availableLocales: entry.documentId ? (localesByDoc.get(entry.documentId) ?? [entry.locale]) : [entry.locale],
         status: entry.status,
         publishedAt: entry.publishedAt,
         createdAt: entry.createdAt,
@@ -374,9 +461,19 @@ export async function GET(
     // SET CACHE (ttl 5 mins)
     await setCache(cacheKey, responsePayload, 300)
 
-    return NextResponse.json(responsePayload, { headers })
+    return logResponse(NextResponse.json(responsePayload, { headers }))
   } catch (error) {
     console.error("Error fetching content:", error)
+    // Handle error logging
+    const duration = Date.now() - startTime
+    logApiRequest({
+      tenantId: resolvedTenantId,
+      endpoint: request.nextUrl.pathname,
+      method: request.method,
+      statusCode: 500,
+      duration,
+    }).catch(() => {})
+
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

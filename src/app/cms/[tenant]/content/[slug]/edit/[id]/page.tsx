@@ -70,13 +70,13 @@ interface ContentType {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  DRAFT: { label: "Draft", color: "bg-slate-500", icon: FileText },
-  IN_REVIEW: { label: "In Review", color: "bg-blue-500", icon: Clock },
-  APPROVED: { label: "Approved", color: "bg-cyan-500", icon: CheckCircle2 },
-  SCHEDULED: { label: "Scheduled", color: "bg-purple-500", icon: CalendarIcon },
-  PUBLISHED: { label: "Published", color: "bg-emerald-500", icon: Check },
-  ARCHIVED: { label: "Archived", color: "bg-orange-500", icon: Archive },
-  REJECTED: { label: "Rejected", color: "bg-red-500", icon: AlertCircle },
+  DRAFT: { label: "Draft", color: "bg-muted text-foreground border border-border rounded-none", icon: FileText },
+  IN_REVIEW: { label: "In Review", color: "bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border rounded-none", icon: Clock },
+  APPROVED: { label: "Approved", color: "bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border rounded-none", icon: CheckCircle2 },
+  SCHEDULED: { label: "Scheduled", color: "bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-none", icon: CalendarIcon },
+  PUBLISHED: { label: "Published", color: "bg-zinc-950 dark:bg-zinc-50 text-background border border-border rounded-none", icon: Check },
+  ARCHIVED: { label: "Archived", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 rounded-none", icon: Archive },
+  REJECTED: { label: "Rejected", color: "bg-red-500/10 text-red-500 border border-red-500/20 rounded-none", icon: AlertCircle },
 }
 
 export default function CMSEditEntryPage() {
@@ -164,7 +164,7 @@ export default function CMSEditEntryPage() {
       if (res.ok) {
         toast({ 
           title: publishNow ? "Published Successfully!" : "Entry Updated",
-          className: publishNow ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
+          className: "bg-muted border border-border text-foreground rounded-none shadow-none"
         })
         router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}`)
       } else {
@@ -301,7 +301,7 @@ export default function CMSEditEntryPage() {
     }
   }
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-emerald-600" /></div>
+  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
 
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
@@ -310,11 +310,11 @@ export default function CMSEditEntryPage() {
       <main className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-full hover:bg-emerald-50"><ArrowLeft className="h-5 w-5 text-emerald-600" /></Button>
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted"><ArrowLeft className="h-5 w-5" /></Button>
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-slate-900">Edit Entry</h1>
-                <Badge className={cn("text-[10px] font-black uppercase text-white px-2 py-0.5 rounded-full", statusCfg.color)}>
+                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-zinc-50">Edit Entry</h1>
+                <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 shadow-none border", statusCfg.color)}>
                   {statusCfg.label}
                 </Badge>
               </div>
@@ -323,12 +323,12 @@ export default function CMSEditEntryPage() {
           </div>
           <div className="flex items-center gap-3">
             <Select value={entryStatus} onValueChange={setEntryStatus}>
-              <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-xl border-none shadow-sm h-11">
+              <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-none border border-border h-11">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-none shadow-2xl">
+              <SelectContent className="rounded-none border border-border bg-card shadow-none">
                 {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
-                  <SelectItem key={val} value={val} className="text-xs font-bold uppercase">
+                  <SelectItem key={val} value={val} className="text-xs font-bold uppercase rounded-none hover:bg-muted">
                     <div className="flex items-center gap-2">
                       <cfg.icon className="h-3.5 w-3.5" />
                       {cfg.label}
@@ -348,12 +348,16 @@ export default function CMSEditEntryPage() {
             <Button 
               variant="outline" 
               onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
-              className="h-11 rounded-xl font-bold border-none bg-card shadow-sm hover:bg-muted/50"
+              className="h-11 rounded-none font-bold border border-border bg-card shadow-none hover:bg-muted hover:border-orange-500 transition-colors"
             >
               <Eye className="mr-2 h-4 w-4" /> Preview
             </Button>
 
-            <Button onClick={() => handleSave(true)} disabled={saving} className="bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-100 font-bold rounded-xl h-11 px-6">
+            <Button 
+              onClick={() => handleSave(true)} 
+              disabled={saving} 
+              className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
+            >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
               Save & Publish
             </Button>
@@ -362,16 +366,16 @@ export default function CMSEditEntryPage() {
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="border-b bg-emerald-50/30 p-6">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="border-b border-border bg-muted/30 p-6">
                 <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-emerald-600" /> Content Editor
+                  <FileText className="h-5 w-5 text-orange-500" /> Content Editor
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-8 space-y-10">
                 {contentType?.fields.map(field => (
                   <div key={field.id} className="relative group">
-                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-emerald-500 rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
                     {renderField(field)}
                   </div>
                 ))}
@@ -380,8 +384,8 @@ export default function CMSEditEntryPage() {
           </div>
           
           <div className="space-y-6">
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
-              <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-emerald-600" /> Options</CardTitle></CardHeader>
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
               <CardContent className="p-6 pt-2 space-y-6">
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
@@ -390,7 +394,7 @@ export default function CMSEditEntryPage() {
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full justify-start text-left font-bold rounded-xl border-none bg-muted/30 h-11",
+                          "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
                           !scheduledAt && "text-muted-foreground font-normal"
                         )}
                       >
@@ -398,7 +402,7 @@ export default function CMSEditEntryPage() {
                         {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-2xl border-none" align="start">
+                    <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border border-border bg-card" align="start">
                       <Calendar
                         mode="single"
                         selected={scheduledAt}
@@ -408,7 +412,7 @@ export default function CMSEditEntryPage() {
                       />
                       {scheduledAt && (
                         <div className="p-3 border-t bg-muted/10 flex justify-between">
-                          <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black">Clear</Button>
+                          <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black rounded-none hover:bg-muted">Clear</Button>
                           <span className="text-[10px] text-muted-foreground italic pt-2">Will set to SCHEDULED</span>
                         </div>
                       )}
@@ -421,10 +425,10 @@ export default function CMSEditEntryPage() {
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
                   <Select value={locale} onValueChange={setLocale}>
-                    <SelectTrigger className="bg-muted/30 border-none h-11 rounded-xl font-bold"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-xl border-none shadow-xl">
+                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
                       {availableLocales.map(l => (
-                        <SelectItem key={l.locale} value={l.locale} className="font-bold">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -436,7 +440,7 @@ export default function CMSEditEntryPage() {
                   variant="outline" 
                   onClick={() => handleSave(false)} 
                   disabled={saving} 
-                  className="w-full bg-slate-900 text-white hover:bg-slate-800 hover:text-white border-none h-11 rounded-xl font-bold shadow-lg shadow-slate-200"
+                  className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Update Entry
@@ -444,22 +448,22 @@ export default function CMSEditEntryPage() {
               </CardContent>
             </Card>
 
-            <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden bg-gradient-to-br from-emerald-500/5 to-transparent">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent">
               <CardHeader className="p-6 pb-2">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-emerald-600" />
+                  <Clock className="h-4 w-4 text-orange-500" />
                   <CardTitle className="text-base font-bold">Timeline</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="p-6 pt-2 space-y-4">
                  <div className="flex gap-3">
                     <div className="flex flex-col items-center">
-                      <div className="h-2 w-2 rounded-full bg-emerald-500 mt-1.5" />
+                      <div className="h-2 w-2 rounded-none bg-orange-500 mt-1.5" />
                       <div className="w-0.5 flex-1 bg-muted my-1" />
                     </div>
                     <div className="pb-4">
                       <p className="text-[11px] font-black uppercase text-muted-foreground">Status</p>
-                      <p className="text-xs font-bold text-emerald-700">{statusCfg.label}</p>
+                      <p className="text-xs font-bold text-orange-600 dark:text-orange-400">{statusCfg.label}</p>
                     </div>
                  </div>
               </CardContent>

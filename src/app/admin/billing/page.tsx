@@ -12,7 +12,6 @@ import {
   Download, CreditCard, ArrowUpRight, CheckCircle2, XCircle,
   Clock, ArrowRight, TrendingDown, Shield
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import Link from "next/link"
 
 interface Transaction {
@@ -113,10 +112,9 @@ export default function AdminBillingPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
@@ -129,9 +127,8 @@ export default function AdminBillingPage() {
   const growth = stats?.growth.revenueGrowth || 0
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -307,7 +304,7 @@ export default function AdminBillingPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

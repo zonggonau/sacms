@@ -15,7 +15,6 @@ const RELATION_TYPES = [
 
 const TARGET_MODELS = [
   { value: "content-type", label: "Content Type" },
-  { value: "single-type", label: "Single Type" },
 ]
 
 interface TypeItem {
@@ -68,10 +67,16 @@ export function RelationFieldConfig({
       .finally(() => setLoading(false))
   }, [tenantSlug])
 
+  useEffect(() => {
+    if (!targetModel) {
+      onTargetModelChange("content-type")
+    }
+  }, [targetModel, onTargetModelChange])
+
   const targetList = targetModel === "content-type" ? contentTypes : singleTypes
 
   return (
-    <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+    <div className="space-y-3 border rounded-none p-3 bg-muted/30">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Konfigurasi Relasi</p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -186,7 +191,7 @@ export function ComponentFieldConfig({
     : components
 
   return (
-    <div className="space-y-3 border rounded-md p-3 bg-muted/30">
+    <div className="space-y-3 border rounded-none p-3 bg-muted/30">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Konfigurasi Component</p>
 
       <div className="space-y-1">

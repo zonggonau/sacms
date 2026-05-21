@@ -13,7 +13,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { toast } from "@/hooks/use-toast"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import {
   AlertDialog,
   AlertDialogAction,
@@ -214,20 +213,18 @@ export default function SingleTypeDetailPage() {
   }
 
   if (loading) return (
-    <div className="flex min-h-screen">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 flex items-center justify-center">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </main>
+      </div>
     </div>
   )
 
   if (!singleType) return null
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -254,7 +251,7 @@ export default function SingleTypeDetailPage() {
               <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-card font-bold">
                 Save Draft
               </Button>
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold">
+              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-none shadow-none font-bold">
                 {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                 Publish Now
               </Button>
@@ -263,7 +260,7 @@ export default function SingleTypeDetailPage() {
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm bg-card">
+              <Card className="border-none shadow-none bg-card">
                 <CardHeader className="border-b bg-muted/10">
                   <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
                 </CardHeader>
@@ -290,7 +287,7 @@ export default function SingleTypeDetailPage() {
             </div>
 
             <div className="space-y-6">
-              <Card className="border-none shadow-sm bg-card">
+              <Card className="border-none shadow-none bg-card">
                 <CardHeader><CardTitle className="text-base font-bold">Localization</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
@@ -307,12 +304,12 @@ export default function SingleTypeDetailPage() {
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-sm bg-card">
+              <Card className="border-none shadow-none bg-card">
                 <CardHeader><CardTitle className="text-base font-bold">System Info</CardTitle></CardHeader>
                 <CardContent className="space-y-4 text-xs">
                   <div className="flex justify-between border-b border-dashed pb-2">
                     <span className="text-muted-foreground uppercase font-bold text-[10px]">API Slug</span>
-                    <code className="font-bold bg-muted px-1.5 py-0.5 rounded text-primary">/{singleType.slug}</code>
+                    <code className="font-bold bg-muted px-1.5 py-0.5 rounded-none text-primary">/{singleType.slug}</code>
                   </div>
                   <div className="flex justify-between border-b border-dashed pb-2">
                     <span className="text-muted-foreground uppercase font-bold text-[10px]">Updated</span>
@@ -321,7 +318,7 @@ export default function SingleTypeDetailPage() {
                 </CardContent>
               </Card>
 
-              <div className="p-4 bg-primary/5 border border-primary/10 rounded-2xl flex gap-3 text-primary shadow-sm">
+              <div className="p-4 bg-primary/5 border border-primary/10 rounded-none flex gap-3 text-primary shadow-none">
                 <ShieldCheck className="h-5 w-5 shrink-0" />
                 <p className="text-[11px] leading-relaxed font-medium">
                   Singleton data is isolated per workspace. Changes here only affect <strong>{tenantSlug}</strong>.
@@ -330,7 +327,7 @@ export default function SingleTypeDetailPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

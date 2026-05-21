@@ -12,7 +12,6 @@ import {
   ImageIcon, Key, MoreVertical, Edit, Trash2, Plus, AlertCircle, Ban, CheckCircle
 } from "lucide-react"
 import Link from "next/link"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import {
   Dialog,
   DialogContent,
@@ -124,7 +123,7 @@ export default function AdminTenantsPage() {
         toast({ title: "Success", description: "Tenant created successfully" })
         setIsCreateOpen(false)
         fetchTenants()
-        setFormData({ name: "", slug: "", description: "", plan: "free", status: "active" })
+        setFormData({ name: "", slug: "", description: "", plan: "free", status: "active", databaseUrl: "" })
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Error", description: err.error || "Failed to create tenant" })
@@ -206,10 +205,9 @@ export default function AdminTenantsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
@@ -220,9 +218,8 @@ export default function AdminTenantsPage() {
   }
 
   return (
-    <div className="flex min-h-screen">
-      <GlobalAdminSidebar />
-      <main className="flex-1 min-h-screen overflow-auto bg-muted/10">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
@@ -345,9 +342,9 @@ export default function AdminTenantsPage() {
 
           {/* Tenant List */}
           {filteredTenants.length === 0 ? (
-            <Card>
+            <Card className="rounded-none shadow-none">
               <CardContent className="py-12 text-center">
-                <Building2 className="h-12 w-12 text-muted-foreground/50 mx-auto mb-4" />
+                <Building2 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <h3 className="text-lg font-medium">No workspaces found</h3>
                 <p className="text-muted-foreground max-w-xs mx-auto">
                   {searchQuery ? "Try adjusting your search query or filters" : "Get started by creating your first tenant workspace."}
@@ -357,23 +354,28 @@ export default function AdminTenantsPage() {
           ) : (
             <div className="grid gap-4">
               {filteredTenants.map((tenant) => (
-                <Card key={tenant.id} className="group overflow-hidden">
+                <Card key={tenant.id} className="group overflow-hidden rounded-none shadow-none hover:bg-background transition-colors">
                   <CardContent className="p-0">
                     <div className="flex flex-col md:flex-row md:items-center p-4 md:p-6 gap-4">
                       <div className="flex items-center gap-4 flex-1">
-                        <div className="w-12 h-12 shrink-0 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-lg border border-primary/20">
+                        <div className="w-12 h-12 shrink-0 bg-muted flex items-center justify-center text-foreground font-bold text-lg border border-border rounded-none">
                           {tenant.name[0].toUpperCase()}
                         </div>
                         <div className="min-w-0">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="font-bold text-lg truncate">{tenant.name}</span>
+                            {tenant.slug === "sacms-global" && (
+                              <Badge className="rounded-none bg-purple-500 text-white text-xs shrink-0">
+                                SYSTEM
+                              </Badge>
+                            )}
                             <Badge variant={tenant.status === "active" ? "default" : "secondary"} className={
-                              tenant.status === "active" ? "bg-green-100 text-green-700 hover:bg-green-100" : "bg-orange-100 text-orange-700 hover:bg-orange-100"
+                              tenant.status === "active" ? "bg-green-500 text-white hover:bg-green-600 rounded-none" : "bg-muted/50 text-foreground hover:bg-zinc-300 rounded-none"
                             }>
                               {tenant.status === "active" ? <CheckCircle className="mr-1 h-3 w-3" /> : <Ban className="mr-1 h-3 w-3" />}
                               {tenant.status}
                             </Badge>
-                            <Badge variant="outline" className="capitalize">
+                            <Badge variant="outline" className="capitalize rounded-none border-border">
                               {tenant.plan}
                             </Badge>
                           </div>
@@ -383,56 +385,58 @@ export default function AdminTenantsPage() {
 
                       <div className="grid grid-cols-3 md:flex items-center gap-4 lg:gap-8 text-sm text-muted-foreground border-t md:border-t-0 pt-4 md:pt-0">
                         <div className="flex flex-col">
-                          <span className="text-xs font-medium uppercase text-muted-foreground/70 mb-1">Members</span>
+                          <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Members</span>
                           <span className="flex items-center gap-1.5 text-foreground">
-                            <Users className="h-4 w-4 text-primary" /> {tenant._count.members}
+                            <Users className="h-4 w-4 text-orange-500" /> {tenant._count.members}
                           </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs font-medium uppercase text-muted-foreground/70 mb-1">Content</span>
+                          <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Content</span>
                           <span className="flex items-center gap-1.5 text-foreground">
-                            <Database className="h-4 w-4 text-primary" /> {tenant._count.contentTypeAssignments}
+                            <Database className="h-4 w-4 text-orange-500" /> {tenant._count.contentTypeAssignments}
                           </span>
                         </div>
                         <div className="flex flex-col">
-                          <span className="text-xs font-medium uppercase text-muted-foreground/70 mb-1">Media</span>
+                          <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Media</span>
                           <span className="flex items-center gap-1.5 text-foreground">
-                            <ImageIcon className="h-4 w-4 text-primary" /> {tenant._count.media}
+                            <ImageIcon className="h-4 w-4 text-orange-500" /> {tenant._count.media}
                           </span>
                         </div>
                       </div>
 
                       <div className="flex items-center gap-2 ml-auto">
                         <Link href={`/dashboard/${tenant.slug}`}>
-                          <Button variant="outline" size="sm" className="hidden sm:flex">
+                          <Button variant="outline" size="sm" className="hidden sm:flex rounded-none border-border">
                             Dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
                           </Button>
                         </Link>
-                        
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon" className="h-9 w-9">
-                              <MoreVertical className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => openEdit(tenant)}>
-                              <Edit className="mr-2 h-4 w-4" /> Edit Details
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
-                              {tenant.status === 'active' ? (
-                                <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
-                              ) : (
-                                <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Activate Tenant</>
-                              )}
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem onClick={() => handleDelete(tenant.id)} className="text-destructive focus:text-destructive">
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+
+                        {tenant.slug !== "sacms-global" && (
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-none">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => openEdit(tenant)}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
+                                {tenant.status === 'active' ? (
+                                  <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
+                                ) : (
+                                  <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Activate Tenant</>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem onClick={() => handleDelete(tenant.id)} className="text-red-500 focus:text-red-500">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -497,7 +501,7 @@ export default function AdminTenantsPage() {
             </form>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </div>
   )
 }

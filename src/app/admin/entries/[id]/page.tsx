@@ -4,8 +4,6 @@ import { useEffect, use } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Loader2 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
-
 export default function GenericEntryEditPage({
   params,
 }: {
@@ -46,14 +44,13 @@ export default function GenericEntryEditPage({
   }, [id, status, router])
 
   return (
-    <div className="flex min-h-screen">
-      <GlobalAdminSidebar />
-      <main className="flex-1 min-h-screen flex items-center justify-center">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
           <p className="text-sm text-muted-foreground">Redirecting to editor...</p>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

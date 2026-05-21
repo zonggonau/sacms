@@ -21,7 +21,7 @@ export default function AdminTenantRedirectPage() {
   }, [status, router, tenantSlug])
 
   return (
-    <div className="min-h-screen flex items-center justify-center">
+    <div className="flex items-center justify-center flex-1 flex-col w-full">
       <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
     </div>
   )

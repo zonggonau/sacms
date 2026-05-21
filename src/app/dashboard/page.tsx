@@ -11,8 +11,7 @@ import {
   ShieldCheck, Search, Settings, 
   LayoutDashboard, MoreVertical, Trash2,
   AlertTriangle, Clock, Ban, CheckCircle2,
-  Calendar, ArrowRight, Zap, ExternalLink,
-  Layout, Globe, FileText
+  ArrowRight, Zap, Layout, Globe, FileText
 } from "lucide-react"
 import {
   Dialog,
@@ -21,7 +20,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from "@/components/ui/dialog"
 import {
   DropdownMenu,
@@ -83,7 +81,6 @@ export default function WorkspaceSelectionPage() {
   const handleUpdateUserPlan = async (planId: string) => {
     setIsUpdatingUserPlan(true)
     try {
-      // If it's the free plan, we can update directly without payment
       if (planId === "free") {
         const res = await fetch("/api/user/plan", {
           method: "PUT",
@@ -211,26 +208,22 @@ export default function WorkspaceSelectionPage() {
     { 
       id: "free", name: "Free", price: "Rp 0", priceAmount: 0,
       desc: "For small personal projects", 
-      features: ["Unlimited Content Types", "500 Entries"],
-      color: "bg-slate-100 text-slate-700 border-slate-200"
+      features: ["Unlimited Content Types", "500 Entries"]
     },
     { 
       id: "starter", name: "Starter", price: "Rp 499k", priceAmount: 499000,
       desc: "Perfect for growing sites", 
-      features: ["Unlimited Content Types", "5,000 Entries"],
-      color: "bg-blue-50 text-blue-700 border-blue-100"
+      features: ["Unlimited Content Types", "5,000 Entries"]
     },
     { 
       id: "pro", name: "Business Pro", price: "Rp 1.499k", priceAmount: 1499000,
       desc: "Advanced features for teams", 
-      features: ["Unlimited Content Types", "50,000 Entries"],
-      color: "bg-emerald-50 text-emerald-700 border-emerald-100"
+      features: ["Unlimited Content Types", "50,000 Entries"]
     },
     { 
       id: "enterprise", name: "Enterprise", price: "Custom", priceAmount: 0,
       desc: "Isolated DB & Maximum security", 
-      features: ["Dedicated Database", "Unlimited Content"],
-      color: "bg-purple-50 text-purple-700 border-purple-100"
+      features: ["Dedicated Database", "Unlimited Content"]
     }
   ]
 
@@ -344,60 +337,61 @@ export default function WorkspaceSelectionPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-muted/10">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-muted/10">
+    <div className="min-h-screen bg-background text-foreground flex flex-col font-sans">
       {/* Top Navbar */}
-      <nav className="h-16 bg-card border-b px-6 flex items-center justify-between sticky top-0 z-50 shadow-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center text-primary-foreground font-black shadow-sm">CF</div>
-          <span className="font-bold tracking-tight">SaCMS</span>
+      <nav className="h-16 bg-background border-b border-border px-6 md:px-10 flex items-center justify-between sticky top-0 z-50">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 rounded-none bg-black text-white dark:bg-white dark:text-black flex items-center justify-center font-bold border border-border">
+            CF
+          </div>
+          <span className="font-bold tracking-tight text-lg">SaCMS</span>
         </div>
         <div className="flex items-center gap-4">
           <Button 
             variant="outline" 
             size="sm" 
             onClick={() => setIsAccountPlanOpen(true)}
-            className="text-[10px] font-black uppercase tracking-widest h-8 rounded-lg bg-primary/5 border-primary/20 text-primary hover:bg-primary/10 transition-all"
+            className="text-xs font-semibold h-8 rounded-none border-border"
           >
-            <Zap className="mr-1.5 h-3 w-3 fill-current" /> {session?.user?.plan || "Free"} Account
+            <Zap className="mr-1.5 h-3.5 w-3.5 text-orange-500 fill-orange-500" />
+            {session?.user?.plan || "Free"} Account
           </Button>
           {isSuperAdmin && (
-
             <Link href="/admin">
-              <Button variant="ghost" size="sm" className="text-xs font-bold text-primary">
-                <ShieldCheck className="mr-2 h-4 w-4" /> PLATFORM ADMIN
+              <Button variant="ghost" size="sm" className="text-xs font-semibold h-8 rounded-none hover:text-orange-500">
+                <ShieldCheck className="mr-1.5 h-4 w-4" /> Platform Admin
               </Button>
             </Link>
           )}
-          <Button variant="ghost" size="sm" onClick={() => signOut()} className="text-xs font-bold text-muted-foreground hover:text-destructive">
-            <LogOut className="mr-2 h-4 w-4" /> SIGN OUT
+          <Button variant="ghost" size="sm" onClick={() => signOut()} className="text-xs font-semibold h-8 rounded-none text-muted-foreground hover:text-destructive">
+            <LogOut className="mr-1.5 h-4 w-4" /> Sign Out
           </Button>
         </div>
       </nav>
 
-      <main className="p-6 lg:p-12 max-w-7xl mx-auto space-y-12">
+      <main className="flex-1 p-6 md:p-10 max-w-7xl w-full mx-auto space-y-8">
         {/* Header Section */}
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b pb-8">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border pb-6">
           <div className="space-y-4">
-            <div className="space-y-2">
-              <Badge className="bg-primary/10 text-primary hover:bg-primary/10 border-primary/20 text-[10px] font-black uppercase tracking-widest px-2">Workspace management</Badge>
-              <h1 className="text-4xl font-extrabold tracking-tight">Dashboard</h1>
-              <p className="text-muted-foreground">Manage your content ecosystem or launch a new project.</p>
+            <div className="space-y-1">
+              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+              <p className="text-muted-foreground">Manage your content ecosystem and tenants.</p>
             </div>
             
-            <div className="flex items-center gap-6">
+            <div className="flex items-center gap-4">
               <button 
                 onClick={() => setActiveView('workspaces')}
                 className={cn(
-                  "text-sm font-black uppercase tracking-widest pb-2 transition-all border-b-2",
+                  "text-sm font-semibold pb-2 transition-all border-b-2",
                   activeView === 'workspaces' 
-                    ? "border-primary text-primary" 
+                    ? "border-orange-500 text-orange-500 font-bold" 
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -406,9 +400,9 @@ export default function WorkspaceSelectionPage() {
               <button 
                 onClick={() => setActiveView('templates')}
                 className={cn(
-                  "text-sm font-black uppercase tracking-widest pb-2 transition-all border-b-2",
+                  "text-sm font-semibold pb-2 transition-all border-b-2",
                   activeView === 'templates' 
-                    ? "border-primary text-primary" 
+                    ? "border-orange-500 text-orange-500 font-bold" 
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -417,100 +411,63 @@ export default function WorkspaceSelectionPage() {
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-3 shrink-0">
             <Button 
               variant="outline"
               onClick={() => setActiveView('templates')}
-              className="h-12 px-6 font-bold rounded-2xl border-2 hover:bg-muted/50"
+              className="h-10 px-4 font-semibold rounded-none border-border"
             >
-              <Layout className="mr-2 h-5 w-5" /> Templates
+              <Layout className="mr-2 h-4 w-4" /> Browse Templates
             </Button>
             <Button 
               onClick={() => { setNewMember({...newTenant, websiteType: 'custom'}); setIsCreateOpen(true); }}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-xl shadow-primary/20 h-12 px-6 font-bold rounded-2xl"
+              className="bg-orange-500 hover:bg-orange-600 text-white h-10 px-4 font-semibold rounded-none border-none"
             >
-              <Plus className="mr-2 h-5 w-5" /> New Blank Workspace
+              <Plus className="mr-2 h-4 w-4" /> New Workspace
             </Button>
           </div>
         </div>
 
         {activeView === 'workspaces' ? (
-          <div className="space-y-12">
+          <div className="space-y-8">
             {/* Quick Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <Card className="bg-card border-none shadow-sm rounded-3xl overflow-hidden group">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Total Workspaces</p>
-                      <h3 className="text-3xl font-black">{tenants.length}</h3>
-                    </div>
-                    <div className="p-3 bg-primary/10 rounded-2xl text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
-                      <Building2 className="h-6 w-6" />
-                    </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Card className="bg-card border border-border shadow-none rounded-none">
+                <CardContent className="p-6 flex flex-row items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Total Workspaces</span>
+                    <h3 className="text-3xl font-bold">{tenants.length}</h3>
                   </div>
-                  <div className="mt-4 flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {tenants.slice(0, 3).map((t, i) => (
-                        <div key={i} className="w-6 h-6 rounded-full bg-primary/20 border-2 border-card flex items-center justify-center text-[8px] font-bold">
-                          {t.name[0]}
-                        </div>
-                      ))}
-                    </div>
-                    <span className="text-[10px] font-bold text-muted-foreground">Recent activity across all</span>
-                  </div>
+                  <Building2 className="h-6 w-6 text-muted-foreground" />
                 </CardContent>
               </Card>
 
-              <Card className="bg-card border-none shadow-sm rounded-3xl overflow-hidden group">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Active Projects</p>
-                      <h3 className="text-3xl font-black">{activeWorkspacesCount}</h3>
-                    </div>
-                    <div className="p-3 bg-emerald-100 rounded-2xl text-emerald-600">
-                      <CheckCircle2 className="h-6 w-6" />
-                    </div>
+              <Card className="bg-card border border-border shadow-none rounded-none">
+                <CardContent className="p-6 flex flex-row items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Active Projects</span>
+                    <h3 className="text-3xl font-bold">{activeWorkspacesCount}</h3>
                   </div>
-                  <div className="mt-4">
-                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-emerald-500 transition-all duration-1000" 
-                        style={{ width: `${(activeWorkspacesCount / (tenants.length || 1)) * 100}%` }}
-                      />
-                    </div>
-                  </div>
+                  <CheckCircle2 className="h-6 w-6 text-muted-foreground" />
                 </CardContent>
               </Card>
 
-              <Card className="bg-card border-none shadow-sm rounded-3xl overflow-hidden group">
-                <CardContent className="p-6">
-                  <div className="flex justify-between items-start">
-                    <div className="space-y-1">
-                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">System Alerts</p>
-                      <h3 className="text-3xl font-black">{expiringSoonCount + suspendedCount}</h3>
-                    </div>
-                    <div className={cn(
-                      "p-3 rounded-2xl",
-                      (expiringSoonCount + suspendedCount) > 0 ? "bg-amber-100 text-amber-600 animate-pulse" : "bg-muted text-muted-foreground"
-                    )}>
-                      <AlertTriangle className="h-6 w-6" />
-                    </div>
+              <Card className="bg-card border border-border shadow-none rounded-none">
+                <CardContent className="p-6 flex flex-row items-center justify-between">
+                  <div className="space-y-1">
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">System Alerts</span>
+                    <h3 className="text-3xl font-bold">{expiringSoonCount + suspendedCount}</h3>
                   </div>
-                  <p className="mt-4 text-[10px] font-bold text-muted-foreground">
-                    {expiringSoonCount} expiring soon · {suspendedCount} suspended
-                  </p>
+                  <AlertTriangle className="h-6 w-6 text-muted-foreground" />
                 </CardContent>
               </Card>
             </div>
 
             {/* Workspaces List Section */}
-            <section className="space-y-6">
+            <section className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-1 bg-primary rounded-full" />
-                  <h2 className="text-xl font-black uppercase tracking-tight">Your Workspaces</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold">Your Workspaces</h2>
                 </div>
                 
                 <div className="relative w-full sm:w-72">
@@ -519,138 +476,133 @@ export default function WorkspaceSelectionPage() {
                     placeholder="Search workspaces..." 
                     value={searchQuery}
                     onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-9 h-10 bg-card border-none shadow-inner rounded-xl text-sm focus-visible:ring-primary"
+                    className="pl-9 h-10 bg-background border border-border rounded-none text-sm focus-visible:ring-orange-500 focus-visible:ring-1 shadow-none"
                   />
                 </div>
               </div>
 
               {loadingTenants ? (
-                <div className="py-20 flex flex-col items-center justify-center gap-4 text-muted-foreground">
-                  <Loader2 className="h-10 w-10 animate-spin text-primary" />
-                  <p className="text-sm font-bold uppercase tracking-widest">Synchronizing...</p>
+                <div className="py-20 flex flex-col items-center justify-center gap-3 text-muted-foreground">
+                  <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                  <p className="text-xs font-semibold uppercase tracking-wider">Loading workspaces...</p>
                 </div>
               ) : tenants.length === 0 ? (
-                <Card className="border-dashed border-2 py-20 bg-card/50 rounded-3xl">
-                  <CardContent className="text-center">
-                    <div className="w-20 h-20 rounded-3xl bg-primary/5 flex items-center justify-center mx-auto mb-6">
-                      <Building2 className="h-10 w-10 text-primary/30" />
+                <Card className="border border-border border-dashed py-16 bg-card rounded-none">
+                  <CardContent className="text-center space-y-6">
+                    <div className="w-16 h-16 rounded-none bg-muted flex items-center justify-center mx-auto border border-border">
+                      <Building2 className="h-8 w-8 text-muted-foreground" />
                     </div>
-                    <h3 className="text-2xl font-bold">No active workspaces</h3>
-                    <p className="text-muted-foreground max-w-sm mx-auto mt-2 mb-8">
-                      You haven't joined or created any workspace yet. Start by choosing a template or creating from scratch.
-                    </p>
-                    <div className="flex items-center justify-center gap-4">
-                      <Button onClick={() => setActiveView('templates')} variant="outline" className="rounded-xl h-12 px-8 font-bold">
+                    <div className="space-y-1">
+                      <h3 className="text-xl font-bold">No active workspaces</h3>
+                      <p className="text-muted-foreground max-w-sm mx-auto text-sm">
+                        Start by browsing professional pre-built templates or launch a blank workspace.
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-center gap-3">
+                      <Button onClick={() => setActiveView('templates')} variant="outline" className="rounded-none h-10 px-6 font-semibold border-border">
                         Browse Templates
                       </Button>
-                      <Button onClick={() => setIsCreateOpen(true)} className="rounded-xl h-12 px-8 font-bold">
+                      <Button onClick={() => setIsCreateOpen(true)} className="bg-orange-500 hover:bg-orange-600 text-white rounded-none h-10 px-6 font-semibold border-none">
                         Create Workspace
                       </Button>
                     </div>
                   </CardContent>
                 </Card>
               ) : (
-                <Card className="border-none shadow-sm bg-card rounded-3xl overflow-hidden">
+                <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
                   <div className="overflow-x-auto">
                     <Table>
-                      <TableHeader className="bg-muted/30">
-                        <TableRow>
-                          <TableHead className="w-[300px] py-5 px-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Workspace</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Status</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Plan</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Trial / Expiry</TableHead>
-                          <TableHead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Role</TableHead>
-                          <TableHead className="text-right py-5 px-8 text-[10px] font-black uppercase tracking-widest text-muted-foreground">Actions</TableHead>
+                      <TableHeader className="bg-muted/40">
+                        <TableRow className="border-b border-border">
+                          <TableHead className="w-[300px] py-4 px-6 text-xs font-bold uppercase text-muted-foreground">Workspace</TableHead>
+                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Status</TableHead>
+                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Plan</TableHead>
+                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Trial / Expiry</TableHead>
+                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Role</TableHead>
+                          <TableHead className="text-right py-4 px-6 text-xs font-bold uppercase text-muted-foreground">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredTenants.map((tenant) => {
                           const isSuspended = tenant.status === 'suspended' || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0)
-                          const isTrial = tenant.daysRemaining !== null && tenant.daysRemaining > 0
                           
                           return (
-                            <TableRow key={tenant.id} className="group transition-colors hover:bg-muted/5">
-                              <TableCell className="py-5 px-8">
+                            <TableRow key={tenant.id} className="border-b border-border hover:bg-zinc-50 dark:hover:bg-zinc-900/40 transition-colors">
+                              <TableCell className="py-4 px-6">
                                 <Link href={`/dashboard/${tenant.id}`} className="flex items-center gap-4">
-                                  <div className={cn(
-                                    "w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm transition-all shadow-sm",
-                                    isSuspended ? "bg-muted text-muted-foreground" : "bg-primary/10 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
-                                  )}>
+                                  <div className="w-9 h-9 rounded-none bg-muted border border-border flex items-center justify-center font-bold text-foreground">
                                     {tenant.name[0].toUpperCase()}
                                   </div>
                                   <div className="flex flex-col min-w-0">
-                                    <span className="font-bold text-sm truncate max-w-[180px]">{tenant.name}</span>
-                                    <span className="text-[10px] font-mono text-muted-foreground">/{tenant.slug}</span>
+                                    <span className="font-bold text-sm truncate max-w-[180px] text-foreground">{tenant.name}</span>
+                                    <span className="text-xs text-muted-foreground font-mono">/{tenant.slug}</span>
                                   </div>
                                 </Link>
                               </TableCell>
                               <TableCell>
                                 {isSuspended ? (
-                                  <Badge variant="destructive" className="text-[9px] font-black uppercase bg-red-100 text-red-700 hover:bg-red-100 border-none">
+                                  <Badge variant="outline" className="text-[10px] font-semibold uppercase bg-red-50 text-red-700 dark:bg-red-950/20 dark:text-red-400 rounded-none border-red-200">
                                     <Ban className="h-2.5 w-2.5 mr-1" /> Suspended
                                   </Badge>
                                 ) : (
-                                  <Badge variant="outline" className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border-emerald-100">
+                                  <Badge variant="outline" className="text-[10px] font-semibold uppercase bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 rounded-none border-emerald-200">
                                     <CheckCircle2 className="h-2.5 w-2.5 mr-1" /> Active
                                   </Badge>
                                 )}
                               </TableCell>
                               <TableCell>
-                                <span className="text-xs font-bold uppercase tracking-tight">{tenant.plan}</span>
+                                <span className="text-xs font-semibold uppercase">{tenant.plan}</span>
                               </TableCell>
                               <TableCell>
                                 {tenant.daysRemaining !== null ? (
-                                  <div className="flex flex-col gap-1">
+                                  <div className="flex flex-col">
                                     <div className={cn(
-                                      "flex items-center gap-1.5 font-bold text-[10px] uppercase",
-                                      tenant.daysRemaining <= 3 ? "text-red-600" : tenant.daysRemaining <= 5 ? "text-orange-600" : "text-blue-600"
+                                      "flex items-center gap-1 font-bold text-xs",
+                                      tenant.daysRemaining <= 3 ? "text-red-600" : tenant.daysRemaining <= 5 ? "text-orange-600" : "text-foreground"
                                     )}>
                                       <Clock className="h-3 w-3" />
                                       {tenant.daysRemaining} days left
                                     </div>
-                                    <span className="text-[9px] text-muted-foreground">
-                                      {isTrial ? "7-day trial active" : "Subscription active"}
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {tenant.daysRemaining > 0 ? "Trial active" : "Expired"}
                                     </span>
                                   </div>
                                 ) : (
-                                  <span className="text-[10px] text-muted-foreground font-medium italic">Unlimited</span>
+                                  <span className="text-xs text-muted-foreground italic">Unlimited</span>
                                 )}
                               </TableCell>
                               <TableCell>
-                                <div className="flex items-center gap-1.5 text-muted-foreground">
-                                  <ShieldCheck className="h-3 w-3" />
-                                  <span className="text-[10px] font-black uppercase tracking-tight">{tenant.role}</span>
-                                </div>
+                                <span className="text-xs font-bold uppercase">{tenant.role}</span>
                               </TableCell>
-                              <TableCell className="py-5 px-8 text-right">
+                              <TableCell className="py-4 px-6 text-right">
                                 <div className="flex items-center justify-end gap-2">
                                   <Link href={`/dashboard/${tenant.id}`}>
-                                    <Button size="sm" className="h-8 rounded-lg font-bold text-[11px] px-3">
+                                    <Button size="sm" className="h-8 rounded-none font-bold text-xs px-3 bg-orange-500 hover:bg-orange-600 text-white border-none">
                                       Enter <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                                     </Button>
                                   </Link>
                                   
                                   <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg">
+                                      <Button variant="outline" size="icon" className="h-8 w-8 rounded-none border-border">
                                         <MoreVertical className="h-4 w-4" />
                                       </Button>
                                     </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end" className="w-48 rounded-xl shadow-xl border-none">
-                                      <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Manage</DropdownMenuLabel>
+                                    <DropdownMenuContent align="end" className="rounded-none border border-border bg-background shadow-none">
+                                      <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Manage</DropdownMenuLabel>
                                       <DropdownMenuItem asChild>
-                                        <Link href={`/dashboard/${tenant.id}/settings`}>
+                                        <Link href={`/dashboard/${tenant.id}/settings`} className="text-xs cursor-pointer">
                                           <Settings className="mr-2 h-4 w-4" /> Workspace Settings
                                         </Link>
                                       </DropdownMenuItem>
                                       <DropdownMenuItem asChild>
-                                        <Link href={`/dashboard/${tenant.id}/subscriptions`}>
-                                          <Zap className="mr-2 h-4 w-4" /> Billing & Plans
+                                        <Link href={`/dashboard/${tenant.id}/subscriptions`} className="text-xs cursor-pointer">
+                                          <Zap className="mr-2 h-4 w-4 text-orange-500 fill-orange-500" /> Billing & Plans
                                         </Link>
                                       </DropdownMenuItem>
-                                      <DropdownMenuSeparator />
+                                      <DropdownMenuSeparator className="border-b border-border" />
                                       <DropdownMenuItem 
-                                        className="text-destructive focus:text-destructive focus:bg-red-50 font-bold"
+                                        className="text-destructive focus:text-destructive focus:bg-red-50 font-bold text-xs cursor-pointer"
                                         onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
                                       >
                                         <Trash2 className="mr-2 h-4 w-4" /> Delete Workspace
@@ -670,28 +622,25 @@ export default function WorkspaceSelectionPage() {
             </section>
           </div>
         ) : (
-          /* Templates View Section - REDESIGNED */
-          <section className="space-y-10">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6">
-              <div className="space-y-2">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-1 bg-primary rounded-full" />
-                  <h2 className="text-2xl font-black uppercase tracking-tight">Premium Templates</h2>
-                </div>
-                <p className="text-sm text-muted-foreground">Expertly crafted architectures for your next big thing.</p>
+          /* Templates View Section - REDESIGNED TO BE SIMPLISTIC & CLASSIC */
+          <section className="space-y-6">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-border pb-4">
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold uppercase tracking-tight">Premium Templates</h2>
+                <p className="text-xs text-muted-foreground font-medium">Expertly crafted pre-configured architectures.</p>
               </div>
 
               {/* Category Filter Bar */}
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {uniqueCategories.map(cat => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
                     className={cn(
-                      "px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all",
+                      "px-3 py-1.5 rounded-none text-xs font-semibold tracking-tight transition-all border",
                       selectedCategory === cat
-                        ? "bg-primary text-primary-foreground shadow-lg shadow-primary/20"
-                        : "bg-card text-muted-foreground hover:bg-muted/50 border border-transparent hover:border-muted-foreground/10"
+                        ? "bg-black text-white border-black dark:bg-white dark:text-black dark:border-white"
+                        : "bg-background text-muted-foreground hover:bg-zinc-50 hover:text-foreground border-border"
                     )}
                   >
                     {cat}
@@ -700,13 +649,13 @@ export default function WorkspaceSelectionPage() {
               </div>
             </div>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
               {loadingTemplates ? (
-                Array(8).fill(0).map((_, i) => (
-                  <div key={i} className="animate-pulse space-y-4">
-                    <div className="aspect-[4/3] rounded-[2.5rem] bg-muted/20" />
-                    <div className="h-4 w-2/3 bg-muted/20 rounded-full" />
-                    <div className="h-3 w-full bg-muted/20 rounded-full" />
+                Array(4).fill(0).map((_, i) => (
+                  <div key={i} className="animate-pulse space-y-4 border border-border p-6 rounded-none bg-card">
+                    <div className="h-8 w-8 bg-muted rounded-none" />
+                    <div className="h-4 w-2/3 bg-muted rounded-none" />
+                    <div className="h-10 w-full bg-muted rounded-none" />
                   </div>
                 ))
               ) : filteredTemplates.length > 0 ? (
@@ -714,85 +663,63 @@ export default function WorkspaceSelectionPage() {
                   const Icon = IconMap[tpl.icon] || Globe
                   
                   return (
-                    <div 
+                    <Card 
                       key={tpl.id} 
-                      className="group relative cursor-pointer"
                       onClick={() => openTemplateDialog(tpl.template_id || tpl.id)}
+                      className="border border-border bg-card rounded-none shadow-none hover:bg-zinc-50 dark:hover:bg-zinc-900/40 cursor-pointer transition-colors flex flex-col justify-between"
                     >
-                      {/* Premium Card Design */}
-                      <Card className="border-none shadow-none bg-card rounded-[2.5rem] overflow-hidden transition-all duration-500 hover:shadow-2xl hover:-translate-y-2">
-                        <CardContent className="p-0">
-                          {/* Visual Header */}
-                          <div className="aspect-[4/3] relative bg-muted/30 flex items-center justify-center overflow-hidden">
-                            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/10 group-hover:scale-110 transition-transform duration-700" />
-                            
-                            {/* Floating Decorative Elements */}
-                            <div className="absolute top-6 left-6 flex items-center gap-2 z-10">
-                              <Badge className="bg-white/80 backdrop-blur-md text-primary border-none text-[8px] font-black uppercase tracking-tighter px-2 h-5 shadow-sm">
+                      <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
+                        <div className="space-y-3">
+                          <div className="flex justify-between items-start">
+                            <div className="w-10 h-10 bg-muted border border-border flex items-center justify-center">
+                              <Icon className="h-5 w-5 text-muted-foreground" />
+                            </div>
+                            <div className="flex items-center gap-1.5">
+                              <Badge variant="outline" className="text-[9px] font-semibold uppercase rounded-none border-border bg-transparent text-muted-foreground px-1.5 h-4">
                                 {tpl.kategori_website || "General"}
                               </Badge>
                               {tpl.is_popular && (
-                                <Badge className="bg-amber-400 text-amber-950 border-none text-[8px] font-black uppercase tracking-tighter px-2 h-5">
+                                <Badge className="bg-amber-400 text-amber-950 border-none text-[9px] font-bold uppercase rounded-none px-1.5 h-4">
                                   Popular
                                 </Badge>
                               )}
                             </div>
-
-                            <div className="relative z-0">
-                              <div className="absolute inset-0 bg-primary/20 blur-[80px] rounded-full group-hover:blur-[60px] transition-all" />
-                              <Icon className="h-20 w-20 text-primary relative z-10 transition-all duration-500 group-hover:scale-110 group-hover:rotate-6 drop-shadow-2xl" />
-                            </div>
-
-                            {/* Hover Action Overlay */}
-                            <div className="absolute inset-0 bg-primary/0 group-hover:bg-primary/5 backdrop-blur-0 group-hover:backdrop-blur-[2px] transition-all duration-500 flex items-center justify-center opacity-0 group-hover:opacity-100">
-                                <Button className="rounded-2xl font-black uppercase tracking-widest text-[10px] h-10 px-6 shadow-2xl shadow-primary/40">
-                                  Select Template
-                                </Button>
-                            </div>
                           </div>
 
-                          {/* Content Body */}
-                          <div className="p-8 space-y-4">
-                            <div className="space-y-2">
-                              <h3 className="text-lg font-black tracking-tight leading-tight group-hover:text-primary transition-colors uppercase">
-                                {tpl.name || tpl.nama_template}
-                              </h3>
-                              <div 
-                                className="text-xs text-muted-foreground leading-relaxed line-clamp-2 opacity-80 group-hover:opacity-100 transition-opacity"
-                                dangerouslySetInnerHTML={{ __html: tpl.description || "" }}
-                              />
-                            </div>
-                            
-                            <div className="pt-2 flex items-center justify-between border-t border-muted/50">
-                              <div className="flex items-center gap-2">
-                                <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center">
-                                  <Zap className="h-3 w-3 text-primary" />
-                                </div>
-                                <span className="text-[10px] font-bold text-muted-foreground uppercase">Fast Setup</span>
-                              </div>
-                              <ArrowRight className="h-4 w-4 text-primary opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 transition-all" />
-                            </div>
+                          <div className="space-y-1">
+                            <h3 className="font-bold text-sm uppercase tracking-tight text-foreground">
+                              {tpl.name || tpl.nama_template}
+                            </h3>
+                            <div 
+                              className="text-xs text-muted-foreground leading-relaxed line-clamp-3"
+                              dangerouslySetInnerHTML={{ __html: tpl.description || "" }}
+                            />
                           </div>
-                        </CardContent>
-                      </Card>
-                    </div>
+                        </div>
+
+                        <div className="pt-4 border-t border-border flex items-center justify-between text-muted-foreground group">
+                          <span className="text-[10px] font-bold uppercase tracking-tight">Select Template</span>
+                          <ArrowRight className="h-4 w-4 text-orange-500 group-hover:translate-x-1 transition-transform" />
+                        </div>
+                      </CardContent>
+                    </Card>
                   )
                 })
               ) : (
-                <div className="col-span-full py-20 bg-card rounded-[3rem] border-2 border-dashed flex flex-col items-center justify-center text-center gap-6">
-                  <div className="w-24 h-24 rounded-[2rem] bg-muted/30 flex items-center justify-center">
-                    <Search className="h-10 w-10 text-muted-foreground/20" />
+                <div className="col-span-full py-16 bg-card rounded-none border border-border border-dashed flex flex-col items-center justify-center text-center gap-4">
+                  <div className="w-16 h-16 rounded-none bg-muted border border-border flex items-center justify-center">
+                    <Search className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <div className="space-y-2">
-                    <h3 className="text-2xl font-black uppercase tracking-tight">No templates found</h3>
-                    <p className="text-muted-foreground max-w-sm mx-auto text-sm">
-                      Try adjusting your search or category filters to find what you're looking for.
+                  <div className="space-y-1">
+                    <h3 className="text-lg font-bold">No templates found</h3>
+                    <p className="text-muted-foreground max-w-sm mx-auto text-xs">
+                      Try adjusting your search query or category filters.
                     </p>
                   </div>
                   <Button 
                     onClick={() => { setSelectedCategory("All"); setSearchQuery(""); }}
                     variant="outline" 
-                    className="rounded-2xl font-black uppercase tracking-widest text-xs h-12 px-8"
+                    className="rounded-none text-xs h-10 px-6 border-border"
                   >
                     Clear All Filters
                   </Button>
@@ -802,92 +729,91 @@ export default function WorkspaceSelectionPage() {
           </section>
         )}
 
-        {/* Global Footer info */}
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-6 rounded-3xl bg-amber-50 border border-amber-100 text-amber-800">
+        {/* Global Footer warning info - simplified */}
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 p-5 rounded-none bg-zinc-50 border border-border text-foreground dark:bg-zinc-900/30">
           <div className="flex gap-3">
-            <AlertTriangle className="h-5 w-5 shrink-0" />
-            <div className="space-y-1">
-              <p className="text-xs font-black uppercase tracking-widest leading-none">Subscription Policy</p>
-              <p className="text-[11px] font-medium leading-relaxed max-w-2xl">
-                Trial accounts are automatically <strong>suspended</strong> after 7 days if no active subscription plan is chosen. All workspace data is preserved for 30 days during suspension.
+            <AlertTriangle className="h-5 w-5 text-orange-500 shrink-0" />
+            <div className="space-y-0.5">
+              <p className="text-xs font-bold uppercase tracking-wider">Subscription Policy</p>
+              <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+                Trial accounts are automatically suspended after 7 days if no active subscription plan is chosen. Workspace data is preserved for 30 days during suspension.
               </p>
             </div>
           </div>
-          <Button variant="outline" className="bg-white border-amber-200 text-amber-800 hover:bg-amber-100 rounded-xl font-bold text-xs h-10 px-5">
-            Learn more about plans
-          </Button>
         </div>
 
-        <footer className="py-8 border-t text-center space-y-4">
+        <footer className="py-8 border-t border-border text-center space-y-3">
           <div className="flex items-center justify-center gap-6 text-xs font-bold text-muted-foreground uppercase tracking-widest">
-            <a href="#" className="hover:text-primary transition-colors">Docs</a>
-            <a href="#" className="hover:text-primary transition-colors">Support</a>
-            <a href="#" className="hover:text-primary transition-colors">Privacy</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">Docs</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">Support</a>
+            <a href="#" className="hover:text-orange-500 transition-colors">Privacy</a>
           </div>
-          <p className="text-[10px] text-muted-foreground opacity-50 italic">SaCMS v0.2.0 &middot; Secure Multi-tenant Infrastructure</p>
+          <p className="text-[10px] text-muted-foreground opacity-60">SaCMS v0.2.0 &middot; Secure Multi-tenant Infrastructure</p>
         </footer>
 
         {/* Workspace Creation Dialog */}
         <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden lg:max-w-2xl flex flex-col max-h-[90vh]">
-            <DialogHeader className="p-8 bg-muted/30 border-b flex-shrink-0">
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight">
+          <DialogContent className="rounded-none border border-border bg-background shadow-none p-0 overflow-hidden lg:max-w-2xl flex flex-col max-h-[90vh]">
+            <DialogHeader className="p-6 border-b border-border bg-muted/20 flex-shrink-0">
+              <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground">
                 {newTenant.websiteType === 'custom' 
                   ? "Launch New Workspace" 
                   : `Launch ${dbTemplates.find(t => t.template_id === newTenant.websiteType)?.name || dbTemplates.find(t => t.template_id === newTenant.websiteType)?.nama_template || "Workspace"}`}
               </DialogTitle>
-              <DialogDescription>
+              <DialogDescription className="text-xs text-muted-foreground mt-1">
                 {newTenant.websiteType === 'custom' 
-                  ? "Start fresh or use AI to generate your architecture." 
-                  : "We'll set up your workspace with the selected professional template."}
+                  ? "Start fresh or choose from a selection of templates later." 
+                  : "We'll bootstrap your workspace with the selected premium template."}
               </DialogDescription>
             </DialogHeader>
+            
             <div className="flex-1 overflow-y-auto">
-              <form onSubmit={handleCreateTenant} className="p-8 space-y-8">
+              <form onSubmit={handleCreateTenant} className="p-6 space-y-6">
                 <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Workspace Name</Label>
+                  <Label className="text-xs font-bold uppercase tracking-wider text-foreground">Workspace Name</Label>
                   <Input 
                     placeholder="e.g. My Awesome Project" 
                     value={newTenant.name}
                     onChange={e => setNewMember({...newTenant, name: e.target.value})}
                     required
-                    className="h-12 bg-muted/30 border-none text-lg rounded-xl focus-visible:ring-primary shadow-inner"
+                    className="h-11 bg-background border border-border text-base rounded-none focus-visible:ring-orange-500 focus-visible:ring-1 shadow-none"
                   />
                 </div>
 
-                <div className="space-y-4">
-                  <div className="flex items-center justify-between px-1">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Select a Subscription Plan</Label>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold uppercase tracking-wider text-foreground">Select a Subscription Plan</Label>
                     <div className="flex items-center gap-2">
-                      <span className={cn("text-[10px] font-bold uppercase", !newTenant.isAnnual ? "text-primary" : "text-muted-foreground")}>Monthly</span>
+                      <span className={cn("text-xs font-semibold", !newTenant.isAnnual ? "text-orange-500 font-bold" : "text-muted-foreground")}>Monthly</span>
                       <Checkbox 
                         checked={newTenant.isAnnual} 
                         onCheckedChange={(checked) => setNewMember({...newTenant, isAnnual: checked as boolean})}
-                        className="rounded-full"
+                        className="rounded-none border-border"
                       />
-                      <span className={cn("text-[10px] font-bold uppercase", newTenant.isAnnual ? "text-primary" : "text-muted-foreground")}>Yearly <span className="text-emerald-500">(2 Months Free)</span></span>
+                      <span className={cn("text-xs font-semibold", newTenant.isAnnual ? "text-orange-500 font-bold" : "text-muted-foreground")}>Yearly <span className="text-emerald-600 font-bold">(2 Months Free)</span></span>
                     </div>
                   </div>
+                  
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                     {plans.map((plan) => (
                       <div 
                         key={plan.id}
                         onClick={() => setNewMember({...newTenant, plan: plan.id})}
                         className={cn(
-                          "cursor-pointer p-4 rounded-2xl border-2 transition-all relative group",
+                          "cursor-pointer p-4 rounded-none border transition-all relative",
                           newTenant.plan === plan.id 
-                            ? "border-primary bg-primary/5 shadow-md scale-[1.02]" 
-                            : "border-muted hover:border-muted-foreground/30 bg-card"
+                            ? "border-orange-500 bg-orange-500/[0.02]" 
+                            : "border-border hover:border-muted-foreground/30 bg-card"
                         )}
                       >
                         {newTenant.plan === plan.id && (
-                          <div className="absolute -top-2 -right-2 bg-primary text-primary-foreground rounded-full p-1 shadow-lg">
+                          <div className="absolute top-3 right-3 text-orange-500">
                             <CheckCircle2 className="h-4 w-4" />
                           </div>
                         )}
-                        <div className="flex justify-between items-start mb-1">
-                          <span className="font-black uppercase text-xs tracking-tight">{plan.name}</span>
-                          <span className="font-bold text-xs text-primary">
+                        <div className="flex justify-between items-start mb-1 pr-4">
+                          <span className="font-bold uppercase text-xs tracking-tight">{plan.name}</span>
+                          <span className="font-bold text-xs text-orange-500">
                             {plan.id === "enterprise" 
                               ? "Custom" 
                               : `Rp ${(newTenant.isAnnual ? (plan.priceAmount! * 10 / 1000) : (plan.priceAmount! / 1000))}k${newTenant.isAnnual ? "/yr" : "/mo"}`}
@@ -896,7 +822,7 @@ export default function WorkspaceSelectionPage() {
                         <p className="text-[10px] text-muted-foreground mb-3 leading-tight">{plan.desc}</p>
                         <div className="flex flex-wrap gap-1">
                           {plan.features.map(f => (
-                            <Badge key={f} variant="outline" className="text-[8px] font-bold px-1.5 py-0 bg-muted/50 border-none">
+                            <Badge key={f} variant="outline" className="text-[9px] font-bold px-1.5 py-0 bg-muted/60 border-none rounded-none text-muted-foreground">
                               {f}
                             </Badge>
                           ))}
@@ -906,18 +832,18 @@ export default function WorkspaceSelectionPage() {
                   </div>
                 </div>
 
-                {/* Add-ons Section */}
-                <div className="space-y-4 p-6 bg-muted/20 rounded-3xl border border-muted/50">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest text-primary flex items-center gap-2">
-                    <Zap className="h-3 w-3 fill-current" /> Premium Add-ons
+                {/* Add-ons Section - Simplified */}
+                <div className="space-y-4 p-5 bg-muted/20 rounded-none border border-border">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-orange-500 flex items-center gap-1.5">
+                    <Zap className="h-3.5 w-3.5 fill-current" /> Premium Add-ons
                   </h4>
                   
-                  <div className="space-y-6">
+                  <div className="space-y-4">
                     {/* Storage Add-on */}
                     <div className="flex items-center justify-between gap-4">
                       <div className="space-y-0.5">
-                        <Label className="text-sm font-bold">Extra Storage</Label>
-                        <p className="text-[10px] text-muted-foreground">Rp 5k/GB/month. High-speed R2 Object Storage.</p>
+                        <Label className="text-xs font-bold">Extra Storage</Label>
+                        <p className="text-[10px] text-muted-foreground">Rp 5k/GB/month. High-speed Cloudflare R2 storage.</p>
                       </div>
                       <div className="flex items-center gap-2">
                         <Input 
@@ -926,46 +852,46 @@ export default function WorkspaceSelectionPage() {
                           max="1000"
                           value={newTenant.extraStorage}
                           onChange={(e) => setNewMember({...newTenant, extraStorage: e.target.value})}
-                          className="w-20 h-9 bg-card border-muted-foreground/20 rounded-lg text-center font-bold"
+                          className="w-16 h-8 bg-background border border-border rounded-none text-center font-bold"
                         />
-                        <span className="text-xs font-black uppercase">GB</span>
+                        <span className="text-xs font-bold uppercase">GB</span>
                       </div>
                     </div>
 
                     {/* AI Add-on */}
-                    <div className="flex items-center justify-between gap-4 pt-4 border-t border-muted">
+                    <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
                       <div className="space-y-0.5">
                         <div className="flex items-center gap-2">
-                          <Label className="text-sm font-bold">AI Features</Label>
-                          <Badge className="bg-primary/10 text-primary text-[8px] h-4">Beta</Badge>
+                          <Label className="text-xs font-bold">AI Features</Label>
+                          <Badge variant="outline" className="text-[8px] h-4 rounded-none border-orange-200 text-orange-500 bg-transparent uppercase font-bold">Beta</Badge>
                         </div>
-                        <p className="text-[10px] text-muted-foreground">Rp 99k/month. Auto-content generation & AI Schemas.</p>
+                        <p className="text-[10px] text-muted-foreground">Rp 99k/month. Automated schema and copy-generation.</p>
                       </div>
                       <Checkbox 
                         checked={newTenant.enableAI}
                         onCheckedChange={(checked) => setNewMember({...newTenant, enableAI: checked as boolean})}
-                        className="h-6 w-6 rounded-lg"
+                        className="h-5 w-5 rounded-none border-border"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="p-6 bg-primary text-primary-foreground rounded-3xl shadow-xl shadow-primary/20 flex items-center justify-between">
+                <div className="p-4 bg-orange-500 text-white rounded-none flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-80">Total Due Today</p>
-                    <h3 className="text-2xl font-black tracking-tight">
+                    <p className="text-[10px] font-bold uppercase tracking-wider opacity-90">Total Due Today</p>
+                    <h3 className="text-xl font-bold tracking-tight">
                       Rp {(calculateTotalPrice() / 1000).toLocaleString()}k
                     </h3>
                   </div>
                   <div className="text-right">
-                    <p className="text-[10px] font-bold uppercase opacity-80">Billing Cycle</p>
-                    <p className="text-sm font-black uppercase">{newTenant.isAnnual ? "Annual" : "Monthly"}</p>
+                    <p className="text-[10px] font-bold uppercase opacity-90">Billing Cycle</p>
+                    <p className="text-xs font-bold uppercase">{newTenant.isAnnual ? "Annual" : "Monthly"}</p>
                   </div>
                 </div>
 
-                <DialogFooter className="pt-4">
-                  <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-xl font-bold">Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting} className="bg-primary font-bold rounded-xl h-12 px-10 shadow-lg shadow-primary/20">
+                <DialogFooter className="pt-2 border-t border-border">
+                  <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} className="rounded-none font-bold text-xs h-10">Cancel</Button>
+                  <Button type="submit" disabled={isSubmitting} className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-none h-10 px-6 border-none text-xs">
                     {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4 fill-current" />}
                     Create {newTenant.plan.toUpperCase()} Workspace
                   </Button>
@@ -978,40 +904,42 @@ export default function WorkspaceSelectionPage() {
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={!!tenantToDelete} onOpenChange={(open) => !open && setTenantToDelete(null)}>
-        <DialogContent className="rounded-3xl border-none shadow-2xl p-0 overflow-hidden sm:max-w-[500px]">
-          <DialogHeader className="p-8 bg-red-50 border-b">
-            <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center mb-4">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
+        <DialogContent className="rounded-none border border-border bg-background shadow-none p-0 overflow-hidden sm:max-w-[450px]">
+          <DialogHeader className="p-6 bg-red-50 border-b border-red-100 dark:bg-red-950/10">
+            <div className="w-10 h-10 rounded-none bg-red-100 flex items-center justify-center mb-3">
+              <AlertTriangle className="h-5 w-5 text-red-600" />
             </div>
-            <DialogTitle className="text-2xl font-black uppercase tracking-tight text-red-900">Erase Workspace?</DialogTitle>
-            <DialogDescription className="text-red-700 font-medium leading-relaxed">
-              This will permanently delete <strong>"{tenantToDelete?.name}"</strong> and all of its content, members, and media. This action cannot be undone.
+            <DialogTitle className="text-lg font-bold uppercase tracking-tight text-red-900 dark:text-red-400">Delete Workspace?</DialogTitle>
+            <DialogDescription className="text-xs text-red-700 dark:text-red-300 mt-1 leading-normal">
+              This will permanently delete <strong>"{tenantToDelete?.name}"</strong> and all of its content schema, entries, and associated R2 media files. This action is irreversible.
             </DialogDescription>
           </DialogHeader>
-          <div className="p-8 space-y-6">
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase text-muted-foreground">To confirm, type the workspace name below:</Label>
-              <div className="p-3 bg-red-50/50 rounded-xl border border-red-100 text-center">
-                <span className="font-mono font-black text-red-600 select-none">{tenantToDelete?.name}</span>
+          
+          <div className="p-6 space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-semibold text-muted-foreground uppercase pl-0.5">Type workspace name to confirm:</Label>
+              <div className="p-2 bg-red-50/50 dark:bg-red-950/5 border border-red-100 text-center select-none font-mono font-bold text-red-600">
+                {tenantToDelete?.name}
               </div>
               <Input 
                 value={deleteConfirm}
                 onChange={e => setDeleteConfirm(e.target.value)}
                 placeholder="Enter workspace name exactly"
-                className="h-12 bg-muted/30 border-none rounded-xl focus-visible:ring-red-500 text-center font-bold"
+                className="h-10 bg-background border border-border rounded-none focus-visible:ring-red-500 text-center font-bold text-sm"
               />
             </div>
           </div>
-          <DialogFooter className="p-8 bg-muted/10 border-t gap-3">
-            <Button variant="ghost" onClick={() => setTenantToDelete(null)} className="rounded-xl font-bold h-12 px-6">Keep Workspace</Button>
+          
+          <DialogFooter className="p-6 bg-muted/10 border-t border-border gap-2">
+            <Button variant="ghost" onClick={() => setTenantToDelete(null)} className="rounded-none font-bold text-xs h-10 px-4">Keep Workspace</Button>
             <Button 
               variant="destructive" 
-              className="rounded-xl font-black uppercase h-12 px-8 shadow-lg shadow-red-200"
+              className="rounded-none font-bold uppercase text-xs h-10 px-5 shadow-none"
               disabled={deleteConfirm !== tenantToDelete?.name || isDeleting}
               onClick={handleDeleteTenant}
             >
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Erase Permanently
+              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin mr-1.5" /> : <Trash2 className="h-4 w-4 mr-1.5" />}
+              Erase Workspace
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1019,65 +947,60 @@ export default function WorkspaceSelectionPage() {
 
       {/* Account Plan Management Dialog */}
       <Dialog open={isAccountPlanOpen} onOpenChange={setIsAccountPlanOpen}>
-        <DialogContent className="rounded-[2.5rem] border-none shadow-2xl p-0 overflow-hidden lg:max-w-4xl flex flex-col max-h-[90vh]">
-          <DialogHeader className="p-10 bg-primary/5 border-b relative">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 blur-3xl rounded-full -mr-16 -mt-16" />
-            <DialogTitle className="text-3xl font-black uppercase tracking-tight flex items-center gap-3">
-              <Zap className="h-8 w-8 text-primary fill-current" /> Account Plans
+        <DialogContent className="rounded-none border border-border bg-background shadow-none p-0 overflow-hidden lg:max-w-4xl flex flex-col max-h-[90vh]">
+          <DialogHeader className="p-8 border-b border-border bg-muted/20 flex-shrink-0">
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight text-foreground flex items-center gap-2">
+              <Zap className="h-6 w-6 text-orange-500 fill-orange-500" /> Account Plans
             </DialogTitle>
-            <DialogDescription className="text-base font-medium">
-              Manage your personal account limits and capabilities.
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Select or upgrade your account tier. Limits scale per plan.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="flex-1 overflow-y-auto p-10">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {accountPlans.map((plan) => {
+          <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {accountPlans.slice(0, 3).map((plan) => {
                 const isCurrent = session?.user?.plan === plan.id
                 
                 return (
                   <Card 
                     key={plan.id}
                     className={cn(
-                      "rounded-[2rem] border-2 transition-all duration-300 relative group overflow-hidden",
+                      "rounded-none border shadow-none relative transition-colors",
                       isCurrent 
-                        ? "border-primary bg-primary/[0.02] shadow-xl" 
-                        : "border-muted hover:border-primary/30 hover:shadow-lg"
+                        ? "border-orange-500 bg-orange-500/[0.01]" 
+                        : "border-border hover:border-zinc-300"
                     )}
                   >
                     {isCurrent && (
-                      <div className="absolute top-4 right-4 bg-primary text-primary-foreground text-[8px] font-black uppercase px-2 py-1 rounded-full shadow-lg z-10">
-                        Current
+                      <div className="absolute top-3 right-3 bg-orange-500 text-white text-[8px] font-bold uppercase px-2 py-0.5 rounded-none">
+                        Active
                       </div>
                     )}
                     
-                    <CardContent className="p-8 space-y-6">
-                      <div className="space-y-1">
-                        <h4 className="text-sm font-black uppercase tracking-widest text-muted-foreground italic">{plan.name}</h4>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-black tracking-tighter">{plan.price}</span>
-                          <span className="text-[10px] font-bold text-muted-foreground uppercase">/ mo</span>
-                        </div>
-                      </div>
-
+                    <CardContent className="p-6 space-y-4 flex flex-col justify-between h-full">
                       <div className="space-y-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                        <div className="space-y-1">
+                          <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{plan.name}</h4>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-bold">{plan.price}</span>
+                            <span className="text-[10px] text-muted-foreground uppercase">/mo</span>
                           </div>
-                          <span className="text-xs font-bold">{plan.workspaces} Workspaces</span>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+
+                        <div className="space-y-2 pt-2">
+                          <div className="flex items-center gap-2 text-xs text-foreground">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-orange-500" />
+                            <span>{plan.workspaces} Workspaces</span>
                           </div>
-                          <span className="text-xs font-bold">Unlimited Content Types</span>
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="w-5 h-5 rounded-full bg-emerald-100 flex items-center justify-center">
-                            <CheckCircle2 className="h-3 w-3 text-emerald-600" />
+                          <div className="flex items-center gap-2 text-xs text-foreground">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-orange-500" />
+                            <span>Unlimited Content schemas</span>
                           </div>
-                          <span className="text-xs font-bold">Standard Support</span>
+                          <div className="flex items-center gap-2 text-xs text-foreground">
+                            <CheckCircle2 className="h-3.5 w-3.5 text-orange-500" />
+                            <span>Standard Support SLAs</span>
+                          </div>
                         </div>
                       </div>
 
@@ -1085,13 +1008,13 @@ export default function WorkspaceSelectionPage() {
                         disabled={isCurrent || isUpdatingUserPlan}
                         onClick={() => handleUpdateUserPlan(plan.id)}
                         className={cn(
-                          "w-full h-12 rounded-xl font-black uppercase tracking-widest text-[10px] shadow-lg transition-all",
+                          "w-full h-10 rounded-none font-bold uppercase text-xs border transition-colors mt-4",
                           isCurrent 
-                            ? "bg-muted text-muted-foreground shadow-none" 
-                            : "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:scale-[1.02]"
+                            ? "bg-muted border-border text-muted-foreground" 
+                            : "bg-orange-500 border-none hover:bg-orange-600 text-white"
                         )}
                       >
-                        {isUpdatingUserPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? "Active Plan" : `Upgrade to ${plan.name}`}
+                        {isUpdatingUserPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? "Active Plan" : "Upgrade"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1099,21 +1022,21 @@ export default function WorkspaceSelectionPage() {
               })}
             </div>
             
-            <div className="mt-10 p-6 rounded-3xl bg-muted/30 border border-muted flex gap-4 items-center">
-              <div className="w-12 h-12 rounded-2xl bg-white flex items-center justify-center shadow-sm">
-                <ShieldCheck className="h-6 w-6 text-primary" />
+            <div className="p-4 rounded-none bg-zinc-50 border border-border dark:bg-zinc-900/30 flex gap-4 items-center">
+              <div className="w-10 h-10 bg-background border border-border flex items-center justify-center shrink-0">
+                <ShieldCheck className="h-5 w-5 text-orange-500" />
               </div>
-              <div className="space-y-1">
-                <p className="text-xs font-black uppercase tracking-widest leading-none">Enterprise & Custom Needs</p>
-                <p className="text-[11px] text-muted-foreground font-medium italic">
-                  Looking for dedicated infrastructure, on-premise solutions, or custom SLA? <a href="#" className="text-primary font-bold hover:underline">Contact our sales team</a> for a tailored package.
+              <div className="space-y-0.5">
+                <p className="text-xs font-bold uppercase tracking-wider">Enterprise Dedicated Limits</p>
+                <p className="text-[11px] text-muted-foreground leading-relaxed italic">
+                  Need massive custom storage, custom routing domains, isolated database shards, or custom legal agreements? <a href="#" className="text-orange-500 font-bold hover:underline">Contact sales support</a>.
                 </p>
               </div>
             </div>
           </div>
           
-          <DialogFooter className="p-8 bg-muted/10 border-t">
-            <Button variant="ghost" onClick={() => setIsAccountPlanOpen(false)} className="rounded-xl font-bold h-12 px-8">Close Manager</Button>
+          <DialogFooter className="p-4 border-t border-border bg-muted/10 flex-shrink-0">
+            <Button variant="ghost" onClick={() => setIsAccountPlanOpen(false)} className="rounded-none font-bold text-xs h-10 px-5">Close Manager</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

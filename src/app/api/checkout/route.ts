@@ -158,7 +158,7 @@ export async function POST(request: NextRequest) {
         status: 'pending',
         subscriptionId: subscription.id,
         // Store addon info in rawResponse for later processing in webhook
-        rawResponse: isAddon ? JSON.stringify({ isAddon, addonId: planId }) : null
+        rawResponse: isAddon ? { isAddon, addonId: planId } as any : null
       },
     })
 

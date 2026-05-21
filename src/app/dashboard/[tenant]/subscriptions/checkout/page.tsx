@@ -9,9 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { 
   Loader2, CreditCard, ShieldCheck, CheckCircle2, 
-  ArrowLeft, Zap, Lock, AlertCircle, Info
+  ArrowLeft, Zap, Lock, AlertCircle, Info, Check
 } from "lucide-react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
@@ -30,9 +29,43 @@ export default function CheckoutPage() {
   const [proration, setProration] = useState<any>(null)
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(true)
+  const [loadingTenants, setLoadingTenants] = useState(true)
   const [snapToken, setSnapToken] = useState<string | null>(null)
+  const [liveTenants, setLiveTenants] = useState<any[]>([])
 
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  useEffect(() => {
+    async function fetchLiveTenants() {
+      try {
+        setLoadingTenants(true)
+        const res = await fetch("/api/tenants")
+        if (res.ok) {
+          const data = await res.json()
+          setLiveTenants(data.tenants || [])
+        }
+      } catch (error) {
+        console.error("Failed to fetch live tenants in checkout:", error)
+      } finally {
+        setLoadingTenants(false)
+      }
+    }
+    if (status === "authenticated" && session?.user) {
+      fetchLiveTenants()
+    } else if (status === "unauthenticated") {
+      setLoadingTenants(false)
+    }
+  }, [session, status])
+
+  const tenants = useMemo(() => {
+    const staticTenants = session?.user?.tenants || []
+    const combined = [...staticTenants]
+    for (const t of liveTenants) {
+      if (!combined.some(x => x.id === t.id)) {
+        combined.push(t)
+      }
+    }
+    return combined
+  }, [session, liveTenants])
+
   const currentTenant = useMemo(() => 
     tenants.find(t => t.slug === tenantSlug || t.id === tenantSlug), 
     [tenants, tenantSlug]
@@ -98,7 +131,8 @@ export default function CheckoutPage() {
   }, [])
 
   const handleCheckout = async () => {
-    if (!currentTenant) {
+    const isAccount = tenantSlug === "account"
+    if (!currentTenant && !isAccount) {
       console.error("Missing tenant data. TenantSlug:", tenantSlug, "Available tenants:", tenants);
       toast({ variant: "destructive", title: "Error", description: "Tenant information not found. Please try again." });
       return
@@ -117,8 +151,9 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          tenantId: currentTenant.id,
-          interval: interval
+          tenantId: isAccount ? null : currentTenant?.id,
+          interval: interval,
+          type: isAccount ? "account" : "tenant"
         }),
       })
 
@@ -174,10 +209,10 @@ export default function CheckoutPage() {
     }).format(amount)
   }
 
-  if (initializing || !plan) {
+  if (initializing || !plan || loadingTenants) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
@@ -189,42 +224,41 @@ export default function CheckoutPage() {
   const total = subtotal + tax
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 lg:p-12 max-w-6xl mx-auto space-y-8">
+    <div className="flex relative flex-1 flex-col w-full">
+<div className="flex-1 min-w-0 h-full overflow-x-hidden bg-background text-foreground flex-col w-full">
+        <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
           
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl">
+            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted border border-border">
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Checkout</h1>
-              <p className="text-muted-foreground">Review your plan and complete the payment.</p>
+              <h1 className="text-3xl font-black uppercase tracking-tight">Checkout</h1>
+              <p className="text-xs text-muted-foreground font-medium mt-1">Review your plan and complete the payment securely.</p>
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="md:col-span-2 space-y-6">
               {/* Order Summary */}
-              <Card className="border-none shadow-sm rounded-3xl overflow-hidden bg-card">
-                <CardHeader className="bg-muted/20 border-b p-6">
+              <Card className="border border-border shadow-none rounded-none overflow-hidden bg-card text-card-foreground">
+                <CardHeader className="bg-muted/10 border-b border-border p-6 rounded-none">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-bold">Review Order</CardTitle>
-                    <Badge variant="outline" className="rounded-lg font-bold uppercase tracking-tight">
+                    <CardTitle className="text-lg font-black uppercase tracking-tight">Review Order</CardTitle>
+                    <Badge variant="outline" className="rounded-none border-border font-black uppercase tracking-widest text-[9px]">
                       {interval === 'year' ? 'Annual' : 'Monthly'}
                     </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="p-8 space-y-6">
-                  <div className="flex items-center justify-between p-6 rounded-2xl bg-primary/5 border border-primary/10">
+                  <div className="flex items-center justify-between p-6 rounded-none bg-muted/30 border border-border">
                     <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                      <div className="w-14 h-14 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 shrink-0">
                         <Zap className="h-7 w-7" />
                       </div>
                       <div>
-                        <p className="font-black text-xl tracking-tight">{plan.name}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-[0.2em]">{interval === 'year' ? 'Yearly Billing' : 'Monthly Billing'}</p>
+                        <p className="font-black text-xl uppercase tracking-tight">{plan.name}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">{interval === 'year' ? 'Yearly Billing' : 'Monthly Billing'}</p>
                       </div>
                     </div>
                     <div className="text-right">
@@ -233,38 +267,38 @@ export default function CheckoutPage() {
                   </div>
 
                   <div className="space-y-4 pt-2">
-                    <div className="flex justify-between text-sm font-medium">
-                      <span className="text-muted-foreground">Plan Price</span>
-                      <span>{formatPrice(basePrice)}</span>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      <span>Plan Price</span>
+                      <span className="text-foreground">{formatPrice(basePrice)}</span>
                     </div>
                     
                     {credit > 0 && (
-                      <div className="flex justify-between text-sm font-medium text-emerald-600">
+                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-orange-500">
                         <span className="flex items-center gap-1.5">
-                          <CheckCircle2 className="h-4 w-4" /> Unused Credit ({proration.currentPlan})
+                          <Check className="h-4 w-4" /> Unused Credit ({proration.currentPlan})
                         </span>
                         <span>-{formatPrice(credit)}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between text-sm font-medium">
-                      <span className="text-muted-foreground">Subtotal</span>
-                      <span>{formatPrice(subtotal)}</span>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      <span>Subtotal</span>
+                      <span className="text-foreground">{formatPrice(subtotal)}</span>
                     </div>
 
-                    <div className="flex justify-between text-sm font-medium">
-                      <span className="text-muted-foreground">PPN (11%)</span>
-                      <span>{formatPrice(tax)}</span>
+                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      <span>PPN (11%)</span>
+                      <span className="text-foreground">{formatPrice(tax)}</span>
                     </div>
                     
-                    <Separator className="my-4 bg-muted/60" />
+                    <Separator className="my-4 bg-border" />
                     
                     <div className="flex justify-between items-end">
                       <div>
-                        <span className="text-lg font-bold">Total Amount</span>
-                        {credit > 0 && <p className="text-[10px] text-emerald-600 font-bold uppercase tracking-tight">Proration applied</p>}
+                        <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
+                        {credit > 0 && <p className="text-[9px] text-orange-500 font-black uppercase tracking-widest mt-0.5">Proration applied</p>}
                       </div>
-                      <span className="text-3xl font-black text-primary tracking-tighter">{formatPrice(total)}</span>
+                      <span className="text-3xl font-black text-foreground tracking-tight">{formatPrice(total)}</span>
                     </div>
                   </div>
                 </CardContent>
@@ -272,23 +306,23 @@ export default function CheckoutPage() {
 
               {/* Proration Info (if applicable) */}
               {proration && proration.credit > 0 && (
-                <div className="p-5 bg-blue-50 border border-blue-100 rounded-2xl flex gap-4 text-blue-800 shadow-sm">
-                  <Info className="h-5 w-5 shrink-0 mt-0.5 text-blue-500" />
+                <div className="p-5 bg-orange-500/5 border border-orange-500/10 rounded-none flex gap-4 text-orange-500 shadow-none">
+                  <Info className="h-5 w-5 shrink-0 mt-0.5 text-orange-500" />
                   <div className="space-y-1">
-                    <p className="text-xs font-bold uppercase tracking-tight">Proration applied</p>
-                    <p className="text-[11px] leading-relaxed opacity-80">
-                      We've credited <strong>{formatPrice(proration.credit)}</strong> from your unused time on the <strong>{proration.currentPlan}</strong> plan toward this upgrade.
+                    <p className="text-xs font-black uppercase tracking-widest">Proration applied</p>
+                    <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
+                      We've credited <strong className="text-foreground">{formatPrice(proration.credit)}</strong> from your unused time on the <strong className="text-foreground">{proration.currentPlan}</strong> plan toward this upgrade.
                     </p>
                   </div>
                 </div>
               )}
 
               {/* Security Hint */}
-              <div className="p-5 bg-zinc-50 border border-zinc-200 rounded-2xl flex gap-4 text-zinc-600 shadow-sm">
-                <Lock className="h-5 w-5 shrink-0 mt-0.5 text-zinc-400" />
+              <div className="p-5 bg-card border border-border rounded-none flex gap-4 text-muted-foreground shadow-none">
+                <Lock className="h-5 w-5 shrink-0 mt-0.5 text-orange-500" />
                 <div className="space-y-1">
-                  <p className="text-xs font-bold uppercase tracking-tight text-zinc-800">Secure Payment</p>
-                  <p className="text-[11px] leading-relaxed opacity-80">
+                  <p className="text-xs font-black uppercase tracking-widest text-foreground">Secure Payment</p>
+                  <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
                     Your transaction is processed securely via <strong>Midtrans</strong>. We do not store your credit card or sensitive financial information on our servers.
                   </p>
                 </div>
@@ -296,31 +330,31 @@ export default function CheckoutPage() {
             </div>
 
             <div className="space-y-6">
-              <Card className="border-none shadow-xl bg-zinc-900 text-white rounded-3xl overflow-hidden">
-                <CardHeader className="p-6 pb-0">
-                  <CardTitle className="text-base font-bold uppercase tracking-widest opacity-50">Summary</CardTitle>
+              <Card className="border border-border shadow-none bg-card text-foreground rounded-none overflow-hidden">
+                <CardHeader className="p-6 pb-0 rounded-none">
+                  <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Summary</CardTitle>
                 </CardHeader>
                 <CardContent className="p-6 space-y-6">
                   <div className="space-y-2">
-                    <p className="text-xs font-bold text-zinc-400">Workspace</p>
-                    <p className="font-bold text-lg truncate">{currentTenant?.name}</p>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{tenantSlug === "account" ? "Account" : "Workspace"}</p>
+                    <p className="font-bold text-lg uppercase tracking-tight truncate">{tenantSlug === "account" ? session?.user?.name || "Personal Account" : currentTenant?.name}</p>
                   </div>
                   <div className="space-y-2">
-                    <p className="text-xs font-bold text-zinc-400">Selected Plan</p>
-                    <Badge className="bg-emerald-500 text-white border-none font-black text-[10px]">{plan.name}</Badge>
+                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Selected Plan</p>
+                    <Badge className="bg-orange-500 text-white hover:bg-orange-600 border-none font-black text-[10px] px-2 py-0.5 rounded-none uppercase tracking-widest">{plan.name}</Badge>
                   </div>
                   
-                  <Separator className="bg-white/10" />
+                  <Separator className="bg-border" />
                   
                   <Button 
-                    className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground font-black text-lg rounded-2xl shadow-2xl shadow-primary/20"
+                    className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-none shadow-none border-none"
                     onClick={handleCheckout}
                     disabled={loading}
                   >
-                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : <><CreditCard className="mr-2 h-5 w-5" /> PAY NOW</>}
+                    {loading ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : <><CreditCard className="mr-2 h-5 w-5" /> PAY NOW</>}
                   </Button>
                   
-                  <p className="text-[10px] text-center text-zinc-500 font-medium">
+                  <p className="text-[10px] text-center text-muted-foreground font-medium">
                     By clicking "Pay Now", you agree to our Terms of Service and Subscription Agreement.
                   </p>
                 </CardContent>
@@ -337,7 +371,7 @@ export default function CheckoutPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { collectSystemMetrics } from "@/lib/monitoring"
 
 // GET /api/admin/monitoring/metrics - Get system metrics
 export async function GET() {
@@ -14,9 +15,12 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    // Trigger precise real-time hardware metric aggregation and DB logging
+    const freshMetrics = await collectSystemMetrics()
+
     const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000)
 
-    // Get latest metrics from DB
+    // Get latest metrics from DB within the last hour
     const latestMetrics = await db.systemMetric.findMany({
       where: { timestamp: { gte: oneHourAgo } },
       orderBy: { timestamp: "desc" },
@@ -30,29 +34,14 @@ export async function GET() {
       return true
     })
 
-    // If no metrics exist, return runtime estimates
-    if (metrics.length === 0) {
-      const memUsage = process.memoryUsage()
-      const memPercent = Math.round((memUsage.heapUsed / memUsage.heapTotal) * 100)
-
-      // Count recent API requests for request rate
-      const recentRequests = await db.apiRequest.count({
-        where: { createdAt: { gte: oneHourAgo } },
-      })
-
-      const errorRequests = await db.apiRequest.count({
-        where: {
-          createdAt: { gte: oneHourAgo },
-          statusCode: { gte: 500 },
-        },
-      })
-
+    // Fallback logic if database query returned nothing, using the fresh metrics collected
+    if (metrics.length === 0 && freshMetrics) {
       return NextResponse.json({
         metrics: [
-          { type: "cpu", value: 0, metadata: null, timestamp: new Date().toISOString() },
-          { type: "memory", value: memPercent, metadata: JSON.stringify({ heapUsed: memUsage.heapUsed, heapTotal: memUsage.heapTotal }), timestamp: new Date().toISOString() },
-          { type: "requests", value: recentRequests, metadata: null, timestamp: new Date().toISOString() },
-          { type: "errors", value: errorRequests, metadata: null, timestamp: new Date().toISOString() },
+          { type: "cpu", value: freshMetrics.cpu, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
+          { type: "memory", value: freshMetrics.memory, metadata: JSON.stringify(freshMetrics.memoryMetadata), timestamp: freshMetrics.timestamp.toISOString() },
+          { type: "requests", value: freshMetrics.requests, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
+          { type: "errors", value: freshMetrics.errors, metadata: null, timestamp: freshMetrics.timestamp.toISOString() },
         ],
       })
     }

@@ -16,7 +16,6 @@ import {
   User, Building2, Eye, ShieldCheck, ChevronLeft, ChevronRight,
   Terminal, Copy, Check
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -105,18 +104,16 @@ export default function AdminAuditLogsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
@@ -250,7 +247,7 @@ export default function AdminAuditLogsPage() {
                   size="sm" 
                   onClick={() => fetchLogs(page - 1)} 
                   disabled={page === 1 || refreshing}
-                  className="h-8 rounded-lg"
+                  className="h-8 rounded-none border border-border"
                 >
                   <ChevronLeft className="h-4 w-4 mr-1" /> Prev
                 </Button>
@@ -259,7 +256,7 @@ export default function AdminAuditLogsPage() {
                   size="sm" 
                   onClick={() => fetchLogs(page + 1)} 
                   disabled={page === totalPages || refreshing}
-                  className="h-8 rounded-lg"
+                  className="h-8 rounded-none border border-border"
                 >
                   Next <ChevronRight className="h-4 w-4 ml-1" />
                 </Button>
@@ -268,8 +265,8 @@ export default function AdminAuditLogsPage() {
           </Card>
 
           {/* Security Banner */}
-          <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-2xl flex gap-4 text-emerald-800 shadow-sm">
-            <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center shrink-0">
+          <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-none flex gap-4 text-emerald-800 shadow-sm">
+            <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-200">
               <ShieldCheck className="h-6 w-6 text-emerald-600" />
             </div>
             <div>
@@ -283,11 +280,11 @@ export default function AdminAuditLogsPage() {
 
         {/* JSON Inspector Dialog */}
         <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
-          <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden">
+          <DialogContent className="sm:max-w-[600px] rounded-none border border-border shadow-none p-0 overflow-hidden bg-card">
             <DialogHeader className="p-6 bg-muted/30 border-b">
               <div className="flex items-center justify-between mr-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                  <div className="w-10 h-10 rounded-none border border-border bg-primary/10 flex items-center justify-center text-primary">
                     <Terminal className="h-5 w-5" />
                   </div>
                   <div>
@@ -295,7 +292,7 @@ export default function AdminAuditLogsPage() {
                     <DialogDescription className="text-xs">Detailed data payload for log ID: {selectedLog?.id}</DialogDescription>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="h-8 rounded-lg" onClick={handleCopyJson}>
+                <Button variant="outline" size="sm" className="h-8 rounded-none border border-border" onClick={handleCopyJson}>
                   {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
                   {copied ? "Copied" : "Copy JSON"}
                 </Button>
@@ -305,11 +302,11 @@ export default function AdminAuditLogsPage() {
               {selectedLog?.data ? (
                 <div className="space-y-4">
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-xl bg-muted/20 border">
+                    <div className="p-3 rounded-none bg-muted/20 border border-border">
                       <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Actor Identity</p>
                       <p className="text-xs font-bold">{selectedLog.userId || "SYSTEM"}</p>
                     </div>
-                    <div className="p-3 rounded-xl bg-muted/20 border">
+                    <div className="p-3 rounded-none bg-muted/20 border border-border">
                       <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Source IP</p>
                       <p className="text-xs font-mono font-bold">{selectedLog.ipAddress || "::1"}</p>
                     </div>
@@ -328,7 +325,7 @@ export default function AdminAuditLogsPage() {
             </div>
           </DialogContent>
         </Dialog>
-      </main>
+      </div>
     </div>
   )
 }

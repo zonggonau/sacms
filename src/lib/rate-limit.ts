@@ -1,8 +1,8 @@
 import { getRedis } from "@/lib/redis"
 
 /**
- * Rate limiter with Redis support and in-memory fallback.
- * Uses Redis INCR + TTL for distributed rate limiting when available.
+ * Rate limiter with Upstash Redis support (Edge compatible) and in-memory fallback.
+ * Uses Redis INCR + EXPIRE for distributed rate limiting.
  */
 
 interface RateLimitEntry {
@@ -13,14 +13,16 @@ interface RateLimitEntry {
 const store = new Map<string, RateLimitEntry>()
 
 // Cleanup stale entries periodically
-setInterval(() => {
-  const now = Date.now()
-  for (const [key, entry] of store) {
-    if (entry.resetAt < now) {
-      store.delete(key)
+if (typeof window === "undefined") {
+  setInterval(() => {
+    const now = Date.now()
+    for (const [key, entry] of store) {
+      if (entry.resetAt < now) {
+        store.delete(key)
+      }
     }
-  }
-}, 60_000)
+  }, 60_000)
+}
 
 interface RateLimitConfig {
   /** Max requests per window */
@@ -49,12 +51,15 @@ export async function rateLimit(
   if (redis) {
     try {
       const redisKey = `cf:rl:${identifier}`
-      const count = await redis.incr(redisKey)
-      if (count === 1) {
-        await redis.expire(redisKey, config.windowSeconds)
-      }
-      const ttl = await redis.ttl(redisKey)
-      const resetAt = Date.now() + ttl * 1000
+      
+      // Atomic INCR + EXPIRE using pipeline
+      const p = redis.pipeline()
+      p.incr(redisKey)
+      p.expire(redisKey, config.windowSeconds)
+      const results = await p.exec()
+      
+      const count = results[0] as number
+      const resetAt = Date.now() + config.windowSeconds * 1000
 
       return {
         success: count <= config.limit,
@@ -62,8 +67,9 @@ export async function rateLimit(
         remaining: Math.max(0, config.limit - count),
         resetAt,
       }
-    } catch {
-      // Redis failed, fall through to in-memory
+    } catch (error) {
+      console.error("Rate limit Redis error:", error)
+      // Fall through to in-memory
     }
   }
 
@@ -126,7 +132,7 @@ export const RATE_LIMITS = {
  * Returns rate limit configuration based on tenant plan.
  */
 export function getTenantRateLimit(plan: string): RateLimitConfig {
-  switch (plan.toLowerCase()) {
+  switch (plan?.toLowerCase()) {
     case "enterprise":
       return { limit: 2000, windowSeconds: 60 } // 2000 RPM
     case "pro":

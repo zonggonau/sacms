@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { 
   DropdownMenu, 
   DropdownMenuContent, 
@@ -152,19 +151,17 @@ export default function ContentTypeEntriesPage() {
 
   if (loading && entries.length === 0) {
     return (
-      <div className="flex min-h-screen">
-        <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-        <main className="flex-1 flex items-center justify-center">
+      <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -182,7 +179,7 @@ export default function ContentTypeEntriesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search entries..."
-                  className="pl-9 pr-9 h-10 rounded-xl bg-card border-none shadow-sm focus-visible:ring-primary"
+                  className="pl-9 pr-9 h-10 rounded-none bg-card border-none shadow-none focus-visible:ring-primary"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -195,16 +192,16 @@ export default function ContentTypeEntriesPage() {
                   </button>
                 )}
               </div>
-              <Button className="bg-primary hover:bg-primary/90 shadow-lg shadow-primary/20 h-10 rounded-xl font-bold" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}>
+              <Button className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}>
                 <Plus className="mr-2 h-4 w-4" /> New Entry
               </Button>
             </div>
           </div>
 
-          <Card className="border-none shadow-sm overflow-hidden bg-card">
+          <Card className="border-none shadow-none overflow-hidden bg-card">
             <CardContent className="p-0">
               {loading && entries.length > 0 && (
-                <div className="absolute inset-0 bg-white/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
+                <div className="absolute inset-0 bg-card/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
                   <Loader2 className="h-6 w-6 animate-spin text-primary" />
                 </div>
               )}
@@ -242,7 +239,7 @@ export default function ContentTypeEntriesPage() {
                       return (
                         <TableRow key={entry.id} className="group hover:bg-muted/5 transition-colors">
                           <TableCell className="pl-6">
-                            <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center overflow-hidden border shadow-sm">
+                            <div className="w-10 h-10 rounded-none bg-muted flex items-center justify-center overflow-hidden border shadow-none">
                               {coverUrl ? (
                                 <img src={coverUrl} alt="" className="w-full h-full object-cover" />
                               ) : (
@@ -272,12 +269,12 @@ export default function ContentTypeEntriesPage() {
                           <TableCell>
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button className={cn("inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-[9px] font-black border hover:opacity-80 transition-opacity", statusCfg.bg)}>
-                                  <span className={cn("h-1 w-1 rounded-full", statusCfg.dot)} />
+                                <button className={cn("inline-flex items-center gap-1.5 rounded-none px-2 py-0.5 text-[9px] font-black border hover:opacity-80 transition-opacity", statusCfg.bg)}>
+                                  <span className={cn("h-1 w-1 rounded-none", statusCfg.dot)} />
                                   {statusCfg.label.toUpperCase()}
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="w-40 rounded-xl">
+                              <DropdownMenuContent align="start" className="w-40 rounded-none">
                                 <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Set Status</DropdownMenuLabel>
                                 <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "DRAFT")} className="text-xs font-bold">
                                   <FileText className="mr-2 h-3.5 w-3.5 text-gray-400" /> Draft
@@ -296,13 +293,13 @@ export default function ContentTypeEntriesPage() {
                           </TableCell>
                           <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-1">
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(entry.id)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(entry.id)}>
                                 <Trash2 className="h-4 w-4" />
                               </Button>
                             </div>
@@ -316,7 +313,7 @@ export default function ContentTypeEntriesPage() {
             </CardContent>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

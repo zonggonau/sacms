@@ -44,8 +44,8 @@ export function WorkflowStatusBadge({ status, size = "sm" }: { status: string; s
   }
 
   return (
-    <span className={`inline-flex items-center gap-1.5 rounded-full font-medium ${cfg.bg} ${cfg.text} ${sizes[size]}`}>
-      <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+    <span className={`inline-flex items-center gap-1.5 rounded-none font-medium ${cfg.bg} ${cfg.text} ${sizes[size]}`}>
+      <span className={`h-1.5 w-1.5 rounded-none ${cfg.dot}`} />
       {cfg.label}
     </span>
   )
@@ -54,7 +54,7 @@ export function WorkflowStatusBadge({ status, size = "sm" }: { status: string; s
 export function WorkflowStatusDot({ status }: { status: string }) {
   const cfg = resolveStatus(status)
   if (!cfg) return null
-  return <span className={`h-2 w-2 rounded-full ${cfg.dot}`} title={cfg.label} />
+  return <span className={`h-2 w-2 rounded-none ${cfg.dot}`} title={cfg.label} />
 }
 
 export function WorkflowPipeline({ entries }: { entries: Record<string, number> }) {
@@ -63,7 +63,7 @@ export function WorkflowPipeline({ entries }: { entries: Record<string, number> 
 
   return (
     <div>
-      <div className="flex h-2.5 rounded-full overflow-hidden mb-2">
+      <div className="flex h-2.5 rounded-none overflow-hidden mb-2">
         {Object.entries(entries).map(([key, count]) => {
           if (count === 0) return null
           const cfg = resolveStatus(key)
@@ -77,8 +77,8 @@ export function WorkflowPipeline({ entries }: { entries: Record<string, number> 
           const cfg = resolveStatus(key)
           if (!cfg) return null
           return (
-            <span key={key} className={`inline-flex items-center gap-1.5 rounded-md px-2 py-0.5 text-xs font-medium ${cfg.bg} ${cfg.text}`}>
-              <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
+            <span key={key} className={`inline-flex items-center gap-1.5 rounded-none px-2 py-0.5 text-xs font-medium ${cfg.bg} ${cfg.text}`}>
+              <span className={`h-1.5 w-1.5 rounded-none ${cfg.dot}`} />
               {cfg.label} <span className="font-bold">{count}</span>
             </span>
           )

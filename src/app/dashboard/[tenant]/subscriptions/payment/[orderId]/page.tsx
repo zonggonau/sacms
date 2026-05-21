@@ -75,13 +75,29 @@ export default function PaymentResultPage() {
   const getStatusIcon = () => {
     switch (status) {
       case "success":
-        return <CheckCircle2 className="h-16 w-16 text-green-500" />
+        return (
+          <div className="w-16 h-16 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500">
+            <CheckCircle2 className="h-10 w-10" />
+          </div>
+        )
       case "failed":
-        return <XCircle className="h-16 w-16 text-red-500" />
+        return (
+          <div className="w-16 h-16 rounded-none bg-destructive/10 border border-destructive/20 flex items-center justify-center text-destructive">
+            <XCircle className="h-10 w-10" />
+          </div>
+        )
       case "pending":
-        return <Clock className="h-16 w-16 text-yellow-500" />
+        return (
+          <div className="w-16 h-16 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 animate-pulse">
+            <Clock className="h-10 w-10" />
+          </div>
+        )
       default:
-        return <Loader2 className="h-16 w-16 animate-spin text-primary" />
+        return (
+          <div className="w-16 h-16 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500">
+            <Loader2 className="h-10 w-10 animate-spin" />
+          </div>
+        )
     }
   }
 
@@ -112,53 +128,53 @@ export default function PaymentResultPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-900 dark:to-slate-800 p-8 flex items-center justify-center">
+    <div className="p-6 lg:p-8 flex items-center justify-center text-foreground flex-1 flex-col w-full">
       <div className="max-w-2xl w-full">
-        <Card>
-          <CardHeader className="text-center pb-4">
-            <div className="flex justify-center mb-4">
+        <Card className="border border-border rounded-none shadow-none bg-card text-card-foreground">
+          <CardHeader className="text-center pb-6 border-b border-border rounded-none">
+            <div className="flex justify-center mb-6">
               {getStatusIcon()}
             </div>
-            <CardTitle className="text-3xl">{getStatusTitle()}</CardTitle>
-            <CardDescription className="text-base mt-2">
+            <CardTitle className="text-3xl font-black uppercase tracking-tight">{getStatusTitle()}</CardTitle>
+            <CardDescription className="text-xs text-muted-foreground font-medium mt-2 max-w-md mx-auto">
               {getStatusMessage()}
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6 space-y-6">
             {error && (
-              <div className="mb-4 p-4 bg-destructive/10 border border-destructive text-destructive rounded-lg">
+              <div className="mb-4 p-4 bg-destructive/10 border border-destructive text-destructive font-bold text-xs uppercase tracking-wider rounded-none">
                 {error}
               </div>
             )}
 
             {transaction && (
-              <div className="space-y-4">
-                <div className="border-t pt-4">
-                  <h3 className="font-semibold mb-3">Transaction Details</h3>
-                  <div className="space-y-2 text-sm">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Transaction Details</h3>
+                  <div className="space-y-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Order ID</span>
-                      <span className="font-mono">{transaction.orderId}</span>
+                      <span>Order ID</span>
+                      <span className="font-mono text-foreground font-black">{transaction.orderId}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Amount</span>
-                      <span className="font-semibold">{formatPrice(transaction.amount)}</span>
+                      <span>Amount</span>
+                      <span className="text-foreground font-black text-sm">{formatPrice(transaction.amount)}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Payment Method</span>
-                      <span className="capitalize">
+                      <span>Payment Method</span>
+                      <span className="text-foreground font-black capitalize">
                         {transaction.paymentType || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Transaction ID</span>
-                      <span className="font-mono">
+                      <span>Transaction ID</span>
+                      <span className="font-mono text-foreground font-black">
                         {transaction.transactionId || "-"}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Date</span>
-                      <span>
+                      <span>Date</span>
+                      <span className="text-foreground font-black">
                         {new Date(transaction.createdAt).toLocaleDateString("id-ID", {
                           day: "numeric",
                           month: "long",
@@ -170,22 +186,22 @@ export default function PaymentResultPage() {
                 </div>
 
                 {transaction.subscription && (
-                  <div className="border-t pt-4">
-                    <h3 className="font-semibold mb-3">Subscription</h3>
-                    <div className="space-y-2 text-sm">
+                  <div className="border-t border-border pt-6">
+                    <h3 className="text-xs font-black uppercase tracking-widest text-muted-foreground mb-4">Subscription</h3>
+                    <div className="space-y-3 text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Plan</span>
-                        <span className="font-semibold capitalize">
+                        <span>Plan</span>
+                        <span className="text-foreground font-black uppercase tracking-widest">
                           {transaction.subscription.plan}
                         </span>
                       </div>
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">Status</span>
+                        <span>Status</span>
                         <span
-                          className={`font-semibold ${
+                          className={`font-black uppercase tracking-widest ${
                             transaction.subscription.status === "active"
-                              ? "text-green-600"
-                              : "text-yellow-600"
+                              ? "text-orange-500"
+                              : "text-orange-500/70"
                           }`}
                         >
                           {transaction.subscription.status}
@@ -197,18 +213,18 @@ export default function PaymentResultPage() {
               </div>
             )}
 
-            <div className="mt-6 flex gap-3">
+            <div className="mt-8 flex flex-col sm:flex-row gap-3">
               <Button
                 onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
                 variant="outline"
-                className="flex-1"
+                className="flex-1 rounded-none font-bold uppercase text-xs h-12 shadow-none border-border hover:bg-muted"
               >
                 Back to Subscriptions
               </Button>
               {status === "success" && (
                 <Button
                   onClick={() => router.push(`/dashboard/${tenantSlug}`)}
-                  className="flex-1"
+                  className="flex-1 rounded-none font-bold uppercase text-xs h-12 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none"
                 >
                   Go to Dashboard
                 </Button>
@@ -216,7 +232,7 @@ export default function PaymentResultPage() {
               {(status === "failed" || status === "pending") && (
                 <Button
                   onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout`)}
-                  className="flex-1"
+                  className="flex-1 rounded-none font-bold uppercase text-xs h-12 bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none"
                 >
                   Try Again
                 </Button>
@@ -224,9 +240,9 @@ export default function PaymentResultPage() {
             </div>
 
             {status === "pending" && (
-              <div className="mt-4 p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  <strong>Note:</strong> Some payment methods (like bank transfers) may take longer
+              <div className="mt-6 p-4 bg-orange-500/5 border border-orange-500/10 rounded-none">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong className="text-orange-500 uppercase tracking-wider block mb-1">Note:</strong> Some payment methods (like bank transfers) may take longer
                   to process. You can check back later or refresh this page to see the latest
                   status.
                 </p>
@@ -239,7 +255,7 @@ export default function PaymentResultPage() {
           <Button
             variant="ghost"
             onClick={() => router.push(`/dashboard/${tenantSlug}`)}
-            className="text-muted-foreground"
+            className="text-muted-foreground hover:text-foreground font-black text-xs uppercase tracking-widest rounded-none"
           >
             ← Back to Dashboard
           </Button>

@@ -125,7 +125,7 @@ export function RelationSelectField({
 
   if (!targetSlug) {
     return (
-      <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex items-center gap-2 text-red-600 text-[10px] font-black uppercase tracking-tighter">
+      <div className="p-3 bg-red-50 border border-red-100 rounded-none flex items-center gap-2 text-red-600 text-[10px] font-black uppercase tracking-tighter">
         <AlertCircle className="h-4 w-4" /> Missing target configuration.
       </div>
     )
@@ -143,19 +143,19 @@ export function RelationSelectField({
       <div className="space-y-2">
         {/* Selected Items Tags */}
         {multiple && selectedIds.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-2.5 bg-muted/20 rounded-2xl border border-dashed border-muted">
+          <div className="flex flex-wrap gap-2 p-2.5 bg-muted/20 rounded-none border border-dashed border-muted">
             {selectedIds.map((id) => {
               const entry = entries.find((e) => e.id === id)
               return (
                 <Badge 
                   key={id} 
                   variant="secondary" 
-                  className="rounded-lg py-1 pl-3 pr-1.5 flex items-center gap-1.5 bg-white border shadow-sm"
+                  className="rounded-none py-1 pl-3 pr-1.5 flex items-center gap-1.5 bg-card border shadow-none"
                 >
                   <span className="text-[11px] font-bold text-slate-800">{entry ? getEntryLabel(entry) : id.substring(0, 8)}</span>
                   <button 
                     onClick={(e) => removeSelected(id, e)}
-                    className="h-4 w-4 rounded-md hover:bg-red-50 hover:text-red-500 transition-colors"
+                    className="h-4 w-4 rounded-none hover:bg-red-50 hover:text-red-500 transition-colors"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -172,7 +172,7 @@ export function RelationSelectField({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "w-full justify-between bg-muted/30 border-none h-11 rounded-xl font-bold px-4 hover:bg-muted/40 transition-all",
+                "w-full justify-between bg-muted/30 border-none h-11 rounded-none font-bold px-4 hover:bg-muted/40 transition-all",
                 !multiple && selectedIds.length > 0 && "text-slate-900",
                 selectedIds.length === 0 && "text-muted-foreground font-normal"
               )}
@@ -190,7 +190,7 @@ export function RelationSelectField({
               <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0 border-none shadow-2xl rounded-2xl overflow-hidden" align="start">
+          <PopoverContent className="w-[400px] p-0 border border-border bg-popover shadow-none rounded-none overflow-hidden" align="start">
             <Command className="rounded-none border-none">
               <CommandInput 
                 placeholder={`Search ${targetSlug}...`} 
@@ -213,11 +213,11 @@ export function RelationSelectField({
                       key={entry.id}
                       value={entry.id}
                       onSelect={() => handleSelect(entry.id)}
-                      className="rounded-xl p-3 font-bold cursor-pointer transition-colors"
+                      className="rounded-none p-3 font-bold cursor-pointer transition-colors"
                     >
                       <div className="flex items-center gap-3 w-full">
                         <div className={cn(
-                          "h-5 w-5 rounded-md border-2 flex items-center justify-center transition-all",
+                          "h-5 w-5 rounded-none border-2 flex items-center justify-center transition-all",
                           selectedIds.includes(entry.id) 
                             ? "bg-primary border-primary" 
                             : "border-muted-foreground/20 bg-transparent"
@@ -243,7 +243,7 @@ export function RelationSelectField({
                  <Button 
                    variant="ghost" 
                    size="sm" 
-                   className="h-7 text-[10px] uppercase font-black px-3 rounded-lg"
+                   className="h-7 text-[10px] uppercase font-black px-3 rounded-none"
                    onClick={() => fetchEntries(searchTerm)}
                  >
                    Refresh
@@ -255,7 +255,7 @@ export function RelationSelectField({
       </div>
 
       {error && (
-        <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2 rounded-lg flex items-center gap-2">
+        <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2 rounded-none flex items-center gap-2">
           <AlertCircle className="h-3 w-3" /> {error}
         </p>
       )}

@@ -68,7 +68,7 @@ export function SchemaGeneratorDialog({
         toast({ 
           title: "AI Success!", 
           description: `${typeLabels[type]} "${data.name}" has been generated. Redirecting...`,
-          className: "bg-emerald-50 border-emerald-200 text-emerald-800"
+          className: "bg-muted border border-border text-foreground rounded-none shadow-none"
         })
         
         onOpenChange(false)
@@ -156,15 +156,15 @@ export function SchemaGeneratorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border-none shadow-2xl rounded-3xl max-h-[90vh] flex flex-col">
-        <div className="bg-gradient-to-br from-emerald-500 to-teal-600 p-8 text-white shrink-0">
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border border-border shadow-none rounded-none max-h-[90vh] flex flex-col bg-card">
+        <div className="bg-muted p-8 border-b border-border text-foreground shrink-0">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-white" />
+            <div className="w-12 h-12 rounded-none bg-muted border border-border flex items-center justify-center">
+              <Sparkles className="h-6 w-6 text-orange-500" />
             </div>
             <div>
-              <DialogTitle className="text-2xl font-black uppercase tracking-tight">AI {typeLabels[type]} Generator</DialogTitle>
-              <DialogDescription className="text-emerald-50/80 font-medium">
+              <DialogTitle className="text-2xl font-black uppercase tracking-tight text-foreground">AI {typeLabels[type]} Generator</DialogTitle>
+              <DialogDescription className="text-muted-foreground font-medium">
                 Describe what you want to build, and AI will architect the schema for you.
               </DialogDescription>
             </div>
@@ -184,7 +184,7 @@ export function SchemaGeneratorDialog({
                     variant="outline"
                     size="sm"
                     onClick={() => setPrompt(t.prompt)}
-                    className="rounded-full text-[10px] font-bold uppercase tracking-tight h-8 border-emerald-100 hover:border-emerald-300 hover:bg-emerald-50"
+                    className="rounded-none text-[10px] font-bold uppercase tracking-tight h-8 border border-border hover:border-orange-500 hover:bg-muted transition-colors"
                   >
                     {t.label}
                   </Button>
@@ -206,36 +206,36 @@ export function SchemaGeneratorDialog({
                 }
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[150px] bg-muted/30 border-none rounded-2xl p-5 text-sm font-medium focus-visible:ring-emerald-500/20"
+                className="min-h-[150px] bg-muted/30 border border-border rounded-none p-5 text-sm font-medium focus-visible:ring-orange-500"
                 disabled={loading}
               />
             </div>
           </div>
 
           {error && (
-            <div className="p-4 rounded-2xl bg-red-50 border border-red-100 flex gap-3 text-red-700">
+            <div className="p-4 rounded-none bg-red-50 border border-red-200 dark:bg-red-950/20 dark:border-red-900 flex gap-3 text-red-600 dark:text-red-400">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p className="text-xs font-bold leading-relaxed">{error}</p>
             </div>
           )}
 
           <div className="grid grid-cols-2 gap-4 pt-2">
-            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-              <p className="text-[10px] font-black uppercase text-emerald-700 tracking-widest mb-1">Architecture</p>
-              <p className="text-[11px] text-emerald-800/70 leading-tight">AI will auto-generate fields, slugs, and data types.</p>
+            <div className="p-4 rounded-none bg-muted/50 border border-border">
+              <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Architecture</p>
+              <p className="text-[11px] text-muted-foreground leading-tight">AI will auto-generate fields, slugs, and data types.</p>
             </div>
-            <div className="p-4 rounded-2xl bg-emerald-50/50 border border-emerald-100">
-              <p className="text-[10px] font-black uppercase text-emerald-700 tracking-widest mb-1">Time Saver</p>
-              <p className="text-[11px] text-emerald-800/70 leading-tight">Generate complex structures in under 10 seconds.</p>
+            <div className="p-4 rounded-none bg-muted/50 border border-border">
+              <p className="text-[10px] font-black uppercase text-orange-500 tracking-widest mb-1">Time Saver</p>
+              <p className="text-[11px] text-muted-foreground leading-tight">Generate complex structures in under 10 seconds.</p>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="p-8 bg-muted/10 border-t gap-3 shrink-0">
+        <DialogFooter className="p-8 bg-muted/10 border-t border-border gap-3 shrink-0">
           <Button 
             variant="ghost" 
             onClick={() => onOpenChange(false)}
-            className="rounded-xl font-bold px-6 h-12"
+            className="rounded-none font-bold px-6 h-12 border border-border hover:bg-muted transition-colors"
             disabled={loading}
           >
             Cancel
@@ -243,7 +243,7 @@ export function SchemaGeneratorDialog({
           <Button 
             onClick={handleGenerate}
             disabled={loading || !prompt}
-            className="flex-1 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 text-white font-black uppercase tracking-widest shadow-lg shadow-emerald-500/20 h-12"
+            className="flex-1 rounded-none bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white border border-zinc-900 dark:border-zinc-100 font-black uppercase tracking-widest h-12 transition-colors"
           >
             {loading ? (
               <>

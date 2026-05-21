@@ -65,73 +65,84 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
   }
 
   const renderSidebarContent = () => (
-    <div className="flex h-full flex-col bg-card border-r shadow-xl">
+    <div className="flex h-full flex-col bg-card border-r border-border shadow-none">
       {/* CMS Header */}
-      <div className="border-b px-6 py-6 bg-emerald-600 dark:bg-emerald-900 text-white">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shadow-inner">
-            <PenTool className="w-6 h-6 text-white" />
+      <div className="border-b border-border px-6 py-6 bg-card">
+        <Link href={href("")} className="flex items-center gap-3">
+          <div className="w-8 h-8 shrink-0 bg-orange-500 flex items-center justify-center rounded-none">
+            <PenTool className="w-4 h-4 text-white" />
           </div>
           <div className="flex flex-col min-w-0">
-            <span className="text-lg font-black tracking-tight leading-none">CMS Portal</span>
-            <span className="text-[10px] opacity-70 font-bold uppercase tracking-widest mt-1">Content Studio</span>
+            <span className="text-sm font-bold text-foreground">SaCMS</span>
+            <span className="text-xs text-muted-foreground">Content Studio</span>
           </div>
-        </div>
+        </Link>
       </div>
 
       <ScrollArea className="flex-1 py-6">
-        <div className="px-4 space-y-8">
+        <div className="px-3 space-y-8">
           {/* General */}
           <div className="space-y-1">
-            <p className="px-4 mb-2 text-[10px] font-black tracking-widest text-muted-foreground uppercase opacity-50">General</p>
+            <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">General</p>
             <Link href={href("")}>
               <div className={cn(
-                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all",
-                pathname === href("") ? "bg-emerald-500/10 text-emerald-600 shadow-sm" : "text-muted-foreground hover:bg-muted"
+                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2",
+                pathname === href("")
+                  ? "bg-muted text-foreground font-semibold border-orange-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
               )}>
-                <LayoutDashboard className="h-4.5 w-4.5" /> Dashboard
+                <LayoutDashboard className={cn("h-4 w-4 shrink-0", pathname === href("") && "text-orange-500")} /> Dashboard
               </div>
             </Link>
             <Link href={href("/media")}>
               <div className={cn(
-                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all",
-                pathname.startsWith(href("/media")) ? "bg-emerald-500/10 text-emerald-600 shadow-sm" : "text-muted-foreground hover:bg-muted"
+                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2",
+                pathname.startsWith(href("/media"))
+                  ? "bg-muted text-foreground font-semibold border-orange-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
               )}>
-                <ImageIcon className="h-4.5 w-4.5" /> Media Library
+                <ImageIcon className={cn("h-4 w-4 shrink-0", pathname.startsWith(href("/media")) && "text-orange-500")} /> Media Library
               </div>
             </Link>
           </div>
 
           {/* Collections */}
           <div className="space-y-1">
-            <p className="px-4 mb-2 text-[10px] font-black tracking-widest text-muted-foreground uppercase opacity-50">Collections</p>
+            <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">Collections</p>
             {assignedContentTypes.length === 0 ? (
-              <p className="px-4 text-[10px] text-muted-foreground italic">No collections assigned</p>
+              <p className="px-2 text-xs text-muted-foreground italic">No collections assigned</p>
             ) : (
-              assignedContentTypes.map(ct => (
-                <Link key={ct.id} href={href(`/content/${ct.slug}`)}>
-                  <div className={cn(
-                    "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all group",
-                    pathname.startsWith(href(`/content/${ct.slug}`)) ? "bg-emerald-500/10 text-emerald-600 shadow-sm" : "text-muted-foreground hover:bg-muted"
-                  )}>
-                    <Database className="h-4 w-4 opacity-50 group-hover:opacity-100" />
-                    <span className="truncate">{ct.name}</span>
-                    <ChevronRight className="ml-auto h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </div>
-                </Link>
-              ))
+              assignedContentTypes.map(ct => {
+                const active = pathname.startsWith(href(`/content/${ct.slug}`))
+                return (
+                  <Link key={ct.id} href={href(`/content/${ct.slug}`)}>
+                    <div className={cn(
+                      "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group",
+                      active
+                        ? "bg-muted text-foreground font-semibold border-orange-500"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
+                    )}>
+                      <Database className={cn("h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100", active && "text-orange-500")} />
+                      <span className="truncate flex-1">{ct.name}</span>
+                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </Link>
+                )
+              })
             )}
           </div>
 
           {/* Single Pages */}
           <div className="space-y-1">
-            <p className="px-4 mb-2 text-[10px] font-black tracking-widest text-muted-foreground uppercase opacity-50">Static Pages</p>
+            <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">Static Pages</p>
             <Link href={href("/single-types")}>
               <div className={cn(
-                "flex items-center gap-3 rounded-xl px-4 py-2.5 text-sm font-bold transition-all",
-                pathname.startsWith(href("/single-types")) ? "bg-emerald-500/10 text-emerald-600 shadow-sm" : "text-muted-foreground hover:bg-muted"
+                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2",
+                pathname.startsWith(href("/single-types"))
+                  ? "bg-muted text-foreground font-semibold border-orange-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
               )}>
-                <Layers className="h-4.5 w-4.5" /> Manage Singles
+                <Layers className={cn("h-4 w-4 shrink-0", pathname.startsWith(href("/single-types")) && "text-orange-500")} /> Manage Singles
               </div>
             </Link>
           </div>
@@ -139,16 +150,16 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
       </ScrollArea>
 
       {/* Footer User Info */}
-      <div className="border-t p-4 space-y-3 bg-muted/20">
-        <div className="flex items-center gap-3 px-2 py-1">
-          <div className="w-9 h-9 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 font-black border-2 border-white shadow-sm">
+      <div className="border-t border-border p-4 space-y-2 bg-card">
+        <div className="flex items-center gap-3">
+          <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
             {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-xs font-black truncate leading-none mb-1">{session?.user?.name}</p>
-            <Badge variant="outline" className="text-[8px] h-3.5 px-1 font-black bg-white/50 border-emerald-200 text-emerald-700">EDITOR</Badge>
+            <p className="text-sm font-semibold text-foreground truncate leading-none mb-1">{session?.user?.name}</p>
+            <Badge variant="outline" className="text-[9px] h-4 px-1.5 rounded-none font-bold bg-muted/30 border-border text-muted-foreground">EDITOR</Badge>
           </div>
-          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
             ) : (
@@ -159,7 +170,7 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-red-50 rounded-xl h-9 text-xs font-bold"
+          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground hover:bg-muted h-8 text-sm rounded-none"
           onClick={handleSignOut}
         >
           <LogOut className="h-4 w-4 text-red-500" />
@@ -172,23 +183,23 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
   return (
     <>
       <Button
-        variant="ghost"
+        variant="outline"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-emerald-600 text-white shadow-lg rounded-xl"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card border-border rounded-none text-foreground"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
       </Button>
 
       {mobileOpen && (
-        <div className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm md:hidden" onClick={() => setMobileOpen(false)} />
+        <div className="fixed inset-0 z-40 bg-zinc-900/50 md:hidden" onClick={() => setMobileOpen(false)} />
       )}
 
-      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 border-r transition-transform duration-300 md:hidden shadow-2xl", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
+      <aside className={cn("fixed inset-y-0 left-0 z-40 w-64 transition-transform duration-200 md:hidden", mobileOpen ? "translate-x-0" : "-translate-x-full")}>
         {renderSidebarContent()}
       </aside>
 
-      <aside className="hidden md:block w-64 border-r shrink-0 sticky top-0 h-screen">
+      <aside className="hidden md:block w-64 shrink-0 sticky top-0 h-screen">
         {renderSidebarContent()}
       </aside>
     </>

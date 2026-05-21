@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
           results.skipped++
           results.invoices.push({
             subscriptionId: subscription.id,
-            tenantId: subscription.tenant.id,
+            tenantId: subscription.tenant!.id,
             amount: 0,
             status: "skipped",
             error: "No billing period end date",
@@ -78,7 +78,7 @@ export async function POST(request: NextRequest) {
           results.skipped++
           results.invoices.push({
             subscriptionId: subscription.id,
-            tenantId: subscription.tenant.id,
+            tenantId: subscription.tenant!.id,
             amount: 0,
             status: "skipped",
             error: "Billing period not yet ended",
@@ -95,7 +95,7 @@ export async function POST(request: NextRequest) {
           results.skipped++
           results.invoices.push({
             subscriptionId: subscription.id,
-            tenantId: subscription.tenant.id,
+            tenantId: subscription.tenant!.id,
             amount: 0,
             status: "skipped",
             error: "Billing overdue by more than 30 days",
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
           results.skipped++
           results.invoices.push({
             subscriptionId: subscription.id,
-            tenantId: subscription.tenant.id,
+            tenantId: subscription.tenant!.id,
             amount: 0,
             status: "skipped",
             error: "Free plan - period extended",
@@ -157,7 +157,7 @@ export async function POST(request: NextRequest) {
         results.processed++
         results.invoices.push({
           subscriptionId: subscription.id,
-          tenantId: subscription.tenant.id,
+          tenantId: subscription.tenant!.id,
           amount: planPrice,
           status: "created",
         })
@@ -171,7 +171,7 @@ export async function POST(request: NextRequest) {
         results.failed++
         results.invoices.push({
           subscriptionId: subscription.id,
-          tenantId: subscription.tenant.id,
+          tenantId: subscription.tenant!.id,
           amount: 0,
           status: "failed",
           error: error instanceof Error ? error.message : "Unknown error",
@@ -227,8 +227,8 @@ export async function GET(request: NextRequest) {
 
     const preview = activeSubscriptions.map((sub) => ({
       subscriptionId: sub.id,
-      tenantName: sub.tenant.name,
-      tenantSlug: sub.tenant.slug,
+      tenantName: sub.tenant!.name,
+      tenantSlug: sub.tenant!.slug,
       plan: sub.plan,
       currentPeriodEnd: sub.currentPeriodEnd,
       planPrice: PLAN_PRICES[sub.plan] || 0,

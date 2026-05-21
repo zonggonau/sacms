@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { toast } from "@/hooks/use-toast"
 import { TextField } from "@/components/content/field-renderers/text-field"
 import { TextareaField } from "@/components/content/field-renderers/textarea-field"
@@ -250,11 +249,10 @@ export default function AdminCreateEntryPage() {
   }
 
   if (loading) return (
-    <div className="flex min-h-screen">
-      <GlobalAdminSidebar />
-      <main className="flex-1 flex items-center justify-center">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </main>
+      </div>
     </div>
   )
 
@@ -264,9 +262,8 @@ export default function AdminCreateEntryPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -360,7 +357,7 @@ export default function AdminCreateEntryPage() {
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

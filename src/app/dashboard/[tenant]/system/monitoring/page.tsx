@@ -12,8 +12,6 @@ import {
   AlertTriangle, CheckCircle2, TrendingUp, TrendingDown,
   Globe, Webhook, Search as SearchIcon, Database,
 } from "lucide-react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-
 interface MonitoringStats {
   api: {
     totalRequests: number
@@ -103,7 +101,7 @@ export default function SystemMonitoringPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center flex-1 flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
@@ -135,9 +133,8 @@ export default function SystemMonitoringPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 min-h-screen overflow-auto">
+    <div className="flex bg-background flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -282,7 +279,7 @@ export default function SystemMonitoringPage() {
             </Card>
           )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }

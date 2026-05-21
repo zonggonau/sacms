@@ -10,11 +10,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Separator } from "@/components/ui/separator"
 import {
   BookOpen, Copy, Check, ExternalLink, Package,
-  Terminal, Code2, Braces, FileCode,
+  Terminal, Code2, FileCode,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-
 export default function SdkDocsPage() {
   const { data: session, status } = useSession()
   const params = useParams()
@@ -57,9 +55,8 @@ export default function SdkDocsPage() {
   )
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 min-h-screen overflow-auto">
+    <div className="flex bg-background flex-1 flex-col w-full">
+<div className="flex-1 min-h-screen flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between">
@@ -82,9 +79,6 @@ export default function SdkDocsPage() {
               </TabsTrigger>
               <TabsTrigger value="rest" className="gap-1.5">
                 <Terminal className="h-3.5 w-3.5" /> REST API
-              </TabsTrigger>
-              <TabsTrigger value="graphql" className="gap-1.5">
-                <Braces className="h-3.5 w-3.5" /> GraphQL
               </TabsTrigger>
               <TabsTrigger value="types" className="gap-1.5">
                 <FileCode className="h-3.5 w-3.5" /> TypeScript Types
@@ -164,25 +158,6 @@ const cf = new SaCMS({
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">GraphQL via SDK</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CodeBlock id="gql" code={`const result = await cf.graphql(\`
-  query {
-    articles(locale: "id", filters: { category: { eq: "tutorial" } }) {
-      data {
-        id
-        title
-        author { name }
-      }
-      meta { pagination { total } }
-    }
-  }
-\`)`} />
-                </CardContent>
-              </Card>
             </TabsContent>
 
             {/* REST Tab */}
@@ -269,79 +244,6 @@ const cf = new SaCMS({
               </Card>
             </TabsContent>
 
-            {/* GraphQL Tab */}
-            <TabsContent value="graphql" className="space-y-4 mt-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-sm">GraphQL Endpoint</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <CodeBlock id="gql-endpoint" lang="bash" code={`POST /api/public/${tenantSlug}/graphql`} />
-                </CardContent>
-              </Card>
-
-              {[
-                {
-                  title: "Query Collection", code: `query {
-  articles(locale: "en", sort: "createdAt:desc", pagination: { page: 1, pageSize: 10 }) {
-    data {
-      id
-      title
-      slug
-      category
-      author { name email }
-    }
-    meta {
-      pagination { total page pageSize pageCount }
-    }
-  }
-}`,
-                },
-                {
-                  title: "Create Entry (Mutation)", code: `mutation {
-  createArticle(data: {
-    title: "Getting Started with SaCMS"
-    slug: "getting-started"
-    category: "tutorial"
-    content: "..."
-  }) {
-    id
-    title
-    status
-  }
-}`,
-                },
-                {
-                  title: "Update Entry (Mutation)", code: `mutation {
-  updateArticle(id: "entry_id", data: {
-    title: "Updated Title"
-  }) {
-    id
-    title
-    updatedAt
-  }
-}`,
-                },
-                {
-                  title: "Publish Entry (Mutation)", code: `mutation {
-  publishArticle(id: "entry_id") {
-    id
-    status
-    publishedAt
-  }
-}`,
-                },
-              ].map((example) => (
-                <Card key={example.title}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm">{example.title}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <CodeBlock id={`gql-${example.title}`} code={example.code} />
-                  </CardContent>
-                </Card>
-              ))}
-            </TabsContent>
 
             {/* TypeScript Types Tab */}
             <TabsContent value="types" className="space-y-4 mt-4">
@@ -418,7 +320,7 @@ interface SingleResponse<T> {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

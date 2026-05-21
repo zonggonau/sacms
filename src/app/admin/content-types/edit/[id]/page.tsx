@@ -37,7 +37,6 @@ import {
   Search,
   Zap,
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
 import { toast } from "@/hooks/use-toast"
@@ -336,7 +335,7 @@ export default function EditGlobalContentTypePage({
     }
   }
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  if (loading) return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
   if (session?.user?.role !== "super_admin") {
     router.push("/dashboard")
@@ -344,9 +343,8 @@ export default function EditGlobalContentTypePage({
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -410,17 +408,17 @@ export default function EditGlobalContentTypePage({
             </div>
           </div>
         </div>
-      </main>
+      </div>
 
       {/* Modals - Same as New Page */}
       <Dialog open={isTypeSelectorOpen} onOpenChange={setIsTypeSelectorOpen}>
-        <DialogContent className="max-w-2xl p-0 border-none shadow-2xl rounded-3xl overflow-hidden">
+        <DialogContent className="max-w-2xl p-0 border border-border shadow-none rounded-none overflow-hidden bg-card">
           <div className="flex flex-col max-h-[85vh]">
             <DialogHeader className="p-6 bg-muted/10 border-b shrink-0">
               <DialogTitle className="text-xl font-black uppercase tracking-tight">Select Attribute Type</DialogTitle>
               <div className="relative mt-4">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input placeholder="Search types..." value={typeSearch} onChange={e => setTypeSearch(e.target.value)} className="pl-10 h-10 bg-card border-none rounded-xl" />
+                <Input placeholder="Search types..." value={typeSearch} onChange={e => setTypeSearch(e.target.value)} className="pl-10 h-10 bg-card border border-border rounded-none" />
               </div>
             </DialogHeader>
             <ScrollArea className="flex-1 overflow-y-auto">
@@ -433,8 +431,8 @@ export default function EditGlobalContentTypePage({
                       <h3 className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">{category}</h3>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         {categoryTypes.map(ft => (
-                          <button key={ft.type} onClick={() => selectType(ft.type)} className="flex items-start gap-3 p-3 rounded-2xl border bg-card text-left hover:border-primary transition-all group">
-                            <div className="w-10 h-10 rounded-xl bg-muted group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center shrink-0 transition-colors"><ft.icon className="h-5 w-5" /></div>
+                          <button key={ft.type} onClick={() => selectType(ft.type)} className="flex items-start gap-3 p-3 rounded-none border border-border bg-card text-left hover:border-primary transition-all group">
+                            <div className="w-10 h-10 rounded-none border border-border bg-muted group-hover:bg-primary/10 group-hover:text-primary flex items-center justify-center shrink-0 transition-colors"><ft.icon className="h-5 w-5" /></div>
                             <div className="min-w-0"><p className="text-sm font-bold group-hover:text-primary">{ft.label}</p><p className="text-[10px] text-muted-foreground line-clamp-1">{ft.description}</p></div>
                           </button>
                         ))}
@@ -449,11 +447,11 @@ export default function EditGlobalContentTypePage({
       </Dialog>
 
       <Dialog open={isConfigModalOpen} onOpenChange={setIsConfigModalOpen}>
-        <DialogContent className="max-w-lg rounded-3xl border-none shadow-2xl overflow-hidden p-0">
+        <DialogContent className="max-w-lg rounded-none border border-border shadow-none overflow-hidden p-0 bg-card">
           <div className="flex flex-col max-h-[90vh]">
-            <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0">
+            <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0 border-b border-primary-foreground/10">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-none border border-primary-foreground/20 bg-card/20 flex items-center justify-center">
                   {editingField && (
                     (() => {
                       const Icon = FIELD_TYPES.find(ft => ft.type === editingField.type)?.icon
@@ -467,16 +465,16 @@ export default function EditGlobalContentTypePage({
             <ScrollArea className="flex-1 overflow-y-auto bg-card">
               <div className="p-6 space-y-6">
                 <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2"><Label className="text-xs font-bold">Field Name *</Label><Input value={editingField?.name || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug: generateFieldSlug(e.target.value) }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-bold" /></div>
-                  <div className="space-y-2"><Label className="text-xs font-bold">API Slug *</Label><Input value={editingField?.slug || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl font-mono text-xs" /></div>
+                  <div className="space-y-2"><Label className="text-xs font-bold">Field Name *</Label><Input value={editingField?.name || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug: generateFieldSlug(e.target.value) }) : null)} className="bg-muted/30 border border-border h-11 rounded-none font-bold" /></div>
+                  <div className="space-y-2"><Label className="text-xs font-bold">API Slug *</Label><Input value={editingField?.slug || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)} className="bg-muted/30 border border-border h-11 rounded-none font-mono text-xs" /></div>
                 </div>
                 {(editingField?.type === "select" || editingField?.type === "tags") && (
-                  <div className="space-y-2 pt-4"><Label className="text-xs font-bold">Options (Comma separated)</Label><Input value={editingField.options || ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border-none h-11 rounded-xl" /></div>
+                  <div className="space-y-2 pt-4"><Label className="text-xs font-bold">Options (Comma separated)</Label><Input value={typeof editingField.options === "string" ? editingField.options : ""} onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)} className="bg-muted/30 border border-border h-11 rounded-none" /></div>
                 )}
-                {editingField?.type === "relation" && <div className="p-4 bg-muted/20 rounded-2xl"><RelationFieldConfig context="contentType" relationType={editingField.relationType} targetModel={editingField.targetModel} targetSlug={editingField.targetSlug} onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)} onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)} onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)} /></div>}
-                {editingField?.type === "component" && <div className="p-4 bg-muted/20 rounded-2xl"><ComponentFieldConfig componentSlug={editingField.componentSlug} repeatable={editingField.repeatable} onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)} onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)} /></div>}
+                {editingField?.type === "relation" && <div className="p-4 bg-muted/20 border border-border rounded-none"><RelationFieldConfig context="contentType" relationType={editingField.relationType} targetModel={editingField.targetModel} targetSlug={editingField.targetSlug} onRelationTypeChange={v => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)} onTargetModelChange={v => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)} onTargetSlugChange={v => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)} /></div>}
+                {editingField?.type === "component" && <div className="p-4 bg-muted/20 border border-border rounded-none"><ComponentFieldConfig componentSlug={editingField.componentSlug} repeatable={editingField.repeatable} onComponentSlugChange={v => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)} onRepeatableChange={v => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)} /></div>}
                 {editingField?.type === "slug" && (
-                  <div className="p-4 bg-muted/20 rounded-2xl space-y-4">
+                  <div className="p-4 bg-muted/20 border border-border rounded-none space-y-4">
                     <div className="flex items-center space-x-3">
                       <Checkbox 
                         id="autoGenerate" 
@@ -492,12 +490,12 @@ export default function EditGlobalContentTypePage({
                           value={editingField.sourceField || ""} 
                           onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
                         >
-                          <SelectTrigger className="bg-card border-none h-11 rounded-xl font-bold">
+                          <SelectTrigger className="bg-card border border-border h-11 rounded-none font-bold">
                             <SelectValue placeholder="Select a field" />
                           </SelectTrigger>
-                          <SelectContent className="rounded-xl border-none shadow-2xl">
+                          <SelectContent className="rounded-none border border-border shadow-none">
                             {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
-                              <SelectItem key={f.slug} value={f.slug} className="rounded-lg font-bold">
+                              <SelectItem key={f.slug} value={f.slug} className="rounded-none font-bold">
                                 {f.name} ({f.slug})
                               </SelectItem>
                             ))}
@@ -510,15 +508,15 @@ export default function EditGlobalContentTypePage({
                     )}
                   </div>
                 )}
-                <div className="flex items-center gap-6 p-4 bg-muted/20 rounded-2xl mt-4">
+                <div className="flex items-center gap-6 p-4 bg-muted/20 border border-border rounded-none mt-4">
                   <div className="flex items-center space-x-3"><Checkbox id="required" checked={editingField?.required} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)} /><Label htmlFor="required" className="text-xs font-bold cursor-pointer">Required</Label></div>
                   <div className="flex items-center space-x-3"><Checkbox id="unique" checked={editingField?.unique} onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)} /><Label htmlFor="unique" className="text-xs font-bold cursor-pointer">Unique</Label></div>
                 </div>
               </div>
             </ScrollArea>
             <DialogFooter className="p-6 bg-muted/10 border-t shrink-0">
-              <Button variant="outline" onClick={() => setIsConfigModalOpen(false)} className="rounded-xl h-11">Cancel</Button>
-              <Button onClick={saveFieldConfig} className="bg-primary hover:bg-primary/90 rounded-xl h-11 font-bold px-8 shadow-lg shadow-primary/20">Save Field</Button>
+              <Button variant="outline" onClick={() => setIsConfigModalOpen(false)} className="rounded-none border border-border h-11">Cancel</Button>
+              <Button onClick={saveFieldConfig} className="bg-primary hover:bg-primary/90 rounded-none h-11 font-bold px-8 shadow-lg shadow-primary/20 border border-primary">Save Field</Button>
             </DialogFooter>
           </div>
         </DialogContent>

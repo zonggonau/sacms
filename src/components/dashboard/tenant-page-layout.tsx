@@ -2,7 +2,6 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { TenantSidebar } from "./tenant-sidebar"
 import { ReactNode, useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 
@@ -72,35 +71,32 @@ export function TenantPageLayout({
 
   if (status === "loading") {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex-1 flex flex-col items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-background">
-      <TenantSidebar tenantId={tenantId} tenants={tenants} />
-      <main className="flex-1 min-h-screen overflow-auto">
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto">
-          {header && (title || actions) && (
-            <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                {title && <h1 className="text-xl font-bold tracking-tight">{title}</h1>}
-                {description && <p className="text-sm text-muted-foreground">{description}</p>}
-              </div>
-              {actions && <div className="flex gap-2 shrink-0">{actions}</div>}
+    <div className="flex-1 flex flex-col w-full bg-background text-foreground">
+      <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto w-full">
+        {header && (title || actions) && (
+          <div className="mb-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              {title && <h1 className="text-xl font-bold tracking-tight">{title}</h1>}
+              {description && <p className="text-sm text-muted-foreground">{description}</p>}
             </div>
-          )}
-          {loading ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-            </div>
-          ) : (
-            children
-          )}
-        </div>
-      </main>
+            {actions && <div className="flex gap-2 shrink-0">{actions}</div>}
+          </div>
+        )}
+        {loading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          </div>
+        ) : (
+          children
+        )}
+      </div>
     </div>
   )
 }

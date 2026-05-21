@@ -49,6 +49,7 @@ export async function GET(request: NextRequest) {
     }
 
     const tenants = await db.tenant.findMany({
+      where: {},
       select: {
         id: true,
         name: true,

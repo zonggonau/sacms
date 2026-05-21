@@ -1,31 +1,23 @@
-import Redis from "ioredis"
+import { Redis } from "@upstash/redis"
 
-const REDIS_URL = process.env.REDIS_URL || ""
+const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || ""
+const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || ""
 
 let redis: Redis | null = null
 
 /**
- * Get Redis client singleton. Returns null if Redis is not configured.
+ * Get Upstash Redis client singleton (Edge compatible).
+ * Returns null if Redis is not configured.
  */
 export function getRedis(): Redis | null {
-  if (!REDIS_URL) return null
+  if (!UPSTASH_REDIS_REST_URL || !UPSTASH_REDIS_REST_TOKEN) {
+    return null
+  }
 
   if (!redis) {
-    redis = new Redis(REDIS_URL, {
-      maxRetriesPerRequest: 3,
-      retryStrategy(times) {
-        if (times > 3) return null // stop retrying
-        return Math.min(times * 200, 2000)
-      },
-      lazyConnect: true,
-    })
-
-    redis.on("error", (err) => {
-      console.error("Redis connection error:", err.message)
-    })
-
-    redis.connect().catch(() => {
-      // Will be retried on next command
+    redis = new Redis({
+      url: UPSTASH_REDIS_REST_URL,
+      token: UPSTASH_REDIS_REST_TOKEN,
     })
   }
 
@@ -36,5 +28,5 @@ export function getRedis(): Redis | null {
  * Check if Redis is available.
  */
 export function isRedisAvailable(): boolean {
-  return !!(REDIS_URL && redis?.status === "ready")
+  return !!(UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN)
 }

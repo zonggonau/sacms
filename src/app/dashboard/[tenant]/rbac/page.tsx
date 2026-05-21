@@ -12,7 +12,6 @@ import {
   Info, RefreshCw, Plus, Trash2, AlertCircle
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -176,10 +175,9 @@ export default function TenantRbacPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <TenantSidebar tenantSlug={tenantSlug} />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
@@ -188,9 +186,8 @@ export default function TenantRbacPage() {
   const categories = Array.from(new Set(permissions.map(p => p.category)))
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
@@ -389,7 +386,7 @@ export default function TenantRbacPage() {
             </TabsContent>
           </Tabs>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

@@ -15,7 +15,6 @@ import {
   CheckCircle2, XCircle, Clock, ArrowLeft, Building2,
   Calendar, Download, ChevronLeft, ChevronRight, ExternalLink
 } from "lucide-react"
-import { GlobalAdminSidebar } from "@/components/dashboard/global-admin-sidebar"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
@@ -111,18 +110,16 @@ export default function AdminTransactionsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-        <GlobalAdminSidebar />
-        <main className="flex-1 min-h-screen flex items-center justify-center">
+<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </main>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <GlobalAdminSidebar />
-      <main className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
@@ -269,7 +266,7 @@ export default function AdminTransactionsPage() {
             </div>
           </Card>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

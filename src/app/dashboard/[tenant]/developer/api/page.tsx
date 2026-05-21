@@ -3,16 +3,14 @@
 import { useState, useEffect, useMemo } from "react"
 import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Play, Copy, Check, Send, Globe, Database, 
   Terminal, Code2, Zap, Key, Loader2, RefreshCw,
-  Search, Info, Link as LinkIcon, ChevronRight,
-  FileDown
+  Info, Link as LinkIcon, FileDown, Sparkles
 } from "lucide-react"
 import {
   Select,
@@ -24,28 +22,13 @@ import {
   SelectLabel
 } from "@/components/ui/select"
 import { Textarea } from "@/components/ui/textarea"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import { JsonViewer } from "@/components/ui/json-viewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 
-interface ApiKey {
-  id: string
-  name: string
-  token: string
-}
-
-interface ContentType {
-  id: string
-  name: string
-  slug: string
-}
-
-interface SingleType {
-  id: string
-  name: string
-  slug: string
-}
+interface ApiKey { id: string; name: string; token: string }
+interface ContentType { id: string; name: string; slug: string }
+interface SingleType { id: string; name: string; slug: string }
 
 export default function ApiExplorerPage() {
   const { data: session, status } = useSession()
@@ -54,23 +37,16 @@ export default function ApiExplorerPage() {
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
 
-  const [activeProtocol, setActiveProtocol] = useState<"rest" | "graphql">("rest")
   const [method, setMethod] = useState("GET")
   const [endpoint, setEndpoint] = useState("")
   const [requestBody, setRequestBody] = useState('{\n  "data": {}\n}')
-  const [gqlQuery, setGqlQuery] = useState('query {\n  # Start typing your query...\n}')
 
   useEffect(() => {
-    if (tenantSlug) {
-      setEndpoint(`/api/public/${tenantSlug}/content`)
-    }
+    if (tenantSlug) setEndpoint(`/api/public/${tenantSlug}/content`)
   }, [tenantSlug])
   
   const [response, setResponse] = useState<any>(null)
-  const [gqlSchemaInfo, setGqlSchemaInfo] = useState<any>(null)
   const [loading, setLoading] = useState(false)
-  const [loadingSchema, setLoadingSchema] = useState(false)
-
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [singleTypes, setSingleTypes] = useState<SingleType[]>([])
   const [apiKeys, setApiKeys] = useState<ApiKey[]>([])
@@ -78,13 +54,42 @@ export default function ApiExplorerPage() {
   const [exporting, setExporting] = useState(false)
   const [exportingPrompt, setExportingPrompt] = useState(false)
   const [copied, setCopied] = useState(false)
-
-  const tenants = (session?.user as any)?.tenants || []
+  const [liveTenants, setLiveTenants] = useState<any[]>([])
+  const [loadingTenants, setLoadingTenants] = useState(true)
 
   useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
+    async function fetchLiveTenants() {
+      try {
+        setLoadingTenants(true)
+        const res = await fetch("/api/tenants")
+        if (res.ok) {
+          const data = await res.json()
+          setLiveTenants(data.tenants || [])
+        }
+      } catch (error) {
+        console.error("Failed to fetch live tenants:", error)
+      } finally {
+        setLoadingTenants(false)
+      }
     }
+    if (status === "authenticated" && session?.user) {
+      fetchLiveTenants()
+    } else if (status === "unauthenticated") {
+      setLoadingTenants(false)
+    }
+  }, [session, status])
+
+  const combinedTenants = useMemo(() => {
+    const staticTenants = (session?.user as any)?.tenants || []
+    const combined = [...staticTenants]
+    for (const t of liveTenants) {
+      if (!combined.some(x => x.id === t.id)) combined.push(t)
+    }
+    return combined
+  }, [session, liveTenants])
+
+  useEffect(() => {
+    if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
   useEffect(() => {
@@ -96,34 +101,19 @@ export default function ApiExplorerPage() {
           fetch(`/api/tenant/${tenantSlug}/single-types`),
           fetch(`/api/tenant/${tenantSlug}/api-tokens`)
         ])
-        
-        if (ctRes.ok) {
-          const ctData = await ctRes.json()
-          setContentTypes(ctData || [])
-        }
-        
-        if (stRes.ok) {
-          const stData = await stRes.json()
-          setSingleTypes(stData || [])
-        }
-        
+        if (ctRes.ok) setContentTypes(await ctRes.json() || [])
+        if (stRes.ok) setSingleTypes(await stRes.json() || [])
         if (akRes.ok) {
           const akData = await akRes.json()
           const tokens = akData.tokens || []
           setApiKeys(tokens)
-          // Don't auto-set masked tokens
           if (tokens.length > 0 && !selectedKey) {
             const firstToken = tokens[0].token
-            if (firstToken && !firstToken.includes("*")) {
-              setSelectedKey(firstToken)
-            }
+            if (firstToken && !firstToken.includes("*")) setSelectedKey(firstToken)
           }
         }
-      } catch (err) {
-        console.error("Error fetching data", err)
-      }
+      } catch (err) { console.error("Error fetching data", err) }
     }
-
     fetchData()
   }, [tenantSlug, status])
 
@@ -132,23 +122,15 @@ export default function ApiExplorerPage() {
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/developer/openapi`)
       if (!res.ok) throw new Error("Failed to export OpenAPI")
-      
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = url
-      a.download = `${tenantSlug}-openapi.yaml`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      
+      a.href = url; a.download = `${tenantSlug}-openapi.yaml`; document.body.appendChild(a); a.click()
+      window.URL.revokeObjectURL(url); document.body.removeChild(a)
       toast({ title: "OpenAPI Exported Successfully" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Export Failed", description: err.message })
-    } finally {
-      setExporting(false)
-    }
+    } finally { setExporting(false) }
   }
 
   const handleDownloadAiPrompt = async () => {
@@ -156,135 +138,47 @@ export default function ApiExplorerPage() {
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/developer/ai-prompt`)
       if (!res.ok) throw new Error("Failed to generate AI prompt")
-      
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = url
-      a.download = `${tenantSlug}-ai-prompt.md`
-      document.body.appendChild(a)
-      a.click()
-      window.URL.revokeObjectURL(url)
-      document.body.removeChild(a)
-      
+      a.href = url; a.download = `${tenantSlug}-ai-prompt.md`; document.body.appendChild(a); a.click()
+      window.URL.revokeObjectURL(url); document.body.removeChild(a)
       toast({ title: "AI Prompt Downloaded" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Download Failed", description: err.message })
-    } finally {
-      setExportingPrompt(false)
-    }
+    } finally { setExportingPrompt(false) }
   }
-
-  const fetchGqlSchema = async () => {
-    if (!selectedKey || activeProtocol !== "graphql") return
-    setLoadingSchema(true)
-    try {
-      const introspectionQuery = `
-        query IntrospectionQuery {
-          __schema {
-            queryType { name }
-            mutationType { name }
-            types {
-              name
-              kind
-              fields {
-                name
-                type {
-                  name
-                  kind
-                  ofType { name kind }
-                }
-              }
-            }
-          }
-        }
-      `
-      const res = await fetch(`/api/public/${tenantSlug}/graphql`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${selectedKey}`
-        },
-        body: JSON.stringify({ query: introspectionQuery })
-      })
-      if (res.ok) {
-        const data = await res.json()
-        setGqlSchemaInfo(data.data?.__schema)
-      }
-    } catch (err) {
-      console.error("Failed to fetch GQL schema", err)
-    } finally {
-      setLoadingSchema(false)
-    }
-  }
-
-  useEffect(() => {
-    if (activeProtocol === "graphql" && selectedKey) {
-      fetchGqlSchema()
-    }
-  }, [activeProtocol, selectedKey])
 
   const handleQuickSelect = (value: string) => {
     const [m, type, slug] = value.split('|')
     setMethod(m)
-    if (type === 'content') {
-      setEndpoint(`/api/public/${tenantSlug}/content/${slug}`)
-    } else if (type === 'single') {
-      setEndpoint(`/api/public/${tenantSlug}/single/${slug}`)
-    }
+    if (type === 'content') setEndpoint(`/api/public/${tenantSlug}/content/${slug}`)
+    else if (type === 'single') setEndpoint(`/api/public/${tenantSlug}/single/${slug}`)
   }
 
   const handleSendRequest = async () => {
     if (!selectedKey) {
-      toast({
-        variant: "destructive",
-        title: "Authentication Required",
-        description: "Please select or enter an API Key to test the public endpoints."
-      })
+      toast({ variant: "destructive", title: "Authentication Required", description: "Please select or enter an API Key to test the public endpoints." })
       return
     }
-    
-    setLoading(true)
-    setResponse(null)
-    
+    setLoading(true); setResponse(null)
     try {
-      const isGql = activeProtocol === "graphql"
-      const url = isGql ? `/api/public/${tenantSlug}/graphql` : endpoint
+      const url = endpoint
+      const headers: Record<string, string> = { "Content-Type": "application/json" }
+      if (selectedKey) headers["Authorization"] = `Bearer ${selectedKey}`
+      const options: RequestInit = { method, headers }
       
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-      }
-      
-      if (selectedKey) {
-        headers["Authorization"] = `Bearer ${selectedKey}`
-      }
-
-      const options: RequestInit = {
-        method: isGql ? "POST" : method,
-        headers,
-      }
-
-      if (isGql) {
-        options.body = JSON.stringify({ query: gqlQuery })
-      } else if (method !== "GET" && method !== "DELETE") {
-        options.body = requestBody
-      }
+      if (method !== "GET" && method !== "DELETE") options.body = requestBody
 
       const res = await fetch(url, options)
       const data = await res.json()
       setResponse(data)
-      
-      if (res.ok) {
-        toast({ title: "Request Successful" })
-      } else {
-        toast({ variant: "destructive", title: `Error ${res.status}`, description: data.error || "Request failed" })
-      }
+      if (res.ok) toast({ title: "Request Successful" })
+      else toast({ variant: "destructive", title: `Error ${res.status}`, description: data.error || "Request failed" })
     } catch (error: any) {
       setResponse({ error: error.message || "Failed to connect to server" })
       toast({ variant: "destructive", title: "Connection Error" })
-    } finally {
-      setLoading(false)
-    }
+    } finally { setLoading(false) }
   }
 
   const handleCopyResponse = () => {
@@ -293,368 +187,323 @@ export default function ApiExplorerPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (status === "loading") {
+  if (status === "loading" || loadingTenants) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full">
+        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-muted/10">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <main className="flex-1 overflow-auto">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="flex bg-background text-foreground selection:bg-orange-500/30 font-sans flex-1 flex-col w-full">
+<div className="flex-1 relative flex-col w-full">
+        {/* Ambient Glow */}
+        <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-orange-500/10 blur-[150px] rounded-full pointer-events-none" />
+        
+        <div className="p-6 lg:p-10 max-w-[1600px] mx-auto space-y-8 relative z-10">
           
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">API Explorer</h1>
-              <p className="text-muted-foreground">Automated endpoint testing for your content schemas.</p>
+          {/* Header */}
+          <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-border/50">
+            <div className="space-y-3">
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-none bg-orange-500/10 border border-orange-500/20 text-orange-600 dark:text-orange-400 text-[11px] font-semibold uppercase tracking-widest shadow-[0_0_15px_rgba(249,115,22,0.1)]">
+                <Sparkles className="w-3.5 h-3.5" />
+                Developer API
+              </div>
+              <h1 className="text-4xl font-light tracking-tight">API Explorer</h1>
+              <p className="text-muted-foreground text-sm max-w-xl leading-relaxed">
+                Test your headless REST endpoints in real-time. Discover schema structure through OpenAPI and generate AI integrations instantly.
+              </p>
             </div>
-            <div className="flex items-center gap-3">
+            
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="flex items-center bg-card/80 border border-border/50 rounded-none p-1 shadow-sm backdrop-blur-md">
+                <div className="flex items-center gap-2 px-3 border-r border-border/50">
+                  <Key className="w-4 h-4 text-orange-500" />
+                  <span className="text-xs font-medium text-muted-foreground">Auth Token</span>
+                </div>
+                <Select value={selectedKey} onValueChange={setSelectedKey}>
+                  <SelectTrigger className="h-8 min-w-[200px] border-none bg-transparent focus:ring-0 text-xs font-mono rounded-none">
+                    <SelectValue placeholder="Select API Key..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none border-border bg-popover/95 backdrop-blur-xl">
+                    {apiKeys.length === 0 && <div className="p-3 text-xs text-muted-foreground text-center">No keys found</div>}
+                    {apiKeys.map(key => (
+                      <SelectItem key={key.id} value={key.token} className="text-xs font-mono rounded-none focus:bg-accent focus:text-accent-foreground">
+                        {key.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
               <Button 
                 variant="outline" 
-                className="bg-card font-bold border-blue-100 text-blue-700 hover:bg-blue-50 h-11"
+                className="h-10 bg-card/80 border-border/50 hover:bg-orange-500/10 hover:text-orange-600 dark:hover:text-orange-400 hover:border-orange-500/30 transition-all duration-300 rounded-none text-xs backdrop-blur-md shadow-sm"
                 onClick={handleDownloadAiPrompt}
                 disabled={exportingPrompt}
               >
-                {exportingPrompt ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
-                Download AI Prompt
+                {exportingPrompt ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />}
+                AI Prompt
               </Button>
               <Button 
                 variant="outline" 
-                className="bg-card font-bold border-emerald-100 text-emerald-700 hover:bg-emerald-50 h-11"
+                className="h-10 bg-card/80 border-border/50 hover:bg-blue-500/10 hover:text-blue-600 dark:hover:text-blue-400 hover:border-blue-500/30 transition-all duration-300 rounded-none text-xs backdrop-blur-md shadow-sm"
                 onClick={handleDownloadOpenApi}
                 disabled={exporting}
               >
-                {exporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <FileDown className="h-4 w-4 mr-2" />}
-                Export OpenAPI
+                {exporting ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />}
+                OpenAPI Spec
               </Button>
-              <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-2xl border shadow-sm h-11">
-                <Key className="h-4 w-4 text-amber-500" />
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Active Auth Token</span>
-                  <div className="flex items-center gap-2">
-                    <Select value={selectedKey} onValueChange={setSelectedKey}>
-                      <SelectTrigger className="h-6 min-w-[200px] text-[10px] font-mono border-none bg-muted/50 focus-visible:ring-0 p-0 px-2">
-                        <SelectValue placeholder="Select API Key..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {apiKeys.length === 0 && (
-                          <div className="p-2 text-[10px] text-muted-foreground text-center">
-                            No API Keys found
-                          </div>
-                        )}
-                        {apiKeys.map(key => (
-                          <SelectItem key={key.id} value={key.token} className="text-[10px] font-mono">
-                            <span className="font-bold">{key.name}</span>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-            
-            {/* Left: Request Panel */}
-            <div className="lg:col-span-3 space-y-6">
-              <Card className="border-none shadow-sm bg-card overflow-hidden">
-                <CardHeader className="bg-muted/20 border-b">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Zap className="h-5 w-5 text-primary" /> 
-                      <CardTitle className="text-lg font-bold">Request Builder</CardTitle>
-                    </div>
-                    <Tabs value={activeProtocol} onValueChange={(v) => setActiveProtocol(v as any)} className="w-auto">
-                      <TabsList className="h-8 p-1 bg-background rounded-lg">
-                        <TabsTrigger value="rest" className="text-xs h-6 px-3 rounded-md">REST</TabsTrigger>
-                        <TabsTrigger value="graphql" className="text-xs h-6 px-3 rounded-md">GraphQL</TabsTrigger>
-                      </TabsList>
-                    </Tabs>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  {activeProtocol === "rest" ? (
-                    <div className="space-y-4">
-                      {/* Endpoint Quick Selection */}
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Quick Path Generator</Label>
-                        <Select onValueChange={handleQuickSelect}>
-                          <SelectTrigger className="h-11 bg-primary/5 border-primary/20 hover:bg-primary/10 transition-colors rounded-xl font-bold text-primary">
-                            <div className="flex items-center gap-2">
-                              <LinkIcon className="h-4 w-4" />
-                              <SelectValue placeholder="Select an auto-generated endpoint..." />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectGroup>
-                              <SelectLabel className="text-[10px] uppercase font-black opacity-50">Collection Types</SelectLabel>
-                              {contentTypes.map(ct => (
-                                <SelectItem key={`get-${ct.id}`} value={`GET|content|${ct.slug}`}>
-                                  <span className="font-bold text-emerald-600 mr-2">GET</span> List all {ct.name}
-                                </SelectItem>
-                              ))}
-                              {contentTypes.map(ct => (
-                                <SelectItem key={`post-${ct.id}`} value={`POST|content|${ct.slug}`}>
-                                  <span className="font-bold text-blue-600 mr-2">POST</span> Create {ct.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                            <SelectGroup className="mt-2 pt-2 border-t">
-                              <SelectLabel className="text-[10px] uppercase font-black opacity-50">Single Types</SelectLabel>
-                              {singleTypes.map(st => (
-                                <SelectItem key={`get-st-${st.id}`} value={`GET|single|${st.slug}`}>
-                                  <span className="font-bold text-emerald-600 mr-2">GET</span> Read {st.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="flex gap-2">
-                        <Select value={method} onValueChange={setMethod}>
-                          <SelectTrigger className="w-[120px] h-11 bg-muted/30 border-none font-bold">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="GET" className="text-emerald-600 font-bold">GET</SelectItem>
-                            <SelectItem value="POST" className="text-blue-600 font-bold">POST</SelectItem>
-                            <SelectItem value="PATCH" className="text-orange-600 font-bold">PATCH</SelectItem>
-                            <SelectItem value="DELETE" className="text-red-600 font-bold">DELETE</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <div className="relative flex-1">
-                          <Globe className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground opacity-50" />
-                          <Input 
-                            value={endpoint} 
-                            onChange={e => setEndpoint(e.target.value)}
-                            className="h-11 pl-10 bg-muted/30 border-none font-mono text-xs"
-                          />
-                        </div>
-                        <Button 
-                          className="h-11 px-6 bg-primary font-bold shadow-lg shadow-primary/20" 
-                          onClick={handleSendRequest}
-                          disabled={loading}
-                        >
-                          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                          SEND
-                        </Button>
-                      </div>
-
-                      {(method === "POST" || method === "PATCH") && (
-                        <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">JSON Payload</Label>
-                          <Textarea 
-                            value={requestBody} 
-                            onChange={e => setRequestBody(e.target.value)}
-                            className="min-h-[200px] font-mono text-xs bg-muted/30 border-none rounded-xl"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      <div className="flex items-center justify-between p-3 rounded-xl bg-primary/5 border border-primary/10">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+            {/* Left Panel: Request Builder */}
+            <div className="xl:col-span-6 flex flex-col gap-6">
+              
+              <div className="bg-card/40 border border-border/50 rounded-none p-6 backdrop-blur-xl relative group transition-all duration-500 hover:border-border shadow-lg flex-1">
+                <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                
+                <div className="space-y-6 relative z-10">
+                  <div className="flex flex-col gap-2">
+                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Quick Path Generator</Label>
+                    <Select onValueChange={handleQuickSelect}>
+                      <SelectTrigger className="h-12 bg-background/50 border-border/50 rounded-none text-sm focus:ring-orange-500/50 transition-all">
                         <div className="flex items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
-                            <Code2 className="h-4 w-4" />
-                          </div>
-                          <div>
-                            <p className="text-xs font-bold">GraphQL Endpoint</p>
-                            <p className="text-[10px] text-muted-foreground font-mono">/api/public/{tenantSlug}/graphql</p>
-                          </div>
+                          <LinkIcon className="w-4 h-4 text-orange-500" />
+                          <SelectValue placeholder="Select an auto-generated endpoint..." />
                         </div>
-                        <Button 
-                          size="sm" 
-                          className="bg-primary font-bold shadow-md shadow-primary/20"
-                          onClick={handleSendRequest}
-                          disabled={loading}
-                        >
-                          {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <Play className="h-3 w-3 mr-1.5" />}
-                          Run Query
-                        </Button>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Sample Query Builder</Label>
-                        <Select onValueChange={(value) => {
-                          const [type, ctSlug, ctName] = value.split('|')
-                          const pascalName = ctName.split(/[-_]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('')
+                      </SelectTrigger>
+                      <SelectContent className="rounded-none border-border bg-popover/95 backdrop-blur-xl">
+                        <SelectGroup>
+                          <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-3">Collection Types</SelectLabel>
                           
-                          let template = ''
-                          if (type === 'list') {
-                            template = `query {\n  ${ctSlug}(page: 1, limit: 10) {\n    data {\n      id\n      # Add your fields here\n    }\n    meta {\n      total\n    }\n  }\n}`
-                          } else if (type === 'create') {
-                            template = `mutation {\n  create${pascalName}(data: {\n    # name: "Example"\n  }) {\n    id\n  }\n}`
-                          } else if (type === 'update') {
-                            template = `mutation {\n  update${pascalName}(id: "ENTER_ID_HERE", data: {\n    # name: "Updated"\n  }) {\n    id\n  }\n}`
-                          }
-                          setGqlQuery(template)
-                        }}>
-                          <SelectTrigger className="h-11 bg-zinc-900 border-none hover:bg-zinc-800 transition-colors rounded-xl font-bold text-emerald-400">
-                            <div className="flex items-center gap-2">
-                              <Zap className="h-4 w-4" />
-                              <SelectValue placeholder="Build a sample query..." />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent className="bg-zinc-900 border-zinc-800 text-zinc-300">
-                            <SelectGroup>
-                              <SelectLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Common Queries</SelectLabel>
-                              {contentTypes.map(ct => (
-                                <SelectItem key={`gql-list-${ct.id}`} value={`list|${ct.slug}|${ct.name}`} className="hover:bg-zinc-800 focus:bg-zinc-800 focus:text-emerald-400">
-                                  <span className="text-emerald-500 font-bold mr-2">QUERY</span> List {ct.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                            <SelectGroup className="mt-2 pt-2 border-t border-zinc-800">
-                              <SelectLabel className="text-[10px] uppercase font-black opacity-50 px-2 py-1">Common Mutations</SelectLabel>
-                              {contentTypes.map(ct => (
-                                <SelectItem key={`gql-create-${ct.id}`} value={`create|${ct.slug}|${ct.name}`} className="hover:bg-zinc-800 focus:bg-zinc-800 focus:text-blue-400">
-                                  <span className="text-blue-500 font-bold mr-2">MUTATION</span> Create {ct.name}
-                                </SelectItem>
-                              ))}
-                            </SelectGroup>
-                          </SelectContent>
-                        </Select>
-                      </div>
+                          {method === 'GET' && contentTypes.map(ct => (
+                            <SelectItem key={`get-${ct.id}`} value={`GET|content|${ct.slug}`} className="rounded-none focus:bg-accent">
+                              <span className="font-semibold text-emerald-600 dark:text-emerald-400 mr-2 w-12 inline-block">GET</span> List {ct.name}
+                            </SelectItem>
+                          ))}
+                          
+                          {method === 'POST' && contentTypes.map(ct => (
+                            <SelectItem key={`post-${ct.id}`} value={`POST|content|${ct.slug}`} className="rounded-none focus:bg-accent">
+                              <span className="font-semibold text-blue-600 dark:text-blue-400 mr-2 w-12 inline-block">POST</span> Create {ct.name}
+                            </SelectItem>
+                          ))}
 
-                      <div className="space-y-2">
-                        <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Query Editor</Label>
-                        <Textarea 
-                          value={gqlQuery} 
-                          onChange={e => setGqlQuery(e.target.value)}
-                          className="min-h-[300px] font-mono text-xs bg-zinc-900 text-emerald-400 border-none rounded-xl p-4 focus-visible:ring-emerald-500 shadow-inner"
-                        />
-                      </div>
+                          {method === 'PATCH' && contentTypes.map(ct => (
+                            <SelectItem key={`patch-${ct.id}`} value={`PATCH|content|${ct.slug}/[id]`} className="rounded-none focus:bg-accent">
+                              <span className="font-semibold text-orange-600 dark:text-orange-400 mr-2 w-12 inline-block">PATCH</span> Update {ct.name}
+                            </SelectItem>
+                          ))}
+
+                          {method === 'DELETE' && contentTypes.map(ct => (
+                            <SelectItem key={`delete-${ct.id}`} value={`DELETE|content|${ct.slug}/[id]`} className="rounded-none focus:bg-accent">
+                              <span className="font-semibold text-red-600 dark:text-red-400 mr-2 w-12 inline-block">DELETE</span> Remove {ct.name}
+                            </SelectItem>
+                          ))}
+
+                          {contentTypes.length === 0 && (
+                            <div className="px-3 py-2 text-[11px] text-muted-foreground italic">No collections found.</div>
+                          )}
+                        </SelectGroup>
+                        
+                        {(method === 'GET' || method === 'PATCH') && (
+                          <SelectGroup className="mt-2 pt-2 border-t border-border/50">
+                            <SelectLabel className="text-[10px] uppercase font-bold text-muted-foreground tracking-wider px-3">Single Types</SelectLabel>
+                            
+                            {method === 'GET' && singleTypes.map(st => (
+                              <SelectItem key={`get-st-${st.id}`} value={`GET|single|${st.slug}`} className="rounded-none focus:bg-accent">
+                                <span className="font-semibold text-emerald-600 dark:text-emerald-400 mr-2 w-12 inline-block">GET</span> Read {st.name}
+                              </SelectItem>
+                            ))}
+                            
+                            {method === 'PATCH' && singleTypes.map(st => (
+                              <SelectItem key={`patch-st-${st.id}`} value={`PATCH|single|${st.slug}`} className="rounded-none focus:bg-accent">
+                                <span className="font-semibold text-orange-600 dark:text-orange-400 mr-2 w-12 inline-block">PATCH</span> Update {st.name}
+                              </SelectItem>
+                            ))}
+
+                            {singleTypes.length === 0 && (
+                              <div className="px-3 py-2 text-[11px] text-muted-foreground italic">No single types found.</div>
+                            )}
+                          </SelectGroup>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="space-y-2">
+                    <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Request URL</Label>
+                    <div className="flex shadow-sm">
+                      <Select value={method} onValueChange={setMethod}>
+                        <SelectTrigger className="w-[120px] h-12 bg-muted/30 border border-r-0 border-border/50 rounded-none text-sm font-semibold focus:ring-0 focus:border-border">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-none border-border bg-popover/95 backdrop-blur-xl">
+                          <SelectItem value="GET" className="text-emerald-600 dark:text-emerald-400 rounded-none focus:bg-accent">GET</SelectItem>
+                          <SelectItem value="POST" className="text-blue-600 dark:text-blue-400 rounded-none focus:bg-accent">POST</SelectItem>
+                          <SelectItem value="PATCH" className="text-orange-600 dark:text-orange-400 rounded-none focus:bg-accent">PATCH</SelectItem>
+                          <SelectItem value="DELETE" className="text-red-600 dark:text-red-400 rounded-none focus:bg-accent">DELETE</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Input 
+                        value={endpoint} 
+                        onChange={e => setEndpoint(e.target.value)}
+                        className="flex-1 h-12 bg-background/50 border border-border/50 rounded-none font-mono text-sm focus-visible:ring-1 focus-visible:ring-orange-500/50 transition-all"
+                        placeholder="/api/public/..."
+                      />
+                    </div>
+                  </div>
+
+                  {(method === "POST" || method === "PATCH") && (
+                    <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
+                      <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">JSON Payload</Label>
+                      <Textarea 
+                        value={requestBody} 
+                        onChange={e => setRequestBody(e.target.value)}
+                        className="min-h-[220px] font-mono text-sm bg-muted/20 border border-border/50 rounded-none p-4 focus-visible:ring-1 focus-visible:ring-orange-500/50 text-orange-600 dark:text-orange-200/90 shadow-inner"
+                      />
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                  
+                  <div className="pt-2">
+                    <Button 
+                      className="w-full h-12 bg-orange-500 hover:bg-orange-600 text-white font-semibold text-sm tracking-wide rounded-none transition-all duration-300 shadow-[0_0_20px_rgba(249,115,22,0.15)] hover:shadow-[0_0_30px_rgba(249,115,22,0.3)] border border-orange-400/50"
+                      onClick={handleSendRequest}
+                      disabled={loading}
+                    >
+                      {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : (
+                        <span className="flex items-center gap-2">
+                          <Send className="w-4 h-4" /> SEND REQUEST
+                        </span>
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
               {/* Helper Card */}
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl flex gap-3 text-blue-800 shadow-sm">
-                <Info className="h-5 w-5 shrink-0" />
+              <div className="p-5 bg-card/40 border border-border/50 rounded-none flex gap-4 backdrop-blur-md">
+                <div className="mt-0.5">
+                  <Info className="h-5 w-5 text-muted-foreground" />
+                </div>
                 <div className="space-y-1">
-                  <p className="text-xs font-black uppercase tracking-widest">Efficiency Tip</p>
-                  <p className="text-[11px] leading-relaxed opacity-80">
-                    Use the <strong>Quick Path Generator</strong> above to automatically build endpoints for your collections. 
-                    It saves time and ensures correct URL formatting.
+                  <p className="text-[11px] font-semibold uppercase tracking-wider text-foreground">Pro Tip</p>
+                  <p className="text-xs leading-relaxed text-muted-foreground">
+                    Use the <strong>Quick Path Generator</strong> above to automatically build endpoints for your collections. It saves time and ensures correct formatting.
                   </p>
                 </div>
               </div>
+
+              {/* Query Parameters Documentation */}
+              <div className="bg-card/40 border border-border/50 rounded-none p-6 backdrop-blur-xl shadow-lg flex-1 overflow-hidden">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
+                  <Database className="h-4 w-4 text-orange-500" />
+                  <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">Query Parameters Reference</h3>
+                </div>
+                
+                <ScrollArea className="h-[250px] pr-4">
+                  <div className="space-y-6">
+                    {/* Filtering */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Filters</h4>
+                      <p className="text-xs text-muted-foreground">Filter your results using Strapi-like syntax. Format: <code className="text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded">?filters[field][$operator]=value</code></p>
+                      <div className="grid grid-cols-2 gap-2 text-xs font-mono mt-2">
+                        <div className="bg-background/50 p-2 border border-border/30">$eq, $ne</div>
+                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Equal, Not equal</div>
+                        
+                        <div className="bg-background/50 p-2 border border-border/30">$gt, $gte, $lt, $lte</div>
+                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Greater/Less than</div>
+                        
+                        <div className="bg-background/50 p-2 border border-border/30">$contains, $startsWith</div>
+                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Text matching (ILIKE)</div>
+                        
+                        <div className="bg-background/50 p-2 border border-border/30">$in, $notIn</div>
+                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Array inclusion (comma separated)</div>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-1 italic">Example: ?filters[title][$contains]=hello&filters[price][$gte]=100</p>
+                    </div>
+
+                    {/* Sorting */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Sort</h4>
+                      <p className="text-xs text-muted-foreground">Sort the response by a specific field.</p>
+                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?sort=createdAt:desc</code>
+                    </div>
+
+                    {/* Populate */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Populate</h4>
+                      <p className="text-xs text-muted-foreground">Expand relational fields in the response.</p>
+                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?populate=* (All) or ?populate=author,category</code>
+                    </div>
+
+                    {/* Field Selection */}
+                    <div className="space-y-2">
+                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Fields</h4>
+                      <p className="text-xs text-muted-foreground">Select only specific fields to return.</p>
+                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?fields=title,slug</code>
+                    </div>
+                  </div>
+                </ScrollArea>
+              </div>
             </div>
 
-            {/* Right: Response & Schema Panel */}
-            <div className="lg:col-span-2 space-y-6">
-              {/* GraphQL Schema Explorer (Only shown for GQL) */}
-              {activeProtocol === "graphql" && (
-                <Card className="border-none shadow-sm bg-card overflow-hidden">
-                  <CardHeader className="bg-muted/20 border-b py-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        <Database className="h-3 w-3" /> Schema Explorer
-                      </CardTitle>
-                      {loadingSchema && <Loader2 className="h-3 w-3 animate-spin text-primary" />}
-                    </div>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <ScrollArea className="h-[300px]">
-                      {!selectedKey ? (
-                        <div className="p-8 text-center opacity-40">
-                          <Key className="h-8 w-8 mx-auto mb-2" />
-                          <p className="text-[10px] font-bold uppercase">Enter API Key to load schema</p>
-                        </div>
-                      ) : !gqlSchemaInfo ? (
-                        <div className="p-8 text-center opacity-40">
-                          <RefreshCw className="h-8 w-8 mx-auto mb-2 animate-spin" />
-                          <p className="text-[10px] font-bold uppercase">Fetching Schema...</p>
-                        </div>
-                      ) : (
-                        <div className="p-4 space-y-4">
-                          {/* Queries */}
-                          <div className="space-y-2">
-                            <p className="text-[9px] font-black uppercase text-emerald-600 tracking-widest bg-emerald-50 px-2 py-1 rounded w-fit">Available Queries</p>
-                            <div className="space-y-1.5 pl-1">
-                              {gqlSchemaInfo.types.find((t: any) => t.name === gqlSchemaInfo.queryType.name)?.fields.map((f: any) => (
-                                <div key={f.name} className="flex items-center gap-2 group">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                                  <span className="text-xs font-mono font-bold text-foreground">{f.name}</span>
-                                  <span className="text-[10px] text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">
-                                    : {f.type.name || f.type.ofType?.name || 'Object'}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                          
-                          {/* Mutations */}
-                          {gqlSchemaInfo.mutationType && (
-                            <div className="space-y-2">
-                              <p className="text-[9px] font-black uppercase text-blue-600 tracking-widest bg-blue-50 px-2 py-1 rounded w-fit">Available Mutations</p>
-                              <div className="space-y-1.5 pl-1">
-                                {gqlSchemaInfo.types.find((t: any) => t.name === gqlSchemaInfo.mutationType.name)?.fields.map((f: any) => (
-                                  <div key={f.name} className="flex items-center gap-2 group">
-                                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
-                                    <span className="text-xs font-mono font-bold text-foreground">{f.name}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </ScrollArea>
-                  </CardContent>
-                </Card>
-              )}
-
-              <Card className="border-none shadow-sm bg-card flex-1 min-h-[400px] flex flex-col overflow-hidden">
-                <CardHeader className="bg-muted/20 border-b flex flex-row items-center justify-between space-y-0">
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Terminal className="h-4 w-4 text-muted-foreground" /> Server Response
-                  </CardTitle>
+            {/* Right Panel: Response */}
+            <div className="xl:col-span-6 flex flex-col gap-6">
+              <div className="bg-card/40 border border-border/50 rounded-none flex-1 min-h-[500px] flex flex-col overflow-hidden backdrop-blur-xl shadow-lg relative group transition-all duration-500 hover:border-border">
+                <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
+                
+                <div className="bg-muted/30 border-b border-border/50 py-3 px-5 flex items-center justify-between z-10">
+                  <h3 className="text-[11px] font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <Terminal className="h-4 w-4 text-orange-500" /> Server Response
+                  </h3>
                   {response && (
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold" onClick={handleCopyResponse}>
-                      {copied ? <Check className="h-3 w-3 mr-1 text-emerald-500" /> : <Copy className="h-3 w-3 mr-1" />}
-                      {copied ? "COPIED" : "COPY"}
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      className="h-7 text-[10px] font-semibold uppercase tracking-wider rounded-none hover:bg-accent hover:text-foreground px-3 transition-colors" 
+                      onClick={handleCopyResponse}
+                    >
+                      {copied ? <Check className="h-3 w-3 mr-1.5 text-emerald-500" /> : <Copy className="h-3 w-3 mr-1.5 text-muted-foreground" />}
+                      {copied ? "Copied" : "Copy JSON"}
                     </Button>
                   )}
-                </CardHeader>
-                <CardContent className="p-0 flex-1 relative bg-muted/5">
+                </div>
+                
+                <div className="p-0 flex-1 relative bg-background/50 z-10">
                   {loading ? (
-                    <div className="absolute inset-0 flex items-center justify-center bg-background/50 backdrop-blur-[1px] z-10">
-                      <div className="flex flex-col items-center gap-2">
-                        <RefreshCw className="h-8 w-8 animate-spin text-primary" />
-                        <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Waiting for response...</p>
+                    <div className="absolute inset-0 flex items-center justify-center bg-background/60 backdrop-blur-sm z-20 transition-all duration-300">
+                      <div className="flex flex-col items-center gap-4">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-orange-500 blur-xl opacity-20 rounded-full" />
+                          <RefreshCw className="h-8 w-8 animate-spin text-orange-500 relative z-10" />
+                        </div>
+                        <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Awaiting Response...</p>
                       </div>
                     </div>
                   ) : null}
                   
                   {response ? (
-                    <div className="p-4 h-full">
+                    <div className="p-5 h-full overflow-auto">
                       <JsonViewer 
                         data={response} 
-                        className="h-full max-h-[700px] bg-transparent border-none p-0" 
+                        className="h-full max-h-[800px] bg-transparent border-none p-0 text-[13px] font-mono leading-relaxed" 
                       />
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center py-20 opacity-20 grayscale">
-                      <Globe className="h-16 w-16 mb-4" />
-                      <p className="text-xs font-bold uppercase tracking-widest">No request sent yet</p>
+                    <div className="h-full flex flex-col items-center justify-center py-32 opacity-40">
+                      <Globe className="h-16 w-16 mb-5 text-orange-500/50" strokeWidth={1} />
+                      <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">Ready for requests</p>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }

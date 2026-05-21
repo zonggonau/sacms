@@ -66,7 +66,7 @@ export function LocaleSwitcher({ tenantSlug, currentLocale, onLocaleChange, comp
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-lg border p-1 bg-muted/30">
+    <div className="flex items-center gap-1 rounded-none border p-1 bg-muted/30">
       {locales.map((loc) => (
         <Button
           key={loc.id}

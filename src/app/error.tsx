@@ -37,14 +37,14 @@ export default function GlobalError({
         {/* Error Content */}
         <div className="space-y-3">
           <h1 className="text-3xl font-black text-white tracking-tight uppercase">System Hiccup</h1>
-          <p className="text-zinc-400 font-medium leading-relaxed">
+          <p className="text-muted-foreground font-medium leading-relaxed">
             Something went wrong while processing this page. Don't worry, our engineers have been notified.
           </p>
         </div>
 
         {/* Error Detail (Optional for Dev) */}
         <div className="p-4 rounded-2xl bg-zinc-900 border border-white/5 text-left space-y-2">
-          <div className="flex items-center gap-2 text-zinc-500">
+          <div className="flex items-center gap-2 text-muted-foreground">
             <AlertCircle className="h-3.5 w-3.5" />
             <span className="text-[10px] font-black uppercase tracking-widest">Error Trace ID</span>
           </div>
@@ -57,7 +57,7 @@ export default function GlobalError({
         <div className="flex flex-col gap-3">
           <Button 
             onClick={() => reset()}
-            className="h-12 rounded-2xl bg-white text-zinc-950 hover:bg-zinc-200 font-black uppercase tracking-widest shadow-xl shadow-white/5"
+            className="h-12 rounded-2xl bg-card text-zinc-950 hover:bg-muted/50 font-black uppercase tracking-widest shadow-xl shadow-white/5"
           >
             <RefreshCcw className="mr-2 h-5 w-5" /> Try Again
           </Button>
@@ -65,21 +65,21 @@ export default function GlobalError({
             <Button 
               variant="outline" 
               onClick={() => window.history.back()}
-              className="h-11 rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-bold"
+              className="h-11 rounded-xl border-white/10 bg-card/5 text-white hover:bg-card/10 font-bold"
             >
               <ChevronLeft className="mr-2 h-4 w-4" /> Go Back
             </Button>
             <Button 
               variant="outline" 
               asChild
-              className="h-11 rounded-xl border-white/10 bg-white/5 text-white hover:bg-white/10 font-bold"
+              className="h-11 rounded-xl border-white/10 bg-card/5 text-white hover:bg-card/10 font-bold"
             >
               <a href="/"><Home className="mr-2 h-4 w-4" /> Return Home</a>
             </Button>
           </div>
         </div>
 
-        <p className="text-[10px] text-zinc-600 font-medium uppercase tracking-widest">
+        <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">
           SaCMS Enterprise Resilience Mode
         </p>
       </div>

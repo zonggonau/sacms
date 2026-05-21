@@ -21,7 +21,7 @@ export async function POST(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
-    if (!process.env.OPENAI_API_KEY) {
+    if (!process.env.DEEPSEEK_API_KEY) {
       return NextResponse.json(
         { error: "AI features are not configured" },
         { status: 503 }

@@ -68,7 +68,7 @@ export function DateField({
             {formatDate(value)}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-2xl border-none shadow-2xl" align="start">
+        <PopoverContent className="w-auto p-0 rounded-none border border-border bg-popover shadow-none" align="start">
           <CalendarComponent
             mode="single"
             selected={value && value !== "" ? new Date(value) : undefined}

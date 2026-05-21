@@ -18,16 +18,16 @@ function PendingContent() {
   }, [orderId, router])
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center space-y-4">
-      <Loader2 className="h-12 w-12 animate-spin text-amber-500" />
-      <p className="text-lg font-bold animate-pulse uppercase tracking-widest text-amber-500">Payment Pending...</p>
+    <div className="min-h-screen flex flex-col items-center justify-center space-y-4 bg-background text-foreground">
+      <Loader2 className="h-12 w-12 animate-spin text-orange-500" />
+      <p className="text-sm font-black animate-pulse uppercase tracking-widest text-orange-500">Payment Pending...</p>
     </div>
   )
 }
 
 export default function PaymentPendingPage() {
   return (
-    <Suspense fallback={<div className="min-h-screen flex items-center justify-center"><Loader2 className="h-12 w-12 animate-spin text-primary" /></div>}>
+    <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-background"><Loader2 className="h-12 w-12 animate-spin text-orange-500" /></div>}>
       <PendingContent />
     </Suspense>
   )

@@ -31,6 +31,9 @@ async function generateUniqueSlug(): Promise<string> {
   return slug
 }
 
+// System tenants hidden from all user-facing lists
+const SYSTEM_SLUGS = ["sacms-global"]
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -38,7 +41,8 @@ export async function GET() {
 
     const tenants = await db.tenant.findMany({
       where: {
-        members: { some: { userId: session.user.id } }
+        members: { some: { userId: session.user.id } },
+        slug: { notIn: SYSTEM_SLUGS },
       },
       include: {
         members: {
@@ -90,7 +94,11 @@ export async function POST(request: NextRequest) {
     // Check workspace limit
     const userPlan = await getUserPlanConfig(session.user.id)
     const ownedWorkspaces = await db.tenantMember.count({
-      where: { userId: session.user.id, role: "owner" }
+      where: {
+        userId: session.user.id,
+        role: "owner",
+        tenant: { slug: { notIn: SYSTEM_SLUGS } },
+      }
     })
 
     if (ownedWorkspaces >= userPlan.max_workspaces) {

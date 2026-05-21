@@ -91,18 +91,25 @@ export async function POST(request: NextRequest) {
     const { roleId, permissionId, granted } = result.data
 
     // Upsert role-permission assignment (global only)
-    const rp = await db.rolePermission.upsert({
-      where: {
-        tenantId_roleId_permissionId: { tenantId: null, roleId, permissionId },
-      },
-      update: { granted: granted !== false },
-      create: {
-        tenantId: null,
-        roleId,
-        permissionId,
-        granted: granted !== false,
-      },
+    const existing = await db.rolePermission.findFirst({
+      where: { tenantId: null, roleId, permissionId },
     })
+
+    let rp;
+    if (existing) {
+      rp = await db.rolePermission.update({
+        where: { id: existing.id },
+        data: { granted: granted !== false },
+      })
+    } else {
+      rp = await db.rolePermission.create({
+        data: {
+          roleId,
+          permissionId,
+          granted: granted !== false,
+        },
+      })
+    }
 
     return NextResponse.json({ rolePermission: rp })
   } catch (error) {

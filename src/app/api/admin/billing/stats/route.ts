@@ -135,6 +135,10 @@ export async function GET(request: NextRequest) {
           gte: startOfMonth,
         },
       },
+      select: {
+        id: true,
+        status: true,
+      },
     })
 
     const successfulPayments = paymentTransactions.filter(
@@ -183,9 +187,23 @@ export async function GET(request: NextRequest) {
 
     // Get recent transactions
     const recentTransactions = await db.paymentTransaction.findMany({
-      include: {
+      select: {
+        id: true,
+        subscriptionId: true,
+        invoiceId: true,
+        orderId: true,
+        paymentType: true,
+        paymentMethod: true,
+        amount: true,
+        status: true,
+        transactionId: true,
+        transactionTime: true,
+        fraudStatus: true,
+        createdAt: true,
+        updatedAt: true,
         subscription: {
-          include: {
+          select: {
+            id: true,
             tenant: {
               select: { name: true, slug: true }
             }

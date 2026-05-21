@@ -39,6 +39,12 @@ export async function POST(request: NextRequest) {
     const paymentSuccess = status === "success"
     const paymentFailed = status === "failed" || status === "cancelled" || status === "expired"
 
+    // Idempotency check: if already processed, return early to prevent duplicate invoices
+    if ((transaction.status === "success" && paymentSuccess) || 
+        (transaction.status === "failed" && paymentFailed)) {
+      return NextResponse.json({ success: true, message: "Already processed" })
+    }
+
     await db.paymentTransaction.update({
       where: { id: transaction.id },
       data: {
@@ -47,7 +53,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || null,
         transactionTime: transactionTime || null,
         fraudStatus: fraudStatus || null,
-        rawResponse: JSON.stringify(body),
+        rawResponse: body as any,
       },
     })
 

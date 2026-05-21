@@ -36,10 +36,26 @@ export async function GET(request: NextRequest) {
       db.paymentTransaction.count({ where }),
       db.paymentTransaction.findMany({
         where,
-        include: {
+        select: {
+          id: true,
+          subscriptionId: true,
+          invoiceId: true,
+          orderId: true,
+          paymentType: true,
+          paymentMethod: true,
+          amount: true,
+          status: true,
+          transactionId: true,
+          transactionTime: true,
+          fraudStatus: true,
+          createdAt: true,
+          updatedAt: true,
           subscription: {
-            include: {
-              tenant: { select: { name: true, slug: true } }
+            select: {
+              id: true,
+              tenant: {
+                select: { name: true, slug: true }
+              }
             }
           }
         },

@@ -1,5 +1,6 @@
 import { db } from "@/lib/database"
 import { createHmac } from "crypto"
+import { waitUntil } from "@vercel/functions"
 
 interface WebhookPayload {
   event: string
@@ -30,7 +31,7 @@ export async function triggerWebhooks(
 
     // Filter webhooks that subscribe to this event
     const matchingWebhooks = webhooks.filter((webhook) => {
-      const events = JSON.parse(webhook.events) as string[]
+      const events = (webhook.events as unknown as string[])
       return events.includes(event) || events.includes("*")
     })
 
@@ -60,9 +61,12 @@ export async function triggerWebhooks(
       },
     }
 
-    // Fire webhooks asynchronously
-    await Promise.all(
-      matchingWebhooks.map((webhook) => fireWebhook(webhook, payload))
+    // Fire webhooks asynchronously in the background using waitUntil
+    // This allows the main response to be sent immediately while hooks finish
+    waitUntil(
+      Promise.all(
+        matchingWebhooks.map((webhook) => fireWebhook(webhook, payload))
+      )
     )
   } catch (error) {
     console.error("Error triggering webhooks:", error)
@@ -219,7 +223,7 @@ export async function executeSyncHooks(
   })
 
   const matchingWebhooks = webhooks.filter((webhook) => {
-    const events = JSON.parse(webhook.events) as string[]
+    const events = (webhook.events as unknown as string[])
     return events.includes(event) || events.includes("*")
   })
 

@@ -26,8 +26,6 @@ import {
   AlertCircle,
   Clock,
 } from "lucide-react"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
-
 interface DomainStatus {
   customDomain: string | null
   customDomainStatus: string | null
@@ -201,17 +199,15 @@ export default function WhiteLabelPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex items-center justify-center flex-1 flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen">
-      <TenantSidebar tenantSlug={tenantSlug} tenants={tenants} />
-
-      <div className="flex-1 overflow-auto">
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 overflow-auto">
         <div className="p-8 max-w-3xl mx-auto space-y-8">
           <div>
             <h1 className="text-2xl font-bold">White-Label Settings</h1>
