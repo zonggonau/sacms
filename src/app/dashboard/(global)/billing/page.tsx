@@ -68,7 +68,7 @@ export default function WorkspaceSelectionPage() {
   const [isAccountPlanOpen, setIsAccountPlanOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
-  const activeView = 'workspaces';
+  const activeView = 'billing';
   const setActiveView = (view: string) => { if (view === 'templates') router.push('/dashboard/templates'); else if (view === 'billing') router.push('/dashboard/billing'); else router.push('/dashboard'); };
 
   const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
