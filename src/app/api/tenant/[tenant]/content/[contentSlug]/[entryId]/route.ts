@@ -82,9 +82,8 @@ export async function PUT(
     if ("error" in result) return result.error
     
     // Custom handling for locale in body
-    const body = await request.clone().json()
-    const locale = body.locale || "en"
-    const { data, publish } = result.data
+    const { data, publish, locale: rawLocale } = result.data
+    const locale = rawLocale || "en"
 
     const contentType = await db.contentType.findFirst({
       where: { slug: contentSlug },

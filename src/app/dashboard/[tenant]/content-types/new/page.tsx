@@ -43,6 +43,7 @@ import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
+import { FIELD_TYPES } from "@/lib/field-types"
 
 export default function NewContentTypePage() {
   const { data: session, status } = useSession()

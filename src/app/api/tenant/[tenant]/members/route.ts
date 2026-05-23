@@ -8,7 +8,7 @@ import { z } from "zod/v4"
 
 const createMemberSchema = z.object({
   email: z.string().email(),
-  role: z.enum(["owner", "admin", "editor", "viewer"]).default("viewer"),
+  role: z.string().default("viewer"),
   name: z.string().optional(),
   password: z.string().min(8).optional(), // Optional for invite, required for create
   customPermissions: z.array(z.string()).optional(),

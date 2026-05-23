@@ -179,7 +179,7 @@ export default function ContentTypeEntriesPage() {
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Search entries..."
-                  className="pl-9 pr-9 h-10 rounded-none bg-card border-none shadow-none focus-visible:ring-primary"
+                  className="pl-9 pr-9 h-10 rounded-none bg-card border shadow-none focus-visible:ring-primary"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
@@ -198,7 +198,7 @@ export default function ContentTypeEntriesPage() {
             </div>
           </div>
 
-          <Card className="border-none shadow-none overflow-hidden bg-card">
+          <Card className="border rounded-none shadow-none overflow-hidden bg-card">
             <CardContent className="p-0">
               {loading && entries.length > 0 && (
                 <div className="absolute inset-0 bg-card/50 z-10 flex items-center justify-center backdrop-blur-[1px]">

@@ -158,6 +158,23 @@ export default function CMSContentTypeEntriesPage() {
     }
   }
 
+  const handleDeleteEntry = async (entryId: string) => {
+    if (!confirm('Delete this entry permanently?')) return
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}`, {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        toast({ title: "Deleted Successfully" })
+        fetchData()
+      } else {
+        toast({ variant: "destructive", title: "Failed to delete" })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error" })
+    }
+  }
+
   const handleStatusChange = async (entryId: string, newStatus: string) => {
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
@@ -411,7 +428,7 @@ export default function CMSContentTypeEntriesPage() {
                             <DropdownMenuContent align="end" className="w-40 rounded-none border border-border bg-card shadow-none">
                               <DropdownMenuItem className="text-xs font-medium rounded-none hover:bg-muted hover:text-orange-500"><Download className="mr-2 h-3.5 w-3.5" /> Export JSON</DropdownMenuItem>
                               <DropdownMenuSeparator className="border-t border-border" />
-                              <DropdownMenuItem className="text-red-600 focus:text-red-700 font-bold text-xs rounded-none hover:bg-red-50/10" onClick={() => { if(confirm('Delete?')) handleBulkAction('delete') }}>
+                              <DropdownMenuItem className="text-red-600 focus:text-red-700 font-bold text-xs rounded-none hover:bg-red-50/10" onClick={() => handleDeleteEntry(entry.id)}>
                                 <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Entry
                               </DropdownMenuItem>
                             </DropdownMenuContent>

@@ -44,6 +44,7 @@ import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { FIELD_TYPES } from "@/lib/field-types"
 
 const CATEGORIES = ["SEO", "Media", "Content", "Layout", "Settings", "Other"]
 

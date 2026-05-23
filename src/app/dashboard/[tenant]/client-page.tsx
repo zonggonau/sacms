@@ -244,18 +244,18 @@ export default function TenantDashboardClient({
 
           {/* Quota Usage Alerts */}
           {usageAlerts.length > 0 && (
-            <div className="bg-red-50 border border-red-200 rounded-3xl p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm animate-in fade-in slide-in-from-top-4">
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-6 flex flex-col md:flex-row items-center justify-between gap-6 shadow-sm animate-in fade-in slide-in-from-top-4">
               <div className="flex items-center gap-4 text-center md:text-left">
-                <div className="w-12 h-12 rounded-2xl bg-red-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-6 w-6 text-red-600 animate-bounce" />
+                <div className="w-12 h-12 rounded-none bg-red-100 dark:bg-red-900/40 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-6 w-6 text-red-600 dark:text-red-500 animate-bounce" />
                 </div>
                 <div>
-                  <p className="text-sm font-black text-red-950 uppercase tracking-tight">Resource Limit Reached</p>
-                  <p className="text-xs text-red-800 font-medium">You have used over 90% of your {usageAlerts.map(u => u.label).join(", ")} quota.</p>
+                  <p className="text-sm font-black text-red-950 dark:text-red-400 uppercase tracking-tight">Resource Limit Reached</p>
+                  <p className="text-xs text-red-800 dark:text-red-300 font-medium">You have used over 90% of your {usageAlerts.map(u => u.label).join(", ")} quota.</p>
                 </div>
               </div>
               <Link href={`/dashboard/${tenantId}/subscriptions`}>
-                <Button className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs h-11 px-8 rounded-xl shadow-lg shadow-red-200">
+                <Button className="bg-red-600 hover:bg-red-700 text-white font-black uppercase tracking-widest text-xs h-11 px-8 rounded-none shadow-none">
                   Upgrade Plan Now
                 </Button>
               </Link>
@@ -279,13 +279,13 @@ export default function TenantDashboardClient({
               }
 
               return (
-                <Card key={item.label} className="border-none bg-card shadow-sm rounded-2xl overflow-hidden">
+                <Card key={item.label} className="border border-border bg-card shadow-none rounded-none overflow-hidden">
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{item.label}</span>
                       <span className="text-[10px] font-bold text-muted-foreground">{formatValue(item.current, item.unit)} / {formatValue(item.limit, item.unit)}</span>
                     </div>
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                    <div className="h-1 w-full bg-muted rounded-none overflow-hidden">
                       <div 
                         className={cn(
                           "h-full transition-all duration-500",
@@ -303,15 +303,15 @@ export default function TenantDashboardClient({
           {/* Alert Queue */}
           {stats?.entries && (stats.entries as any).in_review > 0 && (
             <Link href={`/dashboard/${tenantId}/system/audit`}>
-              <div className="flex items-center gap-4 p-4 rounded-2xl border border-amber-200 bg-amber-50/50 shadow-sm hover:bg-amber-50 transition-colors group">
-                <div className="w-10 h-10 rounded-full bg-amber-100 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+              <div className="flex items-center gap-4 p-4 rounded-none border border-amber-200 dark:border-amber-900/50 bg-amber-50/50 dark:bg-amber-900/10 shadow-none hover:bg-amber-50 dark:hover:bg-amber-900/20 transition-colors group">
+                <div className="w-10 h-10 rounded-none bg-amber-100 dark:bg-amber-900/40 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-500" />
                 </div>
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-amber-900">Review Required</p>
-                  <p className="text-xs text-amber-700/80">There are {(stats.entries as any).in_review} entries waiting for your approval.</p>
+                  <p className="text-sm font-bold text-amber-900 dark:text-amber-400">Review Required</p>
+                  <p className="text-xs text-amber-700/80 dark:text-amber-300">There are {(stats.entries as any).in_review} entries waiting for your approval.</p>
                 </div>
-                <ArrowRight className="h-4 w-4 text-amber-400 group-hover:translate-x-1 transition-transform" />
+                <ArrowRight className="h-4 w-4 text-amber-400 dark:text-amber-600 group-hover:translate-x-1 transition-transform" />
               </div>
             </Link>
           )}
@@ -325,9 +325,9 @@ export default function TenantDashboardClient({
               { label: "API Keys", value: stats?.apiTokenCount ?? 0, icon: Key, color: "text-emerald-500", bg: "bg-emerald-50", href: `/dashboard/${tenantId}/api-keys` },
             ].map((kpi) => (
               <Link key={kpi.label} href={kpi.href}>
-                <Card className="hover:shadow-md transition-all cursor-pointer border-none bg-card group">
+                <Card className="hover:border-primary transition-all cursor-pointer border border-border bg-card rounded-none shadow-none group">
                   <CardContent className="p-5 flex items-center gap-4">
-                    <div className={cn("w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform", kpi.bg)}>
+                    <div className={cn("w-12 h-12 rounded-none flex items-center justify-center group-hover:scale-110 transition-transform dark:bg-muted", kpi.bg)}>
                       <kpi.icon className={cn("h-6 w-6", kpi.color)} />
                     </div>
                     <div>
@@ -346,18 +346,18 @@ export default function TenantDashboardClient({
             <div className="lg:col-span-2 space-y-6">
               
               {/* Pipeline Overview */}
-              <Card className="border-none shadow-sm bg-card overflow-hidden">
+              <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
                 <CardHeader className="pb-2">
                   <div className="flex items-center justify-between">
                     <div>
                       <CardTitle className="text-lg font-bold">Content Pipeline</CardTitle>
                       <CardDescription className="text-xs">Workflow status across all {totalEntries} entries</CardDescription>
                     </div>
-                    <Badge variant="outline" className="font-bold text-[10px] uppercase">Live Overview</Badge>
+                    <Badge variant="outline" className="font-bold text-[10px] uppercase rounded-none border-border">Live Overview</Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <div className="flex h-3 rounded-full overflow-hidden bg-muted mb-6">
+                  <div className="flex h-3 rounded-none overflow-hidden bg-muted mb-6 border border-border">
                     {stats?.entries && Object.entries(stats.entries).map(([key, count]) => {
                       const numCount = Number(count) || 0
                       if (numCount === 0 || totalEntries === 0) return null
@@ -373,9 +373,9 @@ export default function TenantDashboardClient({
                     {stats?.entries && Object.entries(STATUS_CONFIG).map(([key, cfg]) => {
                       const count = (stats.entries as any)?.[key] || 0
                       return (
-                        <div key={key} className="flex items-center justify-between p-2.5 rounded-xl border bg-muted/20">
+                        <div key={key} className="flex items-center justify-between p-2.5 rounded-none border border-border bg-muted/20">
                           <div className="flex items-center gap-2">
-                            <div className={cn("w-1.5 h-1.5 rounded-full", cfg.dot)} />
+                            <div className={cn("w-2 h-2 rounded-none", cfg.dot)} />
                             <span className="text-xs font-bold text-muted-foreground">{cfg.label}</span>
                           </div>
                           <span className="text-sm font-black">{count}</span>
@@ -392,7 +392,7 @@ export default function TenantDashboardClient({
                   <h2 className="text-lg font-black uppercase tracking-tight text-muted-foreground/70">Content Collections</h2>
                 </div>
                 {contentTypes.length === 0 ? (
-                  <Card className="border-dashed">
+                  <Card className="border-dashed border-border rounded-none shadow-none">
                     <CardContent className="py-16 text-center">
                       <PenTool className="h-12 w-12 mx-auto text-muted-foreground/20 mb-4" />
                       <p className="text-sm font-bold text-muted-foreground">No content types assigned yet.</p>
@@ -403,11 +403,11 @@ export default function TenantDashboardClient({
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {contentTypes.map((ct) => (
                       <Link key={ct.id} href={`/dashboard/${tenantId}/content/${ct.slug}`}>
-                        <Card className="hover:shadow-lg transition-all hover:border-primary/50 cursor-pointer group bg-card border-none shadow-sm">
+                        <Card className="hover:border-primary transition-all cursor-pointer group bg-card border border-border rounded-none shadow-none">
                           <CardContent className="p-5">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-4">
-                                <div className="w-12 h-12 rounded-2xl bg-primary/5 flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                                <div className="w-12 h-12 rounded-none bg-primary/5 dark:bg-primary/10 flex items-center justify-center group-hover:bg-primary/10 dark:group-hover:bg-primary/20 transition-colors">
                                   <Database className="h-6 w-6 text-primary" />
                                 </div>
                                 <div>
@@ -431,8 +431,8 @@ export default function TenantDashboardClient({
             {/* Right: Activity & Quick Access */}
             <div className="space-y-6">
               {/* Recent Activity */}
-              <Card className="border-none shadow-sm bg-card">
-                <CardHeader className="pb-2 border-b">
+              <Card className="border border-border shadow-none bg-card rounded-none">
+                <CardHeader className="pb-2 border-b border-border">
                   <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Recent Edits</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
@@ -442,7 +442,7 @@ export default function TenantDashboardClient({
                       <p className="text-xs text-muted-foreground italic">No recent activity</p>
                     </div>
                   ) : (
-                    <div className="divide-y">
+                    <div className="divide-y divide-border">
                       {stats.recentEntries.map((entry) => {
                         const cfg = STATUS_CONFIG[entry.status.toLowerCase()] || STATUS_CONFIG.draft
                         return (
@@ -457,7 +457,7 @@ export default function TenantDashboardClient({
                                   </span>
                                 </div>
                               </div>
-                              <Badge className={cn("text-[9px] font-black px-1.5 py-0", cfg.bg)}>
+                              <Badge className={cn("text-[9px] font-black px-1.5 py-0 rounded-none border-transparent", cfg.bg)}>
                                 {cfg.label.toUpperCase()}
                               </Badge>
                             </div>
@@ -470,14 +470,14 @@ export default function TenantDashboardClient({
               </Card>
 
               {/* Developer Resources */}
-              <Card className="bg-primary/5 border-primary/10 border shadow-none">
+              <Card className="bg-primary/5 dark:bg-primary/10 border-primary/20 dark:border-primary/30 border shadow-none rounded-none">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-xs font-bold uppercase text-primary tracking-widest">Developer Resources</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-2">
                   <Link href={`/dashboard/${tenantId}/developer/api`}>
-                    <div className="flex items-center gap-3 p-2.5 rounded-xl bg-card border border-primary/10 hover:border-primary/30 transition-all group">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="flex items-center gap-3 p-2.5 rounded-none bg-card border border-border hover:border-primary transition-all group">
+                      <div className="w-8 h-8 rounded-none bg-primary/10 flex items-center justify-center text-primary">
                         <Zap className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
@@ -488,8 +488,8 @@ export default function TenantDashboardClient({
                     </div>
                   </Link>
                   <Link href={`/dashboard/${tenantId}/developer/sdk`}>
-                    <div className="flex items-center gap-3 p-2.5 rounded-xl bg-card border border-primary/10 hover:border-primary/30 transition-all group">
-                      <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                    <div className="flex items-center gap-3 p-2.5 rounded-none bg-card border border-border hover:border-primary transition-all group">
+                      <div className="w-8 h-8 rounded-none bg-primary/10 flex items-center justify-center text-primary">
                         <BookOpen className="h-4 w-4" />
                       </div>
                       <div className="flex-1">
@@ -504,7 +504,7 @@ export default function TenantDashboardClient({
 
               {/* Platform Info */}
               <div className="px-2">
-                <div className="p-4 rounded-2xl bg-muted/30 border border-muted flex items-start gap-3">
+                <div className="p-4 rounded-none bg-muted/30 border border-border flex items-start gap-3">
                   <ShieldCheck className="h-5 w-5 text-muted-foreground mt-0.5" />
                   <div>
                     <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Workspace Security</p>

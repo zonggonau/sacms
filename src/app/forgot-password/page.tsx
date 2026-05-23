@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Database, Loader2, Mail } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { forgotPassword } from "@/app/actions/auth"
 
 export default function ForgotPasswordPage() {
   const { toast } = useToast()
@@ -19,22 +20,16 @@ export default function ForgotPasswordPage() {
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/forgot-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email }),
-      })
+      const response = await forgotPassword(email)
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Request failed")
+      if (response.error) {
+        throw new Error(response.error)
       }
 
       setIsSent(true)
       toast({
         title: "Link Sent",
-        description: data.message,
+        description: response.message,
       })
     } catch (error: any) {
       toast({

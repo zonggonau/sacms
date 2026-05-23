@@ -312,47 +312,59 @@ export default function CreateEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-extrabold tracking-tight">New {contentType?.name}</h1>
-                  <Badge className={cn("text-[10px] font-black uppercase text-white", statusCfg.color)}>
-                    {statusCfg.label}
-                  </Badge>
+    <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
+      <div className="flex-1 bg-[#f6f6f9] text-foreground flex w-full min-h-0 flex-col">
+        
+        {/* Editor Pane */}
+        <div className="flex flex-col overflow-auto flex-1 min-h-0 w-full">
+          {/* Sticky Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
+            <div className="w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h1 className="text-3xl font-extrabold tracking-tight">New {contentType?.name}</h1>
+                      <Badge className={cn("text-[10px] font-black uppercase text-white", statusCfg.color)}>
+                        {statusCfg.label}
+                      </Badge>
+                    </div>
+                    <p className="text-muted-foreground">Fill in the fields to create a new entry.</p>
+                  </div>
                 </div>
-                <p className="text-muted-foreground">Fill in the fields to create a new entry.</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Select value={entryStatus} onValueChange={setEntryStatus}>
-                <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-none">
-                  {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
-                    <SelectItem key={val} value={val} className="text-xs font-bold uppercase">
+                <div className="flex items-center gap-2">
+                  <Select value={entryStatus} onValueChange={setEntryStatus}>
+                    <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none h-10">
                       <div className="flex items-center gap-2">
-                        <cfg.icon className="h-3 w-3" />
-                        {cfg.label}
+                        <statusCfg.icon className="h-3.5 w-3.5" />
+                        <SelectValue />
                       </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none border-none shadow-none">
+                      {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
+                        <SelectItem key={val} value={val} className="text-xs font-bold uppercase p-3">
+                          <div className="flex items-center gap-2">
+                            <cfg.icon className="h-3.5 w-3.5" />
+                            {cfg.label}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
 
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                Create & Publish
-              </Button>
+                  <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                    Create & Publish
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main Content */}
+          <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               <Card className="border-none shadow-none bg-card overflow-hidden rounded-none">
                 <CardHeader className="border-b bg-muted/5 p-6">
@@ -440,6 +452,7 @@ export default function CreateEntryPage() {
           </div>
         </div>
       </div>
+    </div>
     </div>
   )
 }

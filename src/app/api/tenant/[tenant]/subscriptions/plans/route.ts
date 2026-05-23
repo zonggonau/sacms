@@ -6,9 +6,12 @@ export async function GET(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
-    // 1. Fetch SaCMS Pricing (Main Workspace Plans)
+    const { tenant } = await params
+    const isAccount = tenant === "account"
+
+    // 1. Fetch Pricing Content Type
     const pricingContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-workspace-pricing" }
+      where: { slug: isAccount ? "sacms-account-pricing" : "sacms-workspace-pricing" }
     })
     console.log("Pricing Content Type:", pricingContentType?.id);
 

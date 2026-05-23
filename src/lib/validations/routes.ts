@@ -27,11 +27,13 @@ export const saveSingleTypeDataSchema = z.object({
 export const createContentEntrySchema = z.object({
   data: z.record(z.string(), z.any()),
   publish: z.boolean().optional(),
+  locale: z.string().optional(),
 })
 
 export const updateContentEntrySchema = z.object({
   data: z.record(z.string(), z.any()),
   publish: z.boolean().optional(),
+  locale: z.string().optional(),
 })
 
 export const checkoutSchema = z.object({

@@ -6,7 +6,7 @@ import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 
 const updateMemberSchema = z.object({
-  role: z.enum(["owner", "admin", "editor", "viewer"]).optional(),
+  role: z.string().optional(),
   password: z.string().min(8).optional(), // For manual password reset/edit
 })
 

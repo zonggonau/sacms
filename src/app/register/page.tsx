@@ -9,6 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Database, Loader2, Crown, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { registerUser } from "@/app/actions/auth"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -19,12 +20,27 @@ export default function RegisterPage() {
   const [showPassword, setShowPassword] = useState(false)
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
+  const [isSuccess, setIsSuccess] = useState(false)
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
+    confirmPassword: "",
     agreeTerms: false,
   })
+
+  const getPasswordStrength = (p: string) => {
+    let score = 0
+    if (p.length >= 8) score += 1
+    if (/\d/.test(p)) score += 1
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(p)) score += 1
+    if (/[A-Z]/.test(p)) score += 1
+    return score
+  }
+
+  const strength = getPasswordStrength(formData.password)
+  const strengthLabels = ["Sangat Lemah", "Lemah", "Sedang", "Kuat", "Sangat Kuat"]
+  const strengthColors = ["bg-red-500", "bg-red-500", "bg-yellow-500", "bg-green-400", "bg-green-600"]
 
   useEffect(() => {
     const checkFirstUser = async () => {
@@ -49,35 +65,40 @@ export default function RegisterPage() {
       return
     }
 
+    if (formData.password !== formData.confirmPassword) {
+      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
+      return
+    }
+
+    if (strength < 3) {
+      toast({ title: "Error", description: "Password is too weak. Must be 'Kuat' or 'Sangat Kuat'.", variant: "destructive" })
+      return
+    }
+
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          password: formData.password,
-          plan: plan,
-        }),
+      const response = await registerUser({
+        name: formData.name,
+        email: formData.email,
+        password: formData.password,
+        plan: plan,
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Registration failed")
+      if (response.error) {
+        throw new Error(response.error)
       }
 
-      toast({
-        title: "Success",
-        description: data.isFirstUser 
-          ? "Super Admin account created. Please sign in."
-          : "Account created.",
-      })
-
-      router.push(`/login?email=${formData.email}`)
-    } catch (error) {
+      if (response.isFirstUser) {
+        toast({
+          title: "Success",
+          description: "Super Admin account created. Please sign in.",
+        })
+        router.push(`/login?email=${formData.email}`)
+      } else {
+        setIsSuccess(true)
+      }
+    } catch (error: any) {
       toast({
         title: "Error",
         description: error instanceof Error ? error.message : "Registration failed",
@@ -110,7 +131,7 @@ export default function RegisterPage() {
           </p>
         </div>
 
-        {isFirstUser && (
+        {isFirstUser && !isSuccess && (
           <div className="mb-6 p-3 border border-orange-200 bg-orange-50 flex items-center gap-3">
             <Crown className="w-5 h-5 text-orange-500" />
             <div>
@@ -120,8 +141,25 @@ export default function RegisterPage() {
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
+        {isSuccess ? (
+          <div className="text-center space-y-4">
+            <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
+              <Database className="w-6 h-6 text-orange-500" />
+            </div>
+            <h3 className="text-xl font-medium">Registrasi Berhasil!</h3>
+            <p className="text-sm text-muted-foreground mb-6">
+              Satu langkah lagi. Kami telah mengirimkan tautan aktivasi ke <strong>{formData.email}</strong>. 
+              Silakan cek kotak masuk atau folder spam email Anda untuk mengaktifkan akun.
+            </p>
+            <Link href="/login">
+              <Button className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-none transition-none">
+                Kembali ke Login
+              </Button>
+            </Link>
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
             <Label htmlFor="name" className="text-sm font-medium">Full Name</Label>
             <Input 
               id="name" 
@@ -157,9 +195,6 @@ export default function RegisterPage() {
                 value={formData.password} 
                 onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
                 required 
-                minLength={8} 
-                pattern="(?=.*\d)(?=.*[!@#$%^&*(),.?&#34;:{}\|<>]).{8,}"
-                title="Must contain at least 8 characters, one number, and one symbol"
                 className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10" 
               />
               <button
@@ -170,7 +205,35 @@ export default function RegisterPage() {
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
+            {formData.password && (
+              <div className="mt-2 space-y-1">
+                <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                  <div
+                    className={`h-full transition-all duration-300 ${strengthColors[strength]}`}
+                    style={{ width: `${(strength === 0 ? 1 : strength) * 25}%` }}
+                  />
+                </div>
+                <p className={`text-[10px] font-medium ${strength < 2 ? "text-red-500" : strength < 3 ? "text-yellow-600" : "text-green-600"}`}>
+                  {strengthLabels[strength]}
+                </p>
+              </div>
+            )}
             <p className="text-[10px] text-muted-foreground mt-1">Min. 8 characters, 1 number, 1 symbol.</p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+            <div className="relative">
+              <Input 
+                id="confirmPassword" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={formData.confirmPassword} 
+                onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })} 
+                required 
+                className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10" 
+              />
+            </div>
           </div>
 
           <div className="flex items-center space-x-2 pt-2">
@@ -192,14 +255,17 @@ export default function RegisterPage() {
           >
             {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Register"}
           </Button>
-        </form>
+          </form>
+        )}
 
-        <div className="mt-8 text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link href="/login" className="text-orange-500 hover:underline">
-            Sign in
-          </Link>
-        </div>
+        {!isSuccess && (
+          <div className="mt-8 text-center text-sm text-muted-foreground">
+            Already have an account?{" "}
+            <Link href="/login" className="text-orange-500 hover:underline">
+              Sign in
+            </Link>
+          </div>
+        )}
 
       </div>
     </div>

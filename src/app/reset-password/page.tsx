@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Database, Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { resetPassword } from "@/app/actions/auth"
 
 function ResetPasswordForm() {
   const router = useRouter()
@@ -23,6 +24,19 @@ function ResetPasswordForm() {
     confirmPassword: "",
   })
 
+  const getPasswordStrength = (p: string) => {
+    let score = 0
+    if (p.length >= 8) score += 1
+    if (/\d/.test(p)) score += 1
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(p)) score += 1
+    if (/[A-Z]/.test(p)) score += 1
+    return score
+  }
+
+  const strength = getPasswordStrength(formData.password)
+  const strengthLabels = ["Sangat Lemah", "Lemah", "Sedang", "Kuat", "Sangat Kuat"]
+  const strengthColors = ["bg-red-500", "bg-red-500", "bg-yellow-500", "bg-green-400", "bg-green-600"]
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -36,28 +50,27 @@ function ResetPasswordForm() {
       return
     }
 
+    if (strength < 3) {
+      toast({ title: "Error", description: "Password is too weak. Must be 'Kuat' or 'Sangat Kuat'.", variant: "destructive" })
+      return
+    }
+
     setLoading(true)
 
     try {
-      const response = await fetch("/api/auth/reset-password", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          token,
-          password: formData.password 
-        }),
+      const response = await resetPassword({ 
+        token,
+        password: formData.password 
       })
 
-      const data = await response.json()
-
-      if (!response.ok) {
-        throw new Error(data.error || "Reset failed")
+      if (response.error) {
+        throw new Error(response.error)
       }
 
       setIsSuccess(true)
       toast({
         title: "Success",
-        description: data.message,
+        description: response.message,
       })
     } catch (error: any) {
       toast({
@@ -117,9 +130,6 @@ function ResetPasswordForm() {
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
-            minLength={8}
-            pattern="(?=.*\d)(?=.*[!@#$%^&*(),.?&#34;:{}\|<>]).{8,}"
-            title="Must contain at least 8 characters, one number, and one symbol"
             className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10"
           />
           <button
@@ -130,6 +140,19 @@ function ResetPasswordForm() {
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
+        {formData.password && (
+            <div className="mt-2 space-y-1">
+              <div className="flex h-1.5 w-full overflow-hidden rounded-full bg-secondary">
+                <div
+                  className={`h-full transition-all duration-300 ${strengthColors[strength]}`}
+                  style={{ width: `${(strength === 0 ? 1 : strength) * 25}%` }}
+                />
+              </div>
+              <p className={`text-[10px] font-medium ${strength < 2 ? "text-red-500" : strength < 3 ? "text-yellow-600" : "text-green-600"}`}>
+                {strengthLabels[strength]}
+              </p>
+            </div>
+          )}
         <p className="text-[10px] text-muted-foreground mt-1">Min. 8 characters, 1 number, 1 symbol.</p>
       </div>
 

@@ -40,40 +40,33 @@ export async function GET(
     const where: Record<string, unknown> = { tenantId: tenant.id }
     if (action) where.action = action
     if (entity) where.entity = entity
-    if (userId) {
-      where.userId = userId
-    } else {
-      // Exclude Super Admin actions from tenant logs
-      const superAdmins = await db.user.findMany({
-        where: { role: "super_admin" },
-        select: { id: true }
-      })
-      const superAdminIds = superAdmins.map(u => u.id)
-      
-      where.userId = { notIn: superAdminIds }
-    }
+    if (userId) where.userId = userId
 
     const [total, logs] = await Promise.all([
       db.auditLog.count({ where }),
       db.auditLog.findMany({
         where,
-        include: {
-          user: {
-            select: {
-              name: true,
-              email: true,
-              image: true,
-            },
-          },
-        },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
       }),
     ])
 
+    // Manually fetch user data since AuditLog doesn't have a direct Prisma relation
+    const userIds = Array.from(new Set(logs.map(log => log.userId).filter(Boolean))) as string[]
+    const users = await db.user.findMany({
+      where: { id: { in: userIds } },
+      select: { id: true, name: true, email: true, image: true }
+    })
+    
+    const userMap = new Map(users.map(u => [u.id, u]))
+    const logsWithUser = logs.map(log => ({
+      ...log,
+      user: log.userId ? userMap.get(log.userId) || null : null
+    }))
+
     return NextResponse.json({
-      logs,
+      logs: logsWithUser,
       meta: {
         page,
         limit,

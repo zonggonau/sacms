@@ -314,10 +314,10 @@ export default function EditEntryPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
-      <div className={cn("flex-1 bg-[#f6f6f9] text-foreground flex w-full", showPreview ? "flex-row" : "flex-col")}>
+      <div className={cn("flex-1 bg-[#f6f6f9] text-foreground flex w-full min-h-0", showPreview ? "flex-row" : "flex-col")}>
         
         {/* Editor Pane */}
-        <div className={cn("flex flex-col overflow-auto", showPreview ? "w-1/2 border-r border-border" : "w-full")}>
+        <div className={cn("flex flex-col overflow-auto flex-1 min-h-0", showPreview ? "w-1/2 border-r border-border" : "w-full")}>
           {/* Sticky Header */}
         <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
           <div className="w-full">

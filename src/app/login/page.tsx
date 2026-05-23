@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { signIn } from "next-auth/react"
@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Database, Loader2, Eye, EyeOff } from "lucide-react"
 import { useSearchParams } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
   const router = useRouter()

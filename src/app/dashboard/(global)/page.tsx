@@ -11,7 +11,7 @@ import {
   ShieldCheck, Search, Settings, 
   LayoutDashboard, MoreVertical, Trash2,
   AlertTriangle, Clock, Ban, CheckCircle2,
-  ArrowRight, Zap, Layout, Globe, FileText
+  ArrowRight, Zap, Layout, Globe, FileText, CreditCard
 } from "lucide-react"
 import {
   Dialog,
@@ -67,13 +67,17 @@ export default function WorkspaceSelectionPage() {
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isAccountPlanOpen, setIsAccountPlanOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isUpdatingUserPlan, setIsUpdatingUserPlan] = useState(false)
-  const [activeView, setActiveView] = useState<'workspaces' | 'templates'>('workspaces')
+  const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
+  const [activeView, setActiveView] = useState<'workspaces' | 'templates' | 'billing'>('workspaces')
+
+  const [isCheckoutModalOpen, setIsCheckoutModalOpen] = useState(false)
+  const [selectedCheckoutPlan, setSelectedCheckoutPlan] = useState<any>(null)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   const [accountPlans, setAccountPlans] = useState<any[]>([])
 
   const handleUpdateUserPlan = async (planId: string) => {
-    setIsUpdatingUserPlan(true)
+    setUpdatingPlanId(planId)
     try {
       if (planId === "free") {
         const res = await fetch("/api/user/plan", {
@@ -87,35 +91,68 @@ export default function WorkspaceSelectionPage() {
           router.refresh()
           return
         }
-      }
-
-      const res = await fetch("/api/checkout", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          planId: planId,
-          type: "account",
-          interval: "month" 
-        }),
-      })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.redirect_url) {
-          toast({ title: "Redirecting to Payment", description: "Please complete your payment to upgrade." })
-          window.location.href = data.redirect_url
-        } else {
-          toast({ title: "Account Plan Updated", description: `You are now on the ${planId} plan.` })
-          setIsAccountPlanOpen(false)
-          router.refresh()
-        }
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Checkout Failed", description: data.error })
+        const plan = accountPlans.find(p => p.id === planId)
+        if (plan) {
+          setSelectedCheckoutPlan(plan)
+          setIsAccountPlanOpen(false)
+          setIsCheckoutModalOpen(true)
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Plan not found." })
+        }
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to initiate checkout." })
     } finally {
-      setIsUpdatingUserPlan(false)
+      setUpdatingPlanId(null)
+    }
+  }
+
+  const handleCheckoutProcess = async () => {
+    if (!selectedCheckoutPlan) return
+    setCheckoutLoading(true)
+    try {
+      const res = await fetch("/api/checkout", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          planId: selectedCheckoutPlan.id,
+          type: "account",
+          interval: "year"
+        }),
+      })
+
+      const data = await res.json()
+
+      if (res.ok && data.token) {
+        if (typeof window !== 'undefined' && (window as any).snap) {
+          setIsCheckoutModalOpen(false) // Tutup modal agar tidak memblokir Midtrans iframe
+          ;(window as any).snap.pay(data.token, {
+            onSuccess: (result: any) => {
+              toast({ title: "Payment Successful!", description: "Your account has been upgraded." })
+              router.refresh()
+            },
+            onPending: (result: any) => {
+              toast({ title: "Payment Pending", description: "Please complete your payment." })
+              router.refresh()
+            },
+            onError: (error: any) => {
+              toast({ variant: "destructive", title: "Payment Failed", description: "Please try again." })
+            },
+            onClose: () => {
+              setCheckoutLoading(false)
+            }
+          })
+        } else {
+          toast({ variant: "destructive", title: "Error", description: "Payment system not ready." })
+          setCheckoutLoading(false)
+        }
+      } else {
+        throw new Error(data.error || "Checkout failed")
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message })
+      setCheckoutLoading(false)
     }
   }
   
@@ -218,6 +255,24 @@ export default function WorkspaceSelectionPage() {
     }
   }, [status, session, router])
 
+  // Load Midtrans Snap Script
+  useEffect(() => {
+    const snapScript = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || "https://app.sandbox.midtrans.com/snap/snap.js"
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ""
+    
+    const script = document.createElement("script")
+    script.src = snapScript
+    script.setAttribute("data-client-key", clientKey)
+    script.async = true
+    document.body.appendChild(script)
+
+    return () => {
+      if (document.body.contains(script)) {
+        document.body.removeChild(script)
+      }
+    }
+  }, [])
+
   const fetchTenants = async () => {
     try {
       const res = await fetch("/api/tenants")
@@ -251,11 +306,12 @@ export default function WorkspaceSelectionPage() {
               .filter((p: any) => p.plan_slug !== 'free' && p.price > 0)
               .map((p: any) => {
               let displayPrice = "Rp 0"
+              const yearlyPrice = p.price * 10
               if (p.price > 0) {
-                if (p.price >= 1000000) {
-                  displayPrice = `Rp ${(p.price / 1000000).toLocaleString('id-ID')}M`
+                if (yearlyPrice >= 1000000) {
+                  displayPrice = `Rp ${(yearlyPrice / 1000000).toLocaleString('id-ID')}M`
                 } else {
-                  displayPrice = `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`
+                  displayPrice = `Rp ${(yearlyPrice / 1000).toLocaleString('id-ID')}k`
                 }
               } else if (p.price === 0 && p.cta_text?.toLowerCase().includes('contact')) {
                 displayPrice = "Custom"
@@ -471,6 +527,17 @@ export default function WorkspaceSelectionPage() {
               >
                 Templates
               </button>
+              <button 
+                onClick={() => setActiveView('billing')}
+                className={cn(
+                  "text-sm font-semibold pb-2 transition-all border-b-2",
+                  activeView === 'billing' 
+                    ? "border-orange-500 text-orange-500 font-bold" 
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                Billing
+              </button>
             </div>
           </div>
           
@@ -683,6 +750,82 @@ export default function WorkspaceSelectionPage() {
                 </Card>
               )}
             </section>
+          </div>
+        ) : activeView === 'billing' ? (
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-2 duration-300">
+            <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border pb-4">
+              <div>
+                <h2 className="text-xl font-bold uppercase tracking-tight">Account Billing</h2>
+                <p className="text-sm text-muted-foreground mt-1">Manage your global subscription, usage, and payment methods.</p>
+              </div>
+              <Button 
+                onClick={() => setIsAccountPlanOpen(true)}
+                className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-none h-10 px-6 border-none text-xs uppercase shadow-none"
+              >
+                <Zap className="mr-2 h-4 w-4 fill-current" />
+                Upgrade Plan
+              </Button>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="bg-card border border-border shadow-none rounded-none">
+                <CardContent className="p-6 flex flex-col justify-between h-full space-y-6">
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Plan</span>
+                    <div className="flex items-center gap-3 mt-2">
+                      <h3 className="text-4xl font-black uppercase tracking-tight text-orange-500">{session?.user?.plan || "Free"}</h3>
+                      <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200 rounded-none font-bold uppercase tracking-widest text-[10px]">Active</Badge>
+                    </div>
+                  </div>
+                  
+                  <div className="p-4 bg-muted/10 border border-border text-sm text-muted-foreground">
+                    You are currently on the <strong className="text-foreground uppercase">{session?.user?.plan || "Free"}</strong> plan. 
+                    {session?.user?.plan === 'free' ? " Upgrade your account to unlock premium templates, higher limits, and unlimited workspaces." : " Your subscription is active and in good standing. You will be billed annually."}
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="bg-card border border-border shadow-none rounded-none">
+                <CardContent className="p-6 space-y-6">
+                  <div>
+                    <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workspace Usage Limit</span>
+                    <div className="flex items-end gap-2 mt-2">
+                      <h3 className="text-4xl font-black tracking-tight">{activeWorkspacesCount}</h3>
+                      <span className="text-sm text-muted-foreground font-bold mb-1 uppercase">/ {session?.user?.plan === 'free' ? '3' : 'Unlimited'} Workspaces</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <div className="w-full bg-muted h-2.5 rounded-none overflow-hidden border border-border">
+                       <div 
+                         className={cn(
+                           "h-full transition-all duration-500", 
+                           session?.user?.plan === 'free' ? (activeWorkspacesCount >= 3 ? "bg-red-500" : "bg-orange-500") : "bg-emerald-500"
+                         )} 
+                         style={{ width: session?.user?.plan === 'free' ? `${Math.min((activeWorkspacesCount / 3) * 100, 100)}%` : '100%' }} 
+                       />
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                      {session?.user?.plan === 'free' 
+                        ? `${Math.max(3 - activeWorkspacesCount, 0)} workspaces remaining on Free plan.` 
+                        : "You have unlimited workspaces."}
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+            
+            <Card className="bg-card border border-border shadow-none rounded-none mt-6">
+               <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+                 <div>
+                   <h3 className="text-sm font-bold uppercase tracking-tight mb-1">Payment Method & Invoices</h3>
+                   <p className="text-xs text-muted-foreground">Manage your credit cards, billing address, and download past invoices via our secure portal.</p>
+                 </div>
+                 <Button variant="outline" className="rounded-none font-bold text-xs uppercase h-10 border-border" disabled>
+                   <CreditCard className="mr-2 h-4 w-4" /> Open Billing Portal
+                 </Button>
+               </CardContent>
+            </Card>
           </div>
         ) : (
           /* Templates View Section - REDESIGNED TO BE SIMPLISTIC & CLASSIC */
@@ -1041,7 +1184,7 @@ export default function WorkspaceSelectionPage() {
                           <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">{plan.name}</h4>
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-bold">{plan.price}</span>
-                            <span className="text-[10px] text-muted-foreground uppercase">/mo</span>
+                            <span className="text-[10px] text-muted-foreground uppercase">/yr</span>
                           </div>
                         </div>
 
@@ -1062,7 +1205,7 @@ export default function WorkspaceSelectionPage() {
                       </div>
 
                       <Button 
-                        disabled={isCurrent || isUpdatingUserPlan}
+                        disabled={isCurrent || updatingPlanId !== null}
                         onClick={() => handleUpdateUserPlan(plan.id)}
                         className={cn(
                           "w-full h-10 rounded-none font-bold uppercase text-xs border transition-colors mt-4",
@@ -1071,7 +1214,7 @@ export default function WorkspaceSelectionPage() {
                             : "bg-orange-500 border-none hover:bg-orange-600 text-white"
                         )}
                       >
-                        {isUpdatingUserPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? "Active Plan" : "Upgrade"}
+                        {updatingPlanId === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : isCurrent ? "Active Plan" : "Upgrade to Yearly"}
                       </Button>
                     </CardContent>
                   </Card>
@@ -1094,6 +1237,63 @@ export default function WorkspaceSelectionPage() {
           
           <DialogFooter className="p-4 border-t border-border bg-muted/10 flex-shrink-0">
             <Button variant="ghost" onClick={() => setIsAccountPlanOpen(false)} className="rounded-none font-bold text-xs h-10 px-5">Close Manager</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Checkout Modal */}
+      <Dialog open={isCheckoutModalOpen} onOpenChange={setIsCheckoutModalOpen}>
+        <DialogContent className="rounded-none border border-border bg-background shadow-none p-0 overflow-hidden sm:max-w-xl flex flex-col">
+          <DialogHeader className="p-8 border-b border-border bg-muted/20 flex-shrink-0">
+            <DialogTitle className="text-xl font-bold uppercase tracking-tight flex items-center gap-2">
+              <CreditCard className="h-6 w-6 text-orange-500" /> Secure Checkout
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground mt-1">
+              Review your annual subscription details before proceeding to payment.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="p-8 space-y-6">
+            {selectedCheckoutPlan && (
+              <div className="space-y-4">
+                <div className="flex items-center justify-between p-4 bg-muted/10 border border-border">
+                  <div>
+                    <p className="font-bold uppercase text-lg">{selectedCheckoutPlan.name} Plan</p>
+                    <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Yearly Billing</p>
+                  </div>
+                  <p className="text-xl font-black text-orange-500">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(selectedCheckoutPlan.priceAmount * 10)}</p>
+                </div>
+
+                <div className="space-y-3 pt-4">
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <span>Subtotal</span>
+                    <span className="text-foreground">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(selectedCheckoutPlan.priceAmount * 10)}</span>
+                  </div>
+                  <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <span>PPN (11%)</span>
+                    <span className="text-foreground">{new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(Math.round(selectedCheckoutPlan.priceAmount * 10 * 0.11))}</span>
+                  </div>
+                  <div className="border-t border-border mt-4 pt-4 flex justify-between items-end">
+                    <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
+                    <span className="text-3xl font-black text-foreground tracking-tight">
+                      {new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format((selectedCheckoutPlan.priceAmount * 10) + Math.round(selectedCheckoutPlan.priceAmount * 10 * 0.11))}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          
+          <DialogFooter className="p-6 border-t border-border bg-muted/10 flex items-center justify-between gap-4">
+            <Button variant="ghost" onClick={() => setIsCheckoutModalOpen(false)} className="rounded-none font-bold text-xs h-12 px-6">Cancel</Button>
+            <Button 
+              className="bg-orange-500 hover:bg-orange-600 text-white font-bold rounded-none h-12 px-8 flex-1 sm:flex-none border-none text-sm uppercase shadow-none"
+              onClick={handleCheckoutProcess}
+              disabled={checkoutLoading}
+            >
+              {checkoutLoading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <CreditCard className="mr-2 h-5 w-5" />}
+              {checkoutLoading ? "Processing" : "Pay Now"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
