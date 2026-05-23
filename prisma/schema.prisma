@@ -20,7 +20,7 @@ model User {
   password      String?
   image         String?
   role          String    @default("user") // super_admin, admin, user
-  plan          String    @default("free") // free, standard, professional, business, unlimited
+  plan          String    @default("free") // free, starter, pro, enterprise, custom
   emailVerified DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
@@ -109,6 +109,7 @@ model Tenant {
   singleTypeAssignments   TenantSingleTypeAssignment[]
   componentAssignments    TenantComponentAssignment[]
   rolePermissions         RolePermission[]
+  tenantRoles             TenantRole[]
   locales           TenantLocale[]
   contentEntries    ContentEntry[]
   contentTypes      ContentType[]
@@ -126,6 +127,7 @@ model TenantMember {
   tenantId String
   userId   String
   role     String   @default("member") // owner, admin, editor, viewer
+  customPermissions Json? // Array of strings e.g., ["workflow.approve", "workflow.reject"]
   joinedAt DateTime @default(now())
   
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -133,6 +135,33 @@ model TenantMember {
   
   @@unique([tenantId, userId])
   @@map("tenant_members")
+}
+
+// ==================== CUSTOM PLAN OVERRIDES ====================
+
+model CustomPlanOverride {
+  id              String   @id @default(cuid())
+  // One of these will be set:
+  userId          String?  @unique  // For user-level custom plan
+  tenantId        String?  @unique  // For workspace-level custom plan
+
+  // User plan overrides
+  maxWorkspaces   Int?
+
+  // Workspace plan overrides
+  maxContentTypes    Int?
+  maxContentEntries  Int?
+  maxTeamMembers     Int?
+  maxStorage         Int?     // in MB
+  maxLocales         Int?
+  maxApiCalls        Int?
+
+  note            String?  // Admin note
+  createdBy       String?  // Super admin who set this
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@map("custom_plan_overrides")
 }
 
 // ==================== CONTENT TYPES (Global - Created by Super Admin) ====================
@@ -595,17 +624,31 @@ model Permission {
 
 model RolePermission {
   id           String   @id @default(cuid())
-  tenantId     String?  // Keep for reference but logically unused now
-  roleId       String   // e.g. "admin", "editor"
+  tenantId     String?  // If null, it's a global role permission (admin/editor)
+  roleId       String   // "admin", "editor", or a custom role slug
   permissionId String
   granted      Boolean  @default(true)
-  createdAt    DateTime @default(now())
 
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  tenant     Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
+  tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  
   @@unique([tenantId, roleId, permissionId])
   @@map("role_permissions")
+}
+
+model TenantRole {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@map("tenant_roles")
 }
 
 // ==================== API TOKENS (Strapi-like) ====================

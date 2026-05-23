@@ -120,8 +120,8 @@ function rateLimitMemory(
 
 /** Preset rate limit configs */
 export const RATE_LIMITS = {
-  /** Public API: 100 requests per minute per token */
-  publicApi: { limit: 100, windowSeconds: 60 },
+  /** Public API: 1000 requests per minute per token */
+  publicApi: { limit: 1000, windowSeconds: 60 },
   /** Auth endpoints: 30 attempts per minute per IP */
   auth: { limit: 30, windowSeconds: 60 },
   /** Dashboard API: 300 requests per minute per user */

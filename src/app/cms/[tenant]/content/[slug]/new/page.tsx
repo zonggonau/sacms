@@ -110,7 +110,18 @@ export default function CMSCreateEntryPage() {
           // Init empty form
           const initialData: Record<string, any> = {}
           data.fields.forEach((f: Field) => {
-            initialData[f.slug] = f.type === "boolean" ? false : ""
+            let isMultiple = false
+            if (f.type === "relation" && f.options) {
+              try {
+                const o = typeof f.options === "string" ? JSON.parse(f.options) : f.options
+                if (o?.relationType === "oneToMany" || o?.relationType === "manyToMany") isMultiple = true
+              } catch(e) {}
+            }
+            if (f.type === "mediaMultiple" || isMultiple) {
+              initialData[f.slug] = []
+            } else {
+              initialData[f.slug] = f.type === "boolean" ? false : ""
+            }
           })
           setFormData(initialData)
         }
@@ -254,7 +265,12 @@ export default function CMSCreateEntryPage() {
         return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":
-        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        let relOpts: any = {}
+        if (field.options) {
+          try {
+            relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+          } catch (e) {}
+        }
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <div className="space-y-2">

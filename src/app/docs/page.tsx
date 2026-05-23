@@ -20,6 +20,7 @@ export default function DocsPage() {
               <ul className="space-y-2">
                 <li><a href="#introduction" className="text-zinc-600 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-orange-400 text-sm font-medium transition-colors">Introduction</a></li>
                 <li><a href="#authentication" className="text-zinc-600 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-orange-400 text-sm font-medium transition-colors">Authentication</a></li>
+                <li><a href="#sdk" className="text-zinc-600 hover:text-orange-500 dark:text-zinc-400 dark:hover:text-orange-400 text-sm font-medium transition-colors">SDK (TypeScript)</a></li>
               </ul>
             </div>
 
@@ -68,6 +69,44 @@ export default function DocsPage() {
               <pre className="p-4 overflow-x-auto">
                 <code className="text-sm font-mono text-green-400">
                   x-api-key: your_api_key_here
+                </code>
+              </pre>
+            </div>
+          </section>
+
+          <hr className="border-zinc-200 dark:border-zinc-800" />
+
+          {/* SDK */}
+          <section id="sdk" className="scroll-mt-28">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg">
+                <Terminal className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">SDK (TypeScript)</h2>
+            </div>
+            <p className="text-zinc-600 dark:text-zinc-400 mb-6">
+              The official SaCMS TypeScript SDK provides a fluent query builder and built-in rate-limit handling. It's the recommended way to fetch data in Next.js, React, or Node.js.
+            </p>
+            <div className="bg-zinc-900 rounded-xl overflow-hidden shadow-sm">
+              <div className="flex items-center px-4 py-2 border-b border-zinc-800 bg-zinc-950">
+                <span className="text-xs font-medium text-zinc-400">Example Usage</span>
+              </div>
+              <pre className="p-4 overflow-x-auto">
+                <code className="text-sm font-mono text-zinc-300">
+<span className="text-pink-400">import</span> {'{'} SaCMS {'}'} <span className="text-pink-400">from</span> <span className="text-green-300">'@sacms/sdk'</span>{'\n\n'}
+<span className="text-zinc-500">// Initialize client</span>{'\n'}
+<span className="text-pink-400">const</span> sacms = <span className="text-pink-400">new</span> SaCMS({'{'}{'\n'}
+{'  '}baseUrl: <span className="text-green-300">'https://api.yourdomain.com'</span>,{'\n'}
+{'  '}tenant: <span className="text-green-300">'your-tenant-slug'</span>,{'\n'}
+{'  '}token: <span className="text-green-300">'your-api-key'</span>{'\n'}
+{'}'}){'\n\n'}
+<span className="text-zinc-500">// Fluent Query Builder</span>{'\n'}
+<span className="text-pink-400">const</span> response = <span className="text-pink-400">await</span> sacms.collection(<span className="text-green-300">'articles'</span>){'\n'}
+{'  '}.query(){'\n'}
+{'  '}.where(<span className="text-green-300">'status'</span>, <span className="text-green-300">'eq'</span>, <span className="text-green-300">'PUBLISHED'</span>){'\n'}
+{'  '}.populate([<span className="text-green-300">'author'</span>]){'\n'}
+{'  '}.limit(<span className="text-blue-300">10</span>){'\n'}
+{'  '}.fetch()
                 </code>
               </pre>
             </div>

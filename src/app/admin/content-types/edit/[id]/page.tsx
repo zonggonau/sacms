@@ -345,7 +345,7 @@ export default function EditGlobalContentTypePage({
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-5xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" className="rounded-full" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>

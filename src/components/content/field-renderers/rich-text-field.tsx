@@ -10,6 +10,7 @@ interface RichTextFieldProps {
   placeholder?: string
   required?: boolean
   error?: string
+  tenantSlug?: string
 }
 
 export function RichTextField({
@@ -19,6 +20,7 @@ export function RichTextField({
   placeholder = "Enter content...",
   required = false,
   error,
+  tenantSlug,
 }: RichTextFieldProps) {
   return (
     <div className="space-y-2">
@@ -34,6 +36,7 @@ export function RichTextField({
           onChange={onChange}
           placeholder={placeholder}
           minHeight={300}
+          tenantSlug={tenantSlug}
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

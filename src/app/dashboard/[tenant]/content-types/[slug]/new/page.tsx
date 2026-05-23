@@ -108,7 +108,18 @@ export default function CreateEntryPage() {
           // Init empty form
           const initialData: Record<string, any> = {}
           data.fields.forEach((f: Field) => {
-            initialData[f.slug] = f.type === "boolean" ? false : ""
+            let isMultiple = false
+            if (f.type === "relation" && f.options) {
+              try {
+                const o = typeof f.options === "string" ? JSON.parse(f.options) : f.options
+                if (o?.relationType === "oneToMany" || o?.relationType === "manyToMany") isMultiple = true
+              } catch(e) {}
+            }
+            if (f.type === "mediaMultiple" || isMultiple) {
+              initialData[f.slug] = []
+            } else {
+              initialData[f.slug] = f.type === "boolean" ? false : ""
+            }
           })
           setFormData(initialData)
         }
@@ -237,7 +248,12 @@ export default function CreateEntryPage() {
         return <MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
 
       case "relation":
-        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        let relOpts: any = {}
+        if (field.options) {
+          try {
+            relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+          } catch (e) {}
+        }
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <RelationSelectField 
@@ -298,7 +314,7 @@ export default function CreateEntryPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>

@@ -8,7 +8,6 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { randomBytes } from "crypto"
 import { provisionTenant } from "@/lib/tenant-provisioning"
 import { slugify } from "@/lib/slug"
-import { getUserPlanConfig } from "@/lib/tenant-plan"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -91,25 +90,30 @@ export async function POST(request: NextRequest) {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    // Check workspace limit
-    const userPlan = await getUserPlanConfig(session.user.id)
-    const ownedWorkspaces = await db.tenantMember.count({
-      where: {
-        userId: session.user.id,
-        role: "owner",
-        tenant: { slug: { notIn: SYSTEM_SLUGS } },
-      }
-    })
-
-    if (ownedWorkspaces >= userPlan.max_workspaces) {
+    // Check workspace limit using centralized enforcement
+    const { enforceUserPlanLimit, validateWorkspacePlanBinding } = await import("@/lib/plan-enforcement")
+    const { getUserPlanConfig } = await import("@/lib/tenant-plan")
+    
+    const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
+    if (!workspaceEnforcement.allowed) {
       return NextResponse.json({ 
-        error: `Limit reached. Your ${userPlan.plan_slug} plan allows maximum ${userPlan.max_workspaces} workspaces.` 
+        error: workspaceEnforcement.message,
+        current: workspaceEnforcement.current,
+        max: workspaceEnforcement.max,
+        plan: workspaceEnforcement.planSlug,
       }, { status: 403 })
     }
 
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
     const { name, description, plan = "free", aiPrompt, websiteType } = result.data
+
+    // Validate workspace plan doesn't exceed user plan
+    const userPlan = await getUserPlanConfig(session.user.id)
+    const planBinding = validateWorkspacePlanBinding(userPlan.plan_slug, plan)
+    if (!planBinding.allowed) {
+      return NextResponse.json({ error: planBinding.message }, { status: 403 })
+    }
 
     const slug = await generateUniqueSlug()
 

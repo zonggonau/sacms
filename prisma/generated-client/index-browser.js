@@ -188,7 +188,25 @@ exports.Prisma.TenantMemberScalarFieldEnum = {
   tenantId: 'tenantId',
   userId: 'userId',
   role: 'role',
+  customPermissions: 'customPermissions',
   joinedAt: 'joinedAt'
+};
+
+exports.Prisma.CustomPlanOverrideScalarFieldEnum = {
+  id: 'id',
+  userId: 'userId',
+  tenantId: 'tenantId',
+  maxWorkspaces: 'maxWorkspaces',
+  maxContentTypes: 'maxContentTypes',
+  maxContentEntries: 'maxContentEntries',
+  maxTeamMembers: 'maxTeamMembers',
+  maxStorage: 'maxStorage',
+  maxLocales: 'maxLocales',
+  maxApiCalls: 'maxApiCalls',
+  note: 'note',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.ContentTypeScalarFieldEnum = {
@@ -483,8 +501,17 @@ exports.Prisma.RolePermissionScalarFieldEnum = {
   tenantId: 'tenantId',
   roleId: 'roleId',
   permissionId: 'permissionId',
-  granted: 'granted',
-  createdAt: 'createdAt'
+  granted: 'granted'
+};
+
+exports.Prisma.TenantRoleScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  name: 'name',
+  slug: 'slug',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
 };
 
 exports.Prisma.ApiTokenScalarFieldEnum = {
@@ -600,6 +627,7 @@ exports.Prisma.ModelName = {
   VerificationToken: 'VerificationToken',
   Tenant: 'Tenant',
   TenantMember: 'TenantMember',
+  CustomPlanOverride: 'CustomPlanOverride',
   ContentType: 'ContentType',
   ContentTypeField: 'ContentTypeField',
   TenantContentTypeAssignment: 'TenantContentTypeAssignment',
@@ -624,6 +652,7 @@ exports.Prisma.ModelName = {
   Media: 'Media',
   Permission: 'Permission',
   RolePermission: 'RolePermission',
+  TenantRole: 'TenantRole',
   ApiToken: 'ApiToken',
   Webhook: 'Webhook',
   WebhookLog: 'WebhookLog',

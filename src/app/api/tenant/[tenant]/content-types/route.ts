@@ -134,6 +134,18 @@ export async function POST(
     if ("error" in result) return result.error
     const { name, slug, description, fields } = result.data
 
+    // Enforce content type limit based on workspace plan
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(access.tenantId, "content_types")
+    if (!enforcement.allowed) {
+      return NextResponse.json({ 
+        error: enforcement.message,
+        current: enforcement.current,
+        max: enforcement.max,
+        plan: enforcement.planSlug,
+      }, { status: 403 })
+    }
+
     // Use dynamic DB client
     const tenantDb = await getTenantDb(tenantSlug)
 

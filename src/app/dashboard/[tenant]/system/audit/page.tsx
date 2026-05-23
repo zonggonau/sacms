@@ -171,7 +171,7 @@ export default function TenantAuditLogsPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-4 md:p-6 lg:p-8 w-full space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">

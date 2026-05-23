@@ -70,8 +70,11 @@ export async function PATCH(
       return NextResponse.json({ error: "Already on this plan" }, { status: 400 })
     }
 
-    const currentPlanPrice = PLAN_PRICES[subscription.plan as keyof typeof PLAN_PRICES] || 0
-    const newPlanPrice = PLAN_PRICES[planId as keyof typeof PLAN_PRICES] || 0
+    const { getDynamicWorkspacePrices } = await import("@/lib/midtrans")
+    const dynamicPrices = await getDynamicWorkspacePrices()
+
+    const currentPlanPrice = dynamicPrices[subscription.plan] || 0
+    const newPlanPrice = dynamicPrices[planId] || 0
 
     // Check for downgrade - can downgrade anytime
     const isDowngrade = newPlanPrice < currentPlanPrice

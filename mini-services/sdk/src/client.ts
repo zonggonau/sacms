@@ -59,7 +59,7 @@ export class SaCMS {
   }
 
   /** @internal */
-  async request<T>(path: string, init?: RequestInit): Promise<T> {
+  async request<T>(path: string, init?: RequestInit, retries = 3): Promise<T> {
     const url = `${this.baseUrl}${path}`
     const headers: Record<string, string> = {
       Authorization: `Bearer ${this.token}`,
@@ -67,19 +67,30 @@ export class SaCMS {
       ...(init?.headers as Record<string, string>),
     }
 
-    const res = await fetch(url, { ...init, headers })
-    if (!res.ok) {
-      const body = await res.text()
-      let message: string
-      try {
-        const json = JSON.parse(body)
-        message = json.error || json.message || body
-      } catch {
-        message = body
+    for (let attempt = 0; attempt <= retries; attempt++) {
+      const res = await fetch(url, { ...init, headers })
+      
+      if (res.status === 429 && attempt < retries) {
+        const retryAfter = res.headers.get("Retry-After")
+        const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt)
+        await new Promise(r => setTimeout(r, delay))
+        continue
       }
-      throw new SaCMSError(message, res.status)
+
+      if (!res.ok) {
+        const body = await res.text()
+        let message: string
+        try {
+          const json = JSON.parse(body)
+          message = json.error || json.message || body
+        } catch {
+          message = body
+        }
+        throw new SaCMSError(message, res.status)
+      }
+      return res.json() as Promise<T>
     }
-    return res.json() as Promise<T>
+    throw new SaCMSError("Max retries reached", 429)
   }
 
   /** @internal */
@@ -98,6 +109,13 @@ class CollectionClient<T> {
     private cf: SaCMS,
     private slug: string
   ) {}
+
+  /**
+   * Start a fluent query builder chain.
+   */
+  query() {
+    return new QueryBuilder<T>(this)
+  }
 
   /**
    * Query multiple entries with filtering, sorting, pagination, and field selection.
@@ -210,6 +228,56 @@ export class SaCMSError extends Error {
   ) {
     super(message)
     this.name = "SaCMSError"
+  }
+}
+
+export class QueryBuilder<T> {
+  private params: FindManyParams = {}
+
+  constructor(private client: CollectionClient<T>) {}
+
+  /**
+   * Filter data. E.g. .where('status', 'eq', 'PUBLISHED')
+   */
+  where(field: string, operator: string, value: any) {
+    if (!this.params.filters) this.params.filters = {}
+    if (!this.params.filters[field]) this.params.filters[field] = {}
+    const op = operator.startsWith('$') ? operator : `$${operator}`
+    ;(this.params.filters[field] as any)[op] = value
+    return this
+  }
+
+  /**
+   * Select specific relations to populate. E.g. .populate(['author'])
+   */
+  populate(fields: string[]) {
+    this.params.populate = fields
+    return this
+  }
+
+  /**
+   * Limit the number of returned entries.
+   */
+  limit(pageSize: number) {
+    if (!this.params.pagination) this.params.pagination = {}
+    this.params.pagination.pageSize = pageSize
+    return this
+  }
+
+  /**
+   * Skip a number of pages.
+   */
+  page(pageNumber: number) {
+    if (!this.params.pagination) this.params.pagination = {}
+    this.params.pagination.page = pageNumber
+    return this
+  }
+
+  /**
+   * Execute the query and fetch the results.
+   */
+  async fetch(): Promise<CollectionResponse<T>> {
+    return this.client.findMany(this.params)
   }
 }
 

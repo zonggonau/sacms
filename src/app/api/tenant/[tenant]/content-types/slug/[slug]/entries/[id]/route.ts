@@ -10,6 +10,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateContentEntry } from "@/lib/content-validations"
 import { invalidatePattern } from "@/lib/cache"
 import { processAutoSlugs } from "@/lib/slug"
+import { canUserTransition } from "@/lib/content-workflow"
 
 /**
  * GET /api/tenant/[tenant]/content-types/slug/[slug]/entries/[id]
@@ -146,6 +147,35 @@ export async function PATCH(
 
     if (!existing) {
       return NextResponse.json({ error: "Entry not found" }, { status: 404 })
+    }
+
+    // Enforce workflow state machine if status is changing
+    if (status && status !== existing.status) {
+      const member = await db.tenantMember.findUnique({
+        where: { tenantId_userId: { tenantId: access.tenantId, userId: session.user.id } }
+      })
+
+      if (!member) return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+
+      // Fetch custom permissions for the custom role if it's not a standard one
+      let roleCustomPerms: string[] | null = null
+      if (member.customPermissions && Array.isArray(member.customPermissions)) {
+        roleCustomPerms = member.customPermissions as string[]
+      } else {
+        const isStandardRole = ["admin", "owner", "editor", "viewer"].includes(member.role)
+        if (!isStandardRole) {
+          const perms = await db.rolePermission.findMany({
+            where: { tenantId: access.tenantId, roleId: member.role, granted: true },
+            include: { permission: true }
+          })
+          roleCustomPerms = perms.map(p => p.permission.name)
+        }
+      }
+
+      const canTransition = canUserTransition(existing.status as any, status as any, member.role, roleCustomPerms)
+      if (!canTransition) {
+        return NextResponse.json({ error: `You do not have permission to change status from ${existing.status} to ${status}` }, { status: 403 })
+      }
     }
 
     // Process auto-generated slugs

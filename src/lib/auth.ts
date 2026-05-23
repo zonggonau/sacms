@@ -89,6 +89,11 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
+        // Check if email is verified
+        if (user.emailVerified === null) {
+          throw new Error("Please verify your email address to log in.")
+        }
+
         // Auto-migrate legacy passwords to bcrypt on successful login
         if (!user.password.startsWith("$2")) {
           const newHash = await hashPassword(credentials.password)
@@ -111,6 +116,7 @@ export const authOptions: NextAuthOptions = {
               slug: t.tenant.slug,
               name: t.tenant.name,
               role: t.role,
+              customPermissions: t.customPermissions,
             })),
         }
       },
@@ -142,6 +148,7 @@ export const authOptions: NextAuthOptions = {
               slug: t.tenant.slug,
               name: t.tenant.name,
               role: t.role,
+              customPermissions: t.customPermissions,
             }))
         }
       }
@@ -157,6 +164,7 @@ export const authOptions: NextAuthOptions = {
           slug: string
           name: string
           role: string
+          customPermissions?: any
         }>
       }
       return session
@@ -190,6 +198,7 @@ declare module "next-auth" {
       slug: string
       name: string
       role: string
+      customPermissions?: any
     }>
   }
   interface Session {
@@ -204,6 +213,7 @@ declare module "next-auth" {
         slug: string
         name: string
         role: string
+        customPermissions?: any
       }>
     }
   }
@@ -219,6 +229,7 @@ declare module "next-auth/jwt" {
       slug: string
       name: string
       role: string
+      customPermissions?: any
     }>
   }
 }

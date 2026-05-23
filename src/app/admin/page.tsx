@@ -101,7 +101,7 @@ export default function GlobalAdminDashboard() {
   return (
     <div className="flex text-foreground flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 md:p-10 space-y-8 max-w-7xl mx-auto">
+        <div className="p-6 md:p-10 space-y-8 w-full">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
@@ -116,12 +116,6 @@ export default function GlobalAdminDashboard() {
                 <Button variant="outline" className="rounded-none border-border">
                   <Building2 className="mr-2 h-4 w-4" />
                   All Tenants
-                </Button>
-              </Link>
-              <Link href="/admin/content-types/new">
-                <Button className="rounded-none bg-orange-500 hover:bg-orange-600 text-white">
-                  <Plus className="mr-2 h-4 w-4" />
-                  New Schema
                 </Button>
               </Link>
             </div>

@@ -63,19 +63,58 @@ const TRANSITION_ROLES: Partial<
   "DRAFT->PUBLISHED": ["owner", "admin"], // direct publish
 }
 
+export const TRANSITION_PERMISSIONS: Record<string, string> = {
+  "DRAFT->IN_REVIEW": "workflow.draft_to_review",
+  "IN_REVIEW->APPROVED": "workflow.review_to_approve",
+  "IN_REVIEW->REJECTED": "workflow.review_to_reject",
+  "APPROVED->PUBLISHED": "workflow.approve_to_publish",
+  "APPROVED->SCHEDULED": "workflow.approve_to_schedule",
+  "PUBLISHED->ARCHIVED": "workflow.published_to_archived",
+  "PUBLISHED->DRAFT": "workflow.published_to_draft",
+  "ARCHIVED->DRAFT": "workflow.archived_to_draft",
+  "REJECTED->DRAFT": "workflow.rejected_to_draft",
+  "DRAFT->PUBLISHED": "workflow.draft_to_publish",
+}
+
 /**
- * Check if a role can perform a specific transition.
+ * Check if a user can perform a specific transition based on role and custom permissions.
+ */
+export function canUserTransition(
+  from: ContentStatus,
+  to: ContentStatus,
+  role: string,
+  customPermissions?: string[] | null
+): boolean {
+  if (!canTransition(from, to)) return false
+  const key = `${from}->${to}`
+
+  // Owner and Admin can always transition everything
+  if (role === "owner" || role === "admin") return true
+
+  // If customPermissions is an array, it strictly overrides the role default
+  if (Array.isArray(customPermissions)) {
+    const requiredPermission = TRANSITION_PERMISSIONS[key]
+    if (requiredPermission && customPermissions.includes(requiredPermission)) {
+      return true
+    }
+    return false // If they have an array but not the permission, deny
+  }
+
+  // Fallback to legacy role-based check
+  const allowed = TRANSITION_ROLES[key]
+  if (!allowed) return false
+  return allowed.includes(role)
+}
+
+/**
+ * Legacy wrapper for backward compatibility
  */
 export function canRoleTransition(
   from: ContentStatus,
   to: ContentStatus,
   role: string
 ): boolean {
-  if (!canTransition(from, to)) return false
-  const key = `${from}->${to}`
-  const allowed = TRANSITION_ROLES[key]
-  if (!allowed) return false
-  return allowed.includes(role)
+  return canUserTransition(from, to, role)
 }
 
 /**

@@ -70,13 +70,7 @@ export default function WorkspaceSelectionPage() {
   const [isUpdatingUserPlan, setIsUpdatingUserPlan] = useState(false)
   const [activeView, setActiveView] = useState<'workspaces' | 'templates'>('workspaces')
 
-  const accountPlans = [
-    { id: "free", name: "Free", workspaces: 1, price: "Rp 0" },
-    { id: "standard", name: "Standard", workspaces: 5, price: "Rp 149k" },
-    { id: "professional", name: "Professional", workspaces: 20, price: "Rp 449k" },
-    { id: "business", name: "Business", workspaces: 50, price: "Rp 949k" },
-    { id: "unlimited", name: "Unlimited", workspaces: "Unlimited", price: "Custom" },
-  ]
+  const [accountPlans, setAccountPlans] = useState<any[]>([])
 
   const handleUpdateUserPlan = async (planId: string) => {
     setIsUpdatingUserPlan(true)
@@ -140,28 +134,24 @@ export default function WorkspaceSelectionPage() {
     plan: "free",
     websiteType: "custom",
     isAnnual: false,
-    extraStorage: "0", // in GB
-    enableAI: false
+    selectedAddons: [] as string[]
   })
 
-  // Pricing constants for add-ons
-  const STORAGE_PRICE_GB = 5000 // 5k per GB per month
-  const AI_PRICE_MONTH = 99000 // 99k per month
-
   const calculateTotalPrice = () => {
-    const basePlan = plans.find(p => p.id === newTenant.plan)
+    const basePlan = workspacePlans.find(p => p.id === newTenant.plan)
     if (!basePlan) return 0
     
     let basePrice = basePlan.priceAmount || 0
     if (newTenant.isAnnual) basePrice = basePrice * 10 // 2 months free for annual
     
-    let storagePrice = (Number(newTenant.extraStorage) * STORAGE_PRICE_GB)
-    if (newTenant.isAnnual) storagePrice = storagePrice * 10
+    let addonPrice = newTenant.selectedAddons.reduce((sum, addonId) => {
+      const addon = addonPlans.find(a => a.id === addonId)
+      return sum + (addon?.priceAmount || 0)
+    }, 0)
+    
+    if (newTenant.isAnnual) addonPrice = addonPrice * 10
 
-    let aiPrice = newTenant.enableAI ? AI_PRICE_MONTH : 0
-    if (newTenant.isAnnual && aiPrice > 0) aiPrice = aiPrice * 10
-
-    return basePrice + storagePrice + aiPrice
+    return basePrice + addonPrice
   }
 
   // Icon mapping
@@ -204,34 +194,29 @@ export default function WorkspaceSelectionPage() {
     }
   }
 
-  const plans = [
+  const [workspacePlans, setWorkspacePlans] = useState<any[]>([
     { 
       id: "free", name: "Free", price: "Rp 0", priceAmount: 0,
       desc: "For small personal projects", 
       features: ["Unlimited Content Types", "500 Entries"]
-    },
-    { 
-      id: "starter", name: "Starter", price: "Rp 499k", priceAmount: 499000,
-      desc: "Perfect for growing sites", 
-      features: ["Unlimited Content Types", "5,000 Entries"]
-    },
-    { 
-      id: "pro", name: "Business Pro", price: "Rp 1.499k", priceAmount: 1499000,
-      desc: "Advanced features for teams", 
-      features: ["Unlimited Content Types", "50,000 Entries"]
-    },
-    { 
-      id: "enterprise", name: "Enterprise", price: "Custom", priceAmount: 0,
-      desc: "Isolated DB & Maximum security", 
-      features: ["Dedicated Database", "Unlimited Content"]
     }
-  ]
+  ])
+  
+  const [addonPlans, setAddonPlans] = useState<any[]>([])
 
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
+    } else if (status === "authenticated") {
+      const user = session?.user
+      if (user?.role !== "super_admin" && user?.role !== "admin") {
+        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        if (!isOwnerOrAdmin && user?.tenants && user.tenants.length > 0) {
+          router.push(`/cms/${user.tenants[0].slug}`)
+        }
+      }
     }
-  }, [status, router])
+  }, [status, session, router])
 
   const fetchTenants = async () => {
     try {
@@ -251,6 +236,84 @@ export default function WorkspaceSelectionPage() {
     if (session?.user) {
       fetchTenants()
       fetchTemplates()
+      
+      // Fetch dynamic account plans
+      const globalToken = process.env.NEXT_PUBLIC_SACMS_GLOBAL_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd"
+      fetch("/api/public/sacms-global/content/sacms-account-pricing?sort=price:asc", {
+        headers: {
+          "Authorization": `Bearer ${globalToken}`
+        }
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.data && Array.isArray(json.data)) {
+            const mapped = json.data
+              .filter((p: any) => p.plan_slug !== 'free' && p.price > 0)
+              .map((p: any) => {
+              let displayPrice = "Rp 0"
+              if (p.price > 0) {
+                if (p.price >= 1000000) {
+                  displayPrice = `Rp ${(p.price / 1000000).toLocaleString('id-ID')}M`
+                } else {
+                  displayPrice = `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`
+                }
+              } else if (p.price === 0 && p.cta_text?.toLowerCase().includes('contact')) {
+                displayPrice = "Custom"
+              }
+              
+              return {
+                id: p.plan_slug,
+                name: p.name,
+                workspaces: p.max_workspaces || "Unlimited",
+                price: displayPrice,
+                priceAmount: p.price,
+                features: p.features || []
+              }
+            })
+            if (mapped.length > 0) setAccountPlans(mapped)
+          }
+        })
+        .catch(err => console.error("Failed to fetch account plans:", err))
+
+      // Fetch dynamic workspace plans
+      fetch("/api/public/sacms-global/content/sacms-workspace-pricing?sort=price:asc", {
+        headers: { "Authorization": `Bearer ${globalToken}` }
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.data && Array.isArray(json.data)) {
+            const mapped = json.data.map((p: any) => ({
+              id: p.plan_slug || p.name.toLowerCase().replace(/\s+/g, '-'),
+              name: p.name,
+              price: `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`,
+              priceAmount: p.price,
+              desc: p.description || "",
+              features: p.features || []
+            }))
+            if (mapped.length > 0) setWorkspacePlans(mapped)
+          }
+        })
+        .catch(err => console.error("Failed to fetch workspace plans:", err))
+
+      // Fetch dynamic addons
+      fetch("/api/public/sacms-global/content/sacms-addons?sort=price:asc", {
+        headers: { "Authorization": `Bearer ${globalToken}` }
+      })
+        .then(res => res.json())
+        .then(json => {
+          if (json.data && Array.isArray(json.data)) {
+            const mapped = json.data.map((p: any) => ({
+              id: p.addon_slug || p.name.toLowerCase().replace(/\s+/g, '-'),
+              name: p.name,
+              price: `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`,
+              priceAmount: p.price,
+              desc: p.description || "",
+              icon: p.icon || "Zap"
+            }))
+            if (mapped.length > 0) setAddonPlans(mapped)
+          }
+        })
+        .catch(err => console.error("Failed to fetch addons:", err))
     }
   }, [session])
 
@@ -795,7 +858,7 @@ export default function WorkspaceSelectionPage() {
                   </div>
                   
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {plans.map((plan) => (
+                    {workspacePlans.map((plan) => (
                       <div 
                         key={plan.id}
                         onClick={() => setNewMember({...newTenant, plan: plan.id})}
@@ -832,49 +895,43 @@ export default function WorkspaceSelectionPage() {
                   </div>
                 </div>
 
-                {/* Add-ons Section - Simplified */}
-                <div className="space-y-4 p-5 bg-muted/20 rounded-none border border-border">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-orange-500 flex items-center gap-1.5">
-                    <Zap className="h-3.5 w-3.5 fill-current" /> Premium Add-ons
-                  </h4>
-                  
-                  <div className="space-y-4">
-                    {/* Storage Add-on */}
-                    <div className="flex items-center justify-between gap-4">
-                      <div className="space-y-0.5">
-                        <Label className="text-xs font-bold">Extra Storage</Label>
-                        <p className="text-[10px] text-muted-foreground">Rp 5k/GB/month. High-speed Cloudflare R2 storage.</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Input 
-                          type="number" 
-                          min="0"
-                          max="1000"
-                          value={newTenant.extraStorage}
-                          onChange={(e) => setNewMember({...newTenant, extraStorage: e.target.value})}
-                          className="w-16 h-8 bg-background border border-border rounded-none text-center font-bold"
-                        />
-                        <span className="text-xs font-bold uppercase">GB</span>
-                      </div>
-                    </div>
-
-                    {/* AI Add-on */}
-                    <div className="flex items-center justify-between gap-4 pt-4 border-t border-border">
-                      <div className="space-y-0.5">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-xs font-bold">AI Features</Label>
-                          <Badge variant="outline" className="text-[8px] h-4 rounded-none border-orange-200 text-orange-500 bg-transparent uppercase font-bold">Beta</Badge>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground">Rp 99k/month. Automated schema and copy-generation.</p>
-                      </div>
-                      <Checkbox 
-                        checked={newTenant.enableAI}
-                        onCheckedChange={(checked) => setNewMember({...newTenant, enableAI: checked as boolean})}
-                        className="h-5 w-5 rounded-none border-border"
-                      />
+                {/* Add-ons Section - Dynamic */}
+                {addonPlans.length > 0 && (
+                  <div className="space-y-4 p-5 bg-muted/20 rounded-none border border-border">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-500 flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5 fill-current" /> Premium Add-ons
+                    </h4>
+                    
+                    <div className="space-y-4">
+                      {addonPlans.map((addon, idx) => {
+                        const IconComp = IconMap[addon.icon] || Zap
+                        const isSelected = newTenant.selectedAddons.includes(addon.id)
+                        return (
+                          <div key={addon.id} className={cn("flex items-center justify-between gap-4", idx > 0 && "pt-4 border-t border-border")}>
+                            <div className="space-y-0.5">
+                              <div className="flex items-center gap-2">
+                                <IconComp className="h-4 w-4 text-muted-foreground" />
+                                <Label className="text-xs font-bold">{addon.name}</Label>
+                              </div>
+                              <p className="text-[10px] text-muted-foreground">{addon.price}/month. {addon.desc}</p>
+                            </div>
+                            <Checkbox 
+                              checked={isSelected}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setNewMember({...newTenant, selectedAddons: [...newTenant.selectedAddons, addon.id]})
+                                } else {
+                                  setNewMember({...newTenant, selectedAddons: newTenant.selectedAddons.filter(a => a !== addon.id)})
+                                }
+                              }}
+                              className="h-5 w-5 rounded-none border-border"
+                            />
+                          </div>
+                        )
+                      })}
                     </div>
                   </div>
-                </div>
+                )}
 
                 <div className="p-4 bg-orange-500 text-white rounded-none flex items-center justify-between">
                   <div className="space-y-0.5">

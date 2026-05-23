@@ -57,7 +57,7 @@ export default function SdkDocsPage() {
   return (
     <div className="flex bg-background flex-1 flex-col w-full">
 <div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-5">
+        <div className="p-4 md:p-6 lg:p-8 w-full space-y-5">
           {/* Header */}
           <div className="flex items-center justify-between">
             <div>
@@ -120,17 +120,15 @@ const cf = new SaCMS({
                   <CardTitle className="text-sm">Find Many (Collection)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CodeBlock id="findMany" code={`const articles = await cf.collection('articles').findMany({
-  filters: {
-    category: { $eq: 'tutorial' },
-    price: { $gte: 100 },
-  },
-  fields: ['title', 'slug', 'author'],
-  populate: ['author', 'tags'],
-  locale: 'en',
-  sort: 'createdAt:desc',
-  pagination: { page: 1, pageSize: 25 },
-})`} />
+                  <CodeBlock id="findMany" code={`// Using the new Fluent Query Builder
+const articles = await cf.collection('articles')
+  .query()
+  .where('category', 'eq', 'tutorial')
+  .where('price', 'gte', 100)
+  .populate(['author', 'tags'])
+  .page(1)
+  .limit(25)
+  .fetch()`} />
                 </CardContent>
               </Card>
 
@@ -280,11 +278,10 @@ interface Author {
 }
 
 // SDK usage with type safety
-const articles = await cf.collection<Article>('articles').findMany({
-  filters: {
-    category: { $eq: 'tutorial' },  // TypeScript validates field names
-  },
-})
+const articles = await cf.collection<Article>('articles')
+  .query()
+  .where('category', 'eq', 'tutorial') // TypeScript validates field names
+  .fetch()
 
 articles.data.forEach(article => {
   console.log(article.title)  // Full IntelliSense

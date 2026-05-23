@@ -15,7 +15,6 @@ import {
   ChevronRight, ShieldCheck, Sparkles
 } from "lucide-react"
 import Link from "next/link"
-import { TenantSidebar } from "@/components/dashboard/tenant-sidebar"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -76,10 +75,10 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; ic
 }
 
 export default function TenantDashboardClient({
-  tenantId,
-  contentTypes,
-  stats,
-  usage,
+  tenantId: initialTenantId,
+  contentTypes: initialContentTypes,
+  stats: initialStats,
+  usage: initialUsage,
 }: {
   tenantId: string
   contentTypes: AssignedContentType[]
@@ -89,12 +88,25 @@ export default function TenantDashboardClient({
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
-  const tenantId = params?.tenant as string
+  const tenantId = (params?.tenant as string) || initialTenantId
 
-  const [contentTypes, setContentTypes] = useState<AssignedContentType[]>([])
-  const [stats, setStats] = useState<TenantStats | null>(null)
-  const [usage, setUsage] = useState<any[]>([])
-  const [loading, setLoading] = useState(true)
+  const [contentTypes, setContentTypes] = useState<AssignedContentType[]>(initialContentTypes)
+  const [stats, setStats] = useState<TenantStats>(initialStats)
+  const [usage, setUsage] = useState<any[]>(initialUsage)
+  const [loading, setLoading] = useState(false)
+
+  // Sync state if props change
+  useEffect(() => {
+    setContentTypes(initialContentTypes)
+  }, [initialContentTypes])
+
+  useEffect(() => {
+    setStats(initialStats)
+  }, [initialStats])
+
+  useEffect(() => {
+    setUsage(initialUsage)
+  }, [initialUsage])
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
   const currentTenant = useMemo(() => {
@@ -175,10 +187,7 @@ export default function TenantDashboardClient({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/10">
-      <TenantSidebar tenantId={tenantId} />
-      <main className="flex-1 overflow-y-auto">
-        <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 w-full space-y-6">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -509,7 +518,5 @@ export default function TenantDashboardClient({
           </div>
 
         </div>
-      </main>
-    </div>
   )
 }

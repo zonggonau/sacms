@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { uploadFile } from "@/lib/r2"
+import { uploadToR2, uploadToLocal, isR2Configured } from "@/lib/r2"
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,17 +35,17 @@ export async function GET(request: NextRequest) {
     const backupJson = JSON.stringify(backupData, null, 2)
     const backupBuffer = Buffer.from(backupJson, 'utf-8')
 
-    // 4. Upload to Cloudflare R2
-    const fileName = `backups/db-dump-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
-    const file = new File([backupBuffer], fileName, { type: 'application/json' })
+    // 4. Upload to Cloudflare R2 or Local Storage fallback
+    const fileName = `db-dump-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
     
-    // We mock the upload function if R2 is not fully configured yet
     let fileUrl = ""
-    if (process.env.R2_BUCKET_NAME) {
-      fileUrl = await uploadFile(file, "backups")
+    if (isR2Configured()) {
+      const uploadResult = await uploadToR2("backups", backupBuffer, fileName, "application/json")
+      fileUrl = uploadResult.url
     } else {
-      fileUrl = "mock-r2-url/" + fileName
-      console.warn("R2_BUCKET_NAME not set. Backup generated but not uploaded.")
+      const uploadResult = await uploadToLocal("backups", backupBuffer, fileName, "application/json")
+      fileUrl = uploadResult.url
+      console.warn("R2 not configured. Backup saved to local storage.")
     }
 
     return NextResponse.json({

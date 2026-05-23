@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Loader2, Building2, Search, ArrowUpRight, Users, Database, FileText,
-  ImageIcon, Key, MoreVertical, Edit, Trash2, Plus, AlertCircle, Ban, CheckCircle
+  ImageIcon, Key, MoreVertical, Edit, Trash2, Plus, AlertCircle, Ban, CheckCircle, Play
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -189,6 +189,20 @@ export default function AdminTenantsPage() {
     }
   }
 
+  const handleRunSeed = async () => {
+    try {
+      const res = await fetch("/api/admin/global/seed", { method: "POST" })
+      if (res.ok) {
+        toast({ title: "Success", description: "Global seed data ran successfully" })
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to run seed data" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    }
+  }
+
   const openEdit = (tenant: Tenant) => {
     setSelectedTenant(tenant)
     setFormData({
@@ -220,7 +234,7 @@ export default function AdminTenantsPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-6 lg:p-8 w-full">
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -405,6 +419,16 @@ export default function AdminTenantsPage() {
                       </div>
 
                       <div className="flex items-center gap-2 ml-auto">
+                        {tenant.slug === "sacms-global" && (
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={handleRunSeed}
+                            className="hidden sm:flex rounded-none border-border"
+                          >
+                            <Play className="mr-2 h-4 w-4 text-purple-500" /> Run Seed
+                          </Button>
+                        )}
                         <Link href={`/dashboard/${tenant.slug}`}>
                           <Button variant="outline" size="sm" className="hidden sm:flex rounded-none border-border">
                             Dashboard <ArrowUpRight className="ml-2 h-4 w-4" />

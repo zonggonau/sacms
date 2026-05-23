@@ -117,6 +117,18 @@ export async function POST(
     if ("error" in result) return result.error
     const { data, publish } = result.data
 
+    // Enforce content entry limit based on workspace plan
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(tenantId, "content_entries")
+    if (!enforcement.allowed) {
+      return NextResponse.json({ 
+        error: enforcement.message,
+        current: enforcement.current,
+        max: enforcement.max,
+        plan: enforcement.planSlug,
+      }, { status: 403 })
+    }
+
     // Dynamic validation
     const { validateDynamicContent } = await import("@/lib/validations/dynamic-validator")
     const dynamicValidation = await validateDynamicContent(contentType.id, tenantId, data)

@@ -7,7 +7,8 @@ import { useSession } from "next-auth/react"
 import { 
   Save, Eye, EyeOff, FileText, Plus, Edit2, 
   Trash2, Loader2, Sparkles, Search, X, 
-  ChevronRight, Calendar, Layers, Globe, MoreVertical, Layout
+  ChevronRight, Calendar, Layers, Globe, MoreVertical, Layout,
+  CheckCircle2, AlertCircle, ShieldCheck
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -201,27 +202,27 @@ export default function SingleTypesPage({
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-8">
+      <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header Section */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-xl font-bold text-slate-800">Single Types</h1>
-              <p className="text-muted-foreground mt-1 font-medium">
+              <p className="text-xs text-slate-500 font-medium mt-1">
                 Manage your singleton content structures and data.
               </p>
             </div>
             <div className="flex items-center gap-3">
               <Button 
                 variant="outline"
-                className="rounded-none border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold px-6 shadow-none"
+                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
                 onClick={() => setIsAIModalOpen(true)}
               >
                 <Sparkles className="mr-2 h-4 w-4" /> AI Generate
               </Button>
               <Button 
-                className="rounded-none bg-primary hover:bg-primary/90 font-bold px-6 shadow-none shadow-none"
+                className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantId}/single-types/new`)}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Single Type
@@ -231,144 +232,133 @@ export default function SingleTypesPage({
 
           {/* Stats/Quick Info */}
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="border-none shadow-none bg-card rounded-none">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-none bg-blue-50 flex items-center justify-center text-blue-600">
-                  <Layers className="h-6 w-6" />
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center text-primary">
+                  <Layers className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Types</p>
-                  <p className="text-2xl font-bold">{singleTypes.length}</p>
+                  <p className="text-xl font-black">{singleTypes.length}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-none bg-card rounded-none">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-none bg-emerald-50 flex items-center justify-center text-emerald-600">
-                  <Globe className="h-6 w-6" />
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-none bg-blue-100 flex items-center justify-center text-blue-600">
+                  <Globe className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Published</p>
-                  <p className="text-2xl font-bold">{singleTypes.filter(s => s.publishedAt).length}</p>
+                  <p className="text-xl font-black">{singleTypes.filter(s => s.publishedAt).length}</p>
                 </div>
               </CardContent>
             </Card>
-            <Card className="border-none shadow-none bg-card rounded-none">
-              <CardContent className="p-6 flex items-center gap-4">
-                <div className="w-12 h-12 rounded-none bg-amber-50 flex items-center justify-center text-amber-600">
-                  <FileText className="h-6 w-6" />
+            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
+              <CardContent className="p-5 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-none bg-amber-100 flex items-center justify-center text-amber-600">
+                  <FileText className="h-5 w-5" />
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Drafts</p>
-                  <p className="text-2xl font-bold">{singleTypes.filter(s => !s.publishedAt).length}</p>
+                  <p className="text-xl font-black">{singleTypes.filter(s => !s.publishedAt).length}</p>
                 </div>
               </CardContent>
             </Card>
           </div>
 
-          {/* Table Control Bar */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search single types..." 
-                className="pl-9 rounded-none bg-card border-none shadow-none h-11"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              {searchTerm && (
-                <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {filteredSingleTypes.length === 0 ? (
-            <Card className="border-none shadow-none bg-card rounded-none overflow-hidden py-20">
-              <CardContent className="flex flex-col items-center justify-center text-center">
-                <div className="w-20 h-20 rounded-none bg-muted/30 flex items-center justify-center mb-6">
-                  <FileText className="h-10 w-10 text-muted-foreground/40" />
+          {/* Filter & List Area */}
+          <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
+            <CardHeader className="bg-white border-b border-slate-200">
+              <div className="flex items-center justify-between">
+                <div className="relative max-w-sm w-full">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input 
+                    placeholder="Search single types..." 
+                    className="pl-10 h-10 bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm font-medium"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                  {searchTerm && (
+                    <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                      <X className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
-                <h3 className="text-xl font-bold text-foreground">No Single Types Found</h3>
-                <p className="text-muted-foreground max-w-xs mt-2 font-medium">
-                  {searchTerm ? `No results for "${searchTerm}". Try another keyword.` : "Start by creating a new structure for your singleton content."}
-                </p>
-                {!searchTerm && (
-                  <Button 
-                    className="mt-8 rounded-none font-bold"
-                    onClick={() => setIsAIModalOpen(true)}
-                  >
-                    <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
-                  </Button>
-                )}
-              </CardContent>
-            </Card>
-          ) : (
-            <Card className="border-none shadow-none bg-card rounded-none overflow-hidden">
-              <CardContent className="p-0">
+              </div>
+            </CardHeader>
+            <CardContent className="p-0">
+              {filteredSingleTypes.length === 0 ? (
+                <div className="py-24 text-center">
+                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-5" />
+                  <p className="font-bold text-muted-foreground">No single types found</p>
+                  <p className="text-xs text-muted-foreground/60 mt-1">
+                    {searchTerm ? `No results for "${searchTerm}". Try another keyword.` : "Start by creating a new structure for your singleton content."}
+                  </p>
+                  {!searchTerm && (
+                    <Button 
+                      className="mt-8 rounded-none font-bold bg-primary hover:bg-primary/90 text-white shadow-none"
+                      onClick={() => setIsAIModalOpen(true)}
+                    >
+                      <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
+                    </Button>
+                  )}
+                </div>
+              ) : (
                 <Table>
                   <TableHeader className="bg-[#f6f6f9] border-b border-slate-200">
                     <TableRow>
-                      <TableHead className="pl-8 font-black text-[10px] uppercase tracking-widest">Structure Name</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest">API Slug</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest">Field Count</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest">Status</TableHead>
-                      <TableHead className="font-black text-[10px] uppercase tracking-widest">Last Updated</TableHead>
-                      <TableHead className="text-right pr-8 font-black text-[10px] uppercase tracking-widest">Actions</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 pl-6">Structure Name</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500">API Slug</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Fields</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Last Updated</TableHead>
+                      <TableHead className="text-right pr-6"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredSingleTypes.map((st) => (
                       <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantId}/single-types/${st.slug}`)}>
-                        <TableCell className="pl-8 py-5">
+                        <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                              <FileText className="h-5 w-5" />
+                            <div className="w-9 h-9 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
+                              <FileText className="h-4.5 w-4.5" />
                             </div>
-                            <div>
+                            <div className="flex flex-col">
                               <div className="flex items-center gap-2">
-                                <span className="font-bold text-foreground group-hover:text-primary transition-colors">{st.name}</span>
+                                <span className="text-sm font-bold text-foreground">{st.name}</span>
                                 {st.isGlobal && <Badge variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 border-primary/20 text-primary">Global</Badge>}
                               </div>
-                              {st.description && <p className="text-xs text-muted-foreground truncate max-w-[200px]">{st.description}</p>}
+                              {st.description && <p className="text-[11px] text-muted-foreground truncate max-w-[200px] mt-0.5">{st.description}</p>}
                             </div>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <code className="text-[11px] font-bold bg-muted px-2 py-1 rounded-none text-muted-foreground">/{st.slug}</code>
+                          <code className="text-[11px] font-mono font-bold bg-muted px-2 py-1 rounded-none text-muted-foreground">/{st.slug}</code>
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 font-bold text-foreground">
-                            <Layers className="h-3.5 w-3.5 opacity-40" />
-                            {st.fields.length}
-                          </div>
+                        <TableCell className="text-center font-bold text-xs">{st.fields.length}</TableCell>
+                        <TableCell className="text-center">
+                          {st.publishedAt ? (
+                            <div className="flex items-center justify-center gap-1.5 text-emerald-600">
+                              <CheckCircle2 className="h-3 w-3" />
+                              <span className="text-[10px] font-black uppercase">Live</span>
+                            </div>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
+                              <AlertCircle className="h-3 w-3" />
+                              <span className="text-[10px] font-black uppercase">Draft</span>
+                            </div>
+                          )}
                         </TableCell>
-                        <TableCell>
-                          <Badge
-                            className={cn(
-                              "rounded-none px-2.5 py-0.5 text-[9px] font-black uppercase border",
-                              st.publishedAt 
-                                ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                : "bg-muted text-muted-foreground border-border"
-                            )}
-                          >
-                            <span className={cn("mr-1.5 h-1 w-1 rounded-none inline-block", st.publishedAt ? "bg-emerald-500" : "bg-muted-foreground")} />
-                            {st.publishedAt ? "Published" : "Draft"}
-                          </Badge>
+                        <TableCell className="text-center text-xs font-medium text-slate-500">
+                          {st.updatedAt ? new Date(st.updatedAt).toLocaleDateString() : "Never"}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1.5 text-xs font-medium text-muted-foreground">
-                            <Calendar className="h-3.5 w-3.5 opacity-40" />
-                            {st.updatedAt ? new Date(st.updatedAt).toLocaleDateString() : "Never"}
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right pr-8" onClick={(e) => e.stopPropagation()}>
+                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                           <div className="flex justify-end gap-2 items-center">
                             <Button 
                               variant="outline" 
                               size="sm" 
-                              className="h-8 text-xs font-bold bg-card"
+                              className="h-8 text-xs font-bold rounded-none border-slate-200 bg-white hover:bg-slate-50 text-slate-700 shadow-none"
                               asChild
                             >
                               <Link href={`/dashboard/${tenantId}/single-types/${st.slug}`}>
@@ -410,9 +400,23 @@ export default function SingleTypesPage({
                     ))}
                   </TableBody>
                 </Table>
-              </CardContent>
-            </Card>
-          )}
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Info Banner */}
+          <div className="p-4 bg-primary/5 border border-primary/10 rounded-none flex gap-4 text-primary shadow-none">
+            <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center shrink-0">
+              <ShieldCheck className="h-5 w-5" />
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest">Governance Policy</p>
+              <p className="text-[11px] leading-relaxed mt-1 opacity-80 max-w-2xl">
+                Single types are designed for single-entry content (like Homepage, About Us, or Global Settings). Custom structures are private to this workspace, while global structures are administered platform-wide.
+              </p>
+            </div>
+          </div>
+
         </div>
       </div>
 

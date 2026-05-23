@@ -142,7 +142,7 @@ export default function ContentTypesPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">

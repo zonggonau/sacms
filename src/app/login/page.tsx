@@ -7,17 +7,40 @@ import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Database, Loader2 } from "lucide-react"
-import { useToast } from "@/hooks/use-toast"
+import { Database, Loader2, Eye, EyeOff } from "lucide-react"
+import { useSearchParams } from "next/navigation"
 
 export default function LoginPage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
+
+  // Handle redirects from email verification
+  useEffect(() => {
+    if (searchParams.get("verified") === "true") {
+      toast({
+        title: "Email Verified",
+        description: "Your email has been successfully verified. You can now log in.",
+      })
+      // Clear URL params
+      router.replace("/login")
+    }
+    
+    const errorParam = searchParams.get("error")
+    if (errorParam === "MissingToken" || errorParam === "InvalidToken") {
+      toast({ variant: "destructive", title: "Verification Failed", description: "The verification link is invalid or missing." })
+      router.replace("/login")
+    } else if (errorParam === "TokenExpired") {
+      toast({ variant: "destructive", title: "Link Expired", description: "The verification link has expired. Please register again or request a new link." })
+      router.replace("/login")
+    }
+  }, [searchParams, router, toast])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -50,15 +73,25 @@ export default function LoginPage() {
 
       if (user?.role === "super_admin") {
         router.push("/admin")
-      } else {
+      } else if (user?.role === "admin") {
         router.push("/dashboard")
+      } else {
+        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        
+        if (isOwnerOrAdmin) {
+          router.push("/dashboard")
+        } else if (user?.tenants && user.tenants.length > 0) {
+          router.push(`/cms/${user.tenants[0].slug}`)
+        } else {
+          router.push("/dashboard")
+        }
       }
       
       router.refresh()
-    } catch (error) {
+    } catch (error: any) {
       toast({
         title: "Error",
-        description: "An unexpected error occurred.",
+        description: error.message || "An unexpected error occurred.",
         variant: "destructive",
       })
     } finally {
@@ -95,19 +128,28 @@ export default function LoginPage() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-              <Link href="#" className="text-xs text-orange-500 hover:underline">
+              <Link href="/forgot-password" className="text-xs text-orange-500 hover:underline">
                 Forgot password?
               </Link>
             </div>
-            <Input
-              id="password"
-              type="password"
-              placeholder="••••••••"
-              value={formData.password}
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-              required
-              className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none"
-            />
+            <div className="relative">
+              <Input
+                id="password"
+                type={showPassword ? "text" : "password"}
+                placeholder="••••••••"
+                value={formData.password}
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                required
+                className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
           </div>
 
           <Button

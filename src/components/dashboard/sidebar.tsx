@@ -78,6 +78,7 @@ const tenantAdminNavItems = [
   { title: "Subscriptions", href: "/subscriptions", icon: CreditCard },
   { title: "Users", href: "/users", icon: Users },
   { title: "API Keys", href: "/api-keys", icon: Key },
+  { title: "API Docs", href: "/developer/docs", icon: FileText },
   { title: "Settings", href: "/settings", icon: Settings },
 ]
 

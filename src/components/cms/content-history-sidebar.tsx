@@ -19,6 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import ReactDiffViewer from "react-diff-viewer-continued"
 
 // Fallback if Sheet is not in @/sheet
 import { 
@@ -44,6 +45,7 @@ interface ContentHistorySidebarProps {
   tenantSlug: string
   contentTypeSlug: string
   entryId: string
+  currentData?: any
   onRestoreSuccess: (newData: any) => void
 }
 
@@ -51,12 +53,16 @@ export function ContentHistorySidebar({
   tenantSlug,
   contentTypeSlug,
   entryId,
+  currentData = {},
   onRestoreSuccess
 }: ContentHistorySidebarProps) {
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
   const [versions, setVersions] = useState<Version[]>([])
+  const [diffVersionId, setDiffVersionId] = useState<string | null>(null)
+  const [diffData, setDiffData] = useState<any>(null)
+  const [loadingDiff, setLoadingDiff] = useState(false)
 
   const fetchVersions = async () => {
     setLoading(true)
@@ -97,6 +103,7 @@ export function ContentHistorySidebar({
         })
         onRestoreSuccess(data.entry.data)
         setOpen(false)
+        setDiffVersionId(null)
       } else {
         toast({ variant: "destructive", title: "Restore Failed" })
       }
@@ -107,6 +114,24 @@ export function ContentHistorySidebar({
     }
   }
 
+  const handleDiff = async (versionId: string) => {
+    setLoadingDiff(true)
+    setDiffVersionId(versionId)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}/versions/${versionId}`)
+      if (res.ok) {
+        const data = await res.json()
+        setDiffData(data.version.data)
+      }
+    } catch (error) {
+      console.error("Error fetching version data for diff:", error)
+      toast({ variant: "destructive", title: "Failed to load version data" })
+      setDiffVersionId(null)
+    } finally {
+      setLoadingDiff(false)
+    }
+  }
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -114,24 +139,61 @@ export function ContentHistorySidebar({
           <History className="mr-2 h-4 w-4" /> History
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[450px] p-0 overflow-hidden border border-border shadow-none rounded-none bg-card">
-        <div className="bg-muted p-6 border-b border-border text-foreground">
+      <DialogContent className="sm:max-w-[700px] p-0 overflow-hidden border border-border shadow-none rounded-none bg-card">
+        <div className="bg-muted p-6 border-b border-border text-foreground flex items-center justify-between">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-none bg-muted border border-border flex items-center justify-center">
               <History className="h-5 w-5 text-orange-500" />
             </div>
             <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">Revision History</DialogTitle>
+              <DialogTitle className="text-xl font-black uppercase tracking-tight text-foreground">
+                {diffVersionId ? "Version Diff" : "Revision History"}
+              </DialogTitle>
               <DialogDescription className="text-muted-foreground font-medium">
-                View and restore previous versions of this content.
+                {diffVersionId ? "Comparing current unsaved state with past version" : "View and restore previous versions of this content."}
               </DialogDescription>
             </div>
           </div>
+          {diffVersionId && (
+            <Button variant="outline" size="sm" onClick={() => setDiffVersionId(null)} className="rounded-none border border-border">
+              Back to List
+            </Button>
+          )}
         </div>
 
         <div className="p-0 bg-card">
-          <ScrollArea className="h-[500px]">
-            {loading ? (
+          <ScrollArea className="h-[600px]">
+            {diffVersionId ? (
+              <div className="p-0">
+                {loadingDiff ? (
+                  <div className="flex flex-col items-center justify-center h-[500px] gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+                    <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading diff...</p>
+                  </div>
+                ) : (
+                  <div className="p-4">
+                    <ReactDiffViewer 
+                      oldValue={JSON.stringify(diffData || {}, null, 2)} 
+                      newValue={JSON.stringify(currentData || {}, null, 2)} 
+                      splitView={true}
+                      leftTitle={`Version Data`}
+                      rightTitle={`Current Editor Data`}
+                      useDarkTheme={false}
+                    />
+                    <div className="mt-6 flex justify-end p-4 border-t border-border">
+                      <Button 
+                        onClick={() => handleRestore(diffVersionId)}
+                        disabled={!!restoring}
+                        className="bg-orange-500 hover:bg-orange-600 text-white rounded-none font-bold uppercase tracking-widest"
+                      >
+                        {restoring === diffVersionId ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <RotateCcw className="h-4 w-4 mr-2" />}
+                        Restore This Version
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : loading ? (
               <div className="flex flex-col items-center justify-center h-full py-20 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
                 <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Loading history...</p>
@@ -173,20 +235,31 @@ export function ContentHistorySidebar({
                       </div>
                       
                       {i !== 0 && (
-                        <Button 
-                          size="sm" 
-                          variant="ghost" 
-                          disabled={!!restoring}
-                          onClick={() => handleRestore(v.id)}
-                          className="h-8 rounded-none border border-border bg-card shadow-none font-black text-[10px] uppercase tracking-widest text-foreground hover:bg-muted hover:border-orange-500 transition-colors"
-                        >
-                          {restoring === v.id ? (
-                            <Loader2 className="h-3 w-3 animate-spin mr-1" />
-                          ) : (
-                            <RotateCcw className="h-3 w-3 mr-1" />
-                          )}
-                          Restore
-                        </Button>
+                        <div className="flex flex-col gap-2">
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            onClick={() => handleDiff(v.id)}
+                            className="h-7 rounded-none border border-border bg-card shadow-none font-black text-[10px] uppercase tracking-widest text-foreground hover:bg-muted transition-colors"
+                          >
+                            <FileText className="h-3 w-3 mr-1" />
+                            View Diff
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            disabled={!!restoring}
+                            onClick={() => handleRestore(v.id)}
+                            className="h-7 rounded-none border border-border bg-card shadow-none font-black text-[10px] uppercase tracking-widest text-foreground hover:bg-muted hover:border-orange-500 transition-colors"
+                          >
+                            {restoring === v.id ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : (
+                              <RotateCcw className="h-3 w-3 mr-1" />
+                            )}
+                            Restore
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>

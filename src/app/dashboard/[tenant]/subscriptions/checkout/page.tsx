@@ -226,7 +226,7 @@ export default function CheckoutPage() {
   return (
     <div className="flex relative flex-1 flex-col w-full">
 <div className="flex-1 min-w-0 h-full overflow-x-hidden bg-background text-foreground flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-6xl mx-auto space-y-8">
+        <div className="p-6 lg:p-8 w-full space-y-8">
           
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted border border-border">

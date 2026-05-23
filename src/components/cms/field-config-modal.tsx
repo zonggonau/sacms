@@ -71,28 +71,26 @@ export function FieldConfigModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg max-h-[90vh] rounded-none border-none shadow-none overflow-hidden p-0 flex flex-col">
-        <DialogHeader className="p-6 bg-primary text-primary-foreground shrink-0">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-none bg-card/20 flex items-center justify-center">
-              {Icon && <Icon className="h-5 w-5" />}
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-black uppercase tracking-tight text-left">
-                Configure {fieldTypeInfo?.label || "Field"}
-              </DialogTitle>
-              <DialogDescription className="text-primary-foreground/70 text-xs text-left">
-                Define rules and identity for this field.
-              </DialogDescription>
-            </div>
+      <DialogContent className="max-w-lg sm:max-w-lg max-h-[90vh] rounded-none border border-slate-200 shadow-none overflow-hidden p-0 flex flex-col bg-[#f6f6f9]">
+        <DialogHeader className="p-6 bg-white border-b border-slate-200 shrink-0 flex flex-row items-center gap-4">
+          <div className="w-10 h-10 rounded-none bg-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+            {Icon && <Icon className="h-5 w-5" />}
+          </div>
+          <div>
+            <DialogTitle className="text-lg font-bold text-slate-800 text-left">
+              Configure {fieldTypeInfo?.label || "Field"}
+            </DialogTitle>
+            <DialogDescription className="text-slate-500 text-xs text-left mt-0.5">
+              Define rules and identity for this attribute.
+            </DialogDescription>
           </div>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto min-h-0 bg-card">
+        <div className="flex-1 overflow-y-auto max-h-[60vh] min-h-[30vh] bg-white">
           <div className="p-6 space-y-6">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label className="text-xs font-bold">Field Name *</Label>
+                <Label className="text-xs font-bold text-slate-700">Field Name *</Label>
                 <Input 
                   value={editingField?.name || ""} 
                   onChange={e => {
@@ -100,16 +98,16 @@ export function FieldConfigModal({
                     setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug }) : null)
                   }}
                   placeholder="e.g., Hero Title"
-                  className="bg-muted/30 border-none h-11 rounded-none font-bold"
+                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"
                 />
               </div>
               <div className="space-y-2">
-                <Label className="text-xs font-bold">API Slug *</Label>
+                <Label className="text-xs font-bold text-slate-700">API Slug *</Label>
                 <Input 
                   value={editingField?.slug || ""} 
                   onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)}
                   placeholder="hero_title"
-                  className="bg-muted/30 border-none h-11 rounded-none font-mono text-xs"
+                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none font-mono text-xs shadow-none transition-all"
                 />
               </div>
             </div>
@@ -117,18 +115,18 @@ export function FieldConfigModal({
             {/* Field Specific Configs */}
             {(editingField?.type === "select" || editingField?.type === "tags") && (
               <div className="space-y-2">
-                <Label className="text-xs font-bold">Options (Comma separated)</Label>
+                <Label className="text-xs font-bold text-slate-700">Options (Comma separated)</Label>
                 <Input 
                   value={editingField.options as string || ""} 
                   onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)}
                   placeholder="Option A, Option B, Option C"
-                  className="bg-muted/30 border-none h-11 rounded-none"
+                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"
                 />
               </div>
             )}
 
             {editingField?.type === "relation" && tenantSlug && (
-              <div className="p-4 bg-muted/20 rounded-none space-y-4">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
                 <RelationFieldConfig
                   tenantSlug={tenantSlug}
                   context={context}
@@ -143,7 +141,7 @@ export function FieldConfigModal({
             )}
 
             {editingField?.type === "component" && tenantSlug && (
-              <div className="p-4 bg-muted/20 rounded-none">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none">
                 <ComponentFieldConfig
                   tenantSlug={tenantSlug}
                   componentSlug={editingField.componentSlug}
@@ -155,28 +153,28 @@ export function FieldConfigModal({
             )}
 
             {editingField?.type === "slug" && (
-              <div className="p-4 bg-muted/20 rounded-none space-y-4">
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
                 <div className="flex items-center space-x-3">
                   <Checkbox 
                     id="autoGenerate" 
                     checked={editingField?.autoGenerate} 
                     onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} 
                   />
-                  <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer">Auto-generate from another field</Label>
+                  <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer text-slate-700">Auto-generate from another field</Label>
                 </div>
                 {editingField?.autoGenerate && (
                   <div className="space-y-2">
-                    <Label className="text-xs font-bold">Source Field</Label>
+                    <Label className="text-xs font-bold text-slate-700">Source Field</Label>
                     <Select 
                       value={editingField.sourceField || ""} 
                       onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
                     >
-                      <SelectTrigger className="bg-card border-none h-11 rounded-none font-bold">
+                      <SelectTrigger className="bg-white border border-slate-200 h-11 rounded-none text-sm font-medium shadow-none focus:ring-1 focus:ring-primary focus:border-primary">
                         <SelectValue placeholder="Select a field" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-none border-none shadow-none">
+                      <SelectContent className="rounded-none border border-slate-200 shadow-none bg-white">
                         {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
-                          <SelectItem key={f.slug} value={f.slug} className="rounded-none font-bold">
+                          <SelectItem key={f.slug} value={f.slug} className="rounded-none text-sm font-medium cursor-pointer">
                             {f.name} ({f.slug})
                           </SelectItem>
                         ))}
@@ -191,29 +189,29 @@ export function FieldConfigModal({
             )}
 
             <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="flex items-center space-x-2 p-3 bg-muted/10 rounded-none">
+              <div className="flex items-center space-x-2.5 p-3.5 bg-slate-50 border border-slate-100 rounded-none">
                 <Checkbox 
                   id="required" 
                   checked={editingField?.required || false} 
                   onCheckedChange={(checked) => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)}
                 />
-                <Label htmlFor="required" className="text-xs font-bold cursor-pointer">Required Field</Label>
+                <Label htmlFor="required" className="text-xs font-bold cursor-pointer text-slate-700">Required Field</Label>
               </div>
-              <div className="flex items-center space-x-2 p-3 bg-muted/10 rounded-none">
+              <div className="flex items-center space-x-2.5 p-3.5 bg-slate-50 border border-slate-100 rounded-none">
                 <Checkbox 
                   id="unique" 
                   checked={editingField?.unique || false} 
                   onCheckedChange={(checked) => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)}
                 />
-                <Label htmlFor="unique" className="text-xs font-bold cursor-pointer">Unique Field</Label>
+                <Label htmlFor="unique" className="text-xs font-bold cursor-pointer text-slate-700">Unique Field</Label>
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="p-6 bg-muted/20 gap-2 shrink-0">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-none font-bold">Cancel</Button>
-          <Button onClick={onSave} className="rounded-none font-bold px-8 bg-primary shadow-none shadow-none">
+        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-200 gap-2 shrink-0 flex flex-row justify-end">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-none font-bold text-xs">Cancel</Button>
+          <Button onClick={onSave} className="rounded-none font-bold text-xs px-6 bg-primary hover:bg-primary/90 text-white shadow-none">
             {fields.some(f => f.id === (editingField?.id || "")) ? "Update Field" : "Add Field"}
           </Button>
         </DialogFooter>

@@ -63,14 +63,18 @@ export async function POST(
 
     const { locale, name, isDefault } = result.data
 
-    // Check max 5 locales per tenant (v1.0)
-    const count = await db.tenantLocale.count({
-      where: { tenantId: access.tenantId },
-    })
-    if (count >= 5) {
+    // Enforce locale limit based on workspace plan
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(access.tenantId, "locales")
+    if (!enforcement.allowed) {
       return NextResponse.json(
-        { error: "Maximum 5 locales per tenant" },
-        { status: 400 }
+        { 
+          error: enforcement.message,
+          current: enforcement.current,
+          max: enforcement.max,
+          plan: enforcement.planSlug,
+        },
+        { status: 403 }
       )
     }
 
@@ -87,7 +91,7 @@ export async function POST(
         tenantId: access.tenantId,
         locale,
         name,
-        isDefault: isDefault || count === 0, // First locale is always default
+        isDefault: isDefault || enforcement.current === 0, // First locale is always default
       },
     })
 

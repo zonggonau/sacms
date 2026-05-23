@@ -29,10 +29,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string; contentType: string }> }
 ) {
+  const startTime = Date.now()
+  let resolvedTenantId: string | null = null
   try {
-    const startTime = Date.now()
     const { tenant: tenantSlug, contentType: contentTypeSlug } = await params
-    let resolvedTenantId: string | null = tenantSlug
+    resolvedTenantId = tenantSlug
 
     const logResponse = (res: NextResponse) => {
       const duration = Date.now() - startTime
@@ -198,12 +199,16 @@ export async function GET(
     let entries: Array<Record<string, unknown>>
     let total: number
 
-    if (conditions.length > 0 || orGroups.length > 0 || search) {
-      // Use raw query for advanced filtering on JSON data field
+    // Check if sortField is a dynamic field inside JSON data
+    const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt", "id", "status", "locale"])
+    const isDynamicSort = allowedFieldNames.has(sortField) && !validSystemColumns.has(sortField)
+
+    if (conditions.length > 0 || orGroups.length > 0 || search || isDynamicSort) {
+      // Use raw query for advanced filtering or dynamic sorting on JSON data field
       const whereParts: string[] = [
         `"contentTypeId" = $1`,
         `"tenantId" = $2`,
-        `"status" = $3`,
+        `"status"::text = $3`,
       ]
       const queryParams: unknown[] = [contentType.id, apiToken.tenantId, status]
       let paramIdx = 4
@@ -236,10 +241,14 @@ export async function GET(
       const whereClause = whereParts.join(" AND ")
 
       // Dynamic sorting for raw SQL
-      const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt"])
-      const sanitizedSortField = allowedFieldNames.has(sortField) 
-        ? `"data"->>'${sortField}'` 
-        : validSystemColumns.has(sortField) ? `"${sortField}"` : `"createdAt"`
+      let sanitizedSortField = validSystemColumns.has(sortField) ? `"${sortField}"` : `"createdAt"`
+      if (isDynamicSort) {
+        if (["price", "order", "step"].includes(sortField)) {
+          sanitizedSortField = `NULLIF("data"->>'${sortField}', '')::numeric`
+        } else {
+          sanitizedSortField = `"data"->>'${sortField}'`
+        }
+      }
 
       const safeSortOrder = sortOrder === "asc" ? "ASC" : "DESC"
 
@@ -252,7 +261,12 @@ export async function GET(
 
       // Data query with sorting and pagination
       entries = await tenantDb.$queryRawUnsafe(
-        `SELECT * FROM "content_entries" 
+        `SELECT 
+          "id", "documentId", "contentTypeId", "tenantId", "locale", 
+          "data", "status", "reviewComment", "publishedAt", 
+          "scheduledAt", "archivedAt", "createdBy", "updatedBy", 
+          "createdAt", "updatedAt"
+         FROM "content_entries" 
          WHERE ${whereClause} 
          ORDER BY ${sanitizedSortField} ${safeSortOrder} 
          LIMIT $${paramIdx} OFFSET $${paramIdx + 1}`,
@@ -475,7 +489,7 @@ export async function GET(
     }).catch(() => {})
 
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
     )
   }

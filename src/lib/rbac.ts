@@ -54,6 +54,13 @@ export async function hasPermission(
   // 3. Owners bypass most checks
   if (member.role === "owner") return true
 
+  // 3.5 Check Custom Permissions override
+  if (member.customPermissions && Array.isArray(member.customPermissions)) {
+    if (member.customPermissions.includes(permissionName)) {
+      return true
+    }
+  }
+
   // 4. Check granular permission
   const permission = await db.permission.findUnique({
     where: { name: permissionName }
@@ -61,10 +68,12 @@ export async function hasPermission(
 
   if (!permission) return false
 
-  // Check global default only (all tenants follow global)
+  // 5. Check if role is standard (global) or custom (tenant-specific)
+  const isStandardRole = ["admin", "editor", "viewer"].includes(member.role)
+  
   const granted = await db.rolePermission.findFirst({
     where: {
-      tenantId: null,
+      tenantId: isStandardRole ? null : tenantId,
       roleId: member.role,
       permissionId: permission.id
     }

@@ -141,7 +141,7 @@ export default function ContentTypesPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -149,12 +149,6 @@ export default function ContentTypesPage() {
               <h1 className="text-3xl font-extrabold tracking-tight uppercase">Startup Management</h1>
               <p className="text-muted-foreground">Manage core schemas for your startup ecosystem.</p>
             </div>
-            <Button 
-              onClick={() => router.push("/admin/content-types/new")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Create Startup Schema
-            </Button>
           </div>
 
           {/* Stats */}

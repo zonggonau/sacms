@@ -121,7 +121,7 @@ export async function POST(
     }
 
     // Calculate proration
-    const proration = calculateProratedAmount(
+    const proration = await calculateProratedAmount(
       subscription.plan,
       newPlan,
       subscription.currentPeriodStart,
@@ -136,6 +136,9 @@ export async function POST(
         minimumFractionDigits: 0,
       }).format(price)
     }
+
+    const { getDynamicWorkspacePrices } = await import("@/lib/midtrans")
+    const dynamicPrices = await getDynamicWorkspacePrices()
 
     return NextResponse.json({
       currentPlan: subscription.plan,
@@ -154,7 +157,7 @@ export async function POST(
       amountDueFormatted: formatPrice(proration.amountDue),
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
-      isUpgrade: proration.fullPrice > PLAN_PRICES[subscription.plan],
+      isUpgrade: proration.fullPrice > (dynamicPrices[subscription.plan] || 0),
       message:
         proration.amountDue === 0
           ? "No payment required - credit covers the upgrade"

@@ -8,7 +8,7 @@ export async function GET(
   try {
     // 1. Fetch SaCMS Pricing (Main Workspace Plans)
     const pricingContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-pricing" }
+      where: { slug: "sacms-workspace-pricing" }
     })
     console.log("Pricing Content Type:", pricingContentType?.id);
 
@@ -80,20 +80,21 @@ export async function GET(
           name: d.name || "Unnamed Plan",
           type: "workspace",
           price: numericPrice,
-          features: parseFeatures(d.features_list),
-          popular: !!d.is_popular,
-          buttonText: d.button_text || "Get Started",
+          features: parseFeatures(d.features),
+          popular: false,
+          buttonText: "Get Started",
           maxContentTypes: parseInt(d.max_content_types, 10) || 0,
           maxContentEntries: parseInt(d.max_content_entries, 10) || 0,
           maxTeamMembers: parseInt(d.max_team_members, 10) || 0,
           maxApiCalls: parseInt(d.max_api_calls, 10) || 0,
           maxStorage: parseInt(d.max_storage, 10) || 0,
           maxLocales: parseInt(d.max_locales, 10) || 0,
-          auditLogRetention: parseInt(d.audit_log_retention, 10) || 0,
-          supportLevel: d.support_level || "Email"
+          auditLogRetention: 0,
+          supportLevel: "Email"
         }
       })
-      plans = [...plans, ...pricingPlans]
+      const newPlanIds = new Set(pricingPlans.map(p => p.id))
+      plans = [...plans.filter(p => !newPlanIds.has(p.id)), ...pricingPlans]
     }
 
     if (addonContentType) {
@@ -126,7 +127,8 @@ export async function GET(
           buttonText: "Activate"
         }
       })
-      plans = [...plans, ...addonPlans]
+      const newAddonIds = new Set(addonPlans.map(p => p.id))
+      plans = [...plans.filter(p => !newAddonIds.has(p.id)), ...addonPlans]
     }
 
     return NextResponse.json({ plans })

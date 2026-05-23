@@ -37,7 +37,7 @@ export function WhatsAppButton({ phone, message, label, isActive }: WhatsAppButt
         "fixed bottom-6 right-6 z-50 flex items-center gap-2 px-5 py-3 rounded-none border border-border bg-card text-foreground shadow-sm hover:bg-background transition-colors group"
       )}
     >
-      <MessageCircle className="w-5 h-5 text-orange-500" />
+      <MessageCircle className="w-5 h-5 text-primary" />
       {label && (
         <span className="font-medium text-sm max-w-0 overflow-hidden group-hover:max-w-xs transition-all duration-300 ease-in-out whitespace-nowrap">
           {label}

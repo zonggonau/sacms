@@ -105,6 +105,7 @@ export default function EditEntryPage() {
   const [locale, setLocale] = useState<string>("en")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
+  const [showPreview, setShowPreview] = useState(false)
 
   const tenants = session?.user?.tenants || []
 
@@ -150,6 +151,15 @@ export default function EditEntryPage() {
     const next = TRANSITIONS[entryStatus] || []
     return Array.from(new Set([entryStatus, ...next]))
   }, [entryStatus])
+
+  useEffect(() => {
+    if (showPreview) {
+      const iframe = document.getElementById("preview-iframe") as HTMLIFrameElement
+      if (iframe && iframe.contentWindow) {
+        iframe.contentWindow.postMessage({ type: "PREVIEW_UPDATE", data: formData }, "*")
+      }
+    }
+  }, [formData, showPreview])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
@@ -245,9 +255,13 @@ export default function EditEntryPage() {
       case "mediaMultiple":
         return <MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
       case "relation":
-        const rOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        const isMulti = rOpts?.relationType === "oneToMany" || rOpts?.relationType === "manyToMany"
-        
+        let relOpts: any = {}
+        if (field.options) {
+          try {
+            relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+          } catch (e) {}
+        }
+        const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <RelationSelectField 
             value={value as any} 
@@ -256,7 +270,7 @@ export default function EditEntryPage() {
             targetSlug={field.relationSlug || ""}
             label={field.name}
             required={field.required}
-            multiple={isMulti}
+            multiple={isMultiple}
           />
         )
       case "button":
@@ -299,12 +313,14 @@ export default function EditEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+    <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
+      <div className={cn("flex-1 bg-[#f6f6f9] text-foreground flex w-full", showPreview ? "flex-row" : "flex-col")}>
         
-        {/* Sticky Header */}
+        {/* Editor Pane */}
+        <div className={cn("flex flex-col overflow-auto", showPreview ? "w-1/2 border-r border-border" : "w-full")}>
+          {/* Sticky Header */}
         <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-          <div className="max-w-5xl mx-auto w-full">
+          <div className="w-full">
             
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
@@ -347,15 +363,16 @@ export default function EditEntryPage() {
                 tenantSlug={tenantSlug}
                 contentTypeSlug={contentTypeSlug}
                 entryId={entryId}
+                currentData={formData}
                 onRestoreSuccess={(newData) => setFormData(newData)}
               />
 
               <Button 
                 variant="outline" 
-                onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
-                className="h-10 rounded-none font-bold border-none bg-card shadow-none hover:bg-muted/50"
+                onClick={() => setShowPreview(!showPreview)}
+                className={cn("h-10 rounded-none font-bold shadow-none hover:bg-muted/50", showPreview ? "bg-orange-100 text-orange-600 border-orange-500" : "border-none bg-card")}
               >
-                <Eye className="mr-2 h-4 w-4" /> Preview
+                <Eye className="mr-2 h-4 w-4" /> {showPreview ? "Close Preview" : "Live Preview"}
               </Button>
 
               <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
@@ -370,9 +387,9 @@ export default function EditEntryPage() {
         </div>
 
         {/* Main Content */}
-        <div className="p-6 lg:p-8 max-w-5xl mx-auto w-full flex-1">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
+        <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
+          <div className={cn("grid gap-6", showPreview ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3")}>
+            <div className={cn("space-y-6", showPreview ? "col-span-1" : "lg:col-span-2")}>
               {entryStatus === "REJECTED" && reviewComment && (
                 <div className="bg-red-50 border border-red-100 rounded-none p-6 flex gap-4">
                   <div className="h-10 w-10 rounded-none bg-red-100 flex items-center justify-center text-red-600 shrink-0">
@@ -518,6 +535,29 @@ export default function EditEntryPage() {
             </div>
           </div>
         </div>
+        </div>
+
+        {/* Live Preview Pane */}
+        {showPreview && (
+          <div className="w-1/2 bg-white flex flex-col overflow-hidden relative">
+            <div className="bg-slate-900 text-white p-3 flex justify-between items-center text-xs font-bold uppercase tracking-widest shrink-0">
+              <div className="flex items-center gap-2">
+                <Globe className="h-4 w-4 text-orange-500" />
+                Live Preview
+              </div>
+              <Button size="sm" variant="ghost" className="h-6 hover:bg-slate-800 rounded-none text-slate-300 hover:text-white" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}>
+                Open in new tab <ChevronRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            <div className="flex-1 w-full bg-slate-50 relative">
+              <iframe 
+                id="preview-iframe"
+                src={`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`}
+                className="absolute inset-0 w-full h-full border-none"
+              />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

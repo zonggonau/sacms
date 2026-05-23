@@ -185,7 +185,7 @@ export default function NewSingleTypePage({
         
         {/* Sticky Header */}
         <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-          <div className="max-w-5xl mx-auto w-full">
+          <div className="w-full">
             
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
@@ -206,7 +206,7 @@ export default function NewSingleTypePage({
         </div>
 
         {/* Main Content */}
-        <div className="p-6 lg:p-8 max-w-5xl mx-auto w-full flex-1">
+        <div className="p-6 lg:p-8 w-full flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
               <Card className="bg-white border border-slate-200 shadow-sm rounded-none">

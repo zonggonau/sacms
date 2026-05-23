@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Database, Loader2, Crown } from "lucide-react"
+import { Database, Loader2, Crown, Eye, EyeOff } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 
 export default function RegisterPage() {
@@ -16,6 +16,7 @@ export default function RegisterPage() {
   const plan = searchParams.get("plan") || "free"
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [showPassword, setShowPassword] = useState(false)
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
   const [formData, setFormData] = useState({
@@ -148,16 +149,28 @@ export default function RegisterPage() {
 
           <div className="space-y-2">
             <Label htmlFor="password" className="text-sm font-medium">Password</Label>
-            <Input 
-              id="password" 
-              type="password" 
-              placeholder="••••••••" 
-              value={formData.password} 
-              onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
-              required 
-              minLength={8} 
-              className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none" 
-            />
+            <div className="relative">
+              <Input 
+                id="password" 
+                type={showPassword ? "text" : "password"} 
+                placeholder="••••••••" 
+                value={formData.password} 
+                onChange={(e) => setFormData({ ...formData, password: e.target.value })} 
+                required 
+                minLength={8} 
+                pattern="(?=.*\d)(?=.*[!@#$%^&*(),.?&#34;:{}\|<>]).{8,}"
+                title="Must contain at least 8 characters, one number, and one symbol"
+                className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10" 
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
+              >
+                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+              </button>
+            </div>
+            <p className="text-[10px] text-muted-foreground mt-1">Min. 8 characters, 1 number, 1 symbol.</p>
           </div>
 
           <div className="flex items-center space-x-2 pt-2">

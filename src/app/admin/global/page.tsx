@@ -124,7 +124,7 @@ export default function GlobalContentPage() {
   return (
     <div className="flex text-foreground flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 md:p-10 space-y-8 max-w-5xl mx-auto">
+        <div className="p-6 md:p-10 space-y-8 w-full">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">

@@ -3,7 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { getPaymentProvider } from "@/lib/payment"
-import { PLAN_PRICES, PlanType, calculatePeriodEndDate } from "@/lib/midtrans"
+import { getDynamicAccountPrices, getDynamicWorkspacePrices, PlanType, calculatePeriodEndDate } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
 
@@ -33,7 +33,8 @@ export async function POST(request: NextRequest) {
 
     if (isAccountPlan) {
       // Logic for account plan pricing
-      const monthlyPrice = PLAN_PRICES[planId] || 0
+      const dynamicPrices = await getDynamicAccountPrices()
+      const monthlyPrice = dynamicPrices[planId] || 0
       amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
       planName = planId.charAt(0).toUpperCase() + planId.slice(1)
     } else {
@@ -63,9 +64,8 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      // Get plan details from database (sacms-pricing or platform-pricing content type)
       const pricingContentType = await db.contentType.findFirst({
-        where: { slug: { in: ["sacms-pricing", "platform-pricing"] } }
+        where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing"] } }
       })
 
       if (pricingContentType) {
@@ -101,11 +101,13 @@ export async function POST(request: NextRequest) {
           planName = data.name || planId
           isAddon = data.type === "addons"
         } else {
-          const monthlyPrice = PLAN_PRICES[planId] || 0
+          const dynamicPrices = await getDynamicWorkspacePrices()
+          const monthlyPrice = dynamicPrices[planId] || 0
           amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
         }
       } else {
-        const monthlyPrice = PLAN_PRICES[planId] || 0
+        const dynamicPrices = await getDynamicWorkspacePrices()
+        const monthlyPrice = dynamicPrices[planId] || 0
         amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
       }
     }

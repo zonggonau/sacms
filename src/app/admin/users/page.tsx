@@ -203,7 +203,7 @@ export default function AdminUsersPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto">
+        <div className="p-6 lg:p-8 w-full">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
             <div>

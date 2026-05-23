@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 
 /**
@@ -24,8 +24,10 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+    const tenantDb = await getTenantDb(tenant)
+
     // Verify content type
-    const contentType = await db.contentType.findUnique({
+    const contentType = await tenantDb.contentType.findUnique({
       where: { slug },
     })
 
@@ -34,7 +36,7 @@ export async function GET(
     }
 
     // Get versions
-    const versions = await db.contentVersion.findMany({
+    const versions = await tenantDb.contentVersion.findMany({
       where: {
         contentEntryId: id,
       },

@@ -74,6 +74,7 @@ export default function TenantUsersPage() {
   const [members, setMembers] = useState<Member[]>([])
   const [loading, setLoading] = useState(true)
   const [searchQuery, setSearchQuery] = useState("")
+  const [customRoles, setCustomRoles] = useState<{name: string, slug: string}[]>([])
   
   // Create Member State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
@@ -119,8 +120,24 @@ export default function TenantUsersPage() {
     }
   }
 
+  const fetchRoles = async () => {
+    if (!tenantSlug) return
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/roles`)
+      if (res.ok) {
+        const data = await res.json()
+        setCustomRoles(data.roles || [])
+      }
+    } catch (error) {
+      console.error("Failed to fetch custom roles:", error)
+    }
+  }
+
   useEffect(() => {
-    if (session?.user) fetchMembers()
+    if (session?.user) {
+      fetchMembers()
+      fetchRoles()
+    }
   }, [tenantSlug, session])
 
   const handleCreateMember = async (e: React.FormEvent) => {
@@ -211,7 +228,7 @@ export default function TenantUsersPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           
           <div className="flex items-center justify-between">
             <div>
@@ -275,6 +292,9 @@ export default function TenantUsersPage() {
                         <SelectItem value="admin">Admin (Full Access)</SelectItem>
                         <SelectItem value="editor">Editor (Can edit content)</SelectItem>
                         <SelectItem value="viewer">Viewer (Read-only)</SelectItem>
+                        {customRoles.map(r => (
+                          <SelectItem key={r.slug} value={r.slug}>{r.name} (Custom Role)</SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -388,6 +408,9 @@ export default function TenantUsersPage() {
                   <SelectItem value="admin">Admin (Full Control)</SelectItem>
                   <SelectItem value="editor">Editor (Content only)</SelectItem>
                   <SelectItem value="viewer">Viewer (Read-only)</SelectItem>
+                  {customRoles.map(r => (
+                    <SelectItem key={r.slug} value={r.slug}>{r.name} (Custom Role)</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

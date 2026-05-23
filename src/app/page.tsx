@@ -1,7 +1,7 @@
 import { LandingHeader } from "@/components/landing/header"
 import { ModernLanding } from "@/components/landing/modern-landing"
 import { WhatsAppButton } from "@/components/landing/whatsapp-button"
-import { db } from "@/lib/database"
+import { fetchCollection, fetchSingle } from "@/lib/sacms-client"
 
 export const dynamic = "force-dynamic"
 
@@ -10,72 +10,97 @@ export const metadata = {
   description: "A high-performance, enterprise-ready headless CMS designed for modern startups and digital ecosystems.",
 }
 
+async function fetchGlobalWorkspacePlans() {
+  try {
+    const res = await fetch("http://localhost:3001/api/tenant/sacms-global/subscriptions/plans", { cache: "no-store" })
+    if (res.ok) {
+      const data = await res.json()
+      return (data.plans || [])
+        .filter((p: any) => p.type === "workspace")
+        .map((p: any) => ({
+          name: p.name,
+          description: `Includes ${p.maxContentTypes > 100 ? 'Unlimited' : p.maxContentTypes} schemas and ${p.maxContentEntries?.toLocaleString() || 'Basic'} entries`,
+          price: p.price,
+          interval: "month",
+          features: p.features,
+          isPopular: p.popular,
+          cta: p.buttonText || "Get Started"
+        }))
+    }
+  } catch (err) {
+    console.error("Error fetching global workspace plans:", err)
+  }
+  return null
+}
+
 async function getLandingData() {
   try {
-    const globalTenant = await db.tenant.findUnique({
-      where: { slug: "sacms-global" },
-    })
+    // Fetch all required data concurrently from the REST API
+    const [
+      hero,
+      features,
+      pricingAccounts,
+      fallbackPricingWorkspaces,
+      addons,
+      workflow,
+      faq,
+      whatsapp,
+      about,
+      owners,
+      testimonials,
+      globalPlans
+    ] = await Promise.all([
+      fetchSingle("sacms-hero"),
+      fetchCollection("sacms-features", "sort=createdAt:asc"),
+      fetchCollection("sacms-account-pricing", "sort=price:asc"),
+      fetchCollection("sacms-workspace-pricing", "sort=price:asc"),
+      fetchCollection("sacms-addons", "sort=price:asc"),
+      fetchCollection("sacms-workflow", "sort=step:asc"),
+      fetchCollection("sacms-faq", "sort=order:asc"),
+      fetchSingle("sacms-whatsapp"),
+      fetchSingle("sacms-about"),
+      fetchCollection("sacms-owners"),
+      fetchCollection("sacms-testimonials"),
+      fetchGlobalWorkspacePlans()
+    ]);
 
-    if (!globalTenant) return getDefaultData()
+    const pricingWorkspaces = globalPlans || fallbackPricingWorkspaces;
 
-    const entries = await db.contentEntry.findMany({
-      where: {
-        status: "PUBLISHED",
-        tenantId: globalTenant.id,
-        contentType: {
-          slug: {
-            in: [
-              "sacms-hero", "sacms-features", "sacms-pricing",
-              "sacms-addons", "sacms-workflow", "sacms-faq",
-              "sacms-whatsapp", "sacms-about", "sacms-owners", "sacms-testimonials",
-            ],
-          },
-        },
-      },
-      include: { contentType: { select: { slug: true } } },
-      orderBy: { createdAt: "asc" },
-    })
-
-    const parseData = (entry: any) => {
-      if (!entry) return null
-      return typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data
-    }
-
-    const byType = (slug: string) =>
-      entries.filter((e) => e.contentType.slug === slug).map(parseData)
-
-    const single = (slug: string) =>
-      parseData(entries.find((e) => e.contentType.slug === slug))
-
+    // Format pricing. If the previous ModernLanding expects one array for pricing,
+    // we'll pass workspace pricing as it's the standard SaaS model,
+    // or we can pass both if ModernLanding supports it (it currently expects one array `pricing`).
     return {
-      hero: single("sacms-hero"),
-      features: byType("sacms-features"),
-      pricing: byType("sacms-pricing"),
-      addons: byType("sacms-addons"),
-      workflow: byType("sacms-workflow"),
-      faq: byType("sacms-faq"),
-      whatsapp: single("sacms-whatsapp"),
-      about: single("sacms-about"),
-      owners: byType("sacms-owners"),
-      testimonials: byType("sacms-testimonials"),
+      hero,
+      features,
+      pricingAccounts,
+      pricingWorkspaces,
+      addons,
+      workflow,
+      faq,
+      whatsapp,
+      about,
+      owners,
+      testimonials,
     }
-  } catch {
-    return getDefaultData()
+  } catch (err) {
+    console.error("Error in getLandingData:", err);
+    return getDefaultData();
   }
 }
 
 function getDefaultData() {
   return {
     hero: null,
-    features: [] as any[],
-    pricing: [] as any[],
-    addons: [] as any[],
-    workflow: [] as any[],
-    faq: [] as any[],
-    whatsapp: null as any,
-    about: null as any,
-    owners: [] as any[],
-    testimonials: [] as any[],
+    features: [],
+    addons: [],
+    pricingAccounts: [],
+    pricingWorkspaces: [],
+    workflow: [],
+    faq: [],
+    whatsapp: null,
+    about: null,
+    owners: [],
+    testimonials: [],
   }
 }
 

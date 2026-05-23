@@ -27,7 +27,7 @@ export function LandingHeader() {
       <div className="container px-6 max-w-6xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-2">
-            <Database className="w-6 h-6 text-orange-500" />
+            <Database className="w-6 h-6 text-primary" />
             <span className="text-xl font-bold text-foreground">SaCMS</span>
           </Link>
         </div>
@@ -35,8 +35,8 @@ export function LandingHeader() {
         <nav className="hidden md:flex items-center gap-8">
           {[
             { label: "Features", href: "/#features" },
-            { label: "About", href: "/#about" },
             { label: "Pricing", href: "/#pricing" },
+            { label: "Addons", href: "/#addons" },
             { label: "Docs", href: "/docs" },
           ].map((item) => (
             <Link
@@ -57,7 +57,7 @@ export function LandingHeader() {
               </Button>
             </Link>
             <Link href="/register">
-              <Button className="rounded-none bg-orange-500 hover:bg-orange-600 text-white transition-none">
+              <Button className="rounded-none bg-primary hover:bg-primary/90 text-white transition-none">
                 Get Started
               </Button>
             </Link>
@@ -80,27 +80,27 @@ export function LandingHeader() {
             <nav className="container px-6 py-6 flex flex-col gap-4">
               {[
                 { label: "Features", href: "/#features" },
-                { label: "About", href: "/#about" },
                 { label: "Pricing", href: "/#pricing" },
+                { label: "Addons", href: "/#addons" },
                 { label: "Documentation", href: "/docs" },
               ].map((item) => (
                 <Link 
                   key={item.label} 
                   href={item.href} 
-                  className="text-base font-medium text-zinc-800" 
+                  className="text-base font-medium text-foreground" 
                   onClick={() => setMobileMenuOpen(false)}
                 >
                   {item.label}
                 </Link>
               ))}
-              <div className="flex flex-col gap-3 pt-4 border-t border-zinc-100">
+              <div className="flex flex-col gap-3 pt-4 border-t border-border">
                 <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                   <Button variant="outline" className="w-full rounded-none border-border">
                     Sign In
                   </Button>
                 </Link>
                 <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
-                  <Button className="w-full rounded-none bg-orange-500 hover:bg-orange-600 text-white">
+                  <Button className="w-full rounded-none bg-primary hover:bg-primary/90 text-white">
                     Get Started
                   </Button>
                 </Link>

@@ -38,7 +38,9 @@ import {
   Trash2,
   AlertTriangle,
   CheckCircle,
+  Activity,
 } from "lucide-react"
+import { UsageTab } from "@/components/dashboard/usage-tab"
 export default function TenantSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -75,7 +77,7 @@ export default function TenantSettingsPage() {
   }, [session])
 
   const currentTenant = useMemo(() => {
-    return tenants.find((t) => t.slug === tenantSlug)
+    return tenants.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
   }, [tenants, tenantSlug])
 
   useEffect(() => {
@@ -184,6 +186,39 @@ export default function TenantSettingsPage() {
     }
   }
 
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!confirm("Are you sure you want to import this data? This might overwrite existing configurations or fail if there are conflicts.")) return
+    
+    setSaving(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await fetch(`/api/tenant/${tenantSlug}/import`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (res.ok) {
+        alert("Data imported successfully. Please refresh the page.")
+        window.location.reload()
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to import data")
+      }
+    } catch (error) {
+      console.error("Import failed:", error)
+      alert("Failed to import data")
+    } finally {
+      setSaving(false)
+      // reset file input
+      e.target.value = ""
+    }
+  }
+
   const handleDeleteContent = async () => {
     if (!confirm("Are you sure you want to delete all content? This cannot be undone.")) return
 
@@ -209,13 +244,18 @@ export default function TenantSettingsPage() {
       return
     }
 
+    if (!currentTenant?.id) {
+      alert("Workspace ID not found. Please refresh the page.")
+      return
+    }
+
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}`, {
+      const res = await fetch(`/api/tenants/${currentTenant.id}`, {
         method: "DELETE",
       })
 
       if (res.ok) {
-        router.push("/dashboard")
+        window.location.href = "/dashboard"
       } else {
         const data = await res.json()
         alert(data.error || "Failed to delete workspace")
@@ -237,7 +277,7 @@ export default function TenantSettingsPage() {
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+        <div className="p-6 lg:p-8 w-full space-y-6">
           {/* Header */}
           <div className="mb-8">
             <h1 className="text-3xl font-bold">Settings</h1>
@@ -309,11 +349,19 @@ export default function TenantSettingsPage() {
                 <Shield className="h-4 w-4 mr-2" />
                 Security
               </TabsTrigger>
+              <TabsTrigger value="usage">
+                <Activity className="h-4 w-4 mr-2" />
+                Usage
+              </TabsTrigger>
               <TabsTrigger value="danger">
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Danger Zone
               </TabsTrigger>
             </TabsList>
+
+            <TabsContent value="usage">
+              <UsageTab tenantSlug={tenantSlug} />
+            </TabsContent>
 
             <TabsContent value="general">
               <Card>
@@ -534,10 +582,25 @@ export default function TenantSettingsPage() {
                         Download all your content and settings
                       </p>
                     </div>
-                    <Button variant="outline" onClick={handleExport}>
-                      <Download className="mr-2 h-4 w-4" />
-                      Export
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button variant="outline" onClick={handleExport}>
+                        <Download className="mr-2 h-4 w-4" />
+                        Export
+                      </Button>
+                      <div className="relative">
+                        <Input 
+                          type="file" 
+                          accept=".json"
+                          onChange={handleImport}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          disabled={saving}
+                        />
+                        <Button variant="outline" disabled={saving}>
+                          <Download className="mr-2 h-4 w-4 rotate-180" />
+                          Import
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                   <div className="flex items-center justify-between p-4 border rounded-lg">
                     <div>

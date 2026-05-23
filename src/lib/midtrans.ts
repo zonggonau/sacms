@@ -154,19 +154,87 @@ export async function refundTransaction(orderId: string) {
 }
 
 /**
- * Plan pricing configuration
+ * Plan pricing configuration (Fallback)
  */
 export const PLAN_PRICES: Record<string, number> = {
   free: 0,
-  starter: 9000,
-  standard: 149000,
-  professional: 449000,
-  business: 949000,
-  unlimited: 1999000,
-  enterprise: 2999000,
+  starter: 99000,
+  pro: 299000,
+  enterprise: 999000,
+  standard: 149000, // Legacy fallback
+  professional: 449000, // Legacy fallback
+  business: 949000, // Legacy fallback
+  unlimited: 1999000, // Legacy fallback
 } as const
 
-export type PlanType = keyof typeof PLAN_PRICES
+export type PlanType = string
+
+/**
+ * Fetch dynamic plan prices from CMS
+ */
+export async function getDynamicAccountPrices(): Promise<Record<string, number>> {
+  try {
+    const { db } = await import('@/lib/database')
+    const pricingContentType = await db.contentType.findFirst({
+      where: { slug: "sacms-account-pricing" }
+    })
+    
+    if (pricingContentType) {
+      const planEntries = await db.contentEntry.findMany({
+        where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
+      })
+      
+      const prices: Record<string, number> = {}
+      for (const entry of planEntries) {
+        let data = entry.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) { data = {} }
+        }
+        const d = data as any
+        if (d.plan_slug && d.price !== undefined) {
+          prices[d.plan_slug] = Number(d.price)
+        }
+      }
+      if (Object.keys(prices).length > 0) return prices
+    }
+  } catch (e) {
+    console.error("Error fetching dynamic account prices:", e)
+  }
+  
+  return { ...PLAN_PRICES }
+}
+
+export async function getDynamicWorkspacePrices(): Promise<Record<string, number>> {
+  try {
+    const { db } = await import('@/lib/database')
+    const pricingContentType = await db.contentType.findFirst({
+      where: { slug: "sacms-workspace-pricing" }
+    })
+    
+    if (pricingContentType) {
+      const planEntries = await db.contentEntry.findMany({
+        where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
+      })
+      
+      const prices: Record<string, number> = {}
+      for (const entry of planEntries) {
+        let data = entry.data
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) { data = {} }
+        }
+        const d = data as any
+        if (d.plan_slug && d.price !== undefined) {
+          prices[d.plan_slug] = Number(d.price)
+        }
+      }
+      if (Object.keys(prices).length > 0) return prices
+    }
+  } catch (e) {
+    console.error("Error fetching dynamic workspace prices:", e)
+  }
+  
+  return { ...PLAN_PRICES }
+}
 
 /**
  * Calculate period end date based on plan and interval
@@ -181,12 +249,12 @@ export function calculatePeriodEndDate(plan: PlanType, interval: 'month' | 'year
 /**
  * Calculate prorated amount for plan upgrade
  */
-export function calculateProratedAmount(
+export async function calculateProratedAmount(
   currentPlan: PlanType,
   newPlan: PlanType,
   currentPeriodStart: Date | string | null,
   currentPeriodEnd: Date | string | null
-): {
+): Promise<{
   fullPrice: number
   proratedPrice: number
   daysRemaining: number
@@ -194,9 +262,10 @@ export function calculateProratedAmount(
   percentageUsed: number
   credit: number
   amountDue: number
-} {
-  const currentPlanPrice = PLAN_PRICES[currentPlan] || 0
-  const newPlanPrice = PLAN_PRICES[newPlan] || 0
+}> {
+  const dynamicPrices = await getDynamicWorkspacePrices()
+  const currentPlanPrice = dynamicPrices[currentPlan] || 0
+  const newPlanPrice = dynamicPrices[newPlan] || 0
 
   // If no active period, pay full price
   if (!currentPeriodStart || !currentPeriodEnd) {

@@ -10,7 +10,6 @@ import { Switch } from "@/components/ui/switch"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Loader2, ArrowLeft, Shield, Users, Key, Settings, Save, Plus, Trash2 } from "lucide-react"
 import Link from "next/link"
-import { AdminSidebar } from "@/components/dashboard/admin-sidebar"
 
 interface Permission {
   id: string
@@ -158,13 +157,12 @@ export default function RBACPage() {
   }
 
   return (
-    <div className="flex flex-1 flex-col w-full">
-      <AdminSidebar tenantSlug={tenantSlug} tenants={tenants} />
-      <div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-6 lg:p-8">
+    <div className="flex text-foreground flex-1 flex-col w-full">
+      <div className="flex-1 flex-col w-full">
+        <div className="p-6 md:p-10 space-y-8 w-full">
           {/* Header */}
           <div className="flex items-center gap-4 mb-8">
-            <Link href={`/admin/${tenantSlug}`}>
+            <Link href={`/admin`}>
               <Button variant="ghost" size="icon">
                 <ArrowLeft className="h-5 w-5" />
               </Button>

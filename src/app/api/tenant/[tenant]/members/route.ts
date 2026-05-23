@@ -11,6 +11,7 @@ const createMemberSchema = z.object({
   role: z.enum(["owner", "admin", "editor", "viewer"]).default("viewer"),
   name: z.string().optional(),
   password: z.string().min(8).optional(), // Optional for invite, required for create
+  customPermissions: z.array(z.string()).optional(),
 })
 
 // GET /api/tenant/[tenant]/members - List all members
@@ -67,9 +68,21 @@ export async function POST(
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
+    // Enforce team member limit based on workspace plan
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(tenantId, "team_members")
+    if (!enforcement.allowed) {
+      return NextResponse.json({ 
+        error: enforcement.message,
+        current: enforcement.current,
+        max: enforcement.max,
+        plan: enforcement.planSlug,
+      }, { status: 403 })
+    }
+
     const result = await validateBody(request, createMemberSchema)
     if ("error" in result) return result.error
-    const { email, role, name, password } = result.data
+    const { email, role, name, password, customPermissions } = result.data
 
     // 1. Find or Create User in Master DB
     let user = await db.user.findUnique({ where: { email } })
@@ -125,6 +138,7 @@ export async function POST(
         tenantId: tenantId,
         userId: user.id,
         role: role,
+        customPermissions: customPermissions ? customPermissions : undefined,
       },
       include: {
         user: { select: { id: true, name: true, email: true, image: true } },
@@ -140,12 +154,16 @@ export async function POST(
             userId: user.id
           }
         },
-        update: { role: role },
+        update: { 
+          role: role,
+          customPermissions: customPermissions ? customPermissions : undefined,
+        },
         create: {
           id: member.id,
           tenantId: tenantId,
           userId: user.id,
-          role: role
+          role: role,
+          customPermissions: customPermissions ? customPermissions : undefined,
         }
       })
     }

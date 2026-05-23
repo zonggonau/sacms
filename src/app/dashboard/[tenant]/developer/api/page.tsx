@@ -201,7 +201,7 @@ export default function ApiExplorerPage() {
         {/* Ambient Glow */}
         <div className="absolute top-[-20%] left-[-10%] w-[50%] h-[50%] bg-orange-500/10 blur-[150px] rounded-full pointer-events-none" />
         
-        <div className="p-6 lg:p-10 max-w-[1600px] mx-auto space-y-8 relative z-10">
+        <div className="p-6 lg:p-10 w-full space-y-8 relative z-10">
           
           {/* Header */}
           <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 pb-8 border-b border-border/50">

@@ -271,7 +271,12 @@ export default function CMSEditEntryPage() {
         return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":
-        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+        let relOpts: any = {}
+        if (field.options) {
+          try {
+            relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
+          } catch (e) {}
+        }
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <div className="space-y-2">

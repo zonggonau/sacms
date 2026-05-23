@@ -15,101 +15,117 @@ export interface PlanConfig {
 export interface UserPlanConfig {
   plan_slug: string
   max_workspaces: number
-  max_storage_per_workspace: number // in MB
 }
 
 export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
+  // === Canonical plan names (from planpacket spec) ===
   free: {
     plan_slug: "free",
     max_workspaces: 1,
-    max_storage_per_workspace: 100,
   },
   starter: {
     plan_slug: "starter",
-    max_workspaces: 1,
-    max_storage_per_workspace: 500,
+    max_workspaces: 3,
   },
-  standard: {
-    plan_slug: "standard",
-    max_workspaces: 5,
-    max_storage_per_workspace: 1024,
+  pro: {
+    plan_slug: "pro",
+    max_workspaces: 10,
   },
-  standar: { // Alias for Indonesian
-    plan_slug: "standard",
-    max_workspaces: 5,
-    max_storage_per_workspace: 1024,
-  },
-  professional: {
-    plan_slug: "professional",
+  enterprise: {
+    plan_slug: "enterprise",
     max_workspaces: 20,
-    max_storage_per_workspace: 5120,
   },
-  profesional: { // Alias for Indonesian
-    plan_slug: "professional",
+  custom: {
+    plan_slug: "custom",
+    max_workspaces: 9999, // Overridable via CustomPlanOverride
+  },
+
+  // === Backward-compat aliases (legacy plan names → canonical) ===
+  standard: {   // legacy → starter
+    plan_slug: "starter",
+    max_workspaces: 3,
+  },
+  standar: {    // Indonesian alias → starter
+    plan_slug: "starter",
+    max_workspaces: 3,
+  },
+  professional: { // legacy → pro
+    plan_slug: "pro",
+    max_workspaces: 10,
+  },
+  profesional: {  // Indonesian alias → pro
+    plan_slug: "pro",
+    max_workspaces: 10,
+  },
+  business: {   // legacy → enterprise
+    plan_slug: "enterprise",
     max_workspaces: 20,
-    max_storage_per_workspace: 5120,
   },
-  business: {
-    plan_slug: "business",
-    max_workspaces: 50,
-    max_storage_per_workspace: 20480,
+  bisnis: {     // Indonesian alias → enterprise
+    plan_slug: "enterprise",
+    max_workspaces: 20,
   },
-  bisnis: { // Alias for Indonesian
-    plan_slug: "business",
-    max_workspaces: 50,
-    max_storage_per_workspace: 20480,
-  },
-  unlimited: {
-    plan_slug: "unlimited",
-    max_workspaces: 999999,
-    max_storage_per_workspace: 102400,
+  unlimited: {  // legacy → custom
+    plan_slug: "custom",
+    max_workspaces: 9999,
   },
 }
 
 export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   free: {
     plan_slug: "free",
-    max_content_types: 5,
-    max_content_entries: 100,
+    max_content_types: 3,
+    max_content_entries: 500,
     max_team_members: 1,
     max_api_calls: 1000,
-    max_storage: 100,
+    max_storage: 100, // MB
     max_locales: 1,
     audit_log_retention: 0,
     support_level: "Community",
   },
   starter: {
     plan_slug: "starter",
-    max_content_types: 10,
+    max_content_types: 5,
     max_content_entries: 5000,
-    max_team_members: 5,
+    max_team_members: 3,
     max_api_calls: 100000,
-    max_storage: 1024,
-    max_locales: 1,
-    audit_log_retention: 0,
+    max_storage: 1024, // 1GB
+    max_locales: 2,
+    audit_log_retention: 7,
     support_level: "Email Support",
   },
   pro: {
     plan_slug: "pro",
-    max_content_types: 50,
-    max_content_entries: 50000,
-    max_team_members: 20,
+    max_content_types: 10,
+    max_content_entries: 10000,
+    max_team_members: 10,
     max_api_calls: 1000000,
-    max_storage: 10240,
+    max_storage: 5120, // 5GB
     max_locales: 5,
-    audit_log_retention: 7,
+    audit_log_retention: 30,
     support_level: "Priority Support",
   },
   enterprise: {
     plan_slug: "enterprise",
-    max_content_types: 999,
+    max_content_types: 20,
+    max_content_entries: 20000,
+    max_team_members: 20,
+    max_api_calls: 10000000,
+    max_storage: 10240, // 10GB
+    max_locales: 20,
+    audit_log_retention: 365,
+    support_level: "24/7 Dedicated Support",
+  },
+  custom: {
+    plan_slug: "custom",
+    max_content_types: 9999,
     max_content_entries: 9999999,
-    max_team_members: 999,
+    max_team_members: 9999,
     max_api_calls: 99999999,
     max_storage: 102400,
     max_locales: 99,
     audit_log_retention: 9999,
-    support_level: "24/7 Dedicated Support",
+    support_level: "Custom Support",
   },
 }
 
@@ -127,18 +143,9 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   if (!tenant) return DEFAULT_LIMITS.free
 
   try {
-    const pricingEntry = await db.contentEntry.findFirst({
-      where: {
-        contentType: { slug: "sacms-pricing" },
-        status: "PUBLISHED",
-      },
-    })
-
-    // Note: In a real scenario, we'd filter by data->plan_slug in the query,
-    // but Prisma Json filtering can be tricky. For now, we find all and match in JS.
     const allPricing = await db.contentEntry.findMany({
       where: {
-        contentType: { slug: "sacms-pricing" },
+        contentType: { slug: "sacms-workspace-pricing" },
         status: "PUBLISHED",
       },
     })
@@ -211,13 +218,14 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     select: { plan: true },
   })
 
-  if (tenant?.plan === "enterprise") return true
+  if (tenant?.plan === "enterprise" || tenant?.plan === "custom") return true
 
   return false
 }
 
 /**
  * Gets the plan configuration for a user.
+ * Fetches dynamic limits from sacms-pricing if available.
  */
 export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig> {
   const user = await db.user.findUnique({
@@ -226,6 +234,31 @@ export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig>
   })
 
   if (!user) return USER_PLAN_LIMITS.free
+
+  try {
+    const allPricing = await db.contentEntry.findMany({
+      where: {
+        contentType: { slug: "sacms-account-pricing" },
+        status: "PUBLISHED",
+      },
+    })
+
+    const match = allPricing.find((e: any) => {
+      const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data
+      return data.plan_slug === user.plan
+    })
+
+    if (match) {
+      const data = typeof match.data === "string" ? JSON.parse(match.data) : match.data
+      const base = USER_PLAN_LIMITS[user.plan] || USER_PLAN_LIMITS.free
+      return {
+        plan_slug: data.plan_slug || base.plan_slug,
+        max_workspaces: Number(data.max_workspaces) || base.max_workspaces,
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching dynamic user plan config:", error)
+  }
 
   return USER_PLAN_LIMITS[user.plan] || USER_PLAN_LIMITS.free
 }

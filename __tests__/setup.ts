@@ -25,6 +25,7 @@ vi.mock("@/lib/database", () => ({
     contentType: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     contentEntry: {
       findUnique: vi.fn(),
@@ -45,9 +46,11 @@ vi.mock("@/lib/database", () => ({
     apiToken: {
       findFirst: vi.fn(),
       findUnique: vi.fn(),
+      update: vi.fn().mockImplementation(() => Promise.resolve({})),
     },
     tenantLocale: {
       findMany: vi.fn(),
+      findFirst: vi.fn(),
     },
     webhook: {
       findMany: vi.fn(),
@@ -66,6 +69,15 @@ vi.mock("@/lib/database", () => ({
     })),
     $queryRawUnsafe: vi.fn(),
   },
+  getTenantDb: vi.fn().mockImplementation(async () => {
+    // Return the mocked db object (defined above)
+    const { db } = await import("@/lib/database");
+    return db;
+  }),
+  getTenantDbById: vi.fn().mockImplementation(async () => {
+    const { db } = await import("@/lib/database");
+    return db;
+  }),
 }))
 
 // Mock rate limit
@@ -98,3 +110,20 @@ vi.mock("bcrypt", () => ({
     compare: vi.fn().mockResolvedValue(true),
   },
 }))
+
+// Mock cache
+vi.mock("@/lib/cache", () => ({
+  getCache: vi.fn().mockResolvedValue(null),
+  setCache: vi.fn().mockResolvedValue(undefined),
+  invalidatePattern: vi.fn().mockResolvedValue(undefined),
+  invalidateCache: vi.fn().mockResolvedValue(undefined),
+}))
+
+// Mock monitoring
+vi.mock("@/lib/monitoring", () => ({
+  logApiRequest: vi.fn().mockResolvedValue(undefined),
+  getCpuUsage: vi.fn().mockResolvedValue(0),
+  getMemoryUsage: vi.fn().mockReturnValue({ percentage: 0, metadata: {} }),
+  collectSystemMetrics: vi.fn().mockResolvedValue(null),
+}))
+

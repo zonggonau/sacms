@@ -30,7 +30,8 @@ import {
   ChevronRight,
   Database,
   DatabaseIcon,
-  Puzzle
+  Puzzle,
+  Shield
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -144,6 +145,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
       label: "MANAGEMENT",
       items: [
         { title: "Team Members", href: "/users", icon: Users },
+        { title: "Roles & Permissions", href: "/roles", icon: Shield },
         { title: "Localization", href: "/localization", icon: Languages },
         { title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true },
       ],

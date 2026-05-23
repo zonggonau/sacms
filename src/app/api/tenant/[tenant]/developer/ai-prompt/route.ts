@@ -75,14 +75,33 @@ export async function GET(
       },
     })
 
+    // Fetch an active API Token for this tenant
+    const apiToken = await tenantDb.apiToken.findFirst({
+      where: {
+        tenantId: tenantId,
+        OR: [
+          { expiresAt: null },
+          { expiresAt: { gt: new Date() } }
+        ]
+      },
+      orderBy: { createdAt: 'desc' }
+    })
+    const tokenStr = apiToken ? apiToken.token : "[No Active API Token Found - Create one in Settings]"
+
+    const baseUrl = request.nextUrl.origin
+    const fullApiBaseUrl = `${baseUrl}/api/public/${tenantSlug}`
+
     // Generate Markdown Prompt
     let prompt = `# AI Agent Prompt for ${tenant.name}\n\n`
     prompt += `You are an expert Frontend Developer. Your task is to build a complete, modern, and responsive frontend application using Next.js (App Router), Tailwind CSS, and Lucide React icons based on the following Headless CMS schema for "${tenant.name}".\n\n`
     
     prompt += `## Project Configuration\n`
     prompt += `- **Tenant Name**: ${tenant.name}\n`
-    prompt += `- **Base API URL**: \`/api/public/${tenantSlug}\`\n`
-    prompt += `- **Authentication**: Use Bearer Token in the Authorization header.\n\n`
+    prompt += `- **Tenant ID**: \`${tenantId}\`\n`
+    prompt += `- **Tenant Slug**: \`${tenantSlug}\`\n`
+    prompt += `- **API Key (Bearer Token)**: \`${tokenStr}\`\n`
+    prompt += `- **Base API URL**: \`${fullApiBaseUrl}\`\n`
+    prompt += `- **Authentication**: Use \`Bearer ${tokenStr}\` in the Authorization header.\n\n`
 
     prompt += `## Schema Definition\n\n`
 
@@ -94,8 +113,8 @@ export async function GET(
         prompt += `#### ${ct.name} (\`${ct.slug}\`)\n`
         if (ct.description) prompt += `*Description: ${ct.description}*\n\n`
         prompt += `- **Endpoints**:\n`
-        prompt += `  - List: \`GET /api/public/${tenantSlug}/content/${ct.slug}\`\n`
-        prompt += `  - Detail: \`GET /api/public/${tenantSlug}/content/${ct.slug}/:id\`\n`
+        prompt += `  - List: \`GET ${fullApiBaseUrl}/content/${ct.slug}\`\n`
+        prompt += `  - Detail: \`GET ${fullApiBaseUrl}/content/${ct.slug}/:id\`\n`
         prompt += `- **Fields**:\n`
         ct.fields.forEach(f => {
           prompt += `  - \`${f.slug}\` (${f.type})${f.required ? ' *Required*' : ''}\n`
@@ -111,7 +130,7 @@ export async function GET(
       singleTypes.forEach(st => {
         prompt += `#### ${st.name} (\`${st.slug}\`)\n`
         if (st.description) prompt += `*Description: ${st.description}*\n\n`
-        prompt += `- **Endpoint**: \`GET /api/public/${tenantSlug}/single/${st.slug}\`\n`
+        prompt += `- **Endpoint**: \`GET ${fullApiBaseUrl}/single/${st.slug}\`\n`
         prompt += `- **Fields**:\n`
         st.fields.forEach(f => {
           prompt += `  - \`${f.slug}\` (${f.type})${f.required ? ' *Required*' : ''}\n`

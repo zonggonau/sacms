@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { PLAN_PRICES } from "@/lib/midtrans"
+import { PLAN_PRICES, getDynamicWorkspacePrices, getDynamicAccountPrices } from "@/lib/midtrans"
 
 /**
  * POST /api/admin/billing/generate-invoices
@@ -56,6 +56,9 @@ export async function POST(request: NextRequest) {
     // Get current date
     const now = new Date()
 
+    const dynamicWorkspacePrices = await getDynamicWorkspacePrices()
+    const dynamicAccountPrices = await getDynamicAccountPrices()
+
     for (const subscription of activeSubscriptions) {
       try {
         // Check if subscription needs billing
@@ -103,8 +106,9 @@ export async function POST(request: NextRequest) {
           continue
         }
 
-        // Get plan price
-        const planPrice = PLAN_PRICES[subscription.plan] || 0
+        const isAccountPlan = !subscription.tenantId
+        const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
+        const planPrice = dynamicPrices[subscription.plan] ?? PLAN_PRICES[subscription.plan] ?? 0
 
         if (planPrice === 0) {
           // Free plan - extend period
@@ -225,13 +229,21 @@ export async function GET(request: NextRequest) {
 
     const now = new Date()
 
-    const preview = activeSubscriptions.map((sub) => ({
+    const dynamicWorkspacePrices = await getDynamicWorkspacePrices()
+    const dynamicAccountPrices = await getDynamicAccountPrices()
+
+    const preview = activeSubscriptions.map((sub) => {
+      const isAccountPlan = !sub.tenantId
+      const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
+      const price = dynamicPrices[sub.plan] ?? PLAN_PRICES[sub.plan] ?? 0
+
+      return {
       subscriptionId: sub.id,
-      tenantName: sub.tenant!.name,
-      tenantSlug: sub.tenant!.slug,
+      tenantName: sub.tenant?.name || 'Account Plan',
+      tenantSlug: sub.tenant?.slug || 'account-plan',
       plan: sub.plan,
       currentPeriodEnd: sub.currentPeriodEnd,
-      planPrice: PLAN_PRICES[sub.plan] || 0,
+      planPrice: price,
       needsBilling:
         sub.currentPeriodEnd && new Date(sub.currentPeriodEnd) <= now,
       daysOverdue:
@@ -241,7 +253,7 @@ export async function GET(request: NextRequest) {
                 (1000 * 60 * 60 * 24)
             )
           : 0,
-    }))
+    }})
 
     const totalPendingInvoices = preview.filter((p) => p.needsBilling).length
     const totalRevenue = preview

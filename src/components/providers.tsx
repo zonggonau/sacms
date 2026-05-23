@@ -44,7 +44,13 @@ function BrandingProvider({ children }: { children: React.ReactNode }) {
   return <>{children}</>
 }
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ 
+  children,
+  session 
+}: { 
+  children: React.ReactNode
+  session?: any 
+}) {
   return (
     <ThemeProvider
       attribute="class"
@@ -52,7 +58,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
       enableSystem
       disableTransitionOnChange
     >
-      <NextAuthSessionProvider>
+      <NextAuthSessionProvider session={session}>
         <BrandingProvider>
           {children}
         </BrandingProvider>
