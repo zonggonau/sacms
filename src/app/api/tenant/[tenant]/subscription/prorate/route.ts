@@ -157,7 +157,9 @@ export async function POST(
       amountDueFormatted: formatPrice(proration.amountDue),
       currentPeriodStart: subscription.currentPeriodStart,
       currentPeriodEnd: subscription.currentPeriodEnd,
-      isUpgrade: proration.fullPrice > (dynamicPrices[subscription.plan] || 0),
+      isUpgrade: proration.fullPrice > (dynamicPrices[subscription.plan]?.monthly || 0),
+      isDowngrade: proration.isDowngrade,
+      isActive: subscription.status === 'active',
       message:
         proration.amountDue === 0
           ? "No payment required - credit covers the upgrade"

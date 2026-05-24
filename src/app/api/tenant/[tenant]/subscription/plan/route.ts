@@ -73,8 +73,8 @@ export async function PATCH(
     const { getDynamicWorkspacePrices } = await import("@/lib/midtrans")
     const dynamicPrices = await getDynamicWorkspacePrices()
 
-    const currentPlanPrice = dynamicPrices[subscription.plan] || 0
-    const newPlanPrice = dynamicPrices[planId] || 0
+    const currentPlanPrice = dynamicPrices[subscription.plan]?.monthly || 0
+    const newPlanPrice = dynamicPrices[planId]?.monthly || 0
 
     // Check for downgrade - can downgrade anytime
     const isDowngrade = newPlanPrice < currentPlanPrice

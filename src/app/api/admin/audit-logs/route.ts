@@ -17,12 +17,21 @@ export async function GET(request: NextRequest) {
     const userId = searchParams.get("userId")
     const action = searchParams.get("action")
     const entity = searchParams.get("entity")
+    const search = searchParams.get("search")
 
     const where: any = {}
     if (tenantId) where.tenantId = tenantId
     if (userId) where.userId = userId
     if (action) where.action = action
     if (entity) where.entity = entity
+    
+    if (search) {
+      where.OR = [
+        { userId: { contains: search, mode: "insensitive" } },
+        { entityId: { contains: search, mode: "insensitive" } },
+        { action: { contains: search, mode: "insensitive" } },
+      ]
+    }
 
     const [total, logs] = await Promise.all([
       db.auditLog.count({ where }),

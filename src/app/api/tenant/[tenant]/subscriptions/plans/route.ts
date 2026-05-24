@@ -29,6 +29,7 @@ export async function GET(
       name: "Free Forever",
       type: "workspace",
       price: 0,
+      yearlyPrice: 0,
       features: ["3 Content Schemas", "100 Content Entries", "3 Team Members", "10.000 API Calls"],
       popular: false,
       buttonText: "Current Plan",
@@ -78,11 +79,23 @@ export async function GET(
           return []
         }
 
+        let yearlyPrice = 0
+        if (d.yearly_price !== undefined) {
+          if (typeof d.yearly_price === 'string') {
+            yearlyPrice = parseInt(d.yearly_price.replace(/[^\d]/g, ''), 10) || 0
+          } else {
+            yearlyPrice = Number(d.yearly_price) || 0
+          }
+        } else {
+          yearlyPrice = numericPrice * 10
+        }
+
         return {
           id: d.plan_slug || entry.id,
           name: d.name || "Unnamed Plan",
           type: "workspace",
           price: numericPrice,
+          yearlyPrice: yearlyPrice,
           features: parseFeatures(d.features),
           popular: false,
           buttonText: "Get Started",

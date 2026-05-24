@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
 
         const isAccountPlan = !subscription.tenantId
         const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-        const planPrice = dynamicPrices[subscription.plan] ?? PLAN_PRICES[subscription.plan] ?? 0
+        const planPrice = dynamicPrices[subscription.plan]?.monthly ?? PLAN_PRICES[subscription.plan] ?? 0
 
         if (planPrice === 0) {
           // Free plan - extend period

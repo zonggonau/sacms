@@ -83,6 +83,13 @@ export const createPermissionSchema = z.object({
   category: z.string().max(100).optional(),
 })
 
+export const updatePermissionSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  displayName: z.string().max(200).optional(),
+  description: z.string().max(500).optional(),
+  category: z.string().max(100).optional(),
+})
+
 // Admin settings
 export const adminSettingsSchema = z.object({
   settings: z.record(z.string(), z.any()),

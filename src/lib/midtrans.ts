@@ -172,7 +172,7 @@ export type PlanType = string
 /**
  * Fetch dynamic plan prices from CMS
  */
-export async function getDynamicAccountPrices(): Promise<Record<string, number>> {
+export async function getDynamicAccountPrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
     const { db } = await import('@/lib/database')
     const pricingContentType = await db.contentType.findFirst({
@@ -184,7 +184,7 @@ export async function getDynamicAccountPrices(): Promise<Record<string, number>>
         where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
       })
       
-      const prices: Record<string, number> = {}
+      const prices: Record<string, { monthly: number, yearly: number }> = {}
       for (const entry of planEntries) {
         let data = entry.data
         if (typeof data === 'string') {
@@ -192,7 +192,10 @@ export async function getDynamicAccountPrices(): Promise<Record<string, number>>
         }
         const d = data as any
         if (d.plan_slug && d.price !== undefined) {
-          prices[d.plan_slug] = Number(d.price)
+          prices[d.plan_slug] = {
+            monthly: Number(d.price),
+            yearly: d.yearly_price !== undefined ? Number(d.yearly_price) : Number(d.price) * 10
+          }
         }
       }
       if (Object.keys(prices).length > 0) return prices
@@ -201,10 +204,14 @@ export async function getDynamicAccountPrices(): Promise<Record<string, number>>
     console.error("Error fetching dynamic account prices:", e)
   }
   
-  return { ...PLAN_PRICES }
+  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {}
+  for (const [k, v] of Object.entries(PLAN_PRICES)) {
+    fallbackPrices[k] = { monthly: v, yearly: v * 10 }
+  }
+  return fallbackPrices
 }
 
-export async function getDynamicWorkspacePrices(): Promise<Record<string, number>> {
+export async function getDynamicWorkspacePrices(): Promise<Record<string, { monthly: number, yearly: number }>> {
   try {
     const { db } = await import('@/lib/database')
     const pricingContentType = await db.contentType.findFirst({
@@ -216,7 +223,7 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, number
         where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
       })
       
-      const prices: Record<string, number> = {}
+      const prices: Record<string, { monthly: number, yearly: number }> = {}
       for (const entry of planEntries) {
         let data = entry.data
         if (typeof data === 'string') {
@@ -224,7 +231,10 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, number
         }
         const d = data as any
         if (d.plan_slug && d.price !== undefined) {
-          prices[d.plan_slug] = Number(d.price)
+          prices[d.plan_slug] = {
+            monthly: Number(d.price),
+            yearly: d.yearly_price !== undefined ? Number(d.yearly_price) : Number(d.price) * 10
+          }
         }
       }
       if (Object.keys(prices).length > 0) return prices
@@ -233,7 +243,11 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, number
     console.error("Error fetching dynamic workspace prices:", e)
   }
   
-  return { ...PLAN_PRICES }
+  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {}
+  for (const [k, v] of Object.entries(PLAN_PRICES)) {
+    fallbackPrices[k] = { monthly: v, yearly: v * 10 }
+  }
+  return fallbackPrices
 }
 
 /**
@@ -262,10 +276,12 @@ export async function calculateProratedAmount(
   percentageUsed: number
   credit: number
   amountDue: number
+  isDowngrade: boolean
 }> {
   const dynamicPrices = await getDynamicWorkspacePrices()
-  const currentPlanPrice = dynamicPrices[currentPlan] || 0
-  const newPlanPrice = dynamicPrices[newPlan] || 0
+  const currentPlanPrice = dynamicPrices[currentPlan]?.monthly || 0
+  const newPlanPrice = dynamicPrices[newPlan]?.monthly || 0
+  const isDowngrade = currentPlanPrice > newPlanPrice
 
   // If no active period, pay full price
   if (!currentPeriodStart || !currentPeriodEnd) {
@@ -277,6 +293,7 @@ export async function calculateProratedAmount(
       percentageUsed: 0,
       credit: 0,
       amountDue: newPlanPrice,
+      isDowngrade,
     }
   }
 
@@ -318,5 +335,6 @@ export async function calculateProratedAmount(
     percentageUsed,
     credit,
     amountDue,
+    isDowngrade,
   }
 }

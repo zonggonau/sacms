@@ -106,7 +106,7 @@ export default function AdminTransactionsPage() {
     const headers = ["Order ID", "Tenant", "Payment Method", "Amount", "Status", "Date"]
     const rows = transactions.map(tx => [
       tx.orderId,
-      tx.subscription?.tenant.slug || "System",
+      tx.subscription?.tenant?.slug || "System",
       tx.paymentType || "Unknown",
       tx.amount,
       tx.status,
@@ -251,15 +251,27 @@ export default function AdminTransactionsPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Link href={`/admin/tenants/${tx.subscription?.tenant.slug}`} className="flex items-center gap-2 hover:bg-muted/50 p-1.5 rounded-none transition-colors border border-transparent hover:border-border cursor-pointer w-fit">
-                            <div className="w-8 h-8 rounded-none bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
-                              <Building2 className="h-4 w-4" />
+                          {tx.subscription?.tenant ? (
+                            <Link href={`/admin/tenants/${tx.subscription.tenant.slug}`} className="flex items-center gap-2 hover:bg-muted/50 p-1.5 rounded-none transition-colors border border-transparent hover:border-border cursor-pointer w-fit">
+                              <div className="w-8 h-8 rounded-none bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold truncate max-w-[150px]">{tx.subscription.tenant.name}</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">/{tx.subscription.tenant.slug}</span>
+                              </div>
+                            </Link>
+                          ) : (
+                            <div className="flex items-center gap-2 p-1.5 rounded-none w-fit opacity-50">
+                              <div className="w-8 h-8 rounded-none bg-muted flex items-center justify-center text-muted-foreground border border-border">
+                                <Building2 className="h-4 w-4" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-sm font-bold truncate max-w-[150px]">System / Deleted</span>
+                                <span className="text-[10px] text-muted-foreground font-mono">N/A</span>
+                              </div>
                             </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold truncate max-w-[150px]">{tx.subscription?.tenant.name || "System"}</span>
-                              <span className="text-[10px] text-muted-foreground font-mono">/{tx.subscription?.tenant.slug}</span>
-                            </div>
-                          </Link>
+                          )}
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="text-[10px] font-bold uppercase bg-muted/20 border-none">

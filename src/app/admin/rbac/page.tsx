@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import React, { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Checkbox } from "@/components/ui/checkbox"
 import {
   Loader2, Shield, Key, Plus, CheckCircle2, XCircle, Lock,
-  ChevronRight, Info, AlertCircle, Save, RefreshCw
+  ChevronRight, Info, AlertCircle, Save, RefreshCw, MoreVertical, Edit, Trash2
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
@@ -32,6 +32,18 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip"
 
 interface Permission {
   id: string
@@ -62,6 +74,7 @@ export default function AdminRbacPage() {
   
   // New Permission Dialog State
   const [isPermOpen, setIsPermOpen] = useState(false)
+  const [isEditPermOpen, setIsEditPermOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [newPerm, setNewPerm] = useState({
     name: "",
@@ -69,6 +82,7 @@ export default function AdminRbacPage() {
     category: "content",
     description: ""
   })
+  const [editingPerm, setEditingPerm] = useState<Permission | null>(null)
 
   const fetchData = async () => {
     try {
@@ -125,6 +139,23 @@ export default function AdminRbacPage() {
     }
   }
 
+  const handleToggleCategory = async (roleId: string, category: string, currentGranted: boolean) => {
+    const permsInCategory = permissions.filter(p => p.category === category)
+    try {
+      await Promise.all(permsInCategory.map(p => 
+        fetch("/api/admin/rbac/roles", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ roleId, permissionId: p.id, granted: !currentGranted })
+        })
+      ))
+      toast({ title: "Updated", description: `Updated all ${category} permissions for role` })
+      fetchData()
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to update permissions" })
+    }
+  }
+
   const handleCreatePermission = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsSubmitting(true)
@@ -150,6 +181,52 @@ export default function AdminRbacPage() {
     }
   }
 
+  const handleUpdatePermission = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingPerm) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/rbac/permissions/${editingPerm.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: editingPerm.name,
+          displayName: editingPerm.displayName,
+          description: editingPerm.description,
+          category: editingPerm.category,
+        }),
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "Permission updated" })
+        setIsEditPermOpen(false)
+        fetchData()
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "An error occurred" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleDeletePermission = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this permission? This action cannot be undone and will remove it from all roles.")) return
+    try {
+      const res = await fetch(`/api/admin/rbac/permissions/${id}`, { method: "DELETE" })
+      if (res.ok) {
+        toast({ title: "Deleted", description: "Permission has been removed" })
+        fetchData()
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "An error occurred" })
+    }
+  }
+
   const categoryColors: Record<string, string> = {
     content: "bg-blue-100 text-blue-700",
     media: "bg-purple-100 text-purple-700",
@@ -161,7 +238,7 @@ export default function AdminRbacPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -178,7 +255,7 @@ export default function AdminRbacPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
+      <div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
@@ -259,6 +336,7 @@ export default function AdminRbacPage() {
                         {roles.map(role => (
                           <th key={role.id} className="p-4 text-center text-xs font-bold uppercase tracking-wider text-muted-foreground min-w-[120px]">
                             {role.displayName}
+                            <Badge variant="outline" className="ml-2 text-[8px] bg-muted/50 rounded-none text-muted-foreground tracking-tighter">SYSTEM</Badge>
                           </th>
                         ))}
                       </tr>
@@ -267,9 +345,24 @@ export default function AdminRbacPage() {
                       {categories.map(cat => (
                         <React.Fragment key={cat}>
                           <tr className="bg-muted/20">
-                            <td colSpan={roles.length + 1} className="px-4 py-2 text-[10px] font-black uppercase text-primary tracking-widest border-y">
+                            <td className="px-4 py-2 text-[10px] font-black uppercase text-primary tracking-widest border-y">
                               {cat} Management
                             </td>
+                            {roles.map(role => {
+                               const catPerms = permissions.filter(p => p.category === cat)
+                               const rolePermsInCat = role.permissions.filter(rp => catPerms.some(p => p.id === rp.id))
+                               const allGranted = catPerms.length > 0 && rolePermsInCat.length === catPerms.length
+                               const isOwner = role.id === 'owner'
+                               return (
+                                 <td key={`toggle-${role.id}-${cat}`} className="px-4 py-2 text-center border-y">
+                                    {!isOwner && (
+                                       <Button variant="ghost" size="sm" className="h-6 text-[10px] uppercase font-bold text-muted-foreground hover:text-foreground" onClick={() => handleToggleCategory(role.id, cat, allGranted)}>
+                                         {allGranted ? 'Deselect All' : 'Select All'}
+                                       </Button>
+                                    )}
+                                 </td>
+                               )
+                            })}
                           </tr>
                           {permissions.filter(p => p.category === cat).map(perm => (
                             <tr key={perm.id} className="border-b hover:bg-muted/5 transition-colors">
@@ -286,9 +379,18 @@ export default function AdminRbacPage() {
                                   <td key={`${role.id}-${perm.id}`} className="p-4 text-center">
                                     <div className="flex justify-center">
                                       {isOwner ? (
-                                        <div className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center">
-                                          <Lock className="h-3 w-3 text-primary opacity-50" />
-                                        </div>
+                                        <TooltipProvider>
+                                          <Tooltip>
+                                            <TooltipTrigger asChild>
+                                              <div className="h-5 w-5 rounded bg-primary/10 flex items-center justify-center cursor-not-allowed">
+                                                <Lock className="h-3 w-3 text-primary opacity-50" />
+                                              </div>
+                                            </TooltipTrigger>
+                                            <TooltipContent className="rounded-none">
+                                              <p>Owner always has full permissions</p>
+                                            </TooltipContent>
+                                          </Tooltip>
+                                        </TooltipProvider>
                                       ) : (
                                         <Checkbox 
                                           checked={hasIt} 
@@ -336,9 +438,21 @@ export default function AdminRbacPage() {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 rounded-full">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="rounded-none shadow-none border-border">
+                               <DropdownMenuItem className="cursor-pointer" onClick={() => { setEditingPerm(permission); setIsEditPermOpen(true); }}>
+                                 <Edit className="h-4 w-4 mr-2" /> Edit
+                               </DropdownMenuItem>
+                               <DropdownMenuItem className="text-red-600 focus:text-red-600 cursor-pointer" onClick={() => handleDeletePermission(permission.id)}>
+                                 <Trash2 className="h-4 w-4 mr-2" /> Delete
+                               </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </CardContent>
@@ -349,9 +463,52 @@ export default function AdminRbacPage() {
           </Tabs>
         </div>
       </div>
+
+      {/* Edit Permission Dialog */}
+      <Dialog open={isEditPermOpen} onOpenChange={setIsEditPermOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit Permission</DialogTitle>
+            <DialogDescription>Update details for {editingPerm?.name}</DialogDescription>
+          </DialogHeader>
+          <form onSubmit={handleUpdatePermission} className="space-y-4 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="edit-perm-name">System Name (slug)</Label>
+                <Input id="edit-perm-name" value={editingPerm?.name || ''} onChange={e => editingPerm && setEditingPerm({...editingPerm, name: e.target.value.toLowerCase()})} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-perm-display">Display Name</Label>
+                <Input id="edit-perm-display" value={editingPerm?.displayName || ''} onChange={e => editingPerm && setEditingPerm({...editingPerm, displayName: e.target.value})} required />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-perm-cat">Category</Label>
+              <Select value={editingPerm?.category || 'content'} onValueChange={v => editingPerm && setEditingPerm({...editingPerm, category: v})}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="content">Content</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
+                  <SelectItem value="users">Users</SelectItem>
+                  <SelectItem value="settings">Settings</SelectItem>
+                  <SelectItem value="api">API</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-perm-desc">Description</Label>
+              <Textarea id="edit-perm-desc" value={editingPerm?.description || ''} onChange={e => editingPerm && setEditingPerm({...editingPerm, description: e.target.value})} />
+            </div>
+            <DialogFooter>
+              <Button type="button" variant="outline" onClick={() => setIsEditPermOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Save Changes
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
-import React from "react"
-import { MoreVertical } from "lucide-react"

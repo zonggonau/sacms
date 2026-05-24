@@ -14,7 +14,7 @@ export {
   createComponentSchema, updateComponentSchema,
   createSingleTypeSchema, updateSingleTypeSchema,
   createUserSchema,
-  assignRolePermissionSchema, createPermissionSchema,
+  assignRolePermissionSchema, createPermissionSchema, updatePermissionSchema,
   adminSettingsSchema, adminCreateApiTokenSchema,
 } from "./admin"
 export {

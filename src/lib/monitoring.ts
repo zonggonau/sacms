@@ -16,9 +16,25 @@ export interface LogApiRequestParams {
  */
 export async function logApiRequest(params: LogApiRequestParams) {
   try {
+    let finalTenantId = params.tenantId || null
+
+    if (finalTenantId) {
+      // Resolve ID in case a slug was passed
+      const tenant = await db.tenant.findFirst({
+        where: {
+          OR: [
+            { id: finalTenantId },
+            { slug: finalTenantId }
+          ]
+        },
+        select: { id: true }
+      })
+      finalTenantId = tenant?.id || null
+    }
+
     await db.apiRequest.create({
       data: {
-        tenantId: params.tenantId || null,
+        tenantId: finalTenantId,
         endpoint: params.endpoint,
         method: params.method,
         statusCode: params.statusCode,

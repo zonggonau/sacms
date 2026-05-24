@@ -4,6 +4,8 @@ import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
 import { db } from "@/lib/database"
 import bcrypt from "bcrypt"
+import crypto from "crypto"
+import { sendVerificationEmail } from "@/lib/mail"
 
 import { logAudit, AuditAction } from "@/lib/audit-log"
 
@@ -35,6 +37,7 @@ function legacySimpleHash(password: string): string {
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
+  useSecureCookies: process.env.NODE_ENV === "production",
   session: {
     strategy: "jwt",
   },
@@ -91,7 +94,28 @@ export const authOptions: NextAuthOptions = {
 
         // Check if email is verified
         if (user.emailVerified === null) {
-          throw new Error("Please verify your email address to log in.")
+          // Generate new verification token
+          const token = crypto.randomBytes(32).toString("hex")
+          const expires = new Date()
+          expires.setHours(expires.getHours() + 24)
+
+          // Delete existing token if any
+          await db.verificationToken.deleteMany({
+            where: { identifier: user.email }
+          })
+
+          await db.verificationToken.create({
+            data: {
+              identifier: user.email,
+              token,
+              expires,
+            },
+          })
+
+          // Send email
+          await sendVerificationEmail(user.email, token, user.name || "User")
+
+          throw new Error("Email belum diverifikasi. Tautan verifikasi baru telah dikirim ke email Anda.")
         }
 
         // Auto-migrate legacy passwords to bcrypt on successful login

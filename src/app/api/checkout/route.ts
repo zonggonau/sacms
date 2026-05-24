@@ -31,18 +31,22 @@ export async function POST(request: NextRequest) {
     let isAddon = false
     let targetId = tenantId || session.user.id
 
+    let dbTenant: any = null;
     if (isAccountPlan) {
       // Logic for account plan pricing
       const dynamicPrices = await getDynamicAccountPrices()
-      const monthlyPrice = dynamicPrices[planId] || 0
-      amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+      const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
+      amount = interval === 'year' ? prices.yearly : prices.monthly
       planName = planId.charAt(0).toUpperCase() + planId.slice(1)
     } else {
       // Get tenant and verify access
-      const tenant = await db.tenant.findUnique({
-        where: { id: tenantId },
+      const tenant = await db.tenant.findFirst({
+        where: { 
+          OR: [{ id: tenantId }, { slug: tenantId }]
+        },
         include: { members: true },
       })
+      dbTenant = tenant
 
       if (!tenant) {
         return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
@@ -91,47 +95,72 @@ export async function POST(request: NextRequest) {
           
           let rawPrice = data.price || "0"
           let monthlyPrice = 0
+          let yearlyPrice = 0
           if (typeof rawPrice === 'string') {
             monthlyPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
           } else {
             monthlyPrice = Number(rawPrice) || 0
           }
+          
+          if (data.yearly_price !== undefined) {
+            yearlyPrice = Number(data.yearly_price)
+          } else {
+            yearlyPrice = monthlyPrice * 10
+          }
 
-          amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+          amount = interval === 'year' ? yearlyPrice : monthlyPrice
           planName = data.name || planId
           isAddon = data.type === "addons"
         } else {
           const dynamicPrices = await getDynamicWorkspacePrices()
-          const monthlyPrice = dynamicPrices[planId] || 0
-          amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+          const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
+          amount = interval === 'year' ? prices.yearly : prices.monthly
         }
       } else {
         const dynamicPrices = await getDynamicWorkspacePrices()
-        const monthlyPrice = dynamicPrices[planId] || 0
-        amount = interval === 'year' ? monthlyPrice * 12 : monthlyPrice
+        const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
+        amount = interval === 'year' ? prices.yearly : prices.monthly
       }
     }
 
-    const orderId = isAccountPlan ? `ACC-${session.user.id}-${Date.now()}` : `${isAddon ? 'ADD' : 'SUB'}-${tenantId}-${Date.now()}`
-
-    // Calculate PPN (11%)
-    const vatAmount = Math.round(amount * 0.11)
-    const totalAmount = amount + vatAmount
+    const orderId = isAccountPlan ? `ACC-${session.user.id}-${Date.now()}` : `${isAddon ? 'ADD' : 'SUB'}-${dbTenant.id}-${Date.now()}`
 
     // Get or create subscription
-    // Use undefined instead of null to avoid client-side validation errors if the client hasn't been regenerated yet
-    // though the DB schema now allows null.
     let subscription = await db.subscription.findFirst({
       where: isAccountPlan 
         ? { userId: session.user.id, tenantId: { equals: null } as any } 
-        : { tenantId },
+        : { tenantId: dbTenant.id },
     })
+
+    let credit = 0;
+    if (subscription && !isAddon && subscription.status !== 'canceled') {
+      const { calculateProratedAmount } = await import("@/lib/midtrans")
+      const proration = await calculateProratedAmount(
+        subscription.plan,
+        planId,
+        subscription.currentPeriodStart,
+        subscription.currentPeriodEnd
+      )
+      if (proration.isDowngrade && subscription.status === 'active') {
+        return NextResponse.json(
+          { error: "Downgrading an active subscription is not allowed. Please wait until your current billing period ends." }, 
+          { status: 403 }
+        )
+      }
+      credit = proration.credit || 0
+    }
+
+    const subtotal = Math.max(0, amount - credit)
+
+    // Calculate PPN (11%) on subtotal
+    const vatAmount = Math.round(subtotal * 0.11)
+    const totalAmount = subtotal + vatAmount
 
     if (!subscription) {
       subscription = await db.subscription.create({
         data: {
           userId: session.user.id,
-          tenantId: (isAccountPlan ? null : tenantId) as any,
+          tenantId: isAccountPlan ? null : dbTenant.id,
           plan: isAddon ? "free" : planId,
           status: 'pending',
           currentPeriodStart: new Date(),
@@ -177,7 +206,7 @@ export async function POST(request: NextRequest) {
         {
           id: planId,
           name: isAddon ? `${planName} Add-on` : `${planName} Plan (${interval === 'year' ? 'Yearly' : 'Monthly'})`,
-          price: amount,
+          price: subtotal,
           quantity: 1,
         },
         {

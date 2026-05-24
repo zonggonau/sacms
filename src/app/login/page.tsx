@@ -55,9 +55,14 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
+        // NextAuth returns "CredentialsSignin" when authorization fails with `return null`
+        const errorMessage = result.error === "CredentialsSignin" 
+          ? "Invalid email or password" 
+          : result.error;
+          
         toast({
           title: "Error",
-          description: "Invalid email or password",
+          description: errorMessage,
           variant: "destructive",
         })
         return

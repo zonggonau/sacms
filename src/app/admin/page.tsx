@@ -149,19 +149,30 @@ export default function GlobalAdminDashboard() {
             {[
               { label: "Content Types", value: stats.contentTypes, icon: Database, href: "/admin/content-types" },
               { label: "Single Types", value: stats.singleTypes, icon: FileText, href: "/admin/single-types" },
-              { label: "Components", value: stats.components, icon: Puzzle, href: "/admin/components" },
+              { label: "Components", value: stats.components, icon: Puzzle, href: "#", disabled: true },
               { label: "Media Library", value: stats.mediaCount, icon: ImageIcon, href: "/admin/media" },
               { label: "Billing", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
             ].map((s) => (
-              <Link key={s.label} href={s.href}>
-                <Card className="rounded-none border border-border shadow-none hover:bg-background transition-colors h-full">
-                  <CardContent className="p-6 flex flex-col items-center text-center">
+              s.disabled ? (
+                <Card key={s.label} className="rounded-none border border-border shadow-none h-full bg-muted/20 opacity-70 cursor-not-allowed">
+                  <CardContent className="p-6 flex flex-col items-center text-center relative">
+                    <div className="absolute top-2 right-2 text-[8px] font-bold uppercase bg-muted px-1 py-0.5 rounded text-muted-foreground">Soon</div>
                     <s.icon className="h-6 w-6 text-muted-foreground mb-4" />
                     <div className="text-2xl font-bold text-foreground mb-1">{s.value}</div>
                     <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{s.label}</p>
                   </CardContent>
                 </Card>
-              </Link>
+              ) : (
+                <Link key={s.label} href={s.href}>
+                  <Card className="rounded-none border border-border shadow-none hover:bg-background transition-colors h-full">
+                    <CardContent className="p-6 flex flex-col items-center text-center">
+                      <s.icon className="h-6 w-6 text-muted-foreground mb-4" />
+                      <div className="text-2xl font-bold text-foreground mb-1">{s.value}</div>
+                      <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{s.label}</p>
+                    </CardContent>
+                  </Card>
+                </Link>
+              )
             ))}
           </div>
 
@@ -190,10 +201,10 @@ export default function GlobalAdminDashboard() {
                       <div key={tenant.id} className="flex items-center justify-between p-4 hover:bg-background transition-colors">
                         <div className="flex items-center gap-4 min-w-0">
                           <div className="w-10 h-10 bg-muted flex items-center justify-center font-bold text-foreground shrink-0 border border-border">
-                            {tenant.name.charAt(0).toUpperCase()}
+                            {tenant.name ? tenant.name.charAt(0).toUpperCase() : "?"}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate">{tenant.name}</p>
+                            <p className="text-sm font-bold text-foreground truncate">{tenant.name || "Unnamed"}</p>
                             <p className="text-xs text-muted-foreground mt-1 font-mono">
                               /{tenant.slug} &middot; {tenant._count.members} users
                             </p>
@@ -266,17 +277,24 @@ export default function GlobalAdminDashboard() {
                   {[
                     { label: "Content Schema", href: "/admin/content-types", icon: Database },
                     { label: "Single Types",  href: "/admin/single-types",  icon: FileText },
-                    { label: "Components",    href: "/admin/components",     icon: Puzzle },
+                    { label: "Components",    href: "#",     icon: Puzzle, disabled: true },
                     { label: "Tenants List",   href: "/admin/tenants",            icon: Building2 },
                     { label: "User Directory", href: "/admin/users",              icon: Users },
                     { label: "RBAC Security",  href: "/admin/rbac",              icon: Shield },
                     { label: "Monitoring",       href: "/admin/monitoring",         icon: Activity },
                     { label: "Billing Admin",    href: "/admin/billing",           icon: CreditCard },
                   ].map((action, index) => (
-                    <Link key={action.label} href={action.href} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 hover:bg-background transition-colors">
-                      <action.icon className="h-6 w-6 text-muted-foreground" />
-                      <span className="text-xs font-semibold text-muted-foreground">{action.label}</span>
-                    </Link>
+                    action.disabled ? (
+                      <div key={action.label} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 bg-muted/20 opacity-60 cursor-not-allowed">
+                        <action.icon className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-muted-foreground">{action.label} <span className="text-[9px] uppercase ml-1 opacity-50">(Soon)</span></span>
+                      </div>
+                    ) : (
+                      <Link key={action.label} href={action.href} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 hover:bg-background transition-colors">
+                        <action.icon className="h-6 w-6 text-muted-foreground" />
+                        <span className="text-xs font-semibold text-muted-foreground">{action.label}</span>
+                      </Link>
+                    )
                   ))}
                 </div>
               </CardContent>

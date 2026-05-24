@@ -6,7 +6,7 @@ import { validateBody } from "@/lib/validate"
 import { createUserSchema } from "@/lib/validations"
 
 // GET /api/admin/users - List all users
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -16,27 +16,54 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const users = await db.user.findMany({
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        image: true,
-        emailVerified: true,
-        createdAt: true,
-        tenants: {
-          include: {
-            tenant: {
-              select: { id: true, name: true, slug: true },
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "24")
+    const search = searchParams.get("search")
+
+    const where: any = {}
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: "insensitive" } },
+        { email: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
+    const [total, users] = await Promise.all([
+      db.user.count({ where }),
+      db.user.findMany({
+        where,
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          role: true,
+          image: true,
+          emailVerified: true,
+          createdAt: true,
+          tenants: {
+            include: {
+              tenant: {
+                select: { id: true, name: true, slug: true },
+              },
             },
           },
         },
-      },
-      orderBy: { createdAt: "desc" },
-    })
+        orderBy: { createdAt: "desc" },
+        skip: (page - 1) * limit,
+        take: limit,
+      })
+    ])
 
-    return NextResponse.json({ users })
+    return NextResponse.json({
+      users,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    })
   } catch (error) {
     console.error("Error fetching users:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

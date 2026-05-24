@@ -166,6 +166,16 @@ export default function TenantSubscriptionsPage() {
             </div>
           </div>
 
+          {tenantSlug === "sacms-global" ? (
+            <Card className="border border-border shadow-none bg-card text-card-foreground overflow-hidden rounded-none relative">
+              <CardContent className="p-16 relative flex flex-col items-center justify-center text-center">
+                <ShieldCheck className="h-20 w-20 text-orange-500 mb-6 opacity-30" />
+                <h2 className="text-3xl font-black uppercase tracking-tight">System Account</h2>
+                <p className="text-muted-foreground mt-4 max-w-lg mx-auto font-medium">Billing, plans, and resource limits are not applicable for the global system workspace. This workspace has unlimited platform access.</p>
+              </CardContent>
+            </Card>
+          ) : (
+            <>
           {/* Current Status Card */}
           <Card className="border border-border shadow-none bg-card text-card-foreground overflow-hidden rounded-none relative">
             <CardContent className="p-8 relative">
@@ -191,11 +201,28 @@ export default function TenantSubscriptionsPage() {
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden md:block">
                     <p className="text-xs font-bold uppercase text-muted-foreground">Yearly cost</p>
-                    <p className="text-2xl font-black text-foreground">{formatPrice((currentPlan?.price || 0) * (subscription?.plan === 'free' ? 0 : 12))}</p>
+                    <p className="text-2xl font-black text-foreground">{formatPrice((currentPlan?.yearlyPrice !== undefined ? currentPlan?.yearlyPrice : (currentPlan?.price || 0) * 12) * (subscription?.plan === 'free' ? 0 : 1))}</p>
                   </div>
-                  <Button variant="default" className="h-12 px-8 font-bold rounded-none bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none">
-                    Manage Billing
-                  </Button>
+                  {subscription?.status === 'trialing' ? (
+                    <Button 
+                      variant="default" 
+                      className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-none bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none"
+                      onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${subscription?.plan || 'starter'}&interval=year`)}
+                    >
+                      Pay Now
+                    </Button>
+                  ) : (
+                    <Button 
+                      variant="outline" 
+                      className="h-12 px-8 font-bold rounded-none border-border shadow-none"
+                      onClick={() => {
+                        const el = document.getElementById('billing-history')
+                        if (el) el.scrollIntoView({ behavior: 'smooth' })
+                      }}
+                    >
+                      View Invoices
+                    </Button>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -287,7 +314,7 @@ export default function TenantSubscriptionsPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {mainPlans.map((plan) => {
                 const isCurrent = plan.id === subscription?.plan
-                const displayPrice = billingInterval === 'year' ? plan.price * 12 : plan.price
+                const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
                 const label = billingInterval === 'year' ? '/yr' : '/mo'
 
                 return (
@@ -411,7 +438,7 @@ export default function TenantSubscriptionsPage() {
           )}
 
           {/* Invoices */}
-          <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+          <Card id="billing-history" className="border border-border shadow-none bg-card rounded-none overflow-hidden scroll-mt-24">
             <CardHeader className="bg-muted/10 p-6 border-b border-border rounded-none">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
@@ -437,7 +464,7 @@ export default function TenantSubscriptionsPage() {
                           <FileText className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="text-sm font-bold">Invoice #{inv.id.substring(0, 8).toUpperCase()}</p>
+                          <p className="text-sm font-bold">{inv.isTransaction ? 'Transaction' : 'Invoice'} #{inv.id.substring(0, 8).toUpperCase()}</p>
                           <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
                             {new Date(inv.createdAt).toLocaleDateString()} &middot; IDR {inv.amount.toLocaleString()}
                           </p>
@@ -450,9 +477,20 @@ export default function TenantSubscriptionsPage() {
                         )}>
                           {inv.status}
                         </Badge>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-muted text-muted-foreground">
-                          <ExternalLink className="h-4 w-4" />
-                        </Button>
+                        {inv.isTransaction && inv.status === 'pending' ? (
+                          <Button 
+                            variant="default" 
+                            size="sm" 
+                            className="rounded-none bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none text-[10px] font-black uppercase"
+                            onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${inv.plan}&interval=year`)}
+                          >
+                            Pay Now
+                          </Button>
+                        ) : (
+                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-muted text-muted-foreground">
+                            <ExternalLink className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -460,6 +498,8 @@ export default function TenantSubscriptionsPage() {
               )}
             </CardContent>
           </Card>
+            </>
+          )}
 
         </div>
       </div>

@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dialog"
 import { JsonViewer } from "@/components/ui/json-viewer"
 import { useToast } from "@/hooks/use-toast"
+import { Info } from "lucide-react"
 
 interface AuditLog {
   id: string
@@ -62,6 +63,7 @@ export default function AdminAuditLogsPage() {
     try {
       let url = `/api/admin/audit-logs?page=${p}&limit=20`
       if (actionFilter !== "all") url += `&action=${actionFilter}`
+      if (search) url += `&search=${encodeURIComponent(search)}`
       
       const res = await fetch(url)
       if (res.ok) {
@@ -86,6 +88,14 @@ export default function AdminAuditLogsPage() {
     if (session?.user?.role === "super_admin") fetchLogs(1)
   }, [session, actionFilter])
 
+  useEffect(() => {
+    if (session?.user?.role !== "super_admin") return
+    const timer = setTimeout(() => {
+      fetchLogs(1)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [search])
+
   const handleCopyJson = () => {
     if (!selectedLog?.data) return
     navigator.clipboard.writeText(JSON.stringify(JSON.parse(selectedLog.data), null, 2))
@@ -104,7 +114,7 @@ export default function AdminAuditLogsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -113,7 +123,7 @@ export default function AdminAuditLogsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
+      <div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
@@ -329,5 +339,3 @@ export default function AdminAuditLogsPage() {
     </div>
   )
 }
-
-import { Info } from "lucide-react"

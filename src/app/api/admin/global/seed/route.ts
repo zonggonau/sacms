@@ -41,13 +41,14 @@ const CONTENT_TYPES = [
       { slug: "name",        name: "Plan Name",     type: "text",    required: true,  order: 0 },
       { slug: "plan_slug",   name: "Plan Slug",     type: "text",    required: true,  order: 1 },
       { slug: "price",       name: "Price",         type: "number",  required: true,  order: 2 },
-      { slug: "period",      name: "Period",        type: "text",    required: false, order: 3 },
-      { slug: "max_workspaces", name: "Max Workspaces", type: "number", required: true, order: 4 },
-      { slug: "description", name: "Description",   type: "text",    required: false, order: 5 },
-      { slug: "features",    name: "Features",      type: "json",    required: false, order: 6 },
-      { slug: "is_popular",  name: "Is Popular",    type: "boolean", required: false, order: 7 },
-      { slug: "cta_text",    name: "CTA Text",      type: "text",    required: false, order: 8 },
-      { slug: "cta_href",    name: "CTA URL",       type: "text",    required: false, order: 9 },
+      { slug: "yearly_price",name: "Yearly Price",  type: "number",  required: false, order: 3 },
+      { slug: "period",      name: "Period",        type: "text",    required: false, order: 4 },
+      { slug: "max_workspaces", name: "Max Workspaces", type: "number", required: true, order: 5 },
+      { slug: "description", name: "Description",   type: "text",    required: false, order: 6 },
+      { slug: "features",    name: "Features",      type: "json",    required: false, order: 7 },
+      { slug: "is_popular",  name: "Is Popular",    type: "boolean", required: false, order: 8 },
+      { slug: "cta_text",    name: "CTA Text",      type: "text",    required: false, order: 9 },
+      { slug: "cta_href",    name: "CTA URL",       type: "text",    required: false, order: 10 },
     ],
   },
   {
@@ -59,15 +60,16 @@ const CONTENT_TYPES = [
       { slug: "name",        name: "Plan Name",     type: "text",    required: true,  order: 0 },
       { slug: "plan_slug",   name: "Plan Slug",     type: "text",    required: true,  order: 1 },
       { slug: "price",       name: "Price",         type: "number",  required: true,  order: 2 },
-      { slug: "period",      name: "Period",        type: "text",    required: false, order: 3 },
-      { slug: "max_content_types",  name: "Max Content Types",  type: "number", required: true, order: 4 },
-      { slug: "max_content_entries",name: "Max Content Entries",type: "number", required: true, order: 5 },
-      { slug: "max_team_members",   name: "Max Team Members",   type: "number", required: true, order: 6 },
-      { slug: "max_storage",        name: "Max Storage (MB)",   type: "number", required: true, order: 7 },
-      { slug: "max_locales",        name: "Max Locales",        type: "number", required: true, order: 8 },
-      { slug: "max_api_calls",      name: "Max API Calls/mo",   type: "number", required: true, order: 9 },
-      { slug: "description", name: "Description",   type: "text",    required: false, order: 10 },
-      { slug: "features",    name: "Features",      type: "json",    required: false, order: 11 },
+      { slug: "yearly_price",name: "Yearly Price",  type: "number",  required: false, order: 3 },
+      { slug: "period",      name: "Period",        type: "text",    required: false, order: 4 },
+      { slug: "max_content_types",  name: "Max Content Types",  type: "number", required: true, order: 5 },
+      { slug: "max_content_entries",name: "Max Content Entries",type: "number", required: true, order: 6 },
+      { slug: "max_team_members",   name: "Max Team Members",   type: "number", required: true, order: 7 },
+      { slug: "max_storage",        name: "Max Storage (MB)",   type: "number", required: true, order: 8 },
+      { slug: "max_locales",        name: "Max Locales",        type: "number", required: true, order: 9 },
+      { slug: "max_api_calls",      name: "Max API Calls/mo",   type: "number", required: true, order: 10 },
+      { slug: "description", name: "Description",   type: "text",    required: false, order: 11 },
+      { slug: "features",    name: "Features",      type: "json",    required: false, order: 12 },
     ],
   },
   {
@@ -230,44 +232,44 @@ const SEED_ENTRIES: Record<string, object[]> = {
   ],
   "sacms-account-pricing": [
     { 
-      name: "Free Account", plan_slug: "free", price: 0, period: "forever", description: "Get started for free.", 
+      name: "Free Account", plan_slug: "free", price: 0, yearly_price: 0, period: "forever", description: "Get started for free.", 
       max_workspaces: 1,
       features: ["1 Workspace", "Community Support"], is_popular: false, cta_text: "Get Started", cta_href: "/register" 
     },
     { 
-      name: "Starter Account", plan_slug: "starter", price: 99000, period: "month", description: "For small teams.", 
+      name: "Starter Account", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "month", description: "For small teams.", 
       max_workspaces: 3,
       features: ["3 Workspaces", "Email Support"], is_popular: false, cta_text: "Upgrade to Starter", cta_href: "/register" 
     },
     { 
-      name: "Pro Account", plan_slug: "pro", price: 299000, period: "month", description: "For growing agencies.", 
+      name: "Pro Account", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "month", description: "For growing agencies.", 
       max_workspaces: 10,
       features: ["10 Workspaces", "Priority Support"], is_popular: true, cta_text: "Go Pro", cta_href: "/register" 
     },
     { 
-      name: "Enterprise Account", plan_slug: "enterprise", price: 999000, period: "month", description: "Unlimited scale.", 
+      name: "Enterprise Account", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "month", description: "Unlimited scale.", 
       max_workspaces: 20,
       features: ["20 Workspaces", "Dedicated Support", "Custom SLAs"], is_popular: false, cta_text: "Contact Sales", cta_href: "https://wa.me/6281234567890" 
     },
   ],
   "sacms-workspace-pricing": [
     { 
-      name: "Free Workspace", plan_slug: "free", price: 0, period: "forever", description: "Basic workspace limits.", 
+      name: "Free Workspace", plan_slug: "free", price: 0, yearly_price: 0, period: "forever", description: "Basic workspace limits.", 
       max_content_types: 3, max_content_entries: 500, max_team_members: 1, max_storage: 100, max_locales: 1, max_api_calls: 1000,
       features: ["3 Content Types", "1,000 API requests/month", "100MB Storage", "1 Team Member"]
     },
     { 
-      name: "Starter Workspace", plan_slug: "starter", price: 49000, period: "month", description: "More capacity for a single workspace.", 
+      name: "Starter Workspace", plan_slug: "starter", price: 49000, yearly_price: 490000, period: "month", description: "More capacity for a single workspace.", 
       max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_storage: 1024, max_locales: 2, max_api_calls: 10000,
       features: ["5 Content Types", "10,000 API requests/month", "1GB Storage", "3 Team Members", "2 Locales"]
     },
     { 
-      name: "Pro Workspace", plan_slug: "pro", price: 149000, period: "month", description: "High performance workspace.", 
+      name: "Pro Workspace", plan_slug: "pro", price: 149000, yearly_price: 1490000, period: "month", description: "High performance workspace.", 
       max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_storage: 5120, max_locales: 5, max_api_calls: 100000,
       features: ["10 Content Types", "100,000 API requests/month", "5GB Storage", "10 Team Members", "5 Locales"]
     },
     { 
-      name: "Enterprise Workspace", plan_slug: "enterprise", price: 499000, period: "month", description: "Dedicated workspace.", 
+      name: "Enterprise Workspace", plan_slug: "enterprise", price: 499000, yearly_price: 4990000, period: "month", description: "Dedicated workspace.", 
       max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_storage: 10240, max_locales: 20, max_api_calls: 1000000,
       features: ["20 Content Types", "1,000,000 API requests/month", "10GB Storage", "Unlimited Team", "Unlimited Locales"]
     },

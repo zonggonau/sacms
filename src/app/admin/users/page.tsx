@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Loader2, Users, Search, Plus, Shield, Mail, Building2,
-  MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle
+  MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle,
+  ChevronLeft, ChevronRight
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -57,7 +58,12 @@ export default function AdminUsersPage() {
   
   const [users, setUsers] = useState<User[]>([])
   const [loading, setLoading] = useState(true)
+  
   const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalUsersCount, setTotalUsersCount] = useState(0)
+
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -75,12 +81,20 @@ export default function AdminUsersPage() {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
-  const fetchUsers = async () => {
+  const fetchUsers = async (p: number = 1) => {
     try {
-      const res = await fetch("/api/admin/users")
+      let url = `/api/admin/users?page=${p}&limit=10`
+      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`
+      
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setUsers(data.users || [])
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages)
+          setPage(data.pagination.page)
+          setTotalUsersCount(data.pagination.total)
+        }
       }
     } catch (error) {
       console.error("Failed to fetch users:", error)
@@ -90,14 +104,14 @@ export default function AdminUsersPage() {
   }
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin") fetchUsers()
-  }, [session])
+    if (session?.user?.role !== "super_admin") return
+    const timer = setTimeout(() => {
+      fetchUsers(1)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [session, searchQuery])
 
-  const filteredUsers = users.filter(
-    (user) =>
-      user.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+  const displayUsers = users
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -111,7 +125,7 @@ export default function AdminUsersPage() {
       if (res.ok) {
         toast({ title: "Success", description: "User created successfully" })
         setIsCreateOpen(false)
-        fetchUsers()
+        fetchUsers(page)
         setFormData({ name: "", email: "", password: "", role: "user" })
       } else {
         const err = await res.json()
@@ -141,7 +155,7 @@ export default function AdminUsersPage() {
       if (res.ok) {
         toast({ title: "Success", description: "User updated successfully" })
         setIsEditOpen(false)
-        fetchUsers()
+        fetchUsers(page)
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Error", description: err.error || "Failed to update user" })
@@ -164,7 +178,7 @@ export default function AdminUsersPage() {
       const res = await fetch(`/api/admin/users/${id}`, { method: "DELETE" })
       if (res.ok) {
         toast({ title: "Deleted", description: "User deleted successfully" })
-        fetchUsers()
+        fetchUsers(page)
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Error", description: err.error || "Failed to delete user" })
@@ -188,7 +202,7 @@ export default function AdminUsersPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -202,7 +216,7 @@ export default function AdminUsersPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
+      <div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
         <div className="p-6 lg:p-8 w-full">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
@@ -270,7 +284,7 @@ export default function AdminUsersPage() {
                 <Users className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{users.length}</div>
+                <div className="text-2xl font-bold">{totalUsersCount}</div>
               </CardContent>
             </Card>
             <Card className="border-l-4 border-l-purple-500">
@@ -326,18 +340,18 @@ export default function AdminUsersPage() {
             <CardHeader>
               <CardTitle>Directory</CardTitle>
               <CardDescription>
-                {filteredUsers.length} user{filteredUsers.length !== 1 ? "s" : ""} found
+                {totalUsersCount} user{totalUsersCount !== 1 ? "s" : ""} found
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {filteredUsers.length === 0 ? (
+              {displayUsers.length === 0 ? (
                 <div className="text-center py-12 text-muted-foreground">
                   <AlertCircle className="h-10 w-10 mx-auto mb-4 opacity-20" />
                   <p>{searchQuery ? "No users match your search" : "No users registered yet"}</p>
                 </div>
               ) : (
                 <div className="grid gap-4">
-                  {filteredUsers.map((user) => (
+                  {displayUsers.map((user) => (
                     <div
                       key={user.id}
                       className="flex items-center justify-between p-4 border rounded-xl hover:bg-muted/30 transition-colors bg-card"
@@ -419,6 +433,32 @@ export default function AdminUsersPage() {
                 </div>
               )}
             </CardContent>
+            {/* Pagination Controls */}
+            <div className="p-4 bg-muted/10 border-t flex items-center justify-between">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                Showing Page {page} of {totalPages || 1} ({totalUsersCount} Total)
+              </p>
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => fetchUsers(page - 1)} 
+                  disabled={page <= 1}
+                  className="h-8 rounded-none border border-border"
+                >
+                  <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => fetchUsers(page + 1)} 
+                  disabled={page >= totalPages || totalPages === 0}
+                  className="h-8 rounded-none border border-border"
+                >
+                  Next <ChevronRight className="h-4 w-4 ml-1" />
+                </Button>
+              </div>
+            </div>
           </Card>
         </div>
 

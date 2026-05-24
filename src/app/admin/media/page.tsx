@@ -10,10 +10,9 @@ import { Input } from "@/components/ui/input"
 import {
   Loader2, Image as ImageIcon, Folder, Upload, Search, Plus, 
   Building2, HardDrive, File, LayoutGrid, List, ExternalLink,
-  Filter, ArrowRight
+  Filter, ArrowRight, ChevronLeft, ChevronRight
 } from "lucide-react"
 import Link from "next/link"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 
 interface TenantStat {
   tenant: { id: string; name: string; slug: string }
@@ -45,19 +44,28 @@ export default function AdminMediaPage() {
   // View & Filter States
   const [viewMode, setViewMode] = useState<"grid" | "list">("grid")
   const [searchQuery, setSearchQuery] = useState("")
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
-  const fetchData = async () => {
+  const fetchData = async (p: number = 1) => {
     try {
-      const res = await fetch("/api/admin/media")
+      let url = `/api/admin/media?page=${p}&limit=24`
+      if (searchQuery) url += `&search=${encodeURIComponent(searchQuery)}`
+
+      const res = await fetch(url)
       if (res.ok) {
         const data = await res.json()
         setStats(data.stats || { totalFiles: 0, totalSize: 0, totalFolders: 0 })
         setTenantStats(data.tenantStats || [])
         setRecentMedia(data.recentMedia || [])
+        if (data.pagination) {
+          setTotalPages(data.pagination.totalPages)
+          setPage(data.pagination.page)
+        }
       }
     } catch (error) {
       console.error("Failed to fetch media:", error)
@@ -67,15 +75,16 @@ export default function AdminMediaPage() {
   }
 
   useEffect(() => {
-    if (session?.user?.role === "super_admin") fetchData()
+    if (session?.user?.role === "super_admin") fetchData(1)
   }, [session])
 
-  const filteredMedia = useMemo(() => {
-    return recentMedia.filter(m => 
-      m.originalName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      m.tenant.name.toLowerCase().includes(searchQuery.toLowerCase())
-    )
-  }, [recentMedia, searchQuery])
+  useEffect(() => {
+    if (session?.user?.role !== "super_admin") return
+    const timer = setTimeout(() => {
+      fetchData(1)
+    }, 500)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
 
   const formatSize = (bytes: number) => {
     if (bytes === 0) return "0 B"
@@ -88,7 +97,7 @@ export default function AdminMediaPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -102,7 +111,7 @@ export default function AdminMediaPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
+      <div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
@@ -158,7 +167,7 @@ export default function AdminMediaPage() {
               <Card className="shadow-sm border-none bg-card">
                 <CardHeader>
                   <CardTitle className="text-base font-bold">Storage by Workspace</CardTitle>
-                  <CardDescription className="text-xs">Top 10 consumers of object storage</CardDescription>
+                  <CardDescription className="text-xs">Top consumers of object storage</CardDescription>
                 </CardHeader>
                 <CardContent className="p-0 border-t">
                   <div className="divide-y">
@@ -220,17 +229,17 @@ export default function AdminMediaPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="p-4">
-                  {filteredMedia.length === 0 ? (
+                  {recentMedia.length === 0 ? (
                     <div className="text-center py-20">
                       <File className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                      <p className="text-sm text-muted-foreground">No media files match your query.</p>
+                      <p className="text-sm text-muted-foreground">No media files found.</p>
                       <Link href="/admin/tenants">
                         <Button variant="link" className="mt-2 text-primary">Manage Workspaces <ArrowRight className="ml-1 h-3 w-3" /></Button>
                       </Link>
                     </div>
                   ) : viewMode === "grid" ? (
                     <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                      {filteredMedia.map((file) => (
+                      {recentMedia.map((file) => (
                         <div key={file.id} className="group relative border rounded-xl overflow-hidden bg-muted/20 hover:border-primary/50 transition-all shadow-sm">
                           <div className="aspect-square flex items-center justify-center bg-muted/50 overflow-hidden">
                             {file.mimeType.startsWith("image/") ? (
@@ -263,7 +272,7 @@ export default function AdminMediaPage() {
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      {filteredMedia.map((file) => (
+                      {recentMedia.map((file) => (
                         <div key={file.id} className="flex items-center justify-between p-3 border rounded-xl hover:bg-muted/30 transition-colors">
                           <div className="flex items-center gap-3 min-w-0">
                             <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center shrink-0 border overflow-hidden">
@@ -292,6 +301,32 @@ export default function AdminMediaPage() {
                     </div>
                   )}
                 </CardContent>
+                {/* Pagination Controls */}
+                <div className="p-4 bg-muted/10 border-t flex items-center justify-between">
+                  <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Showing Page {page} of {totalPages}
+                  </p>
+                  <div className="flex gap-2">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => fetchData(page - 1)} 
+                      disabled={page === 1}
+                      className="h-8 rounded-none border border-border"
+                    >
+                      <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => fetchData(page + 1)} 
+                      disabled={page === totalPages || totalPages === 0}
+                      className="h-8 rounded-none border border-border"
+                    >
+                      Next <ChevronRight className="h-4 w-4 ml-1" />
+                    </Button>
+                  </div>
+                </div>
               </Card>
             </div>
           </div>

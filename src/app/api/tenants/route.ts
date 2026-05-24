@@ -75,7 +75,8 @@ export async function GET() {
         createdAt: t.createdAt,
         role: t.members[0]?.role || 'member',
         daysRemaining,
-        expiresAt: sub?.currentPeriodEnd || null
+        expiresAt: sub?.currentPeriodEnd || null,
+        subscriptionStatus: sub?.status || null
       }
     })
 

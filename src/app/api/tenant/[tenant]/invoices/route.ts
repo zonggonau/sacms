@@ -62,8 +62,17 @@ export async function GET(
       },
     })
 
-    return NextResponse.json({
-      invoices: invoices.map((inv) => ({
+    // Get all pending payment transactions
+    const pendingTransactions = await db.paymentTransaction.findMany({
+      where: {
+        subscriptionId: { in: subscriptionIds },
+        status: "pending"
+      },
+      orderBy: { createdAt: "desc" }
+    })
+
+    const combinedHistory = [
+      ...invoices.map((inv) => ({
         id: inv.id,
         amount: inv.amount,
         currency: inv.currency,
@@ -71,7 +80,24 @@ export async function GET(
         midtransInvoiceId: inv.midtransInvoiceId,
         paidAt: inv.paidAt,
         createdAt: inv.createdAt,
+        isTransaction: false,
+        plan: subscriptions.find(s => s.id === inv.subscriptionId)?.plan || 'unknown'
       })),
+      ...pendingTransactions.map((t) => ({
+        id: t.id,
+        amount: t.amount,
+        currency: "IDR",
+        status: t.status,
+        midtransInvoiceId: t.orderId,
+        paidAt: null,
+        createdAt: t.createdAt,
+        isTransaction: true,
+        plan: subscriptions.find(s => s.id === t.subscriptionId)?.plan || 'unknown'
+      }))
+    ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+    return NextResponse.json({
+      invoices: combinedHistory,
     })
   } catch (error) {
     console.error("Error fetching invoices:", error)

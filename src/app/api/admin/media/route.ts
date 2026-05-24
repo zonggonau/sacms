@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 
 // GET /api/admin/media - Get media stats across all tenants
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
@@ -14,17 +14,33 @@ export async function GET() {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const [totalFiles, totalSize, totalFolders, recentMedia] = await Promise.all([
+    const { searchParams } = new URL(request.url)
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "24")
+    const search = searchParams.get("search")
+
+    const where: any = {}
+    if (search) {
+      where.OR = [
+        { originalName: { contains: search, mode: "insensitive" } },
+        { mimeType: { contains: search, mode: "insensitive" } }
+      ]
+    }
+
+    const [totalFiles, totalSize, totalFolders, recentMedia, mediaCount] = await Promise.all([
       db.media.count(),
       db.media.aggregate({ _sum: { size: true } }),
       db.mediaFolder.count(),
       db.media.findMany({
+        where,
         include: {
           tenant: { select: { id: true, name: true, slug: true } },
         },
         orderBy: { createdAt: "desc" },
-        take: 20,
+        skip: (page - 1) * limit,
+        take: limit,
       }),
+      db.media.count({ where })
     ])
 
     // Group by tenant
@@ -57,6 +73,12 @@ export async function GET() {
       },
       tenantStats,
       recentMedia,
+      pagination: {
+        total: mediaCount,
+        page,
+        limit,
+        totalPages: Math.ceil(mediaCount / limit),
+      }
     })
   } catch (error) {
     console.error("Error fetching media stats:", error)

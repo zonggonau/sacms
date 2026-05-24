@@ -48,77 +48,106 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const tenants = await db.tenant.findMany({
-      where: {},
-      select: {
-        id: true,
-        name: true,
-        slug: true,
-        status: true,
-        plan: true,
-        databaseUrl: true,
-        description: true,
-        logo: true,
-        createdAt: true,
-        updatedAt: true,
-        _count: {
-          select: {
-            members: true,
-            contentTypeAssignments: true,
-            singleTypeAssignments: true,
-            componentAssignments: true,
-            media: true,
-            apiTokens: true,
-          },
-        },
-        apiTokens: {
-          select: {
-            id: true,
-            token: true,
-            type: true,
-            expiresAt: true,
-          },
-          orderBy: { createdAt: "desc" },
-          take: 1,
-        },
-        subscriptions: {
-          where: { status: "active" },
-          select: {
-            id: true,
-            plan: true,
-            status: true,
-            currentPeriodEnd: true,
-            invoices: {
-              select: {
-                id: true,
-                amount: true,
-                status: true,
-                paidAt: true,
-                createdAt: true,
-              },
-              orderBy: { createdAt: "desc" },
-              take: 1,
-            },
-          },
-          take: 1,
-        },
-        members: {
-          select: {
-            user: {
-              select: { id: true, name: true, email: true },
-            },
-            role: true,
-          },
-          where: { role: "owner" },
-          take: 1,
-        },
-      },
-      orderBy: {
-        createdAt: "desc",
-      },
-    })
+    const { searchParams } = request.nextUrl
+    const page = parseInt(searchParams.get("page") || "1")
+    const limit = parseInt(searchParams.get("limit") || "10")
+    const search = searchParams.get("search") || ""
+    const sort = searchParams.get("sort") || "createdAt:desc"
 
-    return NextResponse.json({ tenants })
+    const [sortField, sortOrder] = sort.split(":")
+    const validSortFields = ["createdAt", "name", "plan", "status"]
+    const orderBy = validSortFields.includes(sortField) 
+      ? { [sortField]: sortOrder === "asc" ? "asc" : "desc" }
+      : { createdAt: "desc" }
+
+    const where = search ? {
+      OR: [
+        { name: { contains: search, mode: "insensitive" as const } },
+        { slug: { contains: search, mode: "insensitive" as const } },
+      ],
+    } : {}
+
+    const skip = (page - 1) * limit
+
+    const [tenants, total] = await Promise.all([
+      db.tenant.findMany({
+        where,
+        skip,
+        take: limit,
+        select: {
+          id: true,
+          name: true,
+          slug: true,
+          status: true,
+          plan: true,
+          databaseUrl: true,
+          description: true,
+          logo: true,
+          createdAt: true,
+          updatedAt: true,
+          _count: {
+            select: {
+              members: true,
+              contentTypeAssignments: true,
+              singleTypeAssignments: true,
+              componentAssignments: true,
+              media: true,
+              apiTokens: true,
+            },
+          },
+          apiTokens: {
+            select: {
+              id: true,
+              token: true,
+              type: true,
+              expiresAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+          },
+          subscriptions: {
+            where: { status: "active" },
+            select: {
+              id: true,
+              plan: true,
+              status: true,
+              currentPeriodEnd: true,
+              invoices: {
+                select: {
+                  id: true,
+                  amount: true,
+                  status: true,
+                  paidAt: true,
+                  createdAt: true,
+                },
+                orderBy: { createdAt: "desc" },
+                take: 1,
+              },
+            },
+            take: 1,
+          },
+          members: {
+            select: {
+              user: {
+                select: { id: true, name: true, email: true },
+              },
+              role: true,
+            },
+            where: { role: "owner" },
+            take: 1,
+          },
+        },
+        orderBy,
+      }),
+      db.tenant.count({ where })
+    ])
+
+    return NextResponse.json({ 
+      tenants,
+      total,
+      page,
+      totalPages: Math.ceil(total / limit)
+    })
   } catch (error) {
     console.error("Error fetching tenants:", error)
     return NextResponse.json(

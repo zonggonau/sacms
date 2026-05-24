@@ -9,7 +9,8 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Loader2, Activity, Cpu, HardDrive, Globe, RefreshCw, 
-  AlertTriangle, Search, Filter, CheckCircle2, Clock, Play, Pause
+  AlertTriangle, Search, Filter, CheckCircle2, Clock, Play, Pause,
+  ChevronLeft, ChevronRight
 } from "lucide-react"
 import {
   Select,
@@ -51,15 +52,35 @@ export default function AdminMonitoringPage() {
   
   // Filter States
   const [searchQuery, setSearchQuery] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [methodFilter, setMethodFilter] = useState("all")
+
+  // Pagination States
+  const [page, setPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [totalRequests, setTotalRequests] = useState(0)
+
+  // Debounce search
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedSearch(searchQuery)
+      setPage(1) // Reset to page 1 on new search
+    }, 500)
+    return () => clearTimeout(handler)
+  }, [searchQuery])
+
+  // Reset page when filters change
+  useEffect(() => {
+    setPage(1)
+  }, [statusFilter, methodFilter])
 
   const fetchData = useCallback(async () => {
     setRefreshing(true)
     try {
       const [metricsRes, requestsRes] = await Promise.all([
         fetch("/api/admin/monitoring/metrics"),
-        fetch("/api/admin/monitoring/requests"),
+        fetch(`/api/admin/monitoring/requests?page=${page}&limit=10&search=${encodeURIComponent(debouncedSearch)}&status=${statusFilter}&method=${methodFilter}`),
       ])
 
       if (metricsRes.ok) {
@@ -70,6 +91,9 @@ export default function AdminMonitoringPage() {
       if (requestsRes.ok) {
         const data = await requestsRes.json()
         setApiRequests(data.requests || [])
+        setTotalPages(data.totalPages || 1)
+        setTotalRequests(data.total || 0)
+        setPage(data.page || 1)
       }
     } catch (error) {
       console.error("Failed to fetch monitoring data:", error)
@@ -77,7 +101,7 @@ export default function AdminMonitoringPage() {
       setRefreshing(false)
       setLoading(false)
     }
-  }, [])
+  }, [page, debouncedSearch, statusFilter, methodFilter])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
@@ -100,22 +124,6 @@ export default function AdminMonitoringPage() {
     return () => clearInterval(interval)
   }, [autoRefresh, fetchData])
 
-  const filteredRequests = apiRequests.filter((req) => {
-    const matchesSearch = 
-      req.endpoint.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (req.tenantId && req.tenantId.toLowerCase().includes(searchQuery.toLowerCase()))
-    
-    const matchesStatus = 
-      statusFilter === "all" || 
-      (statusFilter === "success" && req.statusCode < 400) ||
-      (statusFilter === "client_error" && req.statusCode >= 400 && req.statusCode < 500) ||
-      (statusFilter === "server_error" && req.statusCode >= 500)
-    
-    const matchesMethod = methodFilter === "all" || req.method === methodFilter
-
-    return matchesSearch && matchesStatus && matchesMethod
-  })
-
   const getStatusBadge = (code: number) => {
     if (code < 300) return <Badge className="rounded-none bg-transparent text-emerald-600 border border-emerald-600 shadow-none font-mono text-[10px] px-1.5 py-0.5">{code}</Badge>
     if (code < 400) return <Badge className="rounded-none bg-transparent text-blue-600 border border-blue-600 shadow-none font-mono text-[10px] px-1.5 py-0.5">{code}</Badge>
@@ -126,7 +134,7 @@ export default function AdminMonitoringPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -135,7 +143,7 @@ export default function AdminMonitoringPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
+      <div className="flex-1 flex-col w-full">
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
@@ -263,14 +271,14 @@ export default function AdminMonitoringPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border bg-card">
-                    {filteredRequests.length === 0 ? (
+                    {apiRequests.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-mono text-xs">
                           {searchQuery ? "No requests match your filters" : "Waiting for API traffic..."}
                         </td>
                       </tr>
                     ) : (
-                      filteredRequests.map((req) => (
+                      apiRequests.map((req) => (
                         <tr key={req.id} className="hover:bg-muted/10 transition-colors">
                           <td className="px-6 py-4">
                             <div className="flex items-center gap-2">
@@ -308,6 +316,33 @@ export default function AdminMonitoringPage() {
                     )}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Pagination Controls */}
+              <div className="flex items-center justify-between p-4 border-t border-border bg-muted/5">
+                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                  Showing page {page} of {totalPages || 1} ({totalRequests} Total)
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page <= 1}
+                    className="rounded-none border-border hover:bg-background"
+                  >
+                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page >= totalPages || totalPages === 0}
+                    className="rounded-none border-border hover:bg-background"
+                  >
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                </div>
               </div>
             </CardContent>
           </Card>

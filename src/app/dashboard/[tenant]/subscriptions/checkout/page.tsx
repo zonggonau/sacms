@@ -132,7 +132,8 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     const isAccount = tenantSlug === "account"
-    if (!currentTenant && !isAccount) {
+    const isSystemTenant = tenantSlug === "sacms-global"
+    if (!currentTenant && !isAccount && !isSystemTenant) {
       console.error("Missing tenant data. TenantSlug:", tenantSlug, "Available tenants:", tenants);
       toast({ variant: "destructive", title: "Error", description: "Tenant information not found. Please try again." });
       return
@@ -145,15 +146,15 @@ export default function CheckoutPage() {
     
     setLoading(true)
     try {
-      console.log("Creating checkout session for:", { planId: plan.id, tenantId: currentTenant.id, interval });
+      console.log("Creating checkout session for:", { planId: plan.id, tenantId: currentTenant?.id || tenantSlug, interval });
       const res = await fetch("/api/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          tenantId: isAccount ? null : currentTenant?.id,
+          tenantId: isAccount ? null : (currentTenant?.id || tenantSlug),
           interval: interval,
-          type: isAccount ? "account" : "tenant"
+          type: isAccount ? "account" : "workspace"
         }),
       })
 
@@ -217,7 +218,7 @@ export default function CheckoutPage() {
     )
   }
 
-  const basePrice = interval === 'year' ? plan.price * 12 : plan.price
+  const basePrice = interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
   const credit = proration?.credit || 0
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)
@@ -305,13 +306,26 @@ export default function CheckoutPage() {
               </Card>
 
               {/* Proration Info (if applicable) */}
-              {proration && proration.credit > 0 && (
+              {proration && proration.credit > 0 && !proration.isDowngrade && (
                 <div className="p-5 bg-orange-500/5 border border-orange-500/10 rounded-none flex gap-4 text-orange-500 shadow-none">
                   <Info className="h-5 w-5 shrink-0 mt-0.5 text-orange-500" />
                   <div className="space-y-1">
                     <p className="text-xs font-black uppercase tracking-widest">Proration applied</p>
                     <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
                       We've credited <strong className="text-foreground">{formatPrice(proration.credit)}</strong> from your unused time on the <strong className="text-foreground">{proration.currentPlan}</strong> plan toward this upgrade.
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {/* Downgrade Warning */}
+              {proration?.isDowngrade && proration?.isActive && (
+                <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-none flex gap-4 text-red-500 shadow-none">
+                  <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
+                  <div className="space-y-1">
+                    <p className="text-xs font-black uppercase tracking-widest">Downgrade Not Allowed</p>
+                    <p className="text-[11px] leading-relaxed text-red-500/80 font-medium">
+                      You cannot downgrade to <strong className="text-red-500">{plan.name}</strong> while your <strong className="text-red-500">{proration.currentPlan}</strong> subscription is still active. Please wait until your current billing period ends.
                     </p>
                   </div>
                 </div>
@@ -347,9 +361,9 @@ export default function CheckoutPage() {
                   <Separator className="bg-border" />
                   
                   <Button 
-                    className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-none shadow-none border-none"
+                    className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-none shadow-none border-none disabled:opacity-50 disabled:cursor-not-allowed"
                     onClick={handleCheckout}
-                    disabled={loading}
+                    disabled={loading || (proration?.isDowngrade && proration?.isActive)}
                   >
                     {loading ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : <><CreditCard className="mr-2 h-5 w-5" /> PAY NOW</>}
                   </Button>
