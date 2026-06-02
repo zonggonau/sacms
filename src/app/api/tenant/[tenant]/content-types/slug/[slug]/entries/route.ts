@@ -162,6 +162,9 @@ export async function POST(
     const access = await getTenantAccess(session, tenant)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+    const rbac = await checkPermission(tenant, PERMISSIONS.CONTENT_CREATE)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.create permission" }, { status: 403 })
+
     // Validate body
     const result = await validateBody(request, createEntrySchema)
     if ("error" in result) return result.error

@@ -381,7 +381,20 @@ export default function WorkspaceSelectionPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {tenant.subscriptionStatus === 'trialing' ? (
+                          {tenant.status === 'provisioning' ? (
+                            <Badge 
+                              className="capitalize text-[10px] font-black bg-blue-500 hover:bg-blue-600 text-white border-none animate-pulse"
+                            >
+                              <Loader2 className="h-2.5 w-2.5 animate-spin mr-1.5" /> Provisioning
+                            </Badge>
+                          ) : tenant.status === 'failed' ? (
+                            <Badge 
+                              variant="destructive"
+                              className="capitalize text-[10px] font-black border-none"
+                            >
+                              Setup Failed
+                            </Badge>
+                          ) : tenant.subscriptionStatus === 'trialing' ? (
                             <Badge 
                               className="capitalize text-[10px] font-black bg-orange-500 hover:bg-orange-600 text-white border-none"
                             >
@@ -400,7 +413,9 @@ export default function WorkspaceSelectionPage() {
                           )}
                         </TableCell>
                         <TableCell>
-                          {tenant.plan === 'trial' && tenant.daysRemaining !== null ? (
+                          {tenant.status === 'provisioning' ? (
+                            <span className="text-[10px] text-muted-foreground italic">Setting up architecture...</span>
+                          ) : tenant.plan === 'trial' && tenant.daysRemaining !== null ? (
                             <div className="flex flex-col">
                               <div className={cn(
                                 "flex items-center gap-1 font-semibold text-xs",
@@ -422,9 +437,14 @@ export default function WorkspaceSelectionPage() {
                         </TableCell>
                         <TableCell className="py-4 px-6 text-right">
                           <div className="flex items-center justify-end gap-2">
-                            <Link href={`/dashboard/${tenant.id}`}>
-                              <Button size="sm" variant="default" className="h-8 font-medium">
-                                Enter <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
+                            <Link href={tenant.status === 'provisioning' ? '#' : `/dashboard/${tenant.id}`} onClick={(e) => tenant.status === 'provisioning' && e.preventDefault()}>
+                              <Button 
+                                size="sm" 
+                                variant="default" 
+                                className="h-8 font-medium" 
+                                disabled={tenant.status === 'provisioning' || tenant.status === 'failed'}
+                              >
+                                {tenant.status === 'provisioning' ? "Setting Up..." : "Enter"} <ArrowRight className="ml-1.5 h-3.5 w-3.5" />
                               </Button>
                             </Link>
                             
@@ -469,7 +489,7 @@ export default function WorkspaceSelectionPage() {
 
       {/* Workspace Creation Dialog */}
       <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-        <DialogContent className="sm:max-w-[600px] p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden">
           <DialogHeader className="p-6 border-b border-border bg-muted/30">
             <DialogTitle className="text-xl font-bold">
               {newTenant.websiteType === 'custom' 
@@ -503,7 +523,7 @@ export default function WorkspaceSelectionPage() {
                   </Badge>
                 </div>
                 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                   {workspacePlans.map((plan) => (
                     <div 
                       key={plan.id}

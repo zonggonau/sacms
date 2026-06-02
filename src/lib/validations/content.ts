@@ -14,6 +14,7 @@ export const updateEntrySchema = z.object({
   data: z.record(z.string(), z.unknown()).optional(),
   status: contentStatusSchema.optional(),
   scheduledAt: z.coerce.date().optional(),
+  comment: z.string().max(1000).optional(),
 })
 
 // Change status

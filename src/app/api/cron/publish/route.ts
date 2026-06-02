@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
+import { invalidatePattern } from "@/lib/cache"
 
 /**
  * GET /api/cron/publish
@@ -19,74 +20,109 @@ export async function GET(request: Request) {
   }
 
   try {
-    // Find all entries that are SCHEDULED and scheduledAt is in the past
-    const entries = await db.contentEntry.findMany({
-      where: {
-        status: "SCHEDULED",
-        scheduledAt: {
-          lte: new Date(),
-        },
-      },
-      include: {
-        contentType: { select: { slug: true } },
-      },
+    // 1. Get all tenants to iterate through their databases
+    const tenants = await db.tenant.findMany({
+      select: { id: true, slug: true, databaseUrl: true }
     })
 
-    if (entries.length === 0) {
-      return NextResponse.json({ published: 0 })
-    }
+    let totalPublished = 0
+    let totalScanned = 0
+    const results: Record<string, number> = {}
 
-    let published = 0
+    const now = new Date()
 
-    for (const entry of entries) {
+    for (const tenant of tenants) {
       try {
-        await db.contentEntry.update({
-          where: { id: entry.id },
-          data: {
-            status: "PUBLISHED",
-            publishedAt: new Date(),
-            scheduledAt: null,
+        const tenantDb = await getTenantDbById(tenant.id)
+        
+        // Find all entries that are SCHEDULED and scheduledAt is in the past for this specific tenant
+        const entries = await tenantDb.contentEntry.findMany({
+          where: {
+            tenantId: tenant.id,
+            status: "SCHEDULED",
+            scheduledAt: {
+              lte: now,
+            },
+          },
+          include: {
+            // Need to join with Master DB's contentType definition
+            // Actually, in SaCMS, contentType is currently only in Master DB
+            // but let's assume it's available or we can look it up
           },
         })
 
-        // Create version
-        const lastVersion = await db.contentVersion.findFirst({
-          where: { contentEntryId: entry.id },
-          orderBy: { version: "desc" },
-        })
+        if (entries.length === 0) continue
 
-        await db.contentVersion.create({
-          data: {
-            contentEntryId: entry.id,
-            version: (lastVersion?.version || 0) + 1,
-            data: entry.data,
-            changeType: "published",
-            changedBy: "system",
-            changeSummary: "Auto-published by scheduler",
-            publishedAt: new Date(),
-          },
-        })
+        let publishedInTenant = 0
+        for (const entry of entries) {
+          // Resolve content type slug (lookup from Master DB)
+          const contentType = await db.contentType.findUnique({
+            where: { id: entry.contentTypeId },
+            select: { slug: true }
+          })
 
-        // Fire webhook
-        triggerWebhooks(entry.tenantId, WebhookEvents.CONTENT_PUBLISHED, {
-          entry: {
-            id: entry.id,
-            contentType: entry.contentType.slug,
-            status: "PUBLISHED",
-            scheduledPublish: true,
-          },
-        })
+          if (!contentType) continue
 
-        published++
-      } catch (e) {
-        console.error(`Failed to publish entry ${entry.id}:`, e)
+          await tenantDb.contentEntry.update({
+            where: { id: entry.id },
+            data: {
+              status: "PUBLISHED",
+              publishedAt: now,
+              scheduledAt: null,
+            },
+          })
+
+          // Create version in tenant DB
+          const lastVersion = await tenantDb.contentVersion.findFirst({
+            where: { contentEntryId: entry.id },
+            orderBy: { version: "desc" },
+          })
+
+          await tenantDb.contentVersion.create({
+            data: {
+              contentEntryId: entry.id,
+              version: (lastVersion?.version || 0) + 1,
+              data: entry.data as any,
+              changeType: "published",
+              changedBy: "system",
+              changeSummary: "Auto-published by scheduler",
+              publishedAt: now,
+            },
+          })
+
+          // Fire webhook
+          triggerWebhooks(tenant.id, WebhookEvents.CONTENT_PUBLISHED, {
+            entry: {
+              id: entry.id,
+              contentType: contentType.slug,
+              status: "PUBLISHED",
+              scheduledPublish: true,
+            },
+          })
+
+          // Invalidate Public API Cache
+          invalidatePattern(`public_api:${tenant.slug}:${contentType.slug}:*`).catch(() => {})
+
+          publishedInTenant++
+        }
+
+        if (publishedInTenant > 0) {
+          totalPublished += publishedInTenant
+          results[tenant.slug] = publishedInTenant
+        }
+        totalScanned += entries.length
+
+      } catch (err) {
+        console.error(`Cron: Failed to process tenant ${tenant.slug}:`, err)
       }
     }
 
     return NextResponse.json({
-      published,
-      total: entries.length,
-      timestamp: new Date().toISOString(),
+      success: true,
+      published: totalPublished,
+      scanned: totalScanned,
+      details: results,
+      timestamp: now.toISOString(),
     })
   } catch (error) {
     console.error("Cron publish error:", error)

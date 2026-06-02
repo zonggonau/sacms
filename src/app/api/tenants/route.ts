@@ -125,7 +125,7 @@ export async function POST(request: NextRequest) {
           slug,
           description,
           plan,
-          status: "active",
+          status: "provisioning",
         }
       })
 
@@ -155,8 +155,11 @@ export async function POST(request: NextRequest) {
       return newTenant
     })
 
-    // Provision default content types and demo data
-    await provisionTenant(tenant.id, aiPrompt, websiteType)
+    // Provision default content types and demo data asynchronously
+    // We don't await here to return 201 faster, OR we await but rely on the provisioning status for UI
+    provisionTenant(tenant.id, aiPrompt, websiteType).catch(err => {
+      console.error(`[Provisioning Background Error] ${tenant.id}:`, err)
+    })
 
     await logAudit({
       tenantId: tenant.id,

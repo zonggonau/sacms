@@ -324,9 +324,23 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
     }
 
     console.log(`[Provisioning] Completed for tenant: ${tenantId}`)
+
+    // 6. Update status to active
+    await db.tenant.update({
+      where: { id: tenantId },
+      data: { status: "active" }
+    })
+
     return true
   } catch (error) {
     console.error(`[Provisioning] Failed for tenant: ${tenantId}`, error)
+    
+    // Update status to failed
+    await db.tenant.update({
+      where: { id: tenantId },
+      data: { status: "failed" }
+    }).catch(console.error)
+
     return false
   }
 }

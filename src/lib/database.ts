@@ -1,17 +1,19 @@
 import { PrismaClient } from '../../prisma/generated-client'
 
+interface TenantClientEntry {
+  client: PrismaClient
+  lastAccess: number
+}
+
 const globalForPrisma = globalThis as unknown as {
   prisma: PrismaClient | undefined
-  tenantClients: Map<string, PrismaClient> | undefined
+  tenantClients: Map<string, TenantClientEntry> | undefined
+  cleanupInterval: NodeJS.Timeout | undefined
 }
 
 // Reset logic to pick up schema changes in dev
 if (globalForPrisma.prisma) {
   try {
-    // Try to access the new field to see if the client is up to date
-    // We use a dummy query that won't execute but triggers validation if we were to run it
-    // or just check the internal dmmf if available. 
-    // Actually, the simplest way is to check if we've already done this reset in this process.
     if (!(globalThis as any).__prisma_reset_v2) {
        console.log('[Prisma] Forcing client refresh for new schema fields...')
        globalForPrisma.prisma = undefined
@@ -24,9 +26,6 @@ if (globalForPrisma.prisma) {
 
 /**
  * Shared Database Client (Master DB)
- * Used for:
- * 1. Managing tenants, users, and global settings.
- * 2. Shared/Small tenants data.
  */
 export const db =
   globalForPrisma.prisma ??
@@ -37,19 +36,28 @@ export const db =
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
 
 /**
- * Cache for Enterprise/Dedicated Tenant DB Clients
+ * Cache for Enterprise/Dedicated Tenant DB Clients with TTL
  */
-const tenantClients = globalForPrisma.tenantClients ?? new Map<string, PrismaClient>()
+const tenantClients = globalForPrisma.tenantClients ?? new Map<string, TenantClientEntry>()
 if (process.env.NODE_ENV !== 'production') globalForPrisma.tenantClients = tenantClients
 
-/**
- * Resolves the correct database client for a specific tenant.
- * Supports Hybrid Multi-tenancy:
- * - If tenant has a custom databaseUrl, returns a dedicated Prisma client.
- * - Otherwise, returns the shared (master) database client.
- */
+const IDLE_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes
+
+// Periodic cleanup of idle connections
+if (!globalForPrisma.cleanupInterval) {
+  globalForPrisma.cleanupInterval = setInterval(() => {
+    const now = Date.now()
+    for (const [dbUrl, entry] of tenantClients.entries()) {
+      if (now - entry.lastAccess > IDLE_TIMEOUT_MS) {
+        console.log(`[Database] Closing idle dedicated DB client.`)
+        entry.client.$disconnect().catch(console.error)
+        tenantClients.delete(dbUrl)
+      }
+    }
+  }, 5 * 60 * 1000) // Check every 5 minutes
+}
+
 export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): Promise<PrismaClient> {
-  // 1. Check if it's the master tenant or shared
   const tenant = await db.tenant.findFirst({
     where: { 
       OR: [
@@ -60,34 +68,28 @@ export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): P
     select: { id: true, databaseUrl: true, slug: true }
   })
 
-  // 2. Fallback to Shared DB if no custom URL or tenant not found
   if (!tenant || !tenant.databaseUrl) {
     return db
   }
 
   const dbUrl = tenant.databaseUrl
 
-  // 3. Return cached client if exists (unless forceFresh is requested)
   if (!forceFresh && tenantClients.has(dbUrl)) {
-    return tenantClients.get(dbUrl)!
+    const entry = tenantClients.get(dbUrl)!
+    entry.lastAccess = Date.now()
+    return entry.client
   }
 
-  // 4. Create and cache new dedicated client for Enterprise/Gov
   console.log(`[Database] Initializing dedicated DB client for tenant: ${tenant.slug}`)
   const client = new PrismaClient({
-    datasources: {
-      db: { url: dbUrl }
-    },
+    datasources: { db: { url: dbUrl } },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
 
-  tenantClients.set(dbUrl, client)
+  tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
   return client
 }
 
-/**
- * Utility for background tasks or cases where tenant ID is known but slug is not.
- */
 export async function getTenantDbById(tenantId: string, forceFresh = false): Promise<PrismaClient> {
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId },
@@ -98,14 +100,18 @@ export async function getTenantDbById(tenantId: string, forceFresh = false): Pro
     return db
   }
 
-  if (!forceFresh && tenantClients.has(tenant.databaseUrl)) {
-    return tenantClients.get(tenant.databaseUrl)!
+  const dbUrl = tenant.databaseUrl
+
+  if (!forceFresh && tenantClients.has(dbUrl)) {
+    const entry = tenantClients.get(dbUrl)!
+    entry.lastAccess = Date.now()
+    return entry.client
   }
 
   const client = new PrismaClient({
-    datasources: { db: { url: tenant.databaseUrl } }
+    datasources: { db: { url: dbUrl } }
   })
 
-  tenantClients.set(tenant.databaseUrl, client)
+  tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
   return client
 }

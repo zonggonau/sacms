@@ -142,7 +142,7 @@ export default function CMSContentTypeEntriesPage() {
     if (action === 'delete' && !confirm(`Delete ${selectedIds.length} items permanently?`)) return
     
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/bulk`, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/bulk`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ ids: selectedIds, action }),
@@ -161,7 +161,7 @@ export default function CMSContentTypeEntriesPage() {
   const handleDeleteEntry = async (entryId: string) => {
     if (!confirm('Delete this entry permanently?')) return
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}`, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
         method: "DELETE",
       })
       if (res.ok) {

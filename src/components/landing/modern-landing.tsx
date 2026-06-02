@@ -151,7 +151,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border border-border">
               {pricingWorkspaces.map((plan: any, i: number) => (
                 <div
                   key={i}
@@ -205,7 +205,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-0 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border border-border">
               {pricingAccounts.map((plan: any, i: number) => (
                 <div
                   key={i}

@@ -50,6 +50,7 @@ import { AdvancedField } from "@/components/content/field-renderers/advanced-fie
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
+import { ReviewerAssignment } from "@/components/cms/reviewer-assignment"
 
 interface Field {
   id: string
@@ -102,7 +103,7 @@ export default function CMSEditEntryPage() {
       setLoading(true)
       const [ctRes, entRes, locRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}?locale=${locale}`),
+        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}?locale=${locale}`),
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
@@ -150,7 +151,7 @@ export default function CMSEditEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content/${contentTypeSlug}/${entryId}`, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -452,6 +453,8 @@ export default function CMSEditEntryPage() {
                 </Button>
               </CardContent>
             </Card>
+
+            <ReviewerAssignment tenantSlug={tenantSlug} entryId={entryId} />
 
             <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent">
               <CardHeader className="p-6 pb-2">

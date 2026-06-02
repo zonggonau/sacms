@@ -6,6 +6,9 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateBody } from "@/lib/validate"
 import { createContentEntrySchema } from "@/lib/validations"
+import { checkPermission, PERMISSIONS } from "@/lib/rbac"
+import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
+import { processAutoSlugs } from "@/lib/slug"
 
 // GET /api/tenant/[tenant]/content/[contentSlug] - Get all entries for a content type
 export async function GET(
@@ -21,6 +24,9 @@ export async function GET(
     // Resolve access and tenant ID from Master DB
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
+    
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.read permission" }, { status: 403 })
 
     const tenantId = access.tenantId
     // Resolve the correct DB client (Shared or Isolated)
@@ -87,6 +93,9 @@ export async function POST(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_CREATE)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.create permission" }, { status: 403 })
+
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -99,7 +108,7 @@ export async function POST(
           { tenantId: null }
         ]
       },
-      include: { tenants: { where: { tenantId } } },
+      include: { tenants: { where: { tenantId } }, fields: true },
     })
 
     if (!contentType) {
@@ -137,14 +146,40 @@ export async function POST(
       return NextResponse.json({ error: "Validation failed", details: dynamicValidation.errors }, { status: 400 })
     }
 
+    // Process auto-generated slugs
+    const dataWithSlugs = await processAutoSlugs(
+      tenantId,
+      contentType.id,
+      contentType.fields,
+      data as Record<string, any>,
+      undefined,
+      'content',
+      tenantDb
+    )
+
+    // Execute sync hooks (beforeCreate)
+    const hookResult = await executeSyncHooks(
+      tenantId,
+      WebhookEvents.BEFORE_CREATE,
+      dataWithSlugs as Record<string, unknown>
+    )
+    if (!hookResult.allowed) {
+      return NextResponse.json({ error: hookResult.rejectMessage || "Rejected by hook" }, { status: 403 })
+    }
+
+    const finalData = hookResult.modifiedData || dataWithSlugs
+
+    const entryStatus = publish ? "PUBLISHED" : "DRAFT"
+
     // Create entry in the tenant-specific database
     const entry = await tenantDb.$transaction(async (tx) => {
       const newEntry = await tx.contentEntry.create({
         data: {
           contentTypeId: contentType.id,
           tenantId: tenantId,
-          data: data as any,
+          data: finalData as any,
           locale: (result.data as any).locale || "en",
+          status: entryStatus,
           publishedAt: publish ? new Date() : null,
           createdBy: session.user.id,
         },
@@ -161,7 +196,7 @@ export async function POST(
         data: {
           contentEntryId: newEntry.id,
           version: 1,
-          data: data as any,
+          data: finalData as any,
           publishedAt: publish ? new Date() : null,
           changeType: "created",
           changedBy: session.user.id,
@@ -169,6 +204,11 @@ export async function POST(
       })
 
       return updatedEntry
+    })
+    
+    // Fire async webhook
+    triggerWebhooks(tenantId, WebhookEvents.CONTENT_CREATED, {
+      entry: { id: entry.id, contentType: contentType.slug, status: entry.status },
     })
 
     // Invalidate Public API Cache
@@ -181,7 +221,7 @@ export async function POST(
       action: AuditAction.CONTENT_CREATED,
       entity: "ContentEntry",
       entityId: entry.id,
-      data: { contentType: contentType.slug },
+      data: { contentType: contentType.slug, status: entryStatus },
     })
 
     return NextResponse.json({ entry })

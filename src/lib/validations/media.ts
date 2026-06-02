@@ -9,9 +9,7 @@ const ALLOWED_MIME_TYPES = [
   "image/avif",
   "video/mp4",
   "video/webm",
-  "audio/mpeg",
-  "audio/wav",
-  "audio/ogg",
+  "video/quicktime",
   "application/pdf",
 ] as const
 

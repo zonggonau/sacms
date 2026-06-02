@@ -143,7 +143,7 @@ export default function TenantSubscriptionsPage() {
 
   const currentPlan = plans.find(p => p.id === (subscription?.plan || 'free'))
 
-  const mainPlans = plans.filter(p => p.type === "workspace" && p.id !== "free" && p.price > 0)
+  const mainPlans = plans.filter(p => p.type === "workspace")
   const addonPlans = plans.filter(p => p.type === "addons")
 
   return (
@@ -233,7 +233,7 @@ export default function TenantSubscriptionsPage() {
             <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-orange-500" /> Resource Usage
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {usage.map((item) => {
                 const percentage = Math.min(100, (item.current / item.limit) * 100)
                 const isNearingLimit = percentage > 80
@@ -311,7 +311,7 @@ export default function TenantSubscriptionsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {mainPlans.map((plan) => {
                 const isCurrent = plan.id === subscription?.plan
                 const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price

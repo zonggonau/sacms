@@ -6,6 +6,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { validateBody } from "@/lib/validate"
 import { updateContentEntrySchema } from "@/lib/validations"
+import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { revalidatePath } from "next/cache"
 
 type Params = {
@@ -29,6 +30,9 @@ export async function GET(
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
+
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.read permission" }, { status: 403 })
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
@@ -75,6 +79,9 @@ export async function PUT(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.update permission" }, { status: 403 })
+
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -99,13 +106,27 @@ export async function PUT(
 
     const documentId = baseEntry.documentId || baseEntry.id
 
+    // Check if this locale version already exists
+    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({
+      where: { documentId, locale, tenantId }
+    })
+
+    if (!existingLocaleEntry) {
+      // Enforce content entry limit based on workspace plan for new translation
+      const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+      const enforcement = await enforcePlanLimit(tenantId, "content_entries")
+      if (!enforcement.allowed) {
+        return NextResponse.json({ 
+          error: enforcement.message,
+          current: enforcement.current,
+          max: enforcement.max,
+          plan: enforcement.planSlug,
+        }, { status: 403 })
+      }
+    }
+
     // Upsert the entry for this specific locale
     const entry = await tenantDb.$transaction(async (tx) => {
-      // Check if this locale version already exists
-      const existingLocaleEntry = await tx.contentEntry.findFirst({
-        where: { documentId, locale, tenantId }
-      })
-
       let targetEntryId = existingLocaleEntry?.id
 
       if (existingLocaleEntry) {
@@ -114,6 +135,7 @@ export async function PUT(
           where: { id: existingLocaleEntry.id },
           data: {
             data: JSON.stringify(data),
+            status: publish === true ? "PUBLISHED" : publish === false ? "DRAFT" : existingLocaleEntry.status,
             publishedAt: publish === true ? new Date() : publish === false ? null : existingLocaleEntry.publishedAt,
             updatedBy: session.user.id,
           },
@@ -127,7 +149,7 @@ export async function PUT(
             tenantId,
             locale,
             data: JSON.stringify(data),
-            status: "DRAFT",
+            status: publish ? "PUBLISHED" : "DRAFT",
             publishedAt: publish ? new Date() : null,
             createdBy: session.user.id,
           }
@@ -163,6 +185,11 @@ export async function PUT(
       return await tx.contentEntry.findUnique({ where: { id: targetEntryId! } })
     })
 
+    const { triggerWebhooks, WebhookEvents } = await import("@/lib/webhooks")
+    triggerWebhooks(tenantId, existingLocaleEntry ? WebhookEvents.CONTENT_UPDATED : WebhookEvents.CONTENT_CREATED, {
+      entry: { id: entry?.id, contentType: contentSlug, status: entry?.status },
+    })
+
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentSlug}:*`)
     
@@ -187,6 +214,9 @@ export async function DELETE(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
 
+    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_DELETE)
+    if (!rbac.allowed) return NextResponse.json({ error: "Forbidden: Missing content.delete permission" }, { status: 403 })
+
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -207,6 +237,11 @@ export async function DELETE(
     if (!entry) return NextResponse.json({ error: "Entry not found" }, { status: 404 })
 
     await tenantDb.contentEntry.delete({ where: { id: entryId } })
+    
+    const { triggerWebhooks, WebhookEvents } = await import("@/lib/webhooks")
+    triggerWebhooks(tenantId, WebhookEvents.CONTENT_DELETED, {
+      entry: { id: entryId, contentType: contentSlug },
+    })
 
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentSlug}:*`)
