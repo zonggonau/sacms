@@ -109,7 +109,6 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b px-4">
         <Link href="/admin" className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
             <DatabaseIcon className="w-5 h-5 text-white" />
@@ -119,7 +118,6 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
             <span className="text-xs text-muted-foreground">Super Admin</span>
           </div>
         </Link>
-      </div>
 
       {/* Tenant Switcher */}
       {tenants && tenants.length > 0 && (
@@ -232,12 +230,11 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
         </nav>
       </ScrollArea>
 
-      {/* Footer */}
       <div className="border-t p-4 space-y-2">
         <div className="flex items-center justify-between">
-          <span className="text-sm text-muted-foreground">
+          <Link href="/dashboard/profile" className="text-sm text-muted-foreground hover:underline truncate mr-2">
             {session?.user?.email}
-          </span>
+          </Link>
           <Button
             variant="ghost"
             size="icon"

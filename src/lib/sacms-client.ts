@@ -7,7 +7,7 @@
  */
 
 const API_KEY = process.env.NEXT_PUBLIC_SACMS_GLOBAL_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd";
-const BASE_URL = "http://localhost:3001";
+const BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 const TENANT_SLUG = "sacms-global";
 
 export async function fetchCollection(contentTypeSlug: string, queryParams: string = "") {

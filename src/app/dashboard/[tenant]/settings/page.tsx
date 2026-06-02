@@ -58,6 +58,8 @@ export default function TenantSettingsPage() {
   const [description, setDescription] = useState("")
   const [plan, setPlan] = useState("free")
   const [tenantStatus, setTenantStatus] = useState("active")
+  const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
+  const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
 
   // API settings
   const [apiVersion, setApiVersion] = useState("v1")
@@ -107,6 +109,8 @@ export default function TenantSettingsPage() {
           setDescription(settings.description || "")
           setPlan(settings.plan || "free")
           setTenantStatus(settings.status || "active")
+          setSubscriptionStatus(settings.subscriptionStatus || null)
+          setDaysRemaining(settings.daysRemaining !== undefined ? settings.daysRemaining : null)
           setApiVersion(settings.apiVersion || "v1")
           setRateLimiting(settings.rateLimiting ?? true)
           setRequestsPerMinute(String(settings.requestsPerMinute || 60))
@@ -305,9 +309,23 @@ export default function TenantSettingsPage() {
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <Badge variant={tenantStatus === "active" ? "default" : "secondary"} className="capitalize">
-                  {tenantStatus}
-                </Badge>
+                {subscriptionStatus === 'trialing' ? (
+                  <Badge 
+                    className="capitalize text-[10px] font-black bg-orange-500 hover:bg-orange-600 text-white border-none"
+                  >
+                    Trial {daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                  </Badge>
+                ) : (
+                  <Badge 
+                    variant={tenantStatus === "active" ? "default" : "secondary"}
+                    className={cn(
+                      "capitalize text-[10px] font-bold",
+                      tenantStatus === 'active' ? "bg-green-500 hover:bg-green-600 text-white border-none" : ""
+                    )}
+                  >
+                    {tenantStatus} {tenantStatus === 'active' && daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                  </Badge>
+                )}
               </CardContent>
             </Card>
             <Card>
@@ -394,8 +412,8 @@ export default function TenantSettingsPage() {
                           className="rounded-l-none bg-muted"
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground">
-                        URL slug cannot be changed after creation
+                      <p className="text-xs text-muted-foreground mt-2">
+                        URL slug cannot be changed.
                       </p>
                     </div>
                   </div>
@@ -431,10 +449,24 @@ export default function TenantSettingsPage() {
                     <div className="space-y-2">
                       <Label>Status</Label>
                       <div className="flex items-center gap-2">
-                        <Badge variant={tenantStatus === "active" ? "default" : "secondary"}>
-                          {tenantStatus}
-                        </Badge>
-                        {tenantStatus === "active" && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        {subscriptionStatus === 'trialing' ? (
+                          <Badge 
+                            className="capitalize text-[10px] font-black bg-orange-500 hover:bg-orange-600 text-white border-none"
+                          >
+                            Trial {daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                          </Badge>
+                        ) : (
+                          <Badge 
+                            variant={tenantStatus === "active" ? "default" : "secondary"}
+                            className={cn(
+                              "capitalize text-[10px] font-bold",
+                              tenantStatus === 'active' ? "bg-green-500 hover:bg-green-600 text-white border-none" : ""
+                            )}
+                          >
+                            {tenantStatus} {tenantStatus === 'active' && daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                          </Badge>
+                        )}
+                        {tenantStatus === "active" && subscriptionStatus !== 'trialing' && <CheckCircle className="h-4 w-4 text-green-500" />}
                       </div>
                     </div>
                   </div>
@@ -621,10 +653,27 @@ export default function TenantSettingsPage() {
                         Permanently delete this workspace and all data
                       </p>
                     </div>
-                    <Button variant="destructive" onClick={() => setShowDeleteDialog(true)}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Workspace
-                    </Button>
+                    <div className="flex flex-col gap-2 items-end">
+                      <Button 
+                        variant="destructive" 
+                        disabled={plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')}
+                        onClick={() => {
+                          if (plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')) {
+                            alert("Cannot delete an active paid workspace. Please cancel your subscription or contact support first.");
+                            return;
+                          }
+                          setShowDeleteDialog(true)
+                        }}
+                      >
+                        <Trash2 className="mr-2 h-4 w-4" />
+                        Delete Workspace
+                      </Button>
+                      {plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
+                        <p className="text-[11px] text-destructive italic font-medium">
+                          Active paid workspaces cannot be deleted.
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </CardContent>
               </Card>

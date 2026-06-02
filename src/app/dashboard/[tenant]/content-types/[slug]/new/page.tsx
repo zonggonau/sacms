@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Save, Send, FileText, CheckCircle2, 
   Clock, Archive, Loader2, Globe, Layout, ChevronDown,
-  Calendar as CalendarIcon, Eye, AlertCircle, Check, Plus
+  Calendar as CalendarIcon, Eye, AlertCircle, Check, Plus, Zap
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { format } from "date-fns"
@@ -47,6 +47,8 @@ import { RichTextField } from "@/components/content/field-renderers/rich-text-fi
 import { RelationSelectField } from "@/components/content/field-renderers/relation-select-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { SlugField } from "@/components/content/field-renderers/slug-field"
+import { AISmartFill } from "@/components/content/ai-smart-fill"
 
 interface Field {
   id: string
@@ -170,6 +172,13 @@ export default function CreateEntryPage() {
     }
   }
 
+  const handleAISmartFill = (data: Record<string, any>) => {
+    setFormData(prev => ({
+      ...prev,
+      ...data
+    }))
+  }
+
   const handleFieldChange = (slug: string, value: any) => {
     setFormData(prev => ({ ...prev, [slug]: value }))
   }
@@ -209,7 +218,25 @@ export default function CreateEntryPage() {
       
       case "slug":
       case "uid":
-        return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
+        // Find source field for auto-generation (usually 'title' or 'name')
+        const sourceFieldName = (contentType?.fields.find(f => f.slug === 'title') || contentType?.fields.find(f => f.slug === 'name'))?.slug
+        const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
+        
+        return (
+          <div className="space-y-3">
+            <div className="flex justify-between">
+              <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+              <Badge variant="outline" className="text-[9px] opacity-50 uppercase tracking-widest font-black">{field.type}</Badge>
+            </div>
+            <SlugField 
+              value={value as string} 
+              onChange={v => handleFieldChange(field.slug, v)} 
+              required={field.required} 
+              placeholder={field.name}
+              sourceValue={sourceValue}
+            />
+          </div>
+        )
       
       case "email":
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder="email@example.com" type="email" />
@@ -334,6 +361,12 @@ export default function CreateEntryPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <AISmartFill 
+                    tenantSlug={tenantSlug} 
+                    contentTypeName={contentType?.name || ""} 
+                    schema={contentType?.fields || []}
+                    onApply={handleAISmartFill}
+                  />
                   <Select value={entryStatus} onValueChange={setEntryStatus}>
                     <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none h-10">
                       <div className="flex items-center gap-2">
@@ -364,95 +397,107 @@ export default function CreateEntryPage() {
 
           {/* Main Content */}
           <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-none bg-card overflow-hidden rounded-none">
-                <CardHeader className="border-b bg-muted/5 p-6">
-                  <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 space-y-10">
-                  {contentType?.fields.map(field => (
-                    <div key={field.id} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
-                        <Badge variant="outline" className="text-[9px] opacity-50 uppercase tracking-widest font-black">{field.type}</Badge>
-                      </div>
-                      {renderField(field)}
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="space-y-6">
-              <Card className="border-none shadow-none bg-card rounded-none">
-                <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold">Status & Publishing</CardTitle></CardHeader>
-                <CardContent className="p-6 pt-2 space-y-6">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Scheduled Publication</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-bold rounded-none border-none bg-muted/30 h-11",
-                            !scheduledAt && "text-muted-foreground font-normal"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border-none" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={scheduledAt}
-                          onSelect={setScheduledAt}
-                          initialFocus
-                          disabled={(date) => date < new Date()}
-                        />
-                        {scheduledAt && (
-                          <div className="p-3 border-t bg-muted/10 flex justify-between">
-                            <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black">Clear</Button>
-                            <span className="text-[10px] text-muted-foreground italic pt-2">Will set status to SCHEDULED</span>
-                          </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2 space-y-6">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="border-b border-border bg-muted/30 p-6">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-orange-500" /> Content Editor
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-8 space-y-10">
+                {contentType?.fields.map(field => (
+                  <div key={field.id} className="relative group">
+                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    {renderField(field)}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+          
+          <div className="space-y-6">
+            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+              <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
+              <CardContent className="p-6 pt-2 space-y-6">
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant={"outline"}
+                        className={cn(
+                          "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
+                          !scheduledAt && "text-muted-foreground font-normal"
                         )}
-                      </PopoverContent>
-                    </Popover>
-                  </div>
+                      >
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border border-border bg-card" align="start">
+                      <Calendar
+                        mode="single"
+                        selected={scheduledAt}
+                        onSelect={setScheduledAt}
+                        initialFocus
+                        disabled={(date) => date < new Date()}
+                      />
+                      {scheduledAt && (
+                        <div className="p-3 border-t bg-muted/10 flex justify-between">
+                          <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black rounded-none hover:bg-muted">Clear</Button>
+                          <span className="text-[10px] text-muted-foreground italic pt-2">Will set to SCHEDULED</span>
+                        </div>
+                      )}
+                    </PopoverContent>
+                  </Popover>
+                </div>
 
-                  <Separator />
+                <Separator className="opacity-50" />
 
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Localization</Label>
-                    <Select value={locale} onValueChange={setLocale}>
-                      <SelectTrigger className="bg-muted/30 border-none h-11 rounded-none font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        {availableLocales.map(l => (
-                          <SelectItem key={l.locale} value={l.locale} className="font-bold">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                <div className="space-y-3">
+                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
+                  <Select value={locale} onValueChange={setLocale}>
+                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500"><SelectValue /></SelectTrigger>
+                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
+                      {availableLocales.map(l => (
+                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
 
-                  <Separator />
+                <Separator className="opacity-50" />
 
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleSave(false)} 
-                    disabled={saving} 
-                    className="w-full bg-slate-900 text-white hover:bg-slate-800 hover:text-white border-none h-11 rounded-none font-bold shadow-none shadow-none"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Create Entry
-                  </Button>
-                </CardContent>
-              </Card>
+                <Button 
+                  variant="outline" 
+                  onClick={() => handleSave(false)} 
+                  disabled={saving} 
+                  className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
+                >
+                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save Draft
+                </Button>
+              </CardContent>
+            </Card>
+
+            <div className="p-6 bg-card border border-border rounded-none text-foreground shadow-none relative">
+              <div className="absolute top-0 right-0 w-8 h-8 bg-orange-500 flex items-center justify-center text-white">
+                <Zap className="h-4 w-4" />
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <h4 className="font-black uppercase text-xs tracking-widest text-foreground">AI Power</h4>
+              </div>
+              <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
+                Use <strong>AI Smart Fill</strong> at the top to populate the entire form from a single prompt or draft.
+              </p>
             </div>
           </div>
         </div>
+
+          </div>
+        </div>
       </div>
-    </div>
     </div>
   )
 }

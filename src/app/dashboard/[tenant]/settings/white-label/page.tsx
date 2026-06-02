@@ -25,7 +25,9 @@ import {
   RefreshCw,
   AlertCircle,
   Clock,
+  ArrowLeft,
 } from "lucide-react"
+import Link from "next/link"
 interface DomainStatus {
   customDomain: string | null
   customDomainStatus: string | null
@@ -209,12 +211,20 @@ export default function WhiteLabelPage() {
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 overflow-auto">
         <div className="p-8 max-w-3xl mx-auto space-y-8">
-          <div>
-            <h1 className="text-2xl font-bold">White-Label Settings</h1>
-            <p className="text-muted-foreground mt-1">
-              Customise your tenant branding and configure a custom domain for
-              your public API.
-            </p>
+          <div className="space-y-4">
+            <Button variant="ghost" size="sm" asChild className="-ml-3 text-muted-foreground">
+              <Link href={`/dashboard/${tenantSlug}/settings`}>
+                <ArrowLeft className="mr-2 h-4 w-4" />
+                Back to Settings
+              </Link>
+            </Button>
+            <div>
+              <h1 className="text-2xl font-bold">White-Label Settings</h1>
+              <p className="text-muted-foreground mt-1">
+                Customise your tenant branding and configure a custom domain for
+                your public API.
+              </p>
+            </div>
           </div>
 
           {/* ── Branding ─────────────────────────────────────────────── */}

@@ -5,44 +5,7 @@ import { useEffect, useState } from "react"
 import { useParams } from "next/navigation"
 import { ThemeProvider } from "next-themes"
 
-/**
- * BrandingProvider applies tenant-specific branding (colors, names) 
- * dynamically based on the current tenant in the URL.
- */
-function BrandingProvider({ children }: { children: React.ReactNode }) {
-  const params = useParams()
-  const tenantId = params?.tenant as string
-  const [brandColor, setBrandColor] = useState<string | null>(null)
 
-  useEffect(() => {
-    if (!tenantId) return
-
-    async function fetchBranding() {
-      try {
-        const res = await fetch(`/api/tenant/${tenantId}/white-label`)
-        if (res.ok) {
-          const data = await res.json()
-          if (data.primaryColor) {
-            setBrandColor(data.primaryColor)
-            // Apply primary color to CSS variable
-            document.documentElement.style.setProperty('--primary', data.primaryColor)
-            // Also apply a slightly transparent version for hover states if needed
-            document.documentElement.style.setProperty('--primary-foreground', '#ffffff')
-          }
-          if (data.brandName) {
-            document.title = `${data.brandName} - SaCMS`
-          }
-        }
-      } catch (error) {
-        console.error("Failed to load branding:", error)
-      }
-    }
-
-    fetchBranding()
-  }, [tenantId])
-
-  return <>{children}</>
-}
 
 export function Providers({ 
   children,
@@ -51,6 +14,22 @@ export function Providers({
   children: React.ReactNode
   session?: any 
 }) {
+  // Suppress the React 19 + next-themes hydration warning in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === "development") {
+      const originalError = console.error;
+      console.error = (...args: any[]) => {
+        if (typeof args[0] === 'string' && args[0].includes('Encountered a script tag while rendering React component')) {
+          return;
+        }
+        originalError.call(console, ...args);
+      };
+      
+      return () => {
+        console.error = originalError;
+      }
+    }
+  }, []);
   return (
     <ThemeProvider
       attribute="class"
@@ -59,9 +38,7 @@ export function Providers({
       disableTransitionOnChange
     >
       <NextAuthSessionProvider session={session}>
-        <BrandingProvider>
-          {children}
-        </BrandingProvider>
+        {children}
       </NextAuthSessionProvider>
     </ThemeProvider>
   )

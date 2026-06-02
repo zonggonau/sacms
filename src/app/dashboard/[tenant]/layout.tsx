@@ -60,13 +60,21 @@ export default async function TenantDashboardLayout({
   const access = await getTenantAccess(session, resolvedParams.tenant)
   
   if (!access) {
+    const fallbackMembership = await db.tenantMember.findFirst({
+      where: { userId: session.user.id },
+      include: { tenant: true }
+    })
+    
+    if (fallbackMembership) {
+      redirect(`/dashboard/${fallbackMembership.tenant.slug || fallbackMembership.tenant.id}`)
+    }
     redirect("/dashboard")
   }
 
   // Only owners and admins can access the dashboard.
-  // Editors and viewers must go to the CMS content studio.
-  if (access.role === "editor" || access.role === "viewer") {
-    redirect(`/cms/${access.tenant.slug}`)
+  // Editors, contributors, and viewers must go to the CMS content studio.
+  if (access.role === "editor" || access.role === "contributor" || access.role === "viewer") {
+    redirect(`/cms/${access.tenant.slug || access.tenant.id}`)
   }
 
   // Check trial / subscription expiration

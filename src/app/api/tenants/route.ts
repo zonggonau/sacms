@@ -80,7 +80,19 @@ export async function GET() {
       }
     })
 
-    return NextResponse.json({ tenants: formattedTenants })
+    // Fetch user limit details to pass to frontend
+    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
+    const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
+
+    return NextResponse.json({ 
+      tenants: formattedTenants,
+      usage: {
+        current: workspaceEnforcement.current,
+        max: workspaceEnforcement.max,
+        allowed: workspaceEnforcement.allowed,
+        plan: workspaceEnforcement.planSlug
+      }
+    })
   } catch (error) {
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }

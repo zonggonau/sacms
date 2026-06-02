@@ -98,6 +98,7 @@ export async function POST(
           name: name || email.split('@')[0],
           password: hashedPassword,
           role: "user",
+          emailVerified: new Date(),
         }
       })
     }
@@ -112,7 +113,8 @@ export async function POST(
           name: user.name,
           password: user.password,
           role: user.role,
-          image: user.image
+          image: user.image,
+          emailVerified: user.emailVerified
         },
         create: {
           id: user.id,
@@ -120,7 +122,8 @@ export async function POST(
           name: user.name,
           password: user.password,
           role: user.role,
-          image: user.image
+          image: user.image,
+          emailVerified: user.emailVerified
         }
       })
     }

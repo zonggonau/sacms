@@ -305,9 +305,13 @@ export default function CMSCreateEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="min-h-screen bg-muted/10">
-      <main className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+    <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
+      <div className="flex-1 bg-[#f6f6f9] text-foreground flex w-full min-h-0 flex-col">
+        <div className="flex flex-col overflow-auto flex-1 min-h-0 w-full">
+          {/* Sticky Header */}
+          <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
+            <div className="w-full">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 max-w-7xl mx-auto w-full">
           <div className="flex items-center gap-4">
             <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted"><ArrowLeft className="h-5 w-5" /></Button>
             <div>
@@ -353,9 +357,13 @@ export default function CMSCreateEntryPage() {
               Create & Publish
             </Button>
           </div>
-        </div>
+          </div>
+            </div>
+          </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          {/* Main Content */}
+          <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto">
           <div className="lg:col-span-2 space-y-6">
             <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
               <CardHeader className="border-b border-border bg-muted/30 p-6">
@@ -452,7 +460,9 @@ export default function CMSCreateEntryPage() {
             </div>
           </div>
         </div>
-      </main>
+          </div>
+        </div>
+      </div>
     </div>
   )
 }

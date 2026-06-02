@@ -11,8 +11,9 @@ export const metadata = {
 }
 
 async function fetchGlobalWorkspacePlans() {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
   try {
-    const res = await fetch("http://localhost:3001/api/tenant/sacms-global/subscriptions/plans", { cache: "no-store" })
+    const res = await fetch(`${baseUrl}/api/tenant/sacms-global/subscriptions/plans`, { cache: "no-store" })
     if (res.ok) {
       const data = await res.json()
       return (data.plans || [])
@@ -21,7 +22,7 @@ async function fetchGlobalWorkspacePlans() {
           name: p.name,
           description: `Includes ${p.maxContentTypes > 100 ? 'Unlimited' : p.maxContentTypes} schemas and ${p.maxContentEntries?.toLocaleString() || 'Basic'} entries`,
           price: p.price,
-          interval: "month",
+          interval: "tahun",
           features: p.features,
           isPopular: p.popular,
           cta: p.buttonText || "Get Started"
@@ -66,13 +67,18 @@ async function getLandingData() {
 
     const pricingWorkspaces = globalPlans || fallbackPricingWorkspaces;
 
+    const formattedAccounts = pricingAccounts.map((plan: any) => ({
+      ...plan,
+      interval: plan.interval || "tahun"
+    }));
+
     // Format pricing. If the previous ModernLanding expects one array for pricing,
     // we'll pass workspace pricing as it's the standard SaaS model,
     // or we can pass both if ModernLanding supports it (it currently expects one array `pricing`).
     return {
       hero,
       features,
-      pricingAccounts,
+      pricingAccounts: formattedAccounts,
       pricingWorkspaces,
       addons,
       workflow,

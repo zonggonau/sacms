@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
-import { GoogleGenerativeAI } from "@google/generative-ai"
-
-const apiKey = process.env.GEMINI_API_KEY || process.env.AI_API_KEY || ""
-const genAI = new GoogleGenerativeAI(apiKey)
+import { safeGenerateContent } from "@/lib/ai"
 
 export async function POST(
   request: NextRequest,
@@ -25,10 +22,6 @@ export async function POST(
     const { prompt } = await request.json()
     if (!prompt) return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
 
-    if (!apiKey) {
-      return NextResponse.json({ error: "AI service not configured" }, { status: 500 })
-    }
-
     const systemPrompt = `
       You are a SaCMS Ecosystem Architect. Your job is to take a user description and turn it into a valid JSON architecture consisting of a Single Type and any necessary reusable Components.
       
@@ -43,47 +36,27 @@ export async function POST(
         - fields: Array of field objects (name, slug, type, required)
       - fields: An array of field objects for the Single Type. 
         - IMPORTANT: To reference a nested component, use type: "component" and set options to an object like {"componentSlug": "hero-section", "repeatable": true/false}.
-        - Standard fields: name, slug, type (text, textarea, richText, number, boolean, date, media, select), required.
+        - Standard fields: name, slug, type (text, textarea, richText, integer, boolean, date, media, select), required.
 
       User Request: "${prompt}"
 
       Respond ONLY with the JSON object. No markdown, no explanation.
     `
 
-    // Try multiple models
-    const modelsToTry = ["gemini-2.0-flash", "gemini-flash-latest", "gemini-pro-latest"]
-    let lastError: any = null
-    let responseText = ""
-
-    for (const modelName of modelsToTry) {
-      try {
-        const model = genAI.getGenerativeModel({ model: modelName })
-        const result = await model.generateContent(systemPrompt)
-        responseText = result.response.text()
-        if (responseText) break
-      } catch (error: any) {
-        lastError = error
-        if (error.status === 429 || error.status === 404) continue
-        throw error
-      }
-    }
-
-    if (!responseText) {
-      const isQuota = lastError?.status === 429 || lastError?.message?.includes("429")
-      return NextResponse.json({ 
-        error: isQuota 
-          ? "AI Quota exceeded. Please wait 1 minute and try again." 
-          : `AI service error: ${lastError?.message}` 
-      }, { status: isQuota ? 429 : 500 })
-    }
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS single-type schema for: ${prompt}`)
+    
+    console.log(`[AI SingleType] Generated using model: ${aiResult.model}`)
 
     let schema
     try {
-      const cleaned = responseText.replace(/```json|```/g, "").trim()
+      const cleaned = aiResult.text.replace(/```json|```/g, "").trim()
       schema = JSON.parse(cleaned)
     } catch (e) {
+      console.error("AI returned invalid JSON:", aiResult.text)
       return NextResponse.json({ error: "AI returned invalid format." }, { status: 500 })
     }
+
+    const tenantDb = await getTenantDb(tenant)
 
     // Use a transaction to create components and the single type
     const result = await db.$transaction(async (tx) => {

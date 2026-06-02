@@ -42,6 +42,8 @@ export function LandingHeader() {
             <Link
               key={item.label}
               href={item.href}
+              target={item.href === "/docs" ? "_blank" : undefined}
+              rel={item.href === "/docs" ? "noopener noreferrer" : undefined}
               className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {item.label}
@@ -87,6 +89,8 @@ export function LandingHeader() {
                 <Link 
                   key={item.label} 
                   href={item.href} 
+                  target={item.href === "/docs" ? "_blank" : undefined}
+                  rel={item.href === "/docs" ? "noopener noreferrer" : undefined}
                   className="text-base font-medium text-foreground" 
                   onClick={() => setMobileMenuOpen(false)}
                 >

@@ -11,6 +11,8 @@ import {
 import Link from "next/link"
 import { useState } from "react"
 
+import { LogoMarquee } from "./logo-marquee"
+
 const iconMap: Record<string, any> = {
   Sparkles, Cpu, Layout, Zap, Webhook, Languages, GitBranch, Shield, Globe, Database,
   Brain, CreditCard, PenLine, FileEdit, Code2, Rocket, Bot, MessageCircle,
@@ -29,8 +31,6 @@ interface LandingData {
   testimonials: any[]
   whatsapp: any
 }
-
-
 
 function formatRupiah(price: number) {
   if (price === 0) return "Free"
@@ -86,53 +86,53 @@ export function ModernLanding({ data }: { data: LandingData }) {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4">
             <Link href={hero.cta_href || "/register"}>
               <Button size="lg" className="h-12 px-10 bg-primary hover:bg-primary/90 text-white rounded-none font-semibold">
-                {hero.cta_primary || "Get Started"}
+                {hero.cta_primary || "Mulai Gratis"}
               </Button>
             </Link>
             <Link href="/docs">
               <Button size="lg" variant="outline" className="h-12 px-10 rounded-none border-border font-semibold">
-                {hero.cta_secondary || "Documentation"}
+                {hero.cta_secondary || "Lihat Demo"}
               </Button>
             </Link>
-          </div>
-
-          {/* Stats strip */}
-          <div className="flex flex-wrap justify-center gap-8 pt-12 border-t border-border mt-12">
-            {[
-              { label: "Tenants Supported", value: "∞" },
-              { label: "API Protocols", value: "REST + GraphQL" },
-              { label: "Payment Provider", value: "Midtrans" },
-              { label: "Storage", value: "Cloudflare R2" },
-            ].map((stat) => (
-              <div key={stat.label} className="text-center">
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className="text-xs text-muted-foreground mt-1 font-medium">{stat.label}</p>
-              </div>
-            ))}
           </div>
         </div>
       </section>
 
-      {/* ── FEATURES ─────────────────────────────────────────── */}
-      <section id="features" className="py-24 bg-background border-t border-border">
+      <LogoMarquee />
+
+      {/* ── BENTO GRID FEATURES ─────────────────────────────────────────── */}
+      <section id="features" className="py-24 bg-background border-t border-border scroll-mt-24">
         <div className="container px-6 max-w-6xl mx-auto">
           <div className="text-center mb-16">
-            <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Features</p>
+            <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Keunggulan Teknologi</p>
             <h2 className="text-3xl md:text-4xl font-extrabold text-foreground">
-              Everything you need, nothing you don&apos;t
+              Fitur Enterprise untuk Skalabilitas Penuh
             </h2>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-px bg-border">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             {features.map((feature: any, i: number) => {
               const Icon = iconMap[feature.icon] || Sparkles
+              
+              // Asymmetrical Bento Layout Logic
+              let spanClass = "md:col-span-1"
+              if (i === 0) spanClass = "md:col-span-2 md:row-span-2" // Large feature
+              else if (i === 1) spanClass = "md:col-span-2"          // Top right
+              else if (i === 2) spanClass = "md:col-span-2"          // Bottom right
+              else if (i === 3) spanClass = "md:col-span-4"          // Full width banner
+              else if (i === 4) spanClass = "md:col-span-2"          // Half width
+              else if (i === 5) spanClass = "md:col-span-2"          // Half width
+              else spanClass = "md:col-span-1"                       // Fallback
+
               return (
-                <div key={i} className="p-8 bg-card hover:bg-background transition-colors">
-                  <div className="w-10 h-10 bg-primary/10 flex items-center justify-center mb-6">
-                    <Icon className="w-5 h-5 text-primary" />
+                <div key={i} className={`p-8 min-h-[250px] bg-card border border-border flex flex-col justify-between hover:bg-muted/10 transition-colors ${spanClass}`}>
+                  <div>
+                    <div className="w-12 h-12 bg-primary/10 flex items-center justify-center mb-6">
+                      <Icon className="w-6 h-6 text-primary" />
+                    </div>
+                    <h3 className="text-xl font-black tracking-tight text-foreground mb-3">{feature.title}</h3>
+                    <p className="text-sm text-muted-foreground leading-relaxed max-w-lg">{feature.description}</p>
                   </div>
-                  <h3 className="text-base font-bold text-foreground mb-2">{feature.title}</h3>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
                 </div>
               )
             })}
@@ -142,7 +142,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
 
       {/* ── PRICING WORKSPACES ────────────────────────────────────────────── */}
       {pricingWorkspaces.length > 0 && (
-        <section id="pricing-workspaces" className="py-24 bg-background border-t border-border">
+        <section id="pricing" className="py-24 bg-background border-t border-border scroll-mt-24">
           <div className="container px-6 max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Workspace Plans</p>
@@ -151,15 +151,15 @@ export function ModernLanding({ data }: { data: LandingData }) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {pricingWorkspaces.map((plan: any, i: number) => (
                 <div
                   key={i}
-                  className={`relative flex flex-col p-8 ${plan.isPopular ? "bg-card shadow-lg md:-my-4 border-y-4 border-y-primary z-10" : "bg-muted/10 border-x border-border"
+                  className={`relative flex flex-col p-8 rounded-xl border ${plan.isPopular ? "bg-card shadow-lg border-orange-500 border-2 z-10" : "bg-muted/10 border-border hover:border-orange-500/50 transition-colors"
                     }`}
                 >
                   {plan.isPopular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
                       Most Popular
                     </div>
                   )}
@@ -196,7 +196,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
 
       {/* ── PRICING ACCOUNTS ────────────────────────────────────────────── */}
       {pricingAccounts.length > 0 && (
-        <section id="pricing-accounts" className="py-24 bg-card border-t border-border">
+        <section id="pricing-accounts" className="py-24 bg-card border-t border-border scroll-mt-24">
           <div className="container px-6 max-w-6xl mx-auto">
             <div className="text-center mb-16">
               <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Account Plans</p>
@@ -205,15 +205,15 @@ export function ModernLanding({ data }: { data: LandingData }) {
               </h2>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-0 border border-border">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
               {pricingAccounts.map((plan: any, i: number) => (
                 <div
                   key={i}
-                  className={`relative flex flex-col p-8 ${plan.isPopular ? "bg-background shadow-lg md:-my-4 border-y-4 border-y-primary z-10" : "bg-muted/10 border-x border-border"
+                  className={`relative flex flex-col p-8 rounded-xl border ${plan.isPopular ? "bg-background shadow-lg border-orange-500 border-2 z-10" : "bg-muted/10 border-border hover:border-orange-500/50 transition-colors"
                     }`}
                 >
                   {plan.isPopular && (
-                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-primary text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
+                    <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white text-xs font-bold px-3 py-1 rounded-full uppercase tracking-widest">
                       Most Popular
                     </div>
                   )}
@@ -250,7 +250,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
 
       {/* ── WORKFLOW ─────────────────────────────────────────── */}
       {workflow.length > 0 && (
-        <section id="workflow" className="py-24 bg-card border-t border-border">
+        <section id="workflow" className="py-24 bg-card border-t border-border scroll-mt-24">
           <div className="container px-6 max-w-5xl mx-auto">
             <div className="text-center mb-16">
               <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">How It Works</p>
@@ -285,7 +285,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
 
       {/* ── ADD-ONS ──────────────────────────────────────────── */}
       {addons.length > 0 && (
-        <section id="addons" className="py-24 bg-card border-t border-border">
+        <section id="addons" className="py-24 bg-card border-t border-border scroll-mt-24">
           <div className="container px-6 max-w-5xl mx-auto">
             <div className="text-center mb-16">
               <p className="text-xs font-bold text-primary uppercase tracking-widest mb-3">Add-ons</p>
@@ -457,6 +457,20 @@ export function ModernLanding({ data }: { data: LandingData }) {
           </div>
         </section>
       )}
+
+      {/* ── LOCAL PRIDE ────────────────────────────────────── */}
+      <section className="py-24 bg-card border-t border-border overflow-hidden relative">
+        <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/10 via-transparent to-indigo-500/5 pointer-events-none" />
+        <div className="container px-6 max-w-5xl mx-auto text-center relative z-10">
+          <p className="text-xs font-bold text-primary uppercase tracking-widest mb-4">Local Pride</p>
+          <h2 className="text-4xl md:text-5xl font-black text-foreground mb-6">
+            Made in Papua.<br/>Engineered for the World.
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-8">
+            SaCMS lahir dari sebuah visi bahwa inovasi teknologi tingkat tinggi (Enterprise-Grade) bisa dirakit dan dikembangkan dari Timur Indonesia. Kami membangun infrastruktur digital kelas dunia untuk mendukung percepatan teknologi lokal hingga global.
+          </p>
+        </div>
+      </section>
 
       {/* ── CTA BANNER ───────────────────────────────────────── */}
       <section className="py-20 bg-primary border-t border-primary/90">

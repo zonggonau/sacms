@@ -39,7 +39,7 @@ interface RelationSelectFieldProps {
   onChange: (value: string | string[]) => void
   tenantSlug: string
   targetSlug: string
-  label: string
+  label?: string
   required?: boolean
   multiple?: boolean
   placeholder?: string
@@ -133,12 +133,16 @@ export function RelationSelectField({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        <Label className="text-xs font-bold text-slate-700">
-          {label} {required && <span className="text-destructive">*</span>}
-        </Label>
-        {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
-      </div>
+      {(label || loading) && (
+        <div className={cn("flex items-center", label ? "justify-between" : "justify-end")}>
+          {label && (
+            <Label className="text-xs font-bold text-slate-700">
+              {label} {required && <span className="text-destructive">*</span>}
+            </Label>
+          )}
+          {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
+        </div>
+      )}
 
       <div className="space-y-2">
         {/* Selected Items Tags */}
@@ -183,7 +187,7 @@ export function RelationSelectField({
                 ) : (
                   <span className="flex items-center gap-2">
                     <Search className="h-4 w-4 opacity-50" />
-                    {placeholder || `Search ${label}...`}
+                    {placeholder || `Search ${label || targetSlug}...`}
                   </span>
                 )}
               </div>

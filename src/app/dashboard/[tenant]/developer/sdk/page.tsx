@@ -20,7 +20,14 @@ export default function SdkDocsPage() {
   const tenantSlug = params?.tenant as string
 
   const [copiedBlock, setCopiedBlock] = useState<string | null>(null)
+  const [origin, setOrigin] = useState("https://your-domain.com")
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setOrigin(window.location.origin)
+    }
+  }, [])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -107,7 +114,7 @@ export default function SdkDocsPage() {
                   <CodeBlock id="init" code={`import { SaCMS } from '@sacms/sdk'
 
 const cf = new SaCMS({
-  baseUrl: '${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}',
+  baseUrl: '${origin}',
   tenant: '${tenantSlug}',
   token: 'cf_xxxxx',  // Your API token
   locale: 'en',       // Default locale
@@ -165,7 +172,7 @@ const articles = await cf.collection('articles')
                   <CardTitle className="text-sm">Base URL</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CodeBlock id="base" lang="bash" code={`${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/public/${tenantSlug}`} />
+                  <CodeBlock id="base" lang="bash" code={`${origin}/api/v1/${tenantSlug}`} />
                 </CardContent>
               </Card>
 
@@ -176,26 +183,26 @@ const articles = await cf.collection('articles')
                 </CardHeader>
                 <CardContent>
                   <CodeBlock id="auth" lang="bash" code={`curl -H "Authorization: Bearer cf_xxxxx" \\
-  ${typeof window !== "undefined" ? window.location.origin : "https://your-domain.com"}/api/public/${tenantSlug}/content/articles`} />
+  ${origin}/api/v1/${tenantSlug}/content/articles`} />
                 </CardContent>
               </Card>
 
               {[
                 {
                   title: "List Entries", desc: "GET collection entries with filtering",
-                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?filters[category][$eq]=tutorial\n  &fields=title,slug,price\n  &populate=author,tags\n  &sort=createdAt:desc\n  &pagination[page]=1&pagination[pageSize]=25`,
+                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?filters[category][$eq]=tutorial\n  &fields=title,slug,price\n  &populate=author,tags\n  &sort=createdAt:desc\n  &pagination[page]=1&pagination[pageSize]=25`,
                 },
                 {
                   title: "Get Single Entry", desc: "GET a specific entry by ID",
-                  code: `GET /api/public/${tenantSlug}/content/articles/{id}\n  ?populate=author`,
+                  code: `GET /api/v1/${tenantSlug}/content/articles/{id}\n  ?populate=author`,
                 },
                 {
                   title: "Search", desc: "Full-text search across all text fields",
-                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?search=next.js+tutorial`,
+                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?search=next.js+tutorial`,
                 },
                 {
                   title: "Localization", desc: "Fetch content in a specific locale",
-                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?locale=id`,
+                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?locale=id`,
                 },
               ].map((example) => (
                 <Card key={example.title}>

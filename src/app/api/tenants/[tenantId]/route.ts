@@ -37,6 +37,21 @@ export async function DELETE(
     const tenantSlug = tenant.slug
     const databaseUrl = tenant.databaseUrl
 
+    // Check if tenant has an active paid subscription
+    const activeSub = await db.subscription.findFirst({
+      where: {
+        tenantId,
+        status: { in: ["active", "trialing"] },
+        plan: { not: "free" }
+      }
+    })
+
+    if (activeSub) {
+      return NextResponse.json({ 
+        error: "Cannot delete an active paid workspace. Please cancel your subscription or contact support first." 
+      }, { status: 403 })
+    }
+
     // 1. Delete physical assets from storage (R2 or Local)
     if (tenantSlug) {
       await deleteTenantStorage(tenantSlug)

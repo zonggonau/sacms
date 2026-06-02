@@ -19,7 +19,8 @@ import {
   ChevronRight,
   PenTool,
   FileText,
-  Clock
+  Clock,
+  Code2
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -146,19 +147,22 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
               </div>
             </Link>
           </div>
+
         </div>
       </ScrollArea>
 
       {/* Footer User Info */}
       <div className="border-t border-border p-4 space-y-2 bg-card">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
-            {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-foreground truncate leading-none mb-1">{session?.user?.name}</p>
-            <Badge variant="outline" className="text-[9px] h-4 px-1.5 rounded-none font-bold bg-muted/30 border-border text-muted-foreground">EDITOR</Badge>
-          </div>
+          <Link href={`/cms/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
+              {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-foreground truncate leading-none mb-1">{session?.user?.name}</p>
+              <Badge variant="outline" className="text-[9px] h-4 px-1.5 rounded-none font-bold bg-muted/30 border-border text-muted-foreground">EDITOR</Badge>
+            </div>
+          </Link>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />

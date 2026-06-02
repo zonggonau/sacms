@@ -24,6 +24,13 @@ export async function GET(
       where: {
         OR: [{ slug: tenantSlug }, { id: tenantSlug }],
       },
+      include: {
+        subscriptions: {
+          where: { status: { in: ["active", "trialing"] } },
+          orderBy: { currentPeriodEnd: "desc" },
+          take: 1
+        }
+      }
     })
 
     if (!tenant) {
@@ -59,12 +66,22 @@ export async function GET(
       settingsMap[s.key] = s.value
     })
 
+    const sub = tenant.subscriptions[0]
+    let daysRemaining = null
+    
+    if (sub?.currentPeriodEnd) {
+      const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()
+      daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+    }
+
     return NextResponse.json({
       settings: {
         name: tenant.name,
         description: tenant.description,
         plan: tenant.plan,
         status: tenant.status,
+        subscriptionStatus: sub?.status || null,
+        daysRemaining,
         // API settings with defaults
         apiVersion: settingsMap.apiVersion || "v1",
         rateLimiting: settingsMap.rateLimiting !== "false",

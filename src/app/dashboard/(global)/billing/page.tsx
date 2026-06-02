@@ -19,6 +19,7 @@ export default function BillingPage() {
   const [accountPlans, setAccountPlans] = useState<any[]>([])
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
   const [activeWorkspacesCount, setActiveWorkspacesCount] = useState(0)
+  const [usage, setUsage] = useState<{current: number, max: number | null, allowed: boolean, plan: string} | null>(null)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -68,6 +69,9 @@ export default function BillingPage() {
         .then(data => {
            if (data.tenants) {
              setActiveWorkspacesCount(data.tenants.length)
+           }
+           if (data.usage) {
+             setUsage(data.usage)
            }
         })
         .catch(err => console.error(err))
@@ -138,25 +142,27 @@ export default function BillingPage() {
               <div>
                 <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workspace Usage Limit</span>
                 <div className="flex items-end gap-2 mt-2">
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">{activeWorkspacesCount}</h3>
-                  <span className="text-sm text-muted-foreground font-semibold mb-1 uppercase tracking-wider">/ {session?.user?.plan === 'free' ? '3' : 'UNLIMITED'}</span>
+                  <h3 className="text-3xl font-bold tracking-tight text-foreground">{usage ? usage.current : activeWorkspacesCount}</h3>
+                  <span className="text-sm text-muted-foreground font-semibold mb-1 uppercase tracking-wider">
+                    / {usage ? (usage.max === null ? 'UNLIMITED' : usage.max) : (session?.user?.plan === 'free' ? '1' : 'UNLIMITED')}
+                  </span>
                 </div>
               </div>
               
               <div className="space-y-3 pt-2">
                 <div className="w-full flex gap-1 h-3 rounded-full overflow-hidden bg-muted">
-                  {session?.user?.plan === 'free' ? (
+                  {(!usage && session?.user?.plan === 'free') || (usage && usage.max !== null) ? (
                      <div 
-                       className={cn("h-full transition-all duration-500", activeWorkspacesCount >= 3 ? "bg-destructive" : "bg-primary")} 
-                       style={{ width: `${Math.min((activeWorkspacesCount / 3) * 100, 100)}%` }} 
+                       className={cn("h-full transition-all duration-500", (usage && !usage.allowed) ? "bg-destructive" : "bg-primary")} 
+                       style={{ width: `${Math.min(((usage?.current || activeWorkspacesCount) / (usage?.max || 1)) * 100, 100)}%` }} 
                      />
                   ) : (
                      <div className="h-full w-full bg-emerald-500" />
                   )}
                 </div>
                 <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
-                  {session?.user?.plan === 'free' 
-                    ? `${Math.max(3 - activeWorkspacesCount, 0)} slots remaining` 
+                  {(!usage && session?.user?.plan === 'free') || (usage && usage.max !== null)
+                    ? `${Math.max((usage?.max || 1) - (usage?.current || activeWorkspacesCount), 0)} slots remaining` 
                     : "Unlimited capacity"}
                 </p>
               </div>

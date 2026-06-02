@@ -36,9 +36,7 @@ export async function POST(
     const userPrompt = `Input text to analyze:
     "${prompt}"`
 
-    const result = await safeGenerateContent(systemPrompt, userPrompt, {
-      responseMimeType: "application/json"
-    })
+    const result = await safeGenerateContent(systemPrompt, userPrompt)
 
     try {
       // Clean result.text if it contains markdown code blocks

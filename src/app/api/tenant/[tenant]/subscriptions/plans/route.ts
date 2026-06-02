@@ -125,22 +125,15 @@ export async function GET(
       const addonPlans = addonEntries.map(entry => {
         const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
         
-        let numericPrice = 0
-        if (d.price_label) {
-          const match = d.price_label.match(/(\d+)/)
-          if (match) {
-            numericPrice = parseInt(match[0], 10) * 1000
-          }
-        }
-
         return {
-          id: d.addon_slug || entry.id,
-          name: d.title || "Unnamed Addon",
+          id: entry.id,
+          name: d.name || "Unnamed Addon",
           type: "addons",
-          price: numericPrice,
+          price: Number(d.price) || 0,
           features: [d.description || "Feature upgrade"],
           popular: false,
-          buttonText: "Activate"
+          buttonText: "Activate",
+          icon: d.icon || "Package"
         }
       })
       const newAddonIds = new Set(addonPlans.map(p => p.id))

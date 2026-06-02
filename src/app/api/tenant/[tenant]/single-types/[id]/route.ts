@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { updateSingleTypeSchema } from "@/lib/validations"
@@ -33,13 +33,15 @@ export async function PATCH(
       )
     }
 
+    const tenantDb = await getTenantDb(tenant)
+
     const result = await validateBody(request, updateSingleTypeSchema)
     if ("error" in result) return result.error
     const body = result.data
     const { name, slug, description, fields } = body
 
     // Check if single type exists
-    const existingSingleType = await db.singleType.findUnique({
+    const existingSingleType = await tenantDb.singleType.findUnique({
       where: { id },
     })
 
@@ -49,7 +51,7 @@ export async function PATCH(
 
     // Check if new slug is already taken by another single type
     if (slug && slug !== existingSingleType.slug) {
-      const slugConflict = await db.singleType.findUnique({
+      const slugConflict = await tenantDb.singleType.findUnique({
         where: { slug },
       })
 
@@ -62,12 +64,12 @@ export async function PATCH(
     }
 
     // Delete existing fields
-    await db.singleTypeField.deleteMany({
+    await tenantDb.singleTypeField.deleteMany({
       where: { singleTypeId: id },
     })
 
     // Update single type and create new fields
-    const updatedSingleType = await db.singleType.update({
+    const updatedSingleType = await tenantDb.singleType.update({
       where: { id },
       data: {
         name,
@@ -144,8 +146,10 @@ export async function DELETE(
       )
     }
 
+    const tenantDb = await getTenantDb(tenant)
+
     // Check if single type exists and its tenant assignments
-    const existingSingleType = await db.singleType.findUnique({
+    const existingSingleType = await tenantDb.singleType.findUnique({
       where: { id },
       include: {
         tenants: true,
@@ -168,7 +172,7 @@ export async function DELETE(
     }
 
     // Delete single type (cascade delete will handle fields and tenant assignments)
-    await db.singleType.delete({
+    await tenantDb.singleType.delete({
       where: { id },
     })
 

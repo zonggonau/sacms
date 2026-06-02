@@ -45,9 +45,7 @@ export async function POST(
     `
 
     // Use robust model rotation and error handling
-    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS component for: ${prompt}`, {
-      responseMimeType: "application/json"
-    })
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS component for: ${prompt}`)
 
     console.log(`[AI Component] Generated using model: ${aiResult.model}`)
 

@@ -14,6 +14,7 @@ import {
   X,
   Moon,
   Sun,
+  Shield,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -41,6 +42,14 @@ export function GlobalSidebar() {
     { title: "Templates", href: "/dashboard/templates", icon: Layers },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
   ]
+
+  if (session?.user?.role === "super_admin") {
+    navItems.push({
+      title: "Global Admin",
+      href: "/admin",
+      icon: Shield,
+    })
+  }
 
   const isActive = (item: NavItem) => {
     if (item.href === "/dashboard") {
@@ -90,13 +99,15 @@ export function GlobalSidebar() {
 
       <div className="border-t p-3 space-y-2">
         <div className="flex items-center gap-3 px-3 py-2 rounded-none bg-muted/30">
-          <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none">
-            {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate leading-none mb-1">{session?.user?.name}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
-          </div>
+          <Link href="/dashboard/profile" className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none shrink-0">
+              {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold truncate leading-none mb-1">{session?.user?.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
+            </div>
+          </Link>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-500" />

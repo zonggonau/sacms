@@ -41,38 +41,6 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ==================== CUSTOM DOMAIN ROUTING ====================
-  // If the incoming host is not our main app host, treat it as a white-label
-  // custom domain. Rewrite all requests to /api/domain/[...path] which will
-  // resolve the tenant slug from the database and serve the public API.
-  const isCustomDomain =
-    host !== APP_HOST &&
-    host !== "localhost" &&
-    !host.endsWith(".localhost") &&
-    !host.startsWith("127.") &&
-    !host.startsWith("192.168.") &&
-    !host.endsWith(".trycloudflare.com") &&
-    !host.endsWith(".ngrok-free.app") &&
-    !host.endsWith(".ngrok.io") &&
-    !host.endsWith(".localtunnel.me")
-
-  if (isCustomDomain) {
-    const rewriteUrl = request.nextUrl.clone()
-    // Strip leading /api/ prefix if present (normalise paths)
-    const cleanPath = pathname.replace(/^\/api\//, "/")
-    rewriteUrl.pathname = `/api/domain${cleanPath}`
-
-    const response = NextResponse.rewrite(rewriteUrl)
-    applySecurityHeaders(response)
-    applyCorsHeaders(response)
-    // Pass the original custom domain to the route handler
-    response.headers.set("X-Custom-Domain", host)
-
-    if (request.method === "OPTIONS") {
-      return new NextResponse(null, { status: 204, headers: response.headers })
-    }
-    return response
-  }
 
   // ==================== API VERSIONING ====================
   // Rewrite /api/v1/<tenant>/... → /api/public/<tenant>/...
@@ -126,13 +94,13 @@ function applySecurityHeaders(response: NextResponse) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' https:",
       "connect-src 'self' https:",
-      "frame-src 'self' https://app.midtrans.com https://app.sandbox.midtrans.com",
+      "frame-src 'self' data: blob: https://app.midtrans.com https://app.sandbox.midtrans.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",

@@ -233,12 +233,13 @@ export default function CMSSingleTypeDetailPage() {
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <div className="space-y-2">
+            <LabelWithAI />
             <RelationSelectField 
               value={value as any} 
               onChange={v => handleFieldChange(field.slug, v)} 
               tenantSlug={tenantSlug}
               targetSlug={field.relationSlug || ""}
-              label={field.name}
+              
               required={field.required}
               multiple={isMultiple}
             />
@@ -248,12 +249,12 @@ export default function CMSSingleTypeDetailPage() {
       case "json":
       case "color":
       case "location":
-        return <div className="space-y-2"><AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} /></div>
+        return <div className="space-y-2"><LabelWithAI /><AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
 
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={compOpts?.repeatable} />
+        return <div className="space-y-2"><LabelWithAI /><ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold text-slate-700">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>

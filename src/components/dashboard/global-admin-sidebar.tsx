@@ -153,13 +153,15 @@ export function GlobalAdminSidebar() {
       {/* Footer */}
       <div className="border-t border-border p-4 space-y-2">
         <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none">
-            {session?.user?.name?.[0]?.toUpperCase() ?? "A"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium text-foreground truncate">{session?.user?.name}</p>
-            <p className="text-xs text-muted-foreground truncate">Super Admin</p>
-          </div>
+          <Link href="/dashboard/profile" className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none">
+              {session?.user?.name?.[0]?.toUpperCase() ?? "A"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-foreground truncate">{session?.user?.name}</p>
+              <p className="text-xs text-muted-foreground truncate">Super Admin</p>
+            </div>
+          </Link>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />

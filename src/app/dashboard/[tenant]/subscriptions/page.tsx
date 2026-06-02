@@ -11,7 +11,7 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package
+  HardDrive, Users, Database, Package, Shield, Bot
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -406,7 +406,13 @@ export default function TenantSubscriptionsPage() {
                         <div className="space-y-4 flex-1">
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 rounded-none border border-border bg-orange-500/10 flex items-center justify-center text-orange-500">
-                              {addon.name.toLowerCase().includes('backup') ? <History className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
+                              {addon.icon === 'Shield' && <Shield className="h-5 w-5" />}
+                              {addon.icon === 'Zap' && <Zap className="h-5 w-5" />}
+                              {addon.icon === 'Database' && <Database className="h-5 w-5" />}
+                              {addon.icon === 'Bot' && <Bot className="h-5 w-5" />}
+                              {!['Shield', 'Zap', 'Database', 'Bot'].includes(addon.icon) && (
+                                addon.name.toLowerCase().includes('backup') ? <History className="h-5 w-5" /> : <Package className="h-5 w-5" />
+                              )}
                             </div>
                             <div>
                               <p className="text-lg font-black uppercase tracking-tight">{addon.name}</p>

@@ -27,8 +27,8 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
 
 interface ApiKey { id: string; name: string; token: string }
-interface ContentType { id: string; name: string; slug: string }
-interface SingleType { id: string; name: string; slug: string }
+interface ContentType { id: string; name: string; slug: string; fields?: any[] }
+interface SingleType { id: string; name: string; slug: string; fields?: any[] }
 
 export default function ApiExplorerPage() {
   const { data: session, status } = useSession()
@@ -42,7 +42,7 @@ export default function ApiExplorerPage() {
   const [requestBody, setRequestBody] = useState('{\n  "data": {}\n}')
 
   useEffect(() => {
-    if (tenantSlug) setEndpoint(`/api/public/${tenantSlug}/content`)
+    if (tenantSlug) setEndpoint(`/api/v1/${tenantSlug}/content`)
   }, [tenantSlug])
   
   const [response, setResponse] = useState<any>(null)
@@ -54,39 +54,7 @@ export default function ApiExplorerPage() {
   const [exporting, setExporting] = useState(false)
   const [exportingPrompt, setExportingPrompt] = useState(false)
   const [copied, setCopied] = useState(false)
-  const [liveTenants, setLiveTenants] = useState<any[]>([])
-  const [loadingTenants, setLoadingTenants] = useState(true)
 
-  useEffect(() => {
-    async function fetchLiveTenants() {
-      try {
-        setLoadingTenants(true)
-        const res = await fetch("/api/tenants")
-        if (res.ok) {
-          const data = await res.json()
-          setLiveTenants(data.tenants || [])
-        }
-      } catch (error) {
-        console.error("Failed to fetch live tenants:", error)
-      } finally {
-        setLoadingTenants(false)
-      }
-    }
-    if (status === "authenticated" && session?.user) {
-      fetchLiveTenants()
-    } else if (status === "unauthenticated") {
-      setLoadingTenants(false)
-    }
-  }, [session, status])
-
-  const combinedTenants = useMemo(() => {
-    const staticTenants = (session?.user as any)?.tenants || []
-    const combined = [...staticTenants]
-    for (const t of liveTenants) {
-      if (!combined.some(x => x.id === t.id)) combined.push(t)
-    }
-    return combined
-  }, [session, liveTenants])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
@@ -149,11 +117,75 @@ export default function ApiExplorerPage() {
     } finally { setExportingPrompt(false) }
   }
 
+  const generateDummyDataForSlug = (cleanSlug: string, type: string) => {
+    let dummyData: Record<string, any> = {}
+    const targetFields = type === 'content' 
+      ? contentTypes.find((c: any) => c.slug === cleanSlug)?.fields 
+      : singleTypes.find((s: any) => s.slug === cleanSlug)?.fields
+      
+    if (targetFields) {
+      targetFields.forEach((f: any) => {
+        if (f.type === 'string' || f.type === 'text' || f.type === 'richtext') dummyData[f.slug] = "string value"
+        else if (f.type === 'number') dummyData[f.slug] = 123
+        else if (f.type === 'boolean') dummyData[f.slug] = true
+        else if (f.type === 'date') dummyData[f.slug] = new Date().toISOString()
+        else if (f.type === 'relation') dummyData[f.slug] = "relation_id"
+        else if (f.type === 'media') dummyData[f.slug] = "media_id"
+        else if (f.type === 'json') dummyData[f.slug] = {}
+        else dummyData[f.slug] = null
+      })
+      return dummyData
+    }
+    return null
+  }
+
   const handleQuickSelect = (value: string) => {
-    const [m, type, slug] = value.split('|')
+    const [m, type, slugPath] = value.split('|')
     setMethod(m)
-    if (type === 'content') setEndpoint(`/api/public/${tenantSlug}/content/${slug}`)
-    else if (type === 'single') setEndpoint(`/api/public/${tenantSlug}/single/${slug}`)
+    
+    if (type === 'content') setEndpoint(`/api/v1/${tenantSlug}/content/${slugPath}`)
+    else if (type === 'single') setEndpoint(`/api/v1/${tenantSlug}/single/${slugPath}`)
+
+    if (m === 'POST' || m === 'PATCH') {
+      const cleanSlug = slugPath.split('/')[0]
+      const dummyData = generateDummyDataForSlug(cleanSlug, type)
+      if (dummyData) {
+        setRequestBody(JSON.stringify({ data: dummyData }, null, 2))
+      } else {
+        setRequestBody('{\n  "data": {}\n}')
+      }
+    } else {
+      setRequestBody('{\n  "data": {}\n}')
+    }
+  }
+
+  const handleMethodChange = (m: string) => {
+    setMethod(m)
+    if (m === 'POST' || m === 'PATCH') {
+      const parts = endpoint.split('/')
+      const contentIndex = parts.indexOf('content')
+      const singleIndex = parts.indexOf('single')
+      
+      let cleanSlug = ''
+      let type = ''
+      
+      if (contentIndex !== -1 && parts.length > contentIndex + 1) {
+        cleanSlug = parts[contentIndex + 1].split('/')[0]
+        type = 'content'
+      } else if (singleIndex !== -1 && parts.length > singleIndex + 1) {
+        cleanSlug = parts[singleIndex + 1].split('/')[0]
+        type = 'single'
+      }
+      
+      if (cleanSlug) {
+        const dummyData = generateDummyDataForSlug(cleanSlug, type)
+        if (dummyData) {
+          setRequestBody(JSON.stringify({ data: dummyData }, null, 2))
+        }
+      }
+    } else {
+      setRequestBody('{\n  "data": {}\n}')
+    }
   }
 
   const handleSendRequest = async () => {
@@ -187,7 +219,7 @@ export default function ApiExplorerPage() {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  if (status === "loading" || loadingTenants) {
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
@@ -336,7 +368,7 @@ export default function ApiExplorerPage() {
                   <div className="space-y-2">
                     <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">Request URL</Label>
                     <div className="flex shadow-sm">
-                      <Select value={method} onValueChange={setMethod}>
+                      <Select value={method} onValueChange={handleMethodChange}>
                         <SelectTrigger className="w-[120px] h-12 bg-muted/30 border border-r-0 border-border/50 rounded-none text-sm font-semibold focus:ring-0 focus:border-border">
                           <SelectValue />
                         </SelectTrigger>
@@ -351,7 +383,7 @@ export default function ApiExplorerPage() {
                         value={endpoint} 
                         onChange={e => setEndpoint(e.target.value)}
                         className="flex-1 h-12 bg-background/50 border border-border/50 rounded-none font-mono text-sm focus-visible:ring-1 focus-visible:ring-orange-500/50 transition-all"
-                        placeholder="/api/public/..."
+                        placeholder="/api/v1/..."
                       />
                     </div>
                   </div>

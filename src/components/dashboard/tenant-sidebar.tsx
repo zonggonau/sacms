@@ -155,7 +155,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
       items: [
         { title: "API Tokens", href: "/api-keys", icon: Key },
         { title: "Webhooks", href: "/webhooks", icon: Webhook },
-        { title: "API Explorer", href: "/developer/api", icon: Play },
+        { title: "GraphQL Explorer", href: "/developer/graphql", icon: Play },
+        { title: "REST API", href: "/developer/api", icon: Play },
         { title: "SDK & Docs", href: "/developer/sdk", icon: BookOpen },
       ],
     },
@@ -276,13 +277,15 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
       {/* Footer */}
       <div className="border-t p-3 space-y-2">
         <div className="flex items-center gap-3 px-3 py-2 rounded-none bg-muted/30">
-          <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none">
-            {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-xs font-bold truncate leading-none mb-1">{session?.user?.name}</p>
-            <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
-          </div>
+          <Link href={`/dashboard/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+            <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none shrink-0">
+              {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-bold truncate leading-none mb-1">{session?.user?.name}</p>
+              <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
+            </div>
+          </Link>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-500" />

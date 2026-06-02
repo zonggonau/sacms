@@ -47,6 +47,8 @@ import { RichTextField } from "@/components/content/field-renderers/rich-text-fi
 import { RelationSelectField } from "@/components/content/field-renderers/relation-select-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { SlugField } from "@/components/content/field-renderers/slug-field"
+import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 
 interface Field {
@@ -199,6 +201,13 @@ export default function EditEntryPage() {
     }
   }
 
+  const handleAISmartFill = (data: Record<string, any>) => {
+    setFormData(prev => ({
+      ...prev,
+      ...data
+    }))
+  }
+
   const handleFieldChange = (slug: string, value: any) => {
     setFormData(prev => ({ ...prev, [slug]: value }))
   }
@@ -227,7 +236,19 @@ export default function EditEntryPage() {
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
       case "slug":
       case "uid":
-        return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} />
+        // Find source field for auto-generation (usually 'title' or 'name')
+        const sourceFieldName = (contentType?.fields.find(f => f.slug === 'title') || contentType?.fields.find(f => f.slug === 'name'))?.slug
+        const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
+        
+        return (
+          <SlugField 
+            value={value as string} 
+            onChange={v => handleFieldChange(field.slug, v)} 
+            required={field.required} 
+            placeholder={field.name}
+            sourceValue={sourceValue}
+          />
+        )
       case "email":
         return <TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder="email@example.com" type="email" />
       case "textarea":
@@ -268,22 +289,22 @@ export default function EditEntryPage() {
             onChange={v => handleFieldChange(field.slug, v)} 
             tenantSlug={tenantSlug}
             targetSlug={field.relationSlug || ""}
-            label={field.name}
+            
             required={field.required}
             multiple={isMultiple}
           />
         )
       case "button":
-        return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+        return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "component":
         const cOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={cOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={cOpts?.repeatable} />
+        return <ComponentField tenantSlug={tenantSlug} componentSlug={cOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={cOpts?.repeatable} />
       case "json":
-        return <AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+        return <AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "color":
-        return <AdvancedField type="color" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+        return <AdvancedField type="color" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "location":
-        return <AdvancedField type="location" value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
+        return <AdvancedField type="location" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       default:
         return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }
@@ -336,6 +357,12 @@ export default function EditEntryPage() {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <AISmartFill 
+                tenantSlug={tenantSlug} 
+                contentTypeName={contentType?.name || ""} 
+                schema={contentType?.fields || []}
+                onApply={handleAISmartFill}
+              />
               <Select value={entryStatus} onValueChange={setEntryStatus}>
                 <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none h-10">
                   <div className="flex items-center gap-2">
