@@ -109,6 +109,7 @@ model Tenant {
   singleTypeAssignments  TenantSingleTypeAssignment[]
   componentAssignments   TenantComponentAssignment[]
   rolePermissions        RolePermission[]
+  tenantRoles            TenantRole[]
   locales                TenantLocale[]
   contentEntries         ContentEntry[]
   contentTypes           ContentType[]
@@ -122,11 +123,12 @@ model Tenant {
 }
 
 model TenantMember {
-  id       String   @id @default(cuid())
-  tenantId String
-  userId   String
-  role     String   @default("member") // owner, admin, editor, viewer
-  joinedAt DateTime @default(now())
+  id                String   @id @default(cuid())
+  tenantId          String
+  userId            String
+  role              String   @default("member") // owner, admin, editor, viewer
+  customPermissions Json? // Array of strings e.g., ["workflow.approve", "workflow.reject"]
+  joinedAt          DateTime @default(now())
 
   tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -623,18 +625,32 @@ model Permission {
 }
 
 model RolePermission {
-  id           String   @id @default(cuid())
-  tenantId     String? // Keep for reference but logically unused now
-  roleId       String // e.g. "admin", "editor"
+  id           String  @id @default(cuid())
+  tenantId     String? // If null, it's a global role permission (admin/editor)
+  roleId       String // "admin", "editor", or a custom role slug
   permissionId String
-  granted      Boolean  @default(true)
-  createdAt    DateTime @default(now())
+  granted      Boolean @default(true)
 
   permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
   tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, roleId, permissionId])
   @@map("role_permissions")
+}
+
+model TenantRole {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@map("tenant_roles")
 }
 
 // ==================== API TOKENS (Strapi-like) ====================

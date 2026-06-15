@@ -643,7 +643,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "D:\\projek\\z.ai\\sacms\\prisma\\generated-client",
+      "value": "D:\\projek\\nextjs\\sacms\\prisma\\generated-client",
       "fromEnvVar": null
     },
     "config": {
@@ -657,12 +657,11 @@ const config = {
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "D:\\projek\\z.ai\\sacms\\prisma\\schema.prisma",
+    "sourceFilePath": "D:\\projek\\nextjs\\sacms\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {
-    "rootEnvPath": null,
-    "schemaEnvPath": "../../.env"
+    "rootEnvPath": null
   },
   "relativePath": "..",
   "clientVersion": "6.19.3",
@@ -671,6 +670,7 @@ const config = {
     "db"
   ],
   "activeProvider": "postgresql",
+  "postinstall": true,
   "inlineDatasources": {
     "db": {
       "url": {
