@@ -34,10 +34,12 @@ export async function POST(
       - fields: An array of field objects, each with:
         - name: Field display name (e.g., "Meta Description")
         - slug: Field slug (e.g., "meta_description")
-        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select"
+        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select", "component", "relation"
         - required: boolean
         - unique: boolean (usually false)
         - options: null, or a JSON string for options
+        - componentSlug: If type is "component", provide the slug of the nested component.
+        - relationSlug: If type is "relation", provide the slug of the related content type.
 
       User Request: "${prompt}"
 
@@ -45,7 +47,9 @@ export async function POST(
     `
 
     // Use robust model rotation and error handling
-    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS component for: ${prompt}`)
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS component for: ${prompt}`, {
+      responseFormat: "json_object"
+    })
 
     console.log(`[AI Component] Generated using model: ${aiResult.model}`)
 
@@ -83,14 +87,22 @@ export async function POST(
         description: schema.description,
         category: schema.category || "General",
         fields: {
-          create: schema.fields.map((f: any, index: number) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type === 'number' ? 'integer' : f.type,
-            required: !!f.required,
-            options: f.options ? (typeof f.options === 'string' ? f.options : JSON.stringify(f.options)) : null,
-            order: index,
-          }))
+          create: schema.fields.map((f: any, index: number) => {
+            const fieldOptions = f.options ? (typeof f.options === 'string' ? JSON.parse(f.options) : f.options) : {}
+            if (f.type === 'component' && f.componentSlug) {
+              fieldOptions.componentSlug = f.componentSlug
+            }
+            
+            return {
+              name: f.name,
+              slug: f.slug,
+              type: f.type === 'number' ? 'integer' : f.type,
+              required: !!f.required,
+              options: Object.keys(fieldOptions).length > 0 ? fieldOptions : null,
+              relationSlug: f.relationSlug || null,
+              order: index,
+            }
+          })
         },
         tenants: {
           create: {

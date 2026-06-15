@@ -171,6 +171,7 @@ exports.Prisma.TenantScalarFieldEnum = {
   plan: 'plan',
   status: 'status',
   databaseUrl: 'databaseUrl',
+  storageConfig: 'storageConfig',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   customDomain: 'customDomain',
@@ -216,6 +217,7 @@ exports.Prisma.ContentTypeScalarFieldEnum = {
   slug: 'slug',
   description: 'description',
   isPublished: 'isPublished',
+  docxTemplateUrl: 'docxTemplateUrl',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };

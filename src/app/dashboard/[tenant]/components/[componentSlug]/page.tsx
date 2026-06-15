@@ -35,6 +35,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog"
 import { cn } from "@/lib/utils"
+import { getComponentBySlugAction, deleteComponentAction } from "@/actions/components"
 
 interface Field {
   id: string
@@ -75,10 +76,10 @@ export default function ComponentDetailPage() {
     if (!tenantSlug || !componentSlug) return
     setLoading(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/components/slug/${componentSlug}`)
-      if (!response.ok) throw new Error("Failed to fetch component")
-      const data = await response.json()
-      setComponent(data)
+      const response = await getComponentBySlugAction(tenantSlug, componentSlug)
+      if (response.error || !response.component) throw new Error(response.error || "Failed to fetch component")
+      
+      setComponent(response.component as unknown as Component)
     } catch (error) {
       console.error(error)
       toast({ variant: "destructive", title: "Error", description: "Failed to load component" })
@@ -95,12 +96,13 @@ export default function ComponentDetailPage() {
   const handleDelete = async () => {
     if (!component) return
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/components/${component.id}`, {
-        method: "DELETE",
-      })
-      if (res.ok) {
+      const response = await deleteComponentAction(tenantSlug, component.id)
+      
+      if (!response.error) {
         toast({ title: "Deleted", description: "Component removed successfully" })
         router.push(`/dashboard/${tenantSlug}/components`)
+      } else {
+        toast({ variant: "destructive", title: "Error", description: response.error })
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error" })

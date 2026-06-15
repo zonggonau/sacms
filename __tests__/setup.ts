@@ -40,6 +40,11 @@ vi.mock("@/lib/database", () => ({
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    contentVersion: {
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      create: vi.fn(),
+    },
     tenantSingleTypeAssignment: {
       findMany: vi.fn(),
     },

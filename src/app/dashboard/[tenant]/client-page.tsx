@@ -24,6 +24,7 @@ import {
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
 import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist"
+import { getContentTypesAction } from "@/actions/content-types"
 
 interface AssignedContentType {
   id: string
@@ -126,23 +127,19 @@ export default function TenantDashboardClient({
     async function fetchData() {
       if (!tenantId || !session?.user) return
       try {
+        const ctResPromise = getContentTypesAction(tenantId)
         const [ctRes, statsRes, usageRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantId}/content-types`),
+          ctResPromise,
           fetch(`/api/tenant/${tenantId}/stats`),
           fetch(`/api/tenant/${tenantId}/billing/usage`),
         ])
         
-        // If API returns 403 or 404, then log it but don't redirect yet so we can debug
-        if (ctRes.status === 403 || ctRes.status === 404) {
-          console.error(`[Dashboard] API returned ${ctRes.status} for tenant ${tenantId}`);
-          // router.push("/dashboard")
-          // return
+        if (ctRes.error) {
+          console.error(`[Dashboard] Action returned error for tenant ${tenantId}:`, ctRes.error);
+        } else if (ctRes.contentTypes) {
+          setContentTypes(ctRes.contentTypes as any)
         }
 
-        if (ctRes.ok) {
-          const data = await ctRes.json()
-          setContentTypes(data.contentTypes || [])
-        }
         if (statsRes.ok) {
           const statsData = await statsRes.json()
           setStats({

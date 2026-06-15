@@ -67,22 +67,22 @@ async function main() {
         locale: 'en',
         enabled: true,
         data: {
-          headline: "Bangun Pengalaman Digital Tanpa Batas dari Papua.",
-          subheadline: "Headless CMS modern dengan arsitektur multi-tenant yang dirancang untuk kecepatan, keamanan, dan kemudahan skalabilitas bagi instansi dan startup.",
-          cta_primary: "Mulai Gratis",
-          cta_secondary: "Lihat Demo",
-          badge_text: "SaCMS v1.0",
+          headline: "Modernisasi Digital untuk Tanah Papua",
+          subheadline: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung percepatan transformasi digital di Tanah Papua.",
+          cta_primary: "Mulai Sekarang",
+          cta_secondary: "Pelajari Selengkapnya",
+          badge_text: "🏛️ Platform Digital Papua — Khusus Website Pemerintah",
           image_url: ""
         },
         publishedAt: new Date()
       },
       update: {
         data: {
-          headline: "Bangun Pengalaman Digital Tanpa Batas dari Papua.",
-          subheadline: "Headless CMS modern dengan arsitektur multi-tenant yang dirancang untuk kecepatan, keamanan, dan kemudahan skalabilitas bagi instansi dan startup.",
-          cta_primary: "Mulai Gratis",
-          cta_secondary: "Lihat Demo",
-          badge_text: "SaCMS v1.0",
+          headline: "Modernisasi Digital untuk Tanah Papua",
+          subheadline: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung percepatan transformasi digital di Tanah Papua.",
+          cta_primary: "Mulai Sekarang",
+          cta_secondary: "Pelajari Selengkapnya",
+          badge_text: "🏛️ Platform Digital Papua — Khusus Website Pemerintah",
           image_url: ""
         },
         publishedAt: new Date()
@@ -95,34 +95,34 @@ async function main() {
   if (featuresContentType) {
     const features = [
       {
-        title: "Multi-Tenant Native",
-        description: "Isolasi data yang aman untuk berbagai workspace (organisasi) dalam satu aplikasi tunggal. Anda dapat mengelola puluhan klien tanpa bentrok data.",
-        icon: "Database"
+        title: "Website Pemerintah",
+        description: "Template dan sistem siap pakai untuk instansi pemerintah daerah di Papua. Mendukung transparansi informasi publik, pengumuman resmi, dan layanan masyarakat secara digital.",
+        icon: "Shield"
       },
       {
-        title: "AI Content Generator",
-        description: "Diintegrasikan dengan AI (DeepSeek & OpenAI), pembuat konten dapat menulis draft, menerjemahkan bahasa, atau menghasilkan kerangka posting.",
-        icon: "Brain"
-      },
-      {
-        title: "Dynamic GraphQL & REST",
-        description: "Begitu struktur Content Type dibuat, SaCMS otomatis melahirkan endpoint REST dan skema GraphQL khusus.",
-        icon: "Webhook"
-      },
-      {
-        title: "Media Library & R2",
-        description: "Sistem penyimpanan aset yang aman. Mendukung unggahan berbagai format file yang diamankan langsung dengan Cloudflare R2.",
-        icon: "Cloud"
-      },
-      {
-        title: "Real-time Webhooks & Sync",
-        description: "Integrasi tanpa hambatan. Memicu webhooks asinkron untuk membangun ulang frontend Vercel/Netlify pengguna secara otomatis.",
+        title: "Portal Berita & Blog",
+        description: "Sistem publikasi berita dan blog profesional untuk media lokal Papua. Dilengkapi kategori, penulis, penjadwalan publikasi, dan SEO otomatis.",
         icon: "Zap"
       },
       {
-        title: "Sistem Filtering Canggih",
-        description: "Public API dilengkapi filter mirip operator basis data, memudahkan developer frontend mengambil irisan data yang akurat.",
+        title: "Katalog UMKM & Produk",
+        description: "Etalase digital untuk wirausaha dan UMKM Papua. Tampilkan produk lokal, harga, dan informasi usaha kepada pasar yang lebih luas.",
         icon: "Layout"
+      },
+      {
+        title: "Pariwisata Papua",
+        description: "Showcase destinasi wisata dan kekayaan budaya Papua — dari Raja Ampat hingga Lembah Baliem. Website wisata yang memukau untuk menarik wisatawan.",
+        icon: "Globe"
+      },
+      {
+        title: "Profil Bisnis & Cafe",
+        description: "Website profesional untuk usaha kecil dan menengah: cafe, restoran, toko, dan layanan jasa di seluruh Papua. Tampil modern dan mudah dikelola.",
+        icon: "CreditCard"
+      },
+      {
+        title: "Keamanan & Keandalan",
+        description: "Infrastruktur enterprise-grade dengan enkripsi data, kontrol akses berbasis peran (RBAC), audit log, dan backup otomatis. Aman untuk data pemerintah dan bisnis.",
+        icon: "Database"
       }
     ]
 

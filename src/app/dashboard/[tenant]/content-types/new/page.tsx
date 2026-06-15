@@ -44,6 +44,7 @@ import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
+import { createContentTypeAction } from "@/actions/content-types"
 
 export default function NewContentTypePage() {
   const { data: session, status } = useSession()
@@ -55,6 +56,7 @@ export default function NewContentTypePage() {
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
+  const [docxTemplateUrl, setDocxTemplateUrl] = useState("")
   const [fields, setFields] = useState<Field[]>([])
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
@@ -160,32 +162,28 @@ export default function NewContentTypePage() {
 
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug,
-          description,
-          fields: fields.map((f, index) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            unique: f.unique,
-            options: serializeFieldOptions(f),
-            relationSlug: f.type === "relation" ? f.targetSlug : null,
-            order: index,
-          })),
-        }),
+      const res = await createContentTypeAction(tenantSlug, {
+        name,
+        slug,
+        description,
+        docxTemplateUrl: docxTemplateUrl || null,
+        fields: fields.map((f, index) => ({
+          name: f.name,
+          slug: f.slug,
+          type: f.type,
+          required: f.required,
+          unique: f.unique,
+          options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          order: index,
+        })),
       })
 
-      if (res.ok) {
+      if (!res.error) {
         toast({ title: "Success", description: "Content type created successfully" })
         router.push(`/dashboard/${tenantSlug}/content-types`)
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Error", description: data.error || "Failed to create content type" })
+        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to create content type" })
       }
     } catch (error) {
       console.error("Failed to save:", error)

@@ -41,6 +41,7 @@ import { RichTextField } from "@/components/content/field-renderers/rich-text-fi
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { cn } from "@/lib/utils"
+import { getSingleTypeBySlugAction, saveSingleTypeDataAction } from "@/actions/single-types"
 
 interface Field {
   id: string
@@ -88,16 +89,14 @@ export default function SingleTypeDetailPage() {
     if (!tenantSlug || !singleTypeSlug) return
     setLoading(true)
     try {
-      const [stRes, locRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/locales`)
-      ])
+      const stRes = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug)
       
-      if (stRes.ok) {
-        const data = await stRes.json()
-        setSingleType(data)
-        setFormData(data.data || {})
+      if (!stRes.error && stRes.singleType) {
+        setSingleType(stRes.singleType as unknown as SingleType)
+        setFormData(stRes.singleType.data || {})
       }
+      
+      const locRes = await fetch(`/api/tenant/${tenantSlug}/locales`)
       if (locRes.ok) {
         const data = await locRes.json()
         if (data.locales?.length > 0) setAvailableLocales(data.locales)
@@ -119,18 +118,12 @@ export default function SingleTypeDetailPage() {
   }, [fetchData, status, singleTypeSlug])
 
   const handleSave = async (publishNow: boolean = false) => {
-    if (!singleTypeSlug) return
+    if (!singleTypeSlug || !singleType) return
     setSaving(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          data: formData,
-          publish: publishNow
-        }),
-      })
-      if (!response.ok) throw new Error("Save failed")
+      const response = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publishNow)
+      
+      if (response.error) throw new Error(response.error)
       
       toast({ 
         title: publishNow ? "Published Successfully!" : "Draft Saved",

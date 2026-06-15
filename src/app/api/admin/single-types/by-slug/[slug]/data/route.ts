@@ -4,9 +4,11 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { processAutoSlugs } from "@/lib/slug"
 
+import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
+
 /**
  * POST /api/admin/single-types/by-slug/[slug]/data
- * Create or update single type data for platform-level content (system tenant)
+ * Create or update single type data for platform-level content
  */
 export async function POST(
   request: NextRequest,
@@ -48,19 +50,24 @@ export async function POST(
 
     // Get or create system tenant for platform-level content
     let systemTenant = await db.tenant.findFirst({
-      where: { slug: "system" },
+      where: { slug: SYSTEM_TENANT_SLUG },
     })
 
     if (!systemTenant) {
-      systemTenant = await db.tenant.create({
-        data: {
-          name: "System",
-          slug: "system",
-          description: "Platform-level content",
-          status: "active",
-          plan: "enterprise",
-        },
-      })
+      // Fallback if sacms-global is missing, check for 'system'
+      systemTenant = await db.tenant.findFirst({ where: { slug: "system" } })
+
+      if (!systemTenant) {
+        systemTenant = await db.tenant.create({
+          data: {
+            name: "SaCMS Global",
+            slug: SYSTEM_TENANT_SLUG,
+            description: "Platform-level content",
+            status: "active",
+            plan: "enterprise",
+          },
+        })
+      }
     }
 
     // Check if assignment already exists
@@ -161,7 +168,12 @@ export async function GET(
 
     // Get system tenant
     const systemTenant = await db.tenant.findFirst({
-      where: { slug: "system" },
+      where: { 
+        OR: [
+          { slug: SYSTEM_TENANT_SLUG },
+          { slug: "system" }
+        ]
+      },
     })
 
     if (!systemTenant) {
@@ -181,7 +193,7 @@ export async function GET(
     return NextResponse.json({
       assignment,
       singleType,
-      data: assignment?.data ? JSON.parse(assignment.data) : null,
+      data: assignment?.data ? (typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data) : null,
     })
   } catch (error) {
     console.error("Error fetching single type data:", error)

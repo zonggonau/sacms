@@ -22,6 +22,11 @@ import {
 } from "@/components/ui/dialog"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { RelationFieldConfig, ComponentFieldConfig } from "@/components/content/relation-field-config"
+import { useParams } from "next/navigation"
+import { MediaField } from "@/components/content/field-renderers/media-field"
+import { toast } from "@/hooks/use-toast"
+import { Loader2, FileText, CheckCircle2, X } from "lucide-react"
+import { useState } from "react"
 
 export interface Field {
   id: string
@@ -62,6 +67,8 @@ export function FieldConfigModal({
   onSave
 }: FieldConfigModalProps) {
   
+  const [isUploading, setIsUploading] = useState(false)
+
   const generateFieldSlug = (value: string) => {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
   }
@@ -185,6 +192,94 @@ export function FieldConfigModal({
                     </Select>
                   </div>
                 )}
+              </div>
+            )}
+
+            {editingField?.type === "document_template" && (
+              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-slate-700">Template DOCX URL</Label>
+                  <div className="flex flex-col gap-3">
+                    <Input 
+                      type="file" 
+                      accept=".docx"
+                      disabled={isUploading}
+                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 h-10"
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        if (!file.name.endsWith('.docx')) {
+                          toast({ variant: 'destructive', title: 'Invalid format', description: 'Hanya file .docx yang diizinkan.' });
+                          e.target.value = '';
+                          return;
+                        }
+                        
+                        try {
+                          setIsUploading(true);
+                          const formData = new FormData();
+                          formData.append("files", file);
+                          
+                          const res = await fetch(`/api/tenant/${tenantSlug}/media`, {
+                            method: "POST",
+                            body: formData,
+                          });
+                          
+                          if (res.ok) {
+                            const data = await res.json();
+                            setEditingField(prev => {
+                              if (!prev) return null;
+                              const newOptions = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {};
+                              newOptions.templateUrl = data.media[0].url;
+                              return { ...prev, options: newOptions };
+                            });
+                            toast({ title: 'Success', description: 'Template berhasil diupload.' });
+                          } else {
+                            toast({ variant: 'destructive', title: 'Error', description: 'Gagal upload template.' });
+                          }
+                        } catch (err) {
+                          toast({ variant: 'destructive', title: 'Error', description: 'Gagal upload template.' });
+                        } finally {
+                          setIsUploading(false);
+                          e.target.value = '';
+                        }
+                      }}
+                    />
+                    
+                    {isUploading && (
+                      <div className="flex items-center gap-2 text-xs font-bold text-primary p-3 bg-primary/5">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Sedang mengupload template...
+                      </div>
+                    )}
+
+                    {typeof editingField.options === 'object' && editingField.options !== null && editingField.options.templateUrl && !isUploading && (
+                      <div className="p-3 bg-blue-50 border border-blue-100 flex justify-between items-center text-xs">
+                        <div className="flex items-center gap-2 overflow-hidden">
+                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                          <span className="text-blue-700 font-bold truncate max-w-[200px]" title={editingField.options.templateUrl}>
+                            Template aktif: {editingField.options.templateUrl.split('/').pop()}
+                          </span>
+                        </div>
+                        <Button 
+                          variant="ghost" 
+                          size="icon"
+                          className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-100 rounded-none shrink-0"
+                          title="Hapus template"
+                          onClick={() => setEditingField(prev => {
+                            if (!prev) return null;
+                            const newOptions = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {};
+                            newOptions.templateUrl = "";
+                            return { ...prev, options: newOptions };
+                          })}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                  <p className="text-[10px] uppercase font-black text-muted-foreground mt-1 tracking-wider">
+                    Upload file DOCX Anda. Hanya format .docx yang didukung.
+                  </p>
+                </div>
               </div>
             )}
 

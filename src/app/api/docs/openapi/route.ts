@@ -1,18 +1,20 @@
 import { NextResponse } from "next/server"
-import fs from "fs"
+import { promises as fs } from "fs"
 import path from "path"
 
 export async function GET() {
   try {
-    const filePath = path.join(process.cwd(), "docs/openapi.yaml")
-    const yamlContent = fs.readFileSync(filePath, "utf8")
-
-    return new Response(yamlContent, {
+    const filePath = path.join(process.cwd(), "docs", "openapi.yaml")
+    const fileContent = await fs.readFile(filePath, "utf-8")
+    
+    return new NextResponse(fileContent, {
+      status: 200,
       headers: {
-        "Content-Type": "text/yaml",
+        "Content-Type": "application/x-yaml",
       },
     })
   } catch (error) {
-    return NextResponse.json({ error: "Failed to load OpenAPI spec" }, { status: 500 })
+    console.error("Error reading openapi.yaml:", error)
+    return new NextResponse("Not Found", { status: 404 })
   }
 }

@@ -82,6 +82,9 @@ export async function GET(
         status: tenant.status,
         subscriptionStatus: sub?.status || null,
         daysRemaining,
+        // Custom Infrastructure
+        databaseUrl: tenant.databaseUrl || "",
+        storageConfig: tenant.storageConfig || null,
         // API settings with defaults
         apiVersion: settingsMap.apiVersion || "v1",
         rateLimiting: settingsMap.rateLimiting !== "false",
@@ -158,15 +161,19 @@ export async function PUT(
       ipWhitelist,
       allowedIps,
       auditLogging,
+      databaseUrl,
+      storageConfig,
     } = body
 
-    // Update tenant basic info
-    if (name || description !== undefined) {
+    // Update tenant basic info and custom infrastructure
+    if (name !== undefined || description !== undefined || databaseUrl !== undefined || storageConfig !== undefined) {
       await db.tenant.update({
         where: { id: tenant.id },
         data: {
-          name: name || tenant.name,
-          description: description !== undefined ? description : tenant.description,
+          ...(name !== undefined && { name }),
+          ...(description !== undefined && { description }),
+          ...(databaseUrl !== undefined && { databaseUrl: databaseUrl === "" ? null : databaseUrl }),
+          ...(storageConfig !== undefined && { storageConfig: storageConfig === null ? null : storageConfig }),
         },
       })
     }

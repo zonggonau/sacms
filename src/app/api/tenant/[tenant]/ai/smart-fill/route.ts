@@ -26,9 +26,17 @@ export async function POST(
       return NextResponse.json({ error: "Missing prompt or schema" }, { status: 400 })
     }
 
-    const systemPrompt = `You are an expert content creator. 
+    const systemPrompt = `You are an expert content creator for a Headless CMS. 
     Analyze the user input and fill the form fields provided in the schema.
     The content type is "${contentType}".
+    
+    ### DATA TYPE RULES:
+    - relation: Provide a URL-friendly slug or ID that represents the related item (e.g., "tech-news").
+    - component: Provide a JSON object matching the nested component's fields.
+    - media: Provide a realistic image URL (e.g., from Unsplash).
+    - richText: Provide clean HTML.
+    - date: Provide ISO 8601 string.
+
     Return ONLY a valid JSON object where keys are field slugs and values are the generated content.
     Do not include any other text or markdown formatting.
     Fields in schema: ${JSON.stringify(schema)}`
@@ -36,7 +44,9 @@ export async function POST(
     const userPrompt = `Input text to analyze:
     "${prompt}"`
 
-    const result = await safeGenerateContent(systemPrompt, userPrompt)
+    const result = await safeGenerateContent(systemPrompt, userPrompt, {
+      responseFormat: "json_object"
+    })
 
     try {
       // Clean result.text if it contains markdown code blocks

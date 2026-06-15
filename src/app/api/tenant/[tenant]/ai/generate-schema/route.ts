@@ -32,10 +32,12 @@ export async function POST(
       - fields: An array of field objects, each with:
         - name: Field display name (e.g., "Main Image")
         - slug: Field slug (e.g., "main_image")
-        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select", "uid", "relation"
+        - type: One of: "text", "textarea", "richText", "integer", "boolean", "date", "media", "select", "uid", "relation", "component"
         - required: boolean
         - unique: boolean (usually false unless it's a slug or ID)
         - options: null, or a JSON string for options
+        - relationSlug: If type is "relation", provide the slug of the related content type (e.g., "categories").
+        - componentSlug: If type is "component", provide the slug of the component to use (e.g., "seo-metadata").
 
       User Request: "${prompt}"
 
@@ -43,7 +45,9 @@ export async function POST(
     `
 
     // Use the robust AI utility with model fallback and quota handling
-    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS schema for: ${prompt}`)
+    const aiResult = await safeGenerateContent(systemPrompt, `Generate a CMS schema for: ${prompt}`, {
+      responseFormat: "json_object"
+    })
 
     console.log(`[AI Schema] Generated using model: ${aiResult.model}`)
     
@@ -81,15 +85,23 @@ export async function POST(
         description: schema.description,
         isPublished: true,
         fields: {
-          create: schema.fields.map((f: any, index: number) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type === 'number' ? 'integer' : f.type, // Map 'number' to 'integer'
-            required: !!f.required,
-            unique: !!f.unique,
-            options: f.options ? (typeof f.options === 'string' ? f.options : JSON.stringify(f.options)) : null,
-            order: index,
-          }))
+          create: schema.fields.map((f: any, index: number) => {
+            const fieldOptions = f.options ? (typeof f.options === 'string' ? JSON.parse(f.options) : f.options) : {}
+            if (f.type === 'component' && f.componentSlug) {
+              fieldOptions.componentSlug = f.componentSlug
+            }
+            
+            return {
+              name: f.name,
+              slug: f.slug,
+              type: f.type === 'number' ? 'integer' : f.type,
+              required: !!f.required,
+              unique: !!f.unique,
+              options: Object.keys(fieldOptions).length > 0 ? fieldOptions : null,
+              relationSlug: f.relationSlug || null,
+              order: index,
+            }
+          })
         },
         tenants: {
           create: {

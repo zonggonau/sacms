@@ -10,6 +10,7 @@ import { getSignedUrl } from "@aws-sdk/s3-request-presigner"
 import sharp from "sharp"
 import fs from "fs"
 import path from "path"
+import { db } from "./database"
 
 const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || ""
 const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID || ""
@@ -17,7 +18,7 @@ const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY || ""
 const R2_BUCKET = process.env.R2_BUCKET_NAME || "sacms-media"
 const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || "" // CDN URL e.g. https://media.sacms.dev
 
-const s3 = new S3Client({
+const globalS3 = new S3Client({
   region: "auto",
   endpoint: R2_ACCOUNT_ID
     ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
@@ -28,8 +29,63 @@ const s3 = new S3Client({
   },
 })
 
+export interface StorageConfig {
+  endpoint: string
+  accessKey: string
+  secretKey: string
+  bucket: string
+  publicUrl: string
+}
+
+async function getTenantStorageConfig(tenantSlug: string): Promise<StorageConfig | null> {
+  try {
+    const tenant = await db.tenant.findUnique({
+      where: { slug: tenantSlug },
+      select: { storageConfig: true }
+    })
+    if (tenant?.storageConfig) {
+      const config = tenant.storageConfig as unknown as StorageConfig
+      if (config.endpoint && config.accessKey && config.secretKey && config.bucket) {
+        return config
+      }
+    }
+  } catch (error) {
+    console.error(`Failed to fetch storage config for ${tenantSlug}`, error)
+  }
+  return null
+}
+
+async function getS3Client(tenantSlug?: string): Promise<{ s3: S3Client, bucket: string, publicUrl: string, isCustom: boolean }> {
+  if (tenantSlug) {
+    const customConfig = await getTenantStorageConfig(tenantSlug)
+    if (customConfig) {
+      const customS3 = new S3Client({
+        region: "auto",
+        endpoint: customConfig.endpoint,
+        credentials: {
+          accessKeyId: customConfig.accessKey,
+          secretAccessKey: customConfig.secretKey,
+        },
+      })
+      return { 
+        s3: customS3, 
+        bucket: customConfig.bucket, 
+        publicUrl: customConfig.publicUrl || "", 
+        isCustom: true 
+      }
+    }
+  }
+  
+  return { 
+    s3: globalS3, 
+    bucket: R2_BUCKET, 
+    publicUrl: R2_PUBLIC_URL, 
+    isCustom: false 
+  }
+}
+
 /**
- * Check if R2 is configured.
+ * Check if global R2 is configured.
  */
 export function isR2Configured(): boolean {
   return !!(R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY)
@@ -47,11 +103,22 @@ function generateStorageKey(tenantSlug: string, filename: string): string {
 }
 
 /**
+ * Extract tenant slug from storage key
+ */
+function extractTenantSlug(key: string): string | null {
+  const parts = key.split("/")
+  if (parts.length >= 2 && parts[0] === "upload") {
+    return parts[1]
+  }
+  return null
+}
+
+/**
  * Build CDN URL from storage key.
  */
-function buildUrl(key: string): string {
-  if (R2_PUBLIC_URL) return `${R2_PUBLIC_URL}/${key}`
-  if (R2_ACCOUNT_ID) return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`
+function buildUrl(key: string, publicUrl: string, isCustom: boolean): string {
+  if (publicUrl) return `${publicUrl.replace(/\/$/, '')}/${key}`
+  if (!isCustom && R2_ACCOUNT_ID) return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`
   return `/api/media/serve?key=${key}`
 }
 
@@ -73,11 +140,12 @@ export async function uploadToR2(
   filename: string,
   mimeType: string
 ): Promise<UploadResult> {
+  const { s3, bucket, publicUrl, isCustom } = await getS3Client(tenantSlug)
   const storageKey = generateStorageKey(tenantSlug, filename)
 
   await s3.send(
     new PutObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: storageKey,
       Body: buffer,
       ContentType: mimeType,
@@ -100,22 +168,22 @@ export async function uploadToR2(
       const thumbBuffer = await sharp(buffer)
         .resize(150, undefined, { withoutEnlargement: true })
         .toBuffer()
-      await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: thumbKey, Body: thumbBuffer, ContentType: mimeType }))
-      thumbnailUrl = buildUrl(thumbKey)
+      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: thumbKey, Body: thumbBuffer, ContentType: mimeType }))
+      thumbnailUrl = buildUrl(thumbKey, publicUrl, isCustom)
 
       // Medium (600px)
       const medKey = storageKey.replace(/(\.[^.]+)$/, "_medium$1")
       const medBuffer = await sharp(buffer)
         .resize(600, undefined, { withoutEnlargement: true })
         .toBuffer()
-      await s3.send(new PutObjectCommand({ Bucket: R2_BUCKET, Key: medKey, Body: medBuffer, ContentType: mimeType }))
-      mediumUrl = buildUrl(medKey)
+      await s3.send(new PutObjectCommand({ Bucket: bucket, Key: medKey, Body: medBuffer, ContentType: mimeType }))
+      mediumUrl = buildUrl(medKey, publicUrl, isCustom)
     } catch (e) {
       console.error("Thumbnail generation failed:", e)
     }
   }
 
-  return { url: buildUrl(storageKey), storageKey, thumbnailUrl, mediumUrl, width, height }
+  return { url: buildUrl(storageKey, publicUrl, isCustom), storageKey, thumbnailUrl, mediumUrl, width, height }
 }
 
 /**
@@ -157,14 +225,17 @@ export async function uploadToLocal(
  * Delete a single file from storage.
  */
 export async function deleteFromStorage(storageKey: string): Promise<void> {
-  if (isR2Configured()) {
+  const tenantSlug = extractTenantSlug(storageKey)
+  const { s3, bucket, isCustom } = await getS3Client(tenantSlug || undefined)
+
+  if (isCustom || isR2Configured()) {
     const keys = [
       storageKey,
       storageKey.replace(/(\.[^.]+)$/, "_thumb$1"),
       storageKey.replace(/(\.[^.]+)$/, "_medium$1"),
     ]
     await Promise.all(
-      keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: R2_BUCKET, Key: key })).catch(() => {}))
+      keys.map((key) => s3.send(new DeleteObjectCommand({ Bucket: bucket, Key: key })).catch(() => {}))
     )
   } else {
     try {
@@ -183,15 +254,16 @@ export async function deleteFromStorage(storageKey: string): Promise<void> {
  */
 export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
   const prefix = `upload/${tenantSlug}/`
+  const { s3, bucket, isCustom } = await getS3Client(tenantSlug)
 
-  if (isR2Configured()) {
+  if (isCustom || isR2Configured()) {
     try {
       let continuationToken: string | undefined = undefined
       let totalDeleted = 0
 
       do {
         const listCommand = new ListObjectsV2Command({
-          Bucket: R2_BUCKET,
+          Bucket: bucket,
           Prefix: prefix,
           ContinuationToken: continuationToken,
         })
@@ -199,7 +271,7 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
 
         if (list.Contents && list.Contents.length > 0) {
           const deleteCommand = new DeleteObjectsCommand({
-            Bucket: R2_BUCKET,
+            Bucket: bucket,
             Delete: {
               Objects: list.Contents.map((obj) => ({ Key: obj.Key })),
               Quiet: true,
@@ -216,7 +288,7 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
         console.log(`[Storage] Deleted ${totalDeleted} objects for tenant: ${tenantSlug}`)
       }
     } catch (e) {
-      console.error(`[Storage] R2 cleanup failed for tenant ${tenantSlug}:`, e)
+      console.error(`[Storage] R2/S3 cleanup failed for tenant ${tenantSlug}:`, e)
     }
   } else {
     try {
@@ -235,9 +307,12 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
  * Generate a presigned URL for private R2 objects.
  */
 export async function generatePresignedUrl(storageKey: string, expiresIn = 3600): Promise<string> {
-  if (isR2Configured()) {
+  const tenantSlug = extractTenantSlug(storageKey)
+  const { s3, bucket, isCustom } = await getS3Client(tenantSlug || undefined)
+  
+  if (isCustom || isR2Configured()) {
     const command = new GetObjectCommand({
-      Bucket: R2_BUCKET,
+      Bucket: bucket,
       Key: storageKey,
     })
     return getSignedUrl(s3, command, { expiresIn })

@@ -76,6 +76,14 @@ const tenantAdminNavItems = [
   { title: "Single Types", href: "/single-types", icon: FileText },
   { title: "Components", href: "/components", icon: Layers },
   { title: "Subscriptions", href: "/subscriptions", icon: CreditCard },
+  {
+    title: "Addons",
+    href: "/addons/surat",
+    icon: Layers,
+    children: [
+      { title: "Surat Plugin", href: "/addons/surat" }
+    ]
+  },
   { title: "Users", href: "/users", icon: Users },
   { title: "API Keys", href: "/api-keys", icon: Key },
   { title: "API Docs", href: "/developer/docs", icon: FileText },

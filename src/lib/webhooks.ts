@@ -105,8 +105,12 @@ async function fireWebhook(
 
     // Add custom headers if any
     if (webhook.headers) {
-      const customHeaders = JSON.parse(webhook.headers) as Record<string, string>
-      Object.assign(headers, customHeaders)
+      try {
+        const customHeaders = JSON.parse(webhook.headers) as Record<string, string>
+        Object.assign(headers, customHeaders)
+      } catch {
+        console.error(`Webhook ${webhook.id}: Failed to parse custom headers, skipping`)
+      }
     }
 
     // Add signature if secret is configured
@@ -146,7 +150,7 @@ async function fireWebhook(
       data: {
         webhookId: webhook.id,
         event: payload.event,
-        payload: JSON.stringify(payload),
+        payload: payload as any,
         response: responseBody,
         statusCode,
         success,
@@ -166,7 +170,7 @@ async function fireWebhook(
 
     // On failure, enqueue to Dead Letter Queue for retry
     if (!success) {
-      await enqueueToDeadLetter(webhook.id, payload.event, JSON.stringify(payload), errorMessage)
+      await enqueueToDeadLetter(webhook.id, payload.event, payload, errorMessage)
     }
   } catch (logError) {
     console.error("Failed to log webhook result:", logError)
@@ -257,7 +261,11 @@ export async function executeSyncHooks(
       }
 
       if (webhook.headers) {
-        Object.assign(headers, JSON.parse(webhook.headers) as Record<string, string>)
+        try {
+          Object.assign(headers, JSON.parse(webhook.headers) as Record<string, string>)
+        } catch {
+          console.error(`Sync hook ${webhook.id}: Failed to parse custom headers, skipping`)
+        }
       }
 
       const payloadString = JSON.stringify(payload)
@@ -283,7 +291,7 @@ export async function executeSyncHooks(
         data: {
           webhookId: webhook.id,
           event,
-          payload: payloadString,
+          payload: payload as any,
           response: responseBody,
           statusCode: response.status,
           success: response.ok,
@@ -337,7 +345,7 @@ export async function executeSyncHooks(
         data: {
           webhookId: webhook.id,
           event,
-          payload: JSON.stringify(payload),
+          payload: payload as any,
           success: false,
           duration,
           error: error instanceof Error ? error.message : "Unknown error",
@@ -361,7 +369,7 @@ const MAX_RETRY_ATTEMPTS = 5
 async function enqueueToDeadLetter(
   webhookId: string,
   event: string,
-  payload: string,
+  payload: WebhookPayload,
   error: string | null
 ): Promise<void> {
   try {
@@ -371,7 +379,7 @@ async function enqueueToDeadLetter(
       data: {
         webhookId,
         event,
-        payload,
+        payload: payload as any,
         lastError: error,
         attempts: 1,
         maxAttempts: MAX_RETRY_ATTEMPTS,

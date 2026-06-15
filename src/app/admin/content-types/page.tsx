@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
   Plus, MoreVertical, Edit, Trash2, Database, 
-  Search, ShieldCheck, Layers, Globe, Package,
+  Search, ShieldCheck, Layers, Globe, Package, Zap,
   ArrowRight, Loader2, Info, Copy, ExternalLink
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -55,6 +55,7 @@ export default function ContentTypesPage() {
   const router = useRouter()
   const [contentTypes, setContentTypes] = useState<ContentType[]>([])
   const [loading, setLoading] = useState(true)
+  const [seeding, setSeeding] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; contentType: ContentType | null }>({
     open: false,
@@ -71,15 +72,53 @@ export default function ContentTypesPage() {
 
   const fetchContentTypes = async () => {
     try {
+      setLoading(true)
       const res = await fetch("/api/admin/content-types")
       if (res.ok) {
         const data = await res.json()
+        console.log("[Admin CT] Fetched data:", data)
         setContentTypes(data.contentTypes || [])
+      } else {
+        const errData = await res.json().catch(() => ({}))
+        console.error("[Admin CT] Fetch failed:", res.status, errData)
+        toast({
+          variant: "destructive",
+          title: `Error ${res.status}`,
+          description: errData.error || "Failed to load content types. Are you super admin?"
+        })
       }
     } catch (error) {
-      console.error("Failed to fetch content types:", error)
+      console.error("[Admin CT] Network error:", error)
+      toast({ variant: "destructive", title: "Network Error", description: "Could not reach API." })
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleGlobalSeed = async () => {
+    if (!confirm("This will overwrite existing global platform data and re-initialize schemas. Continue?")) return
+    
+    setSeeding(true)
+    try {
+      const res = await fetch("/api/admin/global/seed", { method: "POST" })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({ 
+          title: "Seed Successful", 
+          description: "Platform architecture and content have been initialized." 
+        })
+        fetchContentTypes() // Refresh the list to show new types
+      } else {
+        toast({ 
+          variant: "destructive", 
+          title: "Seed Failed", 
+          description: data.error || "Unknown error occurred" 
+        })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Network Error", description: "Failed to connect to seed API." })
+    } finally {
+      setSeeding(false)
     }
   }
 
@@ -149,6 +188,17 @@ export default function ContentTypesPage() {
               <h1 className="text-3xl font-extrabold tracking-tight uppercase">Startup Management</h1>
               <p className="text-muted-foreground">Manage core schemas for your startup ecosystem.</p>
             </div>
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                onClick={handleGlobalSeed}
+                disabled={seeding}
+                className="border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 hover:text-orange-700 font-bold uppercase text-[10px] tracking-widest h-10 px-6 rounded-xl"
+              >
+                {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+                Seed Global Data
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -182,7 +232,7 @@ export default function ContentTypesPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Connected Tenants</p>
-                  <p className="text-xl font-black">{new Set(contentTypes.flatMap(ct => ct.tenants.map(t => t.tenant.id))).size}</p>
+                  <p className="text-xl font-black">{new Set(contentTypes.flatMap(ct => ct.tenants.map(t => t.tenant?.id).filter(Boolean) as string[])).size}</p>
                 </div>
               </CardContent>
             </Card>

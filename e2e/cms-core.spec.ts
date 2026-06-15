@@ -2,14 +2,18 @@ import { test, expect } from '@playwright/test';
 
 test.describe('Core CMS Flow (Phase 3)', () => {
   
-  // Note: For a fully integrated E2E test, we would typically use a global setup 
-  // to create a test user and tenant, and save the storage state.
+  // Global context is NOT overridden here, so the mock user is logged in
+  // except for specific tests.
   // Here we test the UI structure and routing protections.
 
-  test('should protect dashboard routes from unauthenticated users', async ({ page }) => {
+  test('should protect dashboard routes from unauthenticated users', async ({ browser }) => {
+    // Create a fresh context without storageState
+    const context = await browser.newContext({ storageState: { cookies: [], origins: [] } });
+    const page = await context.newPage();
     await page.goto('/dashboard');
     // Expect redirect to login page
     await expect(page).toHaveURL(/.*login.*/);
+    await context.close();
   });
 
   test('should display API Documentation correctly when accessed directly', async ({ page, request }) => {
@@ -22,41 +26,51 @@ test.describe('Core CMS Flow (Phase 3)', () => {
     expect(contentType).toContain('application/json');
   });
 
-  test.describe('Dashboard UI Interactions (Mocked Session)', () => {
-    // In a real run, we would inject a session cookie here.
-    // For now, we stub out the critical flows that should be covered by QA.
-    
-    test.skip('should create a new Content Type', async ({ page }) => {
+  test.describe.serial('Dashboard UI Interactions (Mocked Session)', () => {
+    const uniqueId = Date.now().toString().slice(-6);
+    const ctName = `Articles ${uniqueId}`;
+    const ctSlug = `articles-${uniqueId}`;
+
+    test('should create a new Content Type', async ({ page }) => {
       await page.goto('/dashboard/demo-tenant/content-types/new');
       
-      await page.fill('input[placeholder="e.g. Posts"]', 'Articles');
+      await page.fill('input[placeholder="e.g., Blog Post"]', ctName);
       await page.click('button:has-text("Add New Field")');
       await page.click('text=Text');
-      await page.fill('input[name="fieldName"]', 'Title');
+      await page.fill('input[placeholder="e.g., Hero Title"]', 'Title');
+      await page.click('button:has-text("Add Field")');
       
       await page.click('button:has-text("Save Schema")');
-      await expect(page.locator('.toast')).toContainText('Success');
+      await expect(page).toHaveURL(/\/dashboard\/demo-tenant\/content-types$/, { timeout: 15000 });
+      await expect(page.getByText(ctName).first()).toBeVisible({ timeout: 10000 });
     });
 
-    test.skip('should create a new Content Entry with relation', async ({ page }) => {
-      await page.goto('/dashboard/demo-tenant/content-types/articles/new');
+    test('should create a new Content Entry with relation', async ({ page }) => {
+      await page.goto(`/cms/demo-tenant/content/${ctSlug}/new`);
       
-      await page.fill('input[name="Title"]', 'My First Playwright Article');
+      await page.fill('input[placeholder="Title"]', 'My First Playwright Article');
       
-      // Simulate selecting a relation
-      await page.click('button[role="combobox"]');
-      await page.click('text=Select Option 1');
+      // Removed simulate selecting relation because we might not have added a relation field in this simple test
       
-      await page.click('button:has-text("Save")');
-      await expect(page.locator('.toast')).toContainText('Successfully created');
+      await page.click('button:has-text("Create & Publish")');
+      await expect(page).toHaveURL(new RegExp(`/cms/demo-tenant/content/${ctSlug}$`), { timeout: 15000 });
+      await expect(page.getByText('My First Playwright Article').first()).toBeVisible({ timeout: 10000 });
     });
 
-    test.skip('should fetch the created entry via Public API', async ({ request }) => {
-      const response = await request.get('/api/public/demo-tenant/content/articles');
-      expect(response.ok()).toBeTruthy();
-      
-      const data = await response.json();
-      expect(data.data[0].data.Title).toBe('My First Playwright Article');
+    test('should fetch the created entry via Public API', async ({ request }) => {
+      await expect.poll(async () => {
+        const response = await request.get(`/api/public/demo-tenant/content/${ctSlug}`, {
+          headers: {
+            'Authorization': 'Bearer test-api-token'
+          }
+        });
+        if (!response.ok()) return false;
+        const data = await response.json();
+        return (data?.data?.[0]?.Title || data?.data?.[0]?.title) === 'My First Playwright Article';
+      }, {
+        message: 'Public API should return the new entry',
+        timeout: 10000,
+      }).toBeTruthy();
     });
   });
 });

@@ -21,7 +21,7 @@ export declare class SaCMS {
      */
     graphql<T = Record<string, unknown>>(query: string, variables?: Record<string, unknown>): Promise<GraphQLResponse<T>>;
     /** @internal */
-    request<T>(path: string, init?: RequestInit): Promise<T>;
+    request<T>(path: string, init?: RequestInit, retries?: number): Promise<T>;
     /** @internal */
     getDefaultLocale(): string | undefined;
     /** @internal */
@@ -31,6 +31,10 @@ declare class CollectionClient<T> {
     private cf;
     private slug;
     constructor(cf: SaCMS, slug: string);
+    /**
+     * Start a fluent query builder chain.
+     */
+    query(): QueryBuilder<T>;
     /**
      * Query multiple entries with filtering, sorting, pagination, and field selection.
      */
@@ -76,5 +80,30 @@ declare class SingleClient<T> {
 export declare class SaCMSError extends Error {
     status: number;
     constructor(message: string, status: number);
+}
+export declare class QueryBuilder<T> {
+    private client;
+    private params;
+    constructor(client: CollectionClient<T>);
+    /**
+     * Filter data. E.g. .where('status', 'eq', 'PUBLISHED')
+     */
+    where(field: string, operator: string, value: any): this;
+    /**
+     * Select specific relations to populate. E.g. .populate(['author'])
+     */
+    populate(fields: string[]): this;
+    /**
+     * Limit the number of returned entries.
+     */
+    limit(pageSize: number): this;
+    /**
+     * Skip a number of pages.
+     */
+    page(pageNumber: number): this;
+    /**
+     * Execute the query and fetch the results.
+     */
+    fetch(): Promise<CollectionResponse<T>>;
 }
 export {};

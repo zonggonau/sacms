@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter, useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
+import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,6 +40,7 @@ import {
   AlertTriangle,
   CheckCircle,
   Activity,
+  Server,
 } from "lucide-react"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 export default function TenantSettingsPage() {
@@ -73,6 +75,14 @@ export default function TenantSettingsPage() {
   const [ipWhitelist, setIpWhitelist] = useState(false)
   const [allowedIps, setAllowedIps] = useState("")
   const [auditLogging, setAuditLogging] = useState(true)
+
+  // Infrastructure settings
+  const [databaseUrl, setDatabaseUrl] = useState("")
+  const [storageEndpoint, setStorageEndpoint] = useState("")
+  const [storageAccessKey, setStorageAccessKey] = useState("")
+  const [storageSecretKey, setStorageSecretKey] = useState("")
+  const [storageBucket, setStorageBucket] = useState("")
+  const [storagePublicUrl, setStoragePublicUrl] = useState("")
 
   const tenants = useMemo(() => {
     return session?.user?.tenants || []
@@ -120,6 +130,14 @@ export default function TenantSettingsPage() {
           setIpWhitelist(settings.ipWhitelist ?? false)
           setAllowedIps(settings.allowedIps || "")
           setAuditLogging(settings.auditLogging ?? true)
+          setDatabaseUrl(settings.databaseUrl || "")
+          if (settings.storageConfig) {
+            setStorageEndpoint(settings.storageConfig.endpoint || "")
+            setStorageAccessKey(settings.storageConfig.accessKey || "")
+            setStorageSecretKey(settings.storageConfig.secretKey || "")
+            setStorageBucket(settings.storageConfig.bucket || "")
+            setStoragePublicUrl(settings.storageConfig.publicUrl || "")
+          }
         }
       } catch (error) {
         console.error("Failed to fetch data:", error)
@@ -151,6 +169,14 @@ export default function TenantSettingsPage() {
           ipWhitelist,
           allowedIps,
           auditLogging,
+          databaseUrl,
+          storageConfig: storageEndpoint && storageAccessKey && storageSecretKey && storageBucket ? {
+            endpoint: storageEndpoint,
+            accessKey: storageAccessKey,
+            secretKey: storageSecretKey,
+            bucket: storageBucket,
+            publicUrl: storagePublicUrl,
+          } : null,
         }),
       })
 
@@ -370,6 +396,10 @@ export default function TenantSettingsPage() {
               <TabsTrigger value="usage">
                 <Activity className="h-4 w-4 mr-2" />
                 Usage
+              </TabsTrigger>
+              <TabsTrigger value="infrastructure">
+                <Server className="h-4 w-4 mr-2" />
+                Infrastructure
               </TabsTrigger>
               <TabsTrigger value="danger">
                 <AlertTriangle className="h-4 w-4 mr-2" />
@@ -593,6 +623,93 @@ export default function TenantSettingsPage() {
                       </p>
                     </div>
                     <Switch checked={auditLogging} onCheckedChange={setAuditLogging} />
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="infrastructure">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Bring Your Own Infrastructure</CardTitle>
+                  <CardDescription>
+                    Configure dedicated database and storage specifically for this workspace. 
+                    Leave empty to use the shared platform infrastructure.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium flex items-center gap-2">
+                      <Database className="h-5 w-5" /> Dedicated Database
+                    </h3>
+                    <div className="space-y-2">
+                      <Label htmlFor="dbUrl">PostgreSQL Connection URL</Label>
+                      <Input
+                        id="dbUrl"
+                        type="password"
+                        placeholder="postgresql://user:pass@host:5432/dbname"
+                        value={databaseUrl}
+                        onChange={(e) => setDatabaseUrl(e.target.value)}
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        All content data for this workspace will be queried from and saved to this database.
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium flex items-center gap-2">
+                      <Server className="h-5 w-5" /> Custom S3 Storage
+                    </h3>
+                    <div className="grid gap-4 sm:grid-cols-2">
+                      <div className="space-y-2">
+                        <Label htmlFor="s3Endpoint">Endpoint URL</Label>
+                        <Input
+                          id="s3Endpoint"
+                          placeholder="https://s3.eu-central-1.amazonaws.com"
+                          value={storageEndpoint}
+                          onChange={(e) => setStorageEndpoint(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="s3Bucket">Bucket Name</Label>
+                        <Input
+                          id="s3Bucket"
+                          placeholder="my-workspace-bucket"
+                          value={storageBucket}
+                          onChange={(e) => setStorageBucket(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="s3Access">Access Key</Label>
+                        <Input
+                          id="s3Access"
+                          type="password"
+                          value={storageAccessKey}
+                          onChange={(e) => setStorageAccessKey(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="s3Secret">Secret Key</Label>
+                        <Input
+                          id="s3Secret"
+                          type="password"
+                          value={storageSecretKey}
+                          onChange={(e) => setStorageSecretKey(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2 sm:col-span-2">
+                        <Label htmlFor="s3Public">Public URL / CDN (Optional)</Label>
+                        <Input
+                          id="s3Public"
+                          placeholder="https://cdn.my-workspace.com"
+                          value={storagePublicUrl}
+                          onChange={(e) => setStoragePublicUrl(e.target.value)}
+                        />
+                      </div>
+                    </div>
                   </div>
                 </CardContent>
               </Card>

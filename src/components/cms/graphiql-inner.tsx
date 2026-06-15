@@ -13,7 +13,10 @@ export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
 
+  const isMountedRef = useRef(true)
+
   useEffect(() => {
+    isMountedRef.current = true
     let sandbox: any
 
     const loadSandbox = () => {
@@ -23,7 +26,11 @@ export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps
         script.src = "https://embeddable-sandbox.cdn.apollographql.com/_latest/embeddable-sandbox.umd.production.min.js"
         script.async = true
         script.onload = initSandbox
-        script.onerror = () => setError("Failed to load Apollo Sandbox script. Please check your internet connection or disable adblockers.")
+        script.onerror = () => {
+          if (isMountedRef.current) {
+            setError("Failed to load Apollo Sandbox script. Please check your internet connection or disable adblockers.")
+          }
+        }
         document.head.appendChild(script)
       } else {
         if ((window as any).EmbeddedSandbox) {
@@ -39,26 +46,43 @@ export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps
     }
 
     const initSandbox = () => {
+      if (!isMountedRef.current) return
       if ((window as any).EmbeddedSandbox && containerRef.current) {
-        sandbox = new (window as any).EmbeddedSandbox({
-          target: containerRef.current,
-          initialEndpoint: endpoint,
-          initialState: {
-            document: 'query {\\n  __schema {\\n    types {\\n      name\\n      kind\\n    }\\n  }\\n}',
-            variables: {},
-            headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {},
-            includeCookies: false,
-            pollForSchemaUpdates: false
-          }
-        })
+        // Clear previous contents to prevent duplicate wrappers in React StrictMode
+        containerRef.current.innerHTML = ""
+        try {
+          sandbox = new (window as any).EmbeddedSandbox({
+            target: containerRef.current,
+            initialEndpoint: endpoint,
+            initialState: {
+              document: 'query {\\n  __schema {\\n    types {\\n      name\\n      kind\\n    }\\n  }\\n}',
+              variables: {},
+              headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {},
+              includeCookies: false,
+              pollForSchemaUpdates: false
+            }
+          })
+        } catch (e) {
+          console.error("Error initializing EmbeddedSandbox:", e)
+        }
       }
     }
 
     loadSandbox()
 
     return () => {
+      isMountedRef.current = false
       if (sandbox) {
-        sandbox.dispose()
+        try {
+          sandbox.dispose()
+        } catch (e) {
+          console.error("Error disposing EmbeddedSandbox:", e)
+        }
+      }
+      
+      const existingScript = document.querySelector('script[src*="embeddable-sandbox"]')
+      if (existingScript) {
+        existingScript.removeEventListener('load', initSandbox)
       }
     }
   }, [endpoint, apiToken])

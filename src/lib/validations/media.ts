@@ -11,6 +11,8 @@ const ALLOWED_MIME_TYPES = [
   "video/webm",
   "video/quicktime",
   "application/pdf",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "application/msword"
 ] as const
 
 export const MIME_WHITELIST = new Set<string>(ALLOWED_MIME_TYPES)

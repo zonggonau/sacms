@@ -51,6 +51,8 @@ import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { ReviewerAssignment } from "@/components/cms/reviewer-assignment"
+import { getContentTypeBySlugAction } from "@/actions/content-types"
+import { getEntryAction, updateEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -101,15 +103,17 @@ export default function CMSEditEntryPage() {
     if (!tenantSlug || !contentTypeSlug || !entryId) return
     try {
       setLoading(true)
-      const [ctRes, entRes, locRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}?locale=${locale}`),
+      const [ctData, entData, locRes] = await Promise.all([
+        getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
+        getEntryAction(tenantSlug, contentTypeSlug, entryId, locale),
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
-      if (ctRes.ok) setContentType(await ctRes.json())
-      if (entRes.ok) {
-        const data = await entRes.json()
+      if (ctData && !ctData.error && ctData.contentType) {
+        setContentType(ctData.contentType as any)
+      }
+      if (entData && !entData.error && entData.entry) {
+        const data = entData
         const entry = data.entry
         setEntryStatus(entry.status)
         // Only update locale if it's explicitly returned from server
@@ -151,26 +155,21 @@ export default function CMSEditEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: formData,
-          status: targetStatus,
-          locale, // Send current locale to the backend
-          scheduledAt: scheduledAt?.toISOString() || null
-        }),
+      const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
+        data: formData,
+        status: targetStatus,
+        locale, // Send current locale to the backend
+        scheduledAt: scheduledAt || null
       })
 
-      if (res.ok) {
+      if (!res.error) {
         toast({ 
           title: publishNow ? "Published Successfully!" : "Entry Updated",
           className: "bg-muted border border-border text-foreground rounded-none shadow-none"
         })
         router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}`)
       } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error })
+        toast({ variant: "destructive", title: "Error", description: res.error })
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error" })
@@ -213,6 +212,9 @@ export default function CMSEditEntryPage() {
     )
 
     switch (field.type) {
+      case "document_template":
+        return null;
+
       case "text":
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
           return <div className="space-y-2"><LabelWithAI /><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>

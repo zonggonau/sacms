@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, XCircle, MoreHorizontal,
-  ImageIcon, Calendar, Loader2, Send, Search, X
+  ImageIcon, Calendar, Loader2, Send, Search, X, Download
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -25,6 +25,8 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { getContentTypeBySlugAction } from "@/actions/content-types"
+import { getEntriesAction, updateEntryAction, deleteEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -86,20 +88,23 @@ export default function ContentTypeEntriesPage() {
     if (!tenantSlug || !contentTypeSlug) return
     try {
       setLoading(true)
-      const searchParam = debouncedSearch ? `&search=${encodeURIComponent(debouncedSearch)}` : ""
-      const [ctRes, entriesRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-        fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries?page=1&pageSize=50${searchParam}`)
-      ])
+      const ctRes = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
+      if (ctRes.contentType) setContentType(ctRes.contentType)
       
-      if (ctRes.ok) setContentType(await ctRes.json())
-      if (entriesRes.ok) {
-        const data = await entriesRes.json()
-        const parsedEntries = (data.entries || []).map((e: any) => ({
+      const entriesRes = await getEntriesAction(tenantSlug, contentTypeSlug, { 
+        page: 1, 
+        pageSize: 50, 
+        search: debouncedSearch 
+      })
+      
+      if (entriesRes.entries) {
+        const parsedEntries = entriesRes.entries.map((e: any) => ({
           ...e,
           data: typeof e.data === 'string' ? JSON.parse(e.data) : e.data
         }))
         setEntries(parsedEntries)
+      } else if (entriesRes.error) {
+        throw new Error(entriesRes.error)
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -115,19 +120,17 @@ export default function ContentTypeEntriesPage() {
 
   const handleStatusChange = async (entryId: string, newStatus: string) => {
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          status: newStatus,
-          publish: newStatus === "PUBLISHED"
-        })
+      const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
+        data: undefined, // Status only update
+        status: newStatus,
+        locale: "en" // We just use en for list view status update for now
       })
-      if (res.ok) {
+      
+      if (res.success) {
         toast({ title: "Status Updated", description: `Entry is now ${newStatus.toLowerCase()}` })
         fetchData()
       } else {
-        throw new Error("Failed to update status")
+        throw new Error(res.error || "Failed to update status")
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Status change failed" })
@@ -137,12 +140,12 @@ export default function ContentTypeEntriesPage() {
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure?")) return
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${id}`, {
-        method: "DELETE"
-      })
-      if (res.ok) {
+      const res = await deleteEntryAction(tenantSlug, contentTypeSlug, id)
+      if (res.success) {
         toast({ title: "Deleted" })
         fetchData()
+      } else {
+        throw new Error(res.error || "Failed to delete")
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error" })
@@ -293,6 +296,17 @@ export default function ContentTypeEntriesPage() {
                           </TableCell>
                           <TableCell className="text-right pr-6">
                             <div className="flex justify-end gap-1">
+                              {contentType?.fields?.some((f: any) => f.type === "document_template") && (
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  className="h-8 w-8 rounded-none hover:bg-green-50 hover:text-green-600 text-green-600" 
+                                  onClick={() => window.open(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/export-docx/${entry.id}`, '_blank')}
+                                  title="Download Surat DOCX"
+                                >
+                                  <Download className="h-4 w-4" />
+                                </Button>
+                              )}
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
                                 <Eye className="h-4 w-4" />
                               </Button>

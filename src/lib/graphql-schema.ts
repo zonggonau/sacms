@@ -2,6 +2,8 @@ import { PrismaClient } from "@prisma/client"
 import { db } from "@/lib/database"
 import { processAutoSlugs } from "@/lib/slug"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { canTransition } from "@/lib/content-workflow"
+import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 
 // Dynamically build GraphQL schema from content types and single types
 export async function buildDynamicTypeDefs(
@@ -360,11 +362,28 @@ async function resolveMutationCreate(
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
+  // B5 Fix: Resolve default locale from TenantLocale instead of hardcoding "en"
+  let resolvedLocale = args.locale
+  if (!resolvedLocale) {
+    const defaultLocale = await _db.tenantLocale.findFirst({
+      where: { tenantId, isDefault: true },
+      select: { locale: true },
+    })
+    resolvedLocale = defaultLocale?.locale ?? "en"
+  }
+
+  // B2 Fix: Execute sync hooks (beforeCreate) before writing
+  const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_CREATE, args.data)
+  if (!hookResult.allowed) {
+    throw new Error(hookResult.rejectMessage || "Rejected by webhook")
+  }
+  const hookData = hookResult.modifiedData ?? args.data
+
   const dataWithSlugs = await processAutoSlugs(
     tenantId,
     contentType.id,
     contentType.fields,
-    args.data,
+    hookData,
     undefined,
     'collection',
     _db
@@ -376,7 +395,7 @@ async function resolveMutationCreate(
         contentTypeId: contentType.id,
         tenantId,
         data: dataWithSlugs as any,
-        locale: args.locale ?? "en",
+        locale: resolvedLocale,
         status: (args.status as any) ?? "DRAFT",
         createdBy: userId,
       },
@@ -398,6 +417,13 @@ async function resolveMutationCreate(
     entity: "ContentEntry",
     entityId: entry.id,
     data: { contentType: slug, source: "graphql" }
+  })
+
+  // B2 Fix: Trigger async webhooks after create
+  triggerWebhooks(tenantId, WebhookEvents.CONTENT_CREATED, {
+    entry: { id: entry.id, data: entry.data, status: entry.status, locale: entry.locale },
+    contentType: slug,
+    source: "graphql",
   })
 
   return {
@@ -435,7 +461,14 @@ async function resolveMutationUpdate(
   })
   if (!existing) throw new Error("Entry not found")
 
-  const fullData = { ...(existing.data as any), ...args.data }
+  // B2 Fix: Execute sync hooks (beforeUpdate) before writing
+  const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_UPDATE, args.data)
+  if (!hookResult.allowed) {
+    throw new Error(hookResult.rejectMessage || "Rejected by webhook")
+  }
+  const hookData = hookResult.modifiedData ?? args.data
+
+  const fullData = { ...(existing.data as any), ...hookData }
   const dataWithSlugs = await processAutoSlugs(
     tenantId,
     contentType.id,
@@ -462,6 +495,13 @@ async function resolveMutationUpdate(
     entity: "ContentEntry",
     entityId: updated.id,
     data: { contentType: slug, source: "graphql" }
+  })
+
+  // B2 Fix: Trigger async webhooks after update
+  triggerWebhooks(tenantId, WebhookEvents.CONTENT_UPDATED, {
+    entry: { id: updated.id, data: updated.data, status: updated.status, locale: updated.locale },
+    contentType: slug,
+    source: "graphql",
   })
 
   return {
@@ -498,6 +538,15 @@ async function resolveMutationDelete(
   })
   if (!existing) throw new Error("Entry not found")
 
+  // B2 Fix: Execute sync hooks (beforeDelete) before deleting
+  const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_DELETE, {
+    id,
+    data: existing.data as Record<string, unknown>,
+  })
+  if (!hookResult.allowed) {
+    throw new Error(hookResult.rejectMessage || "Rejected by webhook")
+  }
+
   await _db.contentEntry.delete({ where: { id } })
 
   logAudit({
@@ -507,6 +556,13 @@ async function resolveMutationDelete(
     entity: "ContentEntry",
     entityId: id,
     data: { contentType: slug, source: "graphql" }
+  })
+
+  // B2 Fix: Trigger async webhooks after delete
+  triggerWebhooks(tenantId, WebhookEvents.CONTENT_DELETED, {
+    entry: { id, data: existing.data },
+    contentType: slug,
+    source: "graphql",
   })
 
   return { id, success: true }
@@ -535,6 +591,24 @@ async function resolveMutationPublish(
   })
   if (!existing) throw new Error("Entry not found")
 
+  // B1 Fix: Enforce content workflow — check if transition to PUBLISHED is valid
+  if (!canTransition(existing.status, "PUBLISHED")) {
+    throw new Error(
+      `Cannot publish entry: transition from '${existing.status}' to 'PUBLISHED' is not allowed. ` +
+      `Current status must be DRAFT or APPROVED.`
+    )
+  }
+
+  // B2 Fix: Execute sync hooks (beforePublish) before publishing
+  const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_PUBLISH, {
+    id,
+    data: existing.data as Record<string, unknown>,
+    currentStatus: existing.status,
+  })
+  if (!hookResult.allowed) {
+    throw new Error(hookResult.rejectMessage || "Rejected by webhook")
+  }
+
   const updated = await _db.contentEntry.update({
     where: { id },
     data: {
@@ -551,6 +625,13 @@ async function resolveMutationPublish(
     entity: "ContentEntry",
     entityId: updated.id,
     data: { contentType: slug, source: "graphql" }
+  })
+
+  // B2 Fix: Trigger async webhooks after publish
+  triggerWebhooks(tenantId, WebhookEvents.CONTENT_PUBLISHED, {
+    entry: { id: updated.id, data: updated.data, status: updated.status, locale: updated.locale },
+    contentType: slug,
+    source: "graphql",
   })
 
   return {

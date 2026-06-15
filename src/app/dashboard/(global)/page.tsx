@@ -2,8 +2,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { redirect } from "next/navigation"
-import { headers } from "next/headers"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
+import { getUserPlanConfig } from "@/lib/tenant-plan"
 
 const SYSTEM_SLUGS = ["sacms-global"]
 
@@ -48,74 +48,77 @@ export default async function WorkspaceSelectionPage() {
       createdAt: t.createdAt.toISOString(),
       role: t.members[0]?.role || 'member',
       daysRemaining,
-      expiresAt: sub?.currentPeriodEnd?.toISOString() || null,
       subscriptionStatus: sub?.status || null
     }
   })
 
-  const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
-  const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
-  const usage = {
-    current: workspaceEnforcement.current,
-    max: workspaceEnforcement.max,
-    allowed: workspaceEnforcement.allowed,
-    plan: workspaceEnforcement.planSlug
-  }
-
-  const headersList = await headers();
-  const host = headersList.get('host');
-  const protocol = process.env.NODE_ENV === 'development' ? 'http' : 'https';
-  const baseUrl = `${protocol}://${host}`;
-  const globalToken = process.env.NEXT_PUBLIC_SYSTEM_API_KEY || "internal";
-  
-  // Because fetching from localhost in RSC can sometimes stall if Node limits concurrent connections, 
-  // it is generally safe but let's wrap in Promise.all for speed.
-  const fetchOpts = { next: { revalidate: 3600 }, headers: { Authorization: `Bearer ${globalToken}` } };
-
-  let dbTemplates = [];
-  let workspacePlans = [
-    { id: "free", name: "Free", price: "Rp 0", priceAmount: 0, yearlyPrice: 0, desc: "For small personal projects", features: ["Unlimited Content Types", "500 Entries"] }
-  ];
-  let addonPlans = [];
+  // Fetch global dependencies for the creation dialog
+  let dbTemplates: any[] = []
+  let workspacePlans: any[] = []
+  let addonPlans: any[] = []
+  let usage = null
 
   try {
-    const [templatesRes, plansRes, addonsRes] = await Promise.all([
-      fetch(`${baseUrl}/api/public/content/templates`, fetchOpts).catch(() => null),
-      fetch(`${baseUrl}/api/public/sacms-global/content/sacms-workspace-pricing?sort=price:asc`, fetchOpts).catch(() => null),
-      fetch(`${baseUrl}/api/public/sacms-global/content/sacms-addons?sort=price:asc`, fetchOpts).catch(() => null)
-    ]);
+    console.log("[Dashboard] Fetching platform data...");
+    const [templates, wPlans, aPlans] = await Promise.all([
+      db.contentEntry.findMany({
+        where: { contentType: { slug: "templates" }, status: "PUBLISHED" },
+        select: { id: true, data: true }
+      }),
+      db.contentEntry.findMany({
+        where: { contentType: { slug: "sacms-workspace-pricing" }, status: "PUBLISHED" },
+        select: { id: true, data: true }
+      }),
+      db.contentEntry.findMany({
+        where: { contentType: { slug: "sacms-addons" }, status: "PUBLISHED" },
+        select: { id: true, data: true }
+      })
+    ])
 
-    if (templatesRes?.ok) {
-      const json = await templatesRes.json();
-      dbTemplates = json.data || [];
+    console.log(`[Dashboard] Found: ${templates.length} templates, ${wPlans.length} plans, ${aPlans.length} addons.`);
+
+    const cleanPrice = (val: any) => {
+      if (typeof val === 'number') return val
+      if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
+      return 0
     }
 
-    if (plansRes?.ok) {
-      const json = await plansRes.json();
-      if (json.data && Array.isArray(json.data) && json.data.length > 0) {
-        workspacePlans = json.data.map((p: any) => ({
-          id: p.plan_slug || p.name.toLowerCase().replace(/\s+/g, '-'),
-          name: p.name,
-          price: `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`,
-          priceAmount: p.price,
-          yearlyPrice: p.yearly_price !== undefined ? p.yearly_price : p.price * 10,
-          desc: p.description || "",
-          features: p.features || []
-        }));
+    dbTemplates = templates.map(t => {
+      const d = typeof t.data === 'string' ? JSON.parse(t.data) : t.data
+      return { ...d, id: t.id }
+    })
+    workspacePlans = wPlans.map(t => {
+      const d = t.data as any
+      const price = cleanPrice(d.price)
+      const yearlyPrice = d.yearly_price !== undefined ? cleanPrice(d.yearly_price) : price * 10
+
+      return {
+        id: d.plan_slug || t.id,
+        name: d.name || "Standard Plan",
+        desc: d.description || d.desc || "",
+        priceAmount: price,
+        yearlyPrice: yearlyPrice,
+        features: d.features || []
       }
-    }
+    }).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
 
-    if (addonsRes?.ok) {
-      const json = await addonsRes.json();
-      if (json.data && Array.isArray(json.data)) {
-        addonPlans = json.data.map((p: any) => ({
-          id: p.addon_slug || p.name.toLowerCase().replace(/\s+/g, '-'),
-          name: p.name,
-          price: `Rp ${(p.price / 1000).toLocaleString('id-ID')}k`,
-          priceAmount: p.price,
-          desc: p.description || "",
-          icon: p.icon || "Zap"
-        }));
+    addonPlans = aPlans.map(t => {
+      const d = t.data as any
+      return {
+        id: t.id || d.name?.toLowerCase().replace(/ /g, '-'),
+        name: d.name || "Add-on",
+        priceAmount: cleanPrice(d.price)
+      }
+    })
+
+    // Check user plan limits
+    const planConfig = await getUserPlanConfig(session.user.id)
+    if (planConfig) {
+      usage = {
+        current: tenants.length,
+        max: planConfig.max_workspaces,
+        allowed: planConfig.max_workspaces === null || tenants.length < planConfig.max_workspaces,
+        plan: planConfig.plan_slug
       }
     }
   } catch (e) {

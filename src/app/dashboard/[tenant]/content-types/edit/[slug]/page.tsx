@@ -42,12 +42,14 @@ import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
+import { getContentTypeBySlugAction, updateContentTypeAction } from "@/actions/content-types"
 
 interface ContentType {
   id: string
   name: string
   slug: string
   description: string | null
+  docxTemplateUrl: string | null
   isPublished: boolean
   isGlobal: boolean
   fields: Field[]
@@ -161,6 +163,7 @@ export default function EditContentTypePage({
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
+  const [docxTemplateUrl, setDocxTemplateUrl] = useState("")
   const [fields, setFields] = useState<Field[]>([])
 
   // Modal States
@@ -185,14 +188,15 @@ export default function EditContentTypePage({
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`)
-        if (!response.ok) throw new Error("Failed to fetch")
-        const data = await response.json()
+        const response = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
+        if (response.error || !response.contentType) throw new Error(response.error || "Failed to fetch")
+        const data = response.contentType
         
         setContentType(data)
         setName(data.name)
         setSlug(data.slug)
         setDescription(data.description || "")
+        setDocxTemplateUrl(data.docxTemplateUrl || "")
         
         const mappedFields = (data.fields || []).map((f: any) => {
           let extra: any = {
@@ -329,32 +333,28 @@ export default function EditContentTypePage({
 
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/${contentType?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug,
-          description,
-          fields: fields.map((f, index) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            unique: f.unique,
-            options: serializeFieldOptions(f),
-            relationSlug: f.type === "relation" ? f.targetSlug : null,
-            order: index,
-          })),
-        }),
+      const res = await updateContentTypeAction(tenantSlug, contentType!.id, {
+        name,
+        slug,
+        description,
+        docxTemplateUrl: docxTemplateUrl || null,
+        fields: fields.map((f, index) => ({
+          name: f.name,
+          slug: f.slug,
+          type: f.type,
+          required: f.required,
+          unique: f.unique,
+          options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          order: index,
+        })),
       })
 
-      if (res.ok) {
+      if (!res.error) {
         toast({ title: "Success", description: "Content type updated successfully" })
         router.push(`/dashboard/${tenantSlug}/content-types`)
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Error", description: data.error || "Failed to update content type" })
+        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to update content type" })
       }
     } catch (error) {
       console.error("Failed to save:", error)

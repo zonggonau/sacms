@@ -64,6 +64,7 @@ export const FIELD_TYPES = [
   { type: "json", label: "JSON", icon: Code, description: "Custom JSON structure", category: "Advanced" },
   { type: "color", label: "Color", icon: Palette, description: "Color hex picker", category: "Advanced" },
   { type: "location", label: "Location", icon: MapPin, description: "Geographical coordinates", category: "Advanced" },
+  { type: "document_template", label: "Format Surat Plugin", icon: FileText, description: "Template DOCX untuk export surat", category: "Advanced" },
 ] as const
 
 export const FIELD_CATEGORIES = [

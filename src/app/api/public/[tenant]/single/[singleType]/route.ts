@@ -4,6 +4,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { resolveContentData } from "@/lib/content-resolver"
 import { logApiRequest } from "@/lib/monitoring"
 import { getCache, setCache } from "@/lib/cache"
+import { createHash } from "crypto"
 
 // Public API - Get single type content
 // Requires API token in header: Authorization: Bearer <token>
@@ -48,9 +49,12 @@ export async function GET(
       ))
     }
 
+    // Hash the token for database lookup (SHA-256)
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+
     // Find the API token
     const apiToken = await db.apiToken.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { tenant: true },
     })
 
@@ -228,9 +232,12 @@ export async function PUT(
 
     const token = authHeader.replace("Bearer ", "")
 
+    // Hash the token for database lookup (SHA-256)
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+
     // Find the API token
     const apiToken = await db.apiToken.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { tenant: true },
     })
 

@@ -90,8 +90,11 @@ export default function AdminTenantsPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isSubmitting, setIsCreateSubmitting] = useState(false)
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
+  const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
+  const [deleteConfirmation, setDeleteConfirmation] = useState("")
 
   // Form State
   const [formData, setFormData] = useState({
@@ -189,16 +192,28 @@ export default function AdminTenantsPage() {
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure you want to delete this tenant? All data will be lost.")) return
+  const confirmDelete = async () => {
+    if (!tenantToDelete) return
+    if (deleteConfirmation !== tenantToDelete.id) {
+      toast({ variant: "destructive", title: "Validation Error", description: "Tenant ID does not match" })
+      return
+    }
+
+    setIsCreateSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/tenants/${id}`, { method: "DELETE" })
+      const res = await fetch(`/api/admin/tenants/${tenantToDelete.id}`, { method: "DELETE" })
       if (res.ok) {
         toast({ title: "Deleted", description: "Tenant deleted successfully" })
+        setIsDeleteOpen(false)
         fetchTenants()
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to delete tenant" })
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to delete tenant" })
+    } finally {
+      setIsCreateSubmitting(false)
     }
   }
 
@@ -481,32 +496,45 @@ export default function AdminTenantsPage() {
                             </Button>
                           </Link>
 
-                          {tenant.slug !== SYSTEM_TENANT_SLUG && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 rounded-none">
-                                <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => openEdit(tenant)}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit Details
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
-                                  {tenant.status === 'active' ? (
-                                    <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
-                                  ) : (
-                                    <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Activate Tenant</>
-                                  )}
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem onClick={() => handleDelete(tenant.id)} className="text-red-500 focus:text-red-500">
-                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48 rounded-none">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem onClick={() => openEdit(tenant)}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
+                                {tenant.status === 'active' ? (
+                                  <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
+                                ) : (
+                                  <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Activate Tenant</>
+                                )}
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                onClick={() => {
+                                  if (tenant.plan !== "free") {
+                                    toast({ 
+                                      variant: "destructive", 
+                                      title: "Action Denied", 
+                                      description: "Cannot delete a tenant with an active paid plan. Please downgrade the plan to free first." 
+                                    })
+                                  } else {
+                                    setTenantToDelete(tenant)
+                                    setDeleteConfirmation("")
+                                    setIsDeleteOpen(true)
+                                  }
+                                }} 
+                                className="text-red-500 focus:text-red-500"
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </div>
                     </CardContent>
@@ -597,6 +625,51 @@ export default function AdminTenantsPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Dialog */}
+        <Dialog open={isDeleteOpen} onOpenChange={setIsDeleteOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle className="text-red-600 flex items-center gap-2">
+                <AlertCircle className="h-5 w-5" /> Delete Tenant
+              </DialogTitle>
+              <DialogDescription>
+                This action cannot be undone. This will permanently delete the tenant
+                <strong className="mx-1 text-foreground">{tenantToDelete?.name}</strong> 
+                and remove all associated data.
+              </DialogDescription>
+            </DialogHeader>
+            
+            <div className="space-y-4 py-4">
+              <div className="bg-red-50 dark:bg-red-950/30 p-3 rounded-md border border-red-200 dark:border-red-900 text-sm text-red-800 dark:text-red-300">
+                <p>Please type the tenant ID to confirm deletion:</p>
+                <p className="font-mono font-bold mt-1 select-all">{tenantToDelete?.id}</p>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-delete">Tenant ID</Label>
+                <Input 
+                  id="confirm-delete" 
+                  value={deleteConfirmation} 
+                  onChange={e => setDeleteConfirmation(e.target.value)} 
+                  placeholder="Type ID here..."
+                  autoComplete="off"
+                />
+              </div>
+            </div>
+            
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsDeleteOpen(false)}>Cancel</Button>
+              <Button 
+                variant="destructive" 
+                onClick={confirmDelete} 
+                disabled={isSubmitting || deleteConfirmation !== tenantToDelete?.id}
+              >
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Permanently Delete
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>

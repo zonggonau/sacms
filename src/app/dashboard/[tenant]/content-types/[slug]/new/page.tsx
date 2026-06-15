@@ -49,6 +49,8 @@ import { ComponentField } from "@/components/content/field-renderers/component-f
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
+import { getContentTypeBySlugAction } from "@/actions/content-types"
+import { createEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -100,13 +102,12 @@ export default function CreateEntryPage() {
     async function fetchData() {
       if (!tenantSlug || !contentTypeSlug || contentType) return
       try {
-        const [ctRes, locRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-          fetch(`/api/tenant/${tenantSlug}/locales`)
-        ])
-        if (ctRes.ok) {
-          const data = await ctRes.json()
-          setContentType(data)
+        const ctRes = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
+        const locRes = await fetch(`/api/tenant/${tenantSlug}/locales`)
+        
+        if (ctRes.contentType) {
+          const data = ctRes.contentType
+          setContentType(data as any)
           // Init empty form
           const initialData: Record<string, any> = {}
           data.fields.forEach((f: Field) => {
@@ -136,7 +137,7 @@ export default function CreateEntryPage() {
       }
     }
     if (status === "authenticated") fetchData()
-  }, [tenantSlug, contentTypeSlug, status])
+  }, [tenantSlug, contentTypeSlug, status, contentType])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
@@ -147,26 +148,21 @@ export default function CreateEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: formData,
-          status: targetStatus,
-          locale,
-          scheduledAt: scheduledAt?.toISOString() || null
-        }),
+      const res = await createEntryAction(tenantSlug, contentTypeSlug, {
+        data: formData,
+        status: targetStatus,
+        locale,
+        scheduledAt: scheduledAt || null
       })
 
-      if (res.ok) {
+      if (res.success) {
         toast({ title: publishNow ? "Published Successfully!" : "Entry Created" })
         router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
       } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error })
+        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to create entry" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Error", description: "Failed to create entry" })
     } finally {
       setSaving(false)
     }
@@ -209,6 +205,9 @@ export default function CreateEntryPage() {
     }
 
     switch (field.type) {
+      case "document_template":
+        return null;
+
       case "text":
         // Heuristic: if it's a text field but named hashtag/hastag/tags, use TagsField
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useMemo } from "react"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -147,6 +147,7 @@ export function RelationFieldConfig({
 // ── Component field config ────────────────────────────────────────────────────
 
 interface ComponentItem {
+  id?: string
   slug: string
   name: string
   category?: string
@@ -186,9 +187,19 @@ export function ComponentFieldConfig({
       .finally(() => setLoading(false))
   }, [tenantSlug])
 
-  const filtered = excludeSlug
-    ? components.filter((c) => c.slug !== excludeSlug)
-    : components
+  const filtered = useMemo(() => {
+    const list = excludeSlug
+      ? components.filter((c) => c.slug !== excludeSlug)
+      : components
+
+    // Deduplicate by slug to prevent "duplicate key" and Select value issues
+    const seen = new Set()
+    return list.filter(item => {
+      const isDuplicate = seen.has(item.slug)
+      seen.add(item.slug)
+      return !isDuplicate
+    })
+  }, [components, excludeSlug])
 
   return (
     <div className="space-y-3 border rounded-none p-3 bg-muted/30">
@@ -208,7 +219,7 @@ export function ComponentFieldConfig({
                 <SelectItem value="_none" disabled>Tidak ada component tersedia</SelectItem>
               ) : (
                 filtered.map((c) => (
-                  <SelectItem key={c.slug} value={c.slug}>
+                  <SelectItem key={c.id || c.slug} value={c.slug}>
                     {c.name} ({c.slug})
                   </SelectItem>
                 ))

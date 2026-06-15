@@ -115,26 +115,10 @@ export async function POST(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
-    // Get or create system tenant for platform-level content
-    let systemTenant = await db.tenant.findFirst({
-      where: { slug: "system" },
-    })
-
-    if (!systemTenant) {
-      systemTenant = await db.tenant.create({
-        data: {
-          name: "System",
-          slug: "system",
-          description: "Platform-level content",
-          status: "active",
-          plan: "enterprise",
-        },
-      })
-    }
-
     // Process auto-generated slugs
+    // We pass null for tenantId as these are global entries
     const dataWithSlugs = await processAutoSlugs(
-      systemTenant.id,
+      null, 
       contentType.id,
       contentType.fields,
       typeof data === 'string' ? JSON.parse(data) : data
@@ -144,11 +128,11 @@ export async function POST(
     const finalStatus = publish ? "PUBLISHED" : (entryStatus || "DRAFT")
     const publishedAt = finalStatus === "PUBLISHED" ? new Date() : null
 
-    // Create the entry
+    // Create the entry with optional tenantId (null for global)
     const entry = await db.contentEntry.create({
       data: {
         contentTypeId: contentType.id,
-        tenantId: systemTenant.id,
+        tenantId: null, // Global/Platform level content
         locale: locale || "en",
         data: dataWithSlugs as any,
         status: finalStatus,

@@ -8,6 +8,7 @@ import { graphqlRequestSchema } from "@/lib/validations"
 import { logApiRequest } from "@/lib/monitoring"
 import DataLoader from "dataloader"
 import { getCache, setCache } from "@/lib/cache"
+import { createHash } from "crypto"
 
 // POST /api/public/[tenant]/graphql - GraphQL endpoint
 export async function POST(
@@ -53,9 +54,12 @@ export async function POST(
       ))
     }
 
-    // Validate token
+    // Hash the token for database lookup (SHA-256)
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+
+    // Find the API token
     const apiToken = await db.apiToken.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { tenant: true },
     })
 

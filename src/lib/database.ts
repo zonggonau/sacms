@@ -90,7 +90,11 @@ export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): P
   return client
 }
 
-export async function getTenantDbById(tenantId: string, forceFresh = false): Promise<PrismaClient> {
+export async function getTenantDbById(tenantId: string | null | undefined, forceFresh = false): Promise<PrismaClient> {
+  if (!tenantId) {
+    return db
+  }
+
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId },
     select: { databaseUrl: true }

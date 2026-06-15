@@ -24,7 +24,7 @@ export default function GlobalPaymentResultPage() {
     if (status === "authenticated" && orderId) {
       const resolveAndRedirect = async () => {
         try {
-          const res = await fetch(`/api/payment/${orderId}/status`)
+          const res = await fetch(`/api/billing/payment/${orderId}/status`)
           if (!res.ok) throw new Error("Payment not found")
           
           const data = await res.json()

@@ -4,22 +4,29 @@ const prisma = new PrismaClient()
 async function main() {
   console.log("🚀 Initializing Templates Content Type...")
 
+  const SYSTEM_TENANT_SLUG = "sacms-global"
+
   // 1. Ensure System Tenant exists
   let systemTenant = await prisma.tenant.findFirst({
-    where: { slug: "system" },
+    where: { slug: SYSTEM_TENANT_SLUG },
   })
 
   if (!systemTenant) {
-    systemTenant = await prisma.tenant.create({
-      data: {
-        name: "System",
-        slug: "system",
-        description: "Platform-level content",
-        status: "active",
-        plan: "enterprise",
-      },
-    })
-    console.log("✅ Created System Tenant")
+    // Try fallback to 'system'
+    systemTenant = await prisma.tenant.findFirst({ where: { slug: "system" } })
+
+    if (!systemTenant) {
+      systemTenant = await prisma.tenant.create({
+        data: {
+          name: "SaCMS Global",
+          slug: SYSTEM_TENANT_SLUG,
+          description: "Internal system tenant for global content.",
+          status: "active",
+          plan: "enterprise",
+        },
+      })
+      console.log("✅ Created Global System Tenant")
+    }
   }
 
   // 2. Create Templates Content Type (Global)

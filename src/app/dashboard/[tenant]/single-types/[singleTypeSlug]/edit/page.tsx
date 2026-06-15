@@ -41,6 +41,7 @@ import Link from "next/link"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { toast } from "@/hooks/use-toast"
+import { getSingleTypeBySlugAction, updateSingleTypeAction } from "@/actions/single-types"
 
 // DnD Kit Imports
 import {
@@ -177,9 +178,9 @@ export default function EditSingleTypePage({
   useEffect(() => {
     async function fetchData() {
       try {
-        const response = await fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`)
-        if (!response.ok) throw new Error("Failed to fetch")
-        const data = await response.json()
+        const response = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug)
+        if (response.error || !response.singleType) throw new Error(response.error || "Failed to fetch")
+        const data = response.singleType
         
         setSingleType(data)
         setName(data.name)
@@ -308,31 +309,26 @@ export default function EditSingleTypePage({
     }
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/single-types/${singleType?.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          slug,
-          description,
-          fields: fields.map((f, index) => ({
-            name: f.name,
-            slug: f.slug,
-            type: f.type,
-            required: f.required,
-            unique: f.unique,
-            options: serializeFieldOptions(f),
-            relationSlug: f.type === "relation" ? f.targetSlug : null,
-            order: index,
-          })),
-        }),
+      const res = await updateSingleTypeAction(tenantSlug, singleType!.id, {
+        name,
+        slug,
+        description,
+        fields: fields.map((f, index) => ({
+          name: f.name,
+          slug: f.slug,
+          type: f.type,
+          required: f.required,
+          unique: f.unique,
+          options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          order: index,
+        })),
       })
-      if (res.ok) {
+      if (!res.error) {
         toast({ title: "Success" })
         router.push(`/dashboard/${tenantSlug}/single-types`)
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Error", description: data.error })
+        toast({ variant: "destructive", title: "Error", description: res.error })
       }
     } catch {
       toast({ variant: "destructive", title: "Error" })

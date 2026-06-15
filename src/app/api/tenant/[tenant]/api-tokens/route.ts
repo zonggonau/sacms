@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { randomBytes } from "crypto"
+import { randomBytes, createHash } from "crypto"
 import { validateBody } from "@/lib/validate"
 import { createApiTokenSchema } from "@/lib/validations"
 import { getTenantAccess } from "@/lib/tenant-access"
@@ -108,6 +108,7 @@ export async function POST(
 
     // Generate token
     const token = generateToken()
+    const hashedToken = createHash("sha256").update(token).digest("hex")
     
     // Create API token
     const apiToken = await db.apiToken.create({
@@ -115,7 +116,7 @@ export async function POST(
         tenantId: tenantId,
         name: name as string,
         description: (description as string) || null,
-        token,
+        token: hashedToken,
         type: (type as string) || "read-only",
         permissions: permissions as any,
         expiresAt: expiresAt ? new Date(expiresAt as string | number | Date) : null,

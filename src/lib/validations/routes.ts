@@ -16,6 +16,14 @@ export const updateTenantSettingsSchema = z.object({
   ipWhitelist: z.boolean().optional(),
   allowedIps: z.string().max(2000).optional(),
   auditLogging: z.boolean().optional(),
+  databaseUrl: z.string().url().or(z.literal("")).optional(),
+  storageConfig: z.object({
+    endpoint: z.string().url(),
+    accessKey: z.string(),
+    secretKey: z.string(),
+    bucket: z.string(),
+    publicUrl: z.string().url().or(z.literal(""))
+  }).nullable().optional(),
 }).passthrough()
 
 export const saveSingleTypeDataSchema = z.object({

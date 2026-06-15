@@ -1,184 +1,476 @@
+/**
+ * ═══════════════════════════════════════════════════════════════
+ * SaCMS Global Seed — Papua Digital
+ * ═══════════════════════════════════════════════════════════════
+ * Script ini SELF-CONTAINED. Jalankan sekali untuk:
+ * 1. Membuat Content Types & Single Types (jika belum ada)
+ * 2. Mengisi semua data landing page (Hero → Footer)
+ * 
+ * Usage: npx tsx scripts/seed-all-global.ts
+ * ═══════════════════════════════════════════════════════════════
+ */
+
 import { PrismaClient } from "../prisma/generated-client"
 const prisma = new PrismaClient()
 
+// ──────────────────────────────────────────────────────────
+// SCHEMA DEFINITIONS (Content Types + Single Types)
+// ──────────────────────────────────────────────────────────
+const CONTENT_TYPES = [
+  {
+    slug: "sacms-hero",
+    name: "SaCMS Hero Section",
+    description: "Hero banner untuk halaman depan",
+    isSingleType: false,
+    fields: [
+      { slug: "headline",      name: "Headline",      type: "text",   required: true,  order: 0 },
+      { slug: "subheadline",   name: "Subheadline",   type: "text",   required: false, order: 1 },
+      { slug: "cta_primary",   name: "CTA Primary",   type: "text",   required: false, order: 2 },
+      { slug: "cta_secondary", name: "CTA Secondary", type: "text",   required: false, order: 3 },
+      { slug: "badge_text",    name: "Badge Text",    type: "text",   required: false, order: 4 },
+      { slug: "image_url",     name: "Image URL",     type: "text",   required: false, order: 5 },
+    ],
+  },
+  {
+    slug: "sacms-features",
+    name: "SaCMS Features",
+    description: "Kartu fitur di halaman depan",
+    isSingleType: false,
+    fields: [
+      { slug: "icon",        name: "Icon",        type: "text", required: false, order: 0 },
+      { slug: "title",       name: "Title",       type: "text", required: true,  order: 1 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 2 },
+      { slug: "color",       name: "Color",       type: "text", required: false, order: 3 },
+    ],
+  },
+  {
+    slug: "sacms-addons",
+    name: "SaCMS Addons",
+    description: "Layanan tambahan opsional",
+    isSingleType: false,
+    fields: [
+      { slug: "icon",        name: "Icon",        type: "text",   required: false, order: 0 },
+      { slug: "name",        name: "Name",        type: "text",   required: true,  order: 1 },
+      { slug: "description", name: "Description", type: "text",   required: false, order: 2 },
+      { slug: "price",       name: "Price",       type: "number", required: false, order: 3 },
+      { slug: "unit",        name: "Unit",        type: "text",   required: false, order: 4 },
+    ],
+  },
+  {
+    slug: "sacms-workflow",
+    name: "SaCMS Workflow Steps",
+    description: "Langkah-langkah cara kerja",
+    isSingleType: false,
+    fields: [
+      { slug: "step",        name: "Step Number", type: "number", required: true,  order: 0 },
+      { slug: "title",       name: "Title",       type: "text",   required: true,  order: 1 },
+      { slug: "description", name: "Description", type: "text",   required: false, order: 2 },
+      { slug: "icon",        name: "Icon",        type: "text",   required: false, order: 3 },
+    ],
+  },
+  {
+    slug: "sacms-faq",
+    name: "SaCMS FAQ",
+    description: "Pertanyaan yang sering diajukan",
+    isSingleType: false,
+    fields: [
+      { slug: "question", name: "Question", type: "text",   required: true,  order: 0 },
+      { slug: "answer",   name: "Answer",   type: "text",   required: true,  order: 1 },
+      { slug: "order",    name: "Order",    type: "number", required: false, order: 2 },
+    ],
+  },
+  {
+    slug: "sacms-testimonials",
+    name: "SaCMS Testimonials",
+    description: "Testimoni pengguna",
+    isSingleType: false,
+    fields: [
+      { slug: "name",       name: "Name",       type: "text",   required: true,  order: 0 },
+      { slug: "role",       name: "Role",       type: "text",   required: false, order: 1 },
+      { slug: "company",    name: "Company",    type: "text",   required: false, order: 2 },
+      { slug: "content",    name: "Content",    type: "text",   required: true,  order: 3 },
+      { slug: "avatar_url", name: "Avatar URL", type: "text",   required: false, order: 4 },
+      { slug: "rating",     name: "Rating",     type: "number", required: false, order: 5 },
+    ],
+  },
+  {
+    slug: "sacms-owners",
+    name: "SaCMS Team/Owners",
+    description: "Profil anggota tim",
+    isSingleType: false,
+    fields: [
+      { slug: "name",       name: "Name",       type: "text", required: true,  order: 0 },
+      { slug: "role",       name: "Role",       type: "text", required: false, order: 1 },
+      { slug: "bio",        name: "Bio",        type: "text", required: false, order: 2 },
+      { slug: "avatar_url", name: "Avatar URL", type: "text", required: false, order: 3 },
+      { slug: "linkedin",   name: "LinkedIn",   type: "text", required: false, order: 4 },
+    ],
+  },
+  {
+    slug: "sacms-about",
+    name: "SaCMS About Section",
+    description: "Konten section tentang kami (single)",
+    isSingleType: false,
+    fields: [
+      { slug: "title",       name: "Title",       type: "text", required: true,  order: 0 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 1 },
+      { slug: "mission",     name: "Mission",     type: "text", required: false, order: 2 },
+      { slug: "founded",     name: "Founded",     type: "text", required: false, order: 3 },
+    ],
+  },
+  {
+    slug: "sacms-whatsapp",
+    name: "SaCMS WhatsApp Config",
+    description: "Konfigurasi tombol WhatsApp (single)",
+    isSingleType: false,
+    fields: [
+      { slug: "phone",     name: "Phone",     type: "text",    required: true,  order: 0 },
+      { slug: "message",   name: "Message",   type: "text",    required: false, order: 1 },
+      { slug: "label",     name: "Label",     type: "text",    required: false, order: 2 },
+      { slug: "is_active", name: "Is Active", type: "boolean", required: false, order: 3 },
+    ],
+  },
+  {
+    slug: "sacms-sectors",
+    name: "SaCMS Sectors",
+    description: "Sektor yang dilayani",
+    isSingleType: false,
+    fields: [
+      { slug: "icon",  name: "Icon",  type: "text", required: true, order: 0 },
+      { slug: "label", name: "Label", type: "text", required: true, order: 1 },
+      { slug: "desc",  name: "Description", type: "text", required: false, order: 2 },
+    ]
+  },
+  {
+    slug: "sacms-local-pride",
+    name: "SaCMS Local Pride",
+    description: "Section kebanggaan lokal",
+    isSingleType: false,
+    fields: [
+      { slug: "badge", name: "Badge Text", type: "text", required: false, order: 0 },
+      { slug: "title", name: "Title", type: "text", required: true, order: 1 },
+      { slug: "description", name: "Description", type: "textarea", required: false, order: 2 },
+    ]
+  },
+  {
+    slug: "sacms-cta",
+    name: "SaCMS CTA Banner",
+    description: "Call to Action di bagian bawah",
+    isSingleType: false,
+    fields: [
+      { slug: "title", name: "Title", type: "text", required: true, order: 0 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 1 },
+      { slug: "button_primary_text", name: "Primary Button Text", type: "text", required: false, order: 2 },
+      { slug: "button_secondary_text", name: "Secondary Button Text", type: "text", required: false, order: 3 },
+    ]
+  },
+  {
+    slug: "sacms-footer",
+    name: "SaCMS Footer",
+    description: "Konfigurasi Footer",
+    isSingleType: false,
+    fields: [
+      { slug: "brand_name", name: "Brand Name", type: "text", required: true, order: 0 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 1 },
+      { slug: "copyright", name: "Copyright Text", type: "text", required: false, order: 2 },
+    ]
+  }
+]
+
+// ──────────────────────────────────────────────────────────
+// SEED DATA — Semua konten landing page Papua Digital
+// ──────────────────────────────────────────────────────────
+const SEED_DATA: Record<string, object | object[]> = {
+
+  // ───── HERO (Single Type) ─────
+  "sacms-hero": {
+    headline: "Modernisasi Digital untuk Tanah Papua",
+    subheadline: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung percepatan transformasi digital di Tanah Papua.",
+    cta_primary: "Mulai Sekarang",
+    cta_secondary: "Pelajari Selengkapnya",
+    badge_text: "🏛️ Platform Digital Papua — Khusus Website Pemerintah",
+    image_url: ""
+  },
+
+  // ───── FEATURES (Collection) ─────
+  "sacms-features": [
+    { icon: "Shield",     title: "Website Pemerintah",       description: "Template dan sistem siap pakai untuk instansi pemerintah daerah di Papua. Mendukung transparansi informasi publik, pengumuman resmi, dan layanan masyarakat secara digital.", color: "indigo" },
+    { icon: "Zap",        title: "Portal Berita & Blog",     description: "Sistem publikasi berita dan blog profesional untuk media lokal Papua. Dilengkapi kategori, penulis, penjadwalan publikasi, dan SEO otomatis.", color: "blue" },
+    { icon: "Layout",     title: "Katalog UMKM & Produk",    description: "Etalase digital untuk wirausaha dan UMKM Papua. Tampilkan produk lokal, harga, dan informasi usaha kepada pasar yang lebih luas.", color: "purple" },
+    { icon: "Globe",      title: "Pariwisata Papua",         description: "Showcase destinasi wisata dan kekayaan budaya Papua — dari Raja Ampat hingga Lembah Baliem. Website wisata yang memukau untuk menarik wisatawan.", color: "teal" },
+    { icon: "CreditCard", title: "Profil Bisnis & Cafe",     description: "Website profesional untuk usaha kecil dan menengah: cafe, restoran, toko, dan layanan jasa di seluruh Papua. Tampil modern dan mudah dikelola.", color: "yellow" },
+    { icon: "Database",   title: "Keamanan & Keandalan",     description: "Infrastruktur enterprise-grade dengan enkripsi data, kontrol akses berbasis peran (RBAC), audit log, dan backup otomatis. Aman untuk data pemerintah dan bisnis.", color: "slate" },
+  ],
+
+  // ───── WORKFLOW (Collection) ─────
+  "sacms-workflow": [
+    { step: 1, title: "Pilih Template",      description: "Pilih template sesuai kebutuhan — Website Pemerintah, Portal Berita, Katalog UMKM, atau Pariwisata. Siap pakai dalam hitungan menit.", icon: "PenLine" },
+    { step: 2, title: "Sesuaikan Konten",     description: "Isi data instansi, upload logo dan foto, atur tampilan website. Dashboard CMS yang mudah digunakan siapa saja.", icon: "FileEdit" },
+    { step: 3, title: "Kelola & Kolaborasi",  description: "Undang tim untuk mengelola konten bersama. Sistem approval, penjadwalan publikasi, dan audit log bawaan.", icon: "Code2" },
+    { step: 4, title: "Publikasikan",         description: "Website siap online dan bisa diakses masyarakat Papua dan dunia. Performa cepat, aman, dan andal.", icon: "Rocket" },
+  ],
+
+  // ───── FAQ (Collection) ─────
+  "sacms-faq": [
+    { question: "Apakah SaCMS cocok untuk website pemerintah daerah?", answer: "Sangat cocok! SaCMS dirancang khusus dengan fitur keamanan enterprise-grade, kontrol akses berbasis peran, dan audit log yang memenuhi standar website pemerintah Indonesia.", order: 1 },
+    { question: "Apakah ada paket gratis untuk UMKM?", answer: "Ya! Paket Gratis tersedia selamanya tanpa biaya dan tanpa kartu kredit. UMKM di Papua bisa langsung memulai dan upgrade ketika bisnis berkembang.", order: 2 },
+    { question: "Apakah mendukung bahasa daerah Papua?", answer: "Ya, SaCMS mendukung multi-bahasa penuh. Anda bisa menambahkan bahasa Indonesia, bahasa daerah Papua, dan bahasa lainnya untuk menjangkau semua kalangan masyarakat.", order: 3 },
+    { question: "Metode pembayaran apa saja yang didukung?", answer: "Kami menggunakan Midtrans yang mendukung transfer bank, kartu kredit, GoPay, OVO, DANA, dan banyak metode pembayaran Indonesia lainnya.", order: 4 },
+    { question: "Apakah data aman untuk instansi pemerintah?", answer: "Keamanan data adalah prioritas utama. SaCMS menggunakan enkripsi end-to-end, isolasi data per workspace, backup otomatis, dan infrastruktur cloud yang tersertifikasi.", order: 5 },
+    { question: "Bisa digunakan untuk website pariwisata?", answer: "Tentu! SaCMS sangat cocok untuk website pariwisata dengan fitur galeri foto, peta lokasi, katalog destinasi, dan integrasi media sosial untuk mempromosikan keindahan Papua.", order: 6 },
+  ],
+
+  // ───── ADDONS (Collection) ─────
+  "sacms-addons": [
+    { icon: "Bot",      name: "Paket AI Konten",     description: "10.000 kredit tambahan untuk pembuatan konten otomatis dengan AI per bulan.", price: 49000, unit: "bulan" },
+    { icon: "Database", name: "Penyimpanan Ekstra",   description: "50GB tambahan penyimpanan untuk media, dokumen, dan aset digital.",           price: 29000, unit: "bulan" },
+    { icon: "Zap",      name: "Boost API",            description: "500.000 request API tambahan per bulan untuk website dengan trafik tinggi.",   price: 39000, unit: "bulan" },
+    { icon: "Shield",   name: "Konsultasi Digital",   description: "Konsultasi bulanan untuk strategi digitalisasi instansi dan UMKM di Papua.",   price: 99000, unit: "bulan" },
+  ],
+
+  // ───── TESTIMONIALS (Collection) ─────
+  "sacms-testimonials": [
+    {
+      name: "Yohanes Wenda",
+      role: "Kepala Bidang TIK",
+      company: "Dinas Kominfo Papua",
+      content: "SaCMS membantu kami membangun portal informasi pemerintah yang modern dan mudah dikelola. Transparansi informasi publik jadi lebih baik.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Yohanes",
+      rating: 5
+    },
+    {
+      name: "Maria Rumbekwan",
+      role: "Pemilik UMKM",
+      company: "Noken Papua Store",
+      content: "Berkat SaCMS, produk kerajinan noken kami sekarang bisa dilihat dan dipesan dari seluruh Indonesia. Omzet naik 3x lipat!",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
+      rating: 5
+    },
+    {
+      name: "Daniel Fatem",
+      role: "Pengelola Pariwisata",
+      company: "Raja Ampat Tourism",
+      content: "Website pariwisata kami tampil profesional dan memukau. Jumlah wisatawan yang menghubungi kami meningkat drastis sejak menggunakan SaCMS.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Daniel",
+      rating: 5
+    },
+  ],
+
+  // ───── OWNERS / TIM (Collection) ─────
+  "sacms-owners": [
+    {
+      name: "Zonggonau Cristoper",
+      role: "Founder & Lead Architect",
+      bio: "Seorang pengembang perangkat lunak yang berdedikasi untuk membangun ekosistem teknologi digital di Papua. Berpengalaman dalam merancang sistem skala besar yang efisien dan aman.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
+      linkedin: "https://linkedin.com/in/cristoperz"
+    },
+    {
+      name: "Januar Fonda",
+      role: "Core Developer",
+      bio: "Pengembang Fullstack yang fokus pada performa dan skalabilitas sistem. Berkomitmen untuk menghadirkan pengalaman pengguna terbaik melalui teknologi modern.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
+      linkedin: ""
+    },
+  ],
+
+  // ───── ABOUT (Single Type) ─────
+  "sacms-about": {
+    title: "Tentang SaCMS",
+    description: "SaCMS adalah platform CMS modern yang lahir dari visi untuk mempercepat transformasi digital di Tanah Papua. Kami membangun teknologi website yang mudah digunakan untuk instansi pemerintah, UMKM, media, dan sektor pariwisata di seluruh Papua.",
+    mission: "Mewujudkan Papua Digital — membawa infrastruktur teknologi informasi kelas dunia untuk mendukung kemajuan pemerintahan, ekonomi, dan pariwisata di Tanah Papua.",
+    founded: "2024"
+  },
+
+  // ───── WHATSAPP CONFIG (Single Type) ─────
+  "sacms-whatsapp": {
+    phone: "6282199220551",
+    message: "Halo! Saya tertarik membangun website untuk instansi/UMKM di Papua menggunakan SaCMS. Bisakah saya mendapatkan informasi lebih lanjut?",
+    label: "Hubungi Kami",
+    is_active: true
+  },
+
+  // ───── SECTORS (Collection) ─────
+  "sacms-sectors": [
+    { icon: "Landmark", label: "Website Pemerintah", desc: "Portal resmi instansi" },
+    { icon: "ShoppingBag", label: "UMKM & Wirausaha", desc: "Etalase produk digital" },
+    { icon: "Palmtree", label: "Pariwisata", desc: "Destinasi & budaya" },
+    { icon: "Newspaper", label: "Portal Berita", desc: "Media & blog" },
+    { icon: "Coffee", label: "Cafe & Restoran", desc: "Profil usaha kuliner" },
+    { icon: "Package", label: "Katalog Produk", desc: "Showcase produk" },
+    { icon: "Building2", label: "Perusahaan", desc: "Company profile" },
+    { icon: "Lightbulb", label: "Startup & Inovasi", desc: "Ekosistem digital" },
+  ],
+
+  // ───── LOCAL PRIDE (Single Type) ─────
+  "sacms-local-pride": {
+    badge: "Kebanggaan Lokal",
+    title: "Dibuat di Papua.<br/>Untuk Kemajuan Papua.",
+    description: "SaCMS lahir dari visi bahwa inovasi teknologi kelas dunia bisa dibangun dari Timur Indonesia. Kami membangun infrastruktur digital enterprise-grade untuk mendukung percepatan transformasi digital di seluruh Tanah Papua — dari pemerintahan hingga UMKM.",
+  },
+
+  // ───── CTA BANNER (Single Type) ─────
+  "sacms-cta": {
+    title: "Siap Membangun Website untuk Papua?",
+    description: "Mulai gratis sekarang. Tanpa kartu kredit. Upgrade kapan saja sesuai kebutuhan.",
+    button_primary_text: "Mulai Gratis Sekarang",
+    button_secondary_text: "Baca Dokumentasi",
+  },
+
+  // ───── FOOTER (Single Type) ─────
+  "sacms-footer": {
+    brand_name: "SaCMS",
+    description: "Platform CMS Modern untuk Papua Digital.",
+    copyright: "SaCMS. Hak cipta dilindungi.",
+  },
+}
+
+// ──────────────────────────────────────────────────────────
+// MAIN FUNCTION
+// ──────────────────────────────────────────────────────────
 async function main() {
-  console.log("🌱 Seeding ALL Global SaCMS Content...")
+  console.log("══════════════════════════════════════════════════")
+  console.log("🌱 SaCMS Global Seed — Papua Digital")
+  console.log("══════════════════════════════════════════════════\n")
 
-  let tenant = await prisma.tenant.findFirst({
-    where: { slug: "sacms-global" }
-  })
+  // ─── STEP 1: Ensure schemas exist (Content Types + Single Types) ───
+  console.log("📐 STEP 1: Memastikan semua Content Types & Single Types tersedia...\n")
 
-  if (!tenant) {
-    console.log("  Creating 'sacms-global' tenant...")
-    tenant = await prisma.tenant.create({
-      data: {
-        name: "SaCMS Global",
-        slug: "sacms-global",
-        plan: "enterprise",
-        status: "active"
-      }
-    })
-  }
-
-  const getCT = async (slug: string) => {
-    const ct = await prisma.contentType.findFirst({ where: { slug } })
-    if (!ct) {
-      console.warn(`⚠️ Content Type ${slug} not found, skipping...`)
-      return null
-    }
-    return ct
-  }
-
-  const clearAndSeed = async (slug: string, data: any[]) => {
-    const ct = await getCT(slug)
-    if (!ct) return
-
-    await prisma.contentEntry.deleteMany({
-      where: { contentTypeId: ct.id }
-    })
-
-    for (const item of data) {
-      await prisma.contentEntry.create({
-        data: {
-          contentTypeId: ct.id,
-          tenantId: tenant.id,
-          status: "PUBLISHED",
-          data: item
-        }
+  for (const ct of CONTENT_TYPES) {
+    if (ct.isSingleType) {
+      // ── Single Type ──
+      let singleType = await prisma.singleType.findFirst({
+        where: { slug: ct.slug, tenantId: null },
       })
+
+      if (!singleType) {
+        singleType = await prisma.singleType.create({
+          data: {
+            name: ct.name,
+            slug: ct.slug,
+            description: ct.description,
+            tenantId: null,
+            isPublished: true,
+            fields: {
+              create: ct.fields.map((f) => ({
+                name: f.name,
+                slug: f.slug,
+                type: f.type,
+                required: f.required,
+                order: f.order,
+              })),
+            },
+          },
+        })
+        console.log(`  🆕 SingleType "${ct.slug}" dibuat.`)
+      } else {
+        console.log(`  ✓  SingleType "${ct.slug}" sudah ada.`)
+      }
+    } else {
+      // ── Collection Type ──
+      let contentType = await prisma.contentType.findFirst({
+        where: { slug: ct.slug, tenantId: null },
+      })
+
+      if (!contentType) {
+        contentType = await prisma.contentType.create({
+          data: {
+            name: ct.name,
+            slug: ct.slug,
+            description: ct.description,
+            tenantId: null,
+            isPublished: true,
+            fields: {
+              create: ct.fields.map((f) => ({
+                name: f.name,
+                slug: f.slug,
+                type: f.type,
+                required: f.required,
+                order: f.order,
+              })),
+            },
+          },
+        })
+        console.log(`  🆕 ContentType "${ct.slug}" dibuat.`)
+      } else {
+        console.log(`  ✓  ContentType "${ct.slug}" sudah ada.`)
+      }
     }
-    console.log(`  ✅ ${slug} seeded.`)
   }
 
-  try {
-    // 1. HERO
-    await clearAndSeed("sacms-hero", [{
-      badge_text: "Platform CMS Pertama di Papua",
-      title: "Bangun Pengalaman Digital Tanpa Batas.",
-      subtitle: "Headless CMS modern dengan arsitektur multi-tenant yang dirancang untuk kecepatan, keamanan, dan kemudahan skalabilitas bagi instansi dan startup.",
-      cta_primary_text: "Mulai Gratis",
-      cta_secondary_text: "Lihat Demo"
-    }])
+  // ─── STEP 2: Seed all data ───
+  console.log("\n📝 STEP 2: Mengisi data konten landing page...\n")
 
-    // 2. FEATURES
-    await clearAndSeed("sacms-features", [
-      { title: "Multi-Tenant Native", description: "Isolasi data aman antar organisasi dalam satu infrastruktur terpusat.", icon: "Users", is_main: true, tag: "Architecture" },
-      { title: "AI Content Generator", description: "Tulis konten berkualitas tinggi secara instan dengan bantuan AI terintegrasi.", icon: "Sparkles", is_main: true, tag: "Productivity" },
-      { title: "API-First approach", description: "Kirim konten Anda ke platform mana pun (Web, Mobile, IoT) via REST atau GraphQL.", icon: "Code2", is_main: true, tag: "Developer" },
-      { title: "Media Library", description: "Manajemen aset cloud dengan optimasi gambar otomatis menggunakan Cloudflare R2.", icon: "ImageIcon", is_main: false, tag: "Media" },
-      { title: "Role-Based Access", description: "Kontrol akses pengguna secara granular untuk keamanan data yang maksimal.", icon: "Lock", is_main: false, tag: "Security" },
-      { title: "Real-time Webhooks", description: "Sinkronkan konten Anda dengan layanan eksternal secara instan melalui sistem webhook.", icon: "Webhook", is_main: false, tag: "Integration" }
-    ])
+  for (const ct of CONTENT_TYPES) {
+    const seedData = SEED_DATA[ct.slug]
+    if (!seedData) {
+      console.log(`  ⏭️  ${ct.slug}: tidak ada seed data, skip.`)
+      continue
+    }
 
-    // 3. PRICING
-    await clearAndSeed("sacms-pricing", [
-      { 
-        name: "Starter", plan_slug: "starter", price: "499000", description: "Sempurna untuk proyek kecil dan tim lokal.", 
-        features_list: ["10 Content Schemas", "5.000 Content Entries", "5 Team Members", "100.000 API Calls"], 
-        max_content_types: 10, max_content_entries: 5000, max_team_members: 5, max_api_calls: 100000, 
-        max_storage: 1024, max_locales: 1, audit_log_retention: 0, support_level: "Email", is_popular: false, button_text: "Pilih Starter" 
-      },
-      { 
-        name: "Business", plan_slug: "pro", price: "1499000", description: "Untuk instansi dengan kebutuhan konten yang intensif.", 
-        features_list: ["50 Content Schemas", "50.000 Content Entries", "20 Team Members", "1.000.000 API Calls", "Audit Logs (7 Days)"], 
-        max_content_types: 50, max_content_entries: 50000, max_team_members: 20, max_api_calls: 1000000, 
-        max_storage: 10240, max_locales: 5, audit_log_retention: 7, support_level: "Priority", is_popular: true, button_text: "Pilih Business" 
-      },
-      { 
-        name: "Enterprise", plan_slug: "enterprise", price: "2499000", description: "Performa maksimal untuk infrastruktur skala nasional.", 
-        features_list: ["Unlimited Schemas", "Unlimited Entries", "Unlimited Members", "Custom SLA", "Audit Logs (Unlimited)"], 
-        max_content_types: 999, max_content_entries: 999999, max_team_members: 999, max_api_calls: 99999999, 
-        max_storage: 102400, max_locales: 99, audit_log_retention: 9999, support_level: "24/7 Dedicated", is_popular: false, button_text: "Hubungi Kami" 
+    if (ct.isSingleType) {
+      // ── Seed Single Type ──
+      const st = await prisma.singleType.findFirst({
+        where: { slug: ct.slug, tenantId: null },
+      })
+      if (!st) continue
+
+      await prisma.tenantSingleTypeAssignment.deleteMany({
+        where: { singleTypeId: st.id, tenantId: null },
+      })
+
+      await prisma.tenantSingleTypeAssignment.create({
+        data: {
+          tenantId: null,
+          singleTypeId: st.id,
+          data: seedData as any,
+          publishedAt: new Date(),
+        },
+      })
+      console.log(`  ✅ ${ct.slug}: single type data di-seed.`)
+
+    } else {
+      // ── Seed Collection ──
+      const contentType = await prisma.contentType.findFirst({
+        where: { slug: ct.slug, tenantId: null },
+      })
+      if (!contentType) continue
+
+      const entries = Array.isArray(seedData) ? seedData : [seedData]
+
+      // Hapus data lama
+      await prisma.contentEntry.deleteMany({
+        where: { contentTypeId: contentType.id, tenantId: null },
+      })
+
+      // Buat data baru
+      for (const entry of entries) {
+        await prisma.contentEntry.create({
+          data: {
+            contentTypeId: contentType.id,
+            tenantId: null,
+            status: "PUBLISHED",
+            publishedAt: new Date(),
+            data: entry,
+          },
+        })
       }
-    ])
-
-    // 4. ADDONS
-    await clearAndSeed("sacms-addons", [
-      { title: "AI Content Pack", addon_slug: "ai-pack", feature_key: "ai_generation", price_label: "+Rp 150k/bln", description: "Tingkatkan limit AI generation untuk produksi konten massal.", icon: "Sparkles" },
-      { title: "Custom Domain", addon_slug: "custom-domain", feature_key: "white_label", price_label: "+Rp 50k/bln", description: "Gunakan domain kustom untuk admin panel dan API.", icon: "Globe" },
-      { title: "Priority Support", addon_slug: "support-pro", feature_key: "priority_support", price_label: "+Rp 200k/bln", description: "Dukungan teknis prioritas melalui WhatsApp dan Zoom.", icon: "Zap" }
-    ])
-
-    // 5. WORKFLOW
-    await clearAndSeed("sacms-workflow", [
-      { step: "01", title: "Registrasi Workspace", description: "Daftar dan buat workspace khusus untuk organisasi Anda dalam hitungan detik.", icon: "Users" },
-      { step: "02", title: "Bangun Struktur Data", description: "Gunakan Content Builder untuk menentukan skema data (News, Blog, Products, dll).", icon: "Layout" },
-      { step: "03", title: "Input & Kelola Konten", description: "Tulis konten Anda dengan Rich Text Editor yang modern dan intuitif.", icon: "Code2" },
-      { step: "04", title: "Konsumsi via API", description: "Hubungkan konten ke website atau aplikasi mobile Anda melalui API yang cepat.", icon: "Zap" }
-    ])
-
-    // 6. FAQ
-    await clearAndSeed("sacms-faq", [
-      { question: "Apa itu Headless CMS?", answer: "Headless CMS adalah sistem manajemen konten back-end saja yang bertindak sebagai repositori konten, membuat konten dapat diakses melalui API untuk ditampilkan di perangkat apa pun." },
-      { question: "Apakah SaCMS mendukung multi-bahasa?", answer: "Ya, SaCMS memiliki fitur i18n native yang memungkinkan Anda mengelola konten dalam berbagai bahasa seperti Indonesia, Inggris, dan bahasa daerah lainnya." },
-      { question: "Bagaimana dengan keamanan data?", answer: "Kami menggunakan enkripsi tingkat tinggi dan isolasi database untuk setiap tenant enterprise guna memastikan data Anda tetap aman dan privat." },
-      { question: "Apakah bisa integrasi dengan WordPress?", answer: "SaCMS adalah pengganti WordPress yang lebih modern. Namun, Anda dapat menarik data dari SaCMS ke WordPress menggunakan API kami jika diperlukan." }
-    ])
-
-    // 7. WHATSAPP
-    await clearAndSeed("sacms-whatsapp", [{
-      phone: "6282199220551",
-      message: "Halo Tim SaCMS, saya tertarik untuk bertanya lebih lanjut mengenai layanan Headless CMS.",
-      label: "Hubungi Kami",
-      is_active: true
-    }])
-
-    // 8. ABOUT
-    await clearAndSeed("sacms-about", [{
-      title: "Misi Digitalisasi dari Timur Indonesia",
-      content: "SaCMS lahir di Jayapura dengan satu misi: mempermudah akses teknologi bagi pengembang dan organisasi di Papua dan sekitarnya. Kami percaya bahwa setiap entitas berhak mendapatkan infrastruktur digital kelas dunia untuk menyampaikan cerita dan layanan mereka secara efisien.",
-      image: "https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80"
-    }])
-
-    // 9. OWNERS
-    await clearAndSeed("sacms-owners", [
-      { 
-        name: "Zonggonau Cristoper", 
-        role: "Founder & Lead Architect", 
-        bio: "<p>Seorang pengembang perangkat lunak yang berdedikasi untuk membangun ekosistem teknologi di Papua. Berpengalaman dalam merancang sistem skala besar yang efisien dan aman.</p>",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
-        social: { linkedin: "https://linkedin.com/in/cristoperz", github: "https://github.com/cristoperz" }
-      },
-      { 
-        name: "Januar Fonda", 
-        role: "Core Developer", 
-        bio: "<p>Pengembang Fullstack yang fokus pada performa dan skalabilitas sistem. Berkomitmen untuk menghadirkan pengalaman pengguna terbaik melalui teknologi modern.</p>",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
-        social: { github: "https://github.com/januarfonda" }
-      }
-    ])
-
-    // 10. TESTIMONIALS
-    await clearAndSeed("sacms-testimonials", [
-      { 
-        name: "Budi Santoso", 
-        role: "CTO @ Startup Lokal", 
-        content: "SaCMS sangat membantu tim kami dalam mengelola konten aplikasi mobile tanpa harus membangun backend dari nol. Performa API-nya luar biasa!",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi",
-        rating: 5
-      },
-      { 
-        name: "Ani Wijaya", 
-        role: "Digital Marketing Manager", 
-        content: "Fitur AI Generator-nya benar-benar penghemat waktu. Kami bisa memproduksi draft konten blog dalam hitungan detik.",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Ani",
-        rating: 5
-      },
-      { 
-        name: "Samuel Lukas", 
-        role: "Fullstack Developer", 
-        content: "Dokumentasi API-nya sangat lengkap dan mudah dipahami. Multi-tenancy native-nya membuat pengelolaan banyak client jadi jauh lebih simpel.",
-        avatar: "https://api.dicebear.com/7.x/avataaars/svg?seed=Samuel",
-        rating: 5
-      }
-    ])
-
-    console.log("✨ ALL Global SaCMS Content seeded successfully!")
-  } catch (err: any) {
-    console.error(`❌ Error seeding: ${err.message}`)
+      console.log(`  ✅ ${ct.slug}: ${entries.length} entries di-seed.`)
+    }
   }
+
+  console.log("\n══════════════════════════════════════════════════")
+  console.log("✨ Selesai! Semua data landing page sudah di-seed.")
+  console.log("   Buka website untuk melihat hasilnya.")
+  console.log("   Setelah ini bisa diubah langsung dari CMS dashboard.")
+  console.log("══════════════════════════════════════════════════\n")
 }
 
 main()
-  .catch(e => console.error(e))
-  .finally(async () => await prisma.$disconnect())
+  .catch((e) => {
+    console.error("❌ Error:", e)
+    process.exit(1)
+  })
+  .finally(async () => {
+    await prisma.$disconnect()
+  })

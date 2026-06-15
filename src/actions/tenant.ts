@@ -63,7 +63,7 @@ export async function createTenantAction(data: any) {
           slug,
           description,
           plan,
-          status: "active",
+          status: "provisioning",
         }
       })
 
@@ -92,7 +92,10 @@ export async function createTenantAction(data: any) {
       return newTenant
     })
 
-    await provisionTenant(tenant.id, aiPrompt, websiteType)
+    // Run provisioning in background
+    provisionTenant(tenant.id, aiPrompt, websiteType).catch(err => {
+      console.error(`[Server Action Provisioning Error] ${tenant.id}:`, err)
+    })
 
     await logAudit({
       tenantId: tenant.id,

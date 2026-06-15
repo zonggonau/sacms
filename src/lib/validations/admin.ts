@@ -18,6 +18,7 @@ export const createContentTypeSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/),
   description: z.string().max(500).optional(),
+  docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
 })
 
@@ -26,6 +27,7 @@ export const updateContentTypeSchema = z.object({
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/).optional(),
   description: z.string().max(500).optional(),
   isPublished: z.boolean().optional(),
+  docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
 }).passthrough()
 

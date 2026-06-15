@@ -9215,6 +9215,7 @@ export namespace Prisma {
     plan: number
     status: number
     databaseUrl: number
+    storageConfig: number
     createdAt: number
     updatedAt: number
     customDomain: number
@@ -9280,6 +9281,7 @@ export namespace Prisma {
     plan?: true
     status?: true
     databaseUrl?: true
+    storageConfig?: true
     createdAt?: true
     updatedAt?: true
     customDomain?: true
@@ -9374,6 +9376,7 @@ export namespace Prisma {
     plan: string
     status: string
     databaseUrl: string | null
+    storageConfig: JsonValue | null
     createdAt: Date
     updatedAt: Date
     customDomain: string | null
@@ -9412,6 +9415,7 @@ export namespace Prisma {
     plan?: boolean
     status?: boolean
     databaseUrl?: boolean
+    storageConfig?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     customDomain?: boolean
@@ -9454,6 +9458,7 @@ export namespace Prisma {
     plan?: boolean
     status?: boolean
     databaseUrl?: boolean
+    storageConfig?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     customDomain?: boolean
@@ -9475,6 +9480,7 @@ export namespace Prisma {
     plan?: boolean
     status?: boolean
     databaseUrl?: boolean
+    storageConfig?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     customDomain?: boolean
@@ -9496,6 +9502,7 @@ export namespace Prisma {
     plan?: boolean
     status?: boolean
     databaseUrl?: boolean
+    storageConfig?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     customDomain?: boolean
@@ -9508,7 +9515,7 @@ export namespace Prisma {
     faviconUrl?: boolean
   }
 
-  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "databaseUrl" | "createdAt" | "updatedAt" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "brandName" | "brandLogo" | "primaryColor" | "customEmailSender" | "faviconUrl", ExtArgs["result"]["tenant"]>
+  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "databaseUrl" | "storageConfig" | "createdAt" | "updatedAt" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "brandName" | "brandLogo" | "primaryColor" | "customEmailSender" | "faviconUrl", ExtArgs["result"]["tenant"]>
   export type TenantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     members?: boolean | Tenant$membersArgs<ExtArgs>
     apiKeys?: boolean | Tenant$apiKeysArgs<ExtArgs>
@@ -9568,6 +9575,7 @@ export namespace Prisma {
       plan: string
       status: string
       databaseUrl: string | null
+      storageConfig: Prisma.JsonValue | null
       createdAt: Date
       updatedAt: Date
       customDomain: string | null
@@ -10029,6 +10037,7 @@ export namespace Prisma {
     readonly plan: FieldRef<"Tenant", 'String'>
     readonly status: FieldRef<"Tenant", 'String'>
     readonly databaseUrl: FieldRef<"Tenant", 'String'>
+    readonly storageConfig: FieldRef<"Tenant", 'Json'>
     readonly createdAt: FieldRef<"Tenant", 'DateTime'>
     readonly updatedAt: FieldRef<"Tenant", 'DateTime'>
     readonly customDomain: FieldRef<"Tenant", 'String'>
@@ -13187,6 +13196,7 @@ export namespace Prisma {
     slug: string | null
     description: string | null
     isPublished: boolean | null
+    docxTemplateUrl: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -13198,6 +13208,7 @@ export namespace Prisma {
     slug: string | null
     description: string | null
     isPublished: boolean | null
+    docxTemplateUrl: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -13209,6 +13220,7 @@ export namespace Prisma {
     slug: number
     description: number
     isPublished: number
+    docxTemplateUrl: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -13222,6 +13234,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    docxTemplateUrl?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -13233,6 +13246,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    docxTemplateUrl?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -13244,6 +13258,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    docxTemplateUrl?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -13328,6 +13343,7 @@ export namespace Prisma {
     slug: string
     description: string | null
     isPublished: boolean
+    docxTemplateUrl: string | null
     createdAt: Date
     updatedAt: Date
     _count: ContentTypeCountAggregateOutputType | null
@@ -13356,6 +13372,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    docxTemplateUrl?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | ContentType$tenantArgs<ExtArgs>
@@ -13372,6 +13389,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    docxTemplateUrl?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | ContentType$tenantArgs<ExtArgs>
@@ -13384,6 +13402,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    docxTemplateUrl?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | ContentType$tenantArgs<ExtArgs>
@@ -13396,11 +13415,12 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    docxTemplateUrl?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type ContentTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "slug" | "description" | "isPublished" | "createdAt" | "updatedAt", ExtArgs["result"]["contentType"]>
+  export type ContentTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "slug" | "description" | "isPublished" | "docxTemplateUrl" | "createdAt" | "updatedAt", ExtArgs["result"]["contentType"]>
   export type ContentTypeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     tenant?: boolean | ContentType$tenantArgs<ExtArgs>
     fields?: boolean | ContentType$fieldsArgs<ExtArgs>
@@ -13430,6 +13450,7 @@ export namespace Prisma {
       slug: string
       description: string | null
       isPublished: boolean
+      docxTemplateUrl: string | null
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["contentType"]>
@@ -13865,6 +13886,7 @@ export namespace Prisma {
     readonly slug: FieldRef<"ContentType", 'String'>
     readonly description: FieldRef<"ContentType", 'String'>
     readonly isPublished: FieldRef<"ContentType", 'Boolean'>
+    readonly docxTemplateUrl: FieldRef<"ContentType", 'String'>
     readonly createdAt: FieldRef<"ContentType", 'DateTime'>
     readonly updatedAt: FieldRef<"ContentType", 'DateTime'>
   }
@@ -15686,7 +15708,7 @@ export namespace Prisma {
 
   export type TenantContentTypeAssignmentGroupByOutputType = {
     id: string
-    tenantId: string
+    tenantId: string | null
     contentTypeId: string
     enabled: boolean
     createdAt: Date
@@ -15715,7 +15737,7 @@ export namespace Prisma {
     contentTypeId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantContentTypeAssignment"]>
 
@@ -15725,7 +15747,7 @@ export namespace Prisma {
     contentTypeId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantContentTypeAssignment"]>
 
@@ -15735,7 +15757,7 @@ export namespace Prisma {
     contentTypeId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantContentTypeAssignment"]>
 
@@ -15749,27 +15771,27 @@ export namespace Prisma {
 
   export type TenantContentTypeAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "contentTypeId" | "enabled" | "createdAt", ExtArgs["result"]["tenantContentTypeAssignment"]>
   export type TenantContentTypeAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }
   export type TenantContentTypeAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }
   export type TenantContentTypeAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantContentTypeAssignment$tenantArgs<ExtArgs>
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
   }
 
   export type $TenantContentTypeAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "TenantContentTypeAssignment"
     objects: {
-      tenant: Prisma.$TenantPayload<ExtArgs>
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
       contentType: Prisma.$ContentTypePayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      tenantId: string
+      tenantId: string | null
       contentTypeId: string
       enabled: boolean
       createdAt: Date
@@ -16167,7 +16189,7 @@ export namespace Prisma {
    */
   export interface Prisma__TenantContentTypeAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    tenant<T extends TenantContentTypeAssignment$tenantArgs<ExtArgs> = {}>(args?: Subset<T, TenantContentTypeAssignment$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     contentType<T extends ContentTypeDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ContentTypeDefaultArgs<ExtArgs>>): Prisma__ContentTypeClient<$Result.GetResult<Prisma.$ContentTypePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -16599,6 +16621,25 @@ export namespace Prisma {
   }
 
   /**
+   * TenantContentTypeAssignment.tenant
+   */
+  export type TenantContentTypeAssignment$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
+  }
+
+  /**
    * TenantContentTypeAssignment without action
    */
   export type TenantContentTypeAssignmentDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -16810,7 +16851,7 @@ export namespace Prisma {
     id: string
     documentId: string | null
     contentTypeId: string
-    tenantId: string
+    tenantId: string | null
     locale: string
     data: JsonValue
     status: $Enums.ContentStatus
@@ -16858,7 +16899,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
     versions?: boolean | ContentEntry$versionsArgs<ExtArgs>
     reviewAssignments?: boolean | ContentEntry$reviewAssignmentsArgs<ExtArgs>
     _count?: boolean | ContentEntryCountOutputTypeDefaultArgs<ExtArgs>
@@ -16881,7 +16922,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["contentEntry"]>
 
   export type ContentEntrySelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -16901,7 +16942,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["contentEntry"]>
 
   export type ContentEntrySelectScalar = {
@@ -16925,25 +16966,25 @@ export namespace Prisma {
   export type ContentEntryOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "documentId" | "contentTypeId" | "tenantId" | "locale" | "data" | "status" | "reviewComment" | "publishedAt" | "scheduledAt" | "archivedAt" | "createdBy" | "updatedBy" | "createdAt" | "updatedAt", ExtArgs["result"]["contentEntry"]>
   export type ContentEntryInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
     versions?: boolean | ContentEntry$versionsArgs<ExtArgs>
     reviewAssignments?: boolean | ContentEntry$reviewAssignmentsArgs<ExtArgs>
     _count?: boolean | ContentEntryCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type ContentEntryIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
   }
   export type ContentEntryIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     contentType?: boolean | ContentTypeDefaultArgs<ExtArgs>
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | ContentEntry$tenantArgs<ExtArgs>
   }
 
   export type $ContentEntryPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "ContentEntry"
     objects: {
       contentType: Prisma.$ContentTypePayload<ExtArgs>
-      tenant: Prisma.$TenantPayload<ExtArgs>
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
       versions: Prisma.$ContentVersionPayload<ExtArgs>[]
       reviewAssignments: Prisma.$ContentReviewAssignmentPayload<ExtArgs>[]
     }
@@ -16951,7 +16992,7 @@ export namespace Prisma {
       id: string
       documentId: string | null
       contentTypeId: string
-      tenantId: string
+      tenantId: string | null
       locale: string
       data: Prisma.JsonValue
       status: $Enums.ContentStatus
@@ -17358,7 +17399,7 @@ export namespace Prisma {
   export interface Prisma__ContentEntryClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
     contentType<T extends ContentTypeDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ContentTypeDefaultArgs<ExtArgs>>): Prisma__ContentTypeClient<$Result.GetResult<Prisma.$ContentTypePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    tenant<T extends ContentEntry$tenantArgs<ExtArgs> = {}>(args?: Subset<T, ContentEntry$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     versions<T extends ContentEntry$versionsArgs<ExtArgs> = {}>(args?: Subset<T, ContentEntry$versionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentVersionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     reviewAssignments<T extends ContentEntry$reviewAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, ContentEntry$reviewAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentReviewAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
@@ -17798,6 +17839,25 @@ export namespace Prisma {
      * Limit how many ContentEntries to delete.
      */
     limit?: number
+  }
+
+  /**
+   * ContentEntry.tenant
+   */
+  export type ContentEntry$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
   }
 
   /**
@@ -22685,7 +22745,7 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentGroupByOutputType = {
     id: string
-    tenantId: string
+    tenantId: string | null
     singleTypeId: string
     locale: string
     enabled: boolean
@@ -22722,7 +22782,7 @@ export namespace Prisma {
     publishedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantSingleTypeAssignment"]>
 
@@ -22736,7 +22796,7 @@ export namespace Prisma {
     publishedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantSingleTypeAssignment"]>
 
@@ -22750,7 +22810,7 @@ export namespace Prisma {
     publishedAt?: boolean
     createdAt?: boolean
     updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantSingleTypeAssignment"]>
 
@@ -22768,27 +22828,27 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "singleTypeId" | "locale" | "enabled" | "data" | "publishedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["tenantSingleTypeAssignment"]>
   export type TenantSingleTypeAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }
   export type TenantSingleTypeAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }
   export type TenantSingleTypeAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantSingleTypeAssignment$tenantArgs<ExtArgs>
     singleType?: boolean | SingleTypeDefaultArgs<ExtArgs>
   }
 
   export type $TenantSingleTypeAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "TenantSingleTypeAssignment"
     objects: {
-      tenant: Prisma.$TenantPayload<ExtArgs>
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
       singleType: Prisma.$SingleTypePayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      tenantId: string
+      tenantId: string | null
       singleTypeId: string
       locale: string
       enabled: boolean
@@ -23190,7 +23250,7 @@ export namespace Prisma {
    */
   export interface Prisma__TenantSingleTypeAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    tenant<T extends TenantSingleTypeAssignment$tenantArgs<ExtArgs> = {}>(args?: Subset<T, TenantSingleTypeAssignment$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     singleType<T extends SingleTypeDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SingleTypeDefaultArgs<ExtArgs>>): Prisma__SingleTypeClient<$Result.GetResult<Prisma.$SingleTypePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -23623,6 +23683,25 @@ export namespace Prisma {
      * Limit how many TenantSingleTypeAssignments to delete.
      */
     limit?: number
+  }
+
+  /**
+   * TenantSingleTypeAssignment.tenant
+   */
+  export type TenantSingleTypeAssignment$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
   }
 
   /**
@@ -26132,7 +26211,7 @@ export namespace Prisma {
 
   export type TenantComponentAssignmentGroupByOutputType = {
     id: string
-    tenantId: string
+    tenantId: string | null
     componentId: string
     enabled: boolean
     createdAt: Date
@@ -26161,7 +26240,7 @@ export namespace Prisma {
     componentId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantComponentAssignment"]>
 
@@ -26171,7 +26250,7 @@ export namespace Prisma {
     componentId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantComponentAssignment"]>
 
@@ -26181,7 +26260,7 @@ export namespace Prisma {
     componentId?: boolean
     enabled?: boolean
     createdAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenantComponentAssignment"]>
 
@@ -26195,27 +26274,27 @@ export namespace Prisma {
 
   export type TenantComponentAssignmentOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "componentId" | "enabled" | "createdAt", ExtArgs["result"]["tenantComponentAssignment"]>
   export type TenantComponentAssignmentInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }
   export type TenantComponentAssignmentIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }
   export type TenantComponentAssignmentIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantComponentAssignment$tenantArgs<ExtArgs>
     component?: boolean | ComponentDefaultArgs<ExtArgs>
   }
 
   export type $TenantComponentAssignmentPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "TenantComponentAssignment"
     objects: {
-      tenant: Prisma.$TenantPayload<ExtArgs>
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
       component: Prisma.$ComponentPayload<ExtArgs>
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      tenantId: string
+      tenantId: string | null
       componentId: string
       enabled: boolean
       createdAt: Date
@@ -26613,7 +26692,7 @@ export namespace Prisma {
    */
   export interface Prisma__TenantComponentAssignmentClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    tenant<T extends TenantComponentAssignment$tenantArgs<ExtArgs> = {}>(args?: Subset<T, TenantComponentAssignment$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     component<T extends ComponentDefaultArgs<ExtArgs> = {}>(args?: Subset<T, ComponentDefaultArgs<ExtArgs>>): Prisma__ComponentClient<$Result.GetResult<Prisma.$ComponentPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
@@ -27042,6 +27121,25 @@ export namespace Prisma {
      * Limit how many TenantComponentAssignments to delete.
      */
     limit?: number
+  }
+
+  /**
+   * TenantComponentAssignment.tenant
+   */
+  export type TenantComponentAssignment$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
   }
 
   /**
@@ -46746,7 +46844,7 @@ export namespace Prisma {
 
   export type TenantLocaleGroupByOutputType = {
     id: string
-    tenantId: string
+    tenantId: string | null
     locale: string
     name: string
     isDefault: boolean
@@ -46777,7 +46875,7 @@ export namespace Prisma {
     name?: boolean
     isDefault?: boolean
     isEnabled?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["tenantLocale"]>
 
   export type TenantLocaleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -46787,7 +46885,7 @@ export namespace Prisma {
     name?: boolean
     isDefault?: boolean
     isEnabled?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["tenantLocale"]>
 
   export type TenantLocaleSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -46797,7 +46895,7 @@ export namespace Prisma {
     name?: boolean
     isDefault?: boolean
     isEnabled?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["tenantLocale"]>
 
   export type TenantLocaleSelectScalar = {
@@ -46811,23 +46909,23 @@ export namespace Prisma {
 
   export type TenantLocaleOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "locale" | "name" | "isDefault" | "isEnabled", ExtArgs["result"]["tenantLocale"]>
   export type TenantLocaleInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }
   export type TenantLocaleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }
   export type TenantLocaleIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    tenant?: boolean | TenantLocale$tenantArgs<ExtArgs>
   }
 
   export type $TenantLocalePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "TenantLocale"
     objects: {
-      tenant: Prisma.$TenantPayload<ExtArgs>
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
-      tenantId: string
+      tenantId: string | null
       locale: string
       name: string
       isDefault: boolean
@@ -47226,7 +47324,7 @@ export namespace Prisma {
    */
   export interface Prisma__TenantLocaleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
     readonly [Symbol.toStringTag]: "PrismaPromise"
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    tenant<T extends TenantLocale$tenantArgs<ExtArgs> = {}>(args?: Subset<T, TenantLocale$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -47658,6 +47756,25 @@ export namespace Prisma {
   }
 
   /**
+   * TenantLocale.tenant
+   */
+  export type TenantLocale$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
+  }
+
+  /**
    * TenantLocale without action
    */
   export type TenantLocaleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -47752,6 +47869,7 @@ export namespace Prisma {
     plan: 'plan',
     status: 'status',
     databaseUrl: 'databaseUrl',
+    storageConfig: 'storageConfig',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     customDomain: 'customDomain',
@@ -47806,6 +47924,7 @@ export namespace Prisma {
     slug: 'slug',
     description: 'description',
     isPublished: 'isPublished',
+    docxTemplateUrl: 'docxTemplateUrl',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -48695,6 +48814,7 @@ export namespace Prisma {
     plan?: StringFilter<"Tenant"> | string
     status?: StringFilter<"Tenant"> | string
     databaseUrl?: StringNullableFilter<"Tenant"> | string | null
+    storageConfig?: JsonNullableFilter<"Tenant">
     createdAt?: DateTimeFilter<"Tenant"> | Date | string
     updatedAt?: DateTimeFilter<"Tenant"> | Date | string
     customDomain?: StringNullableFilter<"Tenant"> | string | null
@@ -48736,6 +48856,7 @@ export namespace Prisma {
     plan?: SortOrder
     status?: SortOrder
     databaseUrl?: SortOrderInput | SortOrder
+    storageConfig?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     customDomain?: SortOrderInput | SortOrder
@@ -48781,6 +48902,7 @@ export namespace Prisma {
     plan?: StringFilter<"Tenant"> | string
     status?: StringFilter<"Tenant"> | string
     databaseUrl?: StringNullableFilter<"Tenant"> | string | null
+    storageConfig?: JsonNullableFilter<"Tenant">
     createdAt?: DateTimeFilter<"Tenant"> | Date | string
     updatedAt?: DateTimeFilter<"Tenant"> | Date | string
     customDomainStatus?: StringNullableFilter<"Tenant"> | string | null
@@ -48821,6 +48943,7 @@ export namespace Prisma {
     plan?: SortOrder
     status?: SortOrder
     databaseUrl?: SortOrderInput | SortOrder
+    storageConfig?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     customDomain?: SortOrderInput | SortOrder
@@ -48848,6 +48971,7 @@ export namespace Prisma {
     plan?: StringWithAggregatesFilter<"Tenant"> | string
     status?: StringWithAggregatesFilter<"Tenant"> | string
     databaseUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
+    storageConfig?: JsonNullableWithAggregatesFilter<"Tenant">
     createdAt?: DateTimeWithAggregatesFilter<"Tenant"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"Tenant"> | Date | string
     customDomain?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
@@ -49033,6 +49157,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    docxTemplateUrl?: StringNullableFilter<"ContentType"> | string | null
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
     tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
@@ -49048,6 +49173,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrderInput | SortOrder
     isPublished?: SortOrder
+    docxTemplateUrl?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenant?: TenantOrderByWithRelationInput
@@ -49067,6 +49193,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    docxTemplateUrl?: StringNullableFilter<"ContentType"> | string | null
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
     tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
@@ -49082,6 +49209,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrderInput | SortOrder
     isPublished?: SortOrder
+    docxTemplateUrl?: SortOrderInput | SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: ContentTypeCountOrderByAggregateInput
@@ -49099,6 +49227,7 @@ export namespace Prisma {
     slug?: StringWithAggregatesFilter<"ContentType"> | string
     description?: StringNullableWithAggregatesFilter<"ContentType"> | string | null
     isPublished?: BoolWithAggregatesFilter<"ContentType"> | boolean
+    docxTemplateUrl?: StringNullableWithAggregatesFilter<"ContentType"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"ContentType"> | Date | string
   }
@@ -49201,17 +49330,17 @@ export namespace Prisma {
     OR?: TenantContentTypeAssignmentWhereInput[]
     NOT?: TenantContentTypeAssignmentWhereInput | TenantContentTypeAssignmentWhereInput[]
     id?: StringFilter<"TenantContentTypeAssignment"> | string
-    tenantId?: StringFilter<"TenantContentTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantContentTypeAssignment"> | string | null
     contentTypeId?: StringFilter<"TenantContentTypeAssignment"> | string
     enabled?: BoolFilter<"TenantContentTypeAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantContentTypeAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     contentType?: XOR<ContentTypeScalarRelationFilter, ContentTypeWhereInput>
   }
 
   export type TenantContentTypeAssignmentOrderByWithRelationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     contentTypeId?: SortOrder
     enabled?: SortOrder
     createdAt?: SortOrder
@@ -49225,17 +49354,17 @@ export namespace Prisma {
     AND?: TenantContentTypeAssignmentWhereInput | TenantContentTypeAssignmentWhereInput[]
     OR?: TenantContentTypeAssignmentWhereInput[]
     NOT?: TenantContentTypeAssignmentWhereInput | TenantContentTypeAssignmentWhereInput[]
-    tenantId?: StringFilter<"TenantContentTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantContentTypeAssignment"> | string | null
     contentTypeId?: StringFilter<"TenantContentTypeAssignment"> | string
     enabled?: BoolFilter<"TenantContentTypeAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantContentTypeAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     contentType?: XOR<ContentTypeScalarRelationFilter, ContentTypeWhereInput>
   }, "id" | "tenantId_contentTypeId">
 
   export type TenantContentTypeAssignmentOrderByWithAggregationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     contentTypeId?: SortOrder
     enabled?: SortOrder
     createdAt?: SortOrder
@@ -49249,7 +49378,7 @@ export namespace Prisma {
     OR?: TenantContentTypeAssignmentScalarWhereWithAggregatesInput[]
     NOT?: TenantContentTypeAssignmentScalarWhereWithAggregatesInput | TenantContentTypeAssignmentScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"TenantContentTypeAssignment"> | string
-    tenantId?: StringWithAggregatesFilter<"TenantContentTypeAssignment"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"TenantContentTypeAssignment"> | string | null
     contentTypeId?: StringWithAggregatesFilter<"TenantContentTypeAssignment"> | string
     enabled?: BoolWithAggregatesFilter<"TenantContentTypeAssignment"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"TenantContentTypeAssignment"> | Date | string
@@ -49262,7 +49391,7 @@ export namespace Prisma {
     id?: StringFilter<"ContentEntry"> | string
     documentId?: StringNullableFilter<"ContentEntry"> | string | null
     contentTypeId?: StringFilter<"ContentEntry"> | string
-    tenantId?: StringFilter<"ContentEntry"> | string
+    tenantId?: StringNullableFilter<"ContentEntry"> | string | null
     locale?: StringFilter<"ContentEntry"> | string
     data?: JsonFilter<"ContentEntry">
     status?: EnumContentStatusFilter<"ContentEntry"> | $Enums.ContentStatus
@@ -49275,7 +49404,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"ContentEntry"> | Date | string
     updatedAt?: DateTimeFilter<"ContentEntry"> | Date | string
     contentType?: XOR<ContentTypeScalarRelationFilter, ContentTypeWhereInput>
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     versions?: ContentVersionListRelationFilter
     reviewAssignments?: ContentReviewAssignmentListRelationFilter
   }
@@ -49284,7 +49413,7 @@ export namespace Prisma {
     id?: SortOrder
     documentId?: SortOrderInput | SortOrder
     contentTypeId?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     locale?: SortOrder
     data?: SortOrder
     status?: SortOrder
@@ -49309,7 +49438,7 @@ export namespace Prisma {
     NOT?: ContentEntryWhereInput | ContentEntryWhereInput[]
     documentId?: StringNullableFilter<"ContentEntry"> | string | null
     contentTypeId?: StringFilter<"ContentEntry"> | string
-    tenantId?: StringFilter<"ContentEntry"> | string
+    tenantId?: StringNullableFilter<"ContentEntry"> | string | null
     locale?: StringFilter<"ContentEntry"> | string
     data?: JsonFilter<"ContentEntry">
     status?: EnumContentStatusFilter<"ContentEntry"> | $Enums.ContentStatus
@@ -49322,7 +49451,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"ContentEntry"> | Date | string
     updatedAt?: DateTimeFilter<"ContentEntry"> | Date | string
     contentType?: XOR<ContentTypeScalarRelationFilter, ContentTypeWhereInput>
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     versions?: ContentVersionListRelationFilter
     reviewAssignments?: ContentReviewAssignmentListRelationFilter
   }, "id">
@@ -49331,7 +49460,7 @@ export namespace Prisma {
     id?: SortOrder
     documentId?: SortOrderInput | SortOrder
     contentTypeId?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     locale?: SortOrder
     data?: SortOrder
     status?: SortOrder
@@ -49355,7 +49484,7 @@ export namespace Prisma {
     id?: StringWithAggregatesFilter<"ContentEntry"> | string
     documentId?: StringNullableWithAggregatesFilter<"ContentEntry"> | string | null
     contentTypeId?: StringWithAggregatesFilter<"ContentEntry"> | string
-    tenantId?: StringWithAggregatesFilter<"ContentEntry"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"ContentEntry"> | string | null
     locale?: StringWithAggregatesFilter<"ContentEntry"> | string
     data?: JsonWithAggregatesFilter<"ContentEntry">
     status?: EnumContentStatusWithAggregatesFilter<"ContentEntry"> | $Enums.ContentStatus
@@ -49710,7 +49839,7 @@ export namespace Prisma {
     OR?: TenantSingleTypeAssignmentWhereInput[]
     NOT?: TenantSingleTypeAssignmentWhereInput | TenantSingleTypeAssignmentWhereInput[]
     id?: StringFilter<"TenantSingleTypeAssignment"> | string
-    tenantId?: StringFilter<"TenantSingleTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantSingleTypeAssignment"> | string | null
     singleTypeId?: StringFilter<"TenantSingleTypeAssignment"> | string
     locale?: StringFilter<"TenantSingleTypeAssignment"> | string
     enabled?: BoolFilter<"TenantSingleTypeAssignment"> | boolean
@@ -49718,13 +49847,13 @@ export namespace Prisma {
     publishedAt?: DateTimeNullableFilter<"TenantSingleTypeAssignment"> | Date | string | null
     createdAt?: DateTimeFilter<"TenantSingleTypeAssignment"> | Date | string
     updatedAt?: DateTimeFilter<"TenantSingleTypeAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     singleType?: XOR<SingleTypeScalarRelationFilter, SingleTypeWhereInput>
   }
 
   export type TenantSingleTypeAssignmentOrderByWithRelationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     singleTypeId?: SortOrder
     locale?: SortOrder
     enabled?: SortOrder
@@ -49742,7 +49871,7 @@ export namespace Prisma {
     AND?: TenantSingleTypeAssignmentWhereInput | TenantSingleTypeAssignmentWhereInput[]
     OR?: TenantSingleTypeAssignmentWhereInput[]
     NOT?: TenantSingleTypeAssignmentWhereInput | TenantSingleTypeAssignmentWhereInput[]
-    tenantId?: StringFilter<"TenantSingleTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantSingleTypeAssignment"> | string | null
     singleTypeId?: StringFilter<"TenantSingleTypeAssignment"> | string
     locale?: StringFilter<"TenantSingleTypeAssignment"> | string
     enabled?: BoolFilter<"TenantSingleTypeAssignment"> | boolean
@@ -49750,13 +49879,13 @@ export namespace Prisma {
     publishedAt?: DateTimeNullableFilter<"TenantSingleTypeAssignment"> | Date | string | null
     createdAt?: DateTimeFilter<"TenantSingleTypeAssignment"> | Date | string
     updatedAt?: DateTimeFilter<"TenantSingleTypeAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     singleType?: XOR<SingleTypeScalarRelationFilter, SingleTypeWhereInput>
   }, "id" | "tenantId_singleTypeId_locale">
 
   export type TenantSingleTypeAssignmentOrderByWithAggregationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     singleTypeId?: SortOrder
     locale?: SortOrder
     enabled?: SortOrder
@@ -49774,7 +49903,7 @@ export namespace Prisma {
     OR?: TenantSingleTypeAssignmentScalarWhereWithAggregatesInput[]
     NOT?: TenantSingleTypeAssignmentScalarWhereWithAggregatesInput | TenantSingleTypeAssignmentScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"TenantSingleTypeAssignment"> | string
-    tenantId?: StringWithAggregatesFilter<"TenantSingleTypeAssignment"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"TenantSingleTypeAssignment"> | string | null
     singleTypeId?: StringWithAggregatesFilter<"TenantSingleTypeAssignment"> | string
     locale?: StringWithAggregatesFilter<"TenantSingleTypeAssignment"> | string
     enabled?: BoolWithAggregatesFilter<"TenantSingleTypeAssignment"> | boolean
@@ -49959,17 +50088,17 @@ export namespace Prisma {
     OR?: TenantComponentAssignmentWhereInput[]
     NOT?: TenantComponentAssignmentWhereInput | TenantComponentAssignmentWhereInput[]
     id?: StringFilter<"TenantComponentAssignment"> | string
-    tenantId?: StringFilter<"TenantComponentAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantComponentAssignment"> | string | null
     componentId?: StringFilter<"TenantComponentAssignment"> | string
     enabled?: BoolFilter<"TenantComponentAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantComponentAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     component?: XOR<ComponentScalarRelationFilter, ComponentWhereInput>
   }
 
   export type TenantComponentAssignmentOrderByWithRelationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     componentId?: SortOrder
     enabled?: SortOrder
     createdAt?: SortOrder
@@ -49983,17 +50112,17 @@ export namespace Prisma {
     AND?: TenantComponentAssignmentWhereInput | TenantComponentAssignmentWhereInput[]
     OR?: TenantComponentAssignmentWhereInput[]
     NOT?: TenantComponentAssignmentWhereInput | TenantComponentAssignmentWhereInput[]
-    tenantId?: StringFilter<"TenantComponentAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantComponentAssignment"> | string | null
     componentId?: StringFilter<"TenantComponentAssignment"> | string
     enabled?: BoolFilter<"TenantComponentAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantComponentAssignment"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
     component?: XOR<ComponentScalarRelationFilter, ComponentWhereInput>
   }, "id" | "tenantId_componentId">
 
   export type TenantComponentAssignmentOrderByWithAggregationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     componentId?: SortOrder
     enabled?: SortOrder
     createdAt?: SortOrder
@@ -50007,7 +50136,7 @@ export namespace Prisma {
     OR?: TenantComponentAssignmentScalarWhereWithAggregatesInput[]
     NOT?: TenantComponentAssignmentScalarWhereWithAggregatesInput | TenantComponentAssignmentScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"TenantComponentAssignment"> | string
-    tenantId?: StringWithAggregatesFilter<"TenantComponentAssignment"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"TenantComponentAssignment"> | string | null
     componentId?: StringWithAggregatesFilter<"TenantComponentAssignment"> | string
     enabled?: BoolWithAggregatesFilter<"TenantComponentAssignment"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"TenantComponentAssignment"> | Date | string
@@ -51384,17 +51513,17 @@ export namespace Prisma {
     OR?: TenantLocaleWhereInput[]
     NOT?: TenantLocaleWhereInput | TenantLocaleWhereInput[]
     id?: StringFilter<"TenantLocale"> | string
-    tenantId?: StringFilter<"TenantLocale"> | string
+    tenantId?: StringNullableFilter<"TenantLocale"> | string | null
     locale?: StringFilter<"TenantLocale"> | string
     name?: StringFilter<"TenantLocale"> | string
     isDefault?: BoolFilter<"TenantLocale"> | boolean
     isEnabled?: BoolFilter<"TenantLocale"> | boolean
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
   }
 
   export type TenantLocaleOrderByWithRelationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     locale?: SortOrder
     name?: SortOrder
     isDefault?: SortOrder
@@ -51408,17 +51537,17 @@ export namespace Prisma {
     AND?: TenantLocaleWhereInput | TenantLocaleWhereInput[]
     OR?: TenantLocaleWhereInput[]
     NOT?: TenantLocaleWhereInput | TenantLocaleWhereInput[]
-    tenantId?: StringFilter<"TenantLocale"> | string
+    tenantId?: StringNullableFilter<"TenantLocale"> | string | null
     locale?: StringFilter<"TenantLocale"> | string
     name?: StringFilter<"TenantLocale"> | string
     isDefault?: BoolFilter<"TenantLocale"> | boolean
     isEnabled?: BoolFilter<"TenantLocale"> | boolean
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
   }, "id" | "tenantId_locale">
 
   export type TenantLocaleOrderByWithAggregationInput = {
     id?: SortOrder
-    tenantId?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
     locale?: SortOrder
     name?: SortOrder
     isDefault?: SortOrder
@@ -51433,7 +51562,7 @@ export namespace Prisma {
     OR?: TenantLocaleScalarWhereWithAggregatesInput[]
     NOT?: TenantLocaleScalarWhereWithAggregatesInput | TenantLocaleScalarWhereWithAggregatesInput[]
     id?: StringWithAggregatesFilter<"TenantLocale"> | string
-    tenantId?: StringWithAggregatesFilter<"TenantLocale"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"TenantLocale"> | string | null
     locale?: StringWithAggregatesFilter<"TenantLocale"> | string
     name?: StringWithAggregatesFilter<"TenantLocale"> | string
     isDefault?: BoolWithAggregatesFilter<"TenantLocale"> | boolean
@@ -51750,6 +51879,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -51791,6 +51921,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -51832,6 +51963,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -51873,6 +52005,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -51914,6 +52047,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -51935,6 +52069,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -51956,6 +52091,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -52154,6 +52290,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant?: TenantCreateNestedOneWithoutContentTypesInput
@@ -52169,6 +52306,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     fields?: ContentTypeFieldUncheckedCreateNestedManyWithoutContentTypeInput
@@ -52182,6 +52320,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneWithoutContentTypesNestedInput
@@ -52197,6 +52336,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     fields?: ContentTypeFieldUncheckedUpdateManyWithoutContentTypeNestedInput
@@ -52211,6 +52351,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -52221,6 +52362,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -52232,6 +52374,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -52344,13 +52487,13 @@ export namespace Prisma {
     id?: string
     enabled?: boolean
     createdAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutContentTypeAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutContentTypeAssignmentsInput
     contentType: ContentTypeCreateNestedOneWithoutTenantsInput
   }
 
   export type TenantContentTypeAssignmentUncheckedCreateInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     contentTypeId: string
     enabled?: boolean
     createdAt?: Date | string
@@ -52360,13 +52503,13 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutContentTypeAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutContentTypeAssignmentsNestedInput
     contentType?: ContentTypeUpdateOneRequiredWithoutTenantsNestedInput
   }
 
   export type TenantContentTypeAssignmentUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -52374,7 +52517,7 @@ export namespace Prisma {
 
   export type TenantContentTypeAssignmentCreateManyInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     contentTypeId: string
     enabled?: boolean
     createdAt?: Date | string
@@ -52388,7 +52531,7 @@ export namespace Prisma {
 
   export type TenantContentTypeAssignmentUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -52409,7 +52552,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     contentType: ContentTypeCreateNestedOneWithoutEntriesInput
-    tenant: TenantCreateNestedOneWithoutContentEntriesInput
+    tenant?: TenantCreateNestedOneWithoutContentEntriesInput
     versions?: ContentVersionCreateNestedManyWithoutContentEntryInput
     reviewAssignments?: ContentReviewAssignmentCreateNestedManyWithoutContentEntryInput
   }
@@ -52418,7 +52561,7 @@ export namespace Prisma {
     id?: string
     documentId?: string | null
     contentTypeId: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -52449,7 +52592,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contentType?: ContentTypeUpdateOneRequiredWithoutEntriesNestedInput
-    tenant?: TenantUpdateOneRequiredWithoutContentEntriesNestedInput
+    tenant?: TenantUpdateOneWithoutContentEntriesNestedInput
     versions?: ContentVersionUpdateManyWithoutContentEntryNestedInput
     reviewAssignments?: ContentReviewAssignmentUpdateManyWithoutContentEntryNestedInput
   }
@@ -52458,7 +52601,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -52478,7 +52621,7 @@ export namespace Prisma {
     id?: string
     documentId?: string | null
     contentTypeId: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -52512,7 +52655,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -52902,13 +53045,13 @@ export namespace Prisma {
     publishedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutSingleTypeAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutSingleTypeAssignmentsInput
     singleType: SingleTypeCreateNestedOneWithoutTenantsInput
   }
 
   export type TenantSingleTypeAssignmentUncheckedCreateInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     singleTypeId: string
     locale?: string
     enabled?: boolean
@@ -52926,13 +53069,13 @@ export namespace Prisma {
     publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutSingleTypeAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutSingleTypeAssignmentsNestedInput
     singleType?: SingleTypeUpdateOneRequiredWithoutTenantsNestedInput
   }
 
   export type TenantSingleTypeAssignmentUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     singleTypeId?: StringFieldUpdateOperationsInput | string
     locale?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
@@ -52944,7 +53087,7 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentCreateManyInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     singleTypeId: string
     locale?: string
     enabled?: boolean
@@ -52966,7 +53109,7 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     singleTypeId?: StringFieldUpdateOperationsInput | string
     locale?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
@@ -53168,13 +53311,13 @@ export namespace Prisma {
     id?: string
     enabled?: boolean
     createdAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutComponentAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutComponentAssignmentsInput
     component: ComponentCreateNestedOneWithoutTenantsInput
   }
 
   export type TenantComponentAssignmentUncheckedCreateInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     componentId: string
     enabled?: boolean
     createdAt?: Date | string
@@ -53184,13 +53327,13 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutComponentAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutComponentAssignmentsNestedInput
     component?: ComponentUpdateOneRequiredWithoutTenantsNestedInput
   }
 
   export type TenantComponentAssignmentUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     componentId?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -53198,7 +53341,7 @@ export namespace Prisma {
 
   export type TenantComponentAssignmentCreateManyInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     componentId: string
     enabled?: boolean
     createdAt?: Date | string
@@ -53212,7 +53355,7 @@ export namespace Prisma {
 
   export type TenantComponentAssignmentUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     componentId?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -54724,12 +54867,12 @@ export namespace Prisma {
     name: string
     isDefault?: boolean
     isEnabled?: boolean
-    tenant: TenantCreateNestedOneWithoutLocalesInput
+    tenant?: TenantCreateNestedOneWithoutLocalesInput
   }
 
   export type TenantLocaleUncheckedCreateInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     locale: string
     name: string
     isDefault?: boolean
@@ -54742,12 +54885,12 @@ export namespace Prisma {
     name?: StringFieldUpdateOperationsInput | string
     isDefault?: BoolFieldUpdateOperationsInput | boolean
     isEnabled?: BoolFieldUpdateOperationsInput | boolean
-    tenant?: TenantUpdateOneRequiredWithoutLocalesNestedInput
+    tenant?: TenantUpdateOneWithoutLocalesNestedInput
   }
 
   export type TenantLocaleUncheckedUpdateInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     isDefault?: BoolFieldUpdateOperationsInput | boolean
@@ -54756,7 +54899,7 @@ export namespace Prisma {
 
   export type TenantLocaleCreateManyInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     locale: string
     name: string
     isDefault?: boolean
@@ -54773,7 +54916,7 @@ export namespace Prisma {
 
   export type TenantLocaleUncheckedUpdateManyInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     name?: StringFieldUpdateOperationsInput | string
     isDefault?: BoolFieldUpdateOperationsInput | boolean
@@ -55113,6 +55256,29 @@ export namespace Prisma {
     token?: SortOrder
     expires?: SortOrder
   }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type ApiKeyListRelationFilter = {
     every?: ApiKeyWhereInput
@@ -55303,6 +55469,7 @@ export namespace Prisma {
     plan?: SortOrder
     status?: SortOrder
     databaseUrl?: SortOrder
+    storageConfig?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     customDomain?: SortOrder
@@ -55356,14 +55523,14 @@ export namespace Prisma {
     customEmailSender?: SortOrder
     faviconUrl?: SortOrder
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
     | PatchUndefined<
-        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableFilterBase<$PrismaModel>>
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
       >
-    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
 
-  export type JsonNullableFilterBase<$PrismaModel = never> = {
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
     equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
     path?: string[]
     mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
@@ -55378,6 +55545,9 @@ export namespace Prisma {
     gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
     not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type TenantScalarRelationFilter = {
@@ -55413,32 +55583,6 @@ export namespace Prisma {
     userId?: SortOrder
     role?: SortOrder
     joinedAt?: SortOrder
-  }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
-
-  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedJsonNullableFilter<$PrismaModel>
-    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type CustomPlanOverrideCountOrderByAggregateInput = {
@@ -55544,6 +55688,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    docxTemplateUrl?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -55555,6 +55700,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    docxTemplateUrl?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -55566,6 +55712,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    docxTemplateUrl?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -58326,10 +58473,12 @@ export namespace Prisma {
     connect?: ContentTypeWhereUniqueInput
   }
 
-  export type TenantUpdateOneRequiredWithoutContentTypeAssignmentsNestedInput = {
+  export type TenantUpdateOneWithoutContentTypeAssignmentsNestedInput = {
     create?: XOR<TenantCreateWithoutContentTypeAssignmentsInput, TenantUncheckedCreateWithoutContentTypeAssignmentsInput>
     connectOrCreate?: TenantCreateOrConnectWithoutContentTypeAssignmentsInput
     upsert?: TenantUpsertWithoutContentTypeAssignmentsInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
     connect?: TenantWhereUniqueInput
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutContentTypeAssignmentsInput, TenantUpdateWithoutContentTypeAssignmentsInput>, TenantUncheckedUpdateWithoutContentTypeAssignmentsInput>
   }
@@ -58394,10 +58543,12 @@ export namespace Prisma {
     update?: XOR<XOR<ContentTypeUpdateToOneWithWhereWithoutEntriesInput, ContentTypeUpdateWithoutEntriesInput>, ContentTypeUncheckedUpdateWithoutEntriesInput>
   }
 
-  export type TenantUpdateOneRequiredWithoutContentEntriesNestedInput = {
+  export type TenantUpdateOneWithoutContentEntriesNestedInput = {
     create?: XOR<TenantCreateWithoutContentEntriesInput, TenantUncheckedCreateWithoutContentEntriesInput>
     connectOrCreate?: TenantCreateOrConnectWithoutContentEntriesInput
     upsert?: TenantUpsertWithoutContentEntriesInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
     connect?: TenantWhereUniqueInput
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutContentEntriesInput, TenantUpdateWithoutContentEntriesInput>, TenantUncheckedUpdateWithoutContentEntriesInput>
   }
@@ -58612,10 +58763,12 @@ export namespace Prisma {
     connect?: SingleTypeWhereUniqueInput
   }
 
-  export type TenantUpdateOneRequiredWithoutSingleTypeAssignmentsNestedInput = {
+  export type TenantUpdateOneWithoutSingleTypeAssignmentsNestedInput = {
     create?: XOR<TenantCreateWithoutSingleTypeAssignmentsInput, TenantUncheckedCreateWithoutSingleTypeAssignmentsInput>
     connectOrCreate?: TenantCreateOrConnectWithoutSingleTypeAssignmentsInput
     upsert?: TenantUpsertWithoutSingleTypeAssignmentsInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
     connect?: TenantWhereUniqueInput
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutSingleTypeAssignmentsInput, TenantUpdateWithoutSingleTypeAssignmentsInput>, TenantUncheckedUpdateWithoutSingleTypeAssignmentsInput>
   }
@@ -58754,10 +58907,12 @@ export namespace Prisma {
     connect?: ComponentWhereUniqueInput
   }
 
-  export type TenantUpdateOneRequiredWithoutComponentAssignmentsNestedInput = {
+  export type TenantUpdateOneWithoutComponentAssignmentsNestedInput = {
     create?: XOR<TenantCreateWithoutComponentAssignmentsInput, TenantUncheckedCreateWithoutComponentAssignmentsInput>
     connectOrCreate?: TenantCreateOrConnectWithoutComponentAssignmentsInput
     upsert?: TenantUpsertWithoutComponentAssignmentsInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
     connect?: TenantWhereUniqueInput
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutComponentAssignmentsInput, TenantUpdateWithoutComponentAssignmentsInput>, TenantUncheckedUpdateWithoutComponentAssignmentsInput>
   }
@@ -59360,10 +59515,12 @@ export namespace Prisma {
     connect?: TenantWhereUniqueInput
   }
 
-  export type TenantUpdateOneRequiredWithoutLocalesNestedInput = {
+  export type TenantUpdateOneWithoutLocalesNestedInput = {
     create?: XOR<TenantCreateWithoutLocalesInput, TenantUncheckedCreateWithoutLocalesInput>
     connectOrCreate?: TenantCreateOrConnectWithoutLocalesInput
     upsert?: TenantUpsertWithoutLocalesInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
     connect?: TenantWhereUniqueInput
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutLocalesInput, TenantUpdateWithoutLocalesInput>, TenantUncheckedUpdateWithoutLocalesInput>
   }
@@ -60536,6 +60693,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     fields?: ContentTypeFieldCreateNestedManyWithoutContentTypeInput
@@ -60549,6 +60707,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     fields?: ContentTypeFieldUncheckedCreateNestedManyWithoutContentTypeInput
@@ -60947,7 +61106,7 @@ export namespace Prisma {
     OR?: TenantContentTypeAssignmentScalarWhereInput[]
     NOT?: TenantContentTypeAssignmentScalarWhereInput | TenantContentTypeAssignmentScalarWhereInput[]
     id?: StringFilter<"TenantContentTypeAssignment"> | string
-    tenantId?: StringFilter<"TenantContentTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantContentTypeAssignment"> | string | null
     contentTypeId?: StringFilter<"TenantContentTypeAssignment"> | string
     enabled?: BoolFilter<"TenantContentTypeAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantContentTypeAssignment"> | Date | string
@@ -60974,7 +61133,7 @@ export namespace Prisma {
     OR?: TenantSingleTypeAssignmentScalarWhereInput[]
     NOT?: TenantSingleTypeAssignmentScalarWhereInput | TenantSingleTypeAssignmentScalarWhereInput[]
     id?: StringFilter<"TenantSingleTypeAssignment"> | string
-    tenantId?: StringFilter<"TenantSingleTypeAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantSingleTypeAssignment"> | string | null
     singleTypeId?: StringFilter<"TenantSingleTypeAssignment"> | string
     locale?: StringFilter<"TenantSingleTypeAssignment"> | string
     enabled?: BoolFilter<"TenantSingleTypeAssignment"> | boolean
@@ -61005,7 +61164,7 @@ export namespace Prisma {
     OR?: TenantComponentAssignmentScalarWhereInput[]
     NOT?: TenantComponentAssignmentScalarWhereInput | TenantComponentAssignmentScalarWhereInput[]
     id?: StringFilter<"TenantComponentAssignment"> | string
-    tenantId?: StringFilter<"TenantComponentAssignment"> | string
+    tenantId?: StringNullableFilter<"TenantComponentAssignment"> | string | null
     componentId?: StringFilter<"TenantComponentAssignment"> | string
     enabled?: BoolFilter<"TenantComponentAssignment"> | boolean
     createdAt?: DateTimeFilter<"TenantComponentAssignment"> | Date | string
@@ -61088,7 +61247,7 @@ export namespace Prisma {
     OR?: TenantLocaleScalarWhereInput[]
     NOT?: TenantLocaleScalarWhereInput | TenantLocaleScalarWhereInput[]
     id?: StringFilter<"TenantLocale"> | string
-    tenantId?: StringFilter<"TenantLocale"> | string
+    tenantId?: StringNullableFilter<"TenantLocale"> | string | null
     locale?: StringFilter<"TenantLocale"> | string
     name?: StringFilter<"TenantLocale"> | string
     isDefault?: BoolFilter<"TenantLocale"> | boolean
@@ -61118,7 +61277,7 @@ export namespace Prisma {
     id?: StringFilter<"ContentEntry"> | string
     documentId?: StringNullableFilter<"ContentEntry"> | string | null
     contentTypeId?: StringFilter<"ContentEntry"> | string
-    tenantId?: StringFilter<"ContentEntry"> | string
+    tenantId?: StringNullableFilter<"ContentEntry"> | string | null
     locale?: StringFilter<"ContentEntry"> | string
     data?: JsonFilter<"ContentEntry">
     status?: EnumContentStatusFilter<"ContentEntry"> | $Enums.ContentStatus
@@ -61158,6 +61317,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    docxTemplateUrl?: StringNullableFilter<"ContentType"> | string | null
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
   }
@@ -61321,6 +61481,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -61361,6 +61522,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -61454,6 +61616,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61494,6 +61657,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61577,6 +61741,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -61617,6 +61782,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -61705,7 +61871,7 @@ export namespace Prisma {
     updatedBy?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutContentEntriesInput
+    tenant?: TenantCreateNestedOneWithoutContentEntriesInput
     versions?: ContentVersionCreateNestedManyWithoutContentEntryInput
     reviewAssignments?: ContentReviewAssignmentCreateNestedManyWithoutContentEntryInput
   }
@@ -61713,7 +61879,7 @@ export namespace Prisma {
   export type ContentEntryUncheckedCreateWithoutContentTypeInput = {
     id?: string
     documentId?: string | null
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -61743,12 +61909,12 @@ export namespace Prisma {
     id?: string
     enabled?: boolean
     createdAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutContentTypeAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutContentTypeAssignmentsInput
   }
 
   export type TenantContentTypeAssignmentUncheckedCreateWithoutContentTypeInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     enabled?: boolean
     createdAt?: Date | string
   }
@@ -61783,6 +61949,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61823,6 +61990,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -61926,6 +62094,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant?: TenantCreateNestedOneWithoutContentTypesInput
@@ -61940,6 +62109,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     entries?: ContentEntryUncheckedCreateNestedManyWithoutContentTypeInput
@@ -61968,6 +62138,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneWithoutContentTypesNestedInput
@@ -61982,6 +62153,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     entries?: ContentEntryUncheckedUpdateManyWithoutContentTypeNestedInput
@@ -61997,6 +62169,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62037,6 +62210,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62079,6 +62253,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant?: TenantCreateNestedOneWithoutContentTypesInput
@@ -62093,6 +62268,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     fields?: ContentTypeFieldUncheckedCreateNestedManyWithoutContentTypeInput
@@ -62124,6 +62300,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -62164,6 +62341,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -62212,6 +62390,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneWithoutContentTypesNestedInput
@@ -62226,6 +62405,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     fields?: ContentTypeFieldUncheckedUpdateManyWithoutContentTypeNestedInput
@@ -62238,6 +62418,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant?: TenantCreateNestedOneWithoutContentTypesInput
@@ -62252,6 +62433,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
     fields?: ContentTypeFieldUncheckedCreateNestedManyWithoutContentTypeInput
@@ -62272,6 +62454,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62312,6 +62495,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62433,6 +62617,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneWithoutContentTypesNestedInput
@@ -62447,6 +62632,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     fields?: ContentTypeFieldUncheckedUpdateManyWithoutContentTypeNestedInput
@@ -62473,6 +62659,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -62513,6 +62700,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -62623,7 +62811,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     contentType: ContentTypeCreateNestedOneWithoutEntriesInput
-    tenant: TenantCreateNestedOneWithoutContentEntriesInput
+    tenant?: TenantCreateNestedOneWithoutContentEntriesInput
     reviewAssignments?: ContentReviewAssignmentCreateNestedManyWithoutContentEntryInput
   }
 
@@ -62631,7 +62819,7 @@ export namespace Prisma {
     id?: string
     documentId?: string | null
     contentTypeId: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -62677,7 +62865,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contentType?: ContentTypeUpdateOneRequiredWithoutEntriesNestedInput
-    tenant?: TenantUpdateOneRequiredWithoutContentEntriesNestedInput
+    tenant?: TenantUpdateOneWithoutContentEntriesNestedInput
     reviewAssignments?: ContentReviewAssignmentUpdateManyWithoutContentEntryNestedInput
   }
 
@@ -62685,7 +62873,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -62715,7 +62903,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     contentType: ContentTypeCreateNestedOneWithoutEntriesInput
-    tenant: TenantCreateNestedOneWithoutContentEntriesInput
+    tenant?: TenantCreateNestedOneWithoutContentEntriesInput
     versions?: ContentVersionCreateNestedManyWithoutContentEntryInput
   }
 
@@ -62723,7 +62911,7 @@ export namespace Prisma {
     id?: string
     documentId?: string | null
     contentTypeId: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -62769,7 +62957,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     contentType?: ContentTypeUpdateOneRequiredWithoutEntriesNestedInput
-    tenant?: TenantUpdateOneRequiredWithoutContentEntriesNestedInput
+    tenant?: TenantUpdateOneWithoutContentEntriesNestedInput
     versions?: ContentVersionUpdateManyWithoutContentEntryNestedInput
   }
 
@@ -62777,7 +62965,7 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
     contentTypeId?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -62801,6 +62989,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62841,6 +63030,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -62923,12 +63113,12 @@ export namespace Prisma {
     publishedAt?: Date | string | null
     createdAt?: Date | string
     updatedAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutSingleTypeAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutSingleTypeAssignmentsInput
   }
 
   export type TenantSingleTypeAssignmentUncheckedCreateWithoutSingleTypeInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     enabled?: boolean
     data?: NullableJsonNullValueInput | InputJsonValue
@@ -62967,6 +63157,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63007,6 +63198,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63161,6 +63353,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63201,6 +63394,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63286,6 +63480,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63326,6 +63521,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63401,6 +63597,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63441,6 +63638,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63519,12 +63717,12 @@ export namespace Prisma {
     id?: string
     enabled?: boolean
     createdAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutComponentAssignmentsInput
+    tenant?: TenantCreateNestedOneWithoutComponentAssignmentsInput
   }
 
   export type TenantComponentAssignmentUncheckedCreateWithoutComponentInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     enabled?: boolean
     createdAt?: Date | string
   }
@@ -63559,6 +63757,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63599,6 +63798,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63753,6 +63953,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63793,6 +63994,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -63878,6 +64080,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63918,6 +64121,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -63993,6 +64197,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64033,6 +64238,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64089,6 +64295,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64129,6 +64336,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64206,6 +64414,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64246,6 +64455,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64417,6 +64627,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64457,6 +64668,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64723,6 +64935,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64763,6 +64976,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64819,6 +65033,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64859,6 +65074,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -64899,6 +65115,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64939,6 +65156,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -64995,6 +65213,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65035,6 +65254,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65075,6 +65295,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65115,6 +65336,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65171,6 +65393,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65211,6 +65434,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65251,6 +65475,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65291,6 +65516,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65460,6 +65686,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65500,6 +65727,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65605,6 +65833,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65645,6 +65874,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65728,6 +65958,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65768,6 +65999,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -65904,6 +66136,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -65944,6 +66177,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66029,6 +66263,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66069,6 +66304,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66109,6 +66345,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66149,6 +66386,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66205,6 +66443,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66245,6 +66484,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66285,6 +66525,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66325,6 +66566,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66381,6 +66623,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66421,6 +66664,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66461,6 +66705,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66501,6 +66746,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66627,6 +66873,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66667,6 +66914,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -66940,6 +67188,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -66980,6 +67229,7 @@ export namespace Prisma {
     plan?: string
     status?: string
     databaseUrl?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
     customDomain?: string | null
@@ -67036,6 +67286,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -67076,6 +67327,7 @@ export namespace Prisma {
     plan?: StringFieldUpdateOperationsInput | string
     status?: StringFieldUpdateOperationsInput | string
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customDomain?: NullableStringFieldUpdateOperationsInput | string | null
@@ -67443,6 +67695,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    docxTemplateUrl?: string | null
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -67993,6 +68246,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     fields?: ContentTypeFieldUpdateManyWithoutContentTypeNestedInput
@@ -68006,6 +68260,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     fields?: ContentTypeFieldUncheckedUpdateManyWithoutContentTypeNestedInput
@@ -68019,6 +68274,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -68198,7 +68454,7 @@ export namespace Prisma {
   export type ContentEntryCreateManyContentTypeInput = {
     id?: string
     documentId?: string | null
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     data: JsonNullValueInput | InputJsonValue
     status?: $Enums.ContentStatus
@@ -68214,7 +68470,7 @@ export namespace Prisma {
 
   export type TenantContentTypeAssignmentCreateManyContentTypeInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     enabled?: boolean
     createdAt?: Date | string
   }
@@ -68275,7 +68531,7 @@ export namespace Prisma {
     updatedBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutContentEntriesNestedInput
+    tenant?: TenantUpdateOneWithoutContentEntriesNestedInput
     versions?: ContentVersionUpdateManyWithoutContentEntryNestedInput
     reviewAssignments?: ContentReviewAssignmentUpdateManyWithoutContentEntryNestedInput
   }
@@ -68283,7 +68539,7 @@ export namespace Prisma {
   export type ContentEntryUncheckedUpdateWithoutContentTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -68302,7 +68558,7 @@ export namespace Prisma {
   export type ContentEntryUncheckedUpdateManyWithoutContentTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
     documentId?: NullableStringFieldUpdateOperationsInput | string | null
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     data?: JsonNullValueInput | InputJsonValue
     status?: EnumContentStatusFieldUpdateOperationsInput | $Enums.ContentStatus
@@ -68320,19 +68576,19 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutContentTypeAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutContentTypeAssignmentsNestedInput
   }
 
   export type TenantContentTypeAssignmentUncheckedUpdateWithoutContentTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type TenantContentTypeAssignmentUncheckedUpdateManyWithoutContentTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -68449,7 +68705,7 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentCreateManySingleTypeInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     locale?: string
     enabled?: boolean
     data?: NullableJsonNullValueInput | InputJsonValue
@@ -68508,12 +68764,12 @@ export namespace Prisma {
     publishedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutSingleTypeAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutSingleTypeAssignmentsNestedInput
   }
 
   export type TenantSingleTypeAssignmentUncheckedUpdateWithoutSingleTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     data?: NullableJsonNullValueInput | InputJsonValue
@@ -68524,7 +68780,7 @@ export namespace Prisma {
 
   export type TenantSingleTypeAssignmentUncheckedUpdateManyWithoutSingleTypeInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     locale?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     data?: NullableJsonNullValueInput | InputJsonValue
@@ -68549,7 +68805,7 @@ export namespace Prisma {
 
   export type TenantComponentAssignmentCreateManyComponentInput = {
     id?: string
-    tenantId: string
+    tenantId?: string | null
     enabled?: boolean
     createdAt?: Date | string
   }
@@ -68600,19 +68856,19 @@ export namespace Prisma {
     id?: StringFieldUpdateOperationsInput | string
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutComponentAssignmentsNestedInput
+    tenant?: TenantUpdateOneWithoutComponentAssignmentsNestedInput
   }
 
   export type TenantComponentAssignmentUncheckedUpdateWithoutComponentInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type TenantComponentAssignmentUncheckedUpdateManyWithoutComponentInput = {
     id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     enabled?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

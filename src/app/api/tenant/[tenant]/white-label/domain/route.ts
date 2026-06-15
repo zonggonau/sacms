@@ -7,6 +7,7 @@ import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { resolveTxt } from "dns/promises"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { getRedis } from "@/lib/redis"
 
 const setDomainSchema = z.object({
   customDomain: z
@@ -101,6 +102,10 @@ export async function PUT(
 
     // Clearing domain
     if (!customDomain) {
+      const oldTenant = await db.tenant.findUnique({
+        where: { id: access.tenantId },
+        select: { customDomain: true },
+      })
       await db.tenant.update({
         where: { id: access.tenantId },
         data: {
@@ -109,6 +114,12 @@ export async function PUT(
           customDomainVerifiedAt: null,
         },
       })
+      
+      if (oldTenant?.customDomain) {
+        const redis = getRedis()
+        if (redis) await redis.del(`domain:${oldTenant.customDomain}`)
+      }
+
       return NextResponse.json({ customDomain: null, status: "cleared" })
     }
 
@@ -181,7 +192,7 @@ export async function POST(
 
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
-      select: { customDomain: true },
+      select: { customDomain: true, slug: true },
     })
 
     if (!tenantRecord?.customDomain) {
@@ -202,6 +213,13 @@ export async function POST(
         customDomainVerifiedAt: verified ? new Date() : null,
       },
     })
+
+    if (verified) {
+      const redis = getRedis()
+      if (redis) {
+        await redis.set(`domain:${customDomain}`, tenantRecord.slug)
+      }
+    }
 
     if (!verified) {
       return NextResponse.json(

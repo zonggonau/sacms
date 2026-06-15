@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
+import { getRedis } from "@/lib/redis"
 
 // The canonical hostname of this app (without https://)
 const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
@@ -16,7 +17,7 @@ export async function middleware(request: NextRequest) {
   const host = request.headers.get("host")?.split(":")[0] || ""
 
   // ==================== RATE LIMITING ====================
-  // Apply rate limiting to all public API routes
+  // Apply rate limiting to all API routes with appropriate configs
   if (pathname.startsWith("/api/public/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     const rl = await rateLimit(`ip:${ip}`, RATE_LIMITS.publicApi)
@@ -41,13 +42,98 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // B6 Fix: Rate limit auth endpoints (30 req/min per IP)
+  if (pathname.startsWith("/api/auth/")) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+    const rl = await rateLimit(`auth:${ip}`, RATE_LIMITS.auth)
 
-  // ==================== API VERSIONING ====================
+    if (!rl.success) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too Many Requests",
+          message: "Authentication rate limit exceeded.",
+          resetAt: new Date(rl.resetAt).toISOString(),
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": rl.limit.toString(),
+            "X-RateLimit-Remaining": rl.remaining.toString(),
+            "X-RateLimit-Reset": rl.resetAt.toString(),
+          },
+        }
+      )
+    }
+  }
+
+  // B6 Fix: Rate limit tenant management API (300 req/min per IP)
+  if (pathname.startsWith("/api/tenant/")) {
+    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+    const rl = await rateLimit(`api:${ip}`, RATE_LIMITS.api)
+
+    if (!rl.success) {
+      return new NextResponse(
+        JSON.stringify({
+          error: "Too Many Requests",
+          message: "API rate limit exceeded.",
+          resetAt: new Date(rl.resetAt).toISOString(),
+        }),
+        {
+          status: 429,
+          headers: {
+            "Content-Type": "application/json",
+            "X-RateLimit-Limit": rl.limit.toString(),
+            "X-RateLimit-Remaining": rl.remaining.toString(),
+            "X-RateLimit-Reset": rl.resetAt.toString(),
+          },
+        }
+      )
+    }
+  }
+
+
+  // ==================== CUSTOM DOMAIN ROUTING ====================
+  let tenantSlug: string | null = null
+  let version = "v1"
+
+  if (host && host !== APP_HOST && !host.includes("localhost")) {
+    const redis = getRedis()
+    if (redis) {
+      tenantSlug = await redis.get(`domain:${host}`)
+    }
+    
+    if (tenantSlug) {
+      // Map custom domain paths. Supports /v1/content or /content (defaults to v1)
+      let restPath = pathname
+      const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
+      if (vMatch) {
+        version = vMatch[1]
+        restPath = `/${vMatch[2]}`
+      }
+
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath}`
+      
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response)
+      applyCorsHeaders(response)
+      response.headers.set("X-API-Version", version)
+      response.headers.set("X-Tenant-Domain", host)
+
+      if (request.method === "OPTIONS") {
+        return new NextResponse(null, { status: 204, headers: response.headers })
+      }
+      return response
+    }
+  }
+
+  // ==================== API VERSIONING (APP_HOST) ====================
   // Rewrite /api/v1/<tenant>/... → /api/public/<tenant>/...
   // Rewrite /api/v2/<tenant>/... → /api/public/<tenant>/... (future)
   const versionMatch = pathname.match(/^\/api\/(v[12])\/(.+)$/)
   if (versionMatch) {
-    const version = versionMatch[1]
+    version = versionMatch[1]
     const rest = versionMatch[2]
     const rewriteUrl = request.nextUrl.clone()
     rewriteUrl.pathname = `/api/public/${rest}`
@@ -94,13 +180,13 @@ function applySecurityHeaders(response: NextResponse) {
     "Content-Security-Policy",
     [
       "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com https://embeddable-sandbox.cdn.apollographql.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://embeddable-sandbox.cdn.apollographql.com",
       "font-src 'self' https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' https:",
       "connect-src 'self' https:",
-      "frame-src 'self' data: blob: https://app.midtrans.com https://app.sandbox.midtrans.com",
+      "frame-src 'self' data: blob: https://app.midtrans.com https://app.sandbox.midtrans.com https://sandbox.embed.apollographql.com https://embeddable-sandbox.cdn.apollographql.com",
       "frame-ancestors 'none'",
       "object-src 'none'",
       "base-uri 'self'",

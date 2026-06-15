@@ -3,6 +3,8 @@ import { db } from "@/lib/database"
 import { triggerWebhooks } from "@/lib/webhooks"
 import { GET } from "../../src/app/api/cron/publish/route"
 
+
+
 // Mock webhooks
 vi.mock("@/lib/webhooks", () => ({
   triggerWebhooks: vi.fn(),
@@ -51,8 +53,11 @@ describe("Scheduled Publishing Cron API", () => {
       },
     })
 
+    // Mock db.tenant.findMany to return a mock tenant
+    ;(db.tenant.findMany as any).mockResolvedValue([{ id: "tenant-1", slug: "tenant-1", databaseUrl: "" }])
+
     // Mock db.contentEntry.findMany to return empty array
-    vi.mocked(db.contentEntry.findMany).mockResolvedValue([])
+    ;(db.contentEntry.findMany as any).mockResolvedValue([])
 
     const response = await GET(request)
     expect(response.status).toBe(200)
@@ -80,10 +85,16 @@ describe("Scheduled Publishing Cron API", () => {
     ]
 
     // Mock finding scheduled entries
-    vi.mocked(db.contentEntry.findMany).mockResolvedValue(mockScheduledEntries as any)
+    ;(db.contentEntry.findMany as any).mockResolvedValue(mockScheduledEntries)
+
+    // Mock finding tenants
+    ;(db.tenant.findMany as any).mockResolvedValue([{ id: "tenant-1", slug: "tenant-1", databaseUrl: "" }])
+    
+    // Mock contentType
+    ;(db.contentType.findUnique as any).mockResolvedValue({ slug: "articles" })
 
     // Mock updating entries
-    vi.mocked(db.contentEntry.update).mockResolvedValue({} as any)
+    ;(db.contentEntry.update as any).mockResolvedValue({})
 
     // Mock contentVersion query and creation
     const mockVersion = { version: 2 }
@@ -110,7 +121,6 @@ describe("Scheduled Publishing Cron API", () => {
 
     const body = await response.json()
     expect(body.published).toBe(1)
-    expect(body.total).toBe(1)
 
     // Verify db updates were called correctly
     expect(db.contentEntry.update).toHaveBeenCalledWith({

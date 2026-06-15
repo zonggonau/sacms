@@ -37,6 +37,18 @@ const nextConfig: NextConfig = {
     "*.trycloudflare.com",
     ...getTunnelOrigins(),
   ],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**',
+      },
+      {
+        protocol: 'http',
+        hostname: 'localhost',
+      }
+    ],
+  },
 };
 
 export default process.env.SKIP_SENTRY_BUILD === "1" 

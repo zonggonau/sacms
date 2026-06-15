@@ -11,15 +11,16 @@ export async function GET(
 
     // 1. Fetch Pricing Content Type
     const pricingContentType = await db.contentType.findFirst({
-      where: { slug: isAccount ? "sacms-account-pricing" : "sacms-workspace-pricing" }
+      where: { 
+        slug: isAccount ? "sacms-account-pricing" : "sacms-workspace-pricing",
+        tenantId: null 
+      }
     })
-    console.log("Pricing Content Type:", pricingContentType?.id);
 
     // 2. Fetch SaCMS Addons
     const addonContentType = await db.contentType.findFirst({
-      where: { slug: "sacms-addons" }
+      where: { slug: "sacms-addons", tenantId: null }
     })
-    console.log("Addon Content Type:", addonContentType?.id);
 
     let plans: any[] = []
 
@@ -43,27 +44,26 @@ export async function GET(
       supportLevel: "Community"
     })
 
+    const cleanPrice = (val: any) => {
+      if (typeof val === 'number') return val
+      if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
+      return 0
+    }
+
     if (pricingContentType) {
       const pricingEntries = await db.contentEntry.findMany({
         where: {
           contentTypeId: pricingContentType.id,
-          status: "PUBLISHED"
+          status: "PUBLISHED",
+          tenantId: null
         },
         orderBy: { createdAt: "asc" }
       })
-      console.log(`Found ${pricingEntries.length} pricing entries`);
 
       const pricingPlans = pricingEntries.map(entry => {
         const d = (typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data) as any
         
-        // Clean price string like "499.000" into a number
-        let rawPrice = d.price || "0"
-        let numericPrice = 0
-        if (typeof rawPrice === 'string') {
-          numericPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
-        } else {
-          numericPrice = Number(rawPrice) || 0
-        }
+        const numericPrice = cleanPrice(d.price)
 
         const parseFeatures = (val: any) => {
           if (Array.isArray(val)) return val

@@ -312,8 +312,14 @@ export default function ContentTypeEntriesPage() {
                           ))}
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              {entry.tenant.slug === 'system' ? <Globe className="h-3 w-3 text-blue-500" /> : null}
-                              <Badge variant="outline" className="text-[10px] bg-muted/30 font-bold uppercase">{entry.tenant.name}</Badge>
+                              {!entry.tenant ? (
+                                <Badge variant="outline" className="text-[10px] bg-blue-500/10 text-blue-600 border-blue-200 font-bold uppercase">Global</Badge>
+                              ) : (
+                                <>
+                                  {entry.tenant.slug === 'system' ? <Globe className="h-3 w-3 text-blue-500" /> : null}
+                                  <Badge variant="outline" className="text-[10px] bg-muted/30 font-bold uppercase">{entry.tenant.name}</Badge>
+                                </>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell className="text-center">

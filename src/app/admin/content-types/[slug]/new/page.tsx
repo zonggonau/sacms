@@ -37,6 +37,8 @@ import { ComponentField } from "@/components/content/field-renderers/component-f
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 
+import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
+
 interface Field {
   id: string
   name: string
@@ -238,12 +240,12 @@ export default function AdminCreateEntryPage() {
       case "boolean": return <BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "date": return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "select": return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} />
-      case "media": return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug="system" />
+      case "media": return <MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={SYSTEM_TENANT_SLUG} />
       case "json": return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type="json" required={field.required} />
       case "button": return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} label={field.name} required={field.required} />
       case "component":
         const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug="system" componentSlug={opts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={opts?.repeatable} />
+        return <ComponentField tenantSlug={SYSTEM_TENANT_SLUG} componentSlug={opts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} label={field.name} repeatable={opts?.repeatable} />
       default: return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }
   }
@@ -270,7 +272,7 @@ export default function AdminCreateEntryPage() {
               <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
               <div>
                 <h1 className="text-3xl font-extrabold tracking-tight">New {contentType?.name}</h1>
-                <p className="text-muted-foreground">Platform-level entry for system workspace.</p>
+                <p className="text-muted-foreground">Platform-level entry for global use.</p>
               </div>
             </div>
             <div className="flex items-center gap-2">

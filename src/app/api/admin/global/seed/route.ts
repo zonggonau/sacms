@@ -214,100 +214,100 @@ const COMPONENTS = [
 const SEED_ENTRIES: Record<string, object[]> = {
   "sacms-hero": [
     {
-      headline: "The Modern Headless CMS for Startups & Enterprises",
-      subheadline: "Build, manage, and deliver content anywhere — with built-in multi-tenancy, billing, AI generation, and enterprise-grade security.",
-      cta_primary: "Get Started Free",
-      cta_secondary: "View Documentation",
-      badge_text: "🚀 Now in Beta — Free for Early Adopters",
-      image_url: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&q=80&w=2070",
+      headline: "Modernisasi Digital untuk Tanah Papua",
+      subheadline: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung percepatan transformasi digital di Tanah Papua.",
+      cta_primary: "Mulai Sekarang",
+      cta_secondary: "Pelajari Selengkapnya",
+      badge_text: "🏛️ Platform Digital Papua — Khusus Website Pemerintah",
+      image_url: "",
     },
   ],
   "sacms-features": [
-    { icon: "Database", title: "Multi-Tenant Architecture", description: "Every workspace is completely isolated — data, API keys, webhooks, and roles.", color: "indigo" },
-    { icon: "Zap", title: "Headless API-First", description: "REST + GraphQL APIs ready to use. Filter, search, populate relations, paginate — out of the box.", color: "blue" },
-    { icon: "Brain", title: "AI Content Generation", description: "Generate structured content with DeepSeek AI. Works with your custom schemas.", color: "purple" },
-    { icon: "Shield", title: "Enterprise Security", description: "RBAC, audit logs, rate limiting, sync hooks, custom domains — production-ready.", color: "slate" },
-    { icon: "CreditCard", title: "Built-in Billing", description: "Midtrans-powered subscriptions with plan limits, upgrade flows, and invoice tracking.", color: "yellow" },
-    { icon: "Globe", title: "i18n & Localization", description: "Full multi-language support with locale-aware content APIs and default locale management.", color: "teal" },
+    { icon: "Shield", title: "Website Pemerintah", description: "Template dan sistem siap pakai untuk instansi pemerintah daerah di Papua. Mendukung transparansi informasi publik, pengumuman resmi, dan layanan masyarakat secara digital.", color: "indigo" },
+    { icon: "Zap", title: "Portal Berita & Blog", description: "Sistem publikasi berita dan blog profesional untuk media lokal Papua. Dilengkapi kategori, penulis, penjadwalan publikasi, dan SEO otomatis.", color: "blue" },
+    { icon: "Layout", title: "Katalog UMKM & Produk", description: "Etalase digital untuk wirausaha dan UMKM Papua. Tampilkan produk lokal, harga, dan informasi usaha kepada pasar yang lebih luas.", color: "purple" },
+    { icon: "Globe", title: "Pariwisata Papua", description: "Showcase destinasi wisata dan kekayaan budaya Papua — dari Raja Ampat hingga Lembah Baliem. Website wisata yang memukau untuk menarik wisatawan.", color: "teal" },
+    { icon: "CreditCard", title: "Profil Bisnis & Cafe", description: "Website profesional untuk usaha kecil dan menengah: cafe, restoran, toko, dan layanan jasa di seluruh Papua. Tampil modern dan mudah dikelola.", color: "yellow" },
+    { icon: "Database", title: "Keamanan & Keandalan", description: "Infrastruktur enterprise-grade dengan enkripsi data, kontrol akses berbasis peran (RBAC), audit log, dan backup otomatis. Aman untuk data pemerintah dan bisnis.", color: "slate" },
   ],
   "sacms-account-pricing": [
     { 
-      name: "Free Account", plan_slug: "free", price: 0, yearly_price: 0, period: "forever", description: "Get started for free.", 
+      name: "Akun Gratis", plan_slug: "free", price: 0, yearly_price: 0, period: "selamanya", description: "Mulai tanpa biaya.", 
       max_workspaces: 1,
-      features: ["1 Workspace", "Community Support"], is_popular: false, cta_text: "Get Started", cta_href: "/register" 
+      features: ["1 Workspace", "Dukungan Komunitas"], is_popular: false, cta_text: "Mulai Gratis", cta_href: "/register" 
     },
     { 
-      name: "Starter Account", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "month", description: "For small teams.", 
+      name: "Akun Pemula", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "bulan", description: "Untuk tim kecil dan UMKM.", 
       max_workspaces: 3,
-      features: ["3 Workspaces", "Email Support"], is_popular: false, cta_text: "Upgrade to Starter", cta_href: "/register" 
+      features: ["3 Workspace", "Dukungan Email"], is_popular: false, cta_text: "Pilih Pemula", cta_href: "/register" 
     },
     { 
-      name: "Pro Account", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "month", description: "For growing agencies.", 
+      name: "Akun Profesional", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "bulan", description: "Untuk instansi dan perusahaan.", 
       max_workspaces: 10,
-      features: ["10 Workspaces", "Priority Support"], is_popular: true, cta_text: "Go Pro", cta_href: "/register" 
+      features: ["10 Workspace", "Dukungan Prioritas"], is_popular: true, cta_text: "Pilih Profesional", cta_href: "/register" 
     },
     { 
-      name: "Enterprise Account", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "month", description: "Unlimited scale.", 
+      name: "Akun Pemerintah", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "bulan", description: "Untuk instansi pemerintah.", 
       max_workspaces: 20,
-      features: ["20 Workspaces", "Dedicated Support", "Custom SLAs"], is_popular: false, cta_text: "Contact Sales", cta_href: "https://wa.me/6281234567890" 
+      features: ["20 Workspace", "Dukungan Dedikasi", "SLA Khusus"], is_popular: false, cta_text: "Hubungi Kami", cta_href: "https://wa.me/6281234567890" 
     },
   ],
   "sacms-workspace-pricing": [
     { 
-      name: "Free Workspace", plan_slug: "free", price: 0, yearly_price: 0, period: "forever", description: "Basic workspace limits.", 
+      name: "Workspace Gratis", plan_slug: "free", price: 0, yearly_price: 0, period: "selamanya", description: "Kapasitas dasar untuk memulai.", 
       max_content_types: 3, max_content_entries: 500, max_team_members: 1, max_storage: 100, max_locales: 1, max_api_calls: 1000,
-      features: ["3 Content Types", "1,000 API requests/month", "100MB Storage", "1 Team Member"]
+      features: ["3 Tipe Konten", "1.000 Request API/bulan", "100MB Penyimpanan", "1 Anggota Tim"]
     },
     { 
-      name: "Starter Workspace", plan_slug: "starter", price: 49000, yearly_price: 490000, period: "month", description: "More capacity for a single workspace.", 
+      name: "Workspace Pemula", plan_slug: "starter", price: 49000, yearly_price: 490000, period: "bulan", description: "Kapasitas lebih untuk satu workspace.", 
       max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_storage: 1024, max_locales: 2, max_api_calls: 10000,
-      features: ["5 Content Types", "10,000 API requests/month", "1GB Storage", "3 Team Members", "2 Locales"]
+      features: ["5 Tipe Konten", "10.000 Request API/bulan", "1GB Penyimpanan", "3 Anggota Tim", "2 Bahasa"]
     },
     { 
-      name: "Pro Workspace", plan_slug: "pro", price: 149000, yearly_price: 1490000, period: "month", description: "High performance workspace.", 
+      name: "Workspace Profesional", plan_slug: "pro", price: 149000, yearly_price: 1490000, period: "bulan", description: "Performa tinggi untuk instansi.", 
       max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_storage: 5120, max_locales: 5, max_api_calls: 100000,
-      features: ["10 Content Types", "100,000 API requests/month", "5GB Storage", "10 Team Members", "5 Locales"]
+      features: ["10 Tipe Konten", "100.000 Request API/bulan", "5GB Penyimpanan", "10 Anggota Tim", "5 Bahasa"]
     },
     { 
-      name: "Enterprise Workspace", plan_slug: "enterprise", price: 499000, yearly_price: 4990000, period: "month", description: "Dedicated workspace.", 
+      name: "Workspace Pemerintah", plan_slug: "enterprise", price: 499000, yearly_price: 4990000, period: "bulan", description: "Workspace dedikasi untuk pemerintah.", 
       max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_storage: 10240, max_locales: 20, max_api_calls: 1000000,
-      features: ["20 Content Types", "1,000,000 API requests/month", "10GB Storage", "Unlimited Team", "Unlimited Locales"]
+      features: ["20 Tipe Konten", "1.000.000 Request API/bulan", "10GB Penyimpanan", "Tim Unlimited", "Bahasa Unlimited"]
     },
   ],
   "sacms-workflow": [
-    { step: 1, title: "Define Your Schema", description: "Create content types, single types, and components with a powerful visual schema builder.", icon: "PenLine" },
-    { step: 2, title: "Create & Manage Content", description: "Use the built-in CMS dashboard or your own interface. Workflows, approval, scheduling included.", icon: "FileEdit" },
-    { step: 3, title: "Consume via API", description: "Fetch your content via REST or GraphQL with advanced filtering, full-text search, and relation population.", icon: "Code2" },
-    { step: 4, title: "Go Live", description: "Deploy to Vercel, Cloudflare, or any platform. Scale automatically. Zero config needed.", icon: "Rocket" },
+    { step: 1, title: "Pilih Template", description: "Pilih template sesuai kebutuhan — Website Pemerintah, Portal Berita, Katalog UMKM, atau Pariwisata. Siap pakai dalam hitungan menit.", icon: "PenLine" },
+    { step: 2, title: "Sesuaikan Konten", description: "Isi data instansi, upload logo dan foto, atur tampilan website. Dashboard CMS yang mudah digunakan siapa saja.", icon: "FileEdit" },
+    { step: 3, title: "Kelola & Kolaborasi", description: "Undang tim untuk mengelola konten bersama. Sistem approval, penjadwalan publikasi, dan audit log bawaan.", icon: "Code2" },
+    { step: 4, title: "Publikasikan", description: "Website siap online dan bisa diakses masyarakat Papua dan dunia. Performa cepat, aman, dan andal.", icon: "Rocket" },
   ],
   "sacms-faq": [
-    { question: "Is SaCMS really free?", answer: "Yes! The Free plan is completely free forever with no credit card required. You can upgrade when you need more capacity.", order: 1 },
-    { question: "Can I use my own database?", answer: "Enterprise plan users can connect their own dedicated PostgreSQL database for full data isolation.", order: 2 },
-    { question: "Does SaCMS support multiple languages?", answer: "Yes, full i18n support is built-in. Define locales per tenant and serve locale-aware content via API.", order: 3 },
-    { question: "What payment methods are supported?", answer: "We use Midtrans which supports bank transfer, credit cards, GoPay, OVO, and many other Indonesian payment methods.", order: 4 },
-    { question: "Is there a GraphQL API?", answer: "Yes! SaCMS auto-generates a GraphQL schema based on your content types, including queries and mutations.", order: 5 },
-    { question: "Can I use SaCMS for Mobile Apps?", answer: "Absolutely. SaCMS works perfectly with Flutter, React Native, iOS, and Android applications via our REST and GraphQL APIs.", order: 6 },
+    { question: "Apakah SaCMS cocok untuk website pemerintah daerah?", answer: "Sangat cocok! SaCMS dirancang khusus dengan fitur keamanan enterprise-grade, kontrol akses berbasis peran, dan audit log yang memenuhi standar website pemerintah Indonesia.", order: 1 },
+    { question: "Apakah ada paket gratis untuk UMKM?", answer: "Ya! Paket Gratis tersedia selamanya tanpa biaya dan tanpa kartu kredit. UMKM di Papua bisa langsung memulai dan upgrade ketika bisnis berkembang.", order: 2 },
+    { question: "Apakah mendukung bahasa daerah Papua?", answer: "Ya, SaCMS mendukung multi-bahasa penuh. Anda bisa menambahkan bahasa Indonesia, bahasa daerah Papua, dan bahasa lainnya untuk menjangkau semua kalangan masyarakat.", order: 3 },
+    { question: "Metode pembayaran apa saja yang didukung?", answer: "Kami menggunakan Midtrans yang mendukung transfer bank, kartu kredit, GoPay, OVO, DANA, dan banyak metode pembayaran Indonesia lainnya.", order: 4 },
+    { question: "Apakah data aman untuk instansi pemerintah?", answer: "Keamanan data adalah prioritas utama. SaCMS menggunakan enkripsi end-to-end, isolasi data per workspace, backup otomatis, dan infrastruktur cloud yang tersertifikasi.", order: 5 },
+    { question: "Bisa digunakan untuk website pariwisata?", answer: "Tentu! SaCMS sangat cocok untuk website pariwisata dengan fitur galeri foto, peta lokasi, katalog destinasi, dan integrasi media sosial untuk mempromosikan keindahan Papua.", order: 6 },
   ],
   "sacms-testimonials": [
-    { name: "Ahmad Fauzi", role: "CTO", company: "TechStart ID", content: "SaCMS replaced our Strapi setup completely. Multi-tenancy and billing are built-in — no custom code needed.", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=a042581f4e29026024d" },
-    { name: "Sari Dewi", role: "Lead Developer", company: "Kreasi Digital", content: "The GraphQL API with DataLoader is blazing fast. Our Next.js frontend has never been this snappy.", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=a042581f4e29026704d" },
-    { name: "Budi Santoso", role: "Founder", company: "Nusantara Apps", content: "Finally a CMS that speaks Indonesian payment methods. Midtrans integration just works.", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=a04258a2462d826712d" },
+    { name: "Yohanes Wenda", role: "Kepala Bidang TIK", company: "Dinas Kominfo Papua", content: "SaCMS membantu kami membangun portal informasi pemerintah yang modern dan mudah dikelola. Transparansi informasi publik jadi lebih baik.", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=papua-gov-1" },
+    { name: "Maria Rumbekwan", role: "Pemilik UMKM", company: "Noken Papua Store", content: "Berkat SaCMS, produk kerajinan noken kami sekarang bisa dilihat dan dipesan dari seluruh Indonesia. Omzet naik 3x lipat!", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=papua-umkm-1" },
+    { name: "Daniel Fatem", role: "Pengelola Pariwisata", company: "Raja Ampat Tourism", content: "Website pariwisata kami tampil profesional dan memukau. Jumlah wisatawan yang menghubungi kami meningkat drastis sejak menggunakan SaCMS.", rating: 5, avatar_url: "https://i.pravatar.cc/150?u=papua-tourism-1" },
   ],
   "sacms-owners": [
-    { name: "Nauval", role: "Founder & Lead Developer", bio: "Building the future of headless content management for Southeast Asia.", avatar_url: "https://i.pravatar.cc/150?img=11", linkedin: "https://linkedin.com/" },
-    { name: "Rizky", role: "Co-Founder & Head of Product", bio: "Ensuring SaCMS provides the best user experience for content editors.", avatar_url: "https://i.pravatar.cc/150?img=12", linkedin: "https://linkedin.com/" },
+    { name: "Zonggonau Cristoper", role: "Founder & Lead Architect", bio: "Seorang pengembang perangkat lunak yang berdedikasi untuk membangun ekosistem teknologi digital di Papua. Berpengalaman dalam merancang sistem skala besar yang efisien dan aman.", avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper", linkedin: "https://linkedin.com/in/cristoperz" },
+    { name: "Januar Fonda", role: "Core Developer", bio: "Pengembang Fullstack yang fokus pada performa dan skalabilitas sistem. Berkomitmen untuk menghadirkan pengalaman pengguna terbaik melalui teknologi modern.", avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar", linkedin: "" },
   ],
   "sacms-about": [
-    { title: "About SaCMS", description: "SaCMS is a modern, multi-tenant headless CMS built for the Southeast Asian market, with deep integration for local payment providers and enterprise-grade features.", mission: "To make world-class content infrastructure accessible to every startup and enterprise in Southeast Asia.", founded: "2024" },
+    { title: "Tentang SaCMS", description: "SaCMS adalah platform CMS modern yang lahir dari visi untuk mempercepat transformasi digital di Tanah Papua. Kami membangun teknologi website yang mudah digunakan untuk instansi pemerintah, UMKM, media, dan sektor pariwisata di seluruh Papua.", mission: "Mewujudkan Papua Digital — membawa infrastruktur teknologi informasi kelas dunia untuk mendukung kemajuan pemerintahan, ekonomi, dan pariwisata di Tanah Papua.", founded: "2024" },
   ],
   "sacms-whatsapp": [
-    { phone: "6281234567890", message: "Halo! Saya tertarik dengan SaCMS. Bisakah saya mendapatkan informasi lebih lanjut?", label: "Chat dengan Kami", is_active: true },
+    { phone: "6282199220551", message: "Halo! Saya tertarik membangun website untuk instansi/UMKM di Papua menggunakan SaCMS. Bisakah saya mendapatkan informasi lebih lanjut?", label: "Hubungi Kami", is_active: true },
   ],
   "sacms-addons": [
-    { icon: "Bot", name: "AI Generation Pack", description: "10,000 extra AI content generation credits/month.", price: 49000, unit: "month" },
-    { icon: "Database", name: "Extra Storage", description: "50GB additional storage for media and assets.", price: 29000, unit: "month" },
-    { icon: "Zap", name: "API Boost", description: "500,000 extra API requests/month.", price: 39000, unit: "month" },
-    { icon: "Shield", name: "Priority Security Scan", description: "Monthly security audit and compliance report.", price: 99000, unit: "month" },
+    { icon: "Bot", name: "Paket AI Konten", description: "10.000 kredit tambahan untuk pembuatan konten otomatis dengan AI per bulan.", price: 49000, unit: "bulan" },
+    { icon: "Database", name: "Penyimpanan Ekstra", description: "50GB tambahan penyimpanan untuk media, dokumen, dan aset digital.", price: 29000, unit: "bulan" },
+    { icon: "Zap", name: "Boost API", description: "500.000 request API tambahan per bulan untuk website dengan trafik tinggi.", price: 39000, unit: "bulan" },
+    { icon: "Shield", name: "Konsultasi Digital", description: "Konsultasi bulanan untuk strategi digitalisasi instansi dan UMKM di Papua.", price: 99000, unit: "bulan" },
   ],
 }
 
@@ -317,26 +317,12 @@ export async function POST() {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     if (session.user.role !== "super_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    // Auto-create sacms-global tenant if it doesn't exist yet
-    let globalTenant = await db.tenant.findUnique({ where: { slug: GLOBAL_SLUG } })
-    if (!globalTenant) {
-      globalTenant = await db.tenant.create({
-        data: {
-          name: "SaCMS Global",
-          slug: GLOBAL_SLUG,
-          description: "Internal system tenant for landing page and global content. Hidden from regular tenant lists.",
-          plan: "enterprise",
-          status: "active",
-        },
-      })
-    }
-
     const results: Record<string, { created: number; skipped: number }> = {}
 
     for (const ct of CONTENT_TYPES) {
       if (ct.isSingleType) {
         let singleType = await db.singleType.findFirst({
-          where: { slug: ct.slug, tenantId: globalTenant.id },
+          where: { slug: ct.slug, tenantId: null },
         })
 
         if (!singleType) {
@@ -345,7 +331,7 @@ export async function POST() {
               name: ct.name,
               slug: ct.slug,
               description: ct.description,
-              tenantId: globalTenant.id,
+              tenantId: null, // Truly Global
               isPublished: true,
               fields: {
                 create: ct.fields.map((f) => ({
@@ -368,12 +354,12 @@ export async function POST() {
 
         // Delete old assignment for fresh seed
         await db.tenantSingleTypeAssignment.deleteMany({
-          where: { tenantId: globalTenant.id, singleTypeId: singleType.id },
+          where: { tenantId: null, singleTypeId: singleType.id },
         })
 
         await db.tenantSingleTypeAssignment.create({
           data: {
-            tenantId: globalTenant.id,
+            tenantId: null, // Truly Global Data
             singleTypeId: singleType.id,
             data: seedData[0],
             publishedAt: new Date(),
@@ -383,7 +369,7 @@ export async function POST() {
       } else {
         // Ensure content type exists
         let contentType = await db.contentType.findFirst({
-          where: { slug: ct.slug, tenantId: globalTenant.id },
+          where: { slug: ct.slug, tenantId: null },
         })
 
         if (!contentType) {
@@ -392,7 +378,7 @@ export async function POST() {
               name: ct.name,
               slug: ct.slug,
               description: ct.description,
-              tenantId: globalTenant.id,
+              tenantId: null, // Truly Global
               fields: {
                 create: ct.fields.map((f) => ({
                   name: f.name,
@@ -406,25 +392,23 @@ export async function POST() {
           })
         }
 
-        // Seed entries (skip if already seeded)
+        // Seed entries
         const seedData = SEED_ENTRIES[ct.slug]
         if (!seedData) {
           results[ct.slug] = { created: 0, skipped: 0 }
           continue
         }
 
-        // Clear old entries to ensure fresh seed
+        // Clear old entries
         await db.contentEntry.deleteMany({
-          where: { tenantId: globalTenant.id, contentTypeId: contentType.id },
+          where: { tenantId: null, contentTypeId: contentType.id },
         })
 
         let created = 0
-        let skipped = 0
-
         for (const entryData of seedData) {
           await db.contentEntry.create({
             data: {
-              tenantId: globalTenant.id,
+              tenantId: null, // Truly Global
               contentTypeId: contentType.id,
               status: "PUBLISHED",
               data: entryData,
@@ -434,14 +418,14 @@ export async function POST() {
           created++
         }
 
-        results[ct.slug] = { created, skipped }
+        results[ct.slug] = { created, skipped: 0 }
       }
     }
 
     // === Seed Components ===
     for (const comp of COMPONENTS) {
       let component = await db.component.findFirst({
-        where: { slug: comp.slug, tenantId: globalTenant.id },
+        where: { slug: comp.slug, tenantId: null },
       })
 
       if (!component) {
@@ -451,7 +435,7 @@ export async function POST() {
             slug: comp.slug,
             description: comp.description,
             category: comp.category,
-            tenantId: globalTenant.id,
+            tenantId: null, // Truly Global
             fields: {
               create: comp.fields.map((f) => ({
                 name: f.name,
@@ -459,22 +443,22 @@ export async function POST() {
                 type: f.type,
                 required: f.required,
                 order: f.order,
-                options: f.options as any, // Cast to any to satisfy Prisma Json input
+                options: f.options as any,
               })),
             },
           },
         })
       }
       
-      // Ensure it is assigned to the global tenant so it can be used
+      // Assign to global scope
       const existingAssignment = await db.tenantComponentAssignment.findFirst({
-        where: { tenantId: globalTenant.id, componentId: component.id },
+        where: { tenantId: null, componentId: component.id },
       })
 
       if (!existingAssignment) {
         await db.tenantComponentAssignment.create({
           data: {
-            tenantId: globalTenant.id,
+            tenantId: null,
             componentId: component.id,
           }
         })
@@ -562,9 +546,6 @@ export async function POST() {
     }
     return NextResponse.json({
       success: true,
-      tenantCreated: !!(globalTenant),
-      tenantId: globalTenant.id,
-      tenantSlug: globalTenant.slug,
       rbacCreated,
       results,
     })
@@ -581,34 +562,28 @@ export async function GET() {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     if (session.user.role !== "super_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
-    const globalTenant = await db.tenant.findUnique({
-      where: { slug: GLOBAL_SLUG },
+    // Check for global content types (those with tenantId: null)
+    const contentTypes = await db.contentType.findMany({
+      where: { tenantId: null },
       include: {
-        contentTypes: {
-          include: {
-            entries: {
-              where: { status: "PUBLISHED" },
-              select: { id: true, status: true, createdAt: true },
-            },
-          },
+        entries: {
+          where: { status: "PUBLISHED", tenantId: null },
+          select: { id: true, status: true, createdAt: true },
         },
       },
     })
 
-    if (!globalTenant) {
-      return NextResponse.json({ exists: false, message: "Global tenant not found. Run seed first." })
-    }
-
-    const summary = globalTenant.contentTypes.map((ct) => ({
+    const summary = contentTypes.map((ct) => ({
       slug: ct.slug,
       name: ct.name,
       publishedEntries: ct.entries.length,
     }))
 
+    const hasData = summary.some(s => s.publishedEntries > 0)
+
     return NextResponse.json({
-      exists: true,
-      tenantId: globalTenant.id,
-      tenantSlug: globalTenant.slug,
+      exists: contentTypes.length > 0,
+      hasData,
       contentTypes: summary,
     })
   } catch (error) {

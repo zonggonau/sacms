@@ -58,7 +58,7 @@ Return ONLY a valid JSON object. No markdown, no commentary.
 
   try {
     const result = await safeGenerateContent(systemPrompt, `Website Description: ${prompt}\n\nGenerate a professional CMS structure for this website. Include relevant Components, Single Types, and Content Types. (If the description is in Indonesian, generate names and descriptions in Indonesian but keep slugs in English).`, {
-      responseMimeType: "application/json"
+      responseFormat: "json_object"
     })
 
     const parsed = JSON.parse(result.text)
@@ -95,14 +95,16 @@ RULES:
    - date/datetime: ISO strings.
    - json: Valid JSON objects.
    - boolean: true or false.
+   - relation: Provide a URL-friendly slug or reference ID (e.g., "category-slug").
+   - component: Provide a JSON object matching the nested component's structure.
 3. Slugs should be URL-friendly (e.g., "my-title").
 4. If the prompt is in Indonesian, write content in Indonesian but maintain field slugs.
 
 OUTPUT FORMAT: Return ONLY a valid JSON array of objects, where each object keys are the field slugs.`
 
   try {
-    const result = await safeGenerateContent(systemPrompt, `Request: ${prompt}\n\nGenerate realistic entries for the ${contentType.name} content type.`, {
-      responseMimeType: "application/json"
+    const result = await safeGenerateContent(systemPrompt, `Request: ${prompt}\n\nGenerate realistic entries for the ${contentType.name} content type in JSON format.`, {
+      responseFormat: "json_object"
     })
 
     const parsed = JSON.parse(result.text)

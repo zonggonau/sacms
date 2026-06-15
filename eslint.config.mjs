@@ -2,6 +2,7 @@ import js from "@eslint/js";
 import { FlatCompat } from "@eslint/eslintrc";
 import { dirname } from "path";
 import { fileURLToPath } from "url";
+import zodPlugin from "eslint-plugin-zod";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -13,7 +14,11 @@ const compat = new FlatCompat({
 const eslintConfig = [
   js.configs.recommended,
   {
+    plugins: {
+      zod: zodPlugin,
+    },
     rules: {
+      ...zodPlugin.configs.recommended.rules,
       // TypeScript rules
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",

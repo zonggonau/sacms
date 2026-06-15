@@ -16,7 +16,7 @@ const updateSchema = z.object({
 
 /**
  * GET /api/admin/global/content?ct=sacms-hero
- * Returns all entries for a specific content type in the global tenant
+ * Returns all entries for a specific content type in the global scope
  */
 export async function GET(request: NextRequest) {
   try {
@@ -27,20 +27,27 @@ export async function GET(request: NextRequest) {
     const { searchParams } = new URL(request.url)
     const ctSlug = searchParams.get("ct")
 
+    // Fetch entries with tenantId: null (Truly Global) OR tenant: sacms-global (Legacy)
     const globalTenant = await db.tenant.findUnique({ where: { slug: GLOBAL_SLUG } })
-    if (!globalTenant) return NextResponse.json({ error: "Global tenant not found. Run seed first." }, { status: 404 })
 
-    const where = ctSlug
-      ? { tenantId: globalTenant.id, contentType: { slug: ctSlug } }
-      : { tenantId: globalTenant.id }
+    const where: any = {
+      contentType: ctSlug ? { slug: ctSlug } : undefined,
+      OR: [
+        { tenantId: null },
+        globalTenant ? { tenantId: globalTenant.id } : undefined
+      ].filter(Boolean)
+    }
 
     const entries = await db.contentEntry.findMany({
       where,
-      include: { contentType: { select: { id: true, slug: true, name: true } } },
+      include: { 
+        contentType: { select: { id: true, slug: true, name: true } },
+        tenant: { select: { id: true, slug: true, name: true } }
+      },
       orderBy: { createdAt: "asc" },
     })
 
-    return NextResponse.json({ entries, tenantId: globalTenant.id })
+    return NextResponse.json({ entries, tenantId: null })
   } catch (error) {
     console.error("Global content GET error:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -49,7 +56,7 @@ export async function GET(request: NextRequest) {
 
 /**
  * PATCH /api/admin/global/content
- * Update or create a specific entry in the global tenant
+ * Update or create a specific entry in the global scope
  */
 export async function PATCH(request: NextRequest) {
   try {
@@ -62,13 +69,31 @@ export async function PATCH(request: NextRequest) {
 
     const { contentTypeSlug, entryId, data, status = "PUBLISHED" } = result.data
 
-    const globalTenant = await db.tenant.findUnique({ where: { slug: GLOBAL_SLUG } })
-    if (!globalTenant) return NextResponse.json({ error: "Global tenant not found. Run seed first." }, { status: 404 })
-
+    // Find the global content type (tenantId: null)
     const contentType = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: globalTenant.id },
+      where: { slug: contentTypeSlug, tenantId: null },
     })
-    if (!contentType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
+    
+    if (!contentType) {
+      // Fallback to legacy sacms-global owned type
+      const legacyType = await db.contentType.findFirst({
+        where: { slug: contentTypeSlug, tenant: { slug: GLOBAL_SLUG } }
+      })
+      if (!legacyType) return NextResponse.json({ error: "Content type not found" }, { status: 404 })
+      
+      // Update entry for legacy type
+      if (entryId) {
+        const entry = await db.contentEntry.update({
+          where: { id: entryId },
+          data: {
+            data,
+            status,
+            publishedAt: status === "PUBLISHED" ? new Date() : undefined,
+          },
+        })
+        return NextResponse.json({ entry })
+      }
+    }
 
     let entry
     if (entryId) {
@@ -82,11 +107,11 @@ export async function PATCH(request: NextRequest) {
         },
       })
     } else {
-      // Create new entry
+      // Create new Truly Global entry
       entry = await db.contentEntry.create({
         data: {
-          tenantId: globalTenant.id,
-          contentTypeId: contentType.id,
+          tenantId: null, // Truly Global
+          contentTypeId: contentType!.id,
           data,
           status,
           publishedAt: status === "PUBLISHED" ? new Date() : undefined,

@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.SaCMSError = exports.SaCMS = void 0;
+exports.QueryBuilder = exports.SaCMSError = exports.SaCMS = void 0;
 class SaCMS {
     constructor(config) {
         this.baseUrl = config.baseUrl.replace(/\/+$/, "");
@@ -24,27 +24,36 @@ class SaCMS {
         });
     }
     /** @internal */
-    async request(path, init) {
+    async request(path, init, retries = 3) {
         const url = `${this.baseUrl}${path}`;
         const headers = {
             Authorization: `Bearer ${this.token}`,
             "Content-Type": "application/json",
             ...init?.headers,
         };
-        const res = await fetch(url, { ...init, headers });
-        if (!res.ok) {
-            const body = await res.text();
-            let message;
-            try {
-                const json = JSON.parse(body);
-                message = json.error || json.message || body;
+        for (let attempt = 0; attempt <= retries; attempt++) {
+            const res = await fetch(url, { ...init, headers });
+            if (res.status === 429 && attempt < retries) {
+                const retryAfter = res.headers.get("Retry-After");
+                const delay = retryAfter ? parseInt(retryAfter, 10) * 1000 : 1000 * Math.pow(2, attempt);
+                await new Promise(r => setTimeout(r, delay));
+                continue;
             }
-            catch {
-                message = body;
+            if (!res.ok) {
+                const body = await res.text();
+                let message;
+                try {
+                    const json = JSON.parse(body);
+                    message = json.error || json.message || body;
+                }
+                catch {
+                    message = body;
+                }
+                throw new SaCMSError(message, res.status);
             }
-            throw new SaCMSError(message, res.status);
+            return res.json();
         }
-        return res.json();
+        throw new SaCMSError("Max retries reached", 429);
     }
     /** @internal */
     getDefaultLocale() {
@@ -60,6 +69,12 @@ class CollectionClient {
     constructor(cf, slug) {
         this.cf = cf;
         this.slug = slug;
+    }
+    /**
+     * Start a fluent query builder chain.
+     */
+    query() {
+        return new QueryBuilder(this);
     }
     /**
      * Query multiple entries with filtering, sorting, pagination, and field selection.
@@ -138,6 +153,56 @@ class SaCMSError extends Error {
     }
 }
 exports.SaCMSError = SaCMSError;
+class QueryBuilder {
+    constructor(client) {
+        this.client = client;
+        this.params = {};
+    }
+    /**
+     * Filter data. E.g. .where('status', 'eq', 'PUBLISHED')
+     */
+    where(field, operator, value) {
+        if (!this.params.filters)
+            this.params.filters = {};
+        if (!this.params.filters[field])
+            this.params.filters[field] = {};
+        const op = operator.startsWith('$') ? operator : `$${operator}`;
+        this.params.filters[field][op] = value;
+        return this;
+    }
+    /**
+     * Select specific relations to populate. E.g. .populate(['author'])
+     */
+    populate(fields) {
+        this.params.populate = fields;
+        return this;
+    }
+    /**
+     * Limit the number of returned entries.
+     */
+    limit(pageSize) {
+        if (!this.params.pagination)
+            this.params.pagination = {};
+        this.params.pagination.pageSize = pageSize;
+        return this;
+    }
+    /**
+     * Skip a number of pages.
+     */
+    page(pageNumber) {
+        if (!this.params.pagination)
+            this.params.pagination = {};
+        this.params.pagination.page = pageNumber;
+        return this;
+    }
+    /**
+     * Execute the query and fetch the results.
+     */
+    async fetch() {
+        return this.client.findMany(this.params);
+    }
+}
+exports.QueryBuilder = QueryBuilder;
 // ─── Helpers ────────────────────────────────────────────
 function buildQueryString(params, defaultLocale) {
     if (!params)

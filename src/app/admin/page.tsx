@@ -13,6 +13,7 @@ import {
   CheckCircle2, Puzzle, CreditCard, Shield, Trophy
 } from "lucide-react"
 import Link from "next/link"
+import { formatRupiah } from "@/lib/utils"
 interface RecentTenant {
   id: string
   name: string
@@ -80,9 +81,7 @@ export default function GlobalAdminDashboard() {
     }
   }, [session])
 
-  const formatCurrency = (amount: number) =>
-    new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", minimumFractionDigits: 0 }).format(amount)
-
+  // Removed local formatCurrency in favor of formatRupiah from utils
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
@@ -126,8 +125,8 @@ export default function GlobalAdminDashboard() {
             {[
               { label: "Total Tenants", value: stats.tenants, sub: `${stats.activeTenants} active`, icon: Building2, href: "/admin/tenants" },
               { label: "Platform Users", value: stats.users, sub: "Registered accounts", icon: Users, href: "/admin/users" },
-              { label: "Monthly Revenue", value: formatCurrency(stats.monthlyRevenue), sub: `${stats.activeSubscriptions} active subs`, icon: TrendingUp, href: "/admin/billing" },
-              { label: "Total Revenue", value: formatCurrency(stats.totalRevenue), sub: "Historical total", icon: DollarSign, href: "/admin/billing" },
+              { label: "Monthly Revenue", value: formatRupiah(stats.monthlyRevenue), sub: `${stats.activeSubscriptions} active subs`, icon: TrendingUp, href: "/admin/billing" },
+              { label: "Total Revenue", value: formatRupiah(stats.totalRevenue), sub: "Historical total", icon: DollarSign, href: "/admin/billing" },
             ].map((kpi) => (
               <Link key={kpi.label} href={kpi.href}>
                 <Card className="rounded-none border border-border shadow-none hover:bg-background transition-colors">

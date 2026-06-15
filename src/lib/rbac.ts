@@ -23,6 +23,10 @@ export const PERMISSIONS = {
   USER_REMOVE: "user.remove",
   SETTING_UPDATE: "settings.update",
   API_TOKEN_MANAGE: "api-token.manage",
+  CONTENT_TYPE_READ: "content-type.read",
+  CONTENT_TYPE_CREATE: "content-type.create",
+  CONTENT_TYPE_UPDATE: "content-type.update",
+  CONTENT_TYPE_DELETE: "content-type.delete",
 } as const
 
 /**
@@ -34,7 +38,15 @@ export async function hasPermission(
   tenantId: string,
   permissionName: string
 ): Promise<boolean> {
-  // 1. Get user role in the tenant
+  // 1. Check if user is super_admin first (no membership required)
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
+  })
+  
+  if (user?.role === "super_admin") return true
+
+  // 2. Get user role in the tenant
   const member = await db.tenantMember.findUnique({
     where: {
       tenantId_userId: { tenantId, userId },
@@ -48,8 +60,6 @@ export async function hasPermission(
 
   if (!member) return false
 
-  // 2. Super admin bypass
-  if (member.user.role === "super_admin") return true
   
   // 3. Owners bypass most checks
   if (member.role === "owner") return true
@@ -69,7 +79,7 @@ export async function hasPermission(
   if (!permission) return false
 
   // 5. Check if role is standard (global) or custom (tenant-specific)
-  const isStandardRole = ["admin", "editor", "viewer"].includes(member.role)
+  const isStandardRole = ["admin", "editor", "viewer", "member"].includes(member.role)
   
   const granted = await db.rolePermission.findFirst({
     where: {

@@ -26,7 +26,7 @@ export default function PaymentResultPage() {
 
     const fetchTransactionStatus = async () => {
       try {
-        const res = await fetch(`/api/payment/${orderId}/status`)
+        const res = await fetch(`/api/billing/payment/${orderId}/status`)
         
         if (!res.ok) {
           throw new Error("Failed to fetch transaction status")

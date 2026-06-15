@@ -74,6 +74,7 @@ export const TRANSITION_PERMISSIONS: Record<string, string> = {
   "ARCHIVED->DRAFT": "workflow.archived_to_draft",
   "REJECTED->DRAFT": "workflow.rejected_to_draft",
   "DRAFT->PUBLISHED": "workflow.draft_to_publish",
+  "SCHEDULED->DRAFT": "workflow.scheduled_to_draft", // B8 Fix: was missing
 }
 
 /**

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useTransition } from "react"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -8,40 +8,27 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Loader2, Save, User as UserIcon, Mail, Shield, Key } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { updateProfileAction } from "@/actions/profile"
 
-export function UserProfile() {
-  const { data: session, update } = useSession()
+interface UserProfileProps {
+  initialData?: {
+    name: string
+    email: string
+    role: string
+  }
+}
+
+export function UserProfile({ initialData }: UserProfileProps) {
+  const { update } = useSession()
   const { toast } = useToast()
-  const [loading, setLoading] = useState(true)
+  const [isPending, startTransition] = useTransition()
   const [saving, setSaving] = useState(false)
 
-  const [name, setName] = useState("")
-  const [email, setEmail] = useState("")
-  const [role, setRole] = useState("")
+  const [name, setName] = useState(initialData?.name || "")
+  const [email, setEmail] = useState(initialData?.email || "")
+  const [role, setRole] = useState(initialData?.role || "user")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
-
-  useEffect(() => {
-    async function fetchProfile() {
-      try {
-        const res = await fetch("/api/profile")
-        if (res.ok) {
-          const data = await res.json()
-          setName(data.user.name || "")
-          setEmail(data.user.email || "")
-          setRole(data.user.role || "user")
-        }
-      } catch (error) {
-        console.error("Failed to fetch profile:", error)
-      } finally {
-        setLoading(false)
-      }
-    }
-    
-    if (session?.user) {
-      fetchProfile()
-    }
-  }, [session])
 
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -55,53 +42,41 @@ export function UserProfile() {
       return
     }
 
-    setSaving(true)
-    try {
-      const res = await fetch("/api/profile", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          name, 
-          password: password || undefined 
-        }),
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        await update({ name: data.user.name }) // Update NextAuth session
-        setPassword("")
-        setConfirmPassword("")
-        toast({
-          title: "Profile Updated",
-          description: "Your profile has been successfully updated.",
+    startTransition(async () => {
+      try {
+        const result = await updateProfileAction({
+          name,
+          password: password || undefined
         })
-      } else {
-        const data = await res.json()
+
+        if (result.success) {
+          await update({ name: result.user?.name }) // Update NextAuth session
+          setPassword("")
+          setConfirmPassword("")
+          toast({
+            title: "Profile Updated",
+            description: "Your profile has been successfully updated.",
+          })
+        } else {
+          toast({
+            title: "Update Failed",
+            description: result.error || "Failed to update profile.",
+            variant: "destructive"
+          })
+        }
+      } catch (error) {
         toast({
           title: "Update Failed",
-          description: data.error || "Failed to update profile.",
+          description: "An unexpected error occurred.",
           variant: "destructive"
         })
+      } finally {
+        setSaving(false)
       }
-    } catch (error) {
-      console.error("Profile update error:", error)
-      toast({
-        title: "Update Failed",
-        description: "An unexpected error occurred.",
-        variant: "destructive"
-      })
-    } finally {
-      setSaving(false)
-    }
+    })
   }
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
+
 
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">

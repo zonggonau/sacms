@@ -147,7 +147,7 @@ export default function CheckoutPage() {
     setLoading(true)
     try {
       console.log("Creating checkout session for:", { planId: plan.id, tenantId: currentTenant?.id || tenantSlug, interval });
-      const res = await fetch("/api/checkout", {
+      const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

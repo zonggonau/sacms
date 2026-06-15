@@ -50,6 +50,7 @@ import { AdvancedField } from "@/components/content/field-renderers/advanced-fie
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
+import { getEntryAction, updateEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -115,16 +116,12 @@ export default function EditEntryPage() {
     async function fetchData() {
       if (!tenantSlug || !contentTypeSlug || !entryId || contentType) return
       try {
-        const [ctRes, entRes, locRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
-          fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`),
-          fetch(`/api/tenant/${tenantSlug}/locales`)
-        ])
+        const entRes = await getEntryAction(tenantSlug, contentTypeSlug, entryId)
+        const locRes = await fetch(`/api/tenant/${tenantSlug}/locales`)
         
-        if (ctRes.ok) setContentType(await ctRes.json())
-        if (entRes.ok) {
-          const data = await entRes.json()
-          const entry = data.entry
+        if (entRes.contentType) setContentType(entRes.contentType as any)
+        if (entRes.entry) {
+          const entry = entRes.entry
           setEntryStatus(entry.status)
           setReviewComment(entry.reviewComment)
           setLocale(entry.locale)
@@ -147,7 +144,7 @@ export default function EditEntryPage() {
       }
     }
     if (status === "authenticated") fetchData()
-  }, [tenantSlug, contentTypeSlug, entryId, status])
+  }, [tenantSlug, contentTypeSlug, entryId, status, contentType])
 
   const allowedNextStatuses = useMemo(() => {
     const next = TRANSITIONS[entryStatus] || []
@@ -172,18 +169,14 @@ export default function EditEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: formData,
-          status: targetStatus,
-          locale,
-          scheduledAt: scheduledAt?.toISOString() || null
-        }),
+      const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
+        data: formData,
+        status: targetStatus,
+        locale,
+        scheduledAt: scheduledAt || null
       })
 
-      if (res.ok) {
+      if (res.success) {
         toast({ title: publishNow ? "Published Successfully!" : "Entry Updated" })
         if (publishNow) {
           router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
@@ -191,11 +184,10 @@ export default function EditEntryPage() {
           router.refresh()
         }
       } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error })
+        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to update entry" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Error", description: "Failed to update entry" })
     } finally {
       setSaving(false)
     }
@@ -229,6 +221,9 @@ export default function EditEntryPage() {
     }
 
     switch (field.type) {
+      case "document_template":
+        return null;
+
       case "text":
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
           return <TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} placeholder={`Add ${field.name.toLowerCase()}...`} />

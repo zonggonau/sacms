@@ -128,8 +128,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
     let components: any[] = []
 
     if (websiteType && websiteType !== 'custom') {
-      console.log(`[Provisioning] Searching for DB Template: ${websiteType}`)
-      // Try to find a template in the database first
+      console.log(`[Provisioning] Searching for DB Template matching: ${websiteType}`)
       const templateCt = await db.contentType.findFirst({
         where: { slug: "templates", tenantId: null }
       })
@@ -139,22 +138,33 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
           where: { contentTypeId: templateCt.id, status: "PUBLISHED" }
         })
 
+        console.log(`[Provisioning] Found ${entries.length} published templates in DB.`)
+
         const dbTemplate = entries.find(e => {
           const d = typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-          // Match by database entry ID, template_id, or slug/name
-          return e.id === websiteType || 
-                 d.template_id === websiteType || 
-                 (!d.template_id && (d.slug === websiteType || d.name === websiteType || d.nama_template === websiteType))
+          const match = e.id === websiteType || 
+                        d.template_id === websiteType || 
+                        d.slug === websiteType || 
+                        d.name === websiteType ||
+                        d.nama_template === websiteType
+          return match
         })
 
         if (dbTemplate) {
           const d = typeof dbTemplate.data === 'string' ? JSON.parse(dbTemplate.data) : dbTemplate.data
-          const schema = d.schema_template || {}
-          console.log(`[Provisioning] Found DB Template: ${d.name || d.nama_template}`)
-          contentTypes = schema.contentTypes || []
-          singleTypes = schema.singleTypes || []
+          const schema = d.schema_template || d.schemaTemplate || {}
+          console.log(`[Provisioning] Successfully matched DB Template: ${d.name || d.nama_template}`)
+
+          // Support both snake_case and camelCase for schema properties
+          contentTypes = schema.content_types || schema.contentTypes || []
+          singleTypes = schema.single_types || schema.singleTypes || []
           components = schema.components || []
+
+          console.log(`[Provisioning] Parsed schema: ${contentTypes.length} CTs, ${singleTypes.length} STs, ${components.length} Comps`)
+        } else {
+          console.warn(`[Provisioning] Template '${websiteType}' not found in DB entries. Check if ID or template_id matches.`)
         }
+
       }
     }
 
@@ -169,8 +179,8 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
       }
     }
 
-    // Ultimate fallback if still empty
-    if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0) {
+    // Ultimate fallback if still empty (ONLY if not explicitly requested 'custom'/blank)
+    if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0 && websiteType !== 'custom') {
       console.log("[Provisioning] No template found, falling back to sacms-starter")
       const kit = STARTER_KITS["sacms-starter"]
       contentTypes = kit.contentTypes
@@ -193,14 +203,25 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               slug: comp.slug,
               category: comp.category || "General",
               fields: {
-                create: comp.fields.map((f: any, idx: number) => ({
-                  name: f.name,
-                  slug: f.slug,
-                  type: f.type,
-                  required: !!f.required,
-                  order: idx,
-                  options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
-                }))
+                create: comp.fields.map((f: any, idx: number) => {
+                  let fOptions = f.options || {}
+                  if (typeof fOptions === 'string') {
+                    try { fOptions = JSON.parse(fOptions) } catch { fOptions = {} }
+                  }
+                  
+                  const cSlug = f.componentSlug || (fOptions as any).componentSlug || null
+                  if (cSlug) fOptions.componentSlug = cSlug
+
+                  return {
+                    name: f.name,
+                    slug: f.slug,
+                    type: f.type,
+                    required: !!f.required,
+                    order: idx,
+                    relationSlug: f.relationSlug || f.relationTo || null,
+                    options: fOptions,
+                  }
+                })
               }
             }
           })
@@ -224,15 +245,25 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               description: ct.description || "",
               isPublished: true,
               fields: {
-                create: ct.fields.map((f: any, idx: number) => ({
-                  name: f.name,
-                  slug: f.slug,
-                  type: f.type,
-                  required: !!f.required,
-                  order: idx,
-                  relationSlug: f.relationSlug || null,
-                  options: typeof f.options === 'string' ? f.options : JSON.stringify(f.options || {}),
-                }))
+                create: ct.fields.map((f: any, idx: number) => {
+                  let fOptions = f.options || {}
+                  if (typeof fOptions === 'string') {
+                    try { fOptions = JSON.parse(fOptions) } catch { fOptions = {} }
+                  }
+                  
+                  const cSlug = f.componentSlug || (fOptions as any).componentSlug || null
+                  if (cSlug) fOptions.componentSlug = cSlug
+
+                  return {
+                    name: f.name,
+                    slug: f.slug,
+                    type: f.type,
+                    required: !!f.required,
+                    order: idx,
+                    relationSlug: f.relationSlug || f.relationTo || null,
+                    options: fOptions,
+                  }
+                })
               }
             }
           })
@@ -272,14 +303,17 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               isPublished: true,
               fields: {
                 create: st.fields.map((f: any, idx: number) => {
-                  let optionsObj = {}
-                  try {
-                    optionsObj = typeof f.options === 'string' ? JSON.parse(f.options || '{}') : (f.options || {})
-                  } catch (e) {
-                    optionsObj = f.options || {}
+                  let optionsObj = f.options || {}
+                  if (typeof optionsObj === 'string') {
+                    try {
+                      optionsObj = JSON.parse(optionsObj)
+                    } catch (e) {
+                      optionsObj = {}
+                    }
                   }
                   
-                  if (f.componentSlug) (optionsObj as any).componentSlug = f.componentSlug
+                  const cSlug = f.componentSlug || (optionsObj as any).componentSlug || null
+                  if (cSlug) (optionsObj as any).componentSlug = cSlug
                   
                   return {
                     name: f.name,
@@ -287,7 +321,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
                     type: f.type,
                     required: !!f.required,
                     order: idx,
-                    relationSlug: f.relationSlug || null,
+                    relationSlug: f.relationSlug || f.relationTo || null,
                     options: optionsObj,
                   }
                 })

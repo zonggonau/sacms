@@ -34,16 +34,17 @@ interface SeedResult {
 }
 
 const SECTION_LABELS: Record<string, string> = {
-  "sacms-hero":         "Hero Section",
-  "sacms-features":     "Features",
-  "sacms-pricing":      "Pricing Plans",
-  "sacms-addons":       "Add-ons",
-  "sacms-workflow":     "Workflow Steps",
-  "sacms-faq":          "FAQ",
-  "sacms-testimonials": "Testimonials",
-  "sacms-owners":       "Team / Owners",
-  "sacms-about":        "About Section",
-  "sacms-whatsapp":     "WhatsApp Config",
+  "sacms-hero":              "Hero Section",
+  "sacms-features":          "Features",
+  "sacms-account-pricing":   "Account Plans",
+  "sacms-workspace-pricing": "Workspace Plans",
+  "sacms-addons":            "Add-ons",
+  "sacms-workflow":          "Workflow Steps",
+  "sacms-faq":               "FAQ",
+  "sacms-testimonials":      "Testimonials",
+  "sacms-owners":            "Team / Owners",
+  "sacms-about":             "About Section",
+  "sacms-whatsapp":          "WhatsApp Config",
 }
 
 export default function GlobalContentPage() {
@@ -133,7 +134,7 @@ export default function GlobalContentPage() {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Global Content Setup</h1>
                 <p className="text-muted-foreground text-sm mt-0.5">
-                  Inisialisasi tenant <code className="text-xs bg-muted px-1.5 py-0.5 font-mono">sacms-global</code> untuk landing page.
+                  Inisialisasi konten platform (Truly Global) untuk landing page dan blueprint sistem.
                 </p>
               </div>
             </div>
@@ -153,30 +154,25 @@ export default function GlobalContentPage() {
             <CardContent className="p-8">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
                 <div className="flex items-start gap-5">
-                  <div className={`w-14 h-14 shrink-0 flex items-center justify-center border ${globalStatus?.exists && hasData ? "bg-green-500 border-green-500" : "bg-orange-500 border-orange-500"}`}>
-                    {globalStatus?.exists && hasData
+                  <div className={`w-14 h-14 shrink-0 flex items-center justify-center border ${hasData ? "bg-blue-500 border-blue-500" : "bg-orange-500 border-orange-500"}`}>
+                    {hasData
                       ? <CheckCircle2 className="h-7 w-7 text-white" />
                       : <Database className="h-7 w-7 text-white" />
                     }
                   </div>
                   <div className="space-y-1.5">
                     <p className="font-bold text-lg text-foreground">
-                      {globalStatus?.exists && hasData
-                        ? "Global tenant aktif & terisi"
-                        : globalStatus?.exists
-                          ? "Tenant ada, konten belum di-seed"
-                          : "Tenant belum dibuat"
+                      {hasData
+                        ? "Konten Platform Aktif"
+                        : "Konten belum di-seed"
                       }
                     </p>
                     <p className="text-sm text-muted-foreground max-w-md">
-                      {globalStatus?.exists && hasData
-                        ? `${totalEntries} entries di ${totalTypes} content types. Landing page sudah mengambil data dari tenant ini.`
-                        : "Klik Setup untuk membuat tenant sacms-global dan mengisi semua konten landing page secara otomatis."
+                      {hasData
+                        ? `${totalEntries} entries di ${totalTypes} content types. Landing page sudah mengambil data Truly Global tanpa owner tenant.`
+                        : "Klik Setup untuk menginisialisasi skema platform (Pricing, Hero, Features) secara Truly Global."
                       }
                     </p>
-                    {globalStatus?.exists && (
-                      <p className="text-xs text-muted-foreground font-mono">ID: {globalStatus.tenantId}</p>
-                    )}
                   </div>
                 </div>
 
@@ -189,18 +185,10 @@ export default function GlobalContentPage() {
                     {seeding
                       ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Setting up...</>
                       : hasData
-                        ? <><Zap className="mr-2 h-4 w-4" /> Re-Seed Data</>
+                        ? <><Zap className="mr-2 h-4 w-4" /> Re-Seed Global Data</>
                         : <><Database className="mr-2 h-4 w-4" /> Setup Global Content</>
                     }
                   </Button>
-
-                  {globalStatus?.exists && (
-                    <Link href="/dashboard/sacms-global" target="_blank">
-                      <Button variant="outline" className="rounded-none border-border h-11 px-5 w-full sm:w-auto">
-                        <LayoutDashboard className="mr-2 h-4 w-4" /> Edit Content
-                      </Button>
-                    </Link>
-                  )}
 
                   <a href="/" target="_blank" rel="noopener noreferrer">
                     <Button variant="outline" className="rounded-none border-border h-11 px-5 w-full sm:w-auto">
@@ -251,24 +239,33 @@ export default function GlobalContentPage() {
           {globalStatus?.exists && globalStatus.contentTypes && globalStatus.contentTypes.length > 0 && (
             <Card className="rounded-none border border-border shadow-none">
               <CardHeader className="border-b border-border px-6 py-4 bg-card">
-                <CardTitle className="text-base font-bold">Status Konten</CardTitle>
+                <CardTitle className="text-base font-bold">Status Konten Platform</CardTitle>
               </CardHeader>
               <CardContent className="p-0 bg-card">
                 <div className="divide-y divide-border">
                   {globalStatus.contentTypes.map((ct) => (
-                    <div key={ct.slug} className="flex items-center justify-between px-6 py-3 hover:bg-muted/20 transition-colors">
-                      <div className="flex items-center gap-3 min-w-0">
-                        <div className={`w-2 h-2 shrink-0 ${ct.publishedEntries > 0 ? "bg-green-500" : "bg-muted-foreground/30"}`} />
+                    <div key={ct.slug} className="flex items-center justify-between px-6 py-4 hover:bg-muted/20 transition-colors">
+                      <div className="flex items-center gap-3 min-w-0 pl-2">
+                        <div className={`w-2.5 h-2.5 shrink-0 rounded-full ${ct.publishedEntries > 0 ? "bg-blue-500 shadow-[0_0_8px_rgba(59,130,246,0.5)]" : "bg-muted-foreground/30"}`} />
                         <div className="min-w-0">
-                          <p className="text-sm font-semibold truncate">{SECTION_LABELS[ct.slug] || ct.name}</p>
-                          <code className="text-xs text-muted-foreground font-mono">{ct.slug}</code>
+                          <p className="text-sm font-bold truncate text-foreground">{SECTION_LABELS[ct.slug] || ct.name}</p>
+                          <code className="text-[10px] text-muted-foreground font-mono bg-muted px-1 py-0.5">{ct.slug}</code>
                         </div>
                       </div>
-                      <Badge
-                        className={`rounded-none text-xs shrink-0 ${ct.publishedEntries > 0 ? "bg-green-500 text-white" : "bg-muted text-muted-foreground"}`}
-                      >
-                        {ct.publishedEntries > 0 ? `${ct.publishedEntries} published` : "Empty"}
-                      </Badge>
+                      
+                      <div className="flex items-center gap-4 pr-2">
+                        <Badge
+                          className={`rounded-none text-[10px] font-black uppercase shrink-0 ${ct.publishedEntries > 0 ? "bg-blue-500 text-white" : "bg-muted text-muted-foreground"}`}
+                        >
+                          {ct.publishedEntries > 0 ? `${ct.publishedEntries} Entries` : "Empty"}
+                        </Badge>
+
+                        <Link href={`/admin/content-types/${ct.slug}`}>
+                          <Button variant="ghost" size="sm" className="h-8 rounded-none border border-border bg-background hover:bg-muted font-bold text-[10px] uppercase gap-1.5 px-3">
+                            <Edit className="h-3 w-3" /> Manage
+                          </Button>
+                        </Link>
+                      </div>
                     </div>
                   ))}
                 </div>

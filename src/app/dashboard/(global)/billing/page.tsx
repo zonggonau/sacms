@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck
+  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown
 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -25,32 +25,31 @@ export default function BillingPage() {
     if (status === "unauthenticated") {
       router.push("/login")
     } else if (status === "authenticated") {
-      const globalToken = process.env.NEXT_PUBLIC_SYSTEM_API_KEY || "internal"
+      const globalToken = process.env.NEXT_PUBLIC_SYSTEM_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd"
 
-      // Fetch Account Plans
-      fetch("/api/public/sacms-global/content/sacms-account-pricing?sort=price:asc", {
+      // Fetch Account Plans from Truly Global endpoint
+      fetch("/api/public/plans?type=account", {
         headers: { "Authorization": `Bearer ${globalToken}` }
       })
         .then(res => res.json())
         .then(json => {
-          if (json.data && Array.isArray(json.data)) {
-            const mapped = json.data
-              // Map all plans directly from the API
-              .map((p: any) => {
+          if (json.plans && Array.isArray(json.plans)) {
+            const mapped = json.plans.map((p: any) => {
               let displayPrice = "Rp 0"
-              const yearlyPrice = p.yearly_price !== undefined ? p.yearly_price : p.price * 10
+              const yearlyPrice = p.yearlyPrice !== undefined ? p.yearlyPrice : p.price * 10
+              
               if (p.price > 0) {
                 if (yearlyPrice >= 1000000) {
                   displayPrice = `Rp ${(yearlyPrice / 1000000).toLocaleString('id-ID')}M`
                 } else {
                   displayPrice = `Rp ${(yearlyPrice / 1000).toLocaleString('id-ID')}k`
                 }
-              } else if (p.price === 0 && p.cta_text?.toLowerCase().includes('contact')) {
+              } else if (p.price === 0 && p.cta?.toLowerCase().includes('contact')) {
                 displayPrice = "Custom"
               }
               
               return {
-                id: p.plan_slug,
+                id: p.id,
                 name: p.name,
                 workspaces: p.max_workspaces || "Unlimited",
                 price: displayPrice,
@@ -82,7 +81,7 @@ export default function BillingPage() {
     setUpdatingPlanId(planId)
     try {
       if (planId === "free") {
-        const res = await fetch("/api/user/plan", {
+        const res = await fetch("/api/auth/user/plan", {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ plan: "free" }),
@@ -103,64 +102,66 @@ export default function BillingPage() {
 
   if (status === "loading") {
     return (
-      <div className="flex h-full items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-[80vh] items-center justify-center">
+        <Loader2 className="h-10 w-10 animate-spin text-primary/50" />
       </div>
     )
   }
 
   return (
-    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-300 pb-20">
+    <div className="space-y-12 animate-in fade-in slide-in-from-bottom-2 duration-700 pb-20">
       
       {/* 1. Header & Current Plan Usage */}
       <section className="space-y-6">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight">Account Billing</h2>
-          <p className="text-sm text-muted-foreground mt-1">Manage your global subscription, usage, and payment methods.</p>
+          <h2 className="text-2xl md:text-3xl font-black tracking-tight text-foreground">Account Billing</h2>
+          <p className="text-sm md:text-base text-muted-foreground mt-1 font-medium">Manage your global subscription, usage, and payment methods.</p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <Card className="bg-card shadow-sm">
-            <CardContent className="p-6 flex flex-col justify-between h-full space-y-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
+          <Card className="bg-card/40 backdrop-blur-xl border-white/10 shadow-xl overflow-hidden relative group rounded-[2rem]">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardContent className="p-6 md:p-8 flex flex-col justify-between h-full space-y-6 relative z-10">
               <div>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Current Plan</span>
-                <div className="flex items-center gap-3 mt-2">
-                  <h3 className="text-3xl font-bold uppercase tracking-tight text-primary">{session?.user?.plan || "Free"}</h3>
-                  <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-emerald-200">Active</Badge>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Current Plan</span>
+                <div className="flex items-center gap-4 mt-2">
+                  <h3 className="text-4xl font-black tracking-tighter text-foreground uppercase">{session?.user?.plan || "Free"}</h3>
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-none font-black text-[10px] uppercase tracking-widest px-2.5 py-1">Active</Badge>
                 </div>
               </div>
               
-              <div className="p-4 bg-muted/50 rounded-lg border border-border text-sm text-muted-foreground">
+              <div className="p-5 bg-card/50 backdrop-blur-md rounded-2xl border border-white/5 text-sm text-muted-foreground font-medium leading-relaxed shadow-inner">
                 You are currently on the <strong className="text-foreground uppercase">{session?.user?.plan || "Free"}</strong> plan. 
                 {session?.user?.plan === 'free' ? " Upgrade your account to unlock premium templates, higher limits, and unlimited workspaces." : " Your subscription is active and in good standing. You will be billed annually."}
               </div>
             </CardContent>
           </Card>
 
-          <Card className="bg-card shadow-sm">
-            <CardContent className="p-6 space-y-6">
+          <Card className="bg-card/40 backdrop-blur-xl border-white/10 shadow-xl overflow-hidden relative group rounded-[2rem]">
+            <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+            <CardContent className="p-6 md:p-8 space-y-6 relative z-10">
               <div>
-                <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Workspace Usage Limit</span>
+                <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Workspace Limit</span>
                 <div className="flex items-end gap-2 mt-2">
-                  <h3 className="text-3xl font-bold tracking-tight text-foreground">{usage ? usage.current : activeWorkspacesCount}</h3>
-                  <span className="text-sm text-muted-foreground font-semibold mb-1 uppercase tracking-wider">
-                    / {usage ? (usage.max === null ? 'UNLIMITED' : usage.max) : (session?.user?.plan === 'free' ? '1' : 'UNLIMITED')}
+                  <h3 className="text-5xl font-black tracking-tighter text-foreground leading-none">{usage ? usage.current : activeWorkspacesCount}</h3>
+                  <span className="text-sm text-muted-foreground font-bold mb-1 uppercase tracking-wider">
+                    / {usage ? (usage.max === null ? '∞' : usage.max) : (session?.user?.plan === 'free' ? '1' : '∞')}
                   </span>
                 </div>
               </div>
               
-              <div className="space-y-3 pt-2">
-                <div className="w-full flex gap-1 h-3 rounded-full overflow-hidden bg-muted">
+              <div className="space-y-3 pt-4">
+                <div className="w-full flex gap-1 h-3 rounded-full overflow-hidden bg-background/50 border border-white/5 shadow-inner">
                   {(!usage && session?.user?.plan === 'free') || (usage && usage.max !== null) ? (
                      <div 
-                       className={cn("h-full transition-all duration-500", (usage && !usage.allowed) ? "bg-destructive" : "bg-primary")} 
+                       className={cn("h-full transition-all duration-700 ease-out", (usage && !usage.allowed) ? "bg-red-500" : "bg-gradient-to-r from-primary to-primary/80")} 
                        style={{ width: `${Math.min(((usage?.current || activeWorkspacesCount) / (usage?.max || 1)) * 100, 100)}%` }} 
                      />
                   ) : (
-                     <div className="h-full w-full bg-emerald-500" />
+                     <div className="h-full w-full bg-gradient-to-r from-emerald-500 to-emerald-400" />
                   )}
                 </div>
-                <p className="text-[10px] text-muted-foreground font-semibold uppercase tracking-wider">
+                <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest text-right">
                   {(!usage && session?.user?.plan === 'free') || (usage && usage.max !== null)
                     ? `${Math.max((usage?.max || 1) - (usage?.current || activeWorkspacesCount), 0)} slots remaining` 
                     : "Unlimited capacity"}
@@ -170,13 +171,13 @@ export default function BillingPage() {
           </Card>
         </div>
         
-        <Card className="bg-card shadow-sm">
-           <CardContent className="p-6 flex flex-col md:flex-row items-center justify-between gap-6">
+        <Card className="bg-card/40 backdrop-blur-xl border-white/10 shadow-xl overflow-hidden rounded-[2rem]">
+           <CardContent className="p-6 md:p-8 flex flex-col md:flex-row items-center justify-between gap-6">
              <div>
-               <h3 className="text-lg font-bold tracking-tight">Payment Method & Invoices</h3>
-               <p className="text-sm text-muted-foreground mt-1">Manage your credit cards, billing address, and download past invoices.</p>
+               <h3 className="text-xl font-black tracking-tight text-foreground">Payment Method & Invoices</h3>
+               <p className="text-sm text-muted-foreground mt-1 font-medium">Manage your credit cards, billing address, and download past invoices.</p>
              </div>
-             <Button variant="outline" disabled>
+             <Button variant="outline" disabled className="rounded-xl border-white/10 bg-card/50 h-11 px-6 font-bold shadow-sm w-full md:w-auto">
                <CreditCard className="mr-2 h-4 w-4" /> Open Billing Portal
              </Button>
            </CardContent>
@@ -184,44 +185,65 @@ export default function BillingPage() {
       </section>
 
       {/* 2. Account Subscription Plans Grid */}
-      <section className="space-y-6">
-        <div>
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <Zap className="h-5 w-5 text-orange-500 fill-orange-500" /> Subscription Plans
-          </h3>
-          <p className="text-sm text-muted-foreground mt-1">Select or upgrade your account tier. Limits scale per plan.</p>
+      <section className="space-y-8">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20 shadow-inner">
+            <Zap className="h-5 w-5 text-orange-500 fill-orange-500" />
+          </div>
+          <div>
+            <h3 className="text-2xl font-black tracking-tight text-foreground">Subscription Plans</h3>
+            <p className="text-sm text-muted-foreground font-medium">Select or upgrade your account tier. Limits scale per plan.</p>
+          </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
           {/* Plans from API */}
           {accountPlans.map((plan) => {
             const isActive = session?.user?.plan === plan.id
             return (
-              <Card key={plan.id} className={cn("relative transition-colors shadow-sm", isActive ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:border-primary/50")}>
-                {isActive && (
-                  <Badge className="absolute -top-3 right-4">Current Plan</Badge>
+              <Card 
+                key={plan.id} 
+                className={cn(
+                  "relative transition-all duration-300 shadow-xl overflow-hidden rounded-[2rem] flex flex-col", 
+                  isActive ? "border-primary/50 bg-primary/5 ring-2 ring-primary/20 scale-[1.02]" : "border-white/10 bg-card/40 backdrop-blur-xl hover:border-primary/30 hover:shadow-2xl hover:-translate-y-1"
                 )}
-                <CardHeader>
-                  <CardTitle className="text-xl">{plan.name}</CardTitle>
-                  <div className="mt-2 flex items-baseline gap-1">
-                    <span className="text-3xl font-bold text-primary">{plan.price}</span>
-                    <span className="text-sm text-muted-foreground">/yr</span>
+              >
+                {isActive && (
+                  <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-bl-xl z-20">
+                    Current Plan
                   </div>
-                  <CardDescription>{plan.workspaces === "Unlimited" ? "Unlimited workspaces" : `Max ${plan.workspaces} workspaces`}</CardDescription>
+                )}
+                <div className={cn("absolute inset-0 bg-gradient-to-br opacity-0 transition-opacity duration-500 z-0", isActive ? "from-primary/10 to-transparent opacity-100" : "from-foreground/5 to-transparent group-hover:opacity-100")} />
+                
+                <CardHeader className="relative z-10 p-8 pb-4">
+                  {isActive && <Crown className="h-6 w-6 text-primary mb-2" />}
+                  <CardTitle className="text-2xl font-black tracking-tighter">{plan.name}</CardTitle>
+                  <div className="mt-4 flex items-baseline gap-1">
+                    <span className="text-4xl font-black tracking-tighter text-foreground">{plan.price}</span>
+                    <span className="text-sm font-bold text-muted-foreground uppercase tracking-widest">/yr</span>
+                  </div>
+                  <CardDescription className="font-semibold text-muted-foreground mt-2">{plan.workspaces === "Unlimited" ? "Unlimited workspaces" : `Max ${plan.workspaces} workspaces`}</CardDescription>
                 </CardHeader>
-                <CardContent className="flex flex-col justify-between h-[calc(100%-8rem)]">
-                  <div className="space-y-3 mb-8">
+                <CardContent className="flex flex-col justify-between flex-1 relative z-10 p-8 pt-4">
+                  <div className="space-y-4 mb-8">
                     {plan.features.map((f: string, i: number) => (
-                      <p key={i} className="text-sm flex items-center"><CheckCircle2 className="mr-2 h-4 w-4 text-primary" /> {f}</p>
+                      <p key={i} className="text-sm font-medium text-foreground flex items-start">
+                        <CheckCircle2 className="mr-3 h-5 w-5 text-primary shrink-0" /> 
+                        <span className="leading-tight">{f}</span>
+                      </p>
                     ))}
                   </div>
                   <Button 
                     variant={isActive ? "outline" : "default"} 
                     disabled={isActive || updatingPlanId === plan.id}
                     onClick={() => handleUpdateUserPlan(plan.id)}
-                    className="w-full mt-auto"
+                    className={cn(
+                      "w-full h-12 rounded-xl font-bold transition-all mt-auto",
+                      !isActive && "shadow-lg shadow-primary/20 bg-gradient-to-r from-primary to-primary/90 text-primary-foreground hover:opacity-90",
+                      isActive && "border-primary/20 bg-primary/10 text-primary hover:bg-primary/20"
+                    )}
                   >
-                    {updatingPlanId === plan.id ? <Loader2 className="h-4 w-4 animate-spin" /> : (isActive ? "Active Plan" : (plan.id === "free" ? "Downgrade to Free" : "Upgrade to Yearly"))}
+                    {updatingPlanId === plan.id ? <Loader2 className="h-5 w-5 animate-spin" /> : (isActive ? "Active Plan" : (plan.id === "free" ? "Downgrade to Free" : "Upgrade to Yearly"))}
                   </Button>
                 </CardContent>
               </Card>
@@ -230,14 +252,15 @@ export default function BillingPage() {
         </div>
         
         {/* Enterprise Notice */}
-        <div className="p-6 rounded-xl bg-zinc-50 border border-border dark:bg-zinc-900/30 flex gap-4 items-center">
-          <div className="w-12 h-12 rounded-full bg-background border border-border flex items-center justify-center shrink-0">
-            <ShieldCheck className="h-6 w-6 text-orange-500" />
+        <div className="p-8 rounded-[2rem] bg-card/40 backdrop-blur-xl border border-white/10 shadow-xl flex flex-col md:flex-row gap-6 items-center md:items-start text-center md:text-left relative overflow-hidden">
+          <div className="absolute inset-0 bg-gradient-to-r from-orange-500/5 to-transparent pointer-events-none" />
+          <div className="w-16 h-16 rounded-[1.5rem] bg-background/50 border border-white/10 flex items-center justify-center shrink-0 shadow-inner relative z-10">
+            <ShieldCheck className="h-8 w-8 text-orange-500" />
           </div>
-          <div className="space-y-1">
-            <h4 className="font-bold tracking-tight">Enterprise Dedicated Limits</h4>
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Need massive custom storage, custom routing domains, isolated database shards, or custom SLAs? <a href="#" className="text-primary font-medium hover:underline">Contact sales support</a>.
+          <div className="space-y-2 relative z-10">
+            <h4 className="text-xl font-black tracking-tight text-foreground">Enterprise Dedicated Limits</h4>
+            <p className="text-sm text-muted-foreground leading-relaxed max-w-3xl font-medium">
+              Need massive custom storage, custom routing domains, isolated database shards, or custom SLAs? <a href="#" className="text-primary font-bold hover:underline underline-offset-4">Contact sales support</a> to discuss a tailored enterprise plan.
             </p>
           </div>
         </div>

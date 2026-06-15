@@ -84,6 +84,7 @@ model Tenant {
   plan        String   @default("free") // free, starter, pro, enterprise
   status      String   @default("active") // active, suspended, deleted
   databaseUrl String?  // Optional: External DB URL for Enterprise/Gov isolated data
+  storageConfig Json?  // Native JSON for S3/MinIO external storage credentials
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -173,6 +174,7 @@ model ContentType {
   slug        String
   description String?
   isPublished Boolean  @default(false)
+  docxTemplateUrl String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -209,12 +211,12 @@ model ContentTypeField {
 // Tenant-ContentType Assignment (which tenants can use which content types)
 model TenantContentTypeAssignment {
   id           String   @id @default(cuid())
-  tenantId     String
+  tenantId     String?
   contentTypeId String
   enabled      Boolean  @default(true)
   createdAt    DateTime @default(now())
   
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   
   @@unique([tenantId, contentTypeId])
@@ -237,7 +239,7 @@ model ContentEntry {
   id            String        @id @default(cuid())
   documentId    String?       // Group translations of the same entry
   contentTypeId String
-  tenantId      String        // Each tenant has their own entries
+  tenantId      String?       // Optional for truly global/platform entries
   locale        String        @default("en")  // i18n locale
   data          Json          // Native JSON for entry data
   status        ContentStatus @default(DRAFT)
@@ -252,7 +254,7 @@ model ContentEntry {
   updatedAt     DateTime      @updatedAt
   
   contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
-  tenant      Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   versions    ContentVersion[]
   reviewAssignments ContentReviewAssignment[]
   
@@ -349,7 +351,7 @@ model SingleTypeField {
 // Tenant-SingleType Assignment
 model TenantSingleTypeAssignment {
   id            String   @id @default(cuid())
-  tenantId      String
+  tenantId      String?
   singleTypeId  String
   locale        String   @default("en")
   enabled       Boolean  @default(true)
@@ -358,7 +360,7 @@ model TenantSingleTypeAssignment {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
   
-  tenant     Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   singleType SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
   
   @@unique([tenantId, singleTypeId, locale])
@@ -409,12 +411,12 @@ model ComponentField {
 // Tenant-Component Assignment
 model TenantComponentAssignment {
   id          String   @id @default(cuid())
-  tenantId    String
+  tenantId    String?
   componentId String
   enabled     Boolean  @default(true)
   createdAt    DateTime @default(now())
   
-  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
   
   @@unique([tenantId, componentId])
@@ -738,13 +740,13 @@ model WebhookDeadLetter {
 
 model TenantLocale {
   id        String  @id @default(cuid())
-  tenantId  String
+  tenantId  String?
   locale    String  // e.g. "en", "id", "ja"
   name      String  // e.g. "English", "Bahasa Indonesia"
   isDefault Boolean @default(false)
   isEnabled Boolean @default(true)
 
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, locale])
   @@map("tenant_locales")

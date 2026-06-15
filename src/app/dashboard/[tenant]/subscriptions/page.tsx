@@ -410,7 +410,8 @@ export default function TenantSubscriptionsPage() {
                               {addon.icon === 'Zap' && <Zap className="h-5 w-5" />}
                               {addon.icon === 'Database' && <Database className="h-5 w-5" />}
                               {addon.icon === 'Bot' && <Bot className="h-5 w-5" />}
-                              {!['Shield', 'Zap', 'Database', 'Bot'].includes(addon.icon) && (
+                              {addon.icon === 'FileText' && <FileText className="h-5 w-5" />}
+                              {!['Shield', 'Zap', 'Database', 'Bot', 'FileText'].includes(addon.icon) && (
                                 addon.name.toLowerCase().includes('backup') ? <History className="h-5 w-5" /> : <Package className="h-5 w-5" />
                               )}
                             </div>

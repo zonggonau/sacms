@@ -27,7 +27,7 @@ import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { 
   bulkContentAction, 
-  deleteContentEntryAction, 
+  deleteEntryAction, 
   updateContentEntryStatusAction 
 } from "@/actions/content"
 
@@ -102,7 +102,7 @@ export function ContentEntriesManager({
   const handleDeleteEntry = async (entryId: string) => {
     if (!confirm('Delete this entry permanently?')) return
     try {
-      const res = await deleteContentEntryAction(tenantSlug, contentTypeSlug, entryId)
+      const res = await deleteEntryAction(tenantSlug, contentTypeSlug, entryId)
       if (res.success) {
         toast({ title: "Deleted Successfully" })
       } else {
@@ -328,13 +328,24 @@ export function ContentEntriesManager({
                         </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                        <div className="flex justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <div className="flex justify-end gap-1.5 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted hover:text-orange-500">
                             <Eye className="h-4 w-4" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted hover:text-orange-500" onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/edit/${entry.id}`)}>
                             <Edit className="h-4 w-4" />
                           </Button>
+                          {contentType?.fields?.some((f: any) => f.type === "document_template") && (
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-9 w-9 rounded-none hover:bg-muted hover:text-blue-500 text-slate-500" 
+                              title="Download Surat DOCX"
+                              onClick={() => window.open(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/export-docx/${entry.id}`, '_blank')}
+                            >
+                              <Download className="h-4 w-4 text-blue-500" />
+                            </Button>
+                          )}
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
                               <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted">
@@ -343,6 +354,14 @@ export function ContentEntriesManager({
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-40 rounded-none border border-border bg-card shadow-none">
                               <DropdownMenuItem className="text-xs font-medium rounded-none hover:bg-muted hover:text-orange-500"><Download className="mr-2 h-3.5 w-3.5" /> Export JSON</DropdownMenuItem>
+                              {contentType?.fields?.some((f: any) => f.type === "document_template") && (
+                                <DropdownMenuItem 
+                                  className="text-xs font-medium rounded-none hover:bg-muted hover:text-blue-500 text-blue-500"
+                                  onClick={() => window.open(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/export-docx/${entry.id}`, '_blank')}
+                                >
+                                  <FileText className="mr-2 h-3.5 w-3.5" /> Export DOCX
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator className="border-t border-border" />
                               <DropdownMenuItem className="text-red-600 focus:text-red-700 font-bold text-xs rounded-none hover:bg-red-50/10" onClick={() => handleDeleteEntry(entry.id)}>
                                 <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Entry

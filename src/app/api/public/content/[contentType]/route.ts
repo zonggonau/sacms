@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
+import { createHash } from "crypto"
 import {
   parseFilters,
   buildFilterSQL,
@@ -52,9 +53,12 @@ export async function GET(
       })
     }
 
+    // Hash the token for database lookup (SHA-256)
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+
     // 1. Find the API token in ApiToken table
     const apiToken = await db.apiToken.findUnique({
-      where: { token },
+      where: { token: hashedToken },
       include: { tenant: true },
     })
 
@@ -82,7 +86,13 @@ export async function GET(
       },
       include: {
         fields: { orderBy: { order: "asc" } },
-        tenants: true
+        tenants: {
+          include: {
+            tenant: {
+              select: { slug: true }
+            }
+          }
+        }
       },
     })
 
@@ -93,7 +103,7 @@ export async function GET(
     // Verify it is a global content type (or explicitly allowed for global access)
     // We'll allow access if it's explicitly published and exists in the global/system context
     // or if it's explicitly assigned to the system tenant
-    const isGlobal = contentType.tenantId === null || contentType.tenants.some(t => t.tenant.slug === "system")
+    const isGlobal = contentType.tenantId === null || contentType.tenants.some(t => t.tenant.slug === SYSTEM_TENANT_SLUG || t.tenant.slug === "system")
     
     // For now, let's just ensure it exists and is published
     if (!contentType.isPublished) {
@@ -117,7 +127,7 @@ export async function GET(
     const { conditions, orGroups } = parseFilters(searchParams, allowedFieldNames)
     const { fragments, params: sqlParams } = buildFilterSQL(conditions, orGroups, 3) // Start from $3 because $1=$contentTypeId, $2=$status
 
-    let whereClause = `WHERE "contentTypeId" = $1 AND "status" = $2`
+    let whereClause = `WHERE "contentTypeId" = $1 AND "status"::text = $2 AND "tenantId" IS NULL`
     if (fragments.length > 0) {
       whereClause += ` AND ${fragments.join(" AND ")}`
     }
@@ -126,9 +136,14 @@ export async function GET(
     const queryParams = [contentType.id, status, ...sqlParams]
     
     // Sort logic for raw SQL
-    const sanitizedSortField = allowedFieldNames.has(sortField) 
-      ? `"data"->>'${sortField}'` 
-      : `"${sortField}"`
+    let sanitizedSortField = `"${sortField}"`
+    if (allowedFieldNames.has(sortField)) {
+      if (["price", "order", "step"].includes(sortField)) {
+        sanitizedSortField = `NULLIF("data"->>'${sortField}', '')::numeric`
+      } else {
+        sanitizedSortField = `"data"->>'${sortField}'`
+      }
+    }
     
     const entriesRaw = await db.$queryRawUnsafe<any[]>(
       `SELECT id FROM "content_entries" 
@@ -148,10 +163,23 @@ export async function GET(
 
     // Fetch full data for selected IDs to include relations if needed
     const entryIds = entriesRaw.map(e => e.id)
-    const entries = await db.contentEntry.findMany({
+    
+    // Fallback if no entries
+    if (entryIds.length === 0) {
+      return NextResponse.json({
+        data: [],
+        meta: { pagination: { page, pageSize, total: 0, totalPages: 0 } }
+      })
+    }
+
+    const unsortedEntries = await db.contentEntry.findMany({
       where: { id: { in: entryIds } },
-      orderBy: { [sortField]: sortOrder },
     })
+    
+    // Preserve the original raw query sort order
+    const entries = entryIds
+      .map(id => unsortedEntries.find(e => e.id === id))
+      .filter(Boolean)
 
     // Data Shaping & Populate Logic
     const parsedEntries = await Promise.all(entries.map(async (entry: any) => {

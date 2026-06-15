@@ -39,9 +39,9 @@ import {
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { FIELD_TYPES } from "@/lib/field-types"
-import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
+import { createSingleTypeAction } from "@/actions/single-types"
 
 export default function NewSingleTypePage({
   params,
@@ -149,26 +149,22 @@ export default function NewSingleTypePage({
     }
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/single-types`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name, slug, description,
-          fields: fields.map((f, index) => ({
-            name: f.name, slug: f.slug, type: f.type,
-            required: f.required, unique: f.unique,
-            options: serializeFieldOptions(f),
-            relationSlug: f.type === "relation" ? f.targetSlug : null,
-            order: index,
-          })),
-        }),
+      const res = await createSingleTypeAction(tenantSlug, {
+        name, slug, description,
+        fields: fields.map((f, index) => ({
+          name: f.name, slug: f.slug, type: f.type,
+          required: f.required, unique: f.unique,
+          options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          order: index,
+        })),
       })
-      if (res.ok) {
+
+      if (!res.error) {
         toast({ title: "Success", description: "Single type created" })
         router.push(`/dashboard/${tenantSlug}/single-types`)
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Error", description: data.error })
+        toast({ variant: "destructive", title: "Error", description: res.error })
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error" })

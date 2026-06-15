@@ -51,6 +51,8 @@ import { AdvancedField } from "@/components/content/field-renderers/advanced-fie
 import { SlugField } from "@/components/content/field-renderers/slug-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
+import { getContentTypeBySlugAction } from "@/actions/content-types"
+import { createEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -100,16 +102,15 @@ export default function CMSCreateEntryPage() {
     async function fetchData() {
       if (!tenantSlug || !contentTypeSlug || contentType) return
       try {
-        const [ctRes, locRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}`),
+        const [ctData, locRes] = await Promise.all([
+          getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
           fetch(`/api/tenant/${tenantSlug}/locales`)
         ])
-        if (ctRes.ok) {
-          const data = await ctRes.json()
-          setContentType(data)
+        if (ctData && !ctData.error && ctData.contentType) {
+          setContentType(ctData.contentType as any)
           // Init empty form
           const initialData: Record<string, any> = {}
-          data.fields.forEach((f: Field) => {
+          ctData.contentType.fields.forEach((f: Field) => {
             let isMultiple = false
             if (f.type === "relation" && f.options) {
               try {
@@ -147,26 +148,21 @@ export default function CMSCreateEntryPage() {
     }
 
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: formData,
-          status: targetStatus,
-          locale,
-          scheduledAt: scheduledAt?.toISOString() || null
-        }),
+      const res = await createEntryAction(tenantSlug, contentTypeSlug, {
+        data: formData,
+        status: targetStatus,
+        locale,
+        scheduledAt: scheduledAt || null
       })
 
-      if (res.ok) {
+      if (!res.error) {
         toast({ 
           title: publishNow ? "Published Successfully!" : "Entry Created",
           className: "bg-muted border border-border text-foreground rounded-none shadow-none"
         })
         router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}`)
       } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error })
+        toast({ variant: "destructive", title: "Error", description: res.error })
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error" })
@@ -207,6 +203,9 @@ export default function CMSCreateEntryPage() {
     )
 
     switch (field.type) {
+      case "document_template":
+        return null;
+
       case "text":
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
           return <div className="space-y-2"><LabelWithAI /><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>

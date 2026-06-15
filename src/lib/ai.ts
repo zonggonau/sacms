@@ -26,14 +26,21 @@ function getOpenAI(): OpenAI {
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
+export interface AIConfig {
+  maxTokens?: number
+  temperature?: number
+  responseFormat?: "text" | "json_object"
+}
+
 /**
  * Executes a generative AI request with automatic model fallback and basic retry logic.
  */
 export async function safeGenerateContent(
   systemPrompt: string,
   userPrompt: string,
-  maxTokens?: number
+  config: AIConfig | number = {}
 ): Promise<{ text: string; model: string; usage: any }> {
+  const finalConfig: AIConfig = typeof config === 'number' ? { maxTokens: config } : config
   let lastError: any = null
   
   for (const modelName of MODELS_TO_TRY) {
@@ -55,7 +62,9 @@ export async function safeGenerateContent(
         const completion = await openai.chat.completions.create({
           model: modelName,
           messages,
-          max_tokens: maxTokens || 4000,
+          max_tokens: finalConfig.maxTokens || 4000,
+          temperature: finalConfig.temperature ?? 0.7,
+          response_format: finalConfig.responseFormat ? { type: finalConfig.responseFormat } : undefined,
         })
         
         const text = completion.choices[0]?.message?.content

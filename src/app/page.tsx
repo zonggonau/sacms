@@ -6,80 +6,90 @@ import { fetchCollection, fetchSingle } from "@/lib/sacms-client"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "SaCMS - Premium Multi-Tenant Headless CMS",
-  description: "A high-performance, enterprise-ready headless CMS designed for modern startups and digital ecosystems.",
+  title: "SaCMS — Platform Digital Papua | Website Pemerintah, UMKM & Pariwisata",
+  description: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung transformasi digital di Tanah Papua.",
 }
 
-async function fetchGlobalWorkspacePlans() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+import { headers } from "next/headers"
+
+async function fetchGlobalPlans(type: "workspace" | "account" = "workspace") {
+  const headersList = await headers();
+  const host = headersList.get("host") || "localhost:3001";
+  const proto = headersList.get("x-forwarded-proto") || "http";
+  const baseUrl = `${proto}://${host}`;
+  
   try {
-    const res = await fetch(`${baseUrl}/api/tenant/sacms-global/subscriptions/plans`, { cache: "no-store" })
+    const res = await fetch(`${baseUrl}/api/public/plans?type=${type}`, { cache: "no-store" })
     if (res.ok) {
       const data = await res.json()
-      return (data.plans || [])
-        .filter((p: any) => p.type === "workspace")
-        .map((p: any) => ({
-          name: p.name,
-          description: `Includes ${p.maxContentTypes > 100 ? 'Unlimited' : p.maxContentTypes} schemas and ${p.maxContentEntries?.toLocaleString() || 'Basic'} entries`,
-          price: p.price,
-          interval: "tahun",
-          features: p.features,
-          isPopular: p.popular,
-          cta: p.buttonText || "Get Started"
-        }))
+      return data.plans || []
     }
   } catch (err) {
-    console.error("Error fetching global workspace plans:", err)
+    console.error(`Error fetching global ${type} plans:`, err)
   }
-  return null
+  return []
 }
 
 async function getLandingData() {
   try {
+    const headersList = await headers();
+    const host = headersList.get("host") || "localhost:3001";
+    const proto = headersList.get("x-forwarded-proto") || "http";
+    const baseUrl = `${proto}://${host}`;
+
+    console.log(`[Landing] Fetching data from ${baseUrl}...`);
+    
     // Fetch all required data concurrently from the REST API
     const [
-      hero,
+      heroRes,
       features,
-      pricingAccounts,
-      fallbackPricingWorkspaces,
       addons,
       workflow,
       faq,
-      whatsapp,
-      about,
+      whatsappRes,
+      aboutRes,
       owners,
       testimonials,
-      globalPlans
+      workspacePlans,
+      accountPlans,
+      sectors,
+      localPrideRes,
+      ctaRes,
+      footerRes
     ] = await Promise.all([
-      fetchSingle("sacms-hero"),
-      fetchCollection("sacms-features", "sort=createdAt:asc"),
-      fetchCollection("sacms-account-pricing", "sort=price:asc"),
-      fetchCollection("sacms-workspace-pricing", "sort=price:asc"),
-      fetchCollection("sacms-addons", "sort=price:asc"),
-      fetchCollection("sacms-workflow", "sort=step:asc"),
-      fetchCollection("sacms-faq", "sort=order:asc"),
-      fetchSingle("sacms-whatsapp"),
-      fetchSingle("sacms-about"),
-      fetchCollection("sacms-owners"),
-      fetchCollection("sacms-testimonials"),
-      fetchGlobalWorkspacePlans()
+      fetchCollection("sacms-hero", "", baseUrl),
+      fetchCollection("sacms-features", "sort=createdAt:asc", baseUrl),
+      fetchCollection("sacms-addons", "sort=price:asc", baseUrl),
+      fetchCollection("sacms-workflow", "sort=step:asc", baseUrl),
+      fetchCollection("sacms-faq", "sort=order:asc", baseUrl),
+      fetchCollection("sacms-whatsapp", "", baseUrl),
+      fetchCollection("sacms-about", "", baseUrl),
+      fetchCollection("sacms-owners", "", baseUrl),
+      fetchCollection("sacms-testimonials", "", baseUrl),
+      fetchGlobalPlans("workspace"),
+      fetchGlobalPlans("account"),
+      fetchCollection("sacms-sectors", "", baseUrl),
+      fetchCollection("sacms-local-pride", "", baseUrl),
+      fetchCollection("sacms-cta", "", baseUrl),
+      fetchCollection("sacms-footer", "", baseUrl)
     ]);
 
-    const pricingWorkspaces = globalPlans || fallbackPricingWorkspaces;
+    const hero = heroRes?.[0] || null;
+    const whatsapp = whatsappRes?.[0] || null;
+    const about = aboutRes?.[0] || null;
+    const localPride = localPrideRes?.[0] || null;
+    const cta = ctaRes?.[0] || null;
+    const footer = footerRes?.[0] || null;
 
-    const formattedAccounts = pricingAccounts.map((plan: any) => ({
-      ...plan,
-      interval: plan.interval || "tahun"
-    }));
+    console.log(`[Landing] Hero: ${hero ? 'OK' : 'Empty'}`);
+    console.log(`[Landing] Features: ${features?.length || 0}`);
+    console.log(`[Landing] Pricing: ${workspacePlans?.length || 0} workspaces, ${accountPlans?.length || 0} accounts`);
 
-    // Format pricing. If the previous ModernLanding expects one array for pricing,
-    // we'll pass workspace pricing as it's the standard SaaS model,
-    // or we can pass both if ModernLanding supports it (it currently expects one array `pricing`).
     return {
       hero,
       features,
-      pricingAccounts: formattedAccounts,
-      pricingWorkspaces,
+      pricingAccounts: accountPlans,
+      pricingWorkspaces: workspacePlans,
       addons,
       workflow,
       faq,
@@ -87,6 +97,10 @@ async function getLandingData() {
       about,
       owners,
       testimonials,
+      sectors,
+      localPride,
+      cta,
+      footer
     }
   } catch (err) {
     console.error("Error in getLandingData:", err);
@@ -107,6 +121,10 @@ function getDefaultData() {
     about: null,
     owners: [],
     testimonials: [],
+    sectors: [],
+    localPride: null,
+    cta: null,
+    footer: null
   }
 }
 

@@ -41,10 +41,10 @@ import {
 import Link from "next/link"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
-import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { Badge } from "@/components/ui/badge"
 import { FIELD_TYPES } from "@/lib/field-types"
+import { createComponentAction } from "@/actions/components"
 
 const CATEGORIES = ["SEO", "Media", "Content", "Layout", "Settings", "Other"]
 
@@ -144,26 +144,21 @@ export default function NewComponentPage({
     }
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/components`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name, slug, description, category,
-          fields: fields.map((f, index) => ({
-            name: f.name, slug: f.slug, type: f.type,
-            required: f.required, unique: f.unique,
-            options: serializeFieldOptions(f),
-            relationSlug: f.type === "relation" ? f.targetSlug : null,
-            order: index,
-          })),
-        }),
+      const res = await createComponentAction(tenantSlug, {
+        name, slug, description, category,
+        fields: fields.map((f, index) => ({
+          name: f.name, slug: f.slug, type: f.type,
+          required: f.required, unique: f.unique,
+          options: serializeFieldOptions(f),
+          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          order: index,
+        })),
       })
-      if (res.ok) {
+      if (!res.error) {
         toast({ title: "Success", description: "Component created" })
         router.push(`/dashboard/${tenantSlug}/components`)
       } else {
-        const data = await res.json()
-        toast({ variant: "destructive", title: "Error", description: data.error })
+        toast({ variant: "destructive", title: "Error", description: res.error })
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error" })

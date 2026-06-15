@@ -19,7 +19,8 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   // Support legacy simpleHash passwords for migration
   if (!hashedPassword.startsWith("$2")) {
     const legacyHash = legacySimpleHash(password)
-    return hashedPassword === legacyHash || hashedPassword === password
+    // B7 Fix: Only compare via legacy hash — never compare raw plaintext passwords
+    return hashedPassword === legacyHash
   }
   return bcrypt.compare(password, hashedPassword)
 }
