@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
+import { signIn, signOut } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -95,42 +95,60 @@ export default function LoginPage() {
         }
       }
 
-      if (user?.role === "super_admin") {
+      // Enforce Login Boundaries
+      const isSuperAdmin = user?.role === "super_admin"
+      const isGlobalAdmin = user?.role === "admin"
+      const isWorkspaceAdminOrOwner = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+
+      if (isSuperAdmin) {
         if (!isGlobalDomain) {
-          window.location.href = `${protocol}//${baseDomain}/admin`
-        } else {
-          window.location.href = "/admin"
+          toast({ variant: "destructive", title: "Akses Ditolak", description: "Super Admin harus login dari website utama." })
+          await signOut({ redirect: false })
+          setTimeout(() => { window.location.href = `${protocol}//${baseDomain}/login` }, 2000)
+          return
+        }
+        window.location.href = "/admin"
+        return
+      }
+
+      if (isGlobalAdmin || isWorkspaceAdminOrOwner) {
+        if (!isGlobalDomain) {
+          toast({ variant: "destructive", title: "Akses Ditolak", description: "Admin/Owner Workspace harus login dari website utama." })
+          await signOut({ redirect: false })
+          setTimeout(() => { window.location.href = `${protocol}//${baseDomain}/login` }, 2000)
+          return
+        }
+        window.location.href = "/dashboard"
+        return
+      }
+
+      // If they reach here, they are ONLY a content manager (editor/contributor/viewer) across all their tenants
+      if (isGlobalDomain) {
+        toast({ variant: "destructive", title: "Akses Ditolak", description: "Pengelola Konten harus login dari halaman subdomain masing-masing." })
+        await signOut({ redirect: false })
+        
+        // Suggest a redirect if they have at least one tenant
+        if (user?.tenants && user.tenants.length > 0) {
+          const firstTenantSlug = user.tenants[0].slug
+          setTimeout(() => { window.location.href = `${protocol}//${firstTenantSlug}.${baseDomain}/login` }, 2000)
         }
         return
-      } else {
-        const tenant = user?.tenants && user.tenants.length > 0 ? user.tenants[0] : null
-        
-        if (!tenant) {
-          window.location.href = isGlobalDomain ? "/dashboard" : `${protocol}//${baseDomain}/dashboard`
-          return
-        } else {
-          const isOwnerOrAdmin = tenant.role === "owner" || tenant.role === "admin" || user?.role === "admin"
-          const slug = tenant.slug
-
-          if (isGlobalDomain) {
-            window.location.href = "/dashboard"
-            return
-          }
-
-          const isCorrectSubdomain = currentHost.startsWith(`${slug}.`)
-          
-          if (isCorrectSubdomain) {
-            // Already on the right subdomain
-            window.location.href = isOwnerOrAdmin ? "/dashboard" : "/"
-            return
-          } else {
-            // Need to redirect to the subdomain
-            const targetPath = isOwnerOrAdmin ? "/dashboard" : "/"
-            window.location.href = `${protocol}//${slug}.${baseDomain}${targetPath}`
-            return
-          }
-        }
       }
+
+      // They are a content manager logging in on a subdomain
+      // Check if they actually have access to this specific subdomain
+      const subdomainSlug = currentHost.replace(`.${baseDomain}`, "")
+      const tenantAccess = user?.tenants?.find((t: any) => t.slug === subdomainSlug)
+
+      if (!tenantAccess) {
+        toast({ variant: "destructive", title: "Akses Ditolak", description: "Anda tidak memiliki akses ke konten workspace ini." })
+        await signOut({ redirect: false })
+        return
+      }
+
+      // Success! They are logging into their allowed subdomain
+      window.location.href = "/"
+      return
     } catch (error: any) {
       toast({
         title: "Terjadi Kesalahan",
