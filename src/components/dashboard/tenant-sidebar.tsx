@@ -79,7 +79,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
     : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
 
   const href = (path: string) => {
-    if (path === "/cms-redirect") return `/`
+    if (path.startsWith("/cms/")) return path
     return `/dashboard${path}`
   }
 
