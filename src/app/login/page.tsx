@@ -78,12 +78,14 @@ export default function LoginPage() {
       const user = sessionData?.user
 
       if (user?.role === "super_admin") {
-        router.push("/admin")
+        window.location.href = "/admin"
+        return
       } else {
         const tenant = user?.tenants && user.tenants.length > 0 ? user.tenants[0] : null
         
         if (!tenant) {
-          router.push("/dashboard")
+          window.location.href = "/dashboard"
+          return
         } else {
           const isOwnerOrAdmin = tenant.role === "owner" || tenant.role === "admin" || user?.role === "admin"
           const slug = tenant.slug
@@ -94,11 +96,8 @@ export default function LoginPage() {
           
           if (isCorrectSubdomain) {
             // Already on the right subdomain
-            if (isOwnerOrAdmin) {
-              router.push("/dashboard")
-            } else {
-              router.push("/")
-            }
+            window.location.href = isOwnerOrAdmin ? "/dashboard" : "/"
+            return
           } else {
             // Need to redirect to the subdomain
             let baseDomain = currentHost
@@ -113,12 +112,10 @@ export default function LoginPage() {
             
             const targetPath = isOwnerOrAdmin ? "/dashboard" : "/"
             window.location.href = `${protocol}//${slug}.${baseDomain}${targetPath}`
-            return // skip router.refresh()
+            return
           }
         }
       }
-      
-      router.refresh()
     } catch (error: any) {
       toast({
         title: "Terjadi Kesalahan",
