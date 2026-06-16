@@ -1,4 +1,4 @@
-﻿# Coding Standards & Git Workflow
+# Coding Standards & Git Workflow
 
 Dokumen ini mendefinisikan standar penulisan kode, konvensi penamaan, dan alur kerja Git (Git Workflow) untuk seluruh tim pengembang yang berkontribusi pada SaCMS.
 
@@ -47,10 +47,10 @@ src/
 Kami menggunakan variasi sederhana dari **Git Flow** yang cocok untuk CI/CD.
 
 ### Branch Strategy
-* `main`: Cabang stabil (*Production-ready*). Deployment ke *production environment* diambil dari *branch* ini.
+* `master`: Cabang stabil (*Production-ready*). Deployment ke *production environment* diambil dari *branch* ini.
 * `develop`: Cabang utama untuk integrasi (*Staging/Development*). 
 * `feature/*`: Untuk fitur baru. Di-branch dari `develop` dan di-merge kembali ke `develop` via Pull Request.
-* `hotfix/*`: Untuk perbaikan *bug* mendesak di *production*. Di-branch dari `main` dan di-merge ke `main` serta `develop`.
+* `hotfix/*`: Untuk perbaikan *bug* mendesak di *production*. Di-branch dari `master` dan di-merge ke `master` serta `develop`.
 
 ### Commit Convention
 Kami mengikuti [Conventional Commits](https://www.conventionalcommits.org/):
