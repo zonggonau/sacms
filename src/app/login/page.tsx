@@ -89,9 +89,29 @@ export default function LoginPage() {
         } else {
           const isOwnerOrAdmin = tenant.role === "owner" || tenant.role === "admin" || user?.role === "admin"
           const slug = tenant.slug
-          
           const currentHost = window.location.host
           const protocol = window.location.protocol
+          
+          let isGlobalDomain = false
+          let baseDomain = currentHost
+          
+          if (currentHost.includes("localhost")) {
+            const parts = currentHost.split(".")
+            isGlobalDomain = parts.length === 1
+            baseDomain = parts.slice(-1)[0]
+          } else {
+            const parts = currentHost.split(".")
+            isGlobalDomain = parts.length <= 2
+            if (parts.length > 2) {
+              baseDomain = parts.slice(-2).join(".")
+            }
+          }
+
+          if (isGlobalDomain) {
+            window.location.href = "/dashboard"
+            return
+          }
+
           const isCorrectSubdomain = currentHost.startsWith(`${slug}.`)
           
           if (isCorrectSubdomain) {
@@ -100,16 +120,6 @@ export default function LoginPage() {
             return
           } else {
             // Need to redirect to the subdomain
-            let baseDomain = currentHost
-            if (currentHost.includes("localhost")) {
-              baseDomain = currentHost.split(".").pop() || currentHost
-            } else {
-              const parts = currentHost.split(".")
-              if (parts.length > 2) {
-                baseDomain = parts.slice(-2).join(".")
-              }
-            }
-            
             const targetPath = isOwnerOrAdmin ? "/dashboard" : "/"
             window.location.href = `${protocol}//${slug}.${baseDomain}${targetPath}`
             return

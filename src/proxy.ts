@@ -137,9 +137,9 @@ export async function proxy(request: NextRequest) {
       return response
     } else if (!pathname.startsWith("/api/")) {
       // Exclude global authentication and system paths from subdomain rewrites
-      const isGlobalAuthPath = pathname.match(/^\/(login|register|forgot-password|reset-password)/)
+      const isGlobalPath = pathname.match(/^\/(login|register|forgot-password|reset-password|admin)/)
       
-      if (!isGlobalAuthPath) {
+      if (!isGlobalPath) {
         // Subdomain UI Routing
         const rewriteUrl = request.nextUrl.clone()
         
