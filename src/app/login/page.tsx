@@ -95,9 +95,9 @@ export default function LoginPage() {
           if (isCorrectSubdomain) {
             // Already on the right subdomain
             if (isOwnerOrAdmin) {
-              router.push("/")
+              router.push("/dashboard")
             } else {
-              router.push("/cms")
+              router.push("/")
             }
           } else {
             // Need to redirect to the subdomain
@@ -111,7 +111,7 @@ export default function LoginPage() {
               }
             }
             
-            const targetPath = isOwnerOrAdmin ? "/" : "/cms"
+            const targetPath = isOwnerOrAdmin ? "/dashboard" : "/"
             window.location.href = `${protocol}//${slug}.${baseDomain}${targetPath}`
             return // skip router.refresh()
           }

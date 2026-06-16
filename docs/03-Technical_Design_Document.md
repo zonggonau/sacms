@@ -168,6 +168,14 @@ Fasilitas ini mengekspos tipe data secara dinamis mengikuti *Content Types* yang
 * Mendukung fitur *Nested Selection* untuk mengambil data berelasi tanpa *waterfall query*.
 * Endpoint *Mutation* (`createArticle`, `updateArticle`) diamankan dengan wajib menyertakan Token `full-access`.
 
+### 3.3 Routing Subdomain & Autentikasi
+Akses menuju antarmuka manajemen (UI) sepenuhnya menggunakan arsitektur *Subdomain Routing* yang diatur melalui `Next.js Middleware`.
+* **Pola Rute (Route Rewrites):**
+  - Akses menuju *root* subdomain (`[slug].sacms.com/`) akan di-_rewrite_ menuju rute internal `/cms/[slug]`, memunculkan antarmuka Pengelolaan Konten (CMS) secara langsung.
+  - Akses menuju `/dashboard` pada subdomain (`[slug].sacms.com/dashboard`) akan di-_rewrite_ menuju rute internal `/dashboard/[slug]`, memunculkan panel pengaturan Workspace Admin.
+* **Autentikasi Sesi Lintas Domain (Cross-Subdomain Session):**
+  Untuk memastikan pengguna tidak ter-logout saat berpindah antarmuka, *cookies* `NextAuth` ditandatangani menggunakan pola *Wildcard Domain* (contoh: `.sacms.com`). Halaman autentikasi global (`/login`) sengaja di-*exclude* dari proses *rewrite* Middleware agar memfasilitasi _Single Sign-On_ terpusat.
+
 *(Detail lengkap format *Request* dan *Response* tersedia pada spesifikasi [OpenAPI](./API_REFERENCE.md))*
 
 ## 4. Konfigurasi Layanan Inti (*Core Services*)

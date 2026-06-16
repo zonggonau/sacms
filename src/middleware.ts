@@ -140,10 +140,20 @@ export async function middleware(request: NextRequest) {
       const isGlobalAuthPath = pathname.match(/^\/(login|register|forgot-password|reset-password)/)
       
       if (!isGlobalAuthPath) {
-        // Subdomain CMS UI Routing
-        // Rewrite tenant.sacms.com/path -> /dashboard/tenant/path
+        // Subdomain UI Routing
         const rewriteUrl = request.nextUrl.clone()
-        rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname === "/" ? "" : pathname}`
+        
+        if (pathname.startsWith("/dashboard")) {
+          // If accessing tenant.sacms.com/dashboard -> /dashboard/tenant
+          // If accessing tenant.sacms.com/dashboard/settings -> /dashboard/tenant/settings
+          const dashboardPath = pathname.replace(/^\/dashboard/, "")
+          rewriteUrl.pathname = `/dashboard/${tenantSlug}${dashboardPath}`
+        } else {
+          // If accessing tenant.sacms.com/ -> /cms/tenant
+          // If accessing tenant.sacms.com/posts -> /cms/tenant/posts
+          rewriteUrl.pathname = `/cms/${tenantSlug}${pathname === "/" ? "" : pathname}`
+        }
+        
         const response = NextResponse.rewrite(rewriteUrl)
         applySecurityHeaders(response)
         return response
