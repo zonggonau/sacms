@@ -39,68 +39,53 @@ src/
 ## 3. Clean Code Guideline (Next.js 16)
 
 * **Server Components by Default:** Selalu gunakan Server Components kecuali komponen tersebut membutuhkan *interactivity* (seperti `onClick`, `useState`). Gunakan `"use client"` hanya pada ujung komponen (*leaf nodes*).
-* **Zod Validation:** **Semua** *Route Handlers* dan *Server Actions* WAJIB memvalidasi *payload* masukan menggunakan Zod sebelum berinteraksi dengan *database*.
-* **Multi-Tenant Safety Check:** Jangan pernah melakukan *query* database untuk data sensitif tanpa menyertakan klausa `where: { tenantId }`.
+* **Server Actions + Zod + React Hook Form:**
+  Untuk mutasi data dari UI (*Forms*), wajib menggunakan pola ini:
+  1. Definisikan skema Zod di `src/types/schemas.ts`.
+  2. Gunakan `useForm({ resolver: zodResolver(schema) })` pada komponen form.
+  3. Lempar data yang tervalidasi di client ke Server Action.
+  4. Di Server Action, validasi ULANG menggunakan `schema.parse(data)` sebelum menyentuh Prisma.
+* **Error Handling Standard:**
+  Gunakan blok `try/catch` di dalam Route Handlers dan Server Actions. Lempar pesan kesalahan ke UI menggunakan pola seragam: `return { error: "Pesan error spesifik", success: false }`.
+* **Multi-Tenant Safety Check:** Jangan pernah melakukan *query* database untuk data sensitif tanpa menyertakan abstraksi `getTenantDb(tenantId)`.
 
-## 4. Git Workflow Document
+## 4. Git Workflow & Contribution Guide
 
-Kami menggunakan variasi sederhana dari **Git Flow** yang cocok untuk CI/CD.
+Kami menggunakan variasi sederhana dari **Git Flow** yang disederhanakan dan berorientasi pada CI/CD:
 
 ### Branch Strategy
-* `master`: Cabang stabil (*Production-ready*). Deployment ke *production environment* diambil dari *branch* ini.
+* `master`: Cabang produksi yang selalu stabil (*Production-ready*).
 * `develop`: Cabang utama untuk integrasi (*Staging/Development*). 
-* `feature/*`: Untuk fitur baru. Di-branch dari `develop` dan di-merge kembali ke `develop` via Pull Request.
-* `hotfix/*`: Untuk perbaikan *bug* mendesak di *production*. Di-branch dari `master` dan di-merge ke `master` serta `develop`.
+* `feature/[nama-fitur]`: Untuk fitur baru. Di-branch dari `develop` dan di-merge kembali ke `develop` via Pull Request (contoh: `feature/webhook-dlq`).
+* `bugfix/[nama-bug]` atau `hotfix/*`: Untuk perbaikan *bug*. Di-branch dari `develop` (untuk bug biasa) atau `master` (untuk darurat), lalu di-merge kembali ke `master` serta `develop`.
 
 ### Commit Convention
-Kami mengikuti [Conventional Commits](https://www.conventionalcommits.org/):
+Gunakan standar [Conventional Commits](https://www.conventionalcommits.org/):
 * `feat:` (fitur baru)
 * `fix:` (perbaikan bug)
 * `docs:` (perubahan dokumentasi)
-* `style:` (formatting, missing semi colons, dll; tanpa ubah logika)
+* `style:` (formatting, missing semi colons, tanpa ubah logika)
 * `refactor:` (restrukturisasi kode)
 * `test:` (menambah test)
 * `chore:` (update dependencies, konfigurasi build)
 
-**Contoh Commit:**
-`feat(api): add content search filtering via pg_tsvector`
-# Developer Contribution Guide
+**Contoh Commit:** `feat(api): add content search filtering via pg_tsvector`
 
-Panduan bagi para developer (Software Engineer) yang akan berkontribusi menulis kode pada repositori SaCMS.
+### Proses Pull Request (PR)
+1. Push branch `feature/*` Anda ke remote repositori.
+2. Buat Pull Request yang mengarah ke branch `develop`.
+3. Tulis deskripsi PR secara jelas: apa masalahnya, solusinya, dan lampirkan screenshot jika ada perubahan UI.
+4. CI Pipeline (GitHub Actions) wajib berstatus **Passed** (Build sukses & Vitest sukses).
 
-## 1. Branching Strategy (Git Flow)
-Kami menggunakan model percabangan berbasis Git Flow yang disederhanakan:
-- `main`: Branch produksi yang selalu siap rilis (*Deployable*).
-- `dev`: Branch integrasi pengembangan aktif.
-- `feature/[nama-fitur]`: Untuk pembuatan fitur baru (contoh: `feature/webhook-dlq`).
-- `bugfix/[nama-bug]`: Untuk perbaikan bug (contoh: `bugfix/redis-timeout`).
+## 5. Standardisasi Kode & Database
 
-## 2. Commit Convention
-Gunakan **Conventional Commits**:
-- `feat:` Fitur baru.
-- `fix:` Perbaikan bug.
-- `docs:` Perubahan dokumentasi (PRD, panduan).
-- `style:` Formatting, missing semi colons (tidak merubah logika kode).
-- `refactor:` Restrukturisasi kode tanpa merubah perilaku.
-- `test:` Penambahan atau perbaikan unit test.
-- `chore:` Update package/dependencies.
-
-*Contoh:* `feat: add midtrans snap integration for subscription`
-
-## 3. Standardisasi Kode (Linting & Formatting)
-Proyek ini mengutamakan keterbacaan kode (Code Readability).
+### Linting & Formatting
+Proyek ini mengutamakan keterbacaan kode (*Code Readability*).
 - Gunakan ESLint standar bawaan Next.js (`next lint`).
 - Terapkan **Prettier** untuk auto-formatting kode sebelum di-commit.
-- Hindari penggunaan tipe `any` pada TypeScript. Selalu definisikan `interface` atau `type`.
+- Dilarang keras menggunakan tipe `any` pada TypeScript.
 
-## 4. Proses Pull Request (PR)
-1. Push branch Anda ke remote repositori.
-2. Buat Pull Request yang mengarah ke branch `dev`.
-3. Tulis deskripsi PR secara jelas: apa masalahnya, apa solusinya, dan lampirkan screenshot jika terdapat perubahan UI.
-4. Minimal 1 *Code Reviewer* harus me-*approve* PR sebelum bisa di-merge.
-5. CI Pipeline (GitHub Actions) harus berstatus **Passed** (Build sukses & Vitest sukses).
-
-## 5. Sinkronisasi Database
-Jika PR Anda mengandung perubahan pada file `prisma/schema.prisma`:
+### Sinkronisasi Prisma Schema
+Jika Anda mengubah file `prisma/schema.prisma`:
 1. Buat file migrasi lokal: `npx prisma migrate dev --name deskripsi_perubahan`.
-2. Commit file `.sql` migrasi yang ter-generate di folder `prisma/migrations`. Dilarang mengedit file migrasi SQL secara manual tanpa diskusi dengan Lead Engineer.
+2. Commit file `.sql` migrasi yang ter-generate. Dilarang mengedit file migrasi SQL secara manual tanpa diskusi dengan Lead Engineer.

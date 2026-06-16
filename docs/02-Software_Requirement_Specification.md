@@ -27,8 +27,14 @@ Dokumen ini mendeskripsikan kebutuhan perangkat lunak untuk sistem SaCMS, mencak
    - Sistem harus menyediakan *Endpoint* GraphQL untuk *Query* maupun *Mutation* data konten.
    - Sistem harus mendukung pencarian teks penuh (*Full-Text Search*).
 6. **Integrasi Eksternal (*Webhooks*)**
-   - Sistem harus dapat memicu *Webhook* Asinkron ke URL kustom ketika sebuah *event* terjadi (contoh: `content.published`).
-   - Sistem harus mendukung *Sync Hooks* untuk mencegat atau mengubah data sebelum masuk ke basis data (`beforeCreate`).
+   - Sistem harus dapat memicu *Webhook* Asinkron ke URL kustom ketika sebuah *event* terjadi.
+     - **Daftar Event:** `content.entry.created`, `content.entry.updated`, `content.entry.deleted`, `content.entry.published`.
+     - **Struktur Payload:** `{"event": "content.entry.published", "tenantId": "...", "data": { ... }}`
+   - Sistem harus mendukung *Sync Hooks* untuk mencegat atau mengubah data sebelum masuk ke basis data (`beforeCreate`, `beforeUpdate`).
+
+7. **Validasi Skema Lapis Tengah (Zod Validation)**
+   - Semua rute API (baik REST maupun Server Actions) wajib melewati `Zod.parse()`.
+   - Payload input untuk konten harus memvalidasi bentuk tipe dinamis (contoh: teks dibatasi panjangnya, tipe relasi dipastikan valid UUID-nya) sebelum ORM menyentuh database.
 
 ---
 
@@ -48,7 +54,13 @@ Dokumen ini mendeskripsikan kebutuhan perangkat lunak untuk sistem SaCMS, mencak
 
 1. **Multi-Tenant Data Isolation:** Sebuah *query* pada sistem wajib menginjeksikan pemeriksa `tenantId`. Data dari `Tenant A` sama sekali tidak boleh diakses, dilihat, atau direferensikan oleh `Tenant B`.
 2. **Validasi Skema Fleksibel:** Pengguna dapat menyimpan *Content Entry* meski kosong **hanya jika** statusnya adalah `DRAFT`. Jika diubah menjadi `PUBLISHED`, mesin validasi Zod akan mengeksekusi pemeriksaan pada *Fields* yang bertanda *Required*.
-3. **Pembatasan Langganan (Plan Limits):** Setiap *Workspace* tunduk pada batas langganannya (misal: Paket *Free* dibatasi 100 API *Requests/menit*, 2 Anggota Tim, dan Penyimpanan Media 1GB). Sistem akan memblokir (*Rate-limit 429*) jika mencapai batas tersebut.
+3. **Pembatasan Langganan (Plan Limits & Rate Limiting):**
+   - Setiap *Workspace* tunduk pada batas langganannya. 
+   - **Metrik Edge Rate Limiting (via Upstash Redis):**
+     - Paket *Free*: Max 100 API Requests/menit.
+     - Paket *Pro*: Max 500 API Requests/menit.
+     - Paket *Enterprise*: Custom limits.
+   - Sistem akan memblokir *request* (*HTTP 429 Too Many Requests*) pada tingkat Edge Middleware sebelum *request* mencapai basis data PostgreSQL.
 
 ---
 

@@ -1,4 +1,4 @@
-﻿# System Architecture Document (SAD)
+# System Architecture Document (SAD)
 
 ## 1. Overview
 SaCMS adalah SaaS Headless CMS multi-tenant yang dibangun menggunakan arsitektur modern berbasis Edge dan Serverless. Dokumen ini menjelaskan rancangan teknis, tumpukan teknologi (tech stack), dan pola komunikasi antar komponen.
@@ -38,7 +38,16 @@ Sistem ini menggunakan arsitektur Monolithic-Serverless. Front-end (Admin Dashbo
 
 ## 4. Pattern Desain Utama
 ### 4.1. Multi-Tenant Data Isolation
-Setiap tabel krusial memiliki field `tenantId`. Akses database dibungkus menggunakan helper `getTenantDb(tenantId)` atau klausa `where: { tenantId }` yang sangat ketat untuk menghindari kebocoran data antar Workspace.
+Setiap tabel krusial memiliki field `tenantId`. Akses database dibungkus menggunakan pola abstraksi repositori untuk menghindari kebocoran data.
+**Implementasi Wajib:**
+```typescript
+// Cara Salah (Dilarang):
+const data = await prisma.contentEntry.findMany()
+
+// Cara Benar (Menggunakan helper getTenantDb):
+const tenantDb = await getTenantDb(tenantId)
+const data = await tenantDb.contentEntry.findMany()
+```
 
 ### 4.2. Advanced Filter Engine
 Mengadopsi gaya Strapi (JSON-based filters). API menerima object filter seperti `filters[price][$gt]=100`, lalu modul `lib/filters.ts` akan mem-parsing dan menerjemahkannya menjadi Query Prisma yang aman (Parameterized SQL Injection safe).
@@ -54,6 +63,29 @@ Menggunakan pola sinkron dan asinkron:
 - **Content Data:** Data tersimpan dinamis dalam kolom tipe `JSONB` di tabel `ContentEntry`.
 - **Media:** `Media` terhubung ke `MediaFolder` dan `Tenant`, menggunakan penyimpanan R2 CDN.
 - **Webhooks & API Tokens:** Tabel `Webhook`, `WebhookLog`, `ApiToken` dengan relasi kuat ke `Tenant`.
+
+**Cuplikan Contoh Prisma Schema:**
+```prisma
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  entries   ContentEntry[]
+  media     Media[]
+}
+
+model ContentEntry {
+  id            String   @id @default(uuid())
+  documentId    String   @default(uuid()) // Unique identifier for all locales/versions
+  tenantId      String
+  contentTypeId String
+  data          Json     // Data dinamis tersimpan di sini
+  status        String   @default("DRAFT")
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  @@index([tenantId, contentTypeId])
+}
+```
 
 ## 6. Codebase Structure & Modules
 Aplikasi terbagi dalam direktori-direktori inti:
@@ -150,10 +182,11 @@ Arsitektur SaCMS dirancang ringan pada sisi pangkalan data utama, dengan mendele
 
 | Penyedia (*Service*) | Protokol | Tujuan | Detail Implementasi |
 |----------------------|----------|--------|---------------------|
-| **Cloudflare R2** | S3-Compatible API | Penempatan Aset (CDN) | Menangani unggahan massal via `multipart/form-data`. Mem-Bypass basis data dan menghasilkan dimensi berukuran kecil (150px) otomatis sebelum disimpan. |
-| **Upstash Redis** | HTTPS REST | Manajemen Cache & Limiter | Digunakan pada `middleware.ts` (*Edge-network*) guna mencatat laju *Request* (rate-limiting) per-*API Key*. Juga melayani antrian interaksi asinkron (Pub/Sub). |
-| **Midtrans Snap** | HTTPS API | Otomasi *Billing* & *Invoice* | Terhubung untuk menagih biaya paket berlangganan pada *Tenant*. Endpoint Webhook Next.js siap merespons laporan pelunasan pembayaran dari Midtrans (secara *realtime*). |
-| **OpenAI / LLM** | HTTPS API | *AI Content Generation* | (Fitur Eksperimental) Menyediakan saran konten (*templating*) otomatis di *Rich Text Editor*. |
+| **Cloudflare R2** | S3-Compatible API | Penempatan Aset (CDN) | Pola Penamaan Objek: `uploads/{tenantId}/{year}/{month}/{uuid}-{filename}.{ext}`. CDN terhubung secara publik. |
+| **Upstash Redis** | HTTPS REST | Manajemen Cache & Limiter | Rate limiting dieksekusi di Edge. Format struktur Redis Key: `rate-limit:api:{tenantId}:{clientIp}`. |
+| **Midtrans Snap** | HTTPS API | Otomasi *Billing* & *Invoice* | Terhubung untuk menagih biaya paket berlangganan pada *Tenant*. Endpoint Webhook Next.js merespons notifikasi `transaction_status`. |
+| **OpenAI / LLM** | HTTPS API | *AI Content Generation* | Menyediakan saran konten (*templating*) otomatis di *Rich Text Editor*. |
+
 # Data Flow Diagram (DFD) - SaCMS
 
 Dokumen ini memetakan aliran data pada sistem SaCMS. Diagram dibuat menggunakan format standar *Mermaid.js* agar dapat langsung dirender secara visual.
