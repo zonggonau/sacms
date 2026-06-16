@@ -136,13 +136,18 @@ export async function middleware(request: NextRequest) {
       }
       return response
     } else if (!pathname.startsWith("/api/")) {
-      // Subdomain CMS UI Routing
-      // Rewrite tenant.sacms.com/path -> /dashboard/tenant/path
-      const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname === "/" ? "" : pathname}`
-      const response = NextResponse.rewrite(rewriteUrl)
-      applySecurityHeaders(response)
-      return response
+      // Exclude global authentication and system paths from subdomain rewrites
+      const isGlobalAuthPath = pathname.match(/^\/(login|register|forgot-password|reset-password)/)
+      
+      if (!isGlobalAuthPath) {
+        // Subdomain CMS UI Routing
+        // Rewrite tenant.sacms.com/path -> /dashboard/tenant/path
+        const rewriteUrl = request.nextUrl.clone()
+        rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname === "/" ? "" : pathname}`
+        const response = NextResponse.rewrite(rewriteUrl)
+        applySecurityHeaders(response)
+        return response
+      }
     }
   }
 
