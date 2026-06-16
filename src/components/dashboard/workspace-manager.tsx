@@ -233,6 +233,12 @@ export function WorkspaceManager({
                         {['owner', 'admin'].includes(tenant.role) ? (
                           <>
                             <DropdownMenuItem asChild className="cursor-pointer">
+                              <Link href={`/cms/${tenant.slug}`} target="_blank">
+                                <ExternalLink className="mr-2 h-4 w-4" /> Content Studio
+                              </Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem asChild className="cursor-pointer">
                               <Link href={`/dashboard/${tenant.id}/settings`}>
                                 <Settings className="mr-2 h-4 w-4" /> Settings
                               </Link>
@@ -252,7 +258,7 @@ export function WorkspaceManager({
                           </>
                         ) : (
                           <DropdownMenuItem asChild className="cursor-pointer">
-                            <Link href={`/cms/${tenant.slug}`}>
+                            <Link href={`/cms/${tenant.slug}`} target="_blank">
                               <ExternalLink className="mr-2 h-4 w-4" /> Content Studio
                             </Link>
                           </DropdownMenuItem>

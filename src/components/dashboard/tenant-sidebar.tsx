@@ -126,7 +126,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
     {
       label: "CONTENT",
       items: [
-        { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO", target: "_blank" },
+        { title: "Content Studio", href: `/cms/${tenantSlug || tenantId}`, icon: Sparkles, badge: "STUDIO", target: "_blank" },
         { title: "Overview", href: "", icon: LayoutDashboard },
         { title: "Content Types", href: "/content-types", icon: DatabaseIcon, matchPrefix: true },
         { title: "Single Types", href: "/single-types", icon: Layers, matchPrefix: true },
