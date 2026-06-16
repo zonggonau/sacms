@@ -79,8 +79,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
     : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
 
   const href = (path: string) => {
-    if (path === "/cms-redirect") return `/cms/${tenantId}`
-    return `/dashboard/${tenantId}${path}`
+    if (path === "/cms-redirect") return `/`
+    return `/dashboard${path}`
   }
 
   const isActive = (item: NavItem) => {
@@ -277,7 +277,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
       {/* Footer */}
       <div className="border-t p-3 space-y-2">
         <div className="flex items-center gap-3 px-3 py-2 rounded-none bg-muted/30">
-          <Link href={`/dashboard/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+          <Link href={href("/profile")} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none shrink-0">
               {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
             </div>

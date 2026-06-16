@@ -38,7 +38,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const href = (path: string) => `/cms/${tenantId}${path}`
+  const href = (path: string) => path || "/"
 
   useEffect(() => {
     setMounted(true)
@@ -137,7 +137,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
       {/* Footer User Info */}
       <div className="border-t border-border p-4 space-y-2 bg-card">
         <div className="flex items-center gap-3">
-          <Link href={`/cms/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+          <Link href={href("/profile")} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
               {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
             </div>
