@@ -93,18 +93,28 @@ export async function middleware(request: NextRequest) {
   }
 
 
-  // ==================== CUSTOM DOMAIN ROUTING ====================
+  // ==================== SUBDOMAIN & CUSTOM DOMAIN ROUTING ====================
   let tenantSlug: string | null = null
   let version = "v1"
 
-  if (host && host !== APP_HOST && !host.includes("localhost")) {
-    const redis = getRedis()
-    if (redis) {
-      tenantSlug = await redis.get(`domain:${host}`)
+  if (host && host !== APP_HOST) {
+    if (host.endsWith(`.${APP_HOST}`)) {
+      // Subdomain (e.g. acme.sacms.com or acme.localhost)
+      tenantSlug = host.replace(`.${APP_HOST}`, "")
+    } else if (!host.includes("localhost")) {
+      // Custom Domain
+      const redis = getRedis()
+      if (redis) {
+        tenantSlug = await redis.get(`domain:${host}`)
+      }
     }
-    
-    if (tenantSlug) {
-      // Map custom domain paths. Supports /v1/content or /content (defaults to v1)
+  }
+
+  if (tenantSlug) {
+    // Map custom domain / subdomain paths
+    const isApiRequest = pathname.match(/^\/v[12]\//) || pathname === "/graphql"
+
+    if (isApiRequest) {
       let restPath = pathname
       const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
       if (vMatch) {
@@ -124,6 +134,14 @@ export async function middleware(request: NextRequest) {
       if (request.method === "OPTIONS") {
         return new NextResponse(null, { status: 204, headers: response.headers })
       }
+      return response
+    } else if (!pathname.startsWith("/api/")) {
+      // Subdomain CMS UI Routing
+      // Rewrite tenant.sacms.com/path -> /dashboard/tenant/path
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname === "/" ? "" : pathname}`
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response)
       return response
     }
   }

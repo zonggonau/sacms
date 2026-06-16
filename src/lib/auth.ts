@@ -36,9 +36,28 @@ function legacySimpleHash(password: string): string {
   return hash.toString(16)
 }
 
+const useSecureCookies = process.env.NODE_ENV === "production"
+const cookiePrefix = useSecureCookies ? "__Secure-" : ""
+const appHost = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
+  .replace(/^https?:\/\//, "")
+  .split(":")[0]
+const wildcardDomain = appHost === "localhost" ? ".localhost" : `.${appHost}`
+
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
-  useSecureCookies: process.env.NODE_ENV === "production",
+  useSecureCookies,
+  cookies: {
+    sessionToken: {
+      name: `${cookiePrefix}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecureCookies,
+        domain: wildcardDomain, // Enables shared session across subdomains!
+      },
+    },
+  },
   session: {
     strategy: "jwt",
   },
