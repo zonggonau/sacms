@@ -41,7 +41,7 @@ const cookiePrefix = useSecureCookies ? "__Secure-" : ""
 const appHost = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
   .replace(/^https?:\/\//, "")
   .split(":")[0]
-const wildcardDomain = appHost === "localhost" ? ".localhost" : `.${appHost}`
+const wildcardDomain = appHost === "localhost" ? undefined : `.${appHost}`
 
 export const authOptions: NextAuthOptions = {
   secret: process.env.NEXTAUTH_SECRET,
