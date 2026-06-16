@@ -77,35 +77,40 @@ export default function LoginPage() {
       const sessionData = await sessionRes.json()
       const user = sessionData?.user
 
+      const currentHost = window.location.host
+      const protocol = window.location.protocol
+      
+      let isGlobalDomain = false
+      let baseDomain = currentHost
+      
+      if (currentHost.includes("localhost")) {
+        const parts = currentHost.split(".")
+        isGlobalDomain = parts.length === 1
+        baseDomain = parts.slice(-1)[0]
+      } else {
+        const parts = currentHost.split(".")
+        isGlobalDomain = parts.length <= 2
+        if (parts.length > 2) {
+          baseDomain = parts.slice(-2).join(".")
+        }
+      }
+
       if (user?.role === "super_admin") {
-        window.location.href = "/admin"
+        if (!isGlobalDomain) {
+          window.location.href = `${protocol}//${baseDomain}/admin`
+        } else {
+          window.location.href = "/admin"
+        }
         return
       } else {
         const tenant = user?.tenants && user.tenants.length > 0 ? user.tenants[0] : null
         
         if (!tenant) {
-          window.location.href = "/dashboard"
+          window.location.href = isGlobalDomain ? "/dashboard" : `${protocol}//${baseDomain}/dashboard`
           return
         } else {
           const isOwnerOrAdmin = tenant.role === "owner" || tenant.role === "admin" || user?.role === "admin"
           const slug = tenant.slug
-          const currentHost = window.location.host
-          const protocol = window.location.protocol
-          
-          let isGlobalDomain = false
-          let baseDomain = currentHost
-          
-          if (currentHost.includes("localhost")) {
-            const parts = currentHost.split(".")
-            isGlobalDomain = parts.length === 1
-            baseDomain = parts.slice(-1)[0]
-          } else {
-            const parts = currentHost.split(".")
-            isGlobalDomain = parts.length <= 2
-            if (parts.length > 2) {
-              baseDomain = parts.slice(-2).join(".")
-            }
-          }
 
           if (isGlobalDomain) {
             window.location.href = "/dashboard"
