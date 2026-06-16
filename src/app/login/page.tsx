@@ -79,17 +79,42 @@ export default function LoginPage() {
 
       if (user?.role === "super_admin") {
         router.push("/admin")
-      } else if (user?.role === "admin") {
-        router.push("/dashboard")
       } else {
-        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        const tenant = user?.tenants && user.tenants.length > 0 ? user.tenants[0] : null
         
-        if (isOwnerOrAdmin) {
+        if (!tenant) {
           router.push("/dashboard")
-        } else if (user?.tenants && user.tenants.length > 0) {
-          router.push(`/cms/${user.tenants[0].slug}`)
         } else {
-          router.push("/dashboard")
+          const isOwnerOrAdmin = tenant.role === "owner" || tenant.role === "admin" || user?.role === "admin"
+          const slug = tenant.slug
+          
+          const currentHost = window.location.host
+          const protocol = window.location.protocol
+          const isCorrectSubdomain = currentHost.startsWith(`${slug}.`)
+          
+          if (isCorrectSubdomain) {
+            // Already on the right subdomain
+            if (isOwnerOrAdmin) {
+              router.push("/")
+            } else {
+              router.push("/cms")
+            }
+          } else {
+            // Need to redirect to the subdomain
+            let baseDomain = currentHost
+            if (currentHost.includes("localhost")) {
+              baseDomain = currentHost.split(".").pop() || currentHost
+            } else {
+              const parts = currentHost.split(".")
+              if (parts.length > 2) {
+                baseDomain = parts.slice(-2).join(".")
+              }
+            }
+            
+            const targetPath = isOwnerOrAdmin ? "/" : "/cms"
+            window.location.href = `${protocol}//${slug}.${baseDomain}${targetPath}`
+            return // skip router.refresh()
+          }
         }
       }
       
