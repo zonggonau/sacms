@@ -29,6 +29,9 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 
+import { getEntriesAction } from "@/actions/content"
+import { getSingleTypeBySlugAction } from "@/actions/single-types"
+
 interface Entry {
   id: string
   data: any
@@ -69,19 +72,34 @@ export function RelationSelectField({
     setLoading(true)
     setError(null)
     try {
-      const url = `/api/tenant/${tenantSlug}/content-types/slug/${targetSlug}/entries?page=1&pageSize=50${search ? `&search=${encodeURIComponent(search)}` : ""}`
-      const res = await fetch(url)
-      if (!res.ok) throw new Error("Failed to load related data")
-      const data = await res.json()
+      const result = await getEntriesAction(tenantSlug, targetSlug, { 
+        page: 1, 
+        pageSize: 50, 
+        search 
+      })
       
-      const parsedEntries = (data.data || data.entries || []).map((e: any) => ({
+      if (result.error) {
+        // Fallback to Single Type
+        const stResult = await getSingleTypeBySlugAction(tenantSlug, targetSlug)
+        if (stResult.error || !stResult.singleType) throw new Error(result.error) // throw original error
+        
+        // Mock a single entry from the single type
+        setEntries([{
+          id: stResult.singleType.id,
+          data: stResult.singleType.data || {},
+          status: "PUBLISHED"
+        }])
+        return
+      }
+      
+      const parsedEntries = (result.entries || []).map((e: any) => ({
         ...e,
         data: typeof e.data === 'string' ? JSON.parse(e.data) : e.data
       }))
       
       setEntries(parsedEntries)
     } catch (err: any) {
-      console.error("Relation fetch error:", err)
+      console.warn("Relation fetch warning:", err.message)
       setError(err.message)
     } finally {
       setLoading(false)

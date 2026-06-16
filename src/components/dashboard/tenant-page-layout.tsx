@@ -21,6 +21,8 @@ interface ContentType {
   slug: string
 }
 
+import { getContentTypesAction } from "@/actions/content-types"
+
 export function TenantPageLayout({
   children,
   tenantId: propId,
@@ -49,13 +51,11 @@ export function TenantPageLayout({
       if (!tenantId || !session?.user) return
 
       try {
-        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
-        
-        if (res.ok) {
-          const data = await res.json()
-          setContentTypes(data || [])
+        const res = await getContentTypesAction(tenantId as string)
+        if (res.contentTypes) {
+          setContentTypes(res.contentTypes as any[])
         } else {
-          console.error("TenantPageLayout failed to fetch content types:", res.status)
+          console.error("TenantPageLayout failed to fetch content types:", res.error)
         }
       } catch (error) {
         console.error("Failed to fetch content types:", error)

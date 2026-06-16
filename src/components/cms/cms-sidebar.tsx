@@ -28,38 +28,21 @@ import { signOut, useSession } from "next-auth/react"
 
 interface CMSSidebarProps {
   tenantId: string
+  contentTypes?: { id: string; name: string; slug: string }[]
 }
 
-export function CMSSidebar({ tenantId }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
-  const [assignedContentTypes, setAssignedContentTypes] = useState<any[]>([])
 
   const href = (path: string) => `/cms/${tenantId}${path}`
 
   useEffect(() => {
     setMounted(true)
   }, [])
-
-  // Fetch only content types for this tenant
-  useEffect(() => {
-    async function fetchContentTypes() {
-      try {
-        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
-        if (res.ok) {
-          const data = await res.json()
-          // API returns an array directly, not data.contentTypes
-          setAssignedContentTypes(Array.isArray(data) ? data : (data.contentTypes || []))
-        }
-      } catch (error) {
-        console.error("Failed to fetch content types:", error)
-      }
-    }
-    if (tenantId) fetchContentTypes()
-  }, [tenantId])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
@@ -110,10 +93,10 @@ export function CMSSidebar({ tenantId }: CMSSidebarProps) {
           {/* Collections */}
           <div className="space-y-1">
             <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">Collections</p>
-            {assignedContentTypes.length === 0 ? (
+            {contentTypes.length === 0 ? (
               <p className="px-2 text-xs text-muted-foreground italic">No collections assigned</p>
             ) : (
-              assignedContentTypes.map(ct => {
+              contentTypes.map(ct => {
                 const active = pathname.startsWith(href(`/content/${ct.slug}`))
                 return (
                   <Link key={ct.id} href={href(`/content/${ct.slug}`)}>

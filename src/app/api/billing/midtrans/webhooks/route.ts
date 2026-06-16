@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const headers = Object.fromEntries(request.headers.entries())
 
     // Use the payment provider abstraction to verify the webhook
-    const provider = getPaymentProvider("midtrans")
+    const provider = getPaymentProvider()
     const verified = await provider.verifyWebhook({ headers, body })
 
     if (!verified.valid) {

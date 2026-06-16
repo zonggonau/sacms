@@ -149,8 +149,15 @@ export const authOptions: NextAuthOptions = {
   ],
   callbacks: {
     async jwt({ token, user, account, trigger, session }) {
-      if (trigger === "update" && session?.name) {
-        token.name = session.name
+      if (trigger === "update") {
+        if (session?.name) {
+          token.name = session.name
+        }
+        // Securely refetch plan from DB on update trigger
+        if (token.id) {
+          const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { plan: true } })
+          if (dbUser) token.plan = dbUser.plan
+        }
       }
       
       if (user) {

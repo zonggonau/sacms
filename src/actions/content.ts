@@ -44,7 +44,10 @@ export async function getEntriesAction(
       include: { fields: true },
     })
 
-    if (!contentType) return { error: "Content type not found" }
+    if (!contentType) {
+      console.log(`[getEntriesAction] Content type not found! tenantSlug: ${tenantSlug}, access.tenantId: ${access.tenantId}, contentTypeSlug: ${contentTypeSlug}`)
+      return { error: "Content type not found" }
+    }
 
     const page = Math.max(1, params.page || 1)
     const pageSize = Math.min(100, Math.max(1, params.pageSize || 25))
