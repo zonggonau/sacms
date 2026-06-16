@@ -174,8 +174,12 @@ Akses menuju antarmuka manajemen (UI) sepenuhnya menggunakan arsitektur *Subdoma
   - Akses menuju *root* subdomain (`[slug].sacms.com/`) akan di-_rewrite_ menuju rute internal `/cms/[slug]`, memunculkan antarmuka Pengelolaan Konten (CMS) secara langsung.
   - Akses menuju `/dashboard` pada subdomain (`[slug].sacms.com/dashboard`) akan di-_rewrite_ menuju rute internal `/dashboard/[slug]`, memunculkan panel pengaturan Workspace Admin.
 * **Autentikasi Sesi Lintas Domain (Cross-Subdomain Session):**
-  Untuk memastikan pengguna tidak ter-logout saat berpindah antarmuka, *cookies* `NextAuth` ditandatangani menggunakan pola *Wildcard Domain* (contoh: `.sacms.com`). Halaman autentikasi global (`/login`) sengaja di-*exclude* dari proses *rewrite* Middleware agar memfasilitasi _Single Sign-On_ terpusat.
-
+  Sistem menerapkan batasan login (Login Boundaries) yang sangat ketat berdasarkan _Role_ (Peran) pengguna:
+  - **Super Admin & Global Admin:** Wajib melakukan login melalui Website/Domain Utama (`sacms.com`). Jika mengakses login lewat subdomain, akses ditolak dan akan dialihkan.
+  - **Workspace Admin & Owner:** Wajib melakukan login melalui Website/Domain Utama. Melalui domain utama, mereka memiliki akses utuh ke panel Manajemen Workspace (`/dashboard`).
+  - **Pengelola Konten (Editor, Contributor, dsb.):** Secara eksklusif *hanya* dapat melakukan login dari halaman subdomain masing-masing workspace (contoh: `[slug].sacms.com/login`). Login mereka tidak diizinkan pada domain utama.
+  
+  Halaman autentikasi global maupun sistem (`/login`, `/register`, `/admin`) sengaja di-*exclude* dari proses *rewrite* Middleware untuk menghindari konflik _routing_ lintas domain.
 *(Detail lengkap format *Request* dan *Response* tersedia pada spesifikasi [OpenAPI](./API_REFERENCE.md))*
 
 ## 4. Konfigurasi Layanan Inti (*Core Services*)

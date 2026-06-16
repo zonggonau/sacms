@@ -48,6 +48,10 @@ Dokumen ini mendeskripsikan kebutuhan perangkat lunak untuk sistem SaCMS, mencak
 | **Member / Reviewer** | Dapat membaca dan membuat entri berstatus `DRAFT`, namun hanya bisa mengirimkannya ke fase `IN_REVIEW` (tidak memiliki akses ke tombol *Publish*). |
 | **API Consumer** | *System/Client* eksternal yang membaca *Endpoint* publik menggunakan `API Token` terbatas (*Read-only* atau *Full-access*). |
 
+**Batasan Akses (Login Boundaries):**
+- **Sistem Pusat (Website Utama):** Hanya `Super Admin` dan `Tenant Owner / Admin` yang diizinkan untuk login lewat website utama. Mereka dilarang keras login melalui subdomain.
+- **Subdomain Tenant:** Pengelola konten (`Editor` dan `Member / Reviewer`) HANYA diizinkan login melalui subdomain spesifik milik *Workspace* tempat mereka terdaftar. Mereka akan ditolak jika mencoba login melalui website utama.
+
 ---
 
 ## 3. Business Rules (Aturan Bisnis)

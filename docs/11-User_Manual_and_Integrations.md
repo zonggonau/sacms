@@ -1,11 +1,16 @@
-﻿# User Manual / Panduan Pengguna SaCMS
+# User Manual / Panduan Pengguna SaCMS
 
 Dokumen ini ditujukan untuk **Tenant Admin** dan **Content Editor** yang menggunakan antarmuka (UI) Dashboard SaCMS.
 
 ## 1. Memulai (Getting Started)
-1. Buka URL Dashboard: `https://[your-domain.com]/login`.
+Sistem memiliki batasan akses (Login Boundaries) yang ketat berdasarkan peran Anda:
+* **Super Admin & Workspace Admin/Owner:** Wajib mengakses login melalui Website Utama (misal: `https://[your-domain.com]/login`).
+* **Content Editor / Contributor:** Wajib mengakses login melalui Subdomain Workspace masing-masing (misal: `https://[workspace-slug].[your-domain.com]/login`).
+
+Langkah login:
+1. Buka URL Dashboard yang sesuai dengan peran Anda di atas.
 2. Masukkan kredensial email dan password (atau login via Google/GitHub).
-3. Setelah masuk, Anda akan diarahkan ke layar **Workspace / Tenant Selection**. Pilih Workspace Anda.
+3. Setelah masuk, Admin akan diarahkan ke layar **Workspace / Tenant Selection** di domain utama, sedangkan Editor akan langsung masuk ke **Content Studio** di subdomain.
 
 ## 2. Content Builder (Membuat Struktur Tabel)
 Untuk mulai menyimpan data, Anda harus membuat struktur (Schema) terlebih dahulu:
