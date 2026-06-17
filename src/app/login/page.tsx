@@ -77,77 +77,29 @@ export default function LoginPage() {
       const sessionData = await sessionRes.json()
       const user = sessionData?.user
 
-      const currentHost = window.location.host
-      const protocol = window.location.protocol
-      
-      let isGlobalDomain = false
-      let baseDomain = currentHost
-      
-      if (currentHost.includes("localhost")) {
-        const parts = currentHost.split(".")
-        isGlobalDomain = parts.length === 1
-        baseDomain = parts.slice(-1)[0]
-      } else {
-        const parts = currentHost.split(".")
-        isGlobalDomain = parts.length <= 2
-        if (parts.length > 2) {
-          baseDomain = parts.slice(-2).join(".")
-        }
-      }
-
-      // Enforce Login Boundaries
+      // Route users based on their role
       const isSuperAdmin = user?.role === "super_admin"
       const isGlobalAdmin = user?.role === "admin"
       const isWorkspaceAdminOrOwner = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
 
       if (isSuperAdmin) {
-        if (!isGlobalDomain) {
-          toast({ variant: "destructive", title: "Akses Ditolak", description: "Super Admin harus login dari website utama." })
-          await signOut({ redirect: false })
-          setTimeout(() => { window.location.href = `${protocol}//${baseDomain}/login` }, 2000)
-          return
-        }
         window.location.href = "/admin"
         return
       }
 
       if (isGlobalAdmin || isWorkspaceAdminOrOwner) {
-        if (!isGlobalDomain) {
-          toast({ variant: "destructive", title: "Akses Ditolak", description: "Admin/Owner Workspace harus login dari website utama." })
-          await signOut({ redirect: false })
-          setTimeout(() => { window.location.href = `${protocol}//${baseDomain}/login` }, 2000)
-          return
-        }
         window.location.href = "/dashboard"
         return
       }
 
-      // If they reach here, they are ONLY a content manager (editor/contributor/viewer) across all their tenants
-      if (isGlobalDomain) {
-        toast({ variant: "destructive", title: "Akses Ditolak", description: "Pengelola Konten harus login dari halaman subdomain masing-masing." })
+      // If they reach here, they are a content manager (editor/contributor/viewer)
+      if (user?.tenants && user.tenants.length > 0) {
+        const firstTenantSlug = user.tenants[0].slug
+        window.location.href = `/cms/${firstTenantSlug}`
+      } else {
+        toast({ variant: "destructive", title: "Akses Ditolak", description: "Anda tidak memiliki akses ke workspace manapun." })
         await signOut({ redirect: false })
-        
-        // Suggest a redirect if they have at least one tenant
-        if (user?.tenants && user.tenants.length > 0) {
-          const firstTenantSlug = user.tenants[0].slug
-          setTimeout(() => { window.location.href = `${protocol}//${firstTenantSlug}.${baseDomain}/login` }, 2000)
-        }
-        return
       }
-
-      // They are a content manager logging in on a subdomain
-      // Check if they actually have access to this specific subdomain
-      const subdomainSlug = currentHost.replace(`.${baseDomain}`, "")
-      const tenantAccess = user?.tenants?.find((t: any) => t.slug === subdomainSlug)
-
-      if (!tenantAccess) {
-        toast({ variant: "destructive", title: "Akses Ditolak", description: "Anda tidak memiliki akses ke konten workspace ini." })
-        await signOut({ redirect: false })
-        return
-      }
-
-      // Success! They are logging into their allowed subdomain
-      window.location.href = "/"
       return
     } catch (error: any) {
       toast({

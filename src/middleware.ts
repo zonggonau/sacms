@@ -12,9 +12,9 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
  * Security middleware: adds security headers, CORS, API versioning,
  * rate limiting, and custom domain routing for white-label tenants.
  */
-export async function proxy(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl
-  const host = request.headers.get("host")?.split(":")[0] || ""
+  let version = "v1"
 
   // ==================== RATE LIMITING ====================
   // Apply rate limiting to all API routes with appropriate configs
@@ -91,76 +91,6 @@ export async function proxy(request: NextRequest) {
       )
     }
   }
-
-
-  // ==================== SUBDOMAIN & CUSTOM DOMAIN ROUTING ====================
-  let tenantSlug: string | null = null
-  let version = "v1"
-
-  if (host && host !== APP_HOST) {
-    if (host.endsWith(`.${APP_HOST}`)) {
-      // Subdomain (e.g. acme.sacms.com or acme.localhost)
-      tenantSlug = host.replace(`.${APP_HOST}`, "")
-    } else if (!host.includes("localhost")) {
-      // Custom Domain
-      const redis = getRedis()
-      if (redis) {
-        tenantSlug = await redis.get(`domain:${host}`)
-      }
-    }
-  }
-
-  if (tenantSlug) {
-    // Map custom domain / subdomain paths
-    const isApiRequest = pathname.match(/^\/v[12]\//) || pathname === "/graphql"
-
-    if (isApiRequest) {
-      let restPath = pathname
-      const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
-      if (vMatch) {
-        version = vMatch[1]
-        restPath = `/${vMatch[2]}`
-      }
-
-      const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath}`
-      
-      const response = NextResponse.rewrite(rewriteUrl)
-      applySecurityHeaders(response)
-      applyCorsHeaders(response)
-      response.headers.set("X-API-Version", version)
-      response.headers.set("X-Tenant-Domain", host)
-
-      if (request.method === "OPTIONS") {
-        return new NextResponse(null, { status: 204, headers: response.headers })
-      }
-      return response
-    } else if (!pathname.startsWith("/api/")) {
-      // Exclude global authentication and system paths from subdomain rewrites
-      const isGlobalPath = pathname.match(/^\/(login|register|forgot-password|reset-password|admin)/)
-      
-      if (!isGlobalPath) {
-        // Subdomain UI Routing
-        const rewriteUrl = request.nextUrl.clone()
-        
-        if (pathname.startsWith("/dashboard")) {
-          // If accessing tenant.sacms.com/dashboard -> /dashboard/tenant
-          // If accessing tenant.sacms.com/dashboard/settings -> /dashboard/tenant/settings
-          const dashboardPath = pathname.replace(/^\/dashboard/, "")
-          rewriteUrl.pathname = `/dashboard/${tenantSlug}${dashboardPath}`
-        } else {
-          // If accessing tenant.sacms.com/ -> /cms/tenant
-          // If accessing tenant.sacms.com/posts -> /cms/tenant/posts
-          rewriteUrl.pathname = `/cms/${tenantSlug}${pathname === "/" ? "" : pathname}`
-        }
-        
-        const response = NextResponse.rewrite(rewriteUrl)
-        applySecurityHeaders(response)
-        return response
-      }
-    }
-  }
-
   // ==================== API VERSIONING (APP_HOST) ====================
   // Rewrite /api/v1/<tenant>/... → /api/public/<tenant>/...
   // Rewrite /api/v2/<tenant>/... → /api/public/<tenant>/... (future)

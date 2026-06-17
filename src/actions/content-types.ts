@@ -98,8 +98,21 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const contentType = await tenantDb.contentType.findUnique({
-      where: { id },
+    const contentType = await tenantDb.contentType.findFirst({
+      where: {
+        id,
+        OR: [
+          { tenantId: access.tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: access.tenantId,
+                enabled: true
+              }
+            }
+          }
+        ]
+      },
       include: {
         fields: {
           orderBy: { order: 'asc' },
@@ -138,7 +151,20 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
     const tenantDb = await getTenantDb(tenantSlug)
 
     const contentType = await tenantDb.contentType.findFirst({
-      where: { slug, tenantId: access.tenantId },
+      where: {
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          {
+            tenants: {
+              some: {
+                tenantId: access.tenantId,
+                enabled: true
+              }
+            }
+          }
+        ]
+      },
       include: {
         fields: {
           orderBy: { order: 'asc' },
@@ -260,6 +286,13 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
     })
 
     if (!existingContentType) return { error: "Content type not found" }
+
+    const isGlobal = existingContentType.tenantId === null
+    const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
+
+    if (isGlobal || isOwnedByOther) {
+      return { error: "Global or cross-tenant content types cannot be modified by tenant admins" }
+    }
 
     const updatedContentType = await tenantDb.$transaction(async (tx) => {
       await tx.contentTypeField.deleteMany({

@@ -193,7 +193,11 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
                   </TableHeader>
                   <TableBody>
                     {filteredComponents.map((component) => (
-                      <TableRow key={component.id} className="group hover:bg-muted/5 transition-colors">
+                      <TableRow 
+                        key={component.id} 
+                        className="group hover:bg-muted/5 transition-colors cursor-pointer"
+                        onClick={() => router.push(`/dashboard/${tenantSlug}/components/${component.slug}`)}
+                      >
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-none bg-orange-50 flex items-center justify-center text-orange-600 border border-orange-100">
@@ -225,7 +229,7 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/${tenantSlug}/components/${component.slug}`}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit Details
+                                  <Edit className="mr-2 h-4 w-4" /> Edit Schema
                                 </Link>
                               </DropdownMenuItem>
                               {!component.isGlobal && (

@@ -280,6 +280,24 @@ export function FieldConfigModal({
                     Upload file DOCX Anda. Hanya format .docx yang didukung.
                   </p>
                 </div>
+                
+                <div className="space-y-2 mt-4">
+                  <Label className="text-xs font-bold text-slate-700">Format Surat Placeholder</Label>
+                  <Input 
+                    value={typeof editingField.options === 'object' && editingField.options !== null ? editingField.options.placeholders || "" : ""} 
+                    onChange={e => setEditingField(prev => {
+                      if (!prev) return null;
+                      const newOptions = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {};
+                      newOptions.placeholders = e.target.value;
+                      return { ...prev, options: newOptions };
+                    })}
+                    placeholder="e.g., {{nama}}, {{tanggal}}, {{alamat}}"
+                    className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"
+                  />
+                  <p className="text-[10px] uppercase font-black text-muted-foreground mt-1 tracking-wider">
+                    Daftar placeholder yang ada di dalam dokumen. Pisahkan dengan koma.
+                  </p>
+                </div>
               </div>
             )}
 

@@ -211,6 +211,13 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
 
     if (!existingComponent) return { error: "Component not found" }
 
+    const isGlobal = existingComponent.tenantId === null
+    const isOwnedByOther = existingComponent.tenantId !== null && existingComponent.tenantId !== access.tenantId
+
+    if (isGlobal || isOwnedByOther) {
+      return { error: "Global or cross-tenant components cannot be modified by tenant admins" }
+    }
+
     if (slug && slug !== existingComponent.slug) {
       const slugConflict = await tenantDb.component.findFirst({
         where: { slug, tenantId: access.tenantId },

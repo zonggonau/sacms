@@ -131,7 +131,10 @@ export function ContentEntriesManager({
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="rounded-none hover:bg-muted" onClick={() => router.push(`/cms/${tenantSlug}`)}>
+            <Button variant="ghost" size="icon" className="rounded-none hover:bg-muted" onClick={() => {
+              const p = window.location.pathname;
+              router.push('/');
+            }}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <div>
@@ -141,7 +144,7 @@ export function ContentEntriesManager({
           </div>
           <Button 
             className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white shadow-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 rounded-none font-bold transition-colors" 
-            onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/new`)}
+            onClick={() => router.push(`${window.location.pathname.replace(/\/$/, '')}/new`)}
           >
             <Plus className="mr-2 h-5 w-5" /> New Entry
           </Button>
@@ -332,7 +335,7 @@ export function ContentEntriesManager({
                           <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted hover:text-orange-500">
                             <Eye className="h-4 w-4" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted hover:text-orange-500" onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/edit/${entry.id}`)}>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none hover:bg-muted hover:text-orange-500" onClick={() => router.push(`${window.location.pathname.replace(/\/$/, '')}/edit/${entry.id}`)}>
                             <Edit className="h-4 w-4" />
                           </Button>
                           {contentType?.fields?.some((f: any) => f.type === "document_template") && (

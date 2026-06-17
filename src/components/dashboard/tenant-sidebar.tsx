@@ -80,7 +80,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
 
   const href = (path: string) => {
     if (path.startsWith("/cms/")) return path
-    return `/dashboard${path}`
+    const prefix = `/dashboard/${tenantSlug || tenantId}`
+    if (path === "") return prefix
+    return `${prefix}${path}`
   }
 
   const isActive = (item: NavItem) => {

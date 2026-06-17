@@ -7,7 +7,7 @@ import { getContentTypeBySlugAction } from "@/actions/content-types"
 export default async function EditContentTypePage({
   params,
 }: {
-  params: Promise<{ tenant: string; slug: string }>
+  params: Promise<{ tenant: string; contentTypeSlug: string }>
 }) {
   const session = await getServerSession(authOptions)
   if (!session) {
@@ -16,7 +16,7 @@ export default async function EditContentTypePage({
 
   const resolvedParams = await params
   const tenantSlug = resolvedParams.tenant
-  const contentTypeSlug = resolvedParams.slug
+  const contentTypeSlug = resolvedParams.contentTypeSlug
 
   let initialContentType = null
   let initialFields = []

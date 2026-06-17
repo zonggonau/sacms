@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import { Badge } from "@/components/ui/badge"
 import {
   Select,
   SelectContent,
@@ -34,19 +35,116 @@ import {
   Settings2,
   GripVertical,
   Layers,
-  Search,
   Zap,
-  Box,
 } from "lucide-react"
 import Link from "next/link"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
 import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
+import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
-import { Badge } from "@/components/ui/badge"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { createComponentAction } from "@/actions/components"
 
 const CATEGORIES = ["SEO", "Media", "Content", "Layout", "Settings", "Other"]
+
+// DnD Kit Imports
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core"
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
+
+interface Component {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  category: string | null
+  fields: Field[]
+}
+
+// Sortable Item Component
+function SortableFieldItem({
+  field,
+  onEdit,
+  onDelete
+}: {
+  field: Field,
+  onEdit: (f: Field) => void,
+  onDelete: (id: string) => void
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging
+  } = useSortable({ id: field.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    zIndex: isDragging ? 50 : 0,
+    opacity: isDragging ? 0.5 : 1,
+  }
+
+  const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
+  const Icon = typeInfo?.icon || Zap
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none"
+    >
+      <div
+        {...attributes}
+        {...listeners}
+        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-none text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"
+      >
+        <GripVertical className="h-4 w-4" />
+      </div>
+
+      <div className="w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5 shrink-0">
+        <Icon className="h-5 w-5" />
+      </div>
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <span className="font-bold text-sm truncate">{field.name}</span>
+          {field.required && <Badge className="text-[8px] h-3.5 bg-red-50 text-red-500 border-red-100 uppercase">REQ</Badge>}
+        </div>
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+          <span className="uppercase">{field.type}</span>
+          <span>&middot;</span>
+          <span>/{field.slug}</span>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => onEdit(field)}>
+          <Settings2 className="h-4 w-4" />
+        </Button>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-destructive hover:bg-red-50" onClick={() => onDelete(field.id)}>
+          <Trash2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  )
+}
 
 export default function NewComponentClient({
   tenantSlug,
@@ -55,7 +153,8 @@ export default function NewComponentClient({
 }) {
   const { data: session, status } = useSession()
   const router = useRouter()
-
+  
+  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
@@ -70,6 +169,14 @@ export default function NewComponentClient({
 
   const tenants = session?.user?.tenants || []
 
+  // DnD Sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  )
+
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
   }, [status, router])
@@ -81,13 +188,9 @@ export default function NewComponentClient({
     }
   }, [name])
 
-  const generateFieldSlug = (value: string) => {
-    return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
-  }
-
   const selectType = (type: string) => {
     const newField: Field = {
-      id: Date.now().toString(),
+      id: `field-${Date.now()}`,
       name: "",
       slug: "",
       type: type,
@@ -99,6 +202,8 @@ export default function NewComponentClient({
       targetSlug: "",
       componentSlug: "",
       repeatable: false,
+      autoGenerate: type === "slug",
+      sourceField: "",
     }
     setEditingField(newField)
     setIsTypeSelectorOpen(false)
@@ -110,62 +215,108 @@ export default function NewComponentClient({
     setIsConfigModalOpen(true)
   }
 
+  const removeField = (id: string) => {
+    setFields(fields.filter(f => f.id !== id))
+  }
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((i) => i.id === active.id)
+        const newIndex = items.findIndex((i) => i.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
+  }
+
   const saveFieldConfig = () => {
     if (!editingField?.name || !editingField?.slug) {
       toast({ variant: "destructive", title: "Missing info", description: "Name and Slug are required" })
       return
     }
+
     const exists = fields.find(f => f.id === editingField.id)
     if (exists) {
       setFields(fields.map(f => f.id === editingField.id ? editingField : f))
     } else {
       setFields([...fields, editingField])
     }
+
     setIsConfigModalOpen(false)
     setEditingField(null)
   }
 
   const serializeFieldOptions = (field: Field) => {
+    let options: Record<string, any> = {}
+
+    try {
+      options = field.options ? (typeof field.options === 'string' ? JSON.parse(field.options) : field.options) : {}
+    } catch (e) {
+      options = {}
+    }
+
     if (field.type === "relation") {
-      return JSON.stringify({ relationType: field.relationType, targetModel: field.targetModel, targetSlug: field.targetSlug })
+      options.relationType = field.relationType
+      options.targetModel = field.targetModel
+      options.targetSlug = field.targetSlug
+    } else if (field.type === "component") {
+      options.componentSlug = field.componentSlug
+      options.repeatable = field.repeatable
+    } else if (field.type === "slug") {
+      options.autoGenerate = field.autoGenerate
+      options.sourceField = field.sourceField
     }
-    if (field.type === "component") {
-      return JSON.stringify({ componentSlug: field.componentSlug, repeatable: field.repeatable })
-    }
-    return field.options
+
+    return options
   }
 
   const handleSave = async () => {
     if (!name || !slug) {
-      toast({ variant: "destructive", title: "Error", description: "Name and slug are required" })
+      toast({ variant: "destructive", title: "Validation Error", description: "Name and slug are required" })
       return
     }
+
     setSaving(true)
     try {
       const res = await createComponentAction(tenantSlug, {
-        name, slug, description, category,
+        name,
+        slug,
+        description,
+        category,
         fields: fields.map((f, index) => ({
-          name: f.name, slug: f.slug, type: f.type,
-          required: f.required, unique: f.unique,
+          name: f.name,
+          slug: f.slug,
+          type: f.type,
+          required: f.required,
+          unique: f.unique,
           options: serializeFieldOptions(f),
           relationSlug: f.type === "relation" ? f.targetSlug : null,
           order: index,
         })),
       })
+
       if (!res.error) {
-        toast({ title: "Success", description: "Component created" })
+        toast({ title: "Success", description: "Component created successfully" })
         router.push(`/dashboard/${tenantSlug}/components`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error })
       }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+    } catch (error) {
+      console.error("Failed to save:", error)
+      toast({ variant: "destructive", title: "Error", description: "Failed to save schema" })
     } finally {
       setSaving(false)
     }
   }
 
-  if (status === "loading") return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+  if (loading) return (
+    <div className="flex flex-1 flex-col w-full">
+<div className="flex-1 flex items-center justify-center flex-col w-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    </div>
+  )
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -175,12 +326,17 @@ export default function NewComponentClient({
         <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
           <div className="w-full">
             
+
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" className="rounded-none" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
+              <Link href={`/dashboard/${tenantSlug}/components`}>
+                <Button variant="ghost" size="icon" className="rounded-none">
+                  <ArrowLeft className="h-5 w-5" />
+                </Button>
+              </Link>
               <div>
                 <h1 className="text-xl font-bold text-slate-800">New Component</h1>
-                <p className="text-xs text-slate-500 font-medium mt-1">Create a reusable field group.</p>
+                <p className="text-muted-foreground">Create a reusable field group.</p>
               </div>
             </div>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
@@ -202,11 +358,11 @@ export default function NewComponentClient({
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Display Name</Label>
-                    <Input value={name} onChange={e => setName(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
+                    <Input value={name} onChange={(e) => setName(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">API Slug</Label>
-                    <Input value={slug} onChange={e => setSlug(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-mono text-xs" />
+                    <Input value={slug} onChange={(e) => setSlug(e.target.value)} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-mono text-xs" />
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Category</Label>
@@ -219,7 +375,7 @@ export default function NewComponentClient({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
-                    <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
                   </div>
                 </CardContent>
               </Card>
@@ -227,7 +383,9 @@ export default function NewComponentClient({
 
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between px-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2"><Layers className="h-4 w-4" /> Attributes</h2>
+                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
+                  <Layers className="h-4 w-4" /> Attributes
+                </h2>
                 <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-none font-bold bg-white border-slate-200 text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-sm">
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Field
                 </Button>
@@ -239,28 +397,27 @@ export default function NewComponentClient({
                   <p className="font-bold">No attributes defined</p>
                 </div>
               ) : (
-                <div className="space-y-2">
-                  {fields.map(field => {
-                    const typeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
-                    const Icon = typeInfo?.icon || Zap
-                    return (
-                      <div key={field.id} className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none">
-                        <div className="w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5"><Icon className="h-5 w-5" /></div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm truncate">{field.name}</span>
-                            {field.required && <Badge className="text-[8px] h-3.5 bg-red-50 text-red-500 border-red-100 uppercase">REQ</Badge>}
-                          </div>
-                          <div className="text-[10px] text-muted-foreground uppercase font-mono tracking-tighter">{field.type} &middot; /{field.slug}</div>
-                        </div>
-                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => editField(field)}><Settings2 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setFields(fields.filter(f => f.id !== field.id))}><Trash2 className="h-4 w-4" /></Button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
+                >
+                  <SortableContext
+                    items={fields.map(f => f.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {fields.map(field => (
+                        <SortableFieldItem
+                          key={field.id}
+                          field={field}
+                          onEdit={editField}
+                          onDelete={removeField}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
               )}
             </div>
           </div>

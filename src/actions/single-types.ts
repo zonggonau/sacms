@@ -238,6 +238,13 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     if (!existingSingleType) return { error: "Single type not found" }
 
+    const isGlobal = existingSingleType.tenantId === null
+    const isOwnedByOther = existingSingleType.tenantId !== null && existingSingleType.tenantId !== access.tenantId
+
+    if (isGlobal || isOwnedByOther) {
+      return { error: "Global or cross-tenant single types cannot be modified by tenant admins" }
+    }
+
     if (slug && slug !== existingSingleType.slug) {
       const slugConflict = await tenantDb.singleType.findFirst({
         where: { slug, tenantId: access.tenantId },

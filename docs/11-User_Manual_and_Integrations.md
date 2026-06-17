@@ -15,19 +15,21 @@ Langkah login:
 ## 2. Content Builder (Membuat Struktur Tabel)
 Untuk mulai menyimpan data, Anda harus membuat struktur (Schema) terlebih dahulu:
 1. Buka menu **Content Builder** di sidebar kiri.
-2. Klik **Create New Collection Type** (misal: `Articles`).
+2. Klik **Create New Collection Type** (misal: `Articles`). Anda juga dapat menggunakan tombol **AI Schema Generate** untuk menghasilkan *field* secara otomatis hanya dengan memasukkan *prompt* singkat (misal: "Buat skema untuk artikel berita").
 3. Tambahkan field-field yang dibutuhkan:
    - *Title* (Text, Required)
    - *Content* (RichText)
    - *Cover Image* (Media)
    - *Published Date* (Date)
-4. Klik **Save**. Sistem akan secara otomatis membuatkan API Endpoint untuk `Articles`.
+   - *Template Surat* (Format Surat - konfigurasikan *placeholder* menggunakan *modal* yang tersedia saat mengatur tipe field ini)
+4. Klik **Save**. Sistem akan secara otomatis membuatkan API Endpoint untuk tipe konten tersebut.
 
 ## 3. Content Manager (Mengisi Data)
 1. Buka menu **Content Manager**.
 2. Pilih tipe konten yang tadi dibuat (`Articles`).
 3. Klik **Create New Entry**.
 4. Isi data sesuai formulir. Anda juga dapat mengunggah gambar langsung dengan memilih field Media.
+   - **Tip:** Pada *Rich Text Editor*, Anda dapat menekan tombol **AI Content Generate** untuk meminta bantuan AI menyusunkan paragraf tulisan.
 5. Klik **Save as Draft**.
 6. Gunakan tombol **Send to Review** atau **Publish** (jika Anda memiliki hak akses) untuk mempublikasikan konten tersebut ke API Publik.
 

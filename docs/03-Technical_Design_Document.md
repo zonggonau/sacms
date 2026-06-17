@@ -197,7 +197,7 @@ Arsitektur SaCMS dirancang ringan pada sisi pangkalan data utama, dengan mendele
 | **Cloudflare R2** | S3-Compatible API | Penempatan Aset (CDN) | Pola Penamaan Objek: `uploads/{tenantId}/{year}/{month}/{uuid}-{filename}.{ext}`. CDN terhubung secara publik. |
 | **Upstash Redis** | HTTPS REST | Manajemen Cache & Limiter | Rate limiting dieksekusi di Edge. Format struktur Redis Key: `rate-limit:api:{tenantId}:{clientIp}`. |
 | **Midtrans Snap** | HTTPS API | Otomasi *Billing* & *Invoice* | Terhubung untuk menagih biaya paket berlangganan pada *Tenant*. Endpoint Webhook Next.js merespons notifikasi `transaction_status`. |
-| **OpenAI / LLM** | HTTPS API | *AI Content Generation* | Menyediakan saran konten (*templating*) otomatis di *Rich Text Editor*. |
+| **Deepseek / LLM** | HTTPS API | *AI Content & Schema Gen* | Menyediakan *AI Content Generation* (saran konten otomatis di *Rich Text Editor*) dan *AI Schema Generate* (pembuatan struktur *field* dinamis). |
 
 # Data Flow Diagram (DFD) - SaCMS
 

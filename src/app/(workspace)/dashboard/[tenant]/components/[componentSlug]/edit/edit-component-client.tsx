@@ -45,6 +45,8 @@ import { toast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
 import { getComponentBySlugAction, updateComponentAction } from "@/actions/components"
 
+const CATEGORIES = ["SEO", "Media", "Content", "Layout", "Settings", "Other"]
+
 // DnD Kit Imports
 import {
   DndContext,
@@ -364,7 +366,12 @@ export default function EditComponentClient({
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Category</Label>
-                    <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="e.g. SEO, Content, UI" className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                    <Select value={category} onValueChange={setCategory}>
+                      <SelectTrigger className="bg-muted/30 border-none font-bold uppercase text-[10px]"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
@@ -377,34 +384,41 @@ export default function EditComponentClient({
             <div className="lg:col-span-2 space-y-4">
               <div className="flex items-center justify-between px-2">
                 <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                  <Layers className="h-4 w-4" /> Attributes List ({fields.length})
+                  <Layers className="h-4 w-4" /> Attributes
                 </h2>
-                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-none font-bold bg-card border-primary/20 text-primary hover:bg-primary hover:text-white transition-all">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add New Field
+                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-none font-bold bg-white border-slate-200 text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-sm">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add Field
                 </Button>
               </div>
 
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={fields.map(f => f.id)}
-                  strategy={verticalListSortingStrategy}
+              {fields.length === 0 ? (
+                <div className="py-20 border-2 border-dashed rounded-none flex flex-col items-center justify-center opacity-30">
+                  <Plus className="h-12 w-12 mb-4" />
+                  <p className="font-bold">No attributes defined</p>
+                </div>
+              ) : (
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={handleDragEnd}
                 >
-                  <div className="space-y-2">
-                    {fields.map(field => (
-                      <SortableFieldItem
-                        key={field.id}
-                        field={field}
-                        onEdit={editField}
-                        onDelete={removeField}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
+                  <SortableContext
+                    items={fields.map(f => f.id)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="space-y-2">
+                      {fields.map(field => (
+                        <SortableFieldItem
+                          key={field.id}
+                          field={field}
+                          onEdit={editField}
+                          onDelete={removeField}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+              )}
             </div>
           </div>
         </div>

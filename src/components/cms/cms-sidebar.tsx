@@ -38,7 +38,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const href = (path: string) => path || "/"
+  const href = (path: string) => `/cms/${tenantId}${path}`
 
   useEffect(() => {
     setMounted(true)
@@ -97,9 +97,9 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
               <p className="px-2 text-xs text-muted-foreground italic">No collections assigned</p>
             ) : (
               contentTypes.map(ct => {
-                const active = pathname.startsWith(href(`/content/${ct.slug}`))
+                const active = pathname.startsWith(href(`/${ct.slug}`))
                 return (
-                  <Link key={ct.id} href={href(`/content/${ct.slug}`)}>
+                  <Link key={ct.id} href={href(`/${ct.slug}`)}>
                     <div className={cn(
                       "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group",
                       active

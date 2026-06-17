@@ -12,6 +12,9 @@ Versi produksi pertama dari sistem SaCMS yang diposisikan sebagai alternatif *He
 
 ### Added
 - **Multi-Tenant Workflow:** Isolasi data murni melalui PostgreSQL Prisma dengan *TenantID check*.
+- **AI Content Generate:** Dukungan pembuatan teks dan draft otomatis di *Rich Text Editor* berbasis Deepseek.
+- **AI Schema Generate:** Generator skema dinamis untuk mempermudah perancangan tipe konten.
+- **Format Surat Placeholder:** Konfigurasi *placeholder* untuk templat dokumen surat yang diakses melalui *modal* tipe *field* `format surat`.
 - **Content State Machine:** Fitur draf, review, dan publikasi (`DRAFT` → `IN_REVIEW` → `PUBLISHED`).
 - **Media CDN integration:** Sinkronisasi langsung ke Cloudflare R2 dengan fitur kompresi *thumbnail* bawaan.
 - **Advanced Filtering API:** Strapi-style operator query string (contoh: `?filters[price][$gt]=100`).
@@ -38,12 +41,12 @@ Jika pengguna/klien ingin mengajukan perubahan signifikan pada struktur database
 **Target Rilis:** v1.1.0
 
 ### Deskripsi Perubahan
-[Contoh: Penambahan fitur AI content generation yang terintegrasi dengan OpenAI langsung di dalam Text Editor]
+[Contoh: Penambahan fitur AI content generation yang terintegrasi dengan Deepseek langsung di dalam Text Editor]
 
 ### Dampak (Impact Analysis)
 - **Database:** Perlu tabel `AiLog` untuk mencatat jumlah token pemakaian per Tenant.
 - **UI/UX:** Terdapat tombol `Generate with AI` di komponen `RichTextEditor`.
-- **Cost:** Biaya per-API call ke OpenAI yang akan di-*charge* ke *billing* klien.
+- **Cost:** Biaya per-API call ke Deepseek yang akan di-*charge* ke *billing* klien.
 
 ### Approval Status
 [ ] Approved by Tech Lead

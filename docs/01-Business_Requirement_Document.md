@@ -44,9 +44,11 @@ Proyek ini dianggap sukses jika peluncuran versi 1.0 (MVP) memenuhi metrik berik
 
 ### In Scope (Termasuk dalam Proyek v1.0)
 - Sistem *Workspace* (Multi-tenant) murni dengan isolasi data tingkat ORM (Prisma).
-- *Content Builder* dinamis (Collection Types & Single Types).
+- *Content Builder* dinamis (Collection Types & Single Types) dilengkapi dengan **AI Schema Generate** untuk kemudahan pembuatan skema otomatis.
 - Manajemen konten i18n (Multibahasa).
 - Workflow konten (Draft, In Review, Published, Scheduled, Archived).
+- Pembuatan dan pengeditan konten yang didukung dengan **AI Content Generate** terintegrasi Deepseek.
+- Implementasi tipe field khusus **Format Surat Placeholder** yang dapat dikonfigurasi melalui *modal* untuk pembuatan dokumen/surat dinamis.
 - API Publik berbasis REST & GraphQL dengan mesin *filtering* (ops: `$eq`, `$contains`, dll).
 - Integrasi Cloudflare R2 untuk penyimpanan media (gambar/video).
 - Integrasi Midtrans Snap API untuk pembayaran langganan SaaS bulanan.

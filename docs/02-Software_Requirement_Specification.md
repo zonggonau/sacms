@@ -14,9 +14,11 @@ Dokumen ini mendeskripsikan kebutuhan perangkat lunak untuk sistem SaCMS, mencak
    - Sistem harus menyajikan dasbor manajemen langganan terintegrasi dengan Midtrans.
 2. ***Content Modeling* (Pembuatan Skema)**
    - Sistem harus mengizinkan Admin untuk mendefinisikan struktur *Database* dinamis berupa *Collection Types* dan *Single Types*.
-   - Sistem harus mengizinkan konfigurasi tipe *Field* (Teks, Angka, Tanggal, Relasi, Media, Boolean).
+   - Sistem harus menyediakan fungsionalitas **AI Schema Generate** untuk menghasilkan dan merekomendasikan struktur *field* secara otomatis berdasarkan prompt pengguna.
+   - Sistem harus mengizinkan konfigurasi tipe *Field* (Teks, Angka, Tanggal, Relasi, Media, Boolean, dan **Format Surat** di mana *placeholder* surat dikonfigurasi melalui *modal*).
 3. **Manajemen Konten & Alur Kerja (*Workflow*)**
    - Sistem harus mendukung pembuatan, pengubahan, dan penghapusan data konten (CRUD).
+   - Sistem harus memiliki fitur **AI Content Generate** langsung pada *Rich Text Editor* untuk otomatisasi penyusunan draf teks atau *templating* konten.
    - Sistem harus mengimplementasikan status konten: `DRAFT`, `IN_REVIEW`, `APPROVED`, `SCHEDULED`, `PUBLISHED`, `ARCHIVED`, `REJECTED`.
    - Sistem harus mendukung lokalisasi (i18n) sehingga konten dapat diterjemahkan ke beberapa bahasa berdasarkan `locale`.
 4. **Media *Library***

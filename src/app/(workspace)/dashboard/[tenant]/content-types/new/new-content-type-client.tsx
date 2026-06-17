@@ -37,6 +37,7 @@ import {
   Layers,
   Search,
   Zap,
+  Wand2,
 } from "lucide-react"
 import Link from "next/link"
 import { FieldTypeSelector } from "@/components/cms/field-type-selector"
@@ -64,6 +65,9 @@ export default function NewContentTypeClient({
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [editingField, setEditingField] = useState<Field | null>(null)
+  const [isAiModalOpen, setIsAiModalOpen] = useState(false)
+  const [aiPrompt, setAiPrompt] = useState("")
+  const [aiLoading, setAiLoading] = useState(false)
 
   const tenants = session?.user?.tenants || []
 
@@ -195,6 +199,34 @@ export default function NewContentTypeClient({
     }
   }
 
+  const handleGenerateAI = async () => {
+    if (!aiPrompt) {
+      toast({ variant: "destructive", title: "Error", description: "Prompt is required" })
+      return
+    }
+    setAiLoading(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai/generate-schema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: aiPrompt })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast({ title: "Success", description: "Schema generated successfully!" })
+        router.push(`/dashboard/${tenantSlug}/content-types`)
+      } else {
+        toast({ variant: "destructive", title: "Error", description: data.error || "Failed to generate schema" })
+      }
+    } catch (e) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to connect to AI service" })
+    } finally {
+      setAiLoading(false)
+      setIsAiModalOpen(false)
+      setAiPrompt("")
+    }
+  }
+
   if (status === "loading") return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 flex items-center justify-center flex-col w-full">
@@ -224,10 +256,16 @@ export default function NewContentTypeClient({
                 <p className="text-muted-foreground">Define your data structure and rules.</p>
               </div>
             </div>
-            <Button onClick={handleSaveSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Schema
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button onClick={() => setIsAiModalOpen(true)} variant="outline" className="rounded-none font-bold shadow-none text-blue-600 border-blue-200 bg-blue-50 hover:bg-blue-100 hover:text-blue-700">
+                <Wand2 className="mr-2 h-4 w-4" />
+                Generate via AI
+              </Button>
+              <Button onClick={handleSaveSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
+                {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+                Save Schema
+              </Button>
+            </div>
           </div>
 
           
@@ -329,6 +367,34 @@ export default function NewContentTypeClient({
         context="contentType"
         onSave={saveFieldConfig}
       />
+
+      <Dialog open={isAiModalOpen} onOpenChange={setIsAiModalOpen}>
+        <DialogContent className="rounded-none border border-slate-200 shadow-none">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-bold text-slate-800 flex items-center gap-2">
+              <Wand2 className="h-5 w-5 text-blue-600" /> Generate Content Type via AI
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Describe the content type you want to create (e.g. "A blog post with title, content, cover image, and author").
+            </DialogDescription>
+          </DialogHeader>
+          <div className="py-4">
+            <Textarea 
+              value={aiPrompt}
+              onChange={(e) => setAiPrompt(e.target.value)}
+              placeholder="Your prompt here..."
+              className="bg-white border-slate-200 rounded-none focus-visible:ring-primary min-h-[100px]"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setIsAiModalOpen(false)} className="rounded-none font-bold">Cancel</Button>
+            <Button onClick={handleGenerateAI} disabled={aiLoading || !aiPrompt} className="rounded-none font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-none">
+              {aiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+              Generate
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
