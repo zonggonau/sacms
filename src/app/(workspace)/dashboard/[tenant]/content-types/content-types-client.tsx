@@ -51,9 +51,11 @@ interface ContentType {
 interface ContentTypesClientProps {
   initialContentTypes: ContentType[]
   tenantSlug: string
+  limit?: number
+  current?: number
 }
 
-export function ContentTypesClient({ initialContentTypes, tenantSlug }: ContentTypesClientProps) {
+export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0 }: ContentTypesClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -73,6 +75,11 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug }: ContentT
       ct.slug.toLowerCase().includes(searchQuery.toLowerCase())
     )
   }, [initialContentTypes, searchQuery])
+
+  const isLimitReached = useMemo(() => {
+    const customCount = initialContentTypes.filter(c => !c.isGlobal).length
+    return customCount >= limit
+  }, [initialContentTypes, limit])
 
   const handleDeleteClick = (contentType: ContentType) => {
     setDeleteDialog({ open: true, contentType })
@@ -113,12 +120,14 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug }: ContentT
                 variant="outline"
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
                 onClick={() => setIsAIModalOpen(true)}
+                disabled={isLimitReached}
               >
                 <Sparkles className="mr-2 h-4 w-4" /> AI Generate
               </Button>
               <Button
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/new`)}
+                disabled={isLimitReached}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Schema
               </Button>
@@ -156,11 +165,23 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug }: ContentT
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Workspace Custom</p>
-                  <p className="text-xl font-black">{initialContentTypes.filter(c => !c.isGlobal).length}</p>
+                  <p className="text-xl font-black">
+                    {initialContentTypes.filter(c => !c.isGlobal).length} / {limit >= 999999 ? "∞" : limit}
+                  </p>
                 </div>
               </CardContent>
             </Card>
           </div>
+
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                You have reached your content type limit of {limit} schemas. Delete an existing custom schema or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
 
           {/* Filter & List Area */}
           <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">

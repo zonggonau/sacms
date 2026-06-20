@@ -234,9 +234,9 @@ export default function ContentTypeEntriesPage() {
 
   if (session?.user?.role !== "super_admin" || !contentType) return null
 
-  // Columns logic (same as tenant side)
-  const displayFields = contentType.fields.filter(f => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3)
-  const mediaField = contentType.fields.find(f => f.type === 'media' || f.type === 'mediaMultiple')
+  const fields = contentType.fields || (contentType as any).schemaFields || []
+  const displayFields = fields.filter((f: any) => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3)
+  const mediaField = fields.find((f: any) => f.type === 'media' || f.type === 'mediaMultiple')
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -388,7 +388,7 @@ export default function ContentTypeEntriesPage() {
               <p className="text-[11px] text-primary/80 leading-relaxed font-medium">
                 {slug === 'templates' 
                     ? "AI will follow the Master Template standard for compatibility." 
-                    : `AI will automatically fill fields like ${contentType.fields.slice(0, 2).map(f => f.name).join(', ')} etc.`}
+                    : `AI will automatically fill fields like ${fields.slice(0, 2).map((f: any) => f.name).join(', ')} etc.`}
               </p>
             </div>
           </div>

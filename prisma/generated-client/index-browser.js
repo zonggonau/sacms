@@ -128,10 +128,10 @@ exports.Prisma.UserScalarFieldEnum = {
   password: 'password',
   image: 'image',
   role: 'role',
-  plan: 'plan',
   emailVerified: 'emailVerified',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  plan: 'plan'
 };
 
 exports.Prisma.AccountScalarFieldEnum = {
@@ -170,18 +170,18 @@ exports.Prisma.TenantScalarFieldEnum = {
   logo: 'logo',
   plan: 'plan',
   status: 'status',
-  databaseUrl: 'databaseUrl',
-  storageConfig: 'storageConfig',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
+  brandLogo: 'brandLogo',
+  brandName: 'brandName',
   customDomain: 'customDomain',
   customDomainStatus: 'customDomainStatus',
   customDomainVerifiedAt: 'customDomainVerifiedAt',
-  brandName: 'brandName',
-  brandLogo: 'brandLogo',
-  primaryColor: 'primaryColor',
   customEmailSender: 'customEmailSender',
-  faviconUrl: 'faviconUrl'
+  databaseUrl: 'databaseUrl',
+  faviconUrl: 'faviconUrl',
+  primaryColor: 'primaryColor',
+  storageConfig: 'storageConfig'
 };
 
 exports.Prisma.TenantMemberScalarFieldEnum = {
@@ -189,8 +189,8 @@ exports.Prisma.TenantMemberScalarFieldEnum = {
   tenantId: 'tenantId',
   userId: 'userId',
   role: 'role',
-  customPermissions: 'customPermissions',
-  joinedAt: 'joinedAt'
+  joinedAt: 'joinedAt',
+  customPermissions: 'customPermissions'
 };
 
 exports.Prisma.CustomPlanOverrideScalarFieldEnum = {
@@ -212,29 +212,31 @@ exports.Prisma.CustomPlanOverrideScalarFieldEnum = {
 
 exports.Prisma.ContentTypeScalarFieldEnum = {
   id: 'id',
-  tenantId: 'tenantId',
   name: 'name',
   slug: 'slug',
   description: 'description',
   isPublished: 'isPublished',
-  docxTemplateUrl: 'docxTemplateUrl',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  tenantId: 'tenantId',
+  docxTemplateUrl: 'docxTemplateUrl'
 };
 
-exports.Prisma.ContentTypeFieldScalarFieldEnum = {
+exports.Prisma.SchemaFieldScalarFieldEnum = {
   id: 'id',
-  contentTypeId: 'contentTypeId',
   name: 'name',
   slug: 'slug',
   type: 'type',
   required: 'required',
   unique: 'unique',
-  localizable: 'localizable',
-  options: 'options',
+  order: 'order',
   jsonPath: 'jsonPath',
+  localizable: 'localizable',
   relationSlug: 'relationSlug',
-  order: 'order'
+  options: 'options',
+  contentTypeId: 'contentTypeId',
+  singleTypeId: 'singleTypeId',
+  componentId: 'componentId'
 };
 
 exports.Prisma.TenantContentTypeAssignmentScalarFieldEnum = {
@@ -247,32 +249,32 @@ exports.Prisma.TenantContentTypeAssignmentScalarFieldEnum = {
 
 exports.Prisma.ContentEntryScalarFieldEnum = {
   id: 'id',
-  documentId: 'documentId',
   contentTypeId: 'contentTypeId',
   tenantId: 'tenantId',
-  locale: 'locale',
-  data: 'data',
-  status: 'status',
-  reviewComment: 'reviewComment',
   publishedAt: 'publishedAt',
-  scheduledAt: 'scheduledAt',
-  archivedAt: 'archivedAt',
   createdBy: 'createdBy',
   updatedBy: 'updatedBy',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  archivedAt: 'archivedAt',
+  locale: 'locale',
+  reviewComment: 'reviewComment',
+  scheduledAt: 'scheduledAt',
+  status: 'status',
+  data: 'data',
+  documentId: 'documentId'
 };
 
 exports.Prisma.ContentVersionScalarFieldEnum = {
   id: 'id',
   contentEntryId: 'contentEntryId',
   version: 'version',
-  data: 'data',
   publishedAt: 'publishedAt',
   changeType: 'changeType',
   changedBy: 'changedBy',
   changeSummary: 'changeSummary',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  data: 'data'
 };
 
 exports.Prisma.ContentReviewAssignmentScalarFieldEnum = {
@@ -291,13 +293,13 @@ exports.Prisma.ContentReviewAssignmentScalarFieldEnum = {
 
 exports.Prisma.SingleTypeScalarFieldEnum = {
   id: 'id',
-  tenantId: 'tenantId',
   name: 'name',
   slug: 'slug',
   description: 'description',
-  isPublished: 'isPublished',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  isPublished: 'isPublished',
+  tenantId: 'tenantId'
 };
 
 exports.Prisma.SingleTypeFieldScalarFieldEnum = {
@@ -307,35 +309,35 @@ exports.Prisma.SingleTypeFieldScalarFieldEnum = {
   slug: 'slug',
   type: 'type',
   required: 'required',
-  unique: 'unique',
-  localizable: 'localizable',
-  options: 'options',
+  order: 'order',
   jsonPath: 'jsonPath',
+  localizable: 'localizable',
   relationSlug: 'relationSlug',
-  order: 'order'
+  unique: 'unique',
+  options: 'options'
 };
 
 exports.Prisma.TenantSingleTypeAssignmentScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
   singleTypeId: 'singleTypeId',
-  locale: 'locale',
   enabled: 'enabled',
-  data: 'data',
   publishedAt: 'publishedAt',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  locale: 'locale',
+  data: 'data'
 };
 
 exports.Prisma.ComponentScalarFieldEnum = {
   id: 'id',
-  tenantId: 'tenantId',
   name: 'name',
   slug: 'slug',
   description: 'description',
   category: 'category',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  tenantId: 'tenantId'
 };
 
 exports.Prisma.ComponentFieldScalarFieldEnum = {
@@ -345,12 +347,12 @@ exports.Prisma.ComponentFieldScalarFieldEnum = {
   slug: 'slug',
   type: 'type',
   required: 'required',
-  unique: 'unique',
-  localizable: 'localizable',
-  options: 'options',
+  order: 'order',
   jsonPath: 'jsonPath',
+  localizable: 'localizable',
   relationSlug: 'relationSlug',
-  order: 'order'
+  unique: 'unique',
+  options: 'options'
 };
 
 exports.Prisma.TenantComponentAssignmentScalarFieldEnum = {
@@ -366,10 +368,10 @@ exports.Prisma.ApiKeyScalarFieldEnum = {
   tenantId: 'tenantId',
   name: 'name',
   key: 'key',
-  permissions: 'permissions',
   lastUsed: 'lastUsed',
   expiresAt: 'expiresAt',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  permissions: 'permissions'
 };
 
 exports.Prisma.SubscriptionScalarFieldEnum = {
@@ -378,13 +380,13 @@ exports.Prisma.SubscriptionScalarFieldEnum = {
   tenantId: 'tenantId',
   plan: 'plan',
   status: 'status',
-  midtransCustomerId: 'midtransCustomerId',
-  midtransSubscriptionId: 'midtransSubscriptionId',
   currentPeriodStart: 'currentPeriodStart',
   currentPeriodEnd: 'currentPeriodEnd',
   cancelAtPeriodEnd: 'cancelAtPeriodEnd',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  midtransCustomerId: 'midtransCustomerId',
+  midtransSubscriptionId: 'midtransSubscriptionId'
 };
 
 exports.Prisma.InvoiceScalarFieldEnum = {
@@ -393,9 +395,9 @@ exports.Prisma.InvoiceScalarFieldEnum = {
   amount: 'amount',
   currency: 'currency',
   status: 'status',
-  midtransInvoiceId: 'midtransInvoiceId',
   paidAt: 'paidAt',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  midtransInvoiceId: 'midtransInvoiceId'
 };
 
 exports.Prisma.PaymentTransactionScalarFieldEnum = {
@@ -410,9 +412,9 @@ exports.Prisma.PaymentTransactionScalarFieldEnum = {
   transactionId: 'transactionId',
   transactionTime: 'transactionTime',
   fraudStatus: 'fraudStatus',
-  rawResponse: 'rawResponse',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  rawResponse: 'rawResponse'
 };
 
 exports.Prisma.AuditLogScalarFieldEnum = {
@@ -422,10 +424,10 @@ exports.Prisma.AuditLogScalarFieldEnum = {
   action: 'action',
   entity: 'entity',
   entityId: 'entityId',
-  data: 'data',
   ipAddress: 'ipAddress',
   userAgent: 'userAgent',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  data: 'data'
 };
 
 exports.Prisma.SettingScalarFieldEnum = {
@@ -441,8 +443,8 @@ exports.Prisma.SystemMetricScalarFieldEnum = {
   id: 'id',
   type: 'type',
   value: 'value',
-  metadata: 'metadata',
-  timestamp: 'timestamp'
+  timestamp: 'timestamp',
+  metadata: 'metadata'
 };
 
 exports.Prisma.ApiRequestScalarFieldEnum = {
@@ -475,18 +477,18 @@ exports.Prisma.MediaScalarFieldEnum = {
   mimeType: 'mimeType',
   size: 'size',
   url: 'url',
-  storageKey: 'storageKey',
   thumbnailUrl: 'thumbnailUrl',
-  mediumUrl: 'mediumUrl',
   alt: 'alt',
   caption: 'caption',
   width: 'width',
   height: 'height',
-  isPrivate: 'isPrivate',
-  metadata: 'metadata',
   uploadedBy: 'uploadedBy',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  mediumUrl: 'mediumUrl',
+  storageKey: 'storageKey',
+  metadata: 'metadata',
+  isPrivate: 'isPrivate'
 };
 
 exports.Prisma.PermissionScalarFieldEnum = {
@@ -500,10 +502,10 @@ exports.Prisma.PermissionScalarFieldEnum = {
 
 exports.Prisma.RolePermissionScalarFieldEnum = {
   id: 'id',
-  tenantId: 'tenantId',
   roleId: 'roleId',
   permissionId: 'permissionId',
-  granted: 'granted'
+  granted: 'granted',
+  tenantId: 'tenantId'
 };
 
 exports.Prisma.TenantRoleScalarFieldEnum = {
@@ -523,12 +525,12 @@ exports.Prisma.ApiTokenScalarFieldEnum = {
   description: 'description',
   token: 'token',
   type: 'type',
-  permissions: 'permissions',
   lastUsedAt: 'lastUsedAt',
   expiresAt: 'expiresAt',
   createdBy: 'createdBy',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  permissions: 'permissions'
 };
 
 exports.Prisma.WebhookScalarFieldEnum = {
@@ -537,27 +539,27 @@ exports.Prisma.WebhookScalarFieldEnum = {
   name: 'name',
   url: 'url',
   secret: 'secret',
-  events: 'events',
-  headers: 'headers',
   enabled: 'enabled',
-  hookType: 'hookType',
   lastTriggeredAt: 'lastTriggeredAt',
   failureCount: 'failureCount',
   createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
+  updatedAt: 'updatedAt',
+  hookType: 'hookType',
+  events: 'events',
+  headers: 'headers'
 };
 
 exports.Prisma.WebhookLogScalarFieldEnum = {
   id: 'id',
   webhookId: 'webhookId',
   event: 'event',
-  payload: 'payload',
-  response: 'response',
   statusCode: 'statusCode',
   success: 'success',
   duration: 'duration',
   error: 'error',
-  createdAt: 'createdAt'
+  createdAt: 'createdAt',
+  payload: 'payload',
+  response: 'response'
 };
 
 exports.Prisma.WebhookDeadLetterScalarFieldEnum = {
@@ -631,7 +633,7 @@ exports.Prisma.ModelName = {
   TenantMember: 'TenantMember',
   CustomPlanOverride: 'CustomPlanOverride',
   ContentType: 'ContentType',
-  ContentTypeField: 'ContentTypeField',
+  SchemaField: 'SchemaField',
   TenantContentTypeAssignment: 'TenantContentTypeAssignment',
   ContentEntry: 'ContentEntry',
   ContentVersion: 'ContentVersion',

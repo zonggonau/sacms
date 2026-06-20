@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
   output   = "./generated-client"
@@ -11,25 +8,21 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== USER & AUTH ====================
-
 model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
+  id            String         @id @default(cuid())
+  email         String         @unique
   name          String?
   password      String?
   image         String?
-  role          String    @default("user") // super_admin, admin, user
-  plan          String    @default("free") // free, starter, pro, enterprise, custom
+  role          String         @default("user")
   emailVerified DateTime?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-
-  // Relations
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  plan          String         @default("free")
   accounts      Account[]
   sessions      Session[]
-  tenants       TenantMember[]
   subscriptions Subscription[]
+  tenants       TenantMember[]
 
   @@map("users")
 }
@@ -47,8 +40,7 @@ model Account {
   scope             String?
   id_token          String?
   session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([provider, providerAccountId])
   @@map("accounts")
@@ -73,51 +65,46 @@ model VerificationToken {
   @@map("verification_tokens")
 }
 
-// ==================== TENANT ====================
-
 model Tenant {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  logo        String?
-  plan        String   @default("free") // free, starter, pro, enterprise
-  status      String   @default("active") // active, suspended, deleted
-  databaseUrl String? // Optional: External DB URL for Enterprise/Gov isolated data
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // ==================== WHITE-LABEL ====================
-  customDomain           String?   @unique // e.g. api.myclient.com
-  customDomainStatus     String? // pending, verified, failed
+  id                     String                        @id @default(cuid())
+  name                   String
+  slug                   String                        @unique
+  description            String?
+  logo                   String?
+  plan                   String                        @default("free")
+  status                 String                        @default("active")
+  createdAt              DateTime                      @default(now())
+  updatedAt              DateTime                      @updatedAt
+  brandLogo              String?
+  brandName              String?
+  customDomain           String?                       @unique
+  customDomainStatus     String?
   customDomainVerifiedAt DateTime?
-  brandName              String? // Override display name
-  brandLogo              String? // Custom logo URL (overrides logo)
-  primaryColor           String? // Hex color for branded UI e.g. #3B82F6
-  customEmailSender      String? // e.g. "Acme CMS <noreply@acme.com>"
-  faviconUrl             String? // Custom favicon URL
-
-  // Relations
-  members                TenantMember[]
+  customEmailSender      String?
+  databaseUrl            String?
+  faviconUrl             String?
+  primaryColor           String?
+  storageConfig          Json?
   apiKeys                ApiKey[]
-  subscriptions          Subscription[]
-  mediaFolders           MediaFolder[]
-  media                  Media[]
+  apiRequests            ApiRequest[]
   apiTokens              ApiToken[]
-  webhooks               Webhook[]
-  contentTypeAssignments TenantContentTypeAssignment[]
-  singleTypeAssignments  TenantSingleTypeAssignment[]
-  componentAssignments   TenantComponentAssignment[]
-  rolePermissions        RolePermission[]
-  tenantRoles            TenantRole[]
-  locales                TenantLocale[]
+  auditLogs              AuditLog[]
+  components             Component[]
   contentEntries         ContentEntry[]
   contentTypes           ContentType[]
-  singleTypes            SingleType[]
-  components             Component[]
-  auditLogs              AuditLog[]
+  media                  Media[]
+  mediaFolders           MediaFolder[]
+  rolePermissions        RolePermission[]
   settings               Setting[]
-  apiRequests            ApiRequest[]
+  singleTypes            SingleType[]
+  subscriptions          Subscription[]
+  componentAssignments   TenantComponentAssignment[]
+  contentTypeAssignments TenantContentTypeAssignment[]
+  locales                TenantLocale[]
+  members                TenantMember[]
+  tenantRoles            TenantRole[]
+  singleTypeAssignments  TenantSingleTypeAssignment[]
+  webhooks               Webhook[]
 
   @@map("tenants")
 }
@@ -126,137 +113,118 @@ model TenantMember {
   id                String   @id @default(cuid())
   tenantId          String
   userId            String
-  role              String   @default("member") // owner, admin, editor, viewer
-  customPermissions Json? // Array of strings e.g., ["workflow.approve", "workflow.reject"]
+  role              String   @default("member")
   joinedAt          DateTime @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  customPermissions Json?
+  tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, userId])
   @@map("tenant_members")
 }
 
-// ==================== CUSTOM PLAN OVERRIDES ====================
-
 model CustomPlanOverride {
-  id       String  @id @default(cuid())
-  // One of these will be set:
-  userId   String? @unique // For user-level custom plan
-  tenantId String? @unique // For workspace-level custom plan
-
-  // User plan overrides
-  maxWorkspaces Int?
-
-  // Workspace plan overrides
+  id                String   @id @default(cuid())
+  userId            String?  @unique
+  tenantId          String?  @unique
+  maxWorkspaces     Int?
   maxContentTypes   Int?
   maxContentEntries Int?
   maxTeamMembers    Int?
-  maxStorage        Int? // in MB
+  maxStorage        Int?
   maxLocales        Int?
   maxApiCalls       Int?
-
-  note      String? // Admin note
-  createdBy String? // Super admin who set this
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  note              String?
+  createdBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   @@map("custom_plan_overrides")
 }
 
-// ==================== CONTENT TYPES (Global - Created by Super Admin) ====================
-
 model ContentType {
-  id              String   @id @default(cuid())
-  tenantId        String? // Null means it's a system/global template, non-null means it belongs to a startup
+  id              String                        @id @default(cuid())
   name            String
   slug            String
   description     String?
-  isPublished     Boolean  @default(false)
+  isPublished     Boolean                       @default(false)
+  createdAt       DateTime                      @default(now())
+  updatedAt       DateTime                      @updatedAt
+  tenantId        String?
   docxTemplateUrl String?
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  // Relations
-  tenant  Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  fields  ContentTypeField[]
-  entries ContentEntry[]
-  tenants TenantContentTypeAssignment[]
+  entries         ContentEntry[]
+  schemaFields    SchemaField[]
+  tenant          Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenants         TenantContentTypeAssignment[]
 
   @@unique([tenantId, slug])
   @@index([tenantId])
   @@map("content_types")
 }
 
-model ContentTypeField {
-  id            String  @id @default(cuid())
-  contentTypeId String
-  name          String
-  slug          String
-  type          String // text, textarea, richText, integer, decimal, biginteger, float, date, time, datetime, timestamp, enumeration, select, boolean, email, password, uid, media, mediaMultiple, relation, component, json, color, location
-  required      Boolean @default(false)
-  unique        Boolean @default(false)
-  localizable   Boolean @default(true) // Can this field be translated per locale?
-  options       Json? // Native JSON for field options
-  jsonPath      String? // API path for dynamic options (e.g., "/api/categories")
-  relationSlug  String? // Slug of related single type for relation fields
-  order         Int     @default(0)
+model SchemaField {
+  id           String  @id @default(cuid())
+  name         String
+  slug         String
+  type         String
+  required     Boolean @default(false)
+  unique       Boolean @default(false)
+  order        Int     @default(0)
+  jsonPath     String?
+  localizable  Boolean @default(true)
+  relationSlug String?
+  options      Json?
 
-  contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  // Polymorphic relations
+  contentTypeId String?
+  contentType   ContentType? @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+
+  singleTypeId String?
+  singleType   SingleType? @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
+
+  componentId String?
+  component   Component? @relation(fields: [componentId], references: [id], onDelete: Cascade)
 
   @@unique([contentTypeId, slug])
-  @@map("content_type_fields")
+  @@unique([singleTypeId, slug])
+  @@unique([componentId, slug])
+  @@map("schema_fields")
 }
 
-// Tenant-ContentType Assignment (which tenants can use which content types)
 model TenantContentTypeAssignment {
-  id            String   @id @default(cuid())
+  id            String      @id @default(cuid())
   tenantId      String?
   contentTypeId String
-  enabled       Boolean  @default(true)
-  createdAt     DateTime @default(now())
-
-  tenant      Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  contentType ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  enabled       Boolean     @default(true)
+  createdAt     DateTime    @default(now())
+  contentType   ContentType @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
+  tenant        Tenant?     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, contentTypeId])
   @@map("tenant_content_type_assignments")
 }
 
-// ==================== CONTENT STATUS WORKFLOW ====================
-
-enum ContentStatus {
-  DRAFT
-  IN_REVIEW
-  APPROVED
-  SCHEDULED
-  PUBLISHED
-  ARCHIVED
-  REJECTED
-}
-
 model ContentEntry {
-  id            String                   @id @default(cuid())
-  documentId    String? // Group translations of the same entry
-  contentTypeId String
-  tenantId      String? // Optional for truly global/platform entries
-  locale        String                   @default("en") // i18n locale
-  data          Json // Native JSON for entry data
-  status        ContentStatus            @default(DRAFT)
-  reviewComment String? // Comment from reviewer on reject/approve
-  publishedAt   DateTime?
-  scheduledAt   DateTime? // When to auto-publish (used with SCHEDULED status)
-  archivedAt    DateTime? // When the entry was archived
-  searchVector  Unsupported("tsvector")? // Full-text search vector
-  createdBy     String?
-  updatedBy     String?
-  createdAt     DateTime                 @default(now())
-  updatedAt     DateTime                 @updatedAt
-
+  id                String                    @id @default(cuid())
+  contentTypeId     String
+  tenantId          String?
+  publishedAt       DateTime?
+  createdBy         String?
+  updatedBy         String?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  archivedAt        DateTime?
+  locale            String                    @default("en")
+  reviewComment     String?
+  scheduledAt       DateTime?
+  status            ContentStatus             @default(DRAFT)
+  searchVector      Unsupported("tsvector")?
+  data              Json
+  documentId        String?
   contentType       ContentType               @relation(fields: [contentTypeId], references: [id], onDelete: Cascade)
   tenant            Tenant?                   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  versions          ContentVersion[]
   reviewAssignments ContentReviewAssignment[]
+  versions          ContentVersion[]
 
   @@index([documentId])
   @@index([tenantId, contentTypeId, status])
@@ -266,241 +234,214 @@ model ContentEntry {
   @@map("content_entries")
 }
 
-// Content versioning - stores history of all changes
 model ContentVersion {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   contentEntryId String
-  version        Int // Auto-incremented version number
-  data           Json // Native JSON snapshot of entry data at this version
+  version        Int
   publishedAt    DateTime?
-  changeType     String // created, updated, published, unpublished
-  changedBy      String? // User ID who made the change
-  changeSummary  String? // Optional description of what changed
-  createdAt      DateTime  @default(now())
-
-  contentEntry ContentEntry @relation(fields: [contentEntryId], references: [id], onDelete: Cascade)
+  changeType     String
+  changedBy      String?
+  changeSummary  String?
+  createdAt      DateTime     @default(now())
+  data           Json
+  contentEntry   ContentEntry @relation(fields: [contentEntryId], references: [id], onDelete: Cascade)
 
   @@unique([contentEntryId, version])
   @@index([contentEntryId, createdAt])
   @@map("content_versions")
 }
 
-// ==================== MULTI-REVIEWER APPROVAL ====================
-
 model ContentReviewAssignment {
-  id             String    @id @default(cuid())
+  id             String       @id @default(cuid())
   contentEntryId String
-  reviewerId     String // User ID of the reviewer
-  reviewerName   String? // Denormalized for display
-  order          Int       @default(0) // Review sequence (0 = first reviewer)
-  status         String    @default("pending") // pending, approved, rejected
+  reviewerId     String
+  reviewerName   String?
+  order          Int          @default(0)
+  status         String       @default("pending")
   comment        String?
   reviewedAt     DateTime?
-  assignedBy     String? // User ID who assigned this reviewer
-  createdAt      DateTime  @default(now())
-  updatedAt      DateTime  @updatedAt
-
-  contentEntry ContentEntry @relation(fields: [contentEntryId], references: [id], onDelete: Cascade)
+  assignedBy     String?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  contentEntry   ContentEntry @relation(fields: [contentEntryId], references: [id], onDelete: Cascade)
 
   @@unique([contentEntryId, reviewerId])
   @@index([reviewerId, status])
   @@map("content_review_assignments")
 }
 
-// ==================== SINGLE TYPES (Global - Created by Super Admin) ====================
-
 model SingleType {
-  id          String   @id @default(cuid())
-  tenantId    String? // Null means it's a system/global template
-  name        String
-  slug        String
-  description String?
-  isPublished Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  tenant  Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  fields  SingleTypeField[]
-  tenants TenantSingleTypeAssignment[]
+  id           String                       @id @default(cuid())
+  name         String
+  slug         String
+  description  String?
+  createdAt    DateTime                     @default(now())
+  updatedAt    DateTime                     @updatedAt
+  isPublished  Boolean                      @default(false)
+  tenantId     String?
+  fields       SingleTypeField[]
+  schemaFields SchemaField[]
+  tenant       Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenants      TenantSingleTypeAssignment[]
 
   @@unique([tenantId, slug])
   @@map("single_types")
 }
 
 model SingleTypeField {
-  id           String  @id @default(cuid())
+  id           String     @id @default(cuid())
   singleTypeId String
   name         String
   slug         String
-  type         String // text, textarea, richText, integer, decimal, biginteger, float, date, time, datetime, timestamp, enumeration, select, boolean, email, password, uid, media, mediaMultiple, relation, component, json, color, location
-  required     Boolean @default(false)
-  unique       Boolean @default(false)
-  localizable  Boolean @default(true) // Can this field be translated per locale?
-  options      Json? // Native JSON for field options
-  jsonPath     String? // API path for dynamic options (e.g., "/api/categories")
-  relationSlug String? // Slug of related single type for relation fields
-  order        Int     @default(0)
-
-  singleType SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
+  type         String
+  required     Boolean    @default(false)
+  order        Int        @default(0)
+  jsonPath     String?
+  localizable  Boolean    @default(true)
+  relationSlug String?
+  unique       Boolean    @default(false)
+  options      Json?
+  singleType   SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
 
   @@unique([singleTypeId, slug])
   @@map("single_type_fields")
 }
 
-// Tenant-SingleType Assignment
 model TenantSingleTypeAssignment {
-  id           String    @id @default(cuid())
+  id           String     @id @default(cuid())
   tenantId     String?
   singleTypeId String
-  locale       String    @default("en")
-  enabled      Boolean   @default(true)
-  data         Json? // Native JSON for tenant-specific content data
+  enabled      Boolean    @default(true)
   publishedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
-
-  tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  singleType SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  locale       String     @default("en")
+  data         Json?
+  singleType   SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
+  tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, singleTypeId, locale])
   @@map("tenant_single_type_assignments")
 }
 
-// ==================== COMPONENTS (Global - Created by Super Admin) ====================
-
 model Component {
-  id          String   @id @default(cuid())
-  tenantId    String? // Null means global
-  name        String
-  slug        String
-  description String?
-  category    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  tenant  Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  fields  ComponentField[]
-  tenants TenantComponentAssignment[]
+  id           String                      @id @default(cuid())
+  name         String
+  slug         String
+  description  String?
+  category     String?
+  createdAt    DateTime                    @default(now())
+  updatedAt    DateTime                    @updatedAt
+  tenantId     String?
+  fields       ComponentField[]
+  schemaFields SchemaField[]
+  tenant       Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenants      TenantComponentAssignment[]
 
   @@unique([tenantId, slug])
   @@map("components")
 }
 
 model ComponentField {
-  id           String  @id @default(cuid())
+  id           String    @id @default(cuid())
   componentId  String
   name         String
   slug         String
-  type         String // text, textarea, richText, integer, decimal, biginteger, float, date, time, datetime, timestamp, enumeration, select, boolean, email, password, uid, media, mediaMultiple, relation, component, json, color, location
-  required     Boolean @default(false)
-  unique       Boolean @default(false)
-  localizable  Boolean @default(true) // Can this field be translated per locale?
-  options      Json? // Native JSON for field options
-  jsonPath     String? // API path for dynamic options (e.g., "/api/categories")
-  relationSlug String? // Slug of related single type for relation fields
-  order        Int     @default(0)
-
-  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  type         String
+  required     Boolean   @default(false)
+  order        Int       @default(0)
+  jsonPath     String?
+  localizable  Boolean   @default(true)
+  relationSlug String?
+  unique       Boolean   @default(false)
+  options      Json?
+  component    Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
 
   @@unique([componentId, slug])
   @@map("component_fields")
 }
 
-// Tenant-Component Assignment
 model TenantComponentAssignment {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   tenantId    String?
   componentId String
-  enabled     Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  tenant    Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  component Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  enabled     Boolean   @default(true)
+  createdAt   DateTime  @default(now())
+  component   Component @relation(fields: [componentId], references: [id], onDelete: Cascade)
+  tenant      Tenant?   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, componentId])
   @@map("tenant_component_assignments")
 }
-
-// ==================== API KEYS ====================
 
 model ApiKey {
   id          String    @id @default(cuid())
   tenantId    String
   name        String
   key         String    @unique
-  permissions Json? // Native JSON for permissions
   lastUsed    DateTime?
   expiresAt   DateTime?
   createdAt   DateTime  @default(now())
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions Json?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_keys")
 }
 
-// ==================== SUBSCRIPTIONS & BILLING ====================
-
 model Subscription {
-  id                     String    @id @default(cuid())
+  id                     String               @id @default(cuid())
   userId                 String
   tenantId               String?
-  plan                   String // free, starter, pro, enterprise
-  status                 String    @default("active") // active, canceled, expired
-  midtransCustomerId     String?
-  midtransSubscriptionId String?
+  plan                   String
+  status                 String               @default("active")
   currentPeriodStart     DateTime?
   currentPeriodEnd       DateTime?
-  cancelAtPeriodEnd      Boolean   @default(false)
-  createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @updatedAt
-
-  user                User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tenant              Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  invoices            Invoice[]
-  paymentTransactions PaymentTransaction[]
+  cancelAtPeriodEnd      Boolean              @default(false)
+  createdAt              DateTime             @default(now())
+  updatedAt              DateTime             @updatedAt
+  midtransCustomerId     String?
+  midtransSubscriptionId String?
+  invoices               Invoice[]
+  paymentTransactions    PaymentTransaction[]
+  tenant                 Tenant?              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user                   User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("subscriptions")
 }
 
 model Invoice {
-  id                String    @id @default(cuid())
+  id                String       @id @default(cuid())
   subscriptionId    String
   amount            Float
-  currency          String    @default("IDR")
-  status            String    @default("pending") // pending, paid, failed
-  midtransInvoiceId String?
+  currency          String       @default("IDR")
+  status            String       @default("pending")
   paidAt            DateTime?
-  createdAt         DateTime  @default(now())
-
-  subscription Subscription @relation(fields: [subscriptionId], references: [id])
+  createdAt         DateTime     @default(now())
+  midtransInvoiceId String?
+  subscription      Subscription @relation(fields: [subscriptionId], references: [id])
 
   @@map("invoices")
 }
 
 model PaymentTransaction {
-  id              String    @id @default(cuid())
+  id              String        @id @default(cuid())
   subscriptionId  String?
   invoiceId       String?
-  orderId         String    @unique // Midtrans order ID
-  paymentType     String? // gopay, bank_transfer, credit_card, qris, etc.
-  paymentMethod   String? // Specific channel (gopay_qris, bca_va, mandiri_bill, etc.)
+  orderId         String        @unique
+  paymentType     String?
+  paymentMethod   String?
   amount          Float
-  status          String // pending, success, failed, cancelled, refund
-  transactionId   String? // Midtrans transaction ID
+  status          String
+  transactionId   String?
   transactionTime DateTime?
   fraudStatus     String?
-  rawResponse     Json? // Native JSON response from Midtrans
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  subscription Subscription? @relation(fields: [subscriptionId], references: [id])
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  rawResponse     Json?
+  subscription    Subscription? @relation(fields: [subscriptionId], references: [id])
 
   @@map("payment_transactions")
 }
-
-// ==================== AUDIT LOGS ====================
 
 model AuditLog {
   id        String   @id @default(cuid())
@@ -509,39 +450,33 @@ model AuditLog {
   action    String
   entity    String
   entityId  String?
-  data      Json? // Native JSON data
   ipAddress String?
   userAgent String?
   createdAt DateTime @default(now())
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  data      Json?
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("audit_logs")
 }
-
-// ==================== SYSTEM SETTINGS ====================
 
 model Setting {
   id        String   @id @default(cuid())
   key       String   @unique
   value     String
-  tenantId  String? // null for global settings
+  tenantId  String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("settings")
 }
 
-// ==================== MONITORING ====================
-
 model SystemMetric {
   id        String   @id @default(cuid())
-  type      String // cpu, memory, requests, errors
+  type      String
   value     Float
-  metadata  Json? // Native JSON metadata
   timestamp DateTime @default(now())
+  metadata  Json?
 
   @@map("system_metrics")
 }
@@ -552,88 +487,79 @@ model ApiRequest {
   endpoint   String
   method     String
   statusCode Int
-  duration   Int // milliseconds
+  duration   Int
   apiKeyId   String?
   createdAt  DateTime @default(now())
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant     Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_requests")
 }
 
-// ==================== MEDIA LIBRARY ====================
-
 model MediaFolder {
-  id        String   @id @default(cuid())
+  id        String        @id @default(cuid())
   tenantId  String
   name      String
-  path      String // e.g. /images/banners
+  path      String
   parentId  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  tenant   Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  parent   MediaFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
-  children MediaFolder[] @relation("FolderHierarchy")
-  media    Media[]
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  media     Media[]
+  parent    MediaFolder?  @relation("FolderHierarchy", fields: [parentId], references: [id], onDelete: Cascade)
+  children  MediaFolder[] @relation("FolderHierarchy")
+  tenant    Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, path])
   @@map("media_folders")
 }
 
 model Media {
-  id           String   @id @default(cuid())
+  id           String       @id @default(cuid())
   tenantId     String
   folderId     String?
   name         String
   originalName String
   mimeType     String
-  size         Int // in bytes
+  size         Int
   url          String
-  storageKey   String? // S3/R2 object key (e.g., tenantId/2026/03/uuid.jpg)
   thumbnailUrl String?
-  mediumUrl    String? // Medium-size image URL (600px)
   alt          String?
   caption      String?
   width        Int?
   height       Int?
-  isPrivate    Boolean  @default(false)
-  metadata     Json? // Native JSON for additional metadata
   uploadedBy   String?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  tenant Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  folder MediaFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+  mediumUrl    String?
+  storageKey   String?
+  metadata     Json?
+  isPrivate    Boolean      @default(false)
+  folder       MediaFolder? @relation(fields: [folderId], references: [id])
+  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@index([tenantId, mimeType])
   @@map("media")
 }
 
-// ==================== RBAC (Role-Based Access Control) ====================
-
 model Permission {
-  id          String   @id @default(cuid())
-  name        String   @unique // e.g. content-type.read, content-type.create, media.upload
+  id          String           @id @default(cuid())
+  name        String           @unique
   displayName String
   description String?
-  category    String // content, media, users, settings, api
-  createdAt   DateTime @default(now())
-
-  roles RolePermission[]
+  category    String
+  createdAt   DateTime         @default(now())
+  roles       RolePermission[]
 
   @@map("permissions")
 }
 
 model RolePermission {
-  id           String  @id @default(cuid())
-  tenantId     String? // If null, it's a global role permission (admin/editor)
-  roleId       String // "admin", "editor", or a custom role slug
+  id           String     @id @default(cuid())
+  roleId       String
   permissionId String
-  granted      Boolean @default(true)
-
-  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  tenant     Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  granted      Boolean    @default(true)
+  tenantId     String?
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, roleId, permissionId])
   @@map("role_permissions")
@@ -647,14 +573,11 @@ model TenantRole {
   description String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, slug])
   @@map("tenant_roles")
 }
-
-// ==================== API TOKENS (Strapi-like) ====================
 
 model ApiToken {
   id          String    @id @default(cuid())
@@ -662,39 +585,35 @@ model ApiToken {
   name        String
   description String?
   token       String    @unique
-  type        String    @default("read-only") // read-only, full-access, custom
-  permissions Json? // Native JSON array of permission names
+  type        String    @default("read-only")
   lastUsedAt  DateTime?
   expiresAt   DateTime?
   createdBy   String?
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
-  tenant Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions Json?
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("api_tokens")
 }
 
-// ==================== WEBHOOKS ====================
-
 model Webhook {
-  id              String    @id @default(cuid())
+  id              String              @id @default(cuid())
   tenantId        String
   name            String
   url             String
-  secret          String? // For signature verification
-  events          Json // Native JSON array of event types
-  headers         Json? // Native JSON object for custom headers
-  enabled         Boolean   @default(true)
-  hookType        String    @default("async") // async or sync (before* hooks are sync)
+  secret          String?
+  enabled         Boolean             @default(true)
   lastTriggeredAt DateTime?
-  failureCount    Int       @default(0)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
-
-  tenant      Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  logs        WebhookLog[]
-  deadLetters WebhookDeadLetter[]
+  failureCount    Int                 @default(0)
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+  hookType        String              @default("async")
+  events          Json
+  headers         Json?
+  deadLetters     WebhookDeadLetter[]
+  logs            WebhookLog[]
+  tenant          Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@map("webhooks")
 }
@@ -703,52 +622,56 @@ model WebhookLog {
   id         String   @id @default(cuid())
   webhookId  String
   event      String
-  payload    Json // Native JSON payload
-  response   Json? // Native JSON response body
   statusCode Int?
   success    Boolean
-  duration   Int? // milliseconds
+  duration   Int?
   error      String?
   createdAt  DateTime @default(now())
-
-  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  payload    Json
+  response   Json?
+  webhook    Webhook  @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@map("webhook_logs")
 }
 
-// Dead Letter Queue for failed webhook deliveries
 model WebhookDeadLetter {
   id          String    @id @default(cuid())
   webhookId   String
   event       String
-  payload     Json // Native JSON payload
+  payload     Json
   lastError   String?
   attempts    Int       @default(0)
   maxAttempts Int       @default(5)
   nextRetryAt DateTime?
-  status      String    @default("pending") // pending, retrying, exhausted, replayed
+  status      String    @default("pending")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
-
-  webhook Webhook @relation(fields: [webhookId], references: [id], onDelete: Cascade)
+  webhook     Webhook   @relation(fields: [webhookId], references: [id], onDelete: Cascade)
 
   @@index([status, nextRetryAt])
   @@index([webhookId])
   @@map("webhook_dead_letters")
 }
 
-// ==================== I18N LOCALES ====================
-
 model TenantLocale {
   id        String  @id @default(cuid())
   tenantId  String?
-  locale    String // e.g. "en", "id", "ja"
-  name      String // e.g. "English", "Bahasa Indonesia"
+  locale    String
+  name      String
   isDefault Boolean @default(false)
   isEnabled Boolean @default(true)
-
-  tenant Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant    Tenant? @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   @@unique([tenantId, locale])
   @@map("tenant_locales")
+}
+
+enum ContentStatus {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  SCHEDULED
+  PUBLISHED
+  ARCHIVED
+  REJECTED
 }

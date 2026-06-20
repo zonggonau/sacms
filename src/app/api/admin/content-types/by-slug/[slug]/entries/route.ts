@@ -106,9 +106,7 @@ export async function POST(
         slug,
         tenantId: null 
       },
-      include: {
-        fields: true,
-      },
+      include: { schemaFields: true },
     })
 
     if (!contentType) {
@@ -120,7 +118,7 @@ export async function POST(
     const dataWithSlugs = await processAutoSlugs(
       null, 
       contentType.id,
-      contentType.fields,
+      contentType.schemaFields,
       typeof data === 'string' ? JSON.parse(data) : data
     )
 

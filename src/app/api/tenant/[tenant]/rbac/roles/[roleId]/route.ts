@@ -38,33 +38,32 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Check if role exists and is NOT a system role
-    const role = await db.role.findUnique({
-      where: { id: roleId }
+    const role = await db.tenantRole.findFirst({
+      where: { id: roleId, tenantId: tenant.id }
     })
 
     if (!role) {
       return NextResponse.json({ error: "Role not found" }, { status: 404 })
     }
 
-    if (role.isSystem || !role.tenantId) {
-      return NextResponse.json({ error: "Cannot delete system roles" }, { status: 400 })
-    }
-
-    // Ensure the role belongs to this tenant
-    if (role.tenantId !== tenant.id) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Delete the role (Cascade will handle role_permissions)
-    await db.role.delete({
-      where: { id: roleId }
+    const membersWithRole = await db.tenantMember.count({
+      where: { tenantId: tenant.id, role: role.slug },
     })
+    if (membersWithRole > 0) {
+      return NextResponse.json(
+        { error: `Cannot delete role. It is assigned to ${membersWithRole} members.` },
+        { status: 409 }
+      )
+    }
 
-    // Note: TenantMember uses a string for 'role'. 
-    // If a custom role is deleted, users with that role string will lose access 
-    // because hasPermission will fail to find the role/permissions.
-    // They should be reassigned manually or we could bulk update them to 'viewer' here.
+    await db.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({
+        where: { tenantId: tenant.id, roleId: role.slug },
+      })
+      await tx.tenantRole.delete({
+        where: { id: roleId }
+      })
+    })
 
     return NextResponse.json({ success: true })
   } catch (error) {

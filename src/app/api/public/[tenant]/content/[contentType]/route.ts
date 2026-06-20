@@ -4,6 +4,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
 import { logApiRequest } from "@/lib/monitoring"
 import { createHash } from "crypto"
+import { isWorkflowStatus } from "@/lib/content-workflow-rules"
 import {
   parseFilters,
   buildFilterSQL,
@@ -61,38 +62,6 @@ export async function GET(
 
     const token = authHeader.replace("Bearer ", "")
 
-    // Rate limit by token
-    const rateLimitResult = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
-    if (!rateLimitResult.success) {
-      return logResponse(NextResponse.json(
-        { error: "Rate limit exceeded. Try again later." },
-        {
-          status: 429,
-          headers: {
-            "X-RateLimit-Limit": String(rateLimitResult.limit),
-            "X-RateLimit-Remaining": "0",
-            "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.resetAt / 1000)),
-            "Retry-After": String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
-          },
-        }
-      ))
-    }
-
-    // CHECK CACHE
-    const cacheKey = `public_api:${tenantSlug}:${contentTypeSlug}:${fullUrl}`
-    const cachedResponse = await getCache(cacheKey)
-    if (cachedResponse) {
-      return logResponse(NextResponse.json(cachedResponse, {
-        headers: {
-          "X-RateLimit-Limit": String(rateLimitResult.limit),
-          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
-          "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.resetAt / 1000)),
-          "X-Cache": "HIT",
-          "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
-        },
-      }))
-    }
-
     // Hash the token for database lookup (SHA-256)
     const hashedToken = createHash("sha256").update(token).digest("hex")
 
@@ -121,6 +90,23 @@ export async function GET(
       return logResponse(NextResponse.json({ error: "API token expired" }, { status: 401 }))
     }
 
+    // Rate-limit only after authentication. The raw credential is never used as a Redis key.
+    const rateLimitResult = await rateLimit(`public:${hashedToken}`, RATE_LIMITS.publicApi)
+    if (!rateLimitResult.success) {
+      return logResponse(NextResponse.json(
+        { error: "Rate limit exceeded. Try again later." },
+        {
+          status: 429,
+          headers: {
+            "X-RateLimit-Limit": String(rateLimitResult.limit),
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.resetAt / 1000)),
+            "Retry-After": String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
+          },
+        }
+      ))
+    }
+
     // Get the correct DB client (Shared or Dedicated)
     const { getTenantDb } = await import("@/lib/database")
     const tenantDb = await getTenantDb(apiToken.tenantId)
@@ -134,8 +120,7 @@ export async function GET(
           { tenantId: null, tenants: { some: { tenantId: apiToken.tenantId, enabled: true } } }
         ]
       },
-      include: {
-        fields: { orderBy: { order: "asc" } },
+      include: { schemaFields: { orderBy: { order: "asc" } },
         tenants: true,
       },
     })
@@ -177,13 +162,39 @@ export async function GET(
 
     // Status (default: only PUBLISHED for public API)
     const statusParam = searchParams.get("status")
-    const status = statusParam || "PUBLISHED"
+    if (apiToken.type !== "full-access" && statusParam && statusParam !== "PUBLISHED") {
+      return logResponse(NextResponse.json(
+        { error: "A full-access API token is required to read non-published content" },
+        { status: 403 }
+      ))
+    }
+    const status = apiToken.type === "full-access" ? (statusParam || "PUBLISHED") : "PUBLISHED"
+
+    if (!isWorkflowStatus(status)) {
+      return logResponse(NextResponse.json({ error: "Invalid content status" }, { status: 400 }))
+    }
+
+    // Cache is checked only after token, tenant, expiry, content type, and status authorization.
+    // Include token id because full-access tokens may have a different view from read-only tokens.
+    const cacheKey = `public_api:${tenantSlug}:${contentTypeSlug}:${apiToken.id}:${fullUrl}`
+    const cachedResponse = await getCache(cacheKey)
+    if (cachedResponse) {
+      return logResponse(NextResponse.json(cachedResponse, {
+        headers: {
+          "X-RateLimit-Limit": String(rateLimitResult.limit),
+          "X-RateLimit-Remaining": String(rateLimitResult.remaining),
+          "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.resetAt / 1000)),
+          "X-Cache": "HIT",
+          "Cache-Control": "private, max-age=0, s-maxage=60, stale-while-revalidate=300",
+        },
+      }))
+    }
 
     // Sort
     const { field: sortField, order: sortOrder } = parseSort(searchParams)
 
     // Field selection
-    const allowedFieldNames = new Set(contentType.fields.map((f) => f.slug))
+    const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
     const selectedFields = parseFieldSelection(searchParams, allowedFieldNames)
 
     // Search
@@ -296,7 +307,7 @@ export async function GET(
 
     // --- Optimized Relation Population (Fix N+1) ---
     const populateParam = parsePopulate(searchParams)
-    const relationFields = contentType.fields.filter(f => f.type === "relation")
+    const relationFields = contentType.schemaFields.filter(f => f.type === "relation")
     
     // Determine which fields to populate (defaults to NONE if not specified, follows Strapi)
     let fieldsToPopulate: string[] = []
@@ -332,7 +343,11 @@ export async function GET(
     const relatedEntriesMap = new Map<string, any>()
     if (allRelatedIds.size > 0) {
       const relatedEntries = await tenantDb.contentEntry.findMany({
-        where: { id: { in: Array.from(allRelatedIds) } },
+        where: {
+          id: { in: Array.from(allRelatedIds) },
+          tenantId: apiToken.tenantId,
+          ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
+        },
         select: { id: true, data: true, locale: true, status: true }
       })
       
@@ -364,6 +379,7 @@ export async function GET(
             documentId: { in: documentIds },
             contentTypeId: contentType.id,
             tenantId: apiToken.tenantId,
+            ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
           select: { documentId: true, locale: true, status: true },
         })
@@ -381,7 +397,6 @@ export async function GET(
     // locale, attempt to fall back to the tenant's default locale
     let finalEntries = entries
     if (requestedLocale && requestedLocale !== defaultLocale) {
-      const entryIds = new Set(entries.map((e: any) => e.id as string))
       // Find document IDs for entries that may have a default-locale equivalent
       const docIdsNeedingFallback = entries
         .filter((e: any) => {
@@ -398,14 +413,22 @@ export async function GET(
             locale: defaultLocale,
             contentTypeId: contentType.id,
             tenantId: apiToken.tenantId,
+            ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
         })
         const fallbackMap = new Map(fallbacks.map((f) => [f.documentId, f]))
-        finalEntries = entries.map((e: any) =>
-          !entryIds.has(e.id) && e.documentId && fallbackMap.has(e.documentId)
+        finalEntries = entries.map((e: any) => {
+          let currentData: Record<string, unknown> = {}
+          try {
+            currentData = typeof e.data === "string" ? JSON.parse(e.data) : (e.data || {})
+          } catch {
+            currentData = {}
+          }
+          const needsFallback = Object.keys(currentData).length === 0
+          return needsFallback && e.documentId && fallbackMap.has(e.documentId)
             ? fallbackMap.get(e.documentId)!
             : e
-        )
+        })
       }
     } else {
       finalEntries = entries
@@ -457,7 +480,7 @@ export async function GET(
       "X-RateLimit-Remaining": String(rateLimitResult.remaining),
       "X-RateLimit-Reset": String(Math.ceil(rateLimitResult.resetAt / 1000)),
       "X-Cache": "MISS",
-      "Cache-Control": "public, s-maxage=60, stale-while-revalidate=300",
+      "Cache-Control": "private, max-age=0, s-maxage=60, stale-while-revalidate=300",
     })
 
     const responsePayload = {

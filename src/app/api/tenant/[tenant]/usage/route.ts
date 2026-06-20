@@ -24,6 +24,21 @@ export async function GET(request: NextRequest, context: Context) {
     // 1. Get Plan Limits
     const planConfig = await getTenantPlanConfig(tenantId)
 
+    // Resolve dynamic overrides/custom limits
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const [ctLimit, storageLimit, apiLimit] = await Promise.all([
+      enforcePlanLimit(tenantId, "content_types"),
+      enforcePlanLimit(tenantId, "storage"),
+      enforcePlanLimit(tenantId, "api_calls")
+    ])
+
+    const effectivePlanConfig = {
+      ...planConfig,
+      max_content_types: ctLimit.max,
+      max_storage: storageLimit.max,
+      max_api_calls: apiLimit.max,
+    }
+
     // 2. Calculate API Calls (Last 30 days grouped by day)
     const thirtyDaysAgo = new Date()
     thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
@@ -80,7 +95,7 @@ export async function GET(request: NextRequest, context: Context) {
     })
 
     return NextResponse.json({
-      plan: planConfig,
+      plan: effectivePlanConfig,
       usage: {
         apiCalls: totalApiCalls,
         storageMB: totalStorageMB,

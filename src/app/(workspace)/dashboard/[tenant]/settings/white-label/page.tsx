@@ -31,7 +31,7 @@ import Link from "next/link"
 interface DomainStatus {
   customDomain: string | null
   customDomainStatus: string | null
-  verificationRecord: {
+  dnsVerification: {
     name: string
     type: string
     value: string
@@ -51,9 +51,8 @@ export default function WhiteLabelPage() {
   const router = useRouter()
   const params = useParams()
   const tenantSlug = params?.tenant as string
-  const tenants = session?.user?.tenants || []
-
   const [loading, setLoading] = useState(true)
+  const [accessError, setAccessError] = useState<string | null>(null)
   const [savingBrand, setSavingBrand] = useState(false)
   const [savingDomain, setSavingDomain] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -73,7 +72,7 @@ export default function WhiteLabelPage() {
   const [domainStatus, setDomainStatus] = useState<DomainStatus>({
     customDomain: null,
     customDomainStatus: null,
-    verificationRecord: null,
+    dnsVerification: null,
   })
 
   useEffect(() => {
@@ -91,6 +90,12 @@ export default function WhiteLabelPage() {
           fetch(`/api/tenant/${tenantSlug}/white-label`),
           fetch(`/api/tenant/${tenantSlug}/white-label/domain`),
         ])
+
+        if (wlRes.status === 403) {
+          const error = await wlRes.json().catch(() => ({}))
+          setAccessError(error.error || "White-label is not available for this workspace")
+          return
+        }
 
         if (wlRes.ok) {
           const data = await wlRes.json()
@@ -207,6 +212,24 @@ export default function WhiteLabelPage() {
     )
   }
 
+  if (accessError) {
+    return (
+      <div className="flex flex-1 items-center justify-center p-8">
+        <Card className="w-full max-w-lg">
+          <CardHeader>
+            <CardTitle>White-Label unavailable</CardTitle>
+            <CardDescription>{accessError}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button asChild variant="outline">
+              <Link href={`/dashboard/${tenantSlug}/subscriptions`}>View plans</Link>
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="flex flex-1 flex-col w-full">
 <div className="flex-1 overflow-auto">
@@ -317,7 +340,7 @@ export default function WhiteLabelPage() {
                 <Input
                   id="customEmailSender"
                   type="email"
-                  placeholder="Acme CMS <noreply@acme.com>"
+                  placeholder="noreply@acme.com"
                   value={brand.customEmailSender}
                   onChange={(e) =>
                     setBrand((b) => ({
@@ -389,7 +412,7 @@ export default function WhiteLabelPage() {
               {/* DNS verification instructions */}
               {domainStatus.customDomain &&
                 domainStatus.customDomainStatus !== "verified" &&
-                domainStatus.verificationRecord && (
+                domainStatus.dnsVerification && (
                   <>
                     <Separator />
                     <div className="space-y-3">
@@ -408,7 +431,7 @@ export default function WhiteLabelPage() {
                               Name / Host
                             </p>
                             <code className="break-all">
-                              {domainStatus.verificationRecord.name}
+                              {domainStatus.dnsVerification.name}
                             </code>
                           </div>
                           <Button
@@ -417,7 +440,7 @@ export default function WhiteLabelPage() {
                             className="h-7 w-7 shrink-0"
                             onClick={() =>
                               copyToClipboard(
-                                domainStatus.verificationRecord!.name,
+                                domainStatus.dnsVerification!.name,
                                 "name"
                               )
                             }
@@ -445,7 +468,7 @@ export default function WhiteLabelPage() {
                               Value
                             </p>
                             <code className="break-all">
-                              {domainStatus.verificationRecord.value}
+                              {domainStatus.dnsVerification.value}
                             </code>
                           </div>
                           <Button
@@ -454,7 +477,7 @@ export default function WhiteLabelPage() {
                             className="h-7 w-7 shrink-0"
                             onClick={() =>
                               copyToClipboard(
-                                domainStatus.verificationRecord!.value,
+                                domainStatus.dnsVerification!.value,
                                 "value"
                               )
                             }

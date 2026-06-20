@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Loader2, Building2, Search, ArrowUpRight, Users, Database, FileText,
-  ImageIcon, Key, MoreVertical, Edit, Trash2, Plus, AlertCircle, Ban, CheckCircle, Play, ChevronLeft, ChevronRight, X
+  ImageIcon, Key, MoreVertical, Edit, Trash2, Plus, AlertCircle, Ban, CheckCircle, Play, ChevronLeft, ChevronRight, X, Shield, Sliders
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -95,6 +95,20 @@ export default function AdminTenantsPage() {
   const [selectedTenant, setSelectedTenant] = useState<Tenant | null>(null)
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
   const [deleteConfirmation, setDeleteConfirmation] = useState("")
+
+  // Override States
+  const [isOverrideOpen, setIsOverrideOpen] = useState(false)
+  const [overrideTenant, setOverrideTenant] = useState<Tenant | null>(null)
+  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [overrideFormData, setOverrideFormData] = useState({
+    maxContentTypes: "",
+    maxContentEntries: "",
+    maxTeamMembers: "",
+    maxStorage: "",
+    maxLocales: "",
+    maxApiCalls: "",
+    note: ""
+  })
 
   // Form State
   const [formData, setFormData] = useState({
@@ -244,6 +258,99 @@ export default function AdminTenantsPage() {
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    }
+  }
+
+  const openOverride = async (tenant: Tenant) => {
+    setOverrideTenant(tenant)
+    setIsOverrideOpen(true)
+    setOverrideLoading(true)
+    setOverrideFormData({
+      maxContentTypes: "",
+      maxContentEntries: "",
+      maxTeamMembers: "",
+      maxStorage: "",
+      maxLocales: "",
+      maxApiCalls: "",
+      note: ""
+    })
+    try {
+      const res = await fetch(`/api/admin/tenants/${tenant.id}/override`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.override) {
+          setOverrideFormData({
+            maxContentTypes: data.override.maxContentTypes?.toString() || "",
+            maxContentEntries: data.override.maxContentEntries?.toString() || "",
+            maxTeamMembers: data.override.maxTeamMembers?.toString() || "",
+            maxStorage: data.override.maxStorage?.toString() || "",
+            maxLocales: data.override.maxLocales?.toString() || "",
+            maxApiCalls: data.override.maxApiCalls?.toString() || "",
+            note: data.override.note || ""
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch overrides:", error)
+    } finally {
+      setOverrideLoading(false)
+    }
+  }
+
+  const handleSaveOverride = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!overrideTenant) return
+    setIsCreateSubmitting(true)
+    try {
+      const body = {
+        maxContentTypes: overrideFormData.maxContentTypes ? parseInt(overrideFormData.maxContentTypes) : null,
+        maxContentEntries: overrideFormData.maxContentEntries ? parseInt(overrideFormData.maxContentEntries) : null,
+        maxTeamMembers: overrideFormData.maxTeamMembers ? parseInt(overrideFormData.maxTeamMembers) : null,
+        maxStorage: overrideFormData.maxStorage ? parseInt(overrideFormData.maxStorage) : null,
+        maxLocales: overrideFormData.maxLocales ? parseInt(overrideFormData.maxLocales) : null,
+        maxApiCalls: overrideFormData.maxApiCalls ? parseInt(overrideFormData.maxApiCalls) : null,
+        note: overrideFormData.note || null
+      }
+      const res = await fetch(`/api/admin/tenants/${overrideTenant.id}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "Tenant overrides saved successfully" })
+        setIsOverrideOpen(false)
+        fetchTenants()
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to save overrides" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    } finally {
+      setIsCreateSubmitting(false)
+    }
+  }
+
+  const handleRemoveOverride = async () => {
+    if (!overrideTenant) return
+    if (!confirm("Are you sure you want to remove all custom overrides for this tenant?")) return
+    setIsCreateSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/tenants/${overrideTenant.id}/override`, {
+        method: "DELETE"
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "Tenant overrides removed successfully" })
+        setIsOverrideOpen(false)
+        fetchTenants()
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to remove overrides" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    } finally {
+      setIsCreateSubmitting(false)
     }
   }
 
@@ -507,6 +614,9 @@ export default function AdminTenantsPage() {
                               <DropdownMenuItem onClick={() => openEdit(tenant)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Details
                               </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => openOverride(tenant)}>
+                                <Sliders className="mr-2 h-4 w-4 text-orange-500" /> Custom Overrides
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
                                 {tenant.status === 'active' ? (
                                   <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
@@ -670,6 +780,133 @@ export default function AdminTenantsPage() {
                 Permanently Delete
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        
+        {/* Override Dialog */}
+        <Dialog open={isOverrideOpen} onOpenChange={setIsOverrideOpen}>
+          <DialogContent className="max-w-2xl rounded-none border border-border bg-card">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+                <Sliders className="h-5 w-5 text-orange-500" />
+                Custom Plan Overrides: {overrideTenant?.name}
+              </DialogTitle>
+              <DialogDescription>
+                Directly override plan resource limits. Leave fields blank to inherit base plan limits ({overrideTenant?.plan} plan).
+              </DialogDescription>
+            </DialogHeader>
+
+            {overrideLoading ? (
+              <div className="py-12 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <form onSubmit={handleSaveOverride} className="space-y-6 py-4">
+                <div className="grid grid-cols-2 gap-4 border border-border p-4 bg-muted/10 rounded-none">
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxContentTypes" className="text-xs font-bold uppercase tracking-wider">Max Content Types</Label>
+                      <Input
+                        id="override-maxContentTypes"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_content_types}`}
+                        value={overrideFormData.maxContentTypes}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxContentTypes: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxContentEntries" className="text-xs font-bold uppercase tracking-wider">Max Content Entries</Label>
+                      <Input
+                        id="override-maxContentEntries"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_content_entries}`}
+                        value={overrideFormData.maxContentEntries}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxContentEntries: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxTeamMembers" className="text-xs font-bold uppercase tracking-wider">Max Team Members</Label>
+                      <Input
+                        id="override-maxTeamMembers"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_team_members}`}
+                        value={overrideFormData.maxTeamMembers}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxTeamMembers: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxStorage" className="text-xs font-bold uppercase tracking-wider">Max Storage (MB)</Label>
+                      <Input
+                        id="override-maxStorage"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_storage} MB`}
+                        value={overrideFormData.maxStorage}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxStorage: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxLocales" className="text-xs font-bold uppercase tracking-wider">Max Locales</Label>
+                      <Input
+                        id="override-maxLocales"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_locales}`}
+                        value={overrideFormData.maxLocales}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxLocales: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="override-maxApiCalls" className="text-xs font-bold uppercase tracking-wider">Max API Calls / Month</Label>
+                      <Input
+                        id="override-maxApiCalls"
+                        type="number"
+                        placeholder={`Base: ${DEFAULT_LIMITS[overrideTenant?.plan || 'free']?.max_api_calls}`}
+                        value={overrideFormData.maxApiCalls}
+                        onChange={e => setOverrideFormData({...overrideFormData, maxApiCalls: e.target.value})}
+                        className="rounded-none border-border"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="override-note" className="text-xs font-bold uppercase tracking-wider">Administrative Note</Label>
+                  <Textarea
+                    id="override-note"
+                    placeholder="Reason for this custom override..."
+                    value={overrideFormData.note}
+                    onChange={e => setOverrideFormData({...overrideFormData, note: e.target.value})}
+                    rows={2}
+                    className="rounded-none border-border"
+                  />
+                </div>
+
+                <DialogFooter className="flex sm:justify-between items-center w-full gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleRemoveOverride}
+                    className="mr-auto rounded-none"
+                  >
+                    Remove Override
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsOverrideOpen(false)} className="rounded-none">Cancel</Button>
+                    <Button type="submit" disabled={isSubmitting} className="rounded-none bg-primary text-primary-foreground hover:bg-primary/90">
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save Overrides
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>

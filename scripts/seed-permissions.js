@@ -13,6 +13,18 @@ const PERMISSIONS = {
   USER_REMOVE: "user.remove",
   SETTING_UPDATE: "settings.update",
   API_TOKEN_MANAGE: "api-token.manage",
+  WORKFLOW_DRAFT_TO_REVIEW: "workflow.draft_to_review",
+  WORKFLOW_DRAFT_TO_PUBLISH: "workflow.draft_to_publish",
+  WORKFLOW_DRAFT_TO_SCHEDULE: "workflow.draft_to_schedule",
+  WORKFLOW_REVIEW_TO_APPROVE: "workflow.review_to_approve",
+  WORKFLOW_REVIEW_TO_REJECT: "workflow.review_to_reject",
+  WORKFLOW_APPROVE_TO_SCHEDULE: "workflow.approve_to_schedule",
+  WORKFLOW_APPROVE_TO_PUBLISH: "workflow.approve_to_publish",
+  WORKFLOW_SCHEDULED_TO_DRAFT: "workflow.scheduled_to_draft",
+  WORKFLOW_PUBLISHED_TO_ARCHIVED: "workflow.published_to_archived",
+  WORKFLOW_PUBLISHED_TO_DRAFT: "workflow.published_to_draft",
+  WORKFLOW_ARCHIVED_TO_DRAFT: "workflow.archived_to_draft",
+  WORKFLOW_REJECTED_TO_DRAFT: "workflow.rejected_to_draft",
 };
 
 async function seed() {
@@ -43,6 +55,16 @@ async function seed() {
       PERMISSIONS.CONTENT_UPDATE,
       PERMISSIONS.MEDIA_READ,
       PERMISSIONS.MEDIA_UPLOAD,
+      PERMISSIONS.WORKFLOW_DRAFT_TO_REVIEW,
+      PERMISSIONS.WORKFLOW_ARCHIVED_TO_DRAFT,
+      PERMISSIONS.WORKFLOW_REJECTED_TO_DRAFT,
+    ],
+    member: [
+      PERMISSIONS.CONTENT_READ,
+      PERMISSIONS.CONTENT_CREATE,
+      PERMISSIONS.CONTENT_UPDATE,
+      PERMISSIONS.WORKFLOW_DRAFT_TO_REVIEW,
+      PERMISSIONS.WORKFLOW_REJECTED_TO_DRAFT,
     ],
     viewer: [
       PERMISSIONS.CONTENT_READ,
@@ -53,22 +75,6 @@ async function seed() {
   console.log("Seeding role-permission assignments...");
 
   for (const [roleName, rolePerms] of Object.entries(roles)) {
-    // Ensure Role exists in global context (tenantId: null)
-    const existingRole = await prisma.role.findFirst({
-      where: { tenantId: null, name: roleName }
-    });
-
-    if (!existingRole) {
-      await prisma.role.create({
-        data: {
-          tenantId: null,
-          name: roleName,
-          displayName: roleName.charAt(0).toUpperCase() + roleName.slice(1),
-          isSystem: true
-        }
-      });
-    }
-
     for (const permName of rolePerms) {
       const perm = await prisma.permission.findUnique({ where: { name: permName } });
       if (!perm) continue;

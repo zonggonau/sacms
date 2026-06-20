@@ -23,7 +23,7 @@ async function handler(request: NextRequest, context: Context) {
   const { path: pathSegments } = await context.params
   const path = pathSegments?.join("/") || ""
 
-  // Read the X-Custom-Domain header injected by middleware
+  // Read the X-Custom-Domain header injected by proxy
   const customDomain = request.headers.get("x-custom-domain")
 
   if (!customDomain) {

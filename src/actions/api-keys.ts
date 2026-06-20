@@ -14,11 +14,11 @@ function generateToken(): string {
 }
 
 const createApiTokenSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  description: z.string().optional(),
-  type: z.string().optional(),
-  permissions: z.array(z.string()).min(1, "At least one permission is required"),
-  expiresAt: z.string().optional()
+  name: z.string().trim().min(1, "Name is required").max(100),
+  description: z.string().trim().max(500).optional(),
+  type: z.enum(["read-only", "full-access"]).default("read-only"),
+  permissions: z.array(z.string().min(1)).max(100).default([]),
+  expiresAt: z.string().datetime().optional(),
 })
 
 export async function getApiTokensAction(tenantSlug: string) {
@@ -78,9 +78,13 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
 
     const parsed = createApiTokenSchema.safeParse(data)
     if (!parsed.success) {
-      return { error: parsed.error.errors[0].message }
+      return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     }
     const { name, description, type, permissions, expiresAt } = parsed.data
+
+    if (expiresAt && new Date(expiresAt).getTime() <= Date.now()) {
+      return { error: "Token expiry must be in the future" }
+    }
 
     const token = generateToken()
     const hashedToken = createHash("sha256").update(token).digest("hex")
@@ -91,7 +95,7 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
         name: name,
         description: description || null,
         token: hashedToken,
-        type: type || "read-only",
+        type,
         permissions: permissions as any,
         expiresAt: expiresAt ? new Date(expiresAt) : null,
         createdBy: session.user.id,
@@ -100,9 +104,11 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
     
     revalidatePath(`/dashboard/${tenantSlug}/api-keys`)
 
-    return { 
+    const { token: _storedHash, ...safeApiToken } = apiToken
+
+    return {
       token: {
-        ...apiToken,
+        ...safeApiToken,
         permissions: Array.isArray(apiToken.permissions) ? apiToken.permissions : []
       },
       plainToken: token

@@ -95,6 +95,8 @@ export default function CreateEntryPage() {
   const [locale, setLocale] = useState<string>("en")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
+  const [isLimitReached, setIsLimitReached] = useState(false)
+  const [entriesLimit, setEntriesLimit] = useState(100)
 
   const tenants = session?.user?.tenants || []
 
@@ -102,8 +104,11 @@ export default function CreateEntryPage() {
     async function fetchData() {
       if (!tenantSlug || !contentTypeSlug || contentType) return
       try {
-        const ctRes = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
-        const locRes = await fetch(`/api/tenant/${tenantSlug}/locales`)
+        const [ctRes, locRes, usageRes] = await Promise.all([
+          getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
+          fetch(`/api/tenant/${tenantSlug}/locales`),
+          fetch(`/api/tenant/${tenantSlug}/billing/usage`)
+        ])
         
         if (ctRes.contentType) {
           const data = ctRes.contentType
@@ -129,6 +134,16 @@ export default function CreateEntryPage() {
         if (locRes.ok) {
           const data = await locRes.json()
           if (data.locales?.length > 0) setAvailableLocales(data.locales)
+        }
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          const entriesUsage = usageData.usage?.find((u: any) => u.label === "Content Entries")
+          if (entriesUsage) {
+            setEntriesLimit(entriesUsage.limit)
+            if (entriesUsage.current >= entriesUsage.limit) {
+              setIsLimitReached(true)
+            }
+          }
         }
       } catch (err) {
         console.error(err)
@@ -385,7 +400,7 @@ export default function CreateEntryPage() {
                     </SelectContent>
                   </Select>
 
-                  <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
+                   <Button onClick={() => handleSave(true)} disabled={saving || isLimitReached} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
                     Create & Publish
                   </Button>
@@ -393,6 +408,16 @@ export default function CreateEntryPage() {
               </div>
             </div>
           </div>
+
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="mx-6 lg:mx-8 mt-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-red-800 dark:text-red-300 font-medium">
+                You have reached your content entries limit of {entriesLimit} entries. Delete an existing entry or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
@@ -426,7 +451,7 @@ export default function CreateEntryPage() {
                       <Button
                         variant={"outline"}
                         className={cn(
-                          "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
+                           "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
                           !scheduledAt && "text-muted-foreground font-normal"
                         )}
                       >
@@ -471,7 +496,7 @@ export default function CreateEntryPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => handleSave(false)} 
-                  disabled={saving} 
+                  disabled={saving || isLimitReached} 
                   className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}

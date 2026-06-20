@@ -15,8 +15,7 @@ export async function GET() {
     }
 
     const singleTypes = await db.singleType.findMany({
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: { order: "asc" }
         },
         tenants: {
@@ -38,7 +37,10 @@ export async function GET() {
     // Tenant-specific single types have exactly 1 tenant assignment (the creator)
     const globalSingleTypes = singleTypes.filter(st => 
       st._count.tenants === 0 || st._count.tenants > 1
-    )
+    ).map(st => ({
+      ...st,
+      fields: st.schemaFields || [],
+    }))
 
     return NextResponse.json({ singleTypes: globalSingleTypes })
   } catch (error) {
@@ -84,7 +86,7 @@ export async function POST(request: NextRequest) {
         name,
         slug,
         description,
-        fields: fields ? {
+        schemaFields: fields ? { 
           create: fields.map((field: Record<string, unknown>, index: number) => ({
             name: field.name as string,
             slug: field.slug as string,
@@ -98,9 +100,7 @@ export async function POST(request: NextRequest) {
           }))
         } : undefined
       },
-      include: {
-        fields: true
-      }
+      include: { schemaFields: true }
     })
 
     return NextResponse.json({ singleType })

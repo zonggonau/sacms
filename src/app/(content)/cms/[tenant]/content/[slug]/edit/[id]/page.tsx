@@ -30,6 +30,7 @@ import {
 import { Calendar } from "@/components/ui/calendar"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { allowedUserTransitions, isWorkflowStatus } from "@/lib/content-workflow-rules"
 
 // Field Renderers
 import { TextField } from "@/components/content/field-renderers/text-field"
@@ -95,9 +96,25 @@ export default function CMSEditEntryPage() {
   const [contentType, setContentType] = useState<ContentType | null>(null)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
   const [entryStatus, setEntryStatus] = useState<string>("DRAFT")
+  const [persistedStatus, setPersistedStatus] = useState<string>("DRAFT")
   const [locale, setLocale] = useState<string>("en")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
+
+  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug)
+  const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
+  const customPermissions = Array.isArray(tenantMembership?.customPermissions)
+    ? tenantMembership.customPermissions as string[]
+    : null
+  const availableStatuses = useMemo(() => {
+    if (!isWorkflowStatus(persistedStatus)) return ["DRAFT"]
+    return [
+      persistedStatus,
+      ...allowedUserTransitions(persistedStatus, effectiveRole, customPermissions),
+    ]
+  }, [persistedStatus, effectiveRole, customPermissions])
+  const canPublish = availableStatuses.includes("PUBLISHED")
+  const canSchedule = availableStatuses.includes("SCHEDULED")
 
   const fetchData = useCallback(async () => {
     if (!tenantSlug || !contentTypeSlug || !entryId) return
@@ -116,6 +133,8 @@ export default function CMSEditEntryPage() {
         const data = entData
         const entry = data.entry
         setEntryStatus(entry.status)
+        setPersistedStatus(entry.status)
+        setScheduledAt(entry.scheduledAt ? new Date(entry.scheduledAt) : undefined)
         // Only update locale if it's explicitly returned from server
         // to avoid infinite loops if the state differs
         if (data.isNewTranslation) {
@@ -336,14 +355,17 @@ export default function CMSEditEntryPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
+                {availableStatuses.map((val) => {
+                  const cfg = STATUS_CONFIG[val]
+                  return (
                   <SelectItem key={val} value={val} className="text-xs font-bold uppercase rounded-none hover:bg-muted">
                     <div className="flex items-center gap-2">
                       <cfg.icon className="h-3.5 w-3.5" />
                       {cfg.label}
                     </div>
                   </SelectItem>
-                ))}
+                  )
+                })}
               </SelectContent>
             </Select>
 
@@ -354,7 +376,7 @@ export default function CMSEditEntryPage() {
               onRestoreSuccess={(newData) => setFormData(newData)}
             />
 
-            <Button 
+            <Button
               variant="outline" 
               onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
               className="h-11 rounded-none font-bold border border-border bg-card shadow-none hover:bg-muted hover:border-orange-500 transition-colors"
@@ -362,14 +384,14 @@ export default function CMSEditEntryPage() {
               <Eye className="mr-2 h-4 w-4" /> Preview
             </Button>
 
-            <Button 
+            {canPublish && <Button
               onClick={() => handleSave(true)} 
               disabled={saving} 
               className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
               Save & Publish
-            </Button>
+            </Button>}
           </div>
         </div>
 
@@ -396,7 +418,7 @@ export default function CMSEditEntryPage() {
             <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
               <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
               <CardContent className="p-6 pt-2 space-y-6">
-                <div className="space-y-3">
+                {canSchedule && <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -427,9 +449,9 @@ export default function CMSEditEntryPage() {
                       )}
                     </PopoverContent>
                   </Popover>
-                </div>
+                </div>}
 
-                <Separator className="opacity-50" />
+                {canSchedule && <Separator className="opacity-50" />}
 
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
@@ -457,7 +479,12 @@ export default function CMSEditEntryPage() {
               </CardContent>
             </Card>
 
-            <ReviewerAssignment tenantSlug={tenantSlug} entryId={entryId} />
+            <ReviewerAssignment
+              tenantSlug={tenantSlug}
+              entryId={entryId}
+              entryStatus={persistedStatus}
+              onDecisionComplete={fetchData}
+            />
 
             <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent">
               <CardHeader className="p-6 pb-2">

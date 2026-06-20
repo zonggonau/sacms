@@ -98,23 +98,8 @@ describe("Scheduled Publishing Cron API", () => {
 
     // Mock contentVersion query and creation
     const mockVersion = { version: 2 }
-    // Since contentVersion is not in the db mock in setup.ts, we mock db.$transaction or let's check if setup.ts has contentVersion mock
-    // Wait, let's look at setup.ts db mock:
-    // It mocks db.contentEntry, db.tenant, db.user, db.webhookLog etc.
-    // Let's check if contentVersion is in the db mock in setup.ts!
-    // Ah, it is NOT in setup.ts! But let's check what contentVersion methods are called in route.ts:
-    // db.contentVersion.findFirst and db.contentVersion.create.
-    // If they are not in setup.ts db mock, calling them will throw a TypeError!
-    // So we must mock db.contentVersion inside our test file, or add it to setup.ts!
-    // Adding contentVersion to the setup.ts mock globally is safer and cleaner.
-    // But since db is a mocked object, we can also mock it inside our test!
-    // Let's add contentVersion mock to setup.ts or to db in this test.
-    // In this test we can do: db.contentVersion = { findFirst: vi.fn(), create: vi.fn() } as any;
-    // That's extremely easy and local!
-    db.contentVersion = {
-      findFirst: vi.fn().mockResolvedValue(mockVersion),
-      create: vi.fn().mockResolvedValue({}),
-    } as any
+    ;(db.contentVersion.findFirst as any).mockResolvedValue(mockVersion)
+    ;(db.contentVersion.create as any).mockResolvedValue({})
 
     const response = await GET(request)
     expect(response.status).toBe(200)

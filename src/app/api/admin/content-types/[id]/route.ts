@@ -30,7 +30,9 @@ export async function GET(
     const contentType = await db.contentType.findUnique({
       where: { id },
       include: {
-        fields: true,
+        schemaFields: {
+          orderBy: { order: "asc" }
+        },
         tenants: {
           include: {
             tenant: {
@@ -54,7 +56,10 @@ export async function GET(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
-    return NextResponse.json(contentType)
+    return NextResponse.json({
+      ...contentType,
+      fields: contentType.schemaFields
+    })
   } catch (error) {
     console.error("Error fetching content type:", error)
     return NextResponse.json(
@@ -121,7 +126,9 @@ export async function PATCH(
         ...(body.isPublished !== undefined && { isPublished: body.isPublished }),
       },
       include: {
-        fields: true,
+        schemaFields: {
+          orderBy: { order: "asc" }
+        },
         tenants: {
           include: {
             tenant: {
@@ -144,13 +151,13 @@ export async function PATCH(
     // Handle fields update if provided
     if (body.fields !== undefined) {
       // Delete all existing fields
-      await db.contentTypeField.deleteMany({
+      await db.schemaField.deleteMany({
         where: { contentTypeId: id },
       })
 
       // Create new fields
       if (body.fields.length > 0) {
-        await db.contentTypeField.createMany({
+        await db.schemaField.createMany({
           data: body.fields.map((field: Record<string, unknown>, index: number) => ({
             contentTypeId: id,
             name: field.name as string,
@@ -170,7 +177,9 @@ export async function PATCH(
       const updated = await db.contentType.findUnique({
         where: { id },
         include: {
-          fields: true,
+          schemaFields: {
+            orderBy: { order: "asc" }
+          },
           tenants: {
             include: {
               tenant: {
@@ -190,10 +199,10 @@ export async function PATCH(
         },
       })
 
-      return NextResponse.json(updated)
+      return NextResponse.json({ ...updated, fields: updated?.schemaFields })
     }
 
-    return NextResponse.json(contentType)
+    return NextResponse.json({ ...contentType, fields: contentType.schemaFields })
   } catch (error) {
     console.error("Error updating content type:", error)
     return NextResponse.json(

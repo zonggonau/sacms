@@ -43,7 +43,7 @@ src/
     rbac.ts             ← Role-based access control
     tenant-plan.ts      ← Plan limits enforcement
     database.ts         ← Prisma client singleton + enterprise DB routing
-  middleware.ts         ← Security headers, rate limiting, CORS, custom domain routing
+  proxy.ts              ← Security headers, rate limiting, CORS, custom domain routing
 prisma/
   schema.prisma         ← Main schema (709 lines)
   migrations/           ← SQL migration history
@@ -154,7 +154,7 @@ src/
     rbac.ts             ← Role-based access control
     tenant-plan.ts      ← Plan limits enforcement
     database.ts         ← Prisma client singleton + enterprise DB routing
-  middleware.ts         ← Security headers, rate limiting, CORS, custom domain routing
+  proxy.ts              ← Security headers, rate limiting, CORS, custom domain routing
 prisma/
   schema.prisma         ← Main schema (709 lines)
   migrations/           ← SQL migration history

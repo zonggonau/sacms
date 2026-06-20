@@ -44,7 +44,9 @@ import {
   Folder,
   Save,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  AlertTriangle,
+  HardDrive
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -81,6 +83,11 @@ export default function MediaLibraryPage() {
   const [searchQuery, setSearchQuery] = useState("")
   const [mimeFilter, setMimeFilter] = useState<string>("all")
   
+  // Storage usage states
+  const [storageLimit, setStorageLimit] = useState<number>(0)
+  const [currentStorage, setCurrentStorage] = useState<number>(0)
+  const [isLimitReached, setIsLimitReached] = useState<boolean>(false)
+
   // Edit Metadata State
   const [editData, setEditData] = useState({ name: "", alt: "", caption: "" })
   const [savingMetadata, setSavingMetadata] = useState(false)
@@ -108,8 +115,29 @@ export default function MediaLibraryPage() {
     }
   }
 
+  const fetchStorageUsage = async () => {
+    if (!tenantSlug) return
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/billing/usage`)
+      if (res.ok) {
+        const data = await res.json()
+        const storageUsage = data.usage?.find((u: any) => u.label === "Media Storage")
+        if (storageUsage) {
+          setStorageLimit(storageUsage.limit)
+          setCurrentStorage(storageUsage.current)
+          setIsLimitReached(storageUsage.current >= storageUsage.limit)
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch storage usage:", error)
+    }
+  }
+
   useEffect(() => {
-    if (session?.user) fetchMedia()
+    if (session?.user) {
+      fetchMedia()
+      fetchStorageUsage()
+    }
   }, [tenantSlug, session])
 
   useEffect(() => {
@@ -138,6 +166,7 @@ export default function MediaLibraryPage() {
       if (res.ok) {
         toast({ title: "Success", description: "Files uploaded successfully" })
         fetchMedia()
+        fetchStorageUsage()
       } else {
         const data = await res.json()
         toast({ variant: "destructive", title: "Upload Failed", description: data.error })
@@ -183,6 +212,7 @@ export default function MediaLibraryPage() {
         setSelectedMedia(selectedMedia.filter((m) => m.id !== mediaId))
         if (previewMedia?.id === mediaId) setPreviewMedia(null)
         toast({ title: "File Deleted" })
+        fetchStorageUsage()
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Delete failed" })
@@ -239,7 +269,13 @@ export default function MediaLibraryPage() {
               </Button>
               <div>
                 <h1 className="text-3xl font-extrabold tracking-tight">Media Library</h1>
-                <p className="text-muted-foreground">{media.length} assets stored in this workspace</p>
+                {storageLimit > 0 ? (
+                  <p className="text-muted-foreground">
+                    {media.length} assets stored in this workspace ({formatFileSize(currentStorage)} of {formatFileSize(storageLimit)} used)
+                  </p>
+                ) : (
+                  <p className="text-muted-foreground">{media.length} assets stored in this workspace</p>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2">
@@ -258,17 +294,29 @@ export default function MediaLibraryPage() {
                 </Button>
               )}
               <label>
-                <Button asChild className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                  <span className="cursor-pointer">
-                    <Upload className="mr-2 h-4 w-4" />
-                    Upload Files
-                  </span>
+                <Button 
+                  disabled={isLimitReached || uploading} 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground cursor-pointer disabled:cursor-not-allowed"
+                  asChild={!isLimitReached && !uploading}
+                >
+                  {isLimitReached || uploading ? (
+                    <span className="flex items-center">
+                      {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                      Upload Files
+                    </span>
+                  ) : (
+                    <span className="cursor-pointer flex items-center">
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Files
+                    </span>
+                  )}
                 </Button>
                 <input
                   type="file"
                   multiple
                   accept="image/*,video/*,audio/*,.pdf,.doc,.docx"
                   className="hidden"
+                  disabled={isLimitReached || uploading}
                   onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                 />
               </label>
@@ -305,6 +353,28 @@ export default function MediaLibraryPage() {
             </div>
           </div>
 
+          {/* Limit Warning Banner */}
+          {isLimitReached && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="p-2 bg-destructive/25 text-destructive rounded-xl shrink-0">
+                  <AlertTriangle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-destructive">Workspace Storage Full</h4>
+                  <p className="text-xs text-muted-foreground">
+                    You have used <span className="font-semibold text-foreground">{formatFileSize(currentStorage)}</span> of your {" "}
+                    <span className="font-semibold text-foreground">{formatFileSize(storageLimit)}</span> storage limit.
+                    Delete existing assets or upgrade your plan to upload more files.
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/5 text-destructive text-xs h-8 shrink-0" asChild>
+                <Link href={`/dashboard/${tenantSlug}/settings`}>Upgrade Plan</Link>
+              </Button>
+            </div>
+          )}
+
           {/* Media Grid/List */}
           {filteredMedia.length === 0 ? (
             <Card className="border-dashed py-20 bg-card">
@@ -317,16 +387,28 @@ export default function MediaLibraryPage() {
                   {searchQuery ? "Try adjusting your search query or filters." : "Start building your library by uploading images or documents."}
                 </p>
                 <label>
-                  <Button asChild variant="outline">
-                    <span className="cursor-pointer">
-                      <Upload className="mr-2 h-4 w-4" />
-                      Initial Upload
-                    </span>
+                  <Button 
+                    disabled={isLimitReached || uploading} 
+                    variant="outline"
+                    asChild={!isLimitReached && !uploading}
+                  >
+                    {isLimitReached || uploading ? (
+                      <span className="flex items-center">
+                        {uploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                        Initial Upload
+                      </span>
+                    ) : (
+                      <span className="cursor-pointer flex items-center">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Initial Upload
+                      </span>
+                    )}
                   </Button>
                   <input
                     type="file"
                     multiple
                     className="hidden"
+                    disabled={isLimitReached || uploading}
                     onChange={(e) => e.target.files && handleFileUpload(e.target.files)}
                   />
                 </label>

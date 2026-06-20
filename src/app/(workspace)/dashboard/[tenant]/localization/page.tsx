@@ -31,7 +31,8 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
-import { Loader2, Plus, Trash2, Star, Globe } from "lucide-react"
+import { Loader2, Plus, Trash2, Star, Globe, AlertCircle } from "lucide-react"
+import Link from "next/link"
 
 interface TenantLocale {
   id: string
@@ -78,6 +79,11 @@ export default function LocalizationSettingsPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [settingDefaultId, setSettingDefaultId] = useState<string | null>(null)
 
+  // Plan limits states
+  const [limit, setLimit] = useState(5)
+  const [current, setCurrent] = useState(0)
+  const [isLimitReached, setIsLimitReached] = useState(false)
+
   useEffect(() => {
     fetchLocales()
   }, [tenantSlug])
@@ -88,6 +94,9 @@ export default function LocalizationSettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setLocales(data.locales || [])
+        setLimit(data.limit ?? 5)
+        setCurrent(data.current ?? 0)
+        setIsLimitReached(data.isLimitReached ?? false)
       }
     } catch {
       toast({ variant: "destructive", title: "Error", description: "Failed to load locales" })
@@ -188,18 +197,40 @@ export default function LocalizationSettingsPage() {
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-muted-foreground">
-                {locales.length} / 5 locales configured
+                {current} / {limit} locales configured
               </p>
             </div>
             <Button
               size="sm"
-              disabled={locales.length >= 5}
+              disabled={isLimitReached}
               onClick={() => setAddDialogOpen(true)}
             >
               <Plus className="mr-1 h-4 w-4" />
               Add Locale
             </Button>
           </div>
+
+          {/* Limit Warning Banner */}
+          {isLimitReached && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="p-2 bg-destructive/25 text-destructive rounded-xl shrink-0">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-destructive">Locale Limit Reached</h4>
+                  <p className="text-xs text-muted-foreground">
+                    You have configured <span className="font-semibold text-foreground">{current}</span> of your {" "}
+                    <span className="font-semibold text-foreground">{limit}</span> locales limit.
+                    Upgrade your plan to configure more languages.
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/5 text-destructive text-xs h-8 shrink-0" asChild>
+                <Link href={`/dashboard/${tenantSlug}/settings`}>Upgrade Plan</Link>
+              </Button>
+            </div>
+          )}
 
           {/* Locales table */}
           {locales.length === 0 ? (
@@ -209,7 +240,7 @@ export default function LocalizationSettingsPage() {
               <p className="mt-1 text-sm text-muted-foreground">
                 Add your first locale to enable multilingual content.
               </p>
-              <Button className="mt-4" size="sm" onClick={() => setAddDialogOpen(true)}>
+              <Button className="mt-4" size="sm" disabled={isLimitReached} onClick={() => setAddDialogOpen(true)}>
                 <Plus className="mr-1 h-4 w-4" /> Add Locale
               </Button>
             </div>
@@ -284,7 +315,7 @@ export default function LocalizationSettingsPage() {
               <li>The default locale is used as fallback when a requested locale is not available</li>
               <li>The content editor shows a locale switcher when multiple locales are enabled</li>
               <li>Public API supports <code className="bg-background px-1 rounded">?locale=en</code> parameter</li>
-              <li>Maximum 5 locales per tenant in v1.0</li>
+              <li>Maximum {limit} locales per tenant allowed by your current plan</li>
             </ul>
           </div>
         </div>

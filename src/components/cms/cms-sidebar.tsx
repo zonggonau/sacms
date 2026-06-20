@@ -1,7 +1,6 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -25,6 +24,8 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
+import { usePathname } from "next/navigation"
+import { Logo } from "@/components/ui/logo"
 
 interface CMSSidebarProps {
   tenantId: string
@@ -53,13 +54,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
       {/* CMS Header */}
       <div className="border-b border-border px-6 py-6 bg-card">
         <Link href={href("")} className="flex items-center gap-3">
-          <div className="w-8 h-8 shrink-0 bg-orange-500 flex items-center justify-center rounded-none">
-            <PenTool className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold text-foreground">SaCMS</span>
-            <span className="text-xs text-muted-foreground">Content Studio</span>
-          </div>
+          <Logo iconSize="sm" showText={true} />
         </Link>
       </div>
 

@@ -1,4 +1,4 @@
-const { PrismaClient } = require('@prisma/client');
+const { PrismaClient } = require('../prisma/generated-client');
 const prisma = new PrismaClient();
 
 async function main() {
@@ -13,24 +13,33 @@ async function main() {
     distinct: ['tenantId', 'roleId']
   });
 
-  console.log(`Found ${rps.length} unique roles to create.`);
+  console.log(`Found ${rps.length} unique role identifiers.`);
 
   for (const rp of rps) {
-    const displayName = rp.roleId.charAt(0).toUpperCase() + rp.roleId.slice(1);
-    
-    // Prisma handles null in where slightly differently for compound unique
-    const where = rp.tenantId 
-      ? { tenantId_name: { tenantId: rp.tenantId, name: rp.roleId } }
-      : { id: (await prisma.role.findFirst({ where: { tenantId: null, name: rp.roleId } }))?.id || 'new' };
+    // Built-in/global roles are represented directly by RolePermission.roleId.
+    // TenantRole stores only tenant-specific custom-role metadata.
+    if (!rp.tenantId) {
+      console.log(`Skipped global role identifier: ${rp.roleId}`);
+      continue;
+    }
 
-    await prisma.role.upsert({
-      where,
-      update: {},
+    const displayName = rp.roleId
+      .split(/[-_]/)
+      .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+      .join(' ');
+
+    await prisma.tenantRole.upsert({
+      where: {
+        tenantId_slug: {
+          tenantId: rp.tenantId,
+          slug: rp.roleId,
+        },
+      },
+      update: { name: displayName },
       create: {
         tenantId: rp.tenantId,
-        name: rp.roleId,
-        displayName: displayName,
-        isSystem: ['owner', 'admin', 'editor', 'viewer'].includes(rp.roleId)
+        slug: rp.roleId,
+        name: displayName,
       }
     });
     console.log(`Created role: ${rp.roleId} for tenant: ${rp.tenantId || 'GLOBAL'}`);

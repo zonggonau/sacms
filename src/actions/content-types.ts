@@ -16,8 +16,9 @@ export async function getContentTypesAction(tenantSlug: string) {
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
-    if (!rbac.allowed) return { error: "Forbidden" }
+    const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
+    const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -36,7 +37,7 @@ export async function getContentTypesAction(tenantSlug: string) {
         ]
       },
       include: {
-        fields: {
+        schemaFields: {
           orderBy: { order: "asc" },
         },
       },
@@ -54,7 +55,7 @@ export async function getContentTypesAction(tenantSlug: string) {
           },
         })
 
-        const formattedFields = contentType.fields.map(field => {
+        const formattedFields = contentType.schemaFields.map(field => {
           let parsedOptions = field.options
           if (typeof field.options === 'string') {
             try {
@@ -93,15 +94,22 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
-    if (!rbac.allowed) return { error: "Forbidden" }
+    const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
+    const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const contentType = await tenantDb.contentType.findUnique({
-      where: { id },
+    const contentType = await tenantDb.contentType.findFirst({
+      where: {
+        id,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: {
-        fields: {
+        schemaFields: {
           orderBy: { order: 'asc' },
         },
       },
@@ -109,7 +117,7 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
 
     if (!contentType) return { error: "Content type not found" }
 
-    const formattedFields = contentType.fields.map(field => {
+    const formattedFields = contentType.schemaFields.map(field => {
       let parsedOptions = field.options
       if (typeof field.options === 'string') {
         try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -132,15 +140,22 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
-    if (!rbac.allowed) return { error: "Forbidden" }
+    const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
+    const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
     const tenantDb = await getTenantDb(tenantSlug)
 
     const contentType = await tenantDb.contentType.findFirst({
-      where: { slug, tenantId: access.tenantId },
+      where: {
+        slug,
+        OR: [
+          { tenantId: access.tenantId },
+          { tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        ]
+      },
       include: {
-        fields: {
+        schemaFields: {
           orderBy: { order: 'asc' },
         },
       },
@@ -148,7 +163,7 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
 
     if (!contentType) return { error: "Content type not found" }
 
-    const formattedFields = contentType.fields.map(field => {
+    const formattedFields = contentType.schemaFields.map(field => {
       let parsedOptions = field.options
       if (typeof field.options === 'string') {
         try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -177,12 +192,12 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
     const result = createContentTypeSchema.safeParse(data)
     if (!result.success) {
       console.error("Zod validation error in createContentTypeAction:", result.error)
-      return { error: result.error.errors[0].message }
+      return { error: result.error.issues[0]?.message ?? "Validation failed" }
     }
     const { name, slug, description, docxTemplateUrl, fields } = result.data
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(access.tenantId, "content_types")
+    const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
     if (!enforcement.allowed) return { error: enforcement.message }
 
     const tenantDb = await getTenantDb(tenantSlug)
@@ -204,7 +219,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
         description,
         docxTemplateUrl,
         isPublished: true,
-        fields: {
+        schemaFields: {
           create: fields
             ? fields.map((field: any, index: number) => ({
                 name: field.name,
@@ -226,7 +241,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
         },
       },
       include: {
-        fields: true,
+        schemaFields: true,
       },
     })
 
@@ -250,7 +265,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
     if (!rbac.allowed) return { error: "Forbidden" }
 
     const result = updateContentTypeSchema.safeParse(data)
-    if (!result.success) return { error: result.error.errors[0].message }
+    if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, description, docxTemplateUrl, fields } = result.data
 
     const tenantDb = await getTenantDb(tenantSlug)
@@ -261,8 +276,15 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     if (!existingContentType) return { error: "Content type not found" }
 
+    const isGlobal = existingContentType.tenantId === null
+    const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
+
+    if (isGlobal || isOwnedByOther) {
+      return { error: "Global or cross-tenant content types cannot be modified by tenant admins" }
+    }
+
     const updatedContentType = await tenantDb.$transaction(async (tx) => {
-      await tx.contentTypeField.deleteMany({
+      await tx.schemaField.deleteMany({
         where: { contentTypeId: id }
       })
 
@@ -272,7 +294,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
           name,
           description,
           docxTemplateUrl: docxTemplateUrl !== undefined ? docxTemplateUrl : existingContentType.docxTemplateUrl,
-          fields: {
+          schemaFields: {
             create: fields?.map((field: any, index: number) => ({
               name: field.name,
               slug: field.slug,
@@ -287,12 +309,12 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
           },
         },
         include: {
-          fields: { orderBy: { order: 'asc' } },
+          schemaFields: { orderBy: { order: 'asc' } },
         },
       })
     })
 
-    const formattedFields = updatedContentType.fields.map(field => {
+    const formattedFields = updatedContentType.schemaFields.map(field => {
       let parsedOptions = field.options
       if (typeof field.options === 'string') {
         try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -303,7 +325,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
     revalidatePath(`/dashboard/${tenantSlug}/content-types`)
     revalidatePath(`/dashboard/${tenantSlug}/content-types/${updatedContentType.slug}`)
     
-    return { contentType: { ...updatedContentType, fields: formattedFields } }
+    return { contentType: { ...updatedContentType, schemaFields: formattedFields } }
   } catch (error) {
     console.error("Error updating content type:", error)
     return { error: "Internal server error" }

@@ -5,13 +5,59 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
-import { checkPermission, PERMISSIONS } from "@/lib/rbac"
+import { checkPermission, hasPermission, PERMISSIONS } from "@/lib/rbac"
 import { validateContentEntry } from "@/lib/content-validations"
 import { processAutoSlugs } from "@/lib/slug"
 import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { canUserTransition, assignReviewers, submitReview } from "@/lib/content-workflow"
 import { ContentStatus } from "@prisma/client"
+import { isWorkflowStatus, type WorkflowStatus } from "@/lib/content-workflow-rules"
+
+async function getWorkflowContext(
+  tenantId: string,
+  userId: string,
+  fallbackRole: string
+): Promise<{ role: string; customPermissions: string[] | null }> {
+  const member = await db.tenantMember.findUnique({
+    where: { tenantId_userId: { tenantId, userId } },
+  })
+
+  if (!member) {
+    return { role: fallbackRole, customPermissions: null }
+  }
+
+  if (Array.isArray(member.customPermissions)) {
+    return {
+      role: member.role,
+      customPermissions: member.customPermissions as string[],
+    }
+  }
+
+  if (!["owner", "admin", "editor", "viewer", "member"].includes(member.role)) {
+    const permissions = await db.rolePermission.findMany({
+      where: { tenantId, roleId: member.role, granted: true },
+      include: { permission: true },
+    })
+    return {
+      role: member.role,
+      customPermissions: permissions.map((item) => item.permission.name),
+    }
+  }
+
+  return { role: member.role, customPermissions: null }
+}
+
+function validateScheduledDate(status: WorkflowStatus, scheduledAt?: Date | null) {
+  if (status !== "SCHEDULED") return null
+  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
+    return "A valid scheduled publication date is required"
+  }
+  if (scheduledAt.getTime() <= Date.now()) {
+    return "Scheduled publication date must be in the future"
+  }
+  return null
+}
 
 /**
  * Get all entries for a content type with pagination and filtering
@@ -33,7 +79,7 @@ export async function getEntriesAction(
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const contentType = await tenantDb.contentType.findFirst({
+    const contentTypeRecord = await tenantDb.contentType.findFirst({
       where: { 
         slug: contentTypeSlug,
         OR: [
@@ -41,12 +87,23 @@ export async function getEntriesAction(
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
         ]
       },
-      include: { fields: true },
+      include: { schemaFields: { orderBy: { order: 'asc' } } },
     })
 
-    if (!contentType) {
+    if (!contentTypeRecord) {
       console.log(`[getEntriesAction] Content type not found! tenantSlug: ${tenantSlug}, access.tenantId: ${access.tenantId}, contentTypeSlug: ${contentTypeSlug}`)
       return { error: "Content type not found" }
+    }
+
+    const contentType = {
+      ...contentTypeRecord,
+      fields: contentTypeRecord.schemaFields.map(f => {
+        let parsedOptions = f.options
+        if (typeof f.options === 'string') {
+          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
+        }
+        return { ...f, options: parsedOptions || {} }
+      })
     }
 
     const page = Math.max(1, params.page || 1)
@@ -138,7 +195,7 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const contentType = await tenantDb.contentType.findFirst({
+    const contentTypeRecord = await tenantDb.contentType.findFirst({
       where: { 
         slug: contentTypeSlug,
         OR: [
@@ -146,10 +203,21 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
           { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
         ]
       },
-      include: { fields: true },
+      include: { schemaFields: { orderBy: { order: 'asc' } } },
     })
 
-    if (!contentType) return { error: "Content type not found" }
+    if (!contentTypeRecord) return { error: "Content type not found" }
+
+    const contentType = {
+      ...contentTypeRecord,
+      fields: contentTypeRecord.schemaFields.map(f => {
+        let parsedOptions = f.options
+        if (typeof f.options === 'string') {
+          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
+        }
+        return { ...f, options: parsedOptions || {} }
+      })
+    }
 
     // If no entryId provided (like for single types where we might search by content type)
     if (!entryId) {
@@ -204,6 +272,40 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
+    if (!data || typeof data !== "object" || Array.isArray(data)) {
+      return { error: "Content data must be an object" }
+    }
+    if (!isWorkflowStatus(status)) return { error: "Invalid content status" }
+
+    const normalizedScheduledAt = scheduledAt instanceof Date
+      ? scheduledAt
+      : scheduledAt
+        ? new Date(scheduledAt as unknown as string)
+        : null
+    const targetLocale = locale || "en"
+
+    const configuredLocales = await tenantDb.tenantLocale.findMany({
+      where: { tenantId, isEnabled: true },
+      select: { locale: true },
+    })
+    if (
+      configuredLocales.length > 0 &&
+      !configuredLocales.some((item) => item.locale === targetLocale)
+    ) {
+      return { error: `Locale '${targetLocale}' is not enabled for this workspace` }
+    }
+
+    const workflow = await getWorkflowContext(tenantId, session.user.id, access.role)
+    if (
+      status !== "DRAFT" &&
+      !canUserTransition("DRAFT", status, workflow.role, workflow.customPermissions)
+    ) {
+      return { error: `You do not have permission to create content as ${status}` }
+    }
+
+    const scheduleError = validateScheduledDate(status, normalizedScheduledAt)
+    if (scheduleError) return { error: scheduleError }
+
     const contentType = await tenantDb.contentType.findFirst({
       where: { 
         slug: contentTypeSlug,
@@ -212,35 +314,71 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
           { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
         ]
       },
-      include: { fields: true },
+      include: { schemaFields: true },
     })
 
     if (!contentType) return { error: "Content type not found" }
 
+    const mappedContentType = {
+      ...contentType,
+      fields: contentType.schemaFields.map(f => {
+        let parsedOptions = f.options
+        if (typeof f.options === 'string') {
+          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
+        }
+        return { ...f, options: parsedOptions || {} }
+      })
+    }
+
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(tenantId, "content_entries")
+    const enforcement = await enforcePlanLimit(tenantId, "content_entries", session.user.id)
     if (!enforcement.allowed) return { error: enforcement.message }
 
+    const schemaValidation = await validateContentEntry(
+      mappedContentType.fields as any,
+      data,
+      { enforceRequired: status !== "DRAFT" }
+    )
+    if (!schemaValidation.success) {
+      return { error: "Validation failed", details: schemaValidation.errors }
+    }
+    Object.assign(data, schemaValidation.data || {})
+
     const { validateDynamicContent } = await import("@/lib/validations/dynamic-validator")
-    const dynamicValidation = await validateDynamicContent(contentType.id, tenantId, data)
+    const dynamicValidation = await validateDynamicContent(
+      contentType.id,
+      tenantId,
+      data,
+      undefined,
+      { enforceRequired: status !== "DRAFT", client: tenantDb }
+    )
     if (!dynamicValidation.success) return { error: "Validation failed", details: dynamicValidation.errors }
 
-    const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, contentType.fields, data as Record<string, any>, undefined, 'content', tenantDb)
+    const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, mappedContentType.fields, data as Record<string, any>, undefined, 'content', tenantDb)
 
     const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_CREATE, dataWithSlugs as Record<string, unknown>)
     if (!hookResult.allowed) return { error: hookResult.rejectMessage || "Rejected by hook" }
 
-    const finalData = hookResult.modifiedData || dataWithSlugs
+    let finalData = hookResult.modifiedData || dataWithSlugs
+    if (status === "PUBLISHED") {
+      const publishHook = await executeSyncHooks(
+        tenantId,
+        WebhookEvents.BEFORE_PUBLISH,
+        finalData as Record<string, unknown>
+      )
+      if (!publishHook.allowed) return { error: publishHook.rejectMessage || "Rejected by publish hook" }
+      finalData = publishHook.modifiedData || finalData
+    }
 
     const entry = await tenantDb.$transaction(async (tx) => {
       const newEntry = await tx.contentEntry.create({
         data: {
           contentTypeId: contentType.id,
           tenantId,
-          locale: locale || "en",
+          locale: targetLocale,
           data: finalData as any,
           status: status as any,
-          scheduledAt: status === "SCHEDULED" ? scheduledAt : null,
+          scheduledAt: status === "SCHEDULED" ? normalizedScheduledAt : null,
           publishedAt: status === "PUBLISHED" ? new Date() : null,
           createdBy: session.user.id,
           updatedBy: session.user.id,
@@ -267,6 +405,9 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
     })
 
     triggerWebhooks(tenantId, WebhookEvents.CONTENT_CREATED, { entry: { id: entry.id, contentType: contentTypeSlug, status: entry.status } })
+    if (entry.status === "PUBLISHED") {
+      triggerWebhooks(tenantId, WebhookEvents.CONTENT_PUBLISHED, { entry: { id: entry.id, contentType: contentTypeSlug, status: entry.status } })
+    }
     
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentTypeSlug}:*`)
@@ -300,6 +441,22 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
     const { data, status, locale, scheduledAt } = payload
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
+    const targetLocale = locale || "en"
+
+    if (data !== undefined && (!data || typeof data !== "object" || Array.isArray(data))) {
+      return { error: "Content data must be an object" }
+    }
+
+    const configuredLocales = await tenantDb.tenantLocale.findMany({
+      where: { tenantId, isEnabled: true },
+      select: { locale: true },
+    })
+    if (
+      configuredLocales.length > 0 &&
+      !configuredLocales.some((item) => item.locale === targetLocale)
+    ) {
+      return { error: `Locale '${targetLocale}' is not enabled for this workspace` }
+    }
 
     const contentType = await tenantDb.contentType.findFirst({
       where: { 
@@ -309,39 +466,84 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
           { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
         ]
       },
-      include: { fields: true },
+      include: { schemaFields: true },
     })
 
     if (!contentType) return { error: "Content type not found" }
 
-    const baseEntry = await tenantDb.contentEntry.findUnique({ where: { id: entryId } })
+    const mappedContentType = {
+      ...contentType,
+      fields: contentType.schemaFields.map(f => {
+        let parsedOptions = f.options
+        if (typeof f.options === 'string') {
+          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
+        }
+        return { ...f, options: parsedOptions || {} }
+      })
+    }
+
+    const baseEntry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, contentTypeId: contentType.id, tenantId },
+    })
     if (!baseEntry) return { error: "Entry not found" }
 
     const documentId = baseEntry.documentId || baseEntry.id
-    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({ where: { documentId, locale, tenantId } })
+    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId } })
+
+    const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
+    if (!isWorkflowStatus(targetStatus)) return { error: "Invalid content status" }
+
+    const workflow = await getWorkflowContext(tenantId, session.user.id, access.role)
+    if (
+      !existingLocaleEntry &&
+      targetStatus !== "DRAFT" &&
+      !canUserTransition("DRAFT", targetStatus, workflow.role, workflow.customPermissions)
+    ) {
+      return { error: `You do not have permission to create a translation as ${targetStatus}` }
+    }
+
+    const normalizedScheduledAt = scheduledAt instanceof Date
+      ? scheduledAt
+      : scheduledAt
+        ? new Date(scheduledAt as unknown as string)
+        : null
+    const effectiveScheduledAt = normalizedScheduledAt || existingLocaleEntry?.scheduledAt || null
+    const scheduleError = validateScheduledDate(targetStatus, effectiveScheduledAt)
+    if (scheduleError) return { error: scheduleError }
 
     if (data) {
-      const validation = await validateContentEntry(contentType.fields as any, data)
+      const existingData = existingLocaleEntry?.data && typeof existingLocaleEntry.data === "object"
+        ? (existingLocaleEntry.data as Record<string, unknown>)
+        : {}
+      const candidateData = { ...existingData, ...data }
+      const validation = await validateContentEntry(
+        mappedContentType.fields as any,
+        candidateData,
+        { enforceRequired: targetStatus !== "DRAFT" }
+      )
       if (!validation.success) return { error: "Validation failed", details: validation.errors }
-      Object.assign(data, validation.data)
+      Object.assign(data, validation.data || {})
+
+      const { validateDynamicContent } = await import("@/lib/validations/dynamic-validator")
+      const dynamicValidation = await validateDynamicContent(
+        contentType.id,
+        tenantId,
+        candidateData,
+        existingLocaleEntry?.id,
+        { enforceRequired: targetStatus !== "DRAFT", client: tenantDb }
+      )
+      if (!dynamicValidation.success) {
+        return { error: "Validation failed", details: dynamicValidation.errors }
+      }
     }
 
     if (existingLocaleEntry && status && status !== existingLocaleEntry.status) {
-      const member = await db.tenantMember.findUnique({ where: { tenantId_userId: { tenantId, userId: session.user.id } } })
-      if (!member) return { error: "Unauthorized" }
-
-      let roleCustomPerms: string[] | null = null
-      if (member.customPermissions && Array.isArray(member.customPermissions)) {
-        roleCustomPerms = member.customPermissions as string[]
-      } else {
-        const isStandardRole = ["admin", "owner", "editor", "viewer"].includes(member.role)
-        if (!isStandardRole) {
-          const perms = await db.rolePermission.findMany({ where: { tenantId, roleId: member.role, granted: true }, include: { permission: true } })
-          roleCustomPerms = perms.map(p => p.permission.name)
-        }
-      }
-
-      const canTransition = canUserTransition(existingLocaleEntry.status as any, status as any, member.role, roleCustomPerms)
+      const canTransition = canUserTransition(
+        existingLocaleEntry.status,
+        status,
+        workflow.role,
+        workflow.customPermissions
+      )
       if (!canTransition) return { error: `You do not have permission to change status from ${existingLocaleEntry.status} to ${status}` }
     }
 
@@ -352,41 +554,66 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         let finalData = data
         if (data) {
           const fullData = { ...(existingLocaleEntry.data as any), ...data }
-          const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, contentType.fields, fullData, existingLocaleEntry.id, 'content', tx as any)
+          const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, mappedContentType.fields, fullData, existingLocaleEntry.id, 'content', tx as any)
 
           const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_UPDATE, dataWithSlugs as Record<string, unknown>)
           if (!hookResult.allowed) throw new Error(hookResult.rejectMessage || "Rejected by hook")
           finalData = hookResult.modifiedData || dataWithSlugs
         }
 
+        if (status === "PUBLISHED" && status !== existingLocaleEntry.status) {
+          const publishHook = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_PUBLISH, {
+            id: existingLocaleEntry.id,
+            data: (finalData || existingLocaleEntry.data) as Record<string, unknown>,
+            currentStatus: existingLocaleEntry.status,
+          })
+          if (!publishHook.allowed) throw new Error(publishHook.rejectMessage || "Rejected by publish hook")
+          finalData = publishHook.modifiedData || finalData
+        }
+
         const updateData: any = { updatedBy: session.user.id }
         if (finalData) updateData.data = finalData
         if (status) {
           updateData.status = status
-          updateData.publishedAt = status === "PUBLISHED" ? new Date() : (status === "DRAFT" ? null : existingLocaleEntry.publishedAt)
-          updateData.scheduledAt = status === "SCHEDULED" ? scheduledAt : (status ? null : existingLocaleEntry.scheduledAt)
+          if (status !== existingLocaleEntry.status) {
+            updateData.publishedAt = status === "PUBLISHED" ? new Date() : (status === "DRAFT" ? null : existingLocaleEntry.publishedAt)
+            updateData.scheduledAt = status === "SCHEDULED" ? effectiveScheduledAt : null
+            updateData.archivedAt = status === "ARCHIVED" ? new Date() : null
+          } else if (status === "SCHEDULED" && normalizedScheduledAt) {
+            updateData.scheduledAt = normalizedScheduledAt
+          }
         }
 
         await tx.contentEntry.update({ where: { id: existingLocaleEntry.id }, data: updateData })
       } else {
         // Translation flow
         if (!data) throw new Error("Data required for new translation")
-        const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, contentType.fields, data as Record<string, any>, undefined, 'content', tx as any)
+        const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, mappedContentType.schemaFields, data as Record<string, any>, undefined, 'content', tx as any)
         
         const hookResult = await executeSyncHooks(tenantId, WebhookEvents.BEFORE_CREATE, dataWithSlugs as Record<string, unknown>)
         if (!hookResult.allowed) throw new Error(hookResult.rejectMessage || "Rejected by hook")
-        const finalData = hookResult.modifiedData || dataWithSlugs
+        let finalData = hookResult.modifiedData || dataWithSlugs
+
+        if (status === "PUBLISHED") {
+          const publishHook = await executeSyncHooks(
+            tenantId,
+            WebhookEvents.BEFORE_PUBLISH,
+            finalData as Record<string, unknown>
+          )
+          if (!publishHook.allowed) throw new Error(publishHook.rejectMessage || "Rejected by publish hook")
+          finalData = publishHook.modifiedData || finalData
+        }
 
         const newEntry = await tx.contentEntry.create({
           data: {
             documentId,
             contentTypeId: baseEntry.contentTypeId,
             tenantId,
-            locale,
+            locale: targetLocale,
             data: finalData as any,
             status: status as any || "DRAFT",
             publishedAt: status === "PUBLISHED" ? new Date() : null,
-            scheduledAt: status === "SCHEDULED" ? scheduledAt : null,
+            scheduledAt: status === "SCHEDULED" ? effectiveScheduledAt : null,
             createdBy: session.user.id,
             updatedBy: session.user.id,
           }
@@ -396,7 +623,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
 
       // Sync Shared Fields
       if (data) {
-        const sharedFields = contentType.fields.filter(f => !f.localizable)
+        const sharedFields = mappedContentType.fields.filter(f => !f.localizable)
         if (sharedFields.length > 0) {
           const translations = await tx.contentEntry.findMany({ where: { documentId, NOT: { id: targetEntryId! } } })
           for (const trans of translations) {
@@ -429,12 +656,18 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
       return updatedEntry
     })
 
+    const previousStatus = existingLocaleEntry?.status
     triggerWebhooks(tenantId, existingLocaleEntry ? WebhookEvents.CONTENT_UPDATED : WebhookEvents.CONTENT_CREATED, { entry: { id: entry?.id, contentType: contentTypeSlug, status: entry?.status } })
+    if (entry?.status === "PUBLISHED" && previousStatus !== "PUBLISHED") {
+      triggerWebhooks(tenantId, WebhookEvents.CONTENT_PUBLISHED, { entry: { id: entry.id, contentType: contentTypeSlug, status: entry.status } })
+    } else if (previousStatus === "PUBLISHED" && entry?.status === "DRAFT") {
+      triggerWebhooks(tenantId, WebhookEvents.CONTENT_UNPUBLISHED, { entry: { id: entry.id, contentType: contentTypeSlug, status: entry.status } })
+    }
     
     const { invalidatePattern } = await import("@/lib/cache")
     await invalidatePattern(`public_api:${tenantSlug}:${contentTypeSlug}:*`)
 
-    logAudit({ tenantId, userId: session.user.id, action: existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED, entity: "content_entry", entityId: entry?.id || entryId, data: { contentType: contentTypeSlug, status: entry?.status, locale } })
+    logAudit({ tenantId, userId: session.user.id, action: existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED, entity: "content_entry", entityId: entry?.id || entryId, data: { contentType: contentTypeSlug, status: entry?.status, locale: targetLocale } })
 
     revalidatePath(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
     revalidatePath(`/dashboard/${tenantSlug}/single-types/${contentTypeSlug}`)
@@ -574,32 +807,40 @@ export async function bulkContentAction(tenantSlug: string, contentTypeSlug: str
     if (entries.length === 0) return { error: "No entries found" }
 
     let successCount = 0
+    const failures: Array<{ entryId: string; error: string }> = []
 
     if (action === "delete") {
       if (access.role !== "admin" && access.role !== "owner") {
         return { error: "Only admins and owners can delete entries" }
       }
       for (const entry of entries) {
-        await deleteEntryAction(tenantSlug, contentTypeSlug, entry.id)
-        successCount++
+        const result = await deleteEntryAction(tenantSlug, contentTypeSlug, entry.id)
+        if (result.success) successCount++
+        else failures.push({ entryId: entry.id, error: result.error || "Delete failed" })
       }
     } else if (action === "publish" || action === "unpublish") {
       const targetStatus = action === "publish" ? "PUBLISHED" : "DRAFT"
       for (const entry of entries) {
         if (entry.status !== targetStatus) {
-           await updateEntryAction(tenantSlug, contentTypeSlug, entry.id, {
+           const result = await updateEntryAction(tenantSlug, contentTypeSlug, entry.id, {
              data: undefined,
              status: targetStatus,
              locale: entry.locale
            })
-           successCount++
+           if (result.success) successCount++
+           else failures.push({ entryId: entry.id, error: result.error || `${action} failed` })
         }
       }
     } else {
       return { error: "Invalid action" }
     }
 
-    return { success: true, count: successCount }
+    return {
+      success: failures.length === 0,
+      count: successCount,
+      failed: failures.length,
+      failures,
+    }
   } catch (error: any) {
     console.error("Error performing bulk action:", error)
     return { error: error.message || "Internal server error" }
@@ -614,10 +855,56 @@ export async function assignReviewersAction(tenantSlug: string, entryId: string,
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
+    if (!["owner", "admin"].includes(access.role)) {
+      return { error: "Only workspace owners and admins can assign reviewers" }
+    }
+
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_UPDATE)
     if (!rbac.allowed) return { error: "Forbidden: Missing content.update permission" }
 
-    await assignReviewers(entryId, reviewers, session.user.id)
+    if (reviewers.length > 20 || reviewers.some((reviewer) => !reviewer.userId)) {
+      return { error: "Invalid reviewer list" }
+    }
+
+    const normalizedReviewers = reviewers.map((reviewer) => ({
+      userId: reviewer.userId,
+      name: reviewer.name?.trim().slice(0, 200),
+    }))
+
+    const tenantDb = await getTenantDb(tenantSlug)
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, tenantId: access.tenantId },
+      select: { id: true, status: true },
+    })
+    if (!entry) return { error: "Entry not found" }
+    if (!["DRAFT", "IN_REVIEW"].includes(entry.status)) {
+      return { error: "Reviewers can only be changed while content is Draft or In Review" }
+    }
+
+    const reviewerIds = [...new Set(normalizedReviewers.map((reviewer) => reviewer.userId))]
+    if (reviewerIds.length !== normalizedReviewers.length) {
+      return { error: "A reviewer can only be assigned once" }
+    }
+
+    const validReviewerCount = await db.tenantMember.count({
+      where: {
+        tenantId: access.tenantId,
+        userId: { in: reviewerIds },
+        role: { not: "viewer" },
+      },
+    })
+    if (validReviewerCount !== reviewerIds.length) {
+      return { error: "Every reviewer must be an active, non-viewer member of this workspace" }
+    }
+
+    const reviewerAccess = await Promise.all(
+      reviewerIds.map((userId) => hasPermission(userId, access.tenantId, PERMISSIONS.CONTENT_READ))
+    )
+    if (reviewerAccess.some((allowed) => !allowed)) {
+      return { error: "Every reviewer must have content.read permission" }
+    }
+
+    await assignReviewers(entry.id, normalizedReviewers, session.user.id, tenantDb)
     revalidatePath(`/dashboard/${tenantSlug}/content`)
     return { success: true }
   } catch (error: any) {
@@ -638,19 +925,37 @@ export async function submitReviewAction(tenantSlug: string, entryId: string, de
     const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
     if (!rbac.allowed) return { error: "Forbidden: Missing content.read permission" }
 
-    const result = await submitReview(entryId, session.user.id, decision, comment)
+    const tenantDb = await getTenantDb(tenantSlug)
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: { id: entryId, tenantId: access.tenantId },
+      select: { id: true, status: true, contentTypeId: true },
+    })
+    if (!entry) return { error: "Entry not found" }
+    if (entry.status !== "IN_REVIEW") {
+      return { error: "Review decisions are only accepted while content is In Review" }
+    }
+
+    const normalizedComment = comment?.trim().slice(0, 2000)
+    const result = await submitReview(entry.id, session.user.id, decision, normalizedComment, tenantDb)
 
     // If all approved or rejected, update the entry status accordingly
     if (result.allApproved || result.rejected) {
-      const tenantDb = await getTenantDb(tenantSlug)
       const status: ContentStatus = result.allApproved ? "APPROVED" : "REJECTED"
       
       const updated = await tenantDb.contentEntry.update({
         where: { id: entryId },
-        data: { status, reviewComment: comment }
+        data: { status, reviewComment: normalizedComment }
       })
 
       triggerWebhooks(access.tenantId, WebhookEvents.CONTENT_UPDATED, { entry: updated })
+      logAudit({
+        tenantId: access.tenantId,
+        userId: session.user.id,
+        action: AuditAction.CONTENT_UPDATED,
+        entity: "content_review",
+        entityId: entry.id,
+        data: { decision, status, comment: normalizedComment || null },
+      })
     }
 
     revalidatePath(`/dashboard/${tenantSlug}/content`)

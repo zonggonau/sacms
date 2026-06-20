@@ -9,9 +9,8 @@ const GraphiQLInner = dynamic(() => import("./graphiql-inner"), {
 
 interface GraphiQLWrapperProps {
   endpoint: string
-  apiToken?: string
 }
 
-export function GraphiQLWrapper({ endpoint, apiToken }: GraphiQLWrapperProps) {
-  return <GraphiQLInner endpoint={endpoint} apiToken={apiToken} />
+export function GraphiQLWrapper({ endpoint }: GraphiQLWrapperProps) {
+  return <GraphiQLInner endpoint={endpoint} />
 }

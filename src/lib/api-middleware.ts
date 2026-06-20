@@ -29,7 +29,7 @@ export function withPlanLimit(
 
       // Only check limits for mutation methods
       if (["POST", "PUT", "PATCH"].includes(request.method)) {
-        const enforcement = await enforcePlanLimit(access.tenantId, resource)
+        const enforcement = await enforcePlanLimit(access.tenantId, resource, access.userId)
         if (!enforcement.allowed) {
           return NextResponse.json({ 
             error: enforcement.message,

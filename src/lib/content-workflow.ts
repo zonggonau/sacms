@@ -1,5 +1,15 @@
-import type { ContentStatus } from "@prisma/client"
 import { db } from "@/lib/database"
+import type { ContentStatus } from "@prisma/client"
+import type { PrismaClient } from "../../prisma/generated-client"
+import {
+  allowedTransitions as allowedWorkflowTransitions,
+  canTransition as canWorkflowTransition,
+  canUserTransition as canWorkflowUserTransition,
+  TRANSITION_PERMISSIONS,
+  type WorkflowStatus,
+} from "@/lib/content-workflow-rules"
+
+export { TRANSITION_PERMISSIONS }
 
 /**
  * Content workflow state machine.
@@ -7,24 +17,17 @@ import { db } from "@/lib/database"
  *
  * Flow:
  *   DRAFT → IN_REVIEW → APPROVED → PUBLISHED
- *                     → REJECTED → DRAFT (re-edit)
- *                     → SCHEDULED → PUBLISHED (via cron)
+ *            ↓            ↓
+ *         REJECTED     SCHEDULED → PUBLISHED (via cron)
+ *            ↓
+ *          DRAFT
+ *   DRAFT → PUBLISHED | SCHEDULED (owner/admin direct path)
  *   PUBLISHED → ARCHIVED
  *   ARCHIVED → DRAFT (restore)
  *
- * Multi-reviewer: When reviewers are assigned, IN_REVIEW → APPROVED
- * requires all reviewers to approve in sequence order.
+ * Multi-reviewer decisions are processed in sequence order. Owner/admin retain
+ * the explicit workflow permission to override IN_REVIEW through the status action.
  */
-
-const TRANSITIONS: Record<ContentStatus, ContentStatus[]> = {
-  DRAFT: ["IN_REVIEW", "PUBLISHED"], // direct publish for admins
-  IN_REVIEW: ["APPROVED", "REJECTED"],
-  APPROVED: ["PUBLISHED", "SCHEDULED"],
-  SCHEDULED: ["PUBLISHED", "DRAFT"], // cancel schedule reverts to draft
-  PUBLISHED: ["ARCHIVED", "DRAFT"], // unpublish
-  ARCHIVED: ["DRAFT"], // restore
-  REJECTED: ["DRAFT"], // re-edit
-}
 
 /**
  * Check if a status transition is valid.
@@ -33,48 +36,14 @@ export function canTransition(
   from: ContentStatus,
   to: ContentStatus
 ): boolean {
-  return TRANSITIONS[from]?.includes(to) ?? false
+  return canWorkflowTransition(from as WorkflowStatus, to as WorkflowStatus)
 }
 
 /**
  * Get allowed next statuses from the current status.
  */
 export function allowedTransitions(from: ContentStatus): ContentStatus[] {
-  return TRANSITIONS[from] ?? []
-}
-
-/**
- * Roles that can perform specific transitions.
- */
-const TRANSITION_ROLES: Partial<
-  Record<string, string[]>
-> = {
-  "DRAFT->IN_REVIEW": ["owner", "admin", "editor", "member"],
-  "IN_REVIEW->APPROVED": ["owner", "admin"],
-  "IN_REVIEW->REJECTED": ["owner", "admin"],
-  "APPROVED->PUBLISHED": ["owner", "admin"],
-  "APPROVED->SCHEDULED": ["owner", "admin"],
-  "PUBLISHED->ARCHIVED": ["owner", "admin"],
-  "PUBLISHED->DRAFT": ["owner", "admin"],
-  "ARCHIVED->DRAFT": ["owner", "admin", "editor"],
-  "REJECTED->DRAFT": ["owner", "admin", "editor", "member"],
-  "SCHEDULED->PUBLISHED": ["system"], // cron only
-  "SCHEDULED->DRAFT": ["owner", "admin"],
-  "DRAFT->PUBLISHED": ["owner", "admin"], // direct publish
-}
-
-export const TRANSITION_PERMISSIONS: Record<string, string> = {
-  "DRAFT->IN_REVIEW": "workflow.draft_to_review",
-  "IN_REVIEW->APPROVED": "workflow.review_to_approve",
-  "IN_REVIEW->REJECTED": "workflow.review_to_reject",
-  "APPROVED->PUBLISHED": "workflow.approve_to_publish",
-  "APPROVED->SCHEDULED": "workflow.approve_to_schedule",
-  "PUBLISHED->ARCHIVED": "workflow.published_to_archived",
-  "PUBLISHED->DRAFT": "workflow.published_to_draft",
-  "ARCHIVED->DRAFT": "workflow.archived_to_draft",
-  "REJECTED->DRAFT": "workflow.rejected_to_draft",
-  "DRAFT->PUBLISHED": "workflow.draft_to_publish",
-  "SCHEDULED->DRAFT": "workflow.scheduled_to_draft", // B8 Fix: was missing
+  return allowedWorkflowTransitions(from as WorkflowStatus) as ContentStatus[]
 }
 
 /**
@@ -86,25 +55,12 @@ export function canUserTransition(
   role: string,
   customPermissions?: string[] | null
 ): boolean {
-  if (!canTransition(from, to)) return false
-  const key = `${from}->${to}`
-
-  // Owner and Admin can always transition everything
-  if (role === "owner" || role === "admin") return true
-
-  // If customPermissions is an array, it strictly overrides the role default
-  if (Array.isArray(customPermissions)) {
-    const requiredPermission = TRANSITION_PERMISSIONS[key]
-    if (requiredPermission && customPermissions.includes(requiredPermission)) {
-      return true
-    }
-    return false // If they have an array but not the permission, deny
-  }
-
-  // Fallback to legacy role-based check
-  const allowed = TRANSITION_ROLES[key]
-  if (!allowed) return false
-  return allowed.includes(role)
+  return canWorkflowUserTransition(
+    from as WorkflowStatus,
+    to as WorkflowStatus,
+    role,
+    customPermissions
+  )
 }
 
 /**
@@ -146,15 +102,16 @@ export function getStatusDisplay(status: ContentStatus): {
 export async function assignReviewers(
   contentEntryId: string,
   reviewers: Array<{ userId: string; name?: string }>,
-  assignedBy: string
+  assignedBy: string,
+  client: PrismaClient = db
 ): Promise<void> {
   // Remove existing assignments
-  await db.contentReviewAssignment.deleteMany({
+  await client.contentReviewAssignment.deleteMany({
     where: { contentEntryId },
   })
 
   // Create new assignments in order
-  await db.contentReviewAssignment.createMany({
+  await client.contentReviewAssignment.createMany({
     data: reviewers.map((r, index) => ({
       contentEntryId,
       reviewerId: r.userId,
@@ -170,9 +127,10 @@ export async function assignReviewers(
  * Get the current reviewer (next pending in sequence).
  */
 export async function getCurrentReviewer(
-  contentEntryId: string
+  contentEntryId: string,
+  client: PrismaClient = db
 ): Promise<{ reviewerId: string; order: number } | null> {
-  const assignment = await db.contentReviewAssignment.findFirst({
+  const assignment = await client.contentReviewAssignment.findFirst({
     where: { contentEntryId, status: "pending" },
     orderBy: { order: "asc" },
   })
@@ -189,10 +147,11 @@ export async function submitReview(
   contentEntryId: string,
   reviewerId: string,
   decision: "approved" | "rejected",
-  comment?: string
+  comment?: string,
+  client: PrismaClient = db
 ): Promise<{ allApproved: boolean; rejected: boolean }> {
   // Get this reviewer's assignment
-  const assignment = await db.contentReviewAssignment.findUnique({
+  const assignment = await client.contentReviewAssignment.findUnique({
     where: {
       contentEntryId_reviewerId: { contentEntryId, reviewerId },
     },
@@ -203,14 +162,14 @@ export async function submitReview(
   }
 
   // Check this is the current reviewer in sequence
-  const current = await getCurrentReviewer(contentEntryId)
+  const current = await getCurrentReviewer(contentEntryId, client)
   if (!current || current.reviewerId !== reviewerId) {
     throw new Error("It is not your turn to review")
   }
 
-  // Update this assignment
-  await db.contentReviewAssignment.update({
-    where: { id: assignment.id },
+  // Conditional update prevents duplicate decisions from racing each other.
+  const updated = await client.contentReviewAssignment.updateMany({
+    where: { id: assignment.id, status: "pending" },
     data: {
       status: decision,
       comment: comment || null,
@@ -218,12 +177,16 @@ export async function submitReview(
     },
   })
 
+  if (updated.count !== 1) {
+    throw new Error("This review assignment has already been decided")
+  }
+
   if (decision === "rejected") {
     return { allApproved: false, rejected: true }
   }
 
   // Check if all reviewers have approved
-  const remaining = await db.contentReviewAssignment.count({
+  const remaining = await client.contentReviewAssignment.count({
     where: { contentEntryId, status: "pending" },
   })
 
@@ -233,8 +196,8 @@ export async function submitReview(
 /**
  * Get all review assignments for a content entry.
  */
-export async function getReviewAssignments(contentEntryId: string) {
-  return db.contentReviewAssignment.findMany({
+export async function getReviewAssignments(contentEntryId: string, client: PrismaClient = db) {
+  return client.contentReviewAssignment.findMany({
     where: { contentEntryId },
     orderBy: { order: "asc" },
   })
@@ -245,8 +208,9 @@ export async function getReviewAssignments(contentEntryId: string) {
  */
 export async function isCurrentReviewer(
   contentEntryId: string,
-  userId: string
+  userId: string,
+  client: PrismaClient = db
 ): Promise<boolean> {
-  const current = await getCurrentReviewer(contentEntryId)
+  const current = await getCurrentReviewer(contentEntryId, client)
   return current?.reviewerId === userId
 }

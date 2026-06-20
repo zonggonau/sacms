@@ -1,6 +1,6 @@
 import { z } from "zod"
 
-interface Field {
+interface FieldDefinition {
   slug: string
   type: string
   required: boolean
@@ -11,13 +11,18 @@ interface Field {
 /**
  * Generates a dynamic Zod schema based on Content Type fields
  */
-export function generateContentSchema(fields: Field[]) {
+export function generateContentSchema(
+  fields: FieldDefinition[],
+  options: { enforceRequired?: boolean } = {}
+) {
+  const enforceRequired = options.enforceRequired ?? true
   const schemaShape: Record<string, z.ZodTypeAny> = {}
 
   fields.forEach((field) => {
     let fieldSchema: z.ZodTypeAny
+    const isRequired = enforceRequired && field.required
 
-    const requiredParams = field.required ? { required_error: `${field.name} is required` } : {}
+    const requiredParams = isRequired ? { required_error: `${field.name} is required` } : {}
 
     switch (field.type) {
       case "text":
@@ -26,14 +31,14 @@ export function generateContentSchema(fields: Field[]) {
       case "select":
         fieldSchema = z.string(requiredParams)
         if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
-        if (field.required) {
+        if (isRequired) {
           fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
         }
         break
 
       case "email":
         fieldSchema = z.string(requiredParams).email({ message: `Invalid email format in ${field.name}` })
-        if (field.required) {
+        if (isRequired) {
           fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
         }
         break
@@ -70,7 +75,7 @@ export function generateContentSchema(fields: Field[]) {
     }
 
     // Post-processing for requirement
-    if (field.required) {
+    if (isRequired) {
       const basicTypes = ["text", "textarea", "richText", "select", "email", "number", "integer", "boolean"]
       const jsonTypes = ["json", "relation", "component", "media", "mediaMultiple", "tags", "file"]
 
@@ -99,8 +104,12 @@ export function generateContentSchema(fields: Field[]) {
 /**
  * Validates entry data against content type fields
  */
-export async function validateContentEntry(fields: Field[], data: any) {
-  const schema = generateContentSchema(fields)
+export async function validateContentEntry(
+  fields: FieldDefinition[],
+  data: unknown,
+  options: { enforceRequired?: boolean } = {}
+) {
+  const schema = generateContentSchema(fields, options)
   try {
     const validatedData = await schema.parseAsync(data)
     return { success: true, data: validatedData, errors: null }

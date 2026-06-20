@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db, getTenantDbById } from "@/lib/database"
 import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
 import { invalidatePattern } from "@/lib/cache"
+import { authorizeCronRequest } from "@/lib/cron-auth"
 
 /**
  * GET /api/cron/publish
@@ -11,13 +12,8 @@ import { invalidatePattern } from "@/lib/cache"
  * Requires CRON_SECRET header for security.
  */
 export async function GET(request: Request) {
-  // Verify cron secret
-  const authHeader = request.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const unauthorized = authorizeCronRequest(request)
+  if (unauthorized) return unauthorized
 
   try {
     // 1. Get all tenants to iterate through their databases

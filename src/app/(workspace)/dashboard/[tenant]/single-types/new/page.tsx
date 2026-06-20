@@ -1,6 +1,7 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
+import { getTenantAccess } from "@/lib/tenant-access"
 import NewSingleTypeClient from "./new-single-type-client"
 
 export default async function NewSingleTypePage({
@@ -15,6 +16,17 @@ export default async function NewSingleTypePage({
 
   const resolvedParams = await params
   const tenantSlug = resolvedParams.tenant
+
+  const access = await getTenantAccess(session, tenantSlug)
+  if (!access) {
+    redirect("/dashboard")
+  }
+
+  const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+  const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
+  if (!enforcement.allowed) {
+    redirect(`/dashboard/${tenantSlug}/single-types`)
+  }
 
   return (
     <NewSingleTypeClient tenantSlug={tenantSlug} />

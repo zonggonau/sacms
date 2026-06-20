@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 
 interface TenantAccess {
   tenantId: string
+  userId: string
   role: string
   tenant: {
     id: string
@@ -35,6 +36,7 @@ export async function getTenantAccess(
     if (!tenant) return null
     return { 
       tenantId: tenant.id, 
+      userId: session.user.id,
       role: "owner",
       tenant: {
         id: tenant.id,
@@ -71,6 +73,7 @@ export async function getTenantAccess(
   if (!membership || !membership.tenant) return null
   return { 
     tenantId: membership.tenantId, 
+    userId: session.user.id,
     role: membership.role,
     tenant: membership.tenant
   }

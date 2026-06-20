@@ -16,6 +16,7 @@ import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { getSingleTypeBySlugAction, saveSingleTypeDataAction } from "@/actions/single-types"
 
 // Field Renderers
 import { TextField } from "@/components/content/field-renderers/text-field"
@@ -75,18 +76,23 @@ export default function CMSSingleTypeDetailPage() {
     setLoading(true)
     try {
       const [stRes, locRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`),
+        getSingleTypeBySlugAction(tenantSlug, singleTypeSlug),
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
-      if (stRes.ok) {
-        const data = await stRes.json()
-        setSingleType(data)
-        setFormData(data.data || {})
+      if (stRes.singleType) {
+        setSingleType(stRes.singleType)
+        setFormData(stRes.singleType.data || {})
+      } else if (stRes.error) {
+        toast({ variant: "destructive", title: "Error", description: stRes.error })
       }
       if (locRes.ok) {
-        const data = await locRes.json()
-        if (data.locales?.length > 0) setAvailableLocales(data.locales)
+        try {
+          const data = await locRes.json()
+          if (data.locales?.length > 0) setAvailableLocales(data.locales)
+        } catch (e) {
+          console.error("Failed to parse locales response:", e)
+        }
       }
     } catch (error) {
       console.error(error)
@@ -105,19 +111,16 @@ export default function CMSSingleTypeDetailPage() {
   }, [fetchData, status, singleTypeSlug])
 
   const handleSave = async (publishNow: boolean = false) => {
-    if (!singleTypeSlug) return
+    if (!singleTypeSlug || !singleType) return
     setSaving(true)
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types/slug/${singleTypeSlug}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ 
-          data: formData,
-          publish: publishNow,
-          locale
-        }),
-      })
-      if (!response.ok) throw new Error("Save failed")
+      const response = await saveSingleTypeDataAction(
+        tenantSlug, 
+        singleType.id, 
+        formData, 
+        publishNow
+      )
+      if (response.error) throw new Error(response.error)
       
       toast({ 
         title: publishNow ? "Published Successfully!" : "Draft Saved",

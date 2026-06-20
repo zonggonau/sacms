@@ -4,12 +4,16 @@ import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { safeGenerateContent } from "@/lib/ai"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return NextResponse.json({ error: "AI features are not configured" }, { status: 503 })
+    }
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -17,6 +21,10 @@ export async function POST(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_AI")) {
+      return NextResponse.json({ error: "AI features are not enabled for this workspace" }, { status: 403 })
     }
 
     const { prompt } = await request.json()
@@ -84,8 +92,7 @@ export async function POST(
         slug: schema.slug,
         description: schema.description,
         isPublished: true,
-        fields: {
-          create: schema.fields.map((f: any, index: number) => {
+        schemaFields: { create: schema.fields.map((f: any, index: number) => {
             const fieldOptions = f.options ? (typeof f.options === 'string' ? JSON.parse(f.options) : f.options) : {}
             if (f.type === 'component' && f.componentSlug) {
               fieldOptions.componentSlug = f.componentSlug
@@ -109,9 +116,7 @@ export async function POST(
           }
         }
       },
-      include: {
-        fields: true
-      }
+      include: { schemaFields: true }
     })
 
     return NextResponse.json(contentType)

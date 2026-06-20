@@ -15,6 +15,7 @@ const RELATION_TYPES = [
 
 const TARGET_MODELS = [
   { value: "content-type", label: "Content Type" },
+  { value: "single-type", label: "Single Type" },
 ]
 
 interface TypeItem {

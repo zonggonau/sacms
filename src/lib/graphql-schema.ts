@@ -3,7 +3,8 @@ import { db } from "@/lib/database"
 import { processAutoSlugs } from "@/lib/slug"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { canTransition } from "@/lib/content-workflow"
-import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
+import { resolveContentData } from "@/lib/content-resolver"
+import { triggerWebhooks, executeSyncHooks, Webhooks, WebhookEvents } from "@/lib/webhooks"
 
 // Dynamically build GraphQL schema from content types and single types
 export async function buildDynamicTypeDefs(
@@ -16,7 +17,7 @@ export async function buildDynamicTypeDefs(
     where: { tenantId, enabled: true },
     include: {
       contentType: {
-        include: { fields: { orderBy: { order: "asc" } } },
+        include: { schemaFields: { orderBy: { order: "asc" } } },
       },
     },
   })
@@ -26,7 +27,7 @@ export async function buildDynamicTypeDefs(
     where: { tenantId, enabled: true },
     include: {
       singleType: {
-        include: { fields: { orderBy: { order: "asc" } } },
+        include: { schemaFields: { orderBy: { order: "asc" } } },
       },
     },
   })
@@ -41,7 +42,8 @@ export async function buildDynamicTypeDefs(
     const ct = assignment.contentType
     const typeName = toPascalCase(ct.slug)
     contentTypeSlugs.push(ct.slug)
-    const fields = ct.fields
+    const fields = ct.schemaFields
+      .filter((f) => !["id", "locale", "status", "publishedAt", "createdAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
       .map((f) => `  ${sanitizeFieldName(f.slug)}: ${mapFieldTypeToGraphQL(f.type, f.required)}`)
       .join("\n")
 
@@ -80,7 +82,8 @@ type ${typeName}Collection {
   for (const assignment of singleTypeAssignments) {
     const st = assignment.singleType
     const typeName = toPascalCase(st.slug) + "Single"
-    const fields = st.fields
+    const fields = st.schemaFields
+      .filter((f) => !["publishedAt", "updatedAt"].includes(sanitizeFieldName(f.slug)))
       .map((f) => `  ${sanitizeFieldName(f.slug)}: ${mapFieldTypeToGraphQL(f.type, f.required)}`)
       .join("\n")
 
@@ -258,28 +261,19 @@ async function resolveContentCollection(
     }),
   ])
 
-  let fieldsToPopulate: string[] = []
+  let schemaFields: any[] = []
   if (context?.loaders?.entryLoader) {
-    const ct = await _db.contentType.findUnique({ where: { id: contentTypeId }, include: { fields: true } })
+    const ct = await _db.contentType.findUnique({ where: { id: contentTypeId }, include: { schemaFields: true } })
     if (ct) {
-      fieldsToPopulate = ct.fields.filter(f => f.type === 'relation').map(f => f.slug)
+      schemaFields = ct.schemaFields
     }
   }
 
   const data = await Promise.all(entries.map(async (entry) => {
     let parsedData: any = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {})
 
-    if (fieldsToPopulate.length > 0 && context?.loaders?.entryLoader) {
-      for (const fieldSlug of fieldsToPopulate) {
-        const val = parsedData[fieldSlug]
-        if (typeof val === 'string') {
-          const rel = await context.loaders.entryLoader.load(val)
-          if (rel) parsedData[fieldSlug] = { id: rel.id, ...(typeof rel.data === 'string' ? JSON.parse(rel.data) : rel.data) }
-        } else if (Array.isArray(val)) {
-          const rels = await Promise.all(val.map(id => typeof id === 'string' ? context.loaders.entryLoader.load(id) : null))
-          parsedData[fieldSlug] = rels.filter(Boolean).map((rel: any) => ({ id: rel.id, ...(typeof rel.data === 'string' ? JSON.parse(rel.data) : rel.data) }))
-        }
-      }
+    if (schemaFields.length > 0 && context?.loaders?.entryLoader) {
+      parsedData = await resolveContentData(tenantId, parsedData, schemaFields)
     }
 
     return {
@@ -307,7 +301,8 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
         { tenantId },
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
-    }
+    },
+    include: { schemaFields: true }
   })
   if (!contentType) return null
 
@@ -318,18 +313,8 @@ async function resolveContentEntryById(tenantId: string, slug: string, id: strin
 
   let parsedData: any = typeof entry.data === 'string' ? JSON.parse(entry.data) : (entry.data || {})
 
-  if (context?.loaders?.entryLoader) {
-    const fieldsToPopulate = contentType.fields?.filter(f => f.type === 'relation').map(f => f.slug) || []
-    for (const fieldSlug of fieldsToPopulate) {
-      const val = parsedData[fieldSlug]
-      if (typeof val === 'string') {
-        const rel = await context.loaders.entryLoader.load(val)
-        if (rel) parsedData[fieldSlug] = { id: rel.id, ...(typeof rel.data === 'string' ? JSON.parse(rel.data) : rel.data) }
-      } else if (Array.isArray(val)) {
-        const rels = await Promise.all(val.map(id => typeof id === 'string' ? context.loaders.entryLoader.load(id) : null))
-        parsedData[fieldSlug] = rels.filter(Boolean).map((rel: any) => ({ id: rel.id, ...(typeof rel.data === 'string' ? JSON.parse(rel.data) : rel.data) }))
-      }
-    }
+  if (contentType.schemaFields.length > 0 && context?.loaders?.entryLoader) {
+    parsedData = await resolveContentData(tenantId, parsedData, contentType.schemaFields)
   }
 
   return {
@@ -358,7 +343,7 @@ async function resolveMutationCreate(
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
     },
-    include: { fields: true }
+    include: { schemaFields: true }
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
@@ -382,7 +367,7 @@ async function resolveMutationCreate(
   const dataWithSlugs = await processAutoSlugs(
     tenantId,
     contentType.id,
-    contentType.fields,
+    contentType.schemaFields,
     hookData,
     undefined,
     'collection',
@@ -452,7 +437,7 @@ async function resolveMutationUpdate(
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
     },
-    include: { fields: true }
+    include: { schemaFields: true }
   })
   if (!contentType) throw new Error(`Content type '${slug}' not found`)
 
@@ -472,7 +457,7 @@ async function resolveMutationUpdate(
   const dataWithSlugs = await processAutoSlugs(
     tenantId,
     contentType.id,
-    contentType.fields,
+    contentType.schemaFields,
     fullData,
     args.id,
     'collection',
@@ -658,7 +643,8 @@ async function resolveSingleType(
         { tenantId },
         { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
       ]
-    }
+    },
+    include: { schemaFields: true }
   })
   if (!singleType) return null
 
@@ -698,8 +684,14 @@ async function resolveSingleType(
 
   if (!assignment || !assignment.data) return null
 
+  let parsedData: any = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data
+
+  if (singleType.schemaFields.length > 0) {
+    parsedData = await resolveContentData(tenantId, parsedData, singleType.schemaFields)
+  }
+
   return {
-    ...(typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data),
+    ...parsedData,
     publishedAt: assignment.publishedAt?.toISOString() ?? null,
     updatedAt: assignment.updatedAt.toISOString(),
   }

@@ -39,9 +39,7 @@ export async function POST(
         slug,
         tenantId: null
       },
-      include: {
-        fields: true,
-      },
+      include: { schemaFields: true },
     })
 
     if (!singleType) {
@@ -86,7 +84,7 @@ export async function POST(
     const dataWithSlugs = await processAutoSlugs(
       systemTenant.id,
       singleType.id,
-      singleType.fields,
+      singleType.schemaFields,
       fullData,
       assignment?.id,
       'single'

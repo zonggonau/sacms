@@ -9,6 +9,9 @@ import { logApiRequest } from "@/lib/monitoring"
 import DataLoader from "dataloader"
 import { getCache, setCache } from "@/lib/cache"
 import { createHash } from "crypto"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
 
 // POST /api/public/[tenant]/graphql - GraphQL endpoint
 export async function POST(
@@ -34,59 +37,93 @@ export async function POST(
     const { tenant: tenantSlug } = await params
     resolvedTenantId = tenantSlug
 
+    let allowMutations = false
+    let rateLimitResult = { success: true, limit: 100, remaining: 99 }
+    let apiTokenId: string | null = null
+
     // Validate API token
     const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "Missing or invalid authorization header" }] },
-        { status: 401 }
-      ))
-    }
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      const token = authHeader.replace("Bearer ", "")
 
-    const token = authHeader.replace("Bearer ", "")
+      // Rate limit
+      const limitRes = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
+      if (!limitRes.success) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Rate limit exceeded" }] },
+          { status: 429 }
+        ))
+      }
+      rateLimitResult = { success: limitRes.success, limit: limitRes.limit ?? 100, remaining: limitRes.remaining ?? 99 }
 
-    // Rate limit
-    const rateLimitResult = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
-    if (!rateLimitResult.success) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "Rate limit exceeded" }] },
-        { status: 429 }
-      ))
-    }
+      // Hash the token for database lookup (SHA-256)
+      const hashedToken = createHash("sha256").update(token).digest("hex")
 
-    // Hash the token for database lookup (SHA-256)
-    const hashedToken = createHash("sha256").update(token).digest("hex")
+      // Find the API token
+      const apiToken = await db.apiToken.findUnique({
+        where: { token: hashedToken },
+        include: { tenant: true },
+      })
 
-    // Find the API token
-    const apiToken = await db.apiToken.findUnique({
-      where: { token: hashedToken },
-      include: { tenant: true },
-    })
+      if (!apiToken) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Invalid API token" }] },
+          { status: 401 }
+        ))
+      }
 
-    if (!apiToken) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "Invalid API token" }] },
-        { status: 401 }
-      ))
-    }
+      resolvedTenantId = apiToken.tenantId
+      apiTokenId = apiToken.id
 
-    resolvedTenantId = apiToken.tenantId
+      // Verify tenant matches (check both ID and Slug)
+      const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+      
+      if (!isMatchingTenant) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Token does not match tenant" }] },
+          { status: 403 }
+        ))
+      }
 
-    // Verify tenant matches (check both ID and Slug)
-    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
-    
-    if (!isMatchingTenant) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "Token does not match tenant" }] },
-        { status: 403 }
-      ))
-    }
+      if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "API token expired" }] },
+          { status: 401 }
+        ))
+      }
 
-    if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
-      return logResponse(NextResponse.json(
-        { errors: [{ message: "API token expired" }] },
-        { status: 401 }
-      ))
+      allowMutations = apiToken.type === "full-access"
+    } else {
+      // Fallback: Check if session exists (e.g. for Apollo Sandbox/GraphiQL)
+      const session = await getServerSession(authOptions)
+      if (!session?.user) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Missing or invalid authorization header" }] },
+          { status: 401 }
+        ))
+      }
+
+      const access = await getTenantAccess(session, tenantSlug)
+      if (!access) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Forbidden or Tenant not found" }] },
+          { status: 403 }
+        ))
+      }
+
+      resolvedTenantId = access.tenantId
+      // Allow mutations for workspace admins/owners or super admins
+      allowMutations = access.role === "admin" || access.role === "owner" || session.user.role === "super_admin"
+
+      // Apply a rate limit based on the session user ID
+      const limitRes = await rateLimit(`session:${session.user.id}`, RATE_LIMITS.publicApi)
+      if (!limitRes.success) {
+        return logResponse(NextResponse.json(
+          { errors: [{ message: "Rate limit exceeded" }] },
+          { status: 429 }
+        ))
+      }
+      rateLimitResult = { success: limitRes.success, limit: limitRes.limit ?? 100, remaining: limitRes.remaining ?? 99 }
     }
 
     const validationResult = await validateBody(request, graphqlRequestSchema)
@@ -100,26 +137,24 @@ export async function POST(
 
     // Build dynamic schema for this tenant using the correct DB client
     const { getTenantDb } = await import("@/lib/database")
-    const tenantDb = await getTenantDb(apiToken.tenantId)
+    const tenantDb = await getTenantDb(resolvedTenantId)
 
-    // Mutations require full-access token
-    const allowMutations = apiToken.type === "full-access"
-    const typeDefs = await buildDynamicTypeDefs(apiToken.tenantId, allowMutations, tenantDb)
+    const typeDefs = await buildDynamicTypeDefs(resolvedTenantId, allowMutations, tenantDb)
     const schema = buildSchema(typeDefs)
-    const resolvers = buildDynamicResolvers(apiToken.tenantId, tenantDb)
+    const resolvers = buildDynamicResolvers(resolvedTenantId, tenantDb)
 
-    // Check if query contains mutation and token doesn't allow it
+    // Check if query contains mutation and token/session doesn't allow it
     const isMutation = /^\s*(mutation\b|mutation\s*\{)/i.test(query) || query.trim().startsWith("mutation")
     if (isMutation && !allowMutations) {
       return logResponse(NextResponse.json(
-        { errors: [{ message: "Mutations require a full-access API token" }] },
+        { errors: [{ message: "Mutations require a full-access API token or admin workspace role" }] },
         { status: 403 }
       ))
     }
 
     // Execute query
     let gqlResult: any
-    const cacheKey = `graphql:${apiToken.tenantId}:${Buffer.from(query).toString("base64")}:${JSON.stringify(variables || {})}`
+    const cacheKey = `graphql:${resolvedTenantId}:${Buffer.from(query).toString("base64")}:${JSON.stringify(variables || {})}`
 
     if (!isMutation) {
       const cached = await getCache(cacheKey)
@@ -137,7 +172,7 @@ export async function POST(
 
     const entryLoader = new DataLoader(async (keys: readonly string[]) => {
       const entries = await tenantDb.contentEntry.findMany({
-        where: { id: { in: keys as string[] }, tenantId: apiToken.tenantId }
+        where: { id: { in: keys as string[] }, tenantId: resolvedTenantId }
       })
       const entryMap = new Map(entries.map((e: any) => [e.id, e]))
       return keys.map(k => entryMap.get(k) || null)
@@ -147,7 +182,7 @@ export async function POST(
       schema,
       source: query,
       rootValue: isMutation ? resolvers.Mutation : resolvers.Query,
-      contextValue: { tenantId: apiToken.tenantId, tenantDb, loaders: { entryLoader } },
+      contextValue: { tenantId: resolvedTenantId, tenantDb, loaders: { entryLoader } },
       variableValues: variables,
     })
 
@@ -155,11 +190,13 @@ export async function POST(
       await setCache(cacheKey, gqlResult, 300)
     }
 
-    // Update last used
-    await db.apiToken.update({
-      where: { id: apiToken.id },
-      data: { lastUsedAt: new Date() },
-    })
+    // Update last used (only for API keys)
+    if (apiTokenId) {
+      await db.apiToken.update({
+        where: { id: apiTokenId },
+        data: { lastUsedAt: new Date() },
+      })
+    }
 
     return logResponse(NextResponse.json(gqlResult, {
       headers: {

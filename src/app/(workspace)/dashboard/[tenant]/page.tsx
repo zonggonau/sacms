@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { enforcePlanLimit } from "@/lib/plan-enforcement"
 import { redirect } from "next/navigation"
 import TenantDashboardClient from "./client-page"
 
@@ -29,7 +30,7 @@ export default async function TenantDashboardPage({
         { tenants: { some: { tenantId: tenantId, enabled: true } } }
       ]
     },
-    include: { fields: { orderBy: { order: "asc" } } },
+    include: { schemaFields: { orderBy: { order: "asc" } } },
     orderBy: { updatedAt: "desc" },
   })
 
@@ -39,7 +40,7 @@ export default async function TenantDashboardPage({
         where: { contentTypeId: contentType.id, tenantId: tenantId },
       })
 
-      const formattedFields = contentType.fields.map(field => {
+      const formattedFields = contentType.schemaFields.map(field => {
         let parsedOptions = field.options
         if (typeof field.options === 'string') {
           try { parsedOptions = JSON.parse(field.options) } catch (e) { parsedOptions = {} }
@@ -134,41 +135,34 @@ export default async function TenantDashboardPage({
   }
 
   // 3. Fetch Usage
-  const mediaSizeSum = await db.media.aggregate({
+  const [entriesLimit, storageLimit, membersLimit] = await Promise.all([
+    enforcePlanLimit(tenantId, "content_entries"),
+    enforcePlanLimit(tenantId, "storage"),
+    enforcePlanLimit(tenantId, "team_members")
+  ])
+
+  const mediaSizeSum = await tenantDb.media.aggregate({
     where: { tenantId },
     _sum: { size: true }
   })
-  
-  const rawPlan = access.tenant.plan || "free"
-  const plan = rawPlan.toLowerCase()
-  
-  const LIMITS: Record<string, any> = {
-    free: { entries: 100, mediaSize: 100 * 1024 * 1024, users: 3 },
-    starter: { entries: 1000, mediaSize: 1 * 1024 * 1024 * 1024, users: 5 },
-    pro: { entries: 10000, mediaSize: 10 * 1024 * 1024 * 1024, users: 20 },
-    business: { entries: 50000, mediaSize: 50 * 1024 * 1024 * 1024, users: 50 },
-    enterprise: { entries: 1000000, mediaSize: 1000 * 1024 * 1024 * 1024, users: 100 }
-  }
-
-  const currentLimits = LIMITS[plan] || LIMITS.free
 
   const usage = [
     {
       label: "Content Entries",
-      current: totalEntries,
-      limit: currentLimits.entries,
+      current: entriesLimit.current,
+      limit: entriesLimit.max,
       unit: "entries"
     },
     {
       label: "Media Storage",
       current: Number(mediaSizeSum._sum?.size || 0),
-      limit: currentLimits.mediaSize,
+      limit: storageLimit.max * 1024 * 1024,
       unit: "bytes"
     },
     {
       label: "Team Members",
-      current: tenantData?._count?.members || 0,
-      limit: currentLimits.users,
+      current: membersLimit.current,
+      limit: membersLimit.max,
       unit: "users"
     }
   ]

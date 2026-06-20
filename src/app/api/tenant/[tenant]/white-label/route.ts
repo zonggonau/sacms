@@ -6,6 +6,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 
 const whiteLabelSchema = z.object({
   brandName: z.string().min(1).max(100).optional(),
@@ -37,6 +38,10 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_WHITE_LABEL")) {
+      return NextResponse.json({ error: "White-label requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
     }
 
     const tenantRecord = await db.tenant.findUnique({
@@ -78,6 +83,10 @@ export async function PATCH(
     const access = await getTenantAccess(session, tenant)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_WHITE_LABEL")) {
+      return NextResponse.json({ error: "White-label requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
     }
 
     const result = await validateBody(request, whiteLabelSchema)

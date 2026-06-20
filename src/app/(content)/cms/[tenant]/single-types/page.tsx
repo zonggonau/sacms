@@ -16,6 +16,7 @@ import {
 } from "@/components/ui/table"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { getSingleTypesAction } from "@/actions/single-types"
 
 interface SingleType {
   id: string
@@ -40,10 +41,11 @@ export default function CMSSingleTypesPage() {
   const fetchSingleTypes = async () => {
     if (!tenantSlug) return
     try {
-      const response = await fetch(`/api/tenant/${tenantSlug}/single-types`)
-      if (response.ok) {
-        const data = await response.json()
-        setSingleTypes(data || [])
+      const response = await getSingleTypesAction(tenantSlug)
+      if (response.singleTypes) {
+        setSingleTypes(response.singleTypes)
+      } else if (response.error) {
+        toast({ variant: "destructive", title: "Error", description: response.error })
       }
     } catch (error) {
       console.error(error)

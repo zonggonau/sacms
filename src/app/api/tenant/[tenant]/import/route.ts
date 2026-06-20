@@ -59,9 +59,9 @@ export async function POST(request: NextRequest, context: Context) {
           // Upsert fields
           if (ct.fields) {
             // Delete existing fields first to avoid complex merging
-            await tx.contentTypeField.deleteMany({ where: { contentTypeId: upserted.id } })
+            await tx.schemaField.deleteMany({ where: { contentTypeId: upserted.id } })
             for (const field of ct.fields) {
-              await tx.contentTypeField.create({
+              await tx.schemaField.create({
                 data: {
                   contentTypeId: upserted.id,
                   name: field.name,

@@ -27,6 +27,9 @@ vi.mock("@/lib/database", () => ({
       findMany: vi.fn(),
       findFirst: vi.fn(),
     },
+    schemaField: {
+      findMany: vi.fn(),
+    },
     contentEntry: {
       findUnique: vi.fn(),
       findMany: vi.fn(),
@@ -98,12 +101,16 @@ vi.mock("@/lib/rate-limit", () => ({
 // Mock audit log
 vi.mock("@/lib/audit-log", () => ({
   logAudit: vi.fn(),
-  AuditAction: {
-    USER_REGISTER: "USER_REGISTER",
-    USER_LOGIN: "USER_LOGIN",
-    CONTENT_CREATE: "CONTENT_CREATE",
-    CONTENT_UPDATE: "CONTENT_UPDATE",
-    CONTENT_DELETE: "CONTENT_DELETE",
+    AuditAction: {
+      USER_REGISTER: "USER_REGISTER",
+      USER_LOGIN: "USER_LOGIN",
+      CONTENT_CREATED: "CONTENT_CREATED",
+      CONTENT_UPDATED: "CONTENT_UPDATED",
+      CONTENT_DELETED: "CONTENT_DELETED",
+      CONTENT_PUBLISHED: "CONTENT_PUBLISHED",
+      CONTENT_CREATE: "CONTENT_CREATE",
+      CONTENT_UPDATE: "CONTENT_UPDATE",
+      CONTENT_DELETE: "CONTENT_DELETE",
     CONTENT_PUBLISH: "CONTENT_PUBLISH",
   },
 }))

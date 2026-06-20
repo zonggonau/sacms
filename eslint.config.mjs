@@ -1,33 +1,46 @@
 import js from "@eslint/js";
-import { FlatCompat } from "@eslint/eslintrc";
-import { dirname } from "path";
-import { fileURLToPath } from "url";
+import tseslint from "typescript-eslint";
+import reactPlugin from "eslint-plugin-react";
 import zodPlugin from "eslint-plugin-zod";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const compat = new FlatCompat({
-  baseDirectory: __dirname,
-});
-
 const eslintConfig = [
-  js.configs.recommended,
   {
+    ignores: [
+      "**/node_modules/**",
+      "**/.next/**",
+      "**/out/**",
+      "**/build/**",
+      "**/coverage/**",
+      "**/playwright-report/**",
+      "**/test-results/**",
+      "**/prisma/generated-client/**",
+      "next-env.d.ts",
+      "examples/**",
+      "skills/**",
+    ],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  {
+    files: ["**/*.{ts,tsx,js,mjs}"],
     plugins: {
+      react: reactPlugin,
       zod: zodPlugin,
     },
+    languageOptions: {
+      parserOptions: {
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+    },
     rules: {
-      ...zodPlugin.configs.recommended.rules,
-      // TypeScript rules
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-vars": "off",
       "@typescript-eslint/no-non-null-assertion": "off",
       "@typescript-eslint/ban-ts-comment": "off",
       "@typescript-eslint/prefer-as-const": "off",
-      "@typescript-eslint/no-unused-disable-directive": "off",
-      
-      // General JavaScript rules
+
       "prefer-const": "off",
       "no-unused-vars": "off",
       "no-console": "off",
@@ -40,20 +53,12 @@ const eslintConfig = [
       "no-redeclare": "off",
       "no-undef": "off",
       "no-unreachable": "off",
+      "no-unexpected-multiline": "off",
       "no-useless-escape": "off",
+      "no-useless-assignment": "off",
+      "preserve-caught-error": "off",
     },
   },
-  {
-    ignores: [
-      "**/node_modules/**",
-      "**/.next/**",
-      "**/out/**",
-      "**/build/**",
-      "next-env.d.ts",
-      "examples/**",
-      "skills/**"
-    ]
-  }
 ];
 
 export default eslintConfig;

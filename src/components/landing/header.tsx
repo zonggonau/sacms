@@ -1,10 +1,11 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { Menu, X, Rocket, Database, ChevronRight, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Database, Menu, X } from "lucide-react"
 import Link from "next/link"
 import { motion, AnimatePresence } from "framer-motion"
+import { Logo } from "@/components/ui/logo"
 
 const NAV_ITEMS = [
   { label: "Fitur", href: "/#features" },
@@ -34,10 +35,7 @@ export function LandingHeader() {
       <div className="container px-6 max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-3 group">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
-              <Database className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-black text-foreground tracking-tight group-hover:text-primary transition-colors">SaCMS</span>
+            <Logo iconSize="lg" showText={true} useOrange={true} />
           </Link>
         </div>
 

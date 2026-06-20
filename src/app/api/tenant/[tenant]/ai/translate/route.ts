@@ -5,6 +5,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { translateContent } from "@/lib/ai"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 
 const translateSchema = z.object({
   text: z.string().min(1).max(10000),
@@ -37,6 +38,10 @@ export async function POST(
     const access = await getTenantAccess(session, tenant)
     if (!access) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_AI")) {
+      return NextResponse.json({ error: "AI features are not enabled for this workspace" }, { status: 403 })
     }
 
     const result = await validateBody(request, translateSchema)

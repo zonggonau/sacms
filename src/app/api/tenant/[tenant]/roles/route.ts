@@ -6,8 +6,8 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { z } from "zod/v4"
 
 const createRoleSchema = z.object({
-  name: z.string().min(1),
-  slug: z.string().min(1),
+  name: z.string().trim().min(1).max(50),
+  slug: z.string().trim().min(2).max(50).regex(/^[a-z0-9-]+$/, "Slug must be lowercase alphanumeric and hyphens only"),
   description: z.string().optional(),
   permissions: z.record(z.string(), z.boolean()).optional(), // { "workflow.draft_to_review": true, ... }
 })
@@ -54,7 +54,7 @@ export async function POST(
 
     const body = await request.json()
     const result = createRoleSchema.safeParse(body)
-    if (!result.success) return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
+    if (!result.success) return NextResponse.json({ error: result.error.issues[0]?.message ?? "Validation failed" }, { status: 400 })
     
     const { name, slug, description, permissions } = result.data
 
@@ -68,7 +68,7 @@ export async function POST(
     }
 
     // Standard roles check
-    if (["admin", "owner", "editor", "viewer"].includes(slug)) {
+    if (["admin", "owner", "editor", "member", "viewer", "super_admin"].includes(slug)) {
       return NextResponse.json({ error: "Cannot use reserved role names" }, { status: 400 })
     }
 

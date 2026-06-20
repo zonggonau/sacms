@@ -34,13 +34,25 @@
   },
   "include": [
     "next-env.d.ts",
-    "**/*.ts",
-    "**/*.tsx",
+    "next.config.ts",
+    "vitest.config.ts",
+    "playwright.config.ts",
+    "sentry.*.config.ts",
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "__tests__/**/*.ts",
     ".next/types/**/*.ts",
     ".next/dev/types/**/*.ts"
   ],
   "exclude": [
     "node_modules",
-    "scripts"
+    "scripts",
+    "scratch",
+    "examples",
+    "mini-services",
+    "coverage",
+    "playwright-report",
+    "test-results",
+    "prisma/generated-client"
   ]
 }

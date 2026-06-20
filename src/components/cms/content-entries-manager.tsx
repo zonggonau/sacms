@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, Search, Filter,
-  CheckSquare, Square, Download, MoreHorizontal, ImageIcon
+  CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
@@ -47,12 +47,18 @@ export function ContentEntriesManager({
   contentType, 
   initialEntries,
   tenantSlug,
-  contentTypeSlug 
+  contentTypeSlug,
+  isLimitReached = false,
+  limit = 0,
+  currentCount = 0
 }: { 
   contentType: any, 
   initialEntries: any[],
   tenantSlug: string,
-  contentTypeSlug: string
+  contentTypeSlug: string,
+  isLimitReached?: boolean,
+  limit?: number,
+  currentCount?: number
 }) {
   const router = useRouter()
   
@@ -142,11 +148,21 @@ export function ContentEntriesManager({
           <Button 
             className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white shadow-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 rounded-none font-bold transition-colors" 
             onClick={() => router.push(`/cms/${tenantSlug}/content/${contentTypeSlug}/new`)}
+            disabled={isLimitReached}
           >
             <Plus className="mr-2 h-5 w-5" /> New Entry
           </Button>
         </div>
       </div>
+
+      {isLimitReached && (
+        <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+          <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+          <div className="text-xs text-red-800 dark:text-red-300 font-medium">
+            You have reached your content entries limit of {limit} entries. Delete an existing entry or upgrade your plan to create more.
+          </div>
+        </div>
+      )}
 
       <Card className="border border-border shadow-none bg-card rounded-none sticky top-[100px] z-20">
         <CardContent className="p-4 flex flex-wrap items-center justify-between gap-4">

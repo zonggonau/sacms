@@ -33,7 +33,7 @@ export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
   },
   enterprise: {
     plan_slug: "enterprise",
-    max_workspaces: 20,
+    max_workspaces: 9999,
   },
   custom: {
     plan_slug: "custom",
@@ -217,6 +217,10 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     where: { id: tenantId },
     select: { plan: true },
   })
+
+  if (["ENABLE_WHITE_LABEL", "ENABLE_CUSTOM_DOMAIN"].includes(featureKey)) {
+    return ["pro", "enterprise", "custom"].includes(tenant?.plan || "free")
+  }
 
   if (tenant?.plan === "enterprise" || tenant?.plan === "custom") return true
 

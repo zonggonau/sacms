@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 import { safeGenerateContent } from "@/lib/ai"
 
 export async function POST(
@@ -10,6 +11,9 @@ export async function POST(
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return NextResponse.json({ error: "AI features are not configured" }, { status: 503 })
+    }
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
@@ -17,6 +21,10 @@ export async function POST(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_AI")) {
+      return NextResponse.json({ error: "AI features are not enabled for this workspace" }, { status: 403 })
     }
 
     const { prompt } = await request.json()
@@ -73,8 +81,7 @@ export async function POST(
               name: comp.name,
               slug: finalCompSlug,
               category: comp.category || "sections",
-              fields: {
-                create: comp.fields.map((f: any, idx: number) => {
+              schemaFields: { create: comp.fields.map((f: any, idx: number) => {
                   const fOptions = f.options ? (typeof f.options === 'string' ? JSON.parse(f.options) : f.options) : {}
                   if (f.type === 'component' && f.componentSlug) fOptions.componentSlug = f.componentSlug
 
@@ -120,8 +127,7 @@ export async function POST(
           slug: finalSTSlug,
           description: schema.description,
           isPublished: true,
-          fields: {
-            create: schema.fields.map((f: any, index: number) => {
+          schemaFields: { create: schema.fields.map((f: any, index: number) => {
               const fOptions = f.options ? (typeof f.options === 'string' ? JSON.parse(f.options) : f.options) : {}
               if (f.type === 'component' && f.componentSlug) fOptions.componentSlug = f.componentSlug
 

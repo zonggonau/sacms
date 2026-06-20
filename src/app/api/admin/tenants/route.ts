@@ -98,7 +98,6 @@ export async function GET(request: NextRequest) {
           apiTokens: {
             select: {
               id: true,
-              token: true,
               type: true,
               expiresAt: true,
             },

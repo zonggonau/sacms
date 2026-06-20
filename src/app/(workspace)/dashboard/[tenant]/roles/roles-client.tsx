@@ -44,8 +44,8 @@ const WORKFLOW_PERMISSIONS = [
   { id: "workflow.review_to_reject", label: "Reject Content", desc: "Allow users to Reject content that is In Review." },
   { id: "workflow.approve_to_schedule", label: "Schedule Content", desc: "Allow users to Schedule approved content." },
   { id: "workflow.approve_to_publish", label: "Publish Content", desc: "Allow users to Publish approved content immediately." },
-  { id: "workflow.publish_to_archive", label: "Archive Content", desc: "Allow users to Archive published content." },
-  { id: "workflow.archive_to_draft", label: "Restore to Draft", desc: "Allow users to restore Archived content to Draft." },
+  { id: "workflow.published_to_archived", label: "Archive Content", desc: "Allow users to Archive published content." },
+  { id: "workflow.archived_to_draft", label: "Restore to Draft", desc: "Allow users to restore Archived content to Draft." },
 ]
 
 export function TenantRolesClient({ 

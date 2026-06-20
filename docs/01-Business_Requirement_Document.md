@@ -1,7 +1,9 @@
 # Business Requirement Document (BRD)
 **Project Name:** SaCMS (SaaS Headless CMS)
 **Date:** 17 Juni 2026
-**Status:** Approved
+**Status:** Approved business direction; implementation status is tracked separately in document 15
+
+> Sections that mention “v1.0” preserve the original launch scope. They are not a statement that acceptance metrics were measured on the current repository baseline.
 
 ---
 
@@ -40,6 +42,8 @@ Proyek ini dianggap sukses jika peluncuran versi 1.0 (MVP) memenuhi metrik berik
 | **Media Upload Speed** | Kurang dari 3 detik untuk mengunggah dan memproses aset (R2) berukuran 10MB. | Launch (v1.0) |
 | **System Uptime** | Ketersediaan layanan mencapai 99.5% tanpa kegagalan *database pool*. | Bulan Pertama |
 
+KPI performa, upload, uptime, dan zero-leakage memerlukan bukti hasil uji/monitoring. Audit sinkronisasi 19 Juni 2026 tidak menjalankan pengukuran tersebut.
+
 ## 6. Scope (Ruang Lingkup)
 
 ### In Scope (Termasuk dalam Proyek v1.0)
@@ -60,3 +64,16 @@ Berikut adalah fitur yang **TIDAK** akan dibangun pada peluncuran pertama ini:
 - UI *Plugin Marketplace* pihak ketiga.
 - Custom Domain atau *White-labeling* penuh (akan dialokasikan untuk versi 1.1 / Enterprise).
 - Dukungan *database* selain PostgreSQL (seperti MySQL atau MongoDB).
+
+## 7. Current Product Expansion
+
+Setelah scope MVP awal, codebase telah menambahkan atau memperluas:
+
+- Sequential content review dan reviewer assignment.
+- AI authoring berbasis DeepSeek/add-on.
+- White-Label branding dan satu Custom Domain per tenant.
+- Export/import, monitoring, audit trail, and plan overrides.
+- Optional dedicated PostgreSQL URL per tenant.
+- Dynamic GraphQL relation/component resolution.
+
+Status dan batas tiap kemampuan berada di [15-Implementation_Traceability.md](./15-Implementation_Traceability.md); workflow normatif berada di [14-Content_Workflow_and_Approval.md](./14-Content_Workflow_and_Approval.md).

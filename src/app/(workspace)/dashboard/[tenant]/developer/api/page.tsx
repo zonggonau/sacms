@@ -25,6 +25,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { JsonViewer } from "@/components/ui/json-viewer"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useToast } from "@/hooks/use-toast"
+import { getContentTypesAction } from "@/actions/content-types"
+import { getSingleTypesAction } from "@/actions/single-types"
 
 interface ApiKey { id: string; name: string; token: string }
 interface ContentType { id: string; name: string; slug: string; fields?: any[] }
@@ -42,7 +44,7 @@ export default function ApiExplorerPage() {
   const [requestBody, setRequestBody] = useState('{\n  "data": {}\n}')
 
   useEffect(() => {
-    if (tenantSlug) setEndpoint(`/api/v1/${tenantSlug}/content`)
+    if (tenantSlug) setEndpoint(`/api/public/${tenantSlug}/content`)
   }, [tenantSlug])
   
   const [response, setResponse] = useState<any>(null)
@@ -64,13 +66,13 @@ export default function ApiExplorerPage() {
     const fetchData = async () => {
       if (!tenantSlug || status !== "authenticated") return
       try {
-        const [ctRes, stRes, akRes] = await Promise.all([
-          fetch(`/api/tenant/${tenantSlug}/content-types`),
-          fetch(`/api/tenant/${tenantSlug}/single-types`),
+        const [ctData, stData, akRes] = await Promise.all([
+          getContentTypesAction(tenantSlug),
+          getSingleTypesAction(tenantSlug),
           fetch(`/api/tenant/${tenantSlug}/api-tokens`)
         ])
-        if (ctRes.ok) setContentTypes(await ctRes.json() || [])
-        if (stRes.ok) setSingleTypes(await stRes.json() || [])
+        if (ctData && !ctData.error) setContentTypes(ctData.contentTypes || [])
+        if (stData && !stData.error) setSingleTypes(stData.singleTypes || [])
         if (akRes.ok) {
           const akData = await akRes.json()
           const tokens = akData.tokens || []
@@ -143,8 +145,8 @@ export default function ApiExplorerPage() {
     const [m, type, slugPath] = value.split('|')
     setMethod(m)
     
-    if (type === 'content') setEndpoint(`/api/v1/${tenantSlug}/content/${slugPath}`)
-    else if (type === 'single') setEndpoint(`/api/v1/${tenantSlug}/single/${slugPath}`)
+    if (type === 'content') setEndpoint(`/api/public/${tenantSlug}/content/${slugPath}`)
+    else if (type === 'single') setEndpoint(`/api/public/${tenantSlug}/single/${slugPath}`)
 
     if (m === 'POST' || m === 'PATCH') {
       const cleanSlug = slugPath.split('/')[0]
@@ -383,7 +385,7 @@ export default function ApiExplorerPage() {
                         value={endpoint} 
                         onChange={e => setEndpoint(e.target.value)}
                         className="flex-1 h-12 bg-background/50 border border-border/50 rounded-none font-mono text-sm focus-visible:ring-1 focus-visible:ring-orange-500/50 transition-all"
-                        placeholder="/api/v1/..."
+                        placeholder="/api/public/..."
                       />
                     </div>
                   </div>

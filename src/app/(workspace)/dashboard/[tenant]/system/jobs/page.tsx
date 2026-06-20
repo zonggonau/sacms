@@ -60,9 +60,8 @@ export default function SystemJobsPage() {
     if (!tenantSlug || !session?.user) return
     setLoading(true)
     try {
-      // Fetch scheduled entries + webhook dead letters as "jobs"
-      const [entriesRes, dlqRes] = await Promise.all([
-        fetch(`/api/tenant/${tenantSlug}/content-types`),
+      // Fetch webhook dead letters as "jobs"
+      const [dlqRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/webhooks/dead-letters`),
       ])
 

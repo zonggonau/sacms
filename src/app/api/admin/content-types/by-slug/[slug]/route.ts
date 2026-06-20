@@ -29,8 +29,7 @@ export async function GET(
         slug,
         tenantId: null 
       },
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: {
             order: 'asc',
           },
@@ -58,7 +57,10 @@ export async function GET(
       return NextResponse.json({ error: "Content type not found" }, { status: 404 })
     }
 
-    return NextResponse.json(contentType)
+    return NextResponse.json({
+      ...contentType,
+      fields: contentType.schemaFields || [],
+    })
   } catch (error) {
     console.error("Error fetching content type by slug:", error)
     return NextResponse.json(

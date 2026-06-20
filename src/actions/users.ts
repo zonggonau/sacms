@@ -63,13 +63,13 @@ export async function createMemberAction(tenantSlug: string, data: z.infer<typeo
     const tenantDb = await getTenantDb(tenantSlug)
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(tenantId, "team_members")
+    const enforcement = await enforcePlanLimit(tenantId, "team_members", session.user.id)
     if (!enforcement.allowed) {
       return { error: enforcement.message }
     }
 
     const parsed = createMemberSchema.safeParse(data)
-    if (!parsed.success) return { error: parsed.error.errors[0].message }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     
     const { email, role, name, password, customPermissions } = parsed.data
 
@@ -178,7 +178,7 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
     const tenantDb = await getTenantDb(tenantSlug)
 
     const parsed = updateMemberSchema.safeParse(data)
-    if (!parsed.success) return { error: parsed.error.errors[0].message }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     const { role, password } = parsed.data
 
     const member = await tenantDb.tenantMember.findUnique({

@@ -51,8 +51,11 @@ export function ApiKeysClient({ initialTokens, tenantSlug }: ApiKeysClientProps)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newTokenName, setNewTokenName] = useState("")
   const [newTokenPermissions, setNewTokenPermissions] = useState<string[]>(["read"])
+  const [createdPlainToken, setCreatedPlainToken] = useState<string | null>(null)
+  const [showTokenDialog, setShowTokenDialog] = useState(false)
 
   const handleCopyKey = async (token: string, label: string = "API key") => {
+    if (!token) return
     try {
       await navigator.clipboard.writeText(token)
       toast({
@@ -94,6 +97,8 @@ export function ApiKeysClient({ initialTokens, tenantSlug }: ApiKeysClientProps)
         setShowCreateDialog(false)
         setNewTokenName("")
         setNewTokenPermissions(["read"])
+        setCreatedPlainToken(res.plainToken || null)
+        setShowTokenDialog(true)
         toast({
           title: "Success",
           description: "API key created successfully",
@@ -314,12 +319,12 @@ export function ApiKeysClient({ initialTokens, tenantSlug }: ApiKeysClientProps)
                         <TableCell>
                           <div className="flex items-center gap-2">
                             <code className="text-sm bg-muted px-2 py-1 rounded">
-                              {apiKey.token.substring(0, 15)}...
+                              {(apiKey.token || "").substring(0, 15)}...
                             </code>
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleCopyKey(apiKey.token)}
+                              onClick={() => handleCopyKey(apiKey.token || "")}
                             >
                               <Copy className="h-3 w-3" />
                             </Button>
@@ -374,6 +379,50 @@ export function ApiKeysClient({ initialTokens, tenantSlug }: ApiKeysClientProps)
             </CardContent>
           </Card>
         </div>
+
+        {/* Created Token Display Dialog */}
+        <Dialog open={showTokenDialog} onOpenChange={setShowTokenDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>API Key Created</DialogTitle>
+              <DialogDescription>
+                Make sure to copy your API key now. You won't be able to see it again!
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex items-center space-x-2 py-4">
+              <div className="grid flex-1 gap-2">
+                <Label htmlFor="token" className="sr-only">
+                  API Key
+                </Label>
+                <Input
+                  id="token"
+                  defaultValue={createdPlainToken || ""}
+                  readOnly
+                  className="font-mono text-sm"
+                />
+              </div>
+              <Button
+                type="button"
+                size="sm"
+                className="px-3"
+                onClick={() => handleCopyKey(createdPlainToken || "", "API key")}
+              >
+                <span className="sr-only">Copy</span>
+                <Copy className="h-4 w-4" />
+              </Button>
+            </div>
+            <DialogFooter className="sm:justify-start">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={() => setShowTokenDialog(false)}
+              >
+                Close
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
       </div>
     </div>
   )

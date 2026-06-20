@@ -56,9 +56,11 @@ interface SingleType {
 interface SingleTypesClientProps {
   initialSingleTypes: SingleType[]
   tenantSlug: string
+  limit?: number
+  current?: number
 }
 
-export function SingleTypesClient({ initialSingleTypes, tenantSlug }: SingleTypesClientProps) {
+export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, current = 0 }: SingleTypesClientProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -80,6 +82,10 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug }: SingleType
       st.slug.toLowerCase().includes(searchTerm.toLowerCase())
     )
   }, [initialSingleTypes, searchTerm])
+
+  const isLimitReached = useMemo(() => {
+    return current >= limit
+  }, [current, limit])
 
   const handlePublishToggle = (singleType: SingleType, publish: boolean) => {
     startTransition(async () => {
@@ -136,12 +142,14 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug }: SingleType
                 variant="outline"
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
                 onClick={() => setIsAIModalOpen(true)}
+                disabled={isLimitReached}
               >
                 <Sparkles className="mr-2 h-4 w-4" /> AI Generate
               </Button>
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/new`)}
+                disabled={isLimitReached}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Single Type
               </Button>
@@ -183,6 +191,16 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug }: SingleType
               </CardContent>
             </Card>
           </div>
+
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                You have reached your content structures limit of {limit} schemas. Delete an existing custom schema or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
 
           <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
             <CardHeader className="bg-white border-b border-slate-200">

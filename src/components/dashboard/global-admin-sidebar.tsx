@@ -3,6 +3,7 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
+import { Logo } from "@/components/ui/logo"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -100,13 +101,7 @@ export function GlobalAdminSidebar() {
       {/* Header */}
       <div className="border-b border-border px-4 py-4">
         <Link href="/admin" className="flex items-center gap-3">
-          <div className="w-8 h-8 shrink-0 bg-orange-500 flex items-center justify-center rounded-none">
-            <DatabaseIcon className="w-4 h-4 text-white" />
-          </div>
-          <div className="flex flex-col min-w-0">
-            <span className="text-sm font-bold text-foreground">SaCMS</span>
-            <span className="text-xs text-muted-foreground">Platform Admin</span>
-          </div>
+          <Logo iconSize="md" showText={true} />
         </Link>
       </div>
 

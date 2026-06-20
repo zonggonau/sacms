@@ -39,13 +39,31 @@ export interface EnforcementResult {
 
 /**
  * Check if a workspace has capacity for a specific resource.
- * Considers: base plan limits → custom overrides → current usage.
+ * Considers: super admin bypass -> base plan limits -> custom overrides -> current usage.
  */
 export async function enforcePlanLimit(
   tenantId: string,
-  resource: WorkspaceResource
+  resource: WorkspaceResource,
+  userId?: string
 ): Promise<EnforcementResult> {
-  // 1. Get base plan config
+  // 1. Super Admin Bypass
+  if (userId) {
+    const user = await db.user.findUnique({
+      where: { id: userId },
+      select: { role: true },
+    })
+    if (user?.role === "super_admin") {
+      return {
+        allowed: true,
+        current: 0,
+        max: 999999,
+        planSlug: "custom",
+        message: "Super Admin Bypass",
+      }
+    }
+  }
+
+  // 2. Get base plan config
   const planConfig = await getTenantPlanConfig(tenantId)
 
   // 2. Get custom overrides (if any)
@@ -174,6 +192,22 @@ export async function enforceUserPlanLimit(
   userId: string,
   resource: UserResource
 ): Promise<EnforcementResult> {
+  // 1. Super Admin Bypass
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true },
+  })
+
+  if (user?.role === "super_admin") {
+    return {
+      allowed: true,
+      current: 0,
+      max: 9999,
+      planSlug: "custom",
+      message: "Super Admin Bypass",
+    }
+  }
+
   const planConfig = await getUserPlanConfig(userId)
   const override = await getUserOverride(userId)
 
@@ -233,9 +267,26 @@ export function validateWorkspacePlanBinding(
   userPlanSlug: string,
   workspacePlanSlug: string
 ): { allowed: boolean; message: string } {
-  // BINDING REMOVED: Users (including free accounts) are allowed to create 
-  // any workspace tier (Free, Pro, Enterprise). They will be billed for the 
-  // workspace accordingly. The limit is only on the NUMBER of workspaces they can create.
+  const userIdx = PLAN_HIERARCHY.indexOf(userPlanSlug as any)
+  const wsIdx = PLAN_HIERARCHY.indexOf(workspacePlanSlug as any)
+
+  // Fallback for unknown plans
+  if (userIdx === -1 || wsIdx === -1) {
+    return { 
+      allowed: userPlanSlug === "enterprise" || userPlanSlug === "custom", 
+      message: "Invalid plan combination." 
+    }
+  }
+
+  const allowed = userIdx >= wsIdx
+
+  if (!allowed) {
+    return {
+      allowed: false,
+      message: `Your account plan (${userPlanSlug}) is too low for a ${workspacePlanSlug} workspace. Please upgrade your account first.`
+    }
+  }
+
   return { allowed: true, message: "OK" }
 }
 

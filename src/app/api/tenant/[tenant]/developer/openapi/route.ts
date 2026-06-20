@@ -17,16 +17,19 @@ export async function GET(
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     // 1. Fetch all tenant structures
-    const [contentTypes, singleTypes] = await Promise.all([
+    const [contentTypesRaw, singleTypesRaw] = await Promise.all([
       db.contentType.findMany({
         where: { OR: [{ tenantId: access.tenantId }, { tenantId: null }] },
-        include: { fields: true }
+        include: { schemaFields: true }
       }),
       db.singleType.findMany({
         where: { tenantId: access.tenantId },
-        include: { fields: true }
+        include: { schemaFields: true }
       })
     ])
+
+    const contentTypes = contentTypesRaw.map(ct => ({ ...ct, fields: ct.schemaFields }))
+    const singleTypes = singleTypesRaw.map(st => ({ ...st, fields: st.schemaFields }))
 
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
 

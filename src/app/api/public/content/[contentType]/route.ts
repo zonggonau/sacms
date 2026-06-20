@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
 import { createHash } from "crypto"
+import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
 import {
   parseFilters,
   buildFilterSQL,
@@ -84,8 +85,7 @@ export async function GET(
         slug: contentTypeSlug,
         tenantId: null 
       },
-      include: {
-        fields: { orderBy: { order: "asc" } },
+      include: { schemaFields: { orderBy: { order: "asc" } },
         tenants: {
           include: {
             tenant: {
@@ -119,7 +119,7 @@ export async function GET(
     const pageSize = Math.min(100, Math.max(1, parseInt(searchParams.get("pageSize") || "25")))
     const status = (searchParams.get("status") || "PUBLISHED").toUpperCase()
     const { field: sortField, order: sortOrder } = parseSort(searchParams)
-    const allowedFieldNames = new Set(contentType.fields.map((f) => f.slug))
+    const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
     const selectedFields = parseFieldSelection(searchParams, allowedFieldNames)
     const populate = parsePopulate(searchParams)
 
@@ -192,7 +192,7 @@ export async function GET(
 
       // Populate logic (simple implementation)
       if (populate) {
-        const fieldsToPopulate = contentType.fields.filter(f => 
+        const fieldsToPopulate = contentType.schemaFields.filter(f => 
           f.type === "relation" && (populate === "*" || populate.includes(f.slug))
         )
 

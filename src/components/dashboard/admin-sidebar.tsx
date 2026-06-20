@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { useParams, usePathname } from "next/navigation"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -109,15 +109,11 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
+      <div className="p-6">
         <Link href="/admin" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-            <DatabaseIcon className="w-5 h-5 text-white" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-lg font-bold">SaCMS</span>
-            <span className="text-xs text-muted-foreground">Super Admin</span>
-          </div>
+          <Logo iconSize="md" showText={true} />
         </Link>
+      </div>
 
       {/* Tenant Switcher */}
       {tenants && tenants.length > 0 && (

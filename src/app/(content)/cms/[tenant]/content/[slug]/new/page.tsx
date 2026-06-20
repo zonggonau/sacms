@@ -31,6 +31,7 @@ import { Calendar } from "@/components/ui/calendar"
 import { CMSSidebar } from "@/components/cms/cms-sidebar"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { allowedInitialStatuses } from "@/lib/content-workflow-rules"
 
 // Field Renderers
 import { TextField } from "@/components/content/field-renderers/text-field"
@@ -97,14 +98,29 @@ export default function CMSCreateEntryPage() {
   const [locale, setLocale] = useState<string>("en")
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
+  const [isLimitReached, setIsLimitReached] = useState(false)
+  const [entriesLimit, setEntriesLimit] = useState(100)
+
+  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug)
+  const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
+  const customPermissions = Array.isArray(tenantMembership?.customPermissions)
+    ? tenantMembership.customPermissions as string[]
+    : null
+  const availableStatuses = useMemo(
+    () => allowedInitialStatuses(effectiveRole, customPermissions),
+    [effectiveRole, customPermissions]
+  )
+  const canPublish = availableStatuses.includes("PUBLISHED")
+  const canSchedule = availableStatuses.includes("SCHEDULED")
 
   useEffect(() => {
     async function fetchData() {
       if (!tenantSlug || !contentTypeSlug || contentType) return
       try {
-        const [ctData, locRes] = await Promise.all([
+        const [ctData, locRes, usageRes] = await Promise.all([
           getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
-          fetch(`/api/tenant/${tenantSlug}/locales`)
+          fetch(`/api/tenant/${tenantSlug}/locales`),
+          fetch(`/api/tenant/${tenantSlug}/billing/usage`)
         ])
         if (ctData && !ctData.error && ctData.contentType) {
           setContentType(ctData.contentType as any)
@@ -130,6 +146,16 @@ export default function CMSCreateEntryPage() {
           const data = await locRes.json()
           if (data.locales?.length > 0) setAvailableLocales(data.locales)
         }
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          const entriesUsage = usageData.usage?.find((u: any) => u.label === "Content Entries")
+          if (entriesUsage) {
+            setEntriesLimit(entriesUsage.limit)
+            if (entriesUsage.current >= entriesUsage.limit) {
+              setIsLimitReached(true)
+            }
+          }
+        }
       } catch (err) {
         console.error(err)
       } finally {
@@ -141,7 +167,6 @@ export default function CMSCreateEntryPage() {
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
-    
     let targetStatus = publishNow ? "PUBLISHED" : entryStatus
     if (!publishNow && scheduledAt && targetStatus !== "ARCHIVED") {
       targetStatus = "SCHEDULED"
@@ -336,29 +361,42 @@ export default function CMSCreateEntryPage() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
+                {availableStatuses.map((val) => {
+                  const cfg = STATUS_CONFIG[val]
+                  return (
                   <SelectItem key={val} value={val} className="text-xs font-bold uppercase rounded-none hover:bg-muted">
                     <div className="flex items-center gap-2">
                       <cfg.icon className="h-3.5 w-3.5" />
                       {cfg.label}
                     </div>
                   </SelectItem>
-                ))}
+                  )
+                })}
               </SelectContent>
             </Select>
 
-            <Button 
+            {canPublish && <Button
               onClick={() => handleSave(true)} 
-              disabled={saving} 
+              disabled={saving || isLimitReached} 
               className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
               Create & Publish
-            </Button>
+            </Button>}
           </div>
           </div>
             </div>
           </div>
+
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="mx-6 lg:mx-8 mt-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-red-800 dark:text-red-300 font-medium">
+                You have reached your content entries limit of {entriesLimit} entries. Delete an existing entry or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
 
           {/* Main Content */}
           <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
@@ -385,7 +423,7 @@ export default function CMSCreateEntryPage() {
             <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
               <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
               <CardContent className="p-6 pt-2 space-y-6">
-                <div className="space-y-3">
+                {canSchedule && <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
                   <Popover>
                     <PopoverTrigger asChild>
@@ -416,9 +454,9 @@ export default function CMSCreateEntryPage() {
                       )}
                     </PopoverContent>
                   </Popover>
-                </div>
+                </div>}
 
-                <Separator className="opacity-50" />
+                {canSchedule && <Separator className="opacity-50" />}
 
                 <div className="space-y-3">
                   <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
@@ -437,7 +475,7 @@ export default function CMSCreateEntryPage() {
                 <Button 
                   variant="outline" 
                   onClick={() => handleSave(false)} 
-                  disabled={saving} 
+                  disabled={saving || isLimitReached} 
                   className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}

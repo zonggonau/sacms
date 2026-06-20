@@ -232,7 +232,7 @@ export default function ContentTypesPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Connected Tenants</p>
-                  <p className="text-xl font-black">{new Set(contentTypes.flatMap(ct => ct.tenants.map(t => t.tenant?.id).filter(Boolean) as string[])).size}</p>
+                  <p className="text-xl font-black">{new Set(contentTypes.flatMap(ct => (ct.tenants || []).map(t => t.tenant?.id).filter(Boolean) as string[])).size}</p>
                 </div>
               </CardContent>
             </Card>
@@ -283,10 +283,10 @@ export default function ContentTypesPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-center">
-                          <Badge variant="outline" className="font-bold text-[10px] bg-muted/30">{ct.fields.length}</Badge>
+                          <Badge variant="outline" className="font-bold text-[10px] bg-muted/30">{(ct.fields || ct.schemaFields || []).length}</Badge>
                         </TableCell>
                         <TableCell className="text-center text-xs font-medium text-muted-foreground">
-                          {ct.tenants.length} tenants
+                          {(ct.tenants || []).length} tenants
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge

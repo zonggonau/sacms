@@ -48,6 +48,7 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { createMemberAction, updateMemberAction, deleteMemberAction } from "@/actions/users"
 import Image from "next/image"
+import Link from "next/link"
 
 interface Member {
   id: string
@@ -65,12 +66,16 @@ interface UsersClientProps {
   initialMembers: Member[]
   tenantSlug: string
   customRoles: { name: string, slug: string }[]
+  limit: number
+  current: number
 }
 
-export function UsersClient({ initialMembers, tenantSlug, customRoles }: UsersClientProps) {
+export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, current }: UsersClientProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
+
+  const isLimitReached = current >= limit
 
   const [searchQuery, setSearchQuery] = useState("")
   
@@ -159,12 +164,23 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles }: UsersCl
           <div className="flex items-center justify-between">
             <div>
               <h1 className="text-3xl font-extrabold tracking-tight">Team Members</h1>
-              <p className="text-muted-foreground">Manage who has access to this workspace and their permissions.</p>
+              <p className="text-muted-foreground">
+                Manage who has access to this workspace and their permissions ({current} of {limit} members used).
+              </p>
             </div>
             
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <Dialog open={isCreateOpen} onOpenChange={(open) => {
+              if (open && isLimitReached) {
+                toast({ variant: "destructive", title: "Limit Reached", description: "You have reached the maximum number of team members allowed by your plan." })
+                return
+              }
+              setIsCreateOpen(open)
+            }}>
               <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20">
+                <Button 
+                  disabled={isLimitReached}
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
                   <UserPlus className="mr-2 h-4 w-4" /> Add Member
                 </Button>
               </DialogTrigger>
@@ -245,6 +261,28 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles }: UsersCl
               className="pl-10 bg-card border-none shadow-sm h-11"
             />
           </div>
+
+          {/* Limit Warning Banner */}
+          {isLimitReached && (
+            <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-start sm:items-center gap-4">
+                <div className="p-2 bg-destructive/25 text-destructive rounded-xl shrink-0">
+                  <AlertCircle className="h-5 w-5" />
+                </div>
+                <div className="space-y-1">
+                  <h4 className="font-bold text-sm text-destructive">Team Member Limit Reached</h4>
+                  <p className="text-xs text-muted-foreground">
+                    You have used <span className="font-semibold text-foreground">{current}</span> of your {" "}
+                    <span className="font-semibold text-foreground">{limit}</span> team member limit.
+                    Please upgrade your plan to invite more team members.
+                  </p>
+                </div>
+              </div>
+              <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/5 text-destructive text-xs h-8 shrink-0" asChild>
+                <Link href={`/dashboard/${tenantSlug}/settings`}>Upgrade Plan</Link>
+              </Button>
+            </div>
+          )}
 
           <Card className="border-none shadow-sm overflow-hidden bg-card">
             <CardContent className="p-0">

@@ -28,14 +28,8 @@ export async function GET(
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
-    // Fetch Tenant Info
-    const tenant = await tenantDb.tenant.findUnique({
-      where: { id: tenantId }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    // Tenant identity is already resolved from the master access check.
+    const tenant = access.tenant
 
     // Fetch Content Types (Collection Types)
     const contentTypes = await tenantDb.contentType.findMany({
@@ -52,8 +46,7 @@ export async function GET(
           }
         ]
       },
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: { order: "asc" },
         },
       },
@@ -70,23 +63,12 @@ export async function GET(
           }
         ]
       },
-      include: {
-        fields: { orderBy: { order: 'asc' } }
+      include: { schemaFields: { orderBy: { order: 'asc' } }
       },
     })
 
-    // Fetch an active API Token for this tenant
-    const apiToken = await tenantDb.apiToken.findFirst({
-      where: {
-        tenantId: tenantId,
-        OR: [
-          { expiresAt: null },
-          { expiresAt: { gt: new Date() } }
-        ]
-      },
-      orderBy: { createdAt: 'desc' }
-    })
-    const tokenStr = apiToken ? apiToken.token : "[No Active API Token Found - Create one in Settings]"
+    // Stored API token values are SHA-256 hashes and must never be exported as credentials.
+    const tokenPlaceholder = "<YOUR_API_TOKEN>"
 
     const baseUrl = request.nextUrl.origin
     const fullApiBaseUrl = `${baseUrl}/api/public/${tenantSlug}`
@@ -99,9 +81,9 @@ export async function GET(
     prompt += `- **Tenant Name**: ${tenant.name}\n`
     prompt += `- **Tenant ID**: \`${tenantId}\`\n`
     prompt += `- **Tenant Slug**: \`${tenantSlug}\`\n`
-    prompt += `- **API Key (Bearer Token)**: \`${tokenStr}\`\n`
+    prompt += `- **API Key (Bearer Token)**: \`${tokenPlaceholder}\` (create/copy a token from the API Tokens page; keep it server-side)\n`
     prompt += `- **Base API URL**: \`${fullApiBaseUrl}\`\n`
-    prompt += `- **Authentication**: Use \`Bearer ${tokenStr}\` in the Authorization header.\n\n`
+    prompt += `- **Authentication**: Use \`Bearer ${tokenPlaceholder}\` in the Authorization header.\n\n`
 
     prompt += `## Schema Definition\n\n`
 
@@ -114,9 +96,9 @@ export async function GET(
         if (ct.description) prompt += `*Description: ${ct.description}*\n\n`
         prompt += `- **Endpoints**:\n`
         prompt += `  - List: \`GET ${fullApiBaseUrl}/content/${ct.slug}\`\n`
-        prompt += `  - Detail: \`GET ${fullApiBaseUrl}/content/${ct.slug}/:id\`\n`
+        prompt += `  - Detail: use the tenant GraphQL endpoint; the REST collection surface does not currently expose a direct /:id route.\n`
         prompt += `- **Fields**:\n`
-        ct.fields.forEach(f => {
+        ct.schemaFields.forEach(f => {
           prompt += `  - \`${f.slug}\` (${f.type})${f.required ? ' *Required*' : ''}\n`
         })
         prompt += `\n`
@@ -132,7 +114,7 @@ export async function GET(
         if (st.description) prompt += `*Description: ${st.description}*\n\n`
         prompt += `- **Endpoint**: \`GET ${fullApiBaseUrl}/single/${st.slug}\`\n`
         prompt += `- **Fields**:\n`
-        st.fields.forEach(f => {
+        st.schemaFields.forEach(f => {
           prompt += `  - \`${f.slug}\` (${f.type})${f.required ? ' *Required*' : ''}\n`
         })
         prompt += `\n`

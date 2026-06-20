@@ -51,12 +51,5 @@ const nextConfig: NextConfig = {
   },
 };
 
-export default process.env.SKIP_SENTRY_BUILD === "1" 
-  ? nextConfig 
-  : withSentryConfig(nextConfig, {
-      silent: true,
-      org: process.env.SENTRY_ORG,
-      project: process.env.SENTRY_PROJECT,
-      disableSourceMapUpload: !process.env.SENTRY_AUTH_TOKEN,
-    });
+export default nextConfig;
 

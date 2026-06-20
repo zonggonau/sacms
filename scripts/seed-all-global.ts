@@ -178,80 +178,70 @@ const CONTENT_TYPES = [
 ]
 
 // ──────────────────────────────────────────────────────────
-// SEED DATA — Semua konten landing page Papua Digital
+// SEED DATA — Semua konten landing page
 // ──────────────────────────────────────────────────────────
 const SEED_DATA: Record<string, object | object[]> = {
 
   // ───── HERO (Single Type) ─────
   "sacms-hero": {
-    headline: "Modernisasi Digital untuk Tanah Papua",
-    subheadline: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung percepatan transformasi digital di Tanah Papua.",
-    cta_primary: "Mulai Sekarang",
-    cta_secondary: "Pelajari Selengkapnya",
-    badge_text: "🏛️ Platform Digital Papua — Khusus Website Pemerintah",
+    headline: "Hentikan Kerumitan Mengelola Puluhan CMS Terpisah.",
+    subheadline: "SaCMS adalah Headless CMS Multi-Tenant sejati. Satu codebase untuk mengelola semua klien Anda dengan isolasi data absolut, integrasi billing Midtrans otomatis, dan API secepat kilat.",
+    cta_primary: "Coba Gratis Sekarang",
+    cta_secondary: "Lihat Dokumentasi",
+    badge_text: "🚀 SaaS Headless Engine Generasi Baru",
     image_url: ""
   },
 
   // ───── FEATURES (Collection) ─────
   "sacms-features": [
-    { icon: "Shield",     title: "Website Pemerintah",       description: "Template dan sistem siap pakai untuk instansi pemerintah daerah di Papua. Mendukung transparansi informasi publik, pengumuman resmi, dan layanan masyarakat secara digital.", color: "indigo" },
-    { icon: "Zap",        title: "Portal Berita & Blog",     description: "Sistem publikasi berita dan blog profesional untuk media lokal Papua. Dilengkapi kategori, penulis, penjadwalan publikasi, dan SEO otomatis.", color: "blue" },
-    { icon: "Layout",     title: "Katalog UMKM & Produk",    description: "Etalase digital untuk wirausaha dan UMKM Papua. Tampilkan produk lokal, harga, dan informasi usaha kepada pasar yang lebih luas.", color: "purple" },
-    { icon: "Globe",      title: "Pariwisata Papua",         description: "Showcase destinasi wisata dan kekayaan budaya Papua — dari Raja Ampat hingga Lembah Baliem. Website wisata yang memukau untuk menarik wisatawan.", color: "teal" },
-    { icon: "CreditCard", title: "Profil Bisnis & Cafe",     description: "Website profesional untuk usaha kecil dan menengah: cafe, restoran, toko, dan layanan jasa di seluruh Papua. Tampil modern dan mudah dikelola.", color: "yellow" },
-    { icon: "Database",   title: "Keamanan & Keandalan",     description: "Infrastruktur enterprise-grade dengan enkripsi data, kontrol akses berbasis peran (RBAC), audit log, dan backup otomatis. Aman untuk data pemerintah dan bisnis.", color: "slate" },
+    { icon: "Shield",     title: "Isolasi Data Absolut",       description: "Arsitektur multi-tenant murni di level database. Tidak ada lagi risiko kebocoran data antar klien atau setup instance terpisah yang mahal.", color: "indigo" },
+    { icon: "CreditCard", title: "Billing Midtrans Otomatis",  description: "Monetisasi layanan CMS Anda langsung ke klien. Integrasi Midtrans Snap API bawaan untuk tagihan berlangganan otomatis.", color: "blue" },
+    { icon: "Zap",        title: "Edge-Optimized API",         description: "Waktu respons API Publik di bawah 200ms dengan caching Upstash Redis. Hilangkan masalah waterfall request di frontend.", color: "teal" },
+    { icon: "Database",   title: "Schema Builder Dinamis",     description: "Buat struktur database kompleks (Collection & Single Types) tanpa coding, langsung dari antarmuka visual yang modern.", color: "slate" },
+    { icon: "Cloud",      title: "Cloudflare R2 Media",        description: "Penyimpanan aset digital terdistribusi CDN tanpa membebani database utama. Dilengkapi auto-thumbnail generation.", color: "purple" },
+    { icon: "Webhook",    title: "Sinkronisasi Webhook",       description: "Hubungkan CMS ke berbagai platform frontend Anda dengan Webhook asinkron dan sistem antrian gagal (Dead Letter Queue).", color: "pink" },
+    { icon: "Users",      title: "Granular Role-Based Access", description: "Atur izin akses untuk klien (Owner, Admin, Editor) untuk membatasi fitur modifikasi skema atau penagihan sesuai kebutuhan.", color: "yellow" },
+    { icon: "Search",     title: "Full-Text Search & Filter",  description: "REST API & GraphQL dilengkapi operator filter dinamis dan dukungan pencarian teks penuh (FTS) secara bawaan.", color: "orange" },
   ],
 
   // ───── WORKFLOW (Collection) ─────
   "sacms-workflow": [
-    { step: 1, title: "Pilih Template",      description: "Pilih template sesuai kebutuhan — Website Pemerintah, Portal Berita, Katalog UMKM, atau Pariwisata. Siap pakai dalam hitungan menit.", icon: "PenLine" },
-    { step: 2, title: "Sesuaikan Konten",     description: "Isi data instansi, upload logo dan foto, atur tampilan website. Dashboard CMS yang mudah digunakan siapa saja.", icon: "FileEdit" },
-    { step: 3, title: "Kelola & Kolaborasi",  description: "Undang tim untuk mengelola konten bersama. Sistem approval, penjadwalan publikasi, dan audit log bawaan.", icon: "Code2" },
-    { step: 4, title: "Publikasikan",         description: "Website siap online dan bisa diakses masyarakat Papua dan dunia. Performa cepat, aman, dan andal.", icon: "Rocket" },
+    { step: 1, title: "Daftar Akun",      description: "Buat akun Anda secara gratis dan dapatkan akses penuh ke panel kontrol Super Admin SaCMS.", icon: "UserPlus" },
+    { step: 2, title: "Buat Workspace",   description: "Tambahkan workspace baru untuk setiap proyek klien. Batasi akses dan pantau pemakaian API secara real-time.", icon: "Building" },
+    { step: 3, title: "Rancang Skema",    description: "Buat Content Type dinamis dan undang klien Anda untuk mulai mengisi data via dashboard interaktif.", icon: "Database" },
+    { step: 4, title: "Konsumsi API",     description: "Gunakan Bearer Token untuk mengambil data di aplikasi frontend Anda melalui REST atau GraphQL.", icon: "Code" },
   ],
 
   // ───── FAQ (Collection) ─────
   "sacms-faq": [
-    { question: "Apakah SaCMS cocok untuk website pemerintah daerah?", answer: "Sangat cocok! SaCMS dirancang khusus dengan fitur keamanan enterprise-grade, kontrol akses berbasis peran, dan audit log yang memenuhi standar website pemerintah Indonesia.", order: 1 },
-    { question: "Apakah ada paket gratis untuk UMKM?", answer: "Ya! Paket Gratis tersedia selamanya tanpa biaya dan tanpa kartu kredit. UMKM di Papua bisa langsung memulai dan upgrade ketika bisnis berkembang.", order: 2 },
-    { question: "Apakah mendukung bahasa daerah Papua?", answer: "Ya, SaCMS mendukung multi-bahasa penuh. Anda bisa menambahkan bahasa Indonesia, bahasa daerah Papua, dan bahasa lainnya untuk menjangkau semua kalangan masyarakat.", order: 3 },
-    { question: "Metode pembayaran apa saja yang didukung?", answer: "Kami menggunakan Midtrans yang mendukung transfer bank, kartu kredit, GoPay, OVO, DANA, dan banyak metode pembayaran Indonesia lainnya.", order: 4 },
-    { question: "Apakah data aman untuk instansi pemerintah?", answer: "Keamanan data adalah prioritas utama. SaCMS menggunakan enkripsi end-to-end, isolasi data per workspace, backup otomatis, dan infrastruktur cloud yang tersertifikasi.", order: 5 },
-    { question: "Bisa digunakan untuk website pariwisata?", answer: "Tentu! SaCMS sangat cocok untuk website pariwisata dengan fitur galeri foto, peta lokasi, katalog destinasi, dan integrasi media sosial untuk mempromosikan keindahan Papua.", order: 6 },
+    { question: "Apa kelebihan SaCMS dibandingkan Strapi?", answer: "Strapi mengharuskan Anda melakukan self-host instance terpisah untuk setiap klien (tidak ada fitur multi-tenant asli). SaCMS adalah SaaS murni yang memungkinkan Anda mengelola ribuan klien dari satu codebase dan dashboard.", order: 1 },
+    { question: "Apakah SaCMS mendukung pembayaran lokal?", answer: "Ya, SaCMS sudah terintegrasi secara mendalam dengan Midtrans untuk menangani tagihan berlangganan otomatis ke klien Anda melalui GoPay, Virtual Account, hingga Kartu Kredit.", order: 2 },
+    { question: "Bagaimana cara kerja API-nya?", answer: "SaCMS menyediakan REST API dengan filter ala Strapi dan GraphQL API. Seluruh request dilindungi dengan API Token terenkripsi SHA-256 dan dilimitasi oleh Upstash Redis di level Edge.", order: 3 },
+    { question: "Apakah data klien saya aman?", answer: "Sangat aman. SaCMS menerapkan isolasi data multi-tenant secara absolut di level Prisma ORM. Sebuah query tidak akan pernah bisa mengakses data dari Tenant ID yang berbeda.", order: 4 },
   ],
 
   // ───── ADDONS (Collection) ─────
   "sacms-addons": [
-    { icon: "Bot",      name: "Paket AI Konten",     description: "10.000 kredit tambahan untuk pembuatan konten otomatis dengan AI per bulan.", price: 49000, unit: "bulan" },
-    { icon: "Database", name: "Penyimpanan Ekstra",   description: "50GB tambahan penyimpanan untuk media, dokumen, dan aset digital.",           price: 29000, unit: "bulan" },
-    { icon: "Zap",      name: "Boost API",            description: "500.000 request API tambahan per bulan untuk website dengan trafik tinggi.",   price: 39000, unit: "bulan" },
-    { icon: "Shield",   name: "Konsultasi Digital",   description: "Konsultasi bulanan untuk strategi digitalisasi instansi dan UMKM di Papua.",   price: 99000, unit: "bulan" },
+    { icon: "Database", name: "Penyimpanan Ekstra",   description: "50GB tambahan penyimpanan Cloudflare R2 untuk aset digital berat.", price: 29000, unit: "bulan" },
+    { icon: "Zap",      name: "Boost API Request",    description: "Tambahan kuota 500.000 API request untuk traffic website tinggi.",  price: 39000, unit: "bulan" },
   ],
 
   // ───── TESTIMONIALS (Collection) ─────
   "sacms-testimonials": [
     {
-      name: "Yohanes Wenda",
-      role: "Kepala Bidang TIK",
-      company: "Dinas Kominfo Papua",
-      content: "SaCMS membantu kami membangun portal informasi pemerintah yang modern dan mudah dikelola. Transparansi informasi publik jadi lebih baik.",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Yohanes",
+      name: "Zonggonau Cristoper",
+      role: "Solo Developer",
+      company: "Indie Hacker",
+      content: "Dulu saya harus setup droplet baru tiap kali ada klien web company profile. Sekarang semua masuk ke SaCMS, hemat biaya server 80%!",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
       rating: 5
     },
     {
-      name: "Maria Rumbekwan",
-      role: "Pemilik UMKM",
-      company: "Noken Papua Store",
-      content: "Berkat SaCMS, produk kerajinan noken kami sekarang bisa dilihat dan dipesan dari seluruh Indonesia. Omzet naik 3x lipat!",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Maria",
-      rating: 5
-    },
-    {
-      name: "Daniel Fatem",
-      role: "Pengelola Pariwisata",
-      company: "Raja Ampat Tourism",
-      content: "Website pariwisata kami tampil profesional dan memukau. Jumlah wisatawan yang menghubungi kami meningkat drastis sejak menggunakan SaCMS.",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Daniel",
+      name: "Januar Fonda",
+      role: "Tech Lead",
+      company: "Digital Agency",
+      content: "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
       rating: 5
     },
   ],
@@ -259,68 +249,57 @@ const SEED_DATA: Record<string, object | object[]> = {
   // ───── OWNERS / TIM (Collection) ─────
   "sacms-owners": [
     {
-      name: "Zonggonau Cristoper",
-      role: "Founder & Lead Architect",
-      bio: "Seorang pengembang perangkat lunak yang berdedikasi untuk membangun ekosistem teknologi digital di Papua. Berpengalaman dalam merancang sistem skala besar yang efisien dan aman.",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
-      linkedin: "https://linkedin.com/in/cristoperz"
-    },
-    {
-      name: "Januar Fonda",
-      role: "Core Developer",
-      bio: "Pengembang Fullstack yang fokus pada performa dan skalabilitas sistem. Berkomitmen untuk menghadirkan pengalaman pengguna terbaik melalui teknologi modern.",
-      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
+      name: "Tim SaCMS",
+      role: "Platform Engineers",
+      bio: "Dibangun oleh developer untuk developer, memecahkan masalah fragmentasi CMS.",
+      avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Team",
       linkedin: ""
-    },
+    }
   ],
 
   // ───── ABOUT (Single Type) ─────
   "sacms-about": {
     title: "Tentang SaCMS",
-    description: "SaCMS adalah platform CMS modern yang lahir dari visi untuk mempercepat transformasi digital di Tanah Papua. Kami membangun teknologi website yang mudah digunakan untuk instansi pemerintah, UMKM, media, dan sektor pariwisata di seluruh Papua.",
-    mission: "Mewujudkan Papua Digital — membawa infrastruktur teknologi informasi kelas dunia untuk mendukung kemajuan pemerintahan, ekonomi, dan pariwisata di Tanah Papua.",
-    founded: "2024"
+    description: "Platform Headless CMS generasi baru yang menghilangkan kompleksitas pengelolaan infrastruktur untuk agensi dan freelance developer.",
+    mission: "Mempercepat pengiriman proyek digital dengan infrastruktur CMS yang terpusat, aman, dan mudah dimonetisasi.",
+    founded: "2026"
   },
 
   // ───── WHATSAPP CONFIG (Single Type) ─────
   "sacms-whatsapp": {
     phone: "6282199220551",
-    message: "Halo! Saya tertarik membangun website untuk instansi/UMKM di Papua menggunakan SaCMS. Bisakah saya mendapatkan informasi lebih lanjut?",
+    message: "Halo! Saya ingin berdiskusi mengenai integrasi SaCMS untuk agensi saya.",
     label: "Hubungi Kami",
     is_active: true
   },
 
   // ───── SECTORS (Collection) ─────
   "sacms-sectors": [
-    { icon: "Landmark", label: "Website Pemerintah", desc: "Portal resmi instansi" },
-    { icon: "ShoppingBag", label: "UMKM & Wirausaha", desc: "Etalase produk digital" },
-    { icon: "Palmtree", label: "Pariwisata", desc: "Destinasi & budaya" },
-    { icon: "Newspaper", label: "Portal Berita", desc: "Media & blog" },
-    { icon: "Coffee", label: "Cafe & Restoran", desc: "Profil usaha kuliner" },
-    { icon: "Package", label: "Katalog Produk", desc: "Showcase produk" },
-    { icon: "Building2", label: "Perusahaan", desc: "Company profile" },
-    { icon: "Lightbulb", label: "Startup & Inovasi", desc: "Ekosistem digital" },
+    { icon: "Building", label: "Digital Agency", desc: "Kelola puluhan klien web" },
+    { icon: "Code", label: "Solo Developer", desc: "Kurangi biaya server" },
+    { icon: "ShoppingBag", label: "E-Commerce", desc: "Katalog headless" },
+    { icon: "Briefcase", label: "SaaS Builders", desc: "Backend data terpusat" },
   ],
 
   // ───── LOCAL PRIDE (Single Type) ─────
   "sacms-local-pride": {
-    badge: "Kebanggaan Lokal",
-    title: "Dibuat di Papua.<br/>Untuk Kemajuan Papua.",
-    description: "SaCMS lahir dari visi bahwa inovasi teknologi kelas dunia bisa dibangun dari Timur Indonesia. Kami membangun infrastruktur digital enterprise-grade untuk mendukung percepatan transformasi digital di seluruh Tanah Papua — dari pemerintahan hingga UMKM.",
+    badge: "Solusi B2B Terbaik",
+    title: "Dibangun Untuk Menjawab Masalah Nyata Developer.",
+    description: "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol elegan.",
   },
 
   // ───── CTA BANNER (Single Type) ─────
   "sacms-cta": {
-    title: "Siap Membangun Website untuk Papua?",
-    description: "Mulai gratis sekarang. Tanpa kartu kredit. Upgrade kapan saja sesuai kebutuhan.",
-    button_primary_text: "Mulai Gratis Sekarang",
-    button_secondary_text: "Baca Dokumentasi",
+    title: "Siap Berhenti Melakukan Self-Host CMS?",
+    description: "Pindahkan proyek klien Anda ke SaCMS. Skalabilitas tanpa batas, tanpa pusing.",
+    button_primary_text: "Coba Gratis Sekarang",
+    button_secondary_text: "Baca Dokumentasi API",
   },
 
   // ───── FOOTER (Single Type) ─────
   "sacms-footer": {
     brand_name: "SaCMS",
-    description: "Platform CMS Modern untuk Papua Digital.",
+    description: "The Ultimate Multi-Tenant Headless CMS for Modern Developers and Agencies.",
     copyright: "SaCMS. Hak cipta dilindungi.",
   },
 }

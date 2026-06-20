@@ -47,12 +47,9 @@ export async function GET(
         lastUsedAt: true,
         expiresAt: true,
         createdAt: true,
-        token: true,
       },
     })
 
-    // Mask tokens for display (only for non-admins or based on preference)
-    // For now, let's keep them full for the developer explorer to work easily
     const safeTokens = tokens.map((t) => {
       let perms = t.permissions
       if (typeof t.permissions === 'string') {
@@ -106,6 +103,10 @@ export async function POST(
     if ("error" in result) return result.error
     const { name, description, type, permissions, expiresAt } = result.data
 
+    if (expiresAt && expiresAt.getTime() <= Date.now()) {
+      return NextResponse.json({ error: "Token expiry must be in the future" }, { status: 400 })
+    }
+
     // Generate token
     const token = generateToken()
     const hashedToken = createHash("sha256").update(token).digest("hex")
@@ -117,17 +118,19 @@ export async function POST(
         name: name as string,
         description: (description as string) || null,
         token: hashedToken,
-        type: (type as string) || "read-only",
+        type,
         permissions: permissions as any,
-        expiresAt: expiresAt ? new Date(expiresAt as string | number | Date) : null,
+        expiresAt: expiresAt || null,
         createdBy: session.user.id,
       },
     })
     
     // Return token (only shown once!)
-    return NextResponse.json({ 
+    const { token: _storedHash, ...safeApiToken } = apiToken
+
+    return NextResponse.json({
       token: {
-        ...apiToken,
+        ...safeApiToken,
         permissions: Array.isArray(apiToken.permissions) ? apiToken.permissions : []
       },
       plainToken: token  // Show the full token only on creation

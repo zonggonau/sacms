@@ -172,7 +172,7 @@ const articles = await cf.collection('articles')
                   <CardTitle className="text-sm">Base URL</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <CodeBlock id="base" lang="bash" code={`${origin}/api/v1/${tenantSlug}`} />
+                  <CodeBlock id="base" lang="bash" code={`${origin}/api/public/${tenantSlug}`} />
                 </CardContent>
               </Card>
 
@@ -183,26 +183,26 @@ const articles = await cf.collection('articles')
                 </CardHeader>
                 <CardContent>
                   <CodeBlock id="auth" lang="bash" code={`curl -H "Authorization: Bearer cf_xxxxx" \\
-  ${origin}/api/v1/${tenantSlug}/content/articles`} />
+  ${origin}/api/public/${tenantSlug}/content/articles`} />
                 </CardContent>
               </Card>
 
               {[
                 {
                   title: "List Entries", desc: "GET collection entries with filtering",
-                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?filters[category][$eq]=tutorial\n  &fields=title,slug,price\n  &populate=author,tags\n  &sort=createdAt:desc\n  &pagination[page]=1&pagination[pageSize]=25`,
+                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?filters[category][$eq]=tutorial\n  &fields=title,slug,price\n  &populate=author,tags\n  &sort=createdAt:desc\n  &pagination[page]=1&pagination[pageSize]=25`,
                 },
                 {
                   title: "Get Single Entry", desc: "GET a specific entry by ID",
-                  code: `GET /api/v1/${tenantSlug}/content/articles/{id}\n  ?populate=author`,
+                  code: `GET /api/public/${tenantSlug}/content/articles/{id}\n  ?populate=author`,
                 },
                 {
                   title: "Search", desc: "Full-text search across all text fields",
-                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?search=next.js+tutorial`,
+                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?search=next.js+tutorial`,
                 },
                 {
                   title: "Localization", desc: "Fetch content in a specific locale",
-                  code: `GET /api/v1/${tenantSlug}/content/articles\n  ?locale=id`,
+                  code: `GET /api/public/${tenantSlug}/content/articles\n  ?locale=id`,
                 },
               ].map((example) => (
                 <Card key={example.title}>

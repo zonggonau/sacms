@@ -1,9 +1,16 @@
 import { getTenantUsersAction } from "@/actions/users"
 import { getRolesAction } from "@/actions/roles"
 import { UsersClient } from "./users-client"
+import { enforcePlanLimit } from "@/lib/plan-enforcement"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
 
 export default async function TenantUsersPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params
+  
+  const session = await getServerSession(authOptions)
+  const access = session ? await getTenantAccess(session, tenant) : null
   
   const [usersData, rolesData] = await Promise.all([
     getTenantUsersAction(tenant),
@@ -21,6 +28,14 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
     )
   }
 
+  let maxLimit = 5
+  let currentUsageCount = 0
+  if (access) {
+    const enforcement = await enforcePlanLimit(access.tenantId, "team_members")
+    maxLimit = enforcement.max
+    currentUsageCount = enforcement.current
+  }
+
   // Safely map members since we know the shape returned by the action
   const initialMembers = (usersData.members || []).map(m => ({
     ...m,
@@ -32,6 +47,8 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
       initialMembers={initialMembers as any} 
       tenantSlug={tenant} 
       customRoles={rolesData.roles || []} 
+      limit={maxLimit}
+      current={currentUsageCount}
     />
   )
 }

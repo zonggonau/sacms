@@ -1,6 +1,6 @@
 "use client"
 
-import Link from "next/link"
+import { useParams, usePathname } from "next/navigation"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -129,10 +129,7 @@ export function DashboardSidebar({ isSuperAdmin, tenantId: propId, tenantSlug, t
       {/* Logo */}
       <div className="flex h-16 items-center border-b px-4">
         <Link href="/" className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-none bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-            <DatabaseIcon className="w-5 h-5 text-white" />
-          </div>
-          <span className="text-lg font-bold">SaCMS</span>
+          <Logo iconSize="md" showText={true} />
         </Link>
       </div>
 

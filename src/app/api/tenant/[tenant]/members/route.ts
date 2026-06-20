@@ -70,7 +70,7 @@ export async function POST(
 
     // Enforce team member limit based on workspace plan
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(tenantId, "team_members")
+    const enforcement = await enforcePlanLimit(tenantId, "team_members", session.user.id)
     if (!enforcement.allowed) {
       return NextResponse.json({ 
         error: enforcement.message,

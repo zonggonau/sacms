@@ -70,7 +70,7 @@ export async function createWebhookAction(tenantSlug: string, data: z.infer<type
     }
 
     const parsed = createWebhookSchema.safeParse(data)
-    if (!parsed.success) return { error: parsed.error.errors[0].message }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     const { name, url, secret, events, enabled } = parsed.data
 
     const webhook = await db.webhook.create({
@@ -120,7 +120,7 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
     if (!webhook) return { error: "Webhook not found" }
 
     const parsed = updateWebhookSchema.safeParse(data)
-    if (!parsed.success) return { error: parsed.error.errors[0].message }
+    if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     const { name, url, secret, events, enabled } = parsed.data
     const headers = (parsed.data as Record<string, unknown>).headers
 

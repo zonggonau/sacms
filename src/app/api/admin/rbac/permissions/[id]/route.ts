@@ -7,7 +7,7 @@ import { updatePermissionSchema } from "@/lib/validations"
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,7 +18,7 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
     const result = await validateBody(request, updatePermissionSchema)
     if ("error" in result) return result.error
     
@@ -45,7 +45,7 @@ export async function PATCH(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -56,7 +56,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { id } = params
+    const { id } = await params
 
     // Check if it's assigned to any roles
     const assignments = await db.rolePermission.count({

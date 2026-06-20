@@ -49,7 +49,7 @@ describe("Tenant Content Actions", () => {
     it("should return error if user is not authenticated", async () => {
       vi.mocked(getServerSession).mockResolvedValue(null)
 
-      const response = await getEntriesAction("tenant-1", "articles")
+      const response = await getEntriesAction("tenant-1", "articles", {})
       expect(response.error).toBe("Unauthorized")
     })
 
@@ -69,9 +69,11 @@ describe("Tenant Content Actions", () => {
       } as any)
       vi.mocked(getTenantAccess).mockResolvedValue({
         tenantId: "tenant-1",
-        role: "owner",
+        userId: "user-1",
+        role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
       })
+
       vi.mocked(db.contentType.findFirst).mockResolvedValue(null)
 
       const response = await getEntriesAction("tenant-1", "articles", {})
@@ -84,15 +86,18 @@ describe("Tenant Content Actions", () => {
       } as any)
       vi.mocked(getTenantAccess).mockResolvedValue({
         tenantId: "tenant-1",
-        role: "owner",
+        userId: "user-1",
+        role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
       })
+
 
       // Content Type mock (assigned to this tenant)
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
         id: "type-articles",
         slug: "articles",
         tenantId: "tenant-1",
+        schemaFields: [],
         tenants: [{ tenantId: "tenant-1", enabled: true }],
       } as any)
 
@@ -117,13 +122,16 @@ describe("Tenant Content Actions", () => {
       } as any)
       vi.mocked(getTenantAccess).mockResolvedValue({
         tenantId: "tenant-1",
-        role: "owner",
+        userId: "user-1",
+        role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
       })
+
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
         id: "type-articles",
         slug: "articles",
         tenantId: "tenant-1",
+        schemaFields: [],
         tenants: [{ tenantId: "tenant-1", enabled: true }],
       } as any)
 
@@ -138,7 +146,8 @@ describe("Tenant Content Actions", () => {
 
       const response = await createEntryAction("tenant-1", "articles", {
         data: { title: "New Entry" },
-        publish: false,
+        status: "DRAFT",
+        locale: "en",
       })
       
       expect(response.error).toBe("Plan limit reached.")
@@ -150,13 +159,16 @@ describe("Tenant Content Actions", () => {
       } as any)
       vi.mocked(getTenantAccess).mockResolvedValue({
         tenantId: "tenant-1",
-        role: "owner",
+        userId: "user-1",
+        role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
       })
+
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
         id: "type-articles",
         slug: "articles",
         tenantId: "tenant-1",
+        schemaFields: [],
         tenants: [{ tenantId: "tenant-1", enabled: true }],
       } as any)
 
@@ -171,16 +183,17 @@ describe("Tenant Content Actions", () => {
       // Mock dynamic validation: Failed!
       vi.mocked(validateDynamicContent).mockResolvedValue({
         success: false,
-        errors: [{ path: "title", message: "Title is required" }],
+        errors: { title: "Title is required" },
       })
 
       const response = await createEntryAction("tenant-1", "articles", {
         data: {},
-        publish: false,
+        status: "DRAFT",
+        locale: "en",
       })
       
       expect(response.error).toBe("Validation failed")
-      expect(response.details?.[0].message).toBe("Title is required")
+      expect(response.details?.title).toBe("Title is required")
     })
 
     it("should create content entry successfully", async () => {
@@ -189,14 +202,16 @@ describe("Tenant Content Actions", () => {
       } as any)
       vi.mocked(getTenantAccess).mockResolvedValue({
         tenantId: "tenant-1",
-        role: "owner",
+        userId: "user-1",
+        role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
       })
+
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
         id: "type-articles",
         slug: "articles",
         tenantId: "tenant-1",
-        fields: [{ id: "f1", name: "Title", slug: "title", type: "text", validations: { required: true } }],
+        schemaFields: [{ id: "f1", name: "Title", slug: "title", type: "text", validations: { required: true } }],
         tenants: [{ tenantId: "tenant-1", enabled: true }],
       } as any)
 
@@ -210,13 +225,10 @@ describe("Tenant Content Actions", () => {
 
       vi.mocked(validateDynamicContent).mockResolvedValue({
         success: true,
-        errors: [],
+        errors: {},
       })
       
-      // Mock db.webhook
-      db.webhook = {
-        findMany: vi.fn().mockResolvedValue([])
-      } as any
+      vi.mocked(db.webhook.findMany).mockResolvedValue([])
 
       // Mock transaction writes
       const mockCreatedEntry = { id: "new-entry-1", data: { title: "My Entry" } }
@@ -235,7 +247,7 @@ describe("Tenant Content Actions", () => {
 
       const response = await createEntryAction("tenant-1", "articles", {
         data: { title: "My Entry" },
-        publish: false,
+        status: "DRAFT",
         locale: "en",
       })
       

@@ -44,7 +44,7 @@ export async function updateProfileAction(data: { name?: string; password?: stri
 
     const parsed = updateProfileSchema.safeParse(data)
     if (!parsed.success) {
-      return { error: parsed.error.errors[0].message }
+      return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
     }
 
     const updateData: any = {}

@@ -1,6 +1,7 @@
 import { Database } from "lucide-react"
 import Link from "next/link"
 import type { FooterData } from "../types"
+import { Logo } from "@/components/ui/logo"
 
 export function FooterSection({ footer }: { footer: FooterData | null }) {
   return (
@@ -12,14 +13,11 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
 
       <div className="container px-6 max-w-7xl mx-auto relative z-10">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
-          <div className="lg:col-span-2">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20">
-                <Database className="w-5 h-5 text-white" />
-              </div>
-              <span className="font-black text-2xl text-foreground tracking-tight">{footer?.brand_name || "SaCMS"}</span>
-            </div>
-            <p className="text-base text-muted-foreground max-w-sm leading-relaxed font-medium">
+          <div className="space-y-6">
+            <Link href="/" className="inline-block">
+              <Logo iconSize="lg" showText={true} useOrange={true} />
+            </Link>
+            <p className="text-muted-foreground leading-relaxed max-w-sm">
               {footer?.description || "Platform Headless CMS modern yang dirancang khusus untuk mempercepat transformasi digital di Papua dan Indonesia."}
             </p>
           </div>

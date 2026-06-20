@@ -333,8 +333,7 @@ export async function POST() {
               description: ct.description,
               tenantId: null, // Truly Global
               isPublished: true,
-              fields: {
-                create: ct.fields.map((f) => ({
+              schemaFields: { create: ct.fields.map((f) => ({
                   name: f.name,
                   slug: f.slug,
                   type: f.type,
@@ -379,8 +378,7 @@ export async function POST() {
               slug: ct.slug,
               description: ct.description,
               tenantId: null, // Truly Global
-              fields: {
-                create: ct.fields.map((f) => ({
+              schemaFields: { create: ct.fields.map((f) => ({
                   name: f.name,
                   slug: f.slug,
                   type: f.type,
@@ -436,8 +434,7 @@ export async function POST() {
             description: comp.description,
             category: comp.category,
             tenantId: null, // Truly Global
-            fields: {
-              create: comp.fields.map((f) => ({
+            schemaFields: { create: comp.fields.map((f) => ({
                 name: f.name,
                 slug: f.slug,
                 type: f.type,

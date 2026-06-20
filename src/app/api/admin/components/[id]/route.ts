@@ -30,7 +30,9 @@ export async function GET(
     const component = await db.component.findUnique({
       where: { id },
       include: {
-        fields: true,
+        schemaFields: {
+          orderBy: { order: "asc" }
+        },
         tenants: {
           include: {
             tenant: {
@@ -49,7 +51,11 @@ export async function GET(
       return NextResponse.json({ error: "Component not found" }, { status: 404 })
     }
 
-    return NextResponse.json(component)
+    // Map schemaFields to fields for backward compatibility
+    return NextResponse.json({
+      ...component,
+      fields: component.schemaFields
+    })
   } catch (error) {
     console.error("Error fetching component:", error)
     return NextResponse.json(
@@ -119,7 +125,7 @@ export async function PATCH(
         ...(body.category !== undefined && { category: body.category }),
       },
       include: {
-        fields: true,
+        schemaFields: { orderBy: { order: "asc" } },
         tenants: {
           include: {
             tenant: {
@@ -137,13 +143,13 @@ export async function PATCH(
     // Handle fields update if provided
     if (body.fields !== undefined) {
       // Delete all existing fields
-      await db.componentField.deleteMany({
+      await db.schemaField.deleteMany({
         where: { componentId: id },
       })
 
       // Create new fields
       if (body.fields.length > 0) {
-        await db.componentField.createMany({
+        await db.schemaField.createMany({
           data: body.fields.map((field: Record<string, unknown>, index: number) => ({
             componentId: id,
             name: field.name as string,
@@ -163,7 +169,7 @@ export async function PATCH(
       const updated = await db.component.findUnique({
         where: { id },
         include: {
-          fields: true,
+          schemaFields: { orderBy: { order: "asc" } },
           tenants: {
             include: {
               tenant: {
@@ -178,10 +184,10 @@ export async function PATCH(
         },
       })
 
-      return NextResponse.json(updated)
+      return NextResponse.json({ ...updated, fields: updated?.schemaFields })
     }
 
-    return NextResponse.json(component)
+    return NextResponse.json({ ...component, fields: component.schemaFields })
   } catch (error) {
     console.error("Error updating component:", error)
     return NextResponse.json(

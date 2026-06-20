@@ -55,20 +55,15 @@ export async function POST(
     const uploadedMedia: Media[] = []
 
     // Check storage limit
-    const planConfig = await getTenantPlanConfig(tenantId)
-    const maxStorageBytes = planConfig.max_storage * 1024 * 1024
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(tenantId, "storage", userId)
     
-    const currentUsage = await tenantDb.media.aggregate({
-      where: { tenantId },
-      _sum: { size: true }
-    })
-    
-    const currentUsageBytes = currentUsage._sum.size || 0
     const newFilesSizeBytes = files.reduce((acc, file) => acc + file.size, 0)
+    const newFilesSizeMB = Math.ceil(newFilesSizeBytes / (1024 * 1024))
 
-    if (currentUsageBytes + newFilesSizeBytes > maxStorageBytes) {
+    if (!enforcement.allowed || (enforcement.current + newFilesSizeMB > enforcement.max)) {
       return NextResponse.json({ 
-        error: `Storage limit exceeded. Your plan allows ${planConfig.max_storage}MB.` 
+        error: enforcement.message || `Storage limit exceeded. Your plan allows ${enforcement.max}MB.` 
       }, { status: 403 })
     }
 

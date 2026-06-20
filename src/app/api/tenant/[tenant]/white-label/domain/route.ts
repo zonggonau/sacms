@@ -8,6 +8,7 @@ import { z } from "zod/v4"
 import { resolveTxt } from "dns/promises"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { getRedis } from "@/lib/redis"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
 
 const setDomainSchema = z.object({
   customDomain: z
@@ -40,6 +41,10 @@ export async function GET(
     const access = await getTenantAccess(session, tenant)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_CUSTOM_DOMAIN")) {
+      return NextResponse.json({ error: "Custom domain requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
     }
 
     const tenantRecord = await db.tenant.findUnique({
@@ -95,17 +100,22 @@ export async function PUT(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_CUSTOM_DOMAIN")) {
+      return NextResponse.json({ error: "Custom domain requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
+    }
+
     const result = await validateBody(request, setDomainSchema)
     if ("error" in result) return result.error
 
-    const { customDomain } = result.data
+    const customDomain = result.data.customDomain?.toLowerCase() || null
+
+    const currentTenant = await db.tenant.findUnique({
+      where: { id: access.tenantId },
+      select: { customDomain: true },
+    })
 
     // Clearing domain
     if (!customDomain) {
-      const oldTenant = await db.tenant.findUnique({
-        where: { id: access.tenantId },
-        select: { customDomain: true },
-      })
       await db.tenant.update({
         where: { id: access.tenantId },
         data: {
@@ -115,9 +125,9 @@ export async function PUT(
         },
       })
       
-      if (oldTenant?.customDomain) {
+      if (currentTenant?.customDomain) {
         const redis = getRedis()
-        if (redis) await redis.del(`domain:${oldTenant.customDomain}`)
+        if (redis) await redis.del(`domain:${currentTenant.customDomain}`)
       }
 
       return NextResponse.json({ customDomain: null, status: "cleared" })
@@ -143,6 +153,12 @@ export async function PUT(
         customDomainVerifiedAt: null,
       },
     })
+
+    // A pending domain must never keep routing through a previously verified map.
+    if (currentTenant?.customDomain) {
+      const redis = getRedis()
+      if (redis) await redis.del(`domain:${currentTenant.customDomain}`)
+    }
 
     const verificationToken = buildVerificationToken(access.tenantId)
 
@@ -190,6 +206,10 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_CUSTOM_DOMAIN")) {
+      return NextResponse.json({ error: "Custom domain requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
+    }
+
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
       select: { customDomain: true, slug: true },
@@ -219,6 +239,9 @@ export async function POST(
       if (redis) {
         await redis.set(`domain:${customDomain}`, tenantRecord.slug)
       }
+    } else {
+      const redis = getRedis()
+      if (redis) await redis.del(`domain:${customDomain}`)
     }
 
     if (!verified) {

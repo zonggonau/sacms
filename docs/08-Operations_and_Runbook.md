@@ -33,8 +33,8 @@ Dokumen ini adalah panduan *Operations Manual* untuk memulihkan layanan (Runbook
 **Gejala:** *Webhook* tidak terkirim ke pelanggan (*tenant endpoint* mati).
 **Langkah Mitigasi:**
 1. Pemicu utama kegagalan Webhook otomatis ditransfer ke tabel *Dead Letter Queue (DLQ)* di DB.
-2. *Cron job* `/api/cron/webhook-retry` akan berjalan secara berkala dengan skema *exponential backoff*.
-3. Secara manual, pantau metrik log *webhooks* melalui Sentry Dashboard.
+2. *Cron job* `/api/cron/webhook-retry` berjalan setiap 2 menit pada `vercel.json` saat ini dengan skema *exponential backoff*.
+3. Periksa `WebhookLog`, `WebhookDeadLetter`, dan halaman Webhooks tenant; Sentry hanya tambahan jika dikonfigurasi.
 
 ---
 
@@ -97,16 +97,43 @@ Jika terjadi inkonsistensi data antara CMS dan Front-End Anda akibat perubahan s
 ### 2.3. Webhooks Gagal Mengirim (Dead Letter Queue)
 **Masalah:** Data sudah di-publish tapi front-end statis tidak ter-rebuild otomatis.
 **Solusi:**
-- SaCMS menggunakan mekanisme asinkron. Periksa tabel `WebhookLog` dan `DeadLetter` di database untuk melihat respon error dari server tujuan.
+- SaCMS menggunakan mekanisme asinkron. Periksa tabel `WebhookLog` dan `WebhookDeadLetter` di database untuk melihat respon error dari server tujuan.
 - Pastikan cron job `/api/cron/webhook-retry` berjalan (biasanya di-trigger oleh Vercel Cron atau GitHub Actions scheduler) agar sistem bisa mem-push ulang request yang gagal.
 
 ### 2.4. Konten Terjadwal Tidak Ter-Publish
 **Masalah:** Konten yang di-set "Scheduled Publish Date" tidak berubah menjadi "Published".
 **Solusi:**
-- Cek ketersediaan pemanggilan endpoint `/api/cron/publish`. Endpoint ini wajib dipanggil setiap menit oleh layanan eksternal (seperti cron-job.org atau Vercel Cron) dengan menyertakan `Authorization: Bearer <CRON_SECRET>`.
+- Cek pemanggilan endpoint `/api/cron/publish`. Konfigurasi repository saat ini menjalankannya setiap 5 menit dengan `Authorization: Bearer <CRON_SECRET>`.
 
 ### 2.5. Error Tidak Terlacak di Log Server
 **Masalah:** UI menampilkan error misterius "Internal Server Error" tapi log konsol kosong.
 **Solusi:**
 - Sistem telah dikonfigurasi dengan Sentry (`@sentry/nextjs`).
 - Login ke dashboard Sentry Anda untuk melihat rekaman lengkap *Stack Trace*, *Breadcrumbs* perjalanan user, dan variabel *environment* saat error terjadi.
+
+### 2.6. Konten Tertahan di Workflow
+**Masalah:** Tombol status tidak muncul, reviewer tidak dapat memutuskan, atau entri tidak berpindah status.
+
+**Solusi:**
+
+1. Catat status saat ini dan status target.
+2. Cocokkan transisi dengan dokumen 14.
+3. Periksa role/custom permission actor.
+4. Untuk review berurutan, ambil assignment dari `/api/tenant/{tenant}/workflow/reviewers?entryId=...` dan pastikan actor adalah pending reviewer dengan urutan terkecil.
+5. Pastikan entry masih berada pada tenant dan status `IN_REVIEW` saat keputusan dikirim.
+6. Jika schedule gagal, pastikan tanggal valid dan berada di masa depan menurut waktu server.
+
+### 2.7. Custom Domain Verified tetapi Tidak Routing
+**Masalah:** Database menunjukkan `verified`, tetapi hostname tidak di-rewrite.
+
+**Solusi:**
+
+1. Periksa Upstash Redis dan key `domain:{hostname}`.
+2. Pastikan `NEXT_PUBLIC_APP_URL` mengarah ke canonical app host.
+3. Ulangi POST verifikasi domain setelah Redis pulih untuk mengisi ulang mapping.
+4. Panggil path custom host `/content/...`, bukan `/api/public/{tenant}/...`.
+5. Sertakan Bearer token tenant pada request API.
+
+## 3. Evidence policy
+
+Runbook harus membedakan “kode tersedia” dan “operasi terverifikasi”. Catat timestamp, environment, actor, request ID, endpoint, status code, dan perubahan yang dilakukan. Jangan menyatakan restore, backup, cron, atau provider sehat hanya berdasarkan inspeksi source code.

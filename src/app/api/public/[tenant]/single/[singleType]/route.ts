@@ -3,7 +3,7 @@ import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { resolveContentData } from "@/lib/content-resolver"
 import { logApiRequest } from "@/lib/monitoring"
-import { getCache, setCache } from "@/lib/cache"
+import { getCache, setCache, invalidatePattern } from "@/lib/cache"
 import { createHash } from "crypto"
 
 // Public API - Get single type content
@@ -12,10 +12,11 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string; singleType: string }> }
 ) {
+  const startTime = Date.now()
+  let resolvedTenantId: string | null = null
   try {
-    const startTime = Date.now()
     const { tenant: tenantSlug, singleType: singleTypeSlug } = await params
-    let resolvedTenantId: string | null = tenantSlug
+    resolvedTenantId = tenantSlug
 
     const logResponse = (res: NextResponse) => {
       const duration = Date.now() - startTime
@@ -39,18 +40,16 @@ export async function GET(
     }
 
     const token = authHeader.replace("Bearer ", "")
+    const hashedToken = createHash("sha256").update(token).digest("hex")
 
-    // Rate limit by token
-    const rateLimitResult = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
+    // Rate limit by token hash so the raw secret never reaches Redis.
+    const rateLimitResult = await rateLimit(`public:${hashedToken}`, RATE_LIMITS.publicApi)
     if (!rateLimitResult.success) {
       return logResponse(NextResponse.json(
         { error: "Rate limit exceeded. Try again later." },
         { status: 429 }
       ))
     }
-
-    // Hash the token for database lookup (SHA-256)
-    const hashedToken = createHash("sha256").update(token).digest("hex")
 
     // Find the API token
     const apiToken = await db.apiToken.findUnique({
@@ -77,12 +76,16 @@ export async function GET(
       return logResponse(NextResponse.json({ error: "API token expired" }, { status: 401 }))
     }
 
-    // Parse query parameters
+    // Parse query parameters and resolve tenant default locale.
     const { searchParams } = new URL(request.url)
-    const locale = searchParams.get("locale") || "en"
+    const defaultLocale = (await db.tenantLocale.findFirst({
+      where: { tenantId: apiToken.tenantId, isDefault: true },
+      select: { locale: true },
+    }))?.locale || "en"
+    const locale = searchParams.get("locale") || defaultLocale
 
     // CACHE CHECK
-    const cacheKey = `single:${apiToken.tenantId}:${singleTypeSlug}:${locale}`
+    const cacheKey = `single:${apiToken.tenantId}:${singleTypeSlug}:${locale}:${apiToken.type}`
     const cached = await getCache(cacheKey)
     if (cached) {
       return logResponse(NextResponse.json(cached, {
@@ -111,8 +114,7 @@ export async function GET(
       orderBy: {
         tenantId: { sort: 'desc', nulls: 'last' }
       },
-      include: {
-        fields: { orderBy: { order: "asc" } },
+      include: { schemaFields: { orderBy: { order: "asc" } },
       },
     })
 
@@ -138,6 +140,13 @@ export async function GET(
       ))
     }
 
+    if (apiToken.type !== "full-access" && !assignment.publishedAt) {
+      return logResponse(NextResponse.json(
+        { error: "Single type not available for this tenant" },
+        { status: 404 }
+      ))
+    }
+
     // Update last used
     await db.apiToken.update({
       where: { id: apiToken.id },
@@ -154,7 +163,7 @@ export async function GET(
     const resolvedData = await resolveContentData(
       apiToken.tenantId,
       rawData,
-      singleType.fields
+      singleType.schemaFields
     )
 
     const responsePayload = {
@@ -204,10 +213,11 @@ export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string; singleType: string }> }
 ) {
+  const startTime = Date.now()
+  let resolvedTenantId: string | null = null
   try {
-    const startTime = Date.now()
     const { tenant: tenantSlug, singleType: singleTypeSlug } = await params
-    let resolvedTenantId: string | null = tenantSlug
+    resolvedTenantId = tenantSlug
 
     const logResponse = (res: NextResponse) => {
       const duration = Date.now() - startTime
@@ -260,6 +270,13 @@ export async function PUT(
       return logResponse(NextResponse.json({ error: "Token does not match tenant" }, { status: 403 }))
     }
 
+    const { searchParams } = new URL(request.url)
+    const defaultLocale = (await db.tenantLocale.findFirst({
+      where: { tenantId: apiToken.tenantId, isDefault: true },
+      select: { locale: true },
+    }))?.locale || "en"
+    const locale = searchParams.get("locale") || defaultLocale
+
     // Get single type (prefer tenant-specific over global)
     const singleType = await db.singleType.findFirst({
       where: { 
@@ -284,7 +301,7 @@ export async function PUT(
         tenantId_singleTypeId_locale: {
           tenantId: apiToken.tenantId,
           singleTypeId: singleType.id,
-          locale: "en", // Default to en for PUT, or we could pass it in body
+          locale,
         },
       },
     })
@@ -315,6 +332,8 @@ export async function PUT(
       where: { id: apiToken.id },
       data: { lastUsedAt: new Date() },
     })
+
+    await invalidatePattern(`single:${apiToken.tenantId}:${singleTypeSlug}:${locale}:*`)
 
     return logResponse(NextResponse.json({
       data: {

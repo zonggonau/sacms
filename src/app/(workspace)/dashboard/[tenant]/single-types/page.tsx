@@ -1,9 +1,16 @@
 import { getSingleTypesAction } from "@/actions/single-types"
 import { SingleTypesClient } from "./single-types-client"
 import { Database } from "lucide-react"
+import { enforcePlanLimit } from "@/lib/plan-enforcement"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
 
 export default async function SingleTypesPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params
+  
+  const session = await getServerSession(authOptions)
+  const access = session ? await getTenantAccess(session, tenant) : null
   
   const singleTypesData = await getSingleTypesAction(tenant)
   
@@ -19,6 +26,15 @@ export default async function SingleTypesPage({ params }: { params: Promise<{ te
     )
   }
 
+  // Get plan limit for content types
+  let maxLimit = 3
+  let currentUsageCount = 0
+  if (access) {
+    const enforcement = await enforcePlanLimit(access.tenantId, "content_types")
+    maxLimit = enforcement.max
+    currentUsageCount = enforcement.current
+  }
+
   const initialSingleTypes = (singleTypesData.singleTypes || []).map(c => ({
     ...c,
     createdAt: c.createdAt.toISOString(),
@@ -26,5 +42,12 @@ export default async function SingleTypesPage({ params }: { params: Promise<{ te
     publishedAt: c.publishedAt ? c.publishedAt.toISOString() : null,
   }))
 
-  return <SingleTypesClient initialSingleTypes={initialSingleTypes as any} tenantSlug={tenant} />
+  return (
+    <SingleTypesClient 
+      initialSingleTypes={initialSingleTypes as any} 
+      tenantSlug={tenant} 
+      limit={maxLimit}
+      current={currentUsageCount}
+    />
+  )
 }

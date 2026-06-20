@@ -40,25 +40,28 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get all roles for this tenant + global system roles
-    const allRoles = await db.role.findMany({
-      where: {
-        OR: [
-          { tenantId: tenant.id },
-          { tenantId: null }
-        ]
-      },
-      orderBy: { createdAt: 'asc' }
+    // Built-in roles are identifiers, while custom roles use TenantRole metadata.
+    const builtInRoles = ["owner", "admin", "editor", "member", "viewer"].map((slug) => ({
+      id: slug,
+      name: slug,
+      displayName: slug.charAt(0).toUpperCase() + slug.slice(1),
+      description: null,
+      isSystem: true,
+    }))
+    const customRoles = await db.tenantRole.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { createdAt: "asc" },
     })
-
-    // Deduplicate by name - prioritize tenant roles over global
-    const roleMap = new Map<string, any>()
-    allRoles.forEach(role => {
-      // If we already have a tenant-specific role, don't overwrite it with global
-      if (roleMap.has(role.name) && !role.tenantId) return
-      roleMap.set(role.name, role)
-    })
-    const roles = Array.from(roleMap.values())
+    const roles = [
+      ...builtInRoles,
+      ...customRoles.map((role) => ({
+        id: role.id,
+        name: role.slug,
+        displayName: role.name,
+        description: role.description,
+        isSystem: false,
+      })),
+    ]
 
     // Get all permissions definitions
     const allPermissions = await db.permission.findMany()

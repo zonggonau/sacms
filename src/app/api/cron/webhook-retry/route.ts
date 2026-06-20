@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { processWebhookRetries } from "@/lib/webhooks"
+import { authorizeCronRequest } from "@/lib/cron-auth"
 
 /**
  * GET /api/cron/webhook-retry
@@ -7,12 +8,8 @@ import { processWebhookRetries } from "@/lib/webhooks"
  * Should be called every 1-2 minutes.
  */
 export async function GET(request: Request) {
-  const authHeader = request.headers.get("authorization")
-  const cronSecret = process.env.CRON_SECRET
-
-  if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-  }
+  const unauthorized = authorizeCronRequest(request)
+  if (unauthorized) return unauthorized
 
   try {
     const result = await processWebhookRetries()

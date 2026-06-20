@@ -29,7 +29,15 @@ export async function GET(
       orderBy: [{ isDefault: "desc" }, { locale: "asc" }],
     })
 
-    return NextResponse.json({ locales })
+    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+    const enforcement = await enforcePlanLimit(access.tenantId, "locales", session.user.id)
+
+    return NextResponse.json({ 
+      locales,
+      limit: enforcement.max,
+      current: enforcement.current,
+      isLimitReached: enforcement.current >= enforcement.max
+    })
   } catch (error) {
     console.error("Error fetching locales:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -65,7 +73,7 @@ export async function POST(
 
     // Enforce locale limit based on workspace plan
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(access.tenantId, "locales")
+    const enforcement = await enforcePlanLimit(access.tenantId, "locales", session.user.id)
     if (!enforcement.allowed) {
       return NextResponse.json(
         { 

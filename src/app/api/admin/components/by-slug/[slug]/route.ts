@@ -29,8 +29,7 @@ export async function GET(
         slug,
         tenantId: null 
       },
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: {
             order: 'asc',
           },

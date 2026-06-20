@@ -1,9 +1,10 @@
 import { z } from "zod/v4"
 import { db } from "@/lib/database"
+import type { PrismaClient } from "../../../prisma/generated-client"
 
 /**
  * Dynamic Content Validator
- * Validates JSON content data against ContentTypeField definitions from the DB.
+ * Validates JSON content data against SchemaField definitions from the DB.
  */
 
 export interface FieldDefinition {
@@ -18,10 +19,13 @@ export async function validateDynamicContent(
   contentTypeId: string,
   tenantId: string,
   data: Record<string, any>,
-  entryId?: string // Pass entryId for updates to skip self-uniqueness check
+  entryId?: string, // Pass entryId for updates to skip self-uniqueness check
+  options: { enforceRequired?: boolean; client?: PrismaClient } = {}
 ): Promise<{ success: boolean; errors?: Record<string, string> }> {
+  const enforceRequired = options.enforceRequired ?? true
+  const client = options.client ?? db
   // 1. Get field definitions for this content type
-  const fields = await db.contentTypeField.findMany({
+  const fields = await client.schemaField.findMany({
     where: { contentTypeId },
   })
 
@@ -31,7 +35,7 @@ export async function validateDynamicContent(
     const value = data[field.slug]
 
     // Check Required
-    if (field.required && (value === undefined || value === null || value === "")) {
+    if (enforceRequired && field.required && (value === undefined || value === null || value === "")) {
       errors[field.slug] = `${field.name} is required`
       continue
     }
@@ -60,7 +64,7 @@ export async function validateDynamicContent(
 
     // Uniqueness Check (if enabled)
     if (field.unique) {
-      const existing = await db.contentEntry.findFirst({
+      const existing = await client.contentEntry.findFirst({
         where: {
           contentTypeId,
           tenantId,

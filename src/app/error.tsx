@@ -8,7 +8,7 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
-export default function GlobalError({
+export default function ErrorBoundary({
   error,
   reset,
 }: {
@@ -18,11 +18,11 @@ export default function GlobalError({
   useEffect(() => {
     // Log the error to Sentry
     Sentry.captureException(error)
-    console.error("Global Error Boundary caught:", error)
+    console.error("Error Boundary caught:", error)
   }, [error])
 
   return (
-    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6">
+    <div className="min-h-screen bg-zinc-950 flex items-center justify-center p-6 w-full">
       <div className="max-w-md w-full space-y-8 text-center">
         {/* Error Icon */}
         <div className="relative inline-block">

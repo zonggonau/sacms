@@ -1,10 +1,11 @@
 openapi: 3.1.0
 info:
   title: SaCMS Public API
-  version: 1.0.0
+  version: 0.2.0
   description: |
-    Headless CMS API for querying and mutating content.
+    Stable public subset of the SaCMS headless content API.
     All requests require `Authorization: Bearer <token>` header.
+    Read-only tokens can only access PUBLISHED content. Collection mutation is exposed through GraphQL, not REST.
   contact:
     name: SaCMS
 servers:
@@ -42,15 +43,17 @@ components:
 
     ContentEntry:
       type: object
+      additionalProperties: true
       properties:
         id:
           type: string
-        data:
-          type: object
-          additionalProperties: true
         locale:
           type: string
           example: en
+        availableLocales:
+          type: array
+          items:
+            type: string
         status:
           type: string
           enum: [DRAFT, IN_REVIEW, APPROVED, SCHEDULED, PUBLISHED, ARCHIVED, REJECTED]
@@ -139,6 +142,15 @@ components:
         minimum: 1
         maximum: 100
 
+    StatusQuery:
+      name: status
+      in: query
+      schema:
+        type: string
+        enum: [DRAFT, IN_REVIEW, APPROVED, SCHEDULED, PUBLISHED, ARCHIVED, REJECTED]
+        default: PUBLISHED
+      description: Full-access token required for any value other than PUBLISHED
+
 paths:
   /api/public/{tenant}/content/{contentType}:
     get:
@@ -148,7 +160,7 @@ paths:
         Only returns PUBLISHED entries by default.
 
         **Filter operators**: `$eq`, `$ne`, `$gt`, `$gte`, `$lt`, `$lte`, `$contains`,
-        `$startsWith`, `$endsWith`, `$in`, `$notIn`, `$null`, `$notNull`, `$or`, `$and`
+        `$startsWith`, `$endsWith`, `$in`, `$notIn`, `$null`, `$notNull`, with `$or` groups
 
         Example: `?filters[category][$eq]=tutorial&filters[price][$gte]=100`
       operationId: listEntries
@@ -163,6 +175,7 @@ paths:
         - $ref: "#/components/parameters/PopulateQuery"
         - $ref: "#/components/parameters/PaginationPage"
         - $ref: "#/components/parameters/PaginationPageSize"
+        - $ref: "#/components/parameters/StatusQuery"
       responses:
         "200":
           description: List of entries
@@ -197,32 +210,6 @@ paths:
           description: Token does not have access to this tenant
         "429":
           description: Rate limit exceeded
-
-  /api/public/{tenant}/content/{contentType}/{entryId}:
-    get:
-      summary: Get single entry by ID
-      operationId: getEntry
-      tags: [Content]
-      parameters:
-        - $ref: "#/components/parameters/TenantSlug"
-        - $ref: "#/components/parameters/ContentTypeSlug"
-        - name: entryId
-          in: path
-          required: true
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Entry data
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  data:
-                    $ref: "#/components/schemas/ContentEntry"
-        "404":
-          description: Entry not found
 
   /api/public/{tenant}/single/{singleType}:
     get:

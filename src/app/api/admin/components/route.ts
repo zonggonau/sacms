@@ -16,8 +16,7 @@ export async function GET() {
     }
 
     const components = await db.component.findMany({
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: { order: "asc" }
         },
         tenants: {
@@ -79,14 +78,14 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Create component with fields
+    // Create global component with fields
     const component = await db.component.create({
       data: {
         name,
         slug,
         description,
         category: category || "Other",
-        fields: fields ? {
+        schemaFields: fields ? { 
           create: fields.map((field: Record<string, unknown>, index: number) => ({
             name: field.name as string,
             slug: field.slug as string,
@@ -100,9 +99,7 @@ export async function POST(request: NextRequest) {
           }))
         } : undefined
       },
-      include: {
-        fields: true
-      }
+      include: { schemaFields: true }
     })
 
     return NextResponse.json({ component })

@@ -31,7 +31,7 @@
 # valid public domain), and forwards the request to Next.js with the original
 # Host header intact.
 #
-# Next.js middleware then detects that the Host doesn't match APP_HOST and
+# Next.js proxy then detects that the Host doesn't match APP_HOST and
 # rewrites the path to /api/domain/... so the catch-all route can resolve
 # the tenant and serve the response.
 #

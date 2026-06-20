@@ -22,8 +22,7 @@ export async function GET() {
       where: {
         tenantId: null, // Only global/system content types
       },
-      include: {
-        fields: {
+      include: { schemaFields: {
           orderBy: { order: "asc" },
         },
         tenants: {
@@ -44,7 +43,12 @@ export async function GET() {
       orderBy: { createdAt: "desc" },
     })
 
-    return NextResponse.json({ contentTypes })
+    const mappedContentTypes = contentTypes.map(ct => ({
+      ...ct,
+      fields: ct.schemaFields || [],
+    }))
+
+    return NextResponse.json({ contentTypes: mappedContentTypes })
   } catch (error) {
     console.error("Error fetching content types:", error)
     return NextResponse.json(
@@ -92,7 +96,7 @@ export async function POST(request: NextRequest) {
         slug,
         description,
         isPublished: true,
-        fields: fields
+        schemaFields: fields
           ? {
               create: fields.map((field: Record<string, unknown>, index: number) => ({
                 name: field.name as string,
@@ -107,9 +111,7 @@ export async function POST(request: NextRequest) {
             }
           : undefined,
       },
-      include: {
-        fields: true,
-      },
+      include: { schemaFields: true },
     })
 
     return NextResponse.json({ contentType })

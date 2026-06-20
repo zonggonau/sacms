@@ -51,16 +51,16 @@ export async function POST(
     const { name, displayName, description } = result.data
 
     // Check if role name is reserved or already exists
-    const reservedNames = ['owner', 'admin', 'editor', 'viewer', 'super_admin']
+    const reservedNames = ['owner', 'admin', 'editor', 'member', 'viewer', 'super_admin']
     if (reservedNames.includes(name.toLowerCase())) {
       return NextResponse.json({ error: "Role name is reserved" }, { status: 400 })
     }
 
-    const existing = await db.role.findUnique({
+    const existing = await db.tenantRole.findUnique({
       where: {
-        tenantId_name: {
+        tenantId_slug: {
           tenantId: tenant.id,
-          name: name.toLowerCase()
+          slug: name.toLowerCase()
         }
       }
     })
@@ -69,13 +69,12 @@ export async function POST(
       return NextResponse.json({ error: "Role already exists" }, { status: 400 })
     }
 
-    const role = await db.role.create({
+    const role = await db.tenantRole.create({
       data: {
         tenantId: tenant.id,
-        name: name.toLowerCase(),
-        displayName,
+        slug: name.toLowerCase(),
+        name: displayName,
         description,
-        isSystem: false
       }
     })
 

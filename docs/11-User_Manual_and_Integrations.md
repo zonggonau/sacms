@@ -1,1197 +1,433 @@
-﻿# User Manual / Panduan Pengguna SaCMS
+# SaCMS User Manual & Integration Guide
 
-Dokumen ini ditujukan untuk **Tenant Admin** dan **Content Editor** yang menggunakan antarmuka (UI) Dashboard SaCMS.
+**Audience:** Workspace owners, administrators, editors, contributors, reviewers, and developers  
+**Baseline:** 19 June 2026  
+**Verification note:** UI labels/paths were synchronized by static inspection; no browser acceptance test was run.
 
-## 1. Memulai (Getting Started)
-1. Buka URL Dashboard: `https://[your-domain.com]/login`.
-2. Masukkan kredensial email dan password (atau login via Google/GitHub).
-3. Setelah masuk, Anda akan diarahkan ke layar **Workspace / Tenant Selection**. Pilih Workspace Anda.
+## 1. Product areas
 
-## 2. Content Builder (Membuat Struktur Tabel)
-Untuk mulai menyimpan data, Anda harus membuat struktur (Schema) terlebih dahulu:
-1. Buka menu **Content Builder** di sidebar kiri.
-2. Klik **Create New Collection Type** (misal: `Articles`).
-3. Tambahkan field-field yang dibutuhkan:
-   - *Title* (Text, Required)
-   - *Content* (RichText)
-   - *Cover Image* (Media)
-   - *Published Date* (Date)
-4. Klik **Save**. Sistem akan secara otomatis membuatkan API Endpoint untuk `Articles`.
+SaCMS separates two working areas:
 
-## 3. Content Manager (Mengisi Data)
-1. Buka menu **Content Manager**.
-2. Pilih tipe konten yang tadi dibuat (`Articles`).
-3. Klik **Create New Entry**.
-4. Isi data sesuai formulir. Anda juga dapat mengunggah gambar langsung dengan memilih field Media.
-5. Klik **Save as Draft**.
-6. Gunakan tombol **Send to Review** atau **Publish** (jika Anda memiliki hak akses) untuk mempublikasikan konten tersebut ke API Publik.
+- **Workspace Dashboard** — schema, components, members, roles, localization, billing, API tokens, webhooks, settings, and developer tools under `/dashboard/{tenant}`.
+- **Content Studio** — day-to-day Collection content, Single Types, media, review, history, and profile under `/cms/{tenant}`.
 
-## 4. Media Library
-1. Buka menu **Media Library**.
-2. Anda bisa *drag and drop* gambar, video, atau dokumen PDF.
-3. Semua gambar yang diunggah akan secara otomatis di-compress dan dibuatkan versi *Thumbnail* dan *Medium* oleh sistem.
-4. Anda dapat membuat *Folder* untuk merapikan aset.
+Platform super administrators also have `/admin` pages for global schemas, tenants, users, billing, monitoring, settings, and audit logs.
 
-## 5. Mengundang Anggota Tim (Team Management)
-1. Pergi ke **Settings > Team**.
-2. Klik **Invite Member**.
-3. Masukkan email anggota dan pilih rolenya (Admin, Editor, atau Member).
-4. Anggota akan menerima email undangan.
-# Content Types Setup Documentation
+## 2. Sign in and account recovery
 
-## 📋 Overview
+### 2.1 Credentials
 
-Dokumentasi ini menjelaskan cara setup dan menggunakan content types di SACMS.
+1. Open `/login`.
+2. Enter email and password.
+3. If email has not been verified, SaCMS sends a new verification link and stops sign-in.
+4. After verification, sign in again.
 
-## 🔧 Setup Content Type "Berita"
+### 2.2 OAuth
 
-### Fields yang Ditambahkan
+Google or GitHub buttons are available only when the deployment configured those providers.
 
-Content type "berita" sudah memiliki field-field berikut:
+### 2.3 Password recovery
 
-| Field | Slug | Type | Required | Description |
-|--------|-------|-------|-----------|-------------|
-| Judul | title | text | ✅ Yes | Judul berita (unique) |
-| Ringkasan | description | textarea | ✅ Yes | Ringkasan singkat berita |
-| Isi Konten | content | richText | ✅ Yes | Konten lengkap dengan rich text editor |
-| Gambar Cover | cover | media | ❌ No | Gambar cover untuk berita |
-| Penulis | author | text | ❌ No | Nama penulis berita |
-| Kategori | category | select | ✅ Yes | Kategori berita (Berita, Pengumuman, Artikel, Press Release) |
-| Tags | tags | text | ❌ No | Tags untuk berita |
-| Status | status | select | ✅ Yes | Status berita (Draft, Published, Archived) |
+- Request recovery at `/forgot-password`.
+- Complete the token flow at `/reset-password`.
+- Do not share or forward recovery links.
 
-### Cara Menambahkan Fields
+## 3. Workspace selection and creation
 
-Jika ingin menambahkan fields ke content type yang lain:
+After sign-in, open `/dashboard` to view workspaces available to the account.
+
+Creating a workspace is subject to the account's `max_workspaces` limit. The workspace plan is also checked against the account plan hierarchy. If creation is blocked:
+
+1. Review current account/workspace plans.
+2. Remove an unused owner workspace, request an override, or upgrade.
+3. Retry creation after the plan state is updated.
+
+The workspace slug becomes part of dashboard, CMS, and API URLs. Treat it as a stable integration identifier.
+
+## 4. Workspace navigation
+
+Common Dashboard sections:
+
+| Group | Menu | Purpose |
+|---|---|---|
+| Content | Content Studio | Open the separate authoring interface |
+| Content | Overview | Workspace summary and onboarding |
+| Content | Content Types | Collection schema and entries |
+| Content | Single Types | One-record schemas such as site settings |
+| Content | Components | Reusable nested field groups |
+| Content | Media Library | Files and metadata |
+| Management | Team Members | Membership and role assignment |
+| Management | Roles & Permissions | Built-in/custom RBAC |
+| Management | Localization | Enabled/default locales |
+| Management | Billing & Plans | Subscription, invoices, usage |
+| Developer | API Tokens | Public integration credentials |
+| Developer | Webhooks | Event delivery and hooks |
+| Developer | GraphQL Explorer | Dynamic schema/query exploration |
+| Developer | REST API | Public API guidance |
+| Developer | SDK & Docs | Generated integration resources |
+| Settings | Audit Trail | Tenant activity history |
+| Settings | Workspace Settings | General and White-Label configuration |
+
+Visibility may differ by role. Server authorization remains authoritative if a stale UI still displays a restricted link.
+
+## 5. Schema modeling concepts
+
+### 5.1 Collection Type
+
+Use for repeatable records: articles, products, events, people, or documents. Data is stored as `ContentEntry` and participates in the full workflow.
+
+### 5.2 Single Type
+
+Use for one logical record per locale: site settings, homepage, about page, contact configuration. Single Types do not use the Collection reviewer state machine.
+
+### 5.3 Component
+
+Use for reusable nested structures: SEO metadata, buttons, addresses, hero blocks, link groups. A component may be repeatable when configured by the parent field.
+
+### 5.4 Global and tenant-owned schemas
+
+- Tenant-owned schema belongs to one workspace.
+- Global schema has no tenant owner and can be assigned/enabled for selected tenants.
+
+## 6. Create a Collection Type
+
+1. Open `/dashboard/{tenant}/content-types`.
+2. Select **New Content Type**.
+3. Enter display name, slug, and description.
+4. Add fields in the intended display order.
+5. Configure required, unique, localizable, options, relation target, or component target.
+6. Save/publish the schema.
+
+Creation may fail when `max_content_types` has been reached.
+
+### 6.1 Field type reference
+
+| Type | Typical value | Notes |
+|---|---|---|
+| `text` | Short string | Text fields are limited by validation policy |
+| `textarea` / `markdown` | Long plain/Markdown text | Multi-line authoring |
+| `richText` | HTML/rich editor content | Sanitize in consuming frontend |
+| `slug` / `uid` | URL-safe identifier | May auto-generate from title/name |
+| `email` | Email string | Format-validated |
+| `integer` / `number` | Numeric value | UI/backend representation must stay consistent |
+| `boolean` | `true`/`false` | Initialized as false in create form |
+| `date` / `datetime` | Date/ISO value | Content field, separate from workflow schedule |
+| `select` | One configured option | Options stored in field metadata |
+| `tags` | String list | Used for labels/hashtags |
+| `media` / `file` | One asset reference | Uses tenant media library |
+| `mediaMultiple` | Asset reference list | Initialized as empty list |
+| `relation` | Entry ID or ID list | Cardinality comes from options |
+| `component` | Object or object list | Uses selected Component schema |
+| `json` | JSON value | Use cautiously in public contracts |
+| `color` | Color value | Specialized renderer |
+| `location` | Structured location | Specialized renderer |
+
+### 6.2 Required, unique, and localizable
+
+- **Required:** enforced when content leaves `DRAFT`; Draft may stay incomplete.
+- **Unique:** checked within the content type and tenant.
+- **Localizable:** each locale has its own value.
+- **Non-localizable:** changes are copied to the other translation variants.
+
+### 6.3 Component impact analysis
+
+Component management shows where a component is referenced and warns before deleting an in-use component. Review every affected schema before destructive changes; existing JSON content may still contain historical component-shaped data.
+
+## 7. Collection content workflow
+
+Open Content Studio at `/cms/{tenant}/content/{contentType}`.
+
+### 7.1 Create a draft
+
+1. Select **New Entry**.
+2. Fill any known fields.
+3. Keep status `DRAFT`.
+4. Select locale.
+5. Save.
+
+Required fields may remain empty in Draft, but malformed types or duplicate unique values can still be rejected.
+
+### 7.2 Submit for review
+
+1. Complete all required fields.
+2. On an existing Draft, assign reviewers if the workspace uses sequential review.
+3. Change status to `IN_REVIEW`.
+4. Save.
+
+Only transitions permitted for the current role appear in the status selector. The server checks again during save.
+
+### 7.3 Review an entry
+
+When it is your turn, the **Review Workflow** card displays comment, **Request changes**, and **Approve** controls.
+
+- Approval moves to the next reviewer.
+- Final approval moves the entry to `APPROVED`.
+- Requesting changes moves it to `REJECTED`.
+- A later reviewer cannot act early.
+
+### 7.4 Publish now
+
+Owner/admin may publish directly from Draft or publish an Approved entry. Publishing:
+
+- Sets `PUBLISHED` and `publishedAt`.
+- Makes the entry available to read-only Public API tokens.
+- Emits publication webhooks.
+- Invalidates the collection API cache.
+
+### 7.5 Schedule publication
+
+Owner/admin may choose a future date and save as `SCHEDULED`. The repository's Vercel scheduler currently runs every five minutes, so an entry becomes live on the first successful scheduler run after the chosen time.
+
+### 7.6 Unpublish, archive, and restore
+
+- `PUBLISHED → DRAFT`: removes public visibility and allows editing.
+- `PUBLISHED → ARCHIVED`: retires content without deleting history.
+- `ARCHIVED → DRAFT`: restores it to editing.
+- `REJECTED → DRAFT`: starts revision.
+
+See document 14 for the complete transition matrix and side effects.
+
+## 8. Version history and preview
+
+The edit page exposes Content History and Preview controls.
+
+- Each successful create/update records a `ContentVersion` snapshot.
+- Restoring a version updates editor data; review the resulting status before publishing.
+- Preview opens `/preview/{tenant}/{contentType}/{entryId}` when a corresponding preview route is available/configured.
+
+## 9. Localization workflow
+
+### 9.1 Configure locales
+
+1. Open `/dashboard/{tenant}/localization`.
+2. Add a locale within the plan limit.
+3. Choose one default locale.
+4. Disable/delete only after assessing existing translated content and integrations.
+
+### 9.2 Translate a Collection entry
+
+1. Open the base entry.
+2. Select another enabled locale.
+3. When no variant exists, the base data is shown as a template.
+4. Replace localizable values.
+5. Save; the new variant shares `documentId` with the base entry.
+
+Public clients select locale using `?locale=id`. Response entries include `availableLocales` when document variants are known.
+
+## 10. Single Types
+
+1. Create/assign a Single Type in Dashboard.
+2. Open `/cms/{tenant}/single-types`.
+3. Select the Single Type.
+4. Edit fields for the selected locale.
+5. Save/publish according to the Single Type page controls.
+6. If you omit `?locale=` in API access, the tenant default locale is used automatically.
+
+Public read:
+
+```http
+GET /api/public/{tenant}/single/{singleType}?locale=id
+Authorization: Bearer <token>
+```
+
+A `read-only` token only sees the published variant for the resolved locale. A `full-access` token may update the supported Single Type REST endpoint with `PUT` using the same locale resolution rules.
+
+## 11. Media Library
+
+Open `/cms/{tenant}/media` or `/dashboard/{tenant}/media`.
+
+Typical operations:
+
+- Upload files.
+- Organize with folders.
+- Update alt text/caption/metadata.
+- Select media from Collection/Single Type fields.
+- Delete assets when no longer used.
+
+Image uploads may create thumbnail and medium variants. Storage consumption counts toward the workspace plan. Deleting an asset can break content that still stores its URL/reference; search references before deletion.
+
+## 12. Team members and roles
+
+### 12.1 Invite/add a member
+
+1. Open `/dashboard/{tenant}/users`.
+2. Add an email and choose a role.
+3. The API resolves/adds membership according to the current member workflow.
+
+Do not promise email delivery unless SMTP/invitation behavior is configured and confirmed for the deployment.
+
+### 12.2 Built-in roles
+
+| Role | Typical use |
+|---|---|
+| Owner | Workspace ownership, billing, destructive operations |
+| Admin | Workspace administration and publication |
+| Editor | Content authoring and permitted transitions |
+| Member | Basic contribution and review submission |
+| Viewer | Read-only workspace access |
+
+Custom roles use granular permissions. Owner remains a privileged bypass for most tenant permission checks.
+
+## 13. API tokens
+
+Open `/dashboard/{tenant}/api-keys`.
+
+### 13.1 Create
+
+1. Enter name, description, token type, permissions, and optional expiry.
+2. Create the token.
+3. Copy the plaintext token immediately; it will not be retrievable later.
+4. Store it in a server-side secret manager.
+
+### 13.2 Token types
+
+- `read-only`: published content only.
+- `full-access`: permitted mutations and non-published status queries on supported endpoints.
+
+### 13.3 First REST request
 
 ```bash
-# Edit script dan ganti slug dan field definitions
-npx tsx scripts/add-berita-fields.ts
+curl \
+  -H "Authorization: Bearer cf_your_token" \
+  "https://your-host/api/public/acme/content/articles?locale=id&page=1&pageSize=10"
 ```
 
-### Cara Assign Content Type ke Tenant
+### 13.4 Filtering example
 
-```bash
-npx tsx scripts/assign-berita-to-tenant.ts
+```text
+?filters[category][$eq]=technology
+&filters[title][$contains]=next
+&sort=createdAt:desc
+&fields=title,slug,summary
+&populate=author
 ```
 
-## 🌐 URL Structure
+Rotate/revoke tokens after exposure, staff/vendor changes, or according to organizational policy.
 
-### Content Types List
-```
-http://localhost:3000/dashboard/kominfo/content-types
-```
-Menampilkan semua content types yang di-assign ke tenant
+## 14. GraphQL integration
 
-### Entries List
-```
-http://localhost:3000/dashboard/kominfo/content-types/berita
-```
-Menampilkan semua entries untuk content type "berita"
+Endpoint:
 
-### Create New Entry
-```
-http://localhost:3000/dashboard/kominfo/content-types/berita/new
-```
-Form untuk membuat entry baru dengan field-field:
-- Judul (text input)
-- Ringkasan (textarea)
-- Isi Konten (rich text editor)
-- Gambar Cover (media uploader)
-- Penulis (text input)
-- Kategori (dropdown select)
-- Tags (text input)
-- Status (dropdown select)
-
-### Edit Entry
-```
-http://localhost:3000/dashboard/kominfo/content-types/berita/edit/[entryId]
-```
-Form untuk mengedit entry yang ada
-
-## 🧪 Testing Steps
-
-### Test 1: Buka Content Types List
-1. Buka: `http://localhost:3000/dashboard/kominfo/content-types`
-2. Login dengan user yang memiliki akses ke tenant "kominfo"
-3. Anda harus melihat content type "Berita" di table
-
-### Test 2: Buka Entries Berita
-1. Dari content types list, klik ikon Database di row "Berita"
-2. Harusnya redirect ke: `http://localhost:3000/dashboard/kominfo/content-types/berita`
-3. Anda harus melihat:
-   - Statistics cards (Total Entries, Published, Drafts)
-   - Search box
-   - Filter buttons (All, Published, Drafts)
-   - Table dengan entries (jika ada)
-
-### Test 3: Buat Entry Baru
-1. Klik tombol "New Entry"
-2. Harusnya redirect ke: `http://localhost:3000/dashboard/kominfo/content-types/berita/new`
-3. Anda harus melihat form dengan field-field:
-   - **Judul**: Text input (required)
-   - **Ringkasan**: Textarea (required)
-   - **Isi Konten**: Rich text editor (required)
-   - **Gambar Cover**: Media uploader (optional)
-   - **Penulis**: Text input (optional)
-   - **Kategori**: Dropdown dengan pilihan (required)
-   - **Tags**: Text input (optional)
-   - **Status**: Dropdown dengan pilihan (required)
-
-### Test 4: Simpan Entry
-1. Isi semua field yang required
-2. Klik tombol "Save Draft"
-3. Entry harus tersimpan dan redirect kembali ke list
-4. Klik tombol "Publish"
-5. Entry harus tersimpan dengan status "Published"
-
-### Test 5: Edit Entry
-1. Dari entries list, klik ikon Edit (pencil) di row entry
-2. Harusnya redirect ke: `http://localhost:3000/dashboard/kominfo/content-types/berita/edit/[id]`
-3. Form harus terisi dengan data entry yang ada
-4. Ubah beberapa field dan klik "Save Changes"
-5. Data harus terupdate
-
-## 🎨 Field Types yang Didukung
-
-Berikut adalah field types yang didukung di SACMS:
-
-| Type | Component | Description | Example |
-|-------|-----------|-------------|----------|
-| text | TextField | Input teks satu baris | Judul, Penulis |
-| textarea | TextField | Input teks multi-baris | Ringkasan |
-| richText | RichTextField | Rich text editor dengan formatting | Isi Konten |
-| date | DateField | Date picker | Tanggal Publish |
-| datetime | DateField | Date & time picker | Tanggal & Waktu |
-| boolean | BooleanField | Checkbox/toggle switch | Published, Featured |
-| select | SelectField | Dropdown dengan opsi | Kategori, Status |
-| media | MediaField | File uploader untuk gambar/media | Cover Image |
-| number | TextField | Input angka | Price, Quantity |
-| email | TextField | Input email | Email Address |
-
-## 📝 Field Definitions Format
-
-Untuk menambahkan field baru, gunakan format ini:
-
-```typescript
-{
-  name: 'Nama Field',        // Label yang ditampilkan di form
-  slug: 'field_slug',       // Identifier unik (snake_case)
-  type: 'text',             // Type field (lihat table di atas)
-  required: true,           // Apakah field wajib diisi
-  unique: false,             // Apakah nilai harus unik
-  options: JSON.stringify([...])  // Opsi untuk type 'select'
-  order: 1,                 // Urutan tampilan di form
-}
+```text
+POST /api/public/{tenant}/graphql
 ```
 
-## 🔌 API Endpoints
+Use GraphQL Explorer at `/dashboard/{tenant}/developer/graphql` to inspect tenant-generated types. Queries work with a valid token. Mutations require `full-access`.
 
-### Get Single Content Type
-```
-GET /api/tenant/[tenant]/content-types/[contentSlug]
-```
-Returns content type dengan field definitions
+Paste `Authorization: Bearer <YOUR_API_TOKEN>` into Apollo Sandbox headers. SaCMS never auto-injects the stored SHA-256 hash because that hash is not a usable plaintext token and must remain undisclosed.
 
-### Get Entries
-```
-GET /api/tenant/[tenant]/content/[contentSlug]
-```
-Returns semua entries untuk content type tertentu
+Example:
 
-### Create Entry
-```
-POST /api/tenant/[tenant]/content/[contentSlug]
-Body: {
-  data: { ...fieldValues },
-  publish: boolean
-}
-```
-
-### Update Entry
-```
-PUT /api/tenant/[tenant]/content/[contentSlug]/[entryId]
-Body: {
-  data: { ...fieldValues },
-  publish: boolean
-}
-```
-
-### Delete Entry
-```
-DELETE /api/tenant/[tenant]/content/[contentSlug]/[entryId]
-```
-
-## 🎯 Next Steps
-
-1. **Buat Content Type Lain**: Gunakan script serupa untuk content types lain (pengumuman, agenda, dll)
-2. **Custom Field Renderers**: Tambahkan field types kustom jika dibutuhkan
-3. **Validasi Lanjutan**: Tambahkan validasi field yang lebih kompleks
-4. **Media Library**: Implementasi media library untuk upload gambar
-5. **Preview Entry**: Tambahkan preview entry sebelum publish
-
-## 📚 Related Documentation
-
-- [Midtrans Integration](./MIDTRANS_INTEGRATION.md)
-- [Cron Jobs](../scripts/cron-jobs.md)
-- Prisma Schema: `prisma/schema.prisma`
-# Midtrans Payment Integration - Complete Guide
-
-Complete guide for Midtrans payment integration in SACMS, including testing and production deployment.
-
-## Table of Contents
-
-1. [Overview](#overview)
-2. [Architecture](#architecture)
-3. [Phase 1-5 Summary](#phase-1-5-summary)
-4. [Phase 6: Testing](#phase-6-testing)
-5. [Phase 6: Production Deployment](#phase-6-production-deployment)
-6. [Troubleshooting](#troubleshooting)
-7. [API Reference](#api-reference)
-
----
-
-## Overview
-
-SACMS integrates with Midtrans for payment processing, supporting multiple payment methods including:
-- GoPay
-- ShopeePay
-- Bank Transfer (Virtual Accounts)
-- QRIS
-- Credit Cards
-- E-Wallets
-
-**Current Status**: ✅ Complete (Phases 1-5)
-
----
-
-## Architecture
-
-### System Components
-
-```
-┌─────────────────┐
-│   Frontend     │
-│  (Next.js)     │
-└────────┬────────┘
-         │
-         ├─ Checkout Page ─────────────┐
-         │                           │
-         ├─ Payment Result Page       │
-         │                           │
-         └─ Subscription Dashboard    │
-                                     │
-┌────────────────────────────────────┴─────────────────────────────┐
-│                     Backend API (Next.js API Routes)         │
-├──────────────────────────────────────────────────────────────────┤
-│  • /api/checkout              - Create payment session       │
-│  • /api/payment/[id]/status   - Check payment status       │
-│  • /api/midtrans/webhooks     - Handle notifications      │
-│  • /api/tenant/[t]/subscription/* - Manage subscriptions    │
-│  • /api/admin/billing/*       - Admin operations         │
-└────────────────────────────────────┬───────────────────────────┘
-                                     │
-                                     ├─ Midtrans Client
-                                     │
-┌────────────────────────────────────┴─────────────────────────────┐
-│                     Database (PostgreSQL)                     │
-│  • User, Tenant, Subscription, Invoice                      │
-│  • PaymentTransaction                                     │
-└───────────────────────────────────────────────────────────────┘
-```
-
-### Payment Flow
-
-```
-1. User clicks "Upgrade"
-   ↓
-2. Frontend → POST /api/checkout
-   ↓
-3. Backend → Midtrans Snap API
-   ↓
-4. Midtrans returns snap token
-   ↓
-5. Frontend opens Midtrans Snap popup
-   ↓
-6. User completes payment
-   ↓
-7. Midtrans → Webhook (POST /api/midtrans/webhooks)
-   ↓
-8. Backend creates invoice & updates subscription
-   ↓
-9. Frontend redirects to payment result page
-   ↓
-10. Poll /api/payment/[id]/status until final status
-```
-
----
-
-## Phase 1-5 Summary
-
-### ✅ Phase 1: Setup & Configuration
-- Added `PaymentTransaction` model to Prisma schema
-- Ran database migration
-- Configured Midtrans environment variables
-- Installed `midtrans-client` package
-
-### ✅ Phase 2: Core Midtrans Integration
-- Created Midtrans service library (`src/lib/midtrans.ts`)
-- Implemented checkout API (`/api/checkout`)
-- Implemented webhook handler (`/api/midtrans/webhooks`)
-- Implemented payment status API (`/api/payment/[orderId]/status`)
-
-### ✅ Phase 3: Frontend Integration
-- Created checkout page with Midtrans Snap.js
-- Created payment result page with auto-polling
-- Updated subscription dashboard
-- Added invoices API endpoint
-
-### ✅ Phase 4: Subscription Management
-- Plan upgrade/downgrade API (`/api/tenant/[t]/subscription/plan`)
-- Cancel subscription API (`/api/tenant/[t]/subscription/cancel`)
-- Proration calculation function
-- Proration API endpoint
-
-### ✅ Phase 5: Admin & Automation
-- Billing stats API (`/api/admin/billing/stats`)
-- Invoice generation API (`/api/admin/billing/generate-invoices`)
-- Cron job setup with Vercel configuration
-- Comprehensive documentation
-
----
-
-## Phase 6: Testing
-
-### Prerequisites
-
-Before testing, ensure you have:
-
-1. **Midtrans Sandbox Account**
-   - Register at https://dashboard.midtrans.com/
-   - Enable sandbox mode
-   - Get your sandbox credentials
-
-2. **Environment Variables Configured**
-   ```env
-   MIDTRANS_SERVER_KEY="SB-Mid-server-YOUR_KEY"
-   MIDTRANS_CLIENT_KEY="SB-Mid-client-YOUR_KEY"
-   MIDTRANS_MODE="sandbox"
-   ```
-
-3. **Database Migrations Applied**
-   ```bash
-   npx prisma migrate deploy
-   ```
-
-4. **Development Server Running**
-   ```bash
-   npm run dev
-   ```
-
-### Test Scenarios
-
-#### 1. **Successful Payment Flow**
-
-**Steps:**
-1. Navigate to `/dashboard/[tenant]/subscriptions`
-2. Click "Upgrade to Pro Plan"
-3. Review plan details
-4. Click "Upgrade to Pro"
-5. Midtrans Snap popup opens
-6. Select payment method (e.g., "GoPay")
-7. Complete payment
-8. Verify redirect to success page
-9. Check subscription updated
-10. Check invoice created
-
-**Expected Results:**
-- ✅ Payment popup opens successfully
-- ✅ Payment completes without errors
-- ✅ User redirected to success page
-- ✅ Subscription status: "active"
-- ✅ Subscription plan: "pro"
-- ✅ Invoice created with status: "paid"
-- ✅ Payment transaction recorded
-
-**Verification Queries:**
-```sql
--- Check subscription
-SELECT * FROM subscription WHERE tenant_id = 'YOUR_TENANT_ID' ORDER BY created_at DESC LIMIT 1;
-
--- Check invoice
-SELECT * FROM invoice WHERE subscription_id = 'YOUR_SUBSCRIPTION_ID';
-
--- Check payment transaction
-SELECT * FROM payment_transaction WHERE order_id = 'YOUR_ORDER_ID';
-```
-
-#### 2. **Failed Payment Flow**
-
-**Steps:**
-1. Start checkout process
-2. Select payment method
-3. Cancel payment in Midtrans popup
-4. Verify redirect to failure page
-5. Check no subscription changes
-
-**Expected Results:**
-- ✅ Redirect to failure page
-- ✅ Error message displayed
-- ✅ Subscription unchanged
-- ✅ No invoice created
-- ✅ Payment transaction status: "failed"
-
-#### 3. **Pending Payment Flow**
-
-**Steps:**
-1. Start checkout process
-2. Select Bank Transfer (VA)
-3. Get VA number
-4. Close popup without paying
-5. Check payment status page
-
-**Expected Results:**
-- ✅ Payment status: "pending"
-- ✅ Auto-refresh every 3 seconds
-- ✅ VA number displayed
-- ✅ Instructions for manual payment shown
-
-#### 4. **Proration Calculation**
-
-**Scenario:** Mid-period upgrade from Starter to Pro
-
-**Setup:**
-```bash
-# Create a Starter subscription (if not exists)
-curl -X POST http://localhost:3000/api/checkout \
-  -H "Content-Type: application/json" \
-  -d '{
-    "planId": "starter",
-    "tenantId": "YOUR_TENANT_ID"
-  }'
-```
-
-**Test:**
-```bash
-# Calculate proration
-curl -X POST http://localhost:3000/api/tenant/YOUR_TENANT/subscription/prorate \
-  -H "Content-Type: application/json" \
-  -H "Cookie: next-auth.session-token=YOUR_SESSION" \
-  -d '{
-    "newPlan": "pro"
-  }'
-```
-
-**Expected Response:**
-```json
-{
-  "currentPlan": "starter",
-  "newPlan": "pro",
-  "canUpgrade": true,
-  "fullPrice": 29000,
-  "proratedPrice": 14500,
-  "daysRemaining": 15,
-  "totalDays": 30,
-  "percentageUsed": 50,
-  "credit": 4500,
-  "amountDue": 10000,
-  "message": "You'll only pay Rp 10.000 (credit applied: Rp 4.500)"
-}
-```
-
-#### 5. **Subscription Downgrade**
-
-**Test:**
-```bash
-curl -X PATCH http://localhost:3000/api/tenant/YOUR_TENANT/subscription/plan \
-  -H "Content-Type: application/json" \
-  -H "Cookie: next-auth.session-token=YOUR_SESSION" \
-  -d '{
-    "planId": "free"
-  }'
-```
-
-**Expected Results:**
-- ✅ Downgrade successful
-- ✅ Effective immediately
-- ✅ No payment required
-- ✅ Tenant plan updated to "free"
-
-#### 6. **Subscription Cancel (At Period End)**
-
-**Test:**
-```bash
-curl -X POST http://localhost:3000/api/tenant/YOUR_TENANT/subscription/cancel \
-  -H "Content-Type: application/json" \
-  -H "Cookie: next-auth.session-token=YOUR_SESSION" \
-  -d '{
-    "cancelAtPeriodEnd": true
-  }'
-```
-
-**Expected Results:**
-- ✅ `cancelAtPeriodEnd` set to true
-- ✅ Subscription remains active until period end
-- ✅ Will auto-downgrade to free after period
-
-#### 7. **Subscription Cancel (Immediately)**
-
-**Test:**
-```bash
-curl -X POST http://localhost:3000/api/tenant/YOUR_TENANT/subscription/cancel \
-  -H "Content-Type: application/json" \
-  -H "Cookie: next-auth.session-token=YOUR_SESSION" \
-  -d '{
-    "cancelAtPeriodEnd": false
-  }'
-```
-
-**Expected Results:**
-- ✅ Status set to "canceled"
-- ✅ Plan downgraded to "free"
-- ✅ Effective immediately
-- ✅ Tenant plan updated
-
-#### 8. **Webhook Handling**
-
-**Test using Midtrans Dashboard:**
-1. Go to Midtrans Sandbox Dashboard
-2. Navigate to "Settings" → "Webhooks"
-3. Test webhook notifications
-4. Verify webhook logs in your application
-
-**Expected Results:**
-- ✅ Webhook signature verified
-- ✅ Transaction created/updated
-- ✅ Invoice status updated
-- ✅ Subscription status updated
-
-#### 9. **Invoice Generation (Cron Job)**
-
-**Test:**
-```bash
-curl -X POST http://localhost:3000/api/admin/billing/generate-invoices \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
-
-**Expected Results:**
-- ✅ Processes all due subscriptions
-- ✅ Creates pending invoices
-- ✅ Updates billing periods
-- ✅ Skips free plans
-- ✅ Returns processing statistics
-
-**Preview Mode:**
-```bash
-# As super admin, visit:
-http://localhost:3000/api/admin/billing/generate-invoices
-```
-
-#### 10. **Billing Stats**
-
-**Test:**
-```bash
-curl http://localhost:3000/api/admin/billing/stats \
-  -H "Cookie: next-auth.session-token=YOUR_ADMIN_SESSION"
-```
-
-**Expected Response:**
-```json
-{
-  "overview": {
-    "totalRevenue": 58000,
-    "mrr": 29000,
-    "arr": 348000,
-    "monthlyRevenue": 29000,
-    "arpu": 14500
-  },
-  "subscriptions": {
-    "total": 2,
-    "active": 2,
-    "newThisMonth": 1,
-    "churnRate": 0,
-    "byPlan": {
-      "free": { "active": 0, "total": 0 },
-      "starter": { "active": 1, "total": 1 },
-      "pro": { "active": 1, "total": 1 },
-      "enterprise": { "active": 0, "total": 0 }
-    }
-  },
-  "payments": {
-    "successRate": 100
+```graphql
+query {
+  articles(page: 1, limit: 10, sort: "createdAt", order: "desc") {
+    data { id title slug }
+    meta { total totalPages }
   }
 }
 ```
 
-### Test Payment Methods
+## 15. Webhooks
 
-#### **GoPay**
-1. Select "GoPay" in Snap popup
-2. Login to GoPay (sandbox)
-3. Approve payment
-4. Verify payment completes
+Open `/dashboard/{tenant}/webhooks`.
 
-#### **Bank Transfer (BCA VA)**
-1. Select "Bank Transfer BCA"
-2. Get VA number
-3. Transfer from BCA (sandbox account)
-4. Verify payment pending → success
+### 15.1 Async webhook
 
-#### **QRIS**
-1. Select "QRIS"
-2. Scan QR code
-3. Pay from e-wallet (sandbox)
-4. Verify payment completes
+Use for notifications such as deployment hooks. Configure URL, events, optional secret, and headers. Main content save does not wait for final delivery. Failures enter the DLQ.
 
-#### **Credit Card**
-1. Select "Credit Card"
-2. Enter test card details
-3. Complete 3D Secure
-4. Verify payment completes
+### 15.2 Sync hook
 
-**Test Card Numbers (Sandbox):**
-- Success: `4000 0000 0000 0002` (any expiry, any CVV)
-- Failure: `4000 0000 0000 0003`
+Use for pre-save policy/integration. A sync hook may:
 
-### Test Checklist
+- Return success with replacement `data`.
+- Return `{ "reject": true, "message": "..." }`.
+- Time out/fail, incrementing its circuit-breaker failure count.
 
-Use this checklist to verify all functionality:
+### 15.3 Signature verification
 
-- [ ] **Checkout Flow**
-  - [ ] Upgrade from Free to Starter
-  - [ ] Upgrade from Starter to Pro
-  - [ ] Upgrade from Pro to Enterprise
-  - [ ] Downgrade any plan
-  - [ ] Cancel at period end
-  - [ ] Cancel immediately
+When a secret is configured, verify `X-Webhook-Signature` as HMAC-SHA256 over the exact raw request body. Do not parse and reserialize before signature verification.
 
-- [ ] **Payment Methods**
-  - [ ] GoPay payment
-  - [ ] ShopeePay payment
-  - [ ] Bank Transfer (BCA)
-  - [ ] Bank Transfer (Mandiri)
-  - [ ] QRIS payment
-  - [ ] Credit Card payment
-  - [ ] Payment cancellation
-  - [ ] Pending payment status
+### 15.4 DLQ
 
-- [ ] **Proration**
-  - [ ] Early upgrade calculation
-  - [ ] Mid-period upgrade calculation
-  - [ ] Late upgrade calculation
-  - [ ] No credit scenario
-  - [ ] Full credit scenario
+Inspect dead letters and replay authorized entries from the Webhook UI/API. The cron retry job processes due entries with exponential backoff and eventually marks exhausted messages.
 
-- [ ] **Webhooks**
-  - [ ] Payment success notification
-  - [ ] Payment failure notification
-  - [ ] Payment pending notification
-  - [ ] Signature verification
-  - [ ] Duplicate notification handling
+## 16. Billing and subscription
 
-- [ ] **Invoices**
-  - [ ] Invoice creation
-  - [ ] Invoice status updates
-  - [ ] Invoice history display
-  - [ ] Invoice details
+Open `/dashboard/{tenant}/subscriptions`.
 
-- [ ] **Admin**
-  - [ ] Billing stats calculation
-  - [ ] Revenue metrics
-  - [ ] Subscription metrics
-  - [ ] Payment success rate
-  - [ ] Churn rate calculation
+Typical flow:
 
-- [ ] **Cron Jobs**
-  - [ ] Manual invoice generation
-  - [ ] Preview invoices
-  - [ ] Process due subscriptions
-  - [ ] Skip free plans
-  - [ ] Skip cancelled plans
+1. View plans and current usage.
+2. Select upgrade/downgrade.
+3. Review proration where applicable.
+4. Start checkout.
+5. Complete payment in the configured provider UI (Midtrans is the primary documented provider).
+6. Provider notification updates transaction/subscription state.
+7. Return to payment result/status page.
 
----
+Available tenant operations include plan list, plan change, cancel, proration, invoices, and usage. Exact payment behavior depends on production provider credentials and webhook configuration.
 
-## Phase 6: Production Deployment
+Never infer payment success only from the browser redirect; use the server/provider transaction status.
 
-### Pre-Deployment Checklist
+## 17. AI authoring
 
-- [ ] All test scenarios pass
-- [ ] Payment methods tested in sandbox
-- [ ] Webhook handling verified
-- [ ] Cron jobs tested
-- [ ] Error handling reviewed
-- [ ] Logging configured
-- [ ] Monitoring setup
+When the tenant has `ai-gen` or an Enterprise/Custom plan and the server has `DEEPSEEK_API_KEY`:
 
-### 1. **Get Production Midtrans Credentials**
+1. Open a Collection create/edit form.
+2. Use **Smart Fill** to propose multiple field values.
+3. Review facts, HTML, relation IDs, and media URLs.
+4. Save as Draft and use the normal workflow.
 
-1. Login to Midtrans Dashboard
-2. Switch from Sandbox to Production
-3. Go to "Settings" → "Configuration"
-4. Copy your production keys:
-   - **Server Key** (starts with `Mid-server-`)
-   - **Client Key** (starts with `Mid-client-`)
+AI cannot bypass required fields or publication permissions. See document 12 for exact API payloads and privacy boundaries.
 
-### 2. **Update Environment Variables**
+## 18. White-Label and custom domain
 
-Update your production environment:
+Eligible Pro/Enterprise/Custom workspaces open:
 
-```env
-# Midtrans Production Configuration
-MIDTRANS_SERVER_KEY="Mid-server-YOUR_PRODUCTION_KEY"
-MIDTRANS_CLIENT_KEY="Mid-client-YOUR_PRODUCTION_KEY"
-MIDTRANS_MODE="production"
-MIDTRANS_PAYMENT_URL="https://app.midtrans.com/snap/snap.js"
-
-# Public Configuration
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="Mid-client-YOUR_PRODUCTION_KEY"
-NEXT_PUBLIC_MIDTRANS_SNAP_URL="https://app.midtrans.com/snap/snap.js"
-
-# Cron Secret
-CRON_SECRET="generate-a-secure-random-string"
+```text
+/dashboard/{tenant}/settings/white-label
 ```
 
-**Generate Secure CRON_SECRET:**
-```bash
-openssl rand -base64 32
+Save brand name/logo/color, then register one hostname, add DNS TXT/CNAME, and trigger verification. After verification use custom-host paths such as:
+
+```text
+https://cms.example.com/content/articles
 ```
 
-### 3. **Configure Webhook URL**
-
-1. Go to Midtrans Dashboard → "Settings" → "Webhooks"
-2. Add webhook URL:
-   ```
-   https://your-domain.com/api/midtrans/webhooks
-   ```
-3. Select notification types:
-   - [x] Transaction status
-   - [x] Payment
-   - [x] Fraud
-4. Save configuration
-
-### 4. **Deploy to Production**
-
-#### **Vercel Deployment:**
-
-```bash
-# Install Vercel CLI
-npm i -g vercel
-
-# Login to Vercel
-vercel login
-
-# Deploy
-vercel --prod
-```
-
-**Environment Variables in Vercel:**
-1. Go to Vercel Dashboard
-2. Navigate to your project
-3. Settings → Environment Variables
-4. Add all production variables
-5. Redeploy
-
-#### **Docker Deployment:**
-
-1. Build Docker image:
-```bash
-docker build -t sacms .
-```
-
-2. Run container:
-```bash
-docker run -d \
-  -p 3000:3000 \
-  -e DATABASE_URL="..." \
-  -e MIDTRANS_SERVER_KEY="..." \
-  -e MIDTRANS_CLIENT_KEY="..." \
-  -e MIDTRANS_MODE="production" \
-  sacms
-```
-
-#### **Traditional VPS:**
-
-```bash
-# Install dependencies
-npm install
-
-# Build application
-npm run build
-
-# Start production server
-npm start
-
-# Or use PM2
-pm2 start npm --name "sacms" -- start
-```
-
-### 5. **Database Migrations**
-
-```bash
-# Run migrations
-npx prisma migrate deploy
-
-# Or generate SQL
-npx prisma migrate diff --from-empty --to-schema-datamodel prisma/schema.prisma --script
-```
-
-### 6. **Configure Cron Jobs**
-
-#### **Vercel (Recommended):**
-- `vercel.json` is already configured
-- Cron jobs will be set up automatically on deployment
-
-#### **Linux Cron:**
-```bash
-# Edit crontab
-crontab -e
-
-# Add daily job
-0 0 * * * curl -X POST https://your-domain.com/api/admin/billing/generate-invoices -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
-
-#### **GitHub Actions:**
-- Push `.github/workflows/billing-cron.yml`
-- Add `CRON_SECRET` to GitHub secrets
-
-### 7. **Verify Production Setup**
-
-#### **Test Payment Flow:**
-1. Navigate to your production site
-2. Complete a test payment (small amount)
-3. Verify payment processing
-4. Check webhook logs
-
-#### **Test Webhook:**
-1. Go to Midtrans Dashboard
-2. Test webhook notification
-3. Verify webhook received
-4. Check application logs
-
-#### **Test Cron Job:**
-1. Manually trigger cron job:
-```bash
-curl -X POST https://your-domain.com/api/admin/billing/generate-invoices \
-  -H "Authorization: Bearer YOUR_CRON_SECRET"
-```
-2. Verify response
-3. Check generated invoices
-
-#### **Check Midtrans Dashboard:**
-1. Go to Midtrans Dashboard
-2. Verify transactions appear
-3. Check webhook delivery status
-4. Review error logs
-
-### 8. **Set Up Monitoring**
-
-#### **Error Tracking (Sentry):**
-```bash
-npm install @sentry/nextjs
-npx @sentry/wizard -i nextjs
-```
-
-#### **Logging:**
-- Configure application logging
-- Set up log aggregation
-- Monitor error rates
-
-#### **Alerts:**
-- Configure email alerts for failed payments
-- Set up Slack/Discord webhooks
-- Monitor cron job failures
-
-### 9. **Security Hardening**
-
-#### **Environment Variables:**
-- [ ] Never commit `.env` files
-- [ ] Use different secrets per environment
-- [ ] Rotate secrets periodically
-- [ ] Use secret management services
-
-#### **API Security:**
-- [ ] Rate limiting enabled
-- [ ] CORS configured properly
-- [ ] Input validation on all endpoints
-- [ ] SQL injection prevention (Prisma handles this)
-
-#### **Webhook Security:**
-- [ ] Signature verification enabled
-- [ ] HTTPS enforced
-- [ ] IP whitelisting (optional)
-
-### 10. **Performance Optimization**
-
-#### **Database Indexing:**
-```sql
--- Add indexes for frequently queried fields
-CREATE INDEX idx_subscription_status ON subscription(status);
-CREATE INDEX idx_invoice_status ON invoice(status);
-CREATE INDEX idx_payment_order_id ON payment_transaction(order_id);
-```
-
-#### **Caching:**
-- Cache plan prices
-- Cache subscription status
-- Cache billing stats (with TTL)
-
-#### **CDN:**
-- Serve static assets via CDN
-- Enable gzip compression
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-#### **Payment Not Processing**
-
-**Symptoms:**
-- Midtrans popup doesn't open
-- Payment fails immediately
-- Webhook not received
-
-**Solutions:**
-1. Check Midtrans credentials
-2. Verify `MIDTRANS_MODE` is correct
-3. Check browser console for errors
-4. Verify webhook URL is accessible
-5. Check Midtrans dashboard for errors
-
-#### **Webhook Not Received**
-
-**Symptoms:**
-- Payment succeeds but subscription not updated
-- Invoice not created
-
-**Solutions:**
-1. Verify webhook URL is correct
-2. Check Midtrans dashboard webhook logs
-3. Ensure webhook is reachable from internet
-4. Verify signature verification code
-5. Check server logs for webhook errors
-
-#### **Proration Incorrect**
-
-**Symptoms:**
-- Wrong amount calculated
-- Credit not applied
-
-**Solutions:**
-1. Verify `PLAN_PRICES` configuration
-2. Check `currentPeriodStart` and `currentPeriodEnd`
-3. Review calculation logic
-4. Test with different scenarios
-
-#### **Cron Job Failing**
-
-**Symptoms:**
-- Invoices not generated
-- Subscription periods not updated
-
-**Solutions:**
-1. Verify `CRON_SECRET` is set
-2. Check cron job logs
-3. Test endpoint manually
-4. Verify database connection
-5. Check server resources
-
-#### **Subscription Not Updated**
-
-**Symptoms:**
-- Payment successful but subscription unchanged
-- Wrong plan selected
-
-**Solutions:**
-1. Check webhook handler code
-2. Verify database updates
-3. Check transaction status
-4. Review error logs
-5. Test webhook manually
-
-### Debug Mode
-
-Enable debug logging:
-
-```typescript
-// In API routes
-console.log('[DEBUG]', { timestamp: new Date(), ... })
-
-// In webhook handler
-console.log('[WEBHOOK]', { received: true, data })
-```
-
-### Log Files
-
-Check these logs:
-
-**Vercel:**
-```bash
-vercel logs --follow
-```
-
-**Docker:**
-```bash
-docker logs sacms
-```
-
-**PM2:**
-```bash
-pm2 logs sacms
-```
-
-**System:**
-```bash
-tail -f /var/log/syslog
-tail -f /var/log/nginx/access.log
-```
-
----
-
-## API Reference
-
-### Public Endpoints
-
-#### Create Checkout
-```
-POST /api/checkout
-```
-
-**Request:**
-```json
-{
-  "planId": "pro",
-  "tenantId": "tenant-slug"
-}
-```
-
-**Response:**
-```json
-{
-  "token": "snap_token_...",
-  "orderId": "ORDER-123",
-  "redirectUrl": "https://..."
-}
-```
-
-#### Get Payment Status
-```
-GET /api/payment/[orderId]/status
-```
-
-**Response:**
-```json
-{
-  "orderId": "ORDER-123",
-  "status": "success",
-  "amount": 29000,
-  "paymentType": "gopay",
-  "transactionId": "TRANS-123"
-}
-```
-
-### Tenant Endpoints
-
-#### Get Invoices
-```
-GET /api/tenant/[tenant]/invoices
-```
-
-**Response:**
-```json
-{
-  "invoices": [
-    {
-      "id": "inv-123",
-      "amount": 29000,
-      "status": "paid",
-      "paidAt": "2026-03-12T..."
-    }
-  ]
-}
-```
-
-#### Update Plan
-```
-PATCH /api/tenant/[tenant]/subscription/plan
-```
-
-**Request:**
-```json
-{
-  "planId": "pro"
-}
-```
-
-#### Cancel Subscription
-```
-POST /api/tenant/[tenant]/subscription/cancel
-```
-
-**Request:**
-```json
-{
-  "cancelAtPeriodEnd": true
-}
-```
-
-#### Calculate Proration
-```
-POST /api/tenant/[tenant]/subscription/prorate
-```
-
-**Request:**
-```json
-{
-  "newPlan": "pro"
-}
-```
-
-### Admin Endpoints
-
-#### Get Billing Stats
-```
-GET /api/admin/billing/stats
-```
-
-**Response:**
-```json
-{
-  "overview": {
-    "totalRevenue": 58000,
-    "mrr": 29000,
-    "arr": 348000
-  },
-  "subscriptions": {
-    "total": 2,
-    "active": 2
-  }
-}
-```
-
-#### Generate Invoices (Cron)
-```
-POST /api/admin/billing/generate-invoices
-```
-
-**Headers:**
-```
-Authorization: Bearer CRON_SECRET
-```
-
----
-
-## Support
-
-For issues or questions:
-1. Check this documentation
-2. Review Midtrans documentation: https://docs.midtrans.com/
-3. Check server logs
-4. Contact development team
-
----
-
-**Last Updated**: 2026-03-13
-**Version**: 1.0
-**Status**: Production Ready ✅
+Bearer token remains required. See document 13.
+
+## 19. Audit and monitoring
+
+- Tenant Audit Trail records supported content/settings/member/security operations.
+- API usage/monitoring pages read `ApiRequest` and metrics records.
+- Sentry reporting appears only when deployment configuration enables it.
+- Audit retention values are plan-dependent; automatic purge must be operated separately.
+
+## 20. Troubleshooting by symptom
+
+| Symptom | First check |
+|---|---|
+| Workspace missing | Membership and tenant status |
+| Create schema blocked | Content Type plan usage |
+| Draft cannot submit | Required fields, field types, unique constraints |
+| Status option missing | Current status, role, custom transition permission |
+| Review buttons missing | Current reviewer order and logged-in user |
+| Scheduled item not live | Future date, cron secret, last scheduler run |
+| Public API 401 | Bearer syntax, token value, expiry |
+| Public API 403 | Token belongs to another tenant or read-only requested draft |
+| Public API old content | Cache invalidation/Redis state and mutation path |
+| Media upload fails | R2 configuration, MIME/size, storage plan |
+| AI 403/503 | Add-on/plan and `DEEPSEEK_API_KEY` |
+| Custom domain verified but not routing | Redis domain mapping; repeat verification |
+| Payment remains pending | Provider dashboard, webhook URL/secret, transaction record |
+| Webhook not delivered | Webhook logs, enabled events, DLQ, retry cron |
+
+## 21. Safe operating habits
+
+- Draft first for incomplete or AI-generated content.
+- Use review for high-impact content.
+- Avoid deleting schema fields/components/media without impact review.
+- Keep API tokens server-side and rotate exposed credentials.
+- Use separate credentials/databases for development and production.
+- Record changes in Release Notes only after implementation exists.
+- Keep documents 14 and 15 updated whenever workflow or capability status changes.

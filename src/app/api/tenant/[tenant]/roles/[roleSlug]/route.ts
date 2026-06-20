@@ -65,7 +65,7 @@ export async function PATCH(
 
     const body = await request.json()
     const result = updateRoleSchema.safeParse(body)
-    if (!result.success) return NextResponse.json({ error: result.error.errors[0].message }, { status: 400 })
+    if (!result.success) return NextResponse.json({ error: result.error.issues[0]?.message ?? "Validation failed" }, { status: 400 })
     
     const { name, description, permissions } = result.data
 
@@ -146,7 +146,7 @@ export async function DELETE(
     }
 
     // Ensure we don't delete standard roles (they don't exist in TenantRole anyway, but just in case)
-    if (["admin", "owner", "editor", "viewer"].includes(roleSlug)) {
+    if (["admin", "owner", "editor", "member", "viewer", "super_admin"].includes(roleSlug)) {
       return NextResponse.json({ error: "Cannot delete standard roles" }, { status: 400 })
     }
 
@@ -159,13 +159,13 @@ export async function DELETE(
       return NextResponse.json({ error: `Cannot delete role. It is assigned to ${membersWithRole} members.` }, { status: 400 })
     }
 
-    await db.tenantRole.delete({
-      where: { tenantId_slug: { tenantId: access.tenantId, slug: roleSlug } }
-    })
-
-    // Also delete associated permissions
-    await db.rolePermission.deleteMany({
-      where: { tenantId: access.tenantId, roleId: roleSlug }
+    await db.$transaction(async (tx) => {
+      await tx.rolePermission.deleteMany({
+        where: { tenantId: access.tenantId, roleId: roleSlug }
+      })
+      await tx.tenantRole.delete({
+        where: { tenantId_slug: { tenantId: access.tenantId, slug: roleSlug } }
+      })
     })
 
     return NextResponse.json({ success: true })

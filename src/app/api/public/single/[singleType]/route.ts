@@ -18,26 +18,17 @@ export async function GET(
     const { singleType: singleTypeSlug } = await params
     const authHeader = request.headers.get("authorization")
     const token = authHeader?.replace("Bearer ", "")
-    const { searchParams } = new URL(request.url)
-    const locale = searchParams.get("locale") || "en"
 
     if (!token) {
       return NextResponse.json({ error: "Missing API token" }, { status: 401 })
     }
 
     // Rate limit
-    const rateLimitResult = await rateLimit(`public_single_global:${token}`, RATE_LIMITS.publicApi)
+    const hashedToken = createHash("sha256").update(token).digest("hex")
+    const rateLimitResult = await rateLimit(`public_single_global:${hashedToken}`, RATE_LIMITS.publicApi)
     if (!rateLimitResult.success) {
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
     }
-
-    // Cache Check
-    const cacheKey = `public_api_single_global:${singleTypeSlug}:${locale}`
-    const cached = await getCache(cacheKey)
-    if (cached) return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } })
-
-    // Hash the token for database lookup (SHA-256)
-    const hashedToken = createHash("sha256").update(token).digest("hex")
 
     // Verify token
     const apiToken = await db.apiToken.findUnique({
@@ -52,10 +43,25 @@ export async function GET(
       }
     }
 
+    const { searchParams } = new URL(request.url)
+    const defaultLocale = apiToken?.tenantId
+      ? (await db.tenantLocale.findFirst({
+          where: { tenantId: apiToken.tenantId, isDefault: true },
+          select: { locale: true },
+        }))?.locale || "en"
+      : "en"
+    const locale = searchParams.get("locale") || defaultLocale
+
+    // Cache check only after authentication.
+    const cacheOwner = apiToken ? `${apiToken.tenantId}:${apiToken.type}` : "system"
+    const cacheKey = `public_api_single_global:${cacheOwner}:${singleTypeSlug}:${locale}`
+    const cached = await getCache(cacheKey)
+    if (cached) return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } })
+
     // Get Single Type (Truly Global)
     const singleType = await db.singleType.findFirst({
       where: { slug: singleTypeSlug, tenantId: null },
-      include: { fields: { orderBy: { order: "asc" } } }
+      include: { schemaFields: { orderBy: { order: "asc" } } }
     })
 
     if (!singleType) return NextResponse.json({ error: "Single type not found" }, { status: 404 })
@@ -80,11 +86,15 @@ export async function GET(
       return NextResponse.json({ error: "Single type data not published" }, { status: 404 })
     }
 
+    if (apiToken && apiToken.type !== "full-access" && !assignment.publishedAt) {
+      return NextResponse.json({ error: "Single type data not published" }, { status: 404 })
+    }
+
     // Resolve data
     let rawData = assignment.data ? (typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data) : {}
     
     // Resolve dynamic data (Relations and Components)
-    const resolvedData = await resolveContentData(null, rawData, singleType.fields)
+    const resolvedData = await resolveContentData(null as any, rawData, singleType.schemaFields)
 
     const responsePayload = {
       data: {

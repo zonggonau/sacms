@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, XCircle, MoreHorizontal,
-  ImageIcon, Calendar, Loader2, Send, Search, X, Download
+  ImageIcon, Calendar, Loader2, Send, Search, X, Download,
+  AlertCircle
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -80,6 +81,8 @@ export default function ContentTypeEntriesClient({
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [isLimitReached, setIsLimitReached] = useState(false)
+  const [entriesLimit, setEntriesLimit] = useState(100)
 
   const tenants = session?.user?.tenants || []
 
@@ -95,14 +98,18 @@ export default function ContentTypeEntriesClient({
     if (!tenantSlug || !contentTypeSlug) return
     try {
       setLoading(true)
-      const ctRes = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)
-      if (ctRes.contentType) setContentType(ctRes.contentType)
       
-      const entriesRes = await getEntriesAction(tenantSlug, contentTypeSlug, { 
-        page: 1, 
-        pageSize: 50, 
-        search: debouncedSearch 
-      })
+      const [ctRes, entriesRes, usageRes] = await Promise.all([
+        getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
+        getEntriesAction(tenantSlug, contentTypeSlug, { 
+          page: 1, 
+          pageSize: 50, 
+          search: debouncedSearch 
+        }),
+        fetch(`/api/tenant/${tenantSlug}/billing/usage`)
+      ])
+      
+      if (ctRes.contentType) setContentType(ctRes.contentType)
       
       if (entriesRes.entries) {
         const parsedEntries = entriesRes.entries.map((e: any) => ({
@@ -112,6 +119,15 @@ export default function ContentTypeEntriesClient({
         setEntries(parsedEntries)
       } else if (entriesRes.error) {
         throw new Error(entriesRes.error)
+      }
+
+      if (usageRes.ok) {
+        const usageData = await usageRes.json()
+        const entriesUsage = usageData.usage?.find((u: any) => u.label === "Content Entries")
+        if (entriesUsage) {
+          setEntriesLimit(entriesUsage.limit)
+          setIsLimitReached(entriesUsage.current >= entriesUsage.limit)
+        }
       }
     } catch (error) {
       console.error("Error fetching data:", error)
@@ -202,11 +218,25 @@ export default function ContentTypeEntriesClient({
                   </button>
                 )}
               </div>
-              <Button className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}>
+              <Button 
+                className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold" 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}
+                disabled={isLimitReached}
+              >
                 <Plus className="mr-2 h-4 w-4" /> New Entry
               </Button>
             </div>
           </div>
+
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-red-800 dark:text-red-300 font-medium">
+                You have reached your content entries limit of {entriesLimit} entries. Delete an existing entry or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
 
           <Card className="border rounded-none shadow-none overflow-hidden bg-card">
             <CardContent className="p-0">

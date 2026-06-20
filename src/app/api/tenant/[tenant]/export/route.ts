@@ -20,9 +20,9 @@ export async function GET(request: NextRequest, context: Context) {
 
     // Fetch all exportable data
     const [
-      contentTypes,
-      singleTypes,
-      components,
+      contentTypesRaw,
+      singleTypesRaw,
+      componentsRaw,
       contentEntries,
       singleTypeData,
       locales,
@@ -31,15 +31,15 @@ export async function GET(request: NextRequest, context: Context) {
     ] = await Promise.all([
       tenantDb.contentType.findMany({
         where: { tenantId },
-        include: { fields: true },
+        include: { schemaFields: true },
       }),
       tenantDb.singleType.findMany({
         where: { tenantId },
-        include: { fields: true },
+        include: { schemaFields: true },
       }),
       tenantDb.component.findMany({
         where: { tenantId },
-        include: { fields: true },
+        include: { schemaFields: true },
       }),
       tenantDb.contentEntry.findMany({
         where: { tenantId },
@@ -57,6 +57,10 @@ export async function GET(request: NextRequest, context: Context) {
         where: { tenantId },
       }),
     ])
+
+    const contentTypes = contentTypesRaw.map(ct => ({ ...ct, fields: ct.schemaFields }))
+    const singleTypes = singleTypesRaw.map(st => ({ ...st, fields: st.schemaFields }))
+    const components = componentsRaw.map(cp => ({ ...cp, fields: cp.schemaFields }))
 
     const exportData = {
       version: "1.0",

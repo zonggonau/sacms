@@ -202,8 +202,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               name: comp.name,
               slug: comp.slug,
               category: comp.category || "General",
-              fields: {
-                create: comp.fields.map((f: any, idx: number) => {
+              schemaFields: { create: comp.fields.map((f: any, idx: number) => {
                   let fOptions = f.options || {}
                   if (typeof fOptions === 'string') {
                     try { fOptions = JSON.parse(fOptions) } catch { fOptions = {} }
@@ -244,8 +243,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               slug: ct.slug,
               description: ct.description || "",
               isPublished: true,
-              fields: {
-                create: ct.fields.map((f: any, idx: number) => {
+              schemaFields: { create: ct.fields.map((f: any, idx: number) => {
                   let fOptions = f.options || {}
                   if (typeof fOptions === 'string') {
                     try { fOptions = JSON.parse(fOptions) } catch { fOptions = {} }
@@ -301,8 +299,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               slug: st.slug,
               description: st.description || "",
               isPublished: true,
-              fields: {
-                create: st.fields.map((f: any, idx: number) => {
+              schemaFields: { create: st.fields.map((f: any, idx: number) => {
                   let optionsObj = f.options || {}
                   if (typeof optionsObj === 'string') {
                     try {

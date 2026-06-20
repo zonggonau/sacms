@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { uploadToR2, uploadToLocal, isR2Configured } from "@/lib/r2"
+import { authorizeCronRequest } from "@/lib/cron-auth"
 
 export async function GET(request: NextRequest) {
   try {
-    // 1. Authenticate cron job
-    const authHeader = request.headers.get('authorization')
-    const cronSecret = process.env.CRON_SECRET
-
-    if (cronSecret && authHeader !== `Bearer ${cronSecret}`) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+    const unauthorized = authorizeCronRequest(request)
+    if (unauthorized) return unauthorized
 
     // 2. Fetch all critical data
-    const tenants = await db.tenant.findMany({ include: { users: true, contentTypes: true, singleTypes: true } })
-    const contentTypes = await db.contentType.findMany({ include: { fields: true } })
+    const tenants = await db.tenant.findMany({ include: { members: true, contentTypes: true, singleTypes: true } })
+    const contentTypes = await db.contentType.findMany({ include: { schemaFields: true } })
     const contentEntries = await db.contentEntry.findMany()
-    const singleTypes = await db.singleType.findMany({ include: { fields: true } })
+    const singleTypes = await db.singleType.findMany({ include: { schemaFields: true } })
     const singleTypeAssignments = await db.tenantSingleTypeAssignment.findMany()
 
     // 3. Construct JSON dump

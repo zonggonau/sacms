@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import {
   Loader2, Users, Search, Plus, Shield, Mail, Building2,
   MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle,
-  ChevronLeft, ChevronRight
+  ChevronLeft, ChevronRight, Sliders
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -31,6 +31,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Label } from "@/components/ui/label"
+import { Textarea } from "@/components/ui/textarea"
 import {
   Select,
   SelectContent,
@@ -68,6 +69,15 @@ export default function AdminUsersPage() {
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+
+  // Override States
+  const [isOverrideOpen, setIsOverrideOpen] = useState(false)
+  const [overrideUser, setOverrideUser] = useState<User | null>(null)
+  const [overrideLoading, setOverrideLoading] = useState(false)
+  const [overrideFormData, setOverrideFormData] = useState({
+    maxWorkspaces: "",
+    note: ""
+  })
 
   // Form State
   const [formData, setFormData] = useState({
@@ -185,6 +195,84 @@ export default function AdminUsersPage() {
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "Failed to delete user" })
+    }
+  }
+
+  const openOverride = async (user: User) => {
+    setOverrideUser(user)
+    setIsOverrideOpen(true)
+    setOverrideLoading(true)
+    setOverrideFormData({
+      maxWorkspaces: "",
+      note: ""
+    })
+    try {
+      const res = await fetch(`/api/admin/users/${user.id}/override`)
+      if (res.ok) {
+        const data = await res.json()
+        if (data.override) {
+          setOverrideFormData({
+            maxWorkspaces: data.override.maxWorkspaces?.toString() || "",
+            note: data.override.note || ""
+          })
+        }
+      }
+    } catch (error) {
+      console.error("Failed to fetch overrides:", error)
+    } finally {
+      setOverrideLoading(false)
+    }
+  }
+
+  const handleSaveOverride = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!overrideUser) return
+    setIsSubmitting(true)
+    try {
+      const body = {
+        maxWorkspaces: overrideFormData.maxWorkspaces ? parseInt(overrideFormData.maxWorkspaces) : null,
+        note: overrideFormData.note || null
+      }
+      const res = await fetch(`/api/admin/users/${overrideUser.id}/override`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "User overrides saved successfully" })
+        setIsOverrideOpen(false)
+        fetchUsers(page)
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to save overrides" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleRemoveOverride = async () => {
+    if (!overrideUser) return
+    if (!confirm("Are you sure you want to remove all custom overrides for this user?")) return
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/users/${overrideUser.id}/override`, {
+        method: "DELETE"
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "User overrides removed successfully" })
+        setIsOverrideOpen(false)
+        fetchUsers(page)
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to remove overrides" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    } finally {
+      setIsSubmitting(false)
     }
   }
 
@@ -412,6 +500,9 @@ export default function AdminUsersPage() {
                             <DropdownMenuItem onClick={() => openEdit(user)}>
                               <Edit className="mr-2 h-4 w-4" /> Edit Profile
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openOverride(user)}>
+                              <Sliders className="mr-2 h-4 w-4 text-orange-500" /> Custom Overrides
+                            </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/admin/tenants`}>
                                 <Building2 className="mr-2 h-4 w-4" /> Manage Workspaces
@@ -497,6 +588,71 @@ export default function AdminUsersPage() {
                 </Button>
               </DialogFooter>
             </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Override Dialog */}
+        <Dialog open={isOverrideOpen} onOpenChange={setIsOverrideOpen}>
+          <DialogContent className="max-w-md rounded-none border border-border bg-card">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-xl font-bold text-foreground">
+                <Sliders className="h-5 w-5 text-orange-500" />
+                Workspace Overrides: {overrideUser?.name || overrideUser?.email}
+              </DialogTitle>
+              <DialogDescription>
+                Directly override the maximum number of workspaces this user can own.
+              </DialogDescription>
+            </DialogHeader>
+
+            {overrideLoading ? (
+              <div className="py-12 flex justify-center items-center">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <form onSubmit={handleSaveOverride} className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="user-maxWorkspaces" className="text-xs font-bold uppercase tracking-wider">Max Workspaces</Label>
+                  <Input
+                    id="user-maxWorkspaces"
+                    type="number"
+                    placeholder="Inherit plan defaults (Free: 1, Starter: 3, Pro: 10)"
+                    value={overrideFormData.maxWorkspaces}
+                    onChange={e => setOverrideFormData({...overrideFormData, maxWorkspaces: e.target.value})}
+                    className="rounded-none border-border"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="user-note" className="text-xs font-bold uppercase tracking-wider">Administrative Note</Label>
+                  <Textarea
+                    id="user-note"
+                    placeholder="Reason for this workspace override..."
+                    value={overrideFormData.note}
+                    onChange={e => setOverrideFormData({...overrideFormData, note: e.target.value})}
+                    rows={2}
+                    className="rounded-none border-border"
+                  />
+                </div>
+
+                <DialogFooter className="flex sm:justify-between items-center w-full gap-2 border-t border-border pt-4">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    onClick={handleRemoveOverride}
+                    className="mr-auto rounded-none"
+                  >
+                    Remove Override
+                  </Button>
+                  <div className="flex gap-2">
+                    <Button type="button" variant="outline" onClick={() => setIsOverrideOpen(false)} className="rounded-none">Cancel</Button>
+                    <Button type="submit" disabled={isSubmitting} className="rounded-none bg-primary text-primary-foreground hover:bg-primary/90">
+                      {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Save Overrides
+                    </Button>
+                  </div>
+                </DialogFooter>
+              </form>
+            )}
           </DialogContent>
         </Dialog>
       </div>

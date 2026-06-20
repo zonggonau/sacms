@@ -17,8 +17,9 @@ export async function getSingleTypesAction(tenantSlug: string) {
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
-    if (!rbac.allowed) return { error: "Forbidden" }
+    const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
+    const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
@@ -34,7 +35,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
         ]
       },
       include: {
-        fields: { orderBy: { order: 'asc' } }
+        schemaFields: { orderBy: { order: 'asc' } }
       },
       orderBy: { name: 'asc' }
     })
@@ -55,7 +56,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
         } catch { parsedData = {} }
       }
 
-      const formattedFields = st.fields.map(field => {
+      const formattedFields = st.schemaFields.map(field => {
         let parsedOptions = field.options
         if (typeof field.options === 'string') {
           try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -91,8 +92,9 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    const rbac = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
-    if (!rbac.allowed) return { error: "Forbidden" }
+    const rbacContentType = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_TYPE_READ)
+    const rbacContent = await checkPermission(tenantSlug, PERMISSIONS.CONTENT_READ)
+    if (!rbacContentType.allowed && !rbacContent.allowed) return { error: "Forbidden" }
 
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
@@ -109,7 +111,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
         ]
       },
       include: {
-        fields: { orderBy: { order: 'asc' } }
+        schemaFields: { orderBy: { order: 'asc' } }
       }
     })
 
@@ -126,7 +128,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
       } catch { parsedData = {} }
     }
 
-    const formattedFields = singleType.fields.map(field => {
+    const formattedFields = singleType.schemaFields.map(field => {
       let parsedOptions = field.options
       if (typeof field.options === 'string') {
         try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -164,11 +166,11 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
     const tenantDb = await getTenantDb(tenantSlug)
 
     const result = createSingleTypeSchema.safeParse(data)
-    if (!result.success) return { error: result.error.errors[0].message }
+    if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, fields } = result.data
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(tenantId, "content_types")
+    const enforcement = await enforcePlanLimit(tenantId, "content_types", session.user.id)
     if (!enforcement.allowed) return { error: enforcement.message }
 
     const existing = await tenantDb.singleType.findFirst({
@@ -184,7 +186,7 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
         slug,
         description,
         isPublished: true,
-        fields: {
+        schemaFields: {
           create: fields?.map((field: any, index: number) => ({
             name: field.name,
             slug: field.slug,
@@ -204,7 +206,7 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
           }
         }
       },
-      include: { fields: true }
+      include: { schemaFields: true }
     })
 
     revalidatePath(`/dashboard/${tenantSlug}/single-types`)
@@ -229,7 +231,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     const tenantDb = await getTenantDb(tenantSlug)
 
     const result = updateSingleTypeSchema.safeParse(data)
-    if (!result.success) return { error: result.error.errors[0].message }
+    if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
     const { name, slug, description, fields } = result.data
 
     const existingSingleType = await tenantDb.singleType.findUnique({
@@ -237,6 +239,13 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     })
 
     if (!existingSingleType) return { error: "Single type not found" }
+
+    const isGlobal = existingSingleType.tenantId === null
+    const isOwnedByOther = existingSingleType.tenantId !== null && existingSingleType.tenantId !== access.tenantId
+
+    if (isGlobal || isOwnedByOther) {
+      return { error: "Global or cross-tenant single types cannot be modified by tenant admins" }
+    }
 
     if (slug && slug !== existingSingleType.slug) {
       const slugConflict = await tenantDb.singleType.findFirst({
@@ -246,7 +255,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     }
 
     const updatedSingleType = await tenantDb.$transaction(async (tx) => {
-      await tx.singleTypeField.deleteMany({
+      await tx.schemaField.deleteMany({
         where: { singleTypeId: id },
       })
 
@@ -256,7 +265,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
           name,
           slug,
           description,
-          fields: fields
+          schemaFields: fields
             ? {
                 create: fields.map((field: any, index: number) => ({
                   name: field.name,
@@ -273,12 +282,12 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
             : undefined,
         },
         include: {
-          fields: { orderBy: { order: 'asc' } },
+          schemaFields: { orderBy: { order: 'asc' } },
         },
       })
     })
 
-    const formattedFields = updatedSingleType.fields.map(field => {
+    const formattedFields = updatedSingleType.schemaFields.map(field => {
       let parsedOptions = field.options
       if (typeof field.options === 'string') {
         try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
@@ -289,7 +298,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
     revalidatePath(`/dashboard/${tenantSlug}/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/single-types/${updatedSingleType.slug}`)
     
-    return { singleType: { ...updatedSingleType, fields: formattedFields } }
+    return { singleType: { ...updatedSingleType, schemaFields: formattedFields } }
   } catch (error) {
     console.error("Error updating single type:", error)
     return { error: "Internal server error" }
@@ -352,7 +361,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
           { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
         ]
       },
-      include: { fields: true }
+      include: { schemaFields: true }
     })
 
     if (!singleType) return { error: "Single type not found" }
@@ -362,7 +371,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
       processedData = await processAutoSlugs(
         tenantId,
         singleTypeId,
-        singleType.fields,
+        singleType.schemaFields,
         data,
         undefined,
         'single',

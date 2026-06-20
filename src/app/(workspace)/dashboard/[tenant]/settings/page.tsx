@@ -43,6 +43,7 @@ import {
   Server,
 } from "lucide-react"
 import { UsageTab } from "@/components/dashboard/usage-tab"
+import { getContentTypesAction } from "@/actions/content-types"
 export default function TenantSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
@@ -103,11 +104,10 @@ export default function TenantSettingsPage() {
       if (!tenantSlug || !session?.user) return
 
       try {
-        // Fetch content types for sidebar
-        const ctRes = await fetch(`/api/tenant/${tenantSlug}/content-types`)
-        if (ctRes.ok) {
-          const data = await ctRes.json()
-          setContentTypes(data.contentTypes || [])
+        // Fetch content types
+        const ctData = await getContentTypesAction(tenantSlug)
+        if (ctData && !ctData.error) {
+          setContentTypes(ctData.contentTypes || [])
         }
 
         // Fetch tenant settings

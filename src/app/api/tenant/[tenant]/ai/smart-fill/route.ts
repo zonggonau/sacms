@@ -3,12 +3,24 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { safeGenerateContent } from "@/lib/ai"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { isFeatureEnabled } from "@/lib/tenant-plan"
+import { validateBody } from "@/lib/validate"
+import { z } from "zod/v4"
+
+const smartFillSchema = z.object({
+  prompt: z.string().min(1).max(4000),
+  schema: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
+  contentType: z.string().min(1).max(100),
+})
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
+    if (!process.env.DEEPSEEK_API_KEY) {
+      return NextResponse.json({ error: "AI features are not configured" }, { status: 503 })
+    }
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -20,11 +32,13 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const { prompt, schema, contentType } = await request.json()
-
-    if (!prompt || !schema) {
-      return NextResponse.json({ error: "Missing prompt or schema" }, { status: 400 })
+    if (!await isFeatureEnabled(access.tenantId, "ENABLE_AI")) {
+      return NextResponse.json({ error: "AI features are not enabled for this workspace" }, { status: 403 })
     }
+
+    const parsed = await validateBody(request, smartFillSchema)
+    if ("error" in parsed) return parsed.error
+    const { prompt, schema, contentType } = parsed.data
 
     const systemPrompt = `You are an expert content creator for a Headless CMS. 
     Analyze the user input and fill the form fields provided in the schema.

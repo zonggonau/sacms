@@ -30,7 +30,9 @@ export async function GET(
     const singleType = await db.singleType.findUnique({
       where: { id },
       include: {
-        fields: true,
+        schemaFields: {
+          orderBy: { order: "asc" }
+        },
       },
     })
 
@@ -38,7 +40,10 @@ export async function GET(
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
-    return NextResponse.json(singleType)
+    return NextResponse.json({
+      ...singleType,
+      fields: singleType.schemaFields
+    })
   } catch (error) {
     console.error("Error fetching single type:", error)
     return NextResponse.json(
@@ -108,20 +113,22 @@ export async function PATCH(
         ...(body.isPublished !== undefined && { isPublished: body.isPublished as boolean }),
       },
       include: {
-        fields: true,
+        schemaFields: {
+          orderBy: { order: "asc" }
+        },
       },
     })
 
     // Handle fields update if provided
     if (body.fields !== undefined) {
       // Delete all existing fields
-      await db.singleTypeField.deleteMany({
+      await db.schemaField.deleteMany({
         where: { singleTypeId: id },
       })
 
       // Create new fields
       if (body.fields.length > 0) {
-        await db.singleTypeField.createMany({
+        await db.schemaField.createMany({
           data: body.fields.map((field: Record<string, unknown>, index: number) => ({
             singleTypeId: id,
             name: field.name as string,
@@ -141,14 +148,16 @@ export async function PATCH(
       const updated = await db.singleType.findUnique({
         where: { id },
         include: {
-          fields: true,
+          schemaFields: {
+            orderBy: { order: "asc" }
+          },
         },
       })
 
-      return NextResponse.json(updated)
+      return NextResponse.json({ ...updated, fields: updated?.schemaFields })
     }
 
-    return NextResponse.json(singleType)
+    return NextResponse.json({ ...singleType, fields: singleType.schemaFields })
   } catch (error) {
     console.error("Error updating single type:", error)
     return NextResponse.json(

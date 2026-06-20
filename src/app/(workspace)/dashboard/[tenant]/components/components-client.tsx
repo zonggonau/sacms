@@ -4,7 +4,7 @@ import { useState, useMemo } from "react"
 import Link from "next/link"
 import { 
   Plus, MoreVertical, Edit, Trash2, Box, Puzzle, 
-  Search, Info, Sparkles, Package, Tags, Loader2
+  Search, Info, Sparkles, Package, Tags, Loader2, AlertCircle
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -46,14 +46,17 @@ interface Component {
   category: string | null
   fields: any[]
   isGlobal?: boolean
+  usedByCount?: number
 }
 
 interface ComponentsClientProps {
   initialComponents: Component[]
   tenantSlug: string
+  limit?: number
+  current?: number
 }
 
-export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsClientProps) {
+export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, current = 0 }: ComponentsClientProps) {
   const router = useRouter()
   const [searchQuery, setSearchQuery] = useState("")
   const [isDeleting, setIsDeleting] = useState(false)
@@ -68,6 +71,10 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
       (c.category && c.category.toLowerCase().includes(searchQuery.toLowerCase()))
     )
   }, [initialComponents, searchQuery])
+
+  const isLimitReached = useMemo(() => {
+    return current >= limit
+  }, [current, limit])
 
   const handleDeleteClick = (component: Component) => {
     setComponentToDelete(component)
@@ -86,6 +93,7 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
       const response = await deleteComponentAction(tenantSlug, componentToDelete.id)
       if (response.error) throw new Error(response.error)
       toast({ title: "Component Removed", description: `${componentToDelete.name} has been deleted.` })
+      router.refresh()
     } catch (error: any) {
       toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete component" })
     } finally {
@@ -96,7 +104,7 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
+      <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           {/* Header */}
@@ -110,16 +118,24 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
                 variant="outline"
                 className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
                 onClick={() => setIsAIModalOpen(true)}
+                disabled={isLimitReached}
               >
                 <Sparkles className="mr-2 h-4 w-4" /> AI Generate
               </Button>
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
-                asChild
+                disabled={isLimitReached}
+                asChild={!isLimitReached}
               >
-                <Link href={`/dashboard/${tenantSlug}/components/new`}>
-                  <Plus className="mr-2 h-4 w-4" /> Create Component
-                </Link>
+                {isLimitReached ? (
+                  <span>
+                    <Plus className="mr-2 h-4 w-4" /> Create Component
+                  </span>
+                ) : (
+                  <Link href={`/dashboard/${tenantSlug}/components/new`}>
+                    <Plus className="mr-2 h-4 w-4" /> Create Component
+                  </Link>
+                )}
               </Button>
             </div>
           </div>
@@ -161,6 +177,16 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
             </Card>
           </div>
 
+          {/* Limit Alert */}
+          {isLimitReached && (
+            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
+              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 animate-pulse" />
+              <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
+                You have reached your content structures limit of {limit} schemas. Delete an existing custom schema or upgrade your plan to create more.
+              </div>
+            </div>
+          )}
+
           {/* Search & List */}
           <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
             <CardHeader className="bg-white border-b border-slate-200">
@@ -200,7 +226,17 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
                               <Box className="h-4.5 w-4.5" />
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-sm font-bold text-foreground">{component.name}</span>
+                              <div className="flex items-center gap-2">
+                                <Link 
+                                  href={`/dashboard/${tenantSlug}/components/${component.slug}`}
+                                  className="text-sm font-bold text-foreground hover:text-primary transition-colors"
+                                >
+                                  {component.name}
+                                </Link>
+                                {component.usedByCount !== undefined && component.usedByCount > 0 && (
+                                  <Badge variant="outline" className="text-[9px] h-4 bg-amber-50 text-amber-700 border-amber-200">Used {component.usedByCount}x</Badge>
+                                )}
+                              </div>
                               <span className="text-[10px] font-mono text-muted-foreground uppercase">{component.slug}</span>
                             </div>
                           </div>
@@ -225,7 +261,7 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/${tenantSlug}/components/${component.slug}`}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit Details
+                                  <Edit className="mr-2 h-4 w-4" /> Edit Schema
                                 </Link>
                               </DropdownMenuItem>
                               {!component.isGlobal && (
@@ -287,6 +323,17 @@ export function ComponentsClient({ initialComponents, tenantSlug }: ComponentsCl
             </DialogDescription>
           </DialogHeader>
           <div className="py-4 space-y-4">
+            {componentToDelete?.usedByCount !== undefined && componentToDelete.usedByCount > 0 && (
+              <div className="p-4 bg-amber-50 rounded-none border border-amber-200">
+                <p className="text-sm font-bold text-amber-800 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-200 flex items-center justify-center text-amber-800">!</span>
+                  Warning: Component in Use
+                </p>
+                <p className="text-xs text-amber-700 mt-2">
+                  This component is currently used in <strong>{componentToDelete.usedByCount}</strong> field(s) across your schemas. Deleting it will cause data loss and errors in those fields.
+                </p>
+              </div>
+            )}
             <div className="p-4 bg-destructive/10 rounded-none border border-destructive/20">
               <p className="text-xs font-bold text-destructive">To confirm, type the exact name of the component below:</p>
               <p className="text-sm font-black mt-1 text-destructive">{componentToDelete?.name}</p>

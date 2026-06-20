@@ -1,10 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest"
-import { rateLimit, getTenantRateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 
 vi.mock("@/lib/redis", () => ({
   getRedis: vi.fn(() => null), // Mock to always use memory fallback by default
   isRedisAvailable: vi.fn(() => false),
 }))
+
+vi.mock("@/lib/rate-limit", async () => {
+  return vi.importActual<typeof import("@/lib/rate-limit")>("@/lib/rate-limit")
+})
+
+const { rateLimit, getTenantRateLimit, RATE_LIMITS } = await import("@/lib/rate-limit")
 
 describe("Rate Limiter", () => {
   beforeEach(() => {

@@ -5,10 +5,9 @@ import { useEffect, useRef, useState } from "react"
 
 interface GraphiQLInnerProps {
   endpoint: string
-  apiToken?: string
 }
 
-export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps) {
+export default function GraphiQLInner({ endpoint }: GraphiQLInnerProps) {
   const { theme } = useTheme()
   const containerRef = useRef<HTMLDivElement>(null)
   const [error, setError] = useState<string | null>(null)
@@ -57,8 +56,8 @@ export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps
             initialState: {
               document: 'query {\\n  __schema {\\n    types {\\n      name\\n      kind\\n    }\\n  }\\n}',
               variables: {},
-              headers: apiToken ? { Authorization: `Bearer ${apiToken}` } : {},
-              includeCookies: false,
+              headers: {},
+              includeCookies: true,
               pollForSchemaUpdates: false
             }
           })
@@ -85,7 +84,7 @@ export default function GraphiQLInner({ endpoint, apiToken }: GraphiQLInnerProps
         existingScript.removeEventListener('load', initSandbox)
       }
     }
-  }, [endpoint, apiToken])
+  }, [endpoint])
 
   if (error) {
     return (

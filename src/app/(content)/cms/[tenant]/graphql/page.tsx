@@ -1,62 +1,40 @@
-import { db } from "@/lib/database"
 import { GraphiQLWrapper } from "@/components/cms/graphiql-wrapper"
-import { Button } from "@/components/ui/button"
-import Link from "next/link"
-import { Plus, KeyRound } from "lucide-react"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
+import { getServerSession } from "next-auth"
 import { headers } from "next/headers"
+import Link from "next/link"
+import { notFound, redirect } from "next/navigation"
 
 export default async function GraphQLPlaygroundPage({
-  params
+  params,
 }: {
   params: Promise<{ tenant: string }>
 }) {
-  const { tenant } = await params
-  
-  // Try to find a valid API token for this tenant
-  const apiToken = await db.apiToken.findFirst({
-    where: { 
-      tenantId: tenant,
-      OR: [
-        { expiresAt: null },
-        { expiresAt: { gt: new Date() } }
-      ]
-    },
-    orderBy: { createdAt: 'desc' }
-  })
+  const { tenant: tenantSlug } = await params
+  const session = await getServerSession(authOptions)
+  if (!session?.user) redirect("/login")
 
-  // We need the base URL for the API endpoint
+  const access = await getTenantAccess(session, tenantSlug)
+  if (!access) notFound()
+
   const headersList = await headers()
-  const host = headersList.get("host") || "localhost:3001"
+  const host = headersList.get("host") || "localhost:3000"
   const protocol = host.includes("localhost") ? "http" : "https"
-  const endpoint = `${protocol}://${host}/api/public/${tenant}/graphql`
-
-  if (!apiToken) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[80vh] p-8 text-center">
-        <div className="w-16 h-16 bg-orange-500/10 rounded-full flex items-center justify-center mb-6">
-          <KeyRound className="w-8 h-8 text-orange-500" />
-        </div>
-        <h2 className="text-2xl font-bold text-foreground mb-2">API Token Required</h2>
-        <p className="text-muted-foreground max-w-md mx-auto mb-8">
-          To use the GraphQL Playground, you need an active API Token for authentication. 
-          The playground uses this token to run real queries against your database.
-        </p>
-        <Link href={`/cms/${tenant}/developer/api-tokens`}>
-          <Button className="bg-orange-500 hover:bg-orange-600">
-            <Plus className="w-4 h-4 mr-2" />
-            Create API Token
-          </Button>
-        </Link>
-      </div>
-    )
-  }
+  const endpoint = `${protocol}://${host}/api/public/${access.tenant.slug}/graphql`
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col bg-background relative" style={{ isolation: 'isolate' }}>
-      <GraphiQLWrapper 
-        endpoint={endpoint}
-        apiToken={apiToken.token}
-      />
+    <div className="flex h-[calc(100vh-4rem)] flex-col bg-background">
+      <div className="border-b border-border bg-card px-4 py-2 text-xs text-muted-foreground">
+        Set <code>Authorization: Bearer &lt;YOUR_API_TOKEN&gt;</code> in Sandbox headers.
+        The stored token hash is never auto-injected.{" "}
+        <Link className="font-semibold text-orange-600 hover:underline" href={`/dashboard/${access.tenant.slug}/api-keys`}>
+          Manage API tokens
+        </Link>
+      </div>
+      <div className="min-h-0 flex-1" style={{ isolation: "isolate" }}>
+        <GraphiQLWrapper endpoint={endpoint} />
+      </div>
     </div>
   )
 }
