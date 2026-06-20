@@ -8,9 +8,38 @@
 
 This specification defines required product behavior. Requirement keywords are interpreted as follows:
 
+<<<<<<< HEAD
 - **MUST:** mandatory runtime invariant.
 - **SHOULD:** expected behavior; exceptions require a documented reason.
 - **MAY:** optional capability.
+=======
+1. **Manajemen *Tenant* & *Workspace***
+   - Sistem harus memungkinkan pengguna mendaftar dan membuat *Workspace* baru.
+   - Sistem harus menyajikan dasbor manajemen langganan terintegrasi dengan Midtrans.
+2. ***Content Modeling* (Pembuatan Skema)**
+   - Sistem harus mengizinkan Admin untuk mendefinisikan struktur *Database* dinamis berupa *Collection Types* dan *Single Types*.
+   - Sistem harus mengizinkan konfigurasi tipe *Field* (Teks, Angka, Tanggal, Relasi, Media, Boolean).
+3. **Manajemen Konten & Alur Kerja (*Workflow*)**
+   - Sistem harus mendukung pembuatan, pengubahan, dan penghapusan data konten (CRUD).
+   - Sistem harus mengimplementasikan status konten: `DRAFT`, `IN_REVIEW`, `APPROVED`, `SCHEDULED`, `PUBLISHED`, `ARCHIVED`, `REJECTED`.
+   - Sistem harus mendukung lokalisasi (i18n) sehingga konten dapat diterjemahkan ke beberapa bahasa berdasarkan `locale`.
+4. **Media *Library***
+   - Sistem harus mengizinkan pengguna untuk mengunggah aset media (gambar, dokumen) dengan limit 10MB per berkas.
+   - Sistem harus menghasilkan versi gambar *thumbnail* (150px) dan *medium* (600px) secara otomatis ke Cloudflare R2.
+5. **API Konsumsi Publik (REST & GraphQL)**
+   - Sistem harus menyediakan *Endpoint* REST untuk klien Publik dengan filter gaya Strapi (`?filters[price][$gt]=100`).
+   - Sistem harus menyediakan *Endpoint* GraphQL untuk *Query* maupun *Mutation* data konten.
+   - Sistem harus mendukung pencarian teks penuh (*Full-Text Search*).
+6. **Integrasi Eksternal (*Webhooks*)**
+   - Sistem harus dapat memicu *Webhook* Asinkron ke URL kustom ketika sebuah *event* terjadi.
+     - **Daftar Event:** `content.entry.created`, `content.entry.updated`, `content.entry.deleted`, `content.entry.published`.
+     - **Struktur Payload:** `{"event": "content.entry.published", "tenantId": "...", "data": { ... }}`
+   - Sistem harus mendukung *Sync Hooks* untuk mencegat atau mengubah data sebelum masuk ke basis data (`beforeCreate`, `beforeUpdate`).
+
+7. **Validasi Skema Lapis Tengah (Zod Validation)**
+   - Semua rute API (baik REST maupun Server Actions) wajib melewati `Zod.parse()`.
+   - Payload input untuk konten harus memvalidasi bentuk tipe dinamis (contoh: teks dibatasi panjangnya, tipe relasi dipastikan valid UUID-nya) sebelum ORM menyentuh database.
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 Implementation status is not inferred from the wording of a requirement. See [15-Implementation_Traceability.md](./15-Implementation_Traceability.md) for observed implementation and constraints.
 
@@ -30,6 +59,7 @@ SaCMS provides:
 
 ## 3. Actors and authorization model
 
+<<<<<<< HEAD
 | Actor | Identifier | Scope | Core responsibility |
 |---|---|---|---|
 | Platform administrator | `super_admin` | Platform | Manage global schemas, tenants, users, billing, and monitoring |
@@ -40,6 +70,17 @@ SaCMS provides:
 | Read-only user | `viewer` | Tenant | Read workspace content without mutation |
 | API client | API token | Tenant | Read or mutate through the public integration surface according to token type |
 | Scheduler | `system` | Platform/tenant job | Publish due scheduled content and retry background delivery |
+=======
+1. **Multi-Tenant Data Isolation:** Sebuah *query* pada sistem wajib menginjeksikan pemeriksa `tenantId`. Data dari `Tenant A` sama sekali tidak boleh diakses, dilihat, atau direferensikan oleh `Tenant B`.
+2. **Validasi Skema Fleksibel:** Pengguna dapat menyimpan *Content Entry* meski kosong **hanya jika** statusnya adalah `DRAFT`. Jika diubah menjadi `PUBLISHED`, mesin validasi Zod akan mengeksekusi pemeriksaan pada *Fields* yang bertanda *Required*.
+3. **Pembatasan Langganan (Plan Limits & Rate Limiting):**
+   - Setiap *Workspace* tunduk pada batas langganannya. 
+   - **Metrik Edge Rate Limiting (via Upstash Redis):**
+     - Paket *Free*: Max 100 API Requests/menit.
+     - Paket *Pro*: Max 500 API Requests/menit.
+     - Paket *Enterprise*: Custom limits.
+   - Sistem akan memblokir *request* (*HTTP 429 Too Many Requests*) pada tingkat Edge Middleware sebelum *request* mencapai basis data PostgreSQL.
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 A reviewer is not a permanent built-in role. A reviewer is an eligible tenant member assigned to one entry through `ContentReviewAssignment`.
 

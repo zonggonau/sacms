@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 # Technical Design & System Architecture
+=======
+# System Architecture Document (SAD)
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 **Baseline:** 19 June 2026  
 **Status:** Living technical design synchronized by static inspection  
@@ -48,7 +52,22 @@ flowchart LR
     SA --> Webhook["External webhook targets"]
 ```
 
+<<<<<<< HEAD
 ## 3. Technology stack
+=======
+## 4. Pattern Desain Utama
+### 4.1. Multi-Tenant Data Isolation
+Setiap tabel krusial memiliki field `tenantId`. Akses database dibungkus menggunakan pola abstraksi repositori untuk menghindari kebocoran data.
+**Implementasi Wajib:**
+```typescript
+// Cara Salah (Dilarang):
+const data = await prisma.contentEntry.findMany()
+
+// Cara Benar (Menggunakan helper getTenantDb):
+const tenantDb = await getTenantDb(tenantId)
+const data = await tenantDb.contentEntry.findMany()
+```
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 | Layer | Technology | Responsibility |
 |---|---|---|
@@ -66,7 +85,64 @@ flowchart LR
 
 Exact package versions are defined in `package.json` and take precedence over narrative versions.
 
+<<<<<<< HEAD
 ## 4. Repository modules
+=======
+## 5. Skema Database Inti (Prisma ERD Concept)
+- **Tenant & User:** Relasi Many-to-Many via `TenantMember`.
+- **Content Modeling:** `ContentType` (Tabel) memiliki banyak `ContentTypeField` (Kolom).
+- **Content Data:** Data tersimpan dinamis dalam kolom tipe `JSONB` di tabel `ContentEntry`.
+- **Media:** `Media` terhubung ke `MediaFolder` dan `Tenant`, menggunakan penyimpanan R2 CDN.
+- **Webhooks & API Tokens:** Tabel `Webhook`, `WebhookLog`, `ApiToken` dengan relasi kuat ke `Tenant`.
+
+**Cuplikan Contoh Prisma Schema:**
+```prisma
+model Tenant {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  entries   ContentEntry[]
+  media     Media[]
+}
+
+model ContentEntry {
+  id            String   @id @default(uuid())
+  documentId    String   @default(uuid()) // Unique identifier for all locales/versions
+  tenantId      String
+  contentTypeId String
+  data          Json     // Data dinamis tersimpan di sini
+  status        String   @default("DRAFT")
+  
+  tenant        Tenant   @relation(fields: [tenantId], references: [id])
+  @@index([tenantId, contentTypeId])
+}
+```
+
+## 6. Codebase Structure & Modules
+Aplikasi terbagi dalam direktori-direktori inti:
+- **`src/app/api/public/`**: Endpoint REST API untuk konsumsi frontend eksternal (Read-only, terproteksi API Token).
+- **`src/app/api/tenant/`**: Internal API untuk modul administrasi Tenant (Media upload, Stripe webhook, System logs).
+- **`src/app/admin/` & `src/app/dashboard/`**: UI panel administrasi dibangun dengan Next.js Server Components.
+- **`src/actions/`**: Modul Server Actions untuk *mutations* data (Create, Update, Delete) yang di-*trigger* dari UI, mendukung progresif enhancement dan revalidasi cache.
+- **`src/lib/`**: Utilitas *core* seperti mesin `filters.ts`, `database.ts` (Prisma Singleton), `rate-limit.ts` (Upstash Redis), dan `r2.ts`.
+
+## 7. Quality Assurance (Testing & CI/CD)
+Arsitektur dirancang agar siap diuji (*testable*):
+- **Unit Tests:** Memastikan logika filter, role transitions, dan utility functions berjalan benar via `Vitest`.
+- **E2E Tests:** Menggunakan `Playwright`. Sesi *mock login* diinisialisasi melalui `global-setup.ts` dengan tenant *Enterprise* untuk mencegah interupsi limit plan selama pengujian asinkron. Pipeline pengujian ini siap diintegrasikan dengan GitHub Actions.
+# Technical Design Document (TDD)
+**Project Name:** SaCMS (SaaS Headless CMS)
+**Date:** 17 Juni 2026
+**Status:** Approved
+
+Dokumen ini menjelaskan desain teknis untuk SaCMS, mencakup struktur modul, arsitektur basis data, desain API, serta layanan dan integrasi eksternal pendukung.
+
+---
+
+## 1. Struktur Modul & Arsitektur (*Module Structure*)
+
+Sistem dibangun secara *Monolithic-Serverless* menggunakan **Next.js 16 (App Router)**. *Codebase* dibagi secara modular untuk memisahkan domain antara Antarmuka Pengguna (*UI*) dan Layanan API.
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 ```text
 src/
@@ -150,7 +226,18 @@ Important modules:
 | `rate-limit.ts` | Redis limiter with process-memory fallback |
 | `r2.ts` | R2 client and media object operations |
 
+<<<<<<< HEAD
 ## 6. Multi-tenant data architecture
+=======
+| Penyedia (*Service*) | Protokol | Tujuan | Detail Implementasi |
+|----------------------|----------|--------|---------------------|
+| **Cloudflare R2** | S3-Compatible API | Penempatan Aset (CDN) | Pola Penamaan Objek: `uploads/{tenantId}/{year}/{month}/{uuid}-{filename}.{ext}`. CDN terhubung secara publik. |
+| **Upstash Redis** | HTTPS REST | Manajemen Cache & Limiter | Rate limiting dieksekusi di Edge. Format struktur Redis Key: `rate-limit:api:{tenantId}:{clientIp}`. |
+| **Midtrans Snap** | HTTPS API | Otomasi *Billing* & *Invoice* | Terhubung untuk menagih biaya paket berlangganan pada *Tenant*. Endpoint Webhook Next.js merespons notifikasi `transaction_status`. |
+| **OpenAI / LLM** | HTTPS API | *AI Content Generation* | Menyediakan saran konten (*templating*) otomatis di *Rich Text Editor*. |
+
+# Data Flow Diagram (DFD) - SaCMS
+>>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0
 
 ### 6.1 Shared database mode
 
