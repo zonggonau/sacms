@@ -10,7 +10,7 @@ const CONTENT_TYPES = [
     slug: "sacms-hero",
     name: "SaCMS Hero Section",
     description: "Hero banner for the landing page",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "headline",    name: "Headline",    type: "text",     required: true, order: 0 },
       { slug: "subheadline", name: "Subheadline", type: "text",     required: false, order: 1 },
@@ -139,7 +139,7 @@ const CONTENT_TYPES = [
     slug: "sacms-about",
     name: "SaCMS About Section",
     description: "About section content (single)",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "title",       name: "Title",       type: "text", required: true,  order: 0 },
       { slug: "description", name: "Description", type: "text", required: false, order: 1 },
@@ -151,13 +151,58 @@ const CONTENT_TYPES = [
     slug: "sacms-whatsapp",
     name: "SaCMS WhatsApp Config",
     description: "WhatsApp floating button config (single)",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "phone",     name: "Phone",     type: "text",    required: true,  order: 0 },
       { slug: "message",   name: "Message",   type: "text",    required: false, order: 1 },
       { slug: "label",     name: "Label",     type: "text",    required: false, order: 2 },
       { slug: "is_active", name: "Is Active", type: "boolean", required: false, order: 3 },
     ],
+  },
+  {
+    slug: "sacms-sectors",
+    name: "SaCMS Sectors",
+    description: "Sektor yang dilayani",
+    isSingleType: false,
+    fields: [
+      { slug: "icon",  name: "Icon",  type: "text", required: true, order: 0 },
+      { slug: "label", name: "Label", type: "text", required: true, order: 1 },
+      { slug: "desc",  name: "Description", type: "text", required: false, order: 2 },
+    ]
+  },
+  {
+    slug: "sacms-local-pride",
+    name: "SaCMS Local Pride",
+    description: "Section kebanggaan lokal",
+    isSingleType: false,
+    fields: [
+      { slug: "badge", name: "Badge Text", type: "text", required: false, order: 0 },
+      { slug: "title", name: "Title", type: "text", required: true, order: 1 },
+      { slug: "description", name: "Description", type: "textarea", required: false, order: 2 },
+    ]
+  },
+  {
+    slug: "sacms-cta",
+    name: "SaCMS CTA Banner",
+    description: "Call to Action di bagian bawah",
+    isSingleType: false,
+    fields: [
+      { slug: "title", name: "Title", type: "text", required: true, order: 0 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 1 },
+      { slug: "button_primary_text", name: "Primary Button Text", type: "text", required: false, order: 2 },
+      { slug: "button_secondary_text", name: "Secondary Button Text", type: "text", required: false, order: 3 },
+    ]
+  },
+  {
+    slug: "sacms-footer",
+    name: "SaCMS Footer",
+    description: "Konfigurasi Footer",
+    isSingleType: false,
+    fields: [
+      { slug: "brand_name", name: "Brand Name", type: "text", required: true, order: 0 },
+      { slug: "description", name: "Description", type: "text", required: false, order: 1 },
+      { slug: "copyright", name: "Copyright Text", type: "text", required: false, order: 2 },
+    ]
   },
 ]
 
@@ -309,6 +354,34 @@ const SEED_ENTRIES: Record<string, object[]> = {
     { icon: "Zap", name: "Boost API", description: "500.000 request API tambahan per bulan untuk website dengan trafik tinggi.", price: 39000, unit: "bulan" },
     { icon: "Shield", name: "Konsultasi Digital", description: "Konsultasi bulanan untuk strategi digitalisasi instansi dan UMKM di Papua.", price: 99000, unit: "bulan" },
   ],
+  "sacms-sectors": [
+    { icon: "Building", label: "Digital Agency", desc: "Kelola puluhan klien web" },
+    { icon: "Code", label: "Solo Developer", desc: "Kurangi biaya server" },
+    { icon: "ShoppingBag", label: "E-Commerce", desc: "Katalog headless" },
+    { icon: "Briefcase", label: "SaaS Builders", desc: "Backend data terpusat" },
+  ],
+  "sacms-local-pride": [
+    {
+      badge: "Solusi B2B Terbaik",
+      title: "Dibangun Untuk Menjawab Masalah Nyata Developer.",
+      description: "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol elegan.",
+    }
+  ],
+  "sacms-cta": [
+    {
+      title: "Siap Berhenti Melakukan Self-Host CMS?",
+      description: "Pindahkan proyek klien Anda ke SaCMS. Skalabilitas tanpa batas, tanpa pusing.",
+      button_primary_text: "Coba Gratis Sekarang",
+      button_secondary_text: "Baca Dokumentasi API",
+    }
+  ],
+  "sacms-footer": [
+    {
+      brand_name: "SaCMS",
+      description: "The Ultimate Multi-Tenant Headless CMS for Modern Developers and Agencies.",
+      copyright: "SaCMS. Hak cipta dilindungi.",
+    }
+  ],
 }
 
 export async function POST() {
@@ -378,6 +451,7 @@ export async function POST() {
               slug: ct.slug,
               description: ct.description,
               tenantId: null, // Truly Global
+              isPublished: true,
               schemaFields: { create: ct.fields.map((f) => ({
                   name: f.name,
                   slug: f.slug,
