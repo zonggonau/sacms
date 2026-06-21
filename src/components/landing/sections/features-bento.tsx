@@ -23,7 +23,7 @@ export function FeaturesBento({ features }: { features: FeatureItem[] }) {
             </span>
           </h2>
           <p className="text-muted-foreground text-base max-w-2xl mx-auto font-medium leading-relaxed">
-            Selesaikan masalah manajemen klien dan penagihan dengan fitur-fitur yang dirancang khusus untuk Developer dan Agensi.
+            Template dan fitur lengkap untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata dengan cepat.
           </p>
         </div>
 

@@ -5,7 +5,7 @@ import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Save, Send, FileText, CheckCircle2, 
   Clock, Archive, Loader2, Globe, Layout, ChevronDown,
-  Calendar as CalendarIcon, Eye, AlertCircle, Check
+  Calendar as CalendarIcon, Eye, AlertCircle, Check, ChevronRight
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { format } from "date-fns"

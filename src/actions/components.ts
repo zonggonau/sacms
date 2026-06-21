@@ -337,9 +337,9 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
     const allFields = await tenantDb.schemaField.findMany({
       where: {
         OR: [
-          { contentType: { tenantId: tenantId } },
-          { singleType: { tenantId: tenantId } },
-          { component: { tenantId: tenantId } },
+          { contentType: { tenantId: access.tenantId } },
+          { singleType: { tenantId: access.tenantId } },
+          { component: { tenantId: access.tenantId } },
           { contentType: { tenantId: null } },
           { singleType: { tenantId: null } },
           { component: { tenantId: null } },

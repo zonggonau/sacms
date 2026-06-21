@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Database, Loader2, Crown, Eye, EyeOff } from "lucide-react"
+import { Loader2, Crown, Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
 import { registerUser } from "@/app/actions/auth"
 
@@ -94,7 +95,7 @@ export default function RegisterPage() {
           title: "Sukses",
           description: "Akun Super Admin berhasil dibuat. Silakan masuk.",
         })
-        router.push(`/login?email=${formData.email}`)
+        router.push(`/login?email=${formData.email}&redirect_to=/dashboard/setup`)
       } else {
         setIsSuccess(true)
       }
@@ -128,11 +129,8 @@ export default function RegisterPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-primary/5">
           <div className="flex flex-col items-center mb-10">
-            <Link href="/" className="flex items-center gap-3 mb-8 group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
-                <Database className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-black tracking-tight group-hover:text-primary transition-colors">SaCMS</span>
+            <Link href="/" className="inline-block mb-8">
+              <Logo iconSize="lg" showText={true} useOrange={true} />
             </Link>
             <h1 className="text-3xl font-black tracking-tight mb-2">Buat Akun</h1>
             <p className="text-sm font-medium text-muted-foreground text-center">
@@ -155,7 +153,7 @@ export default function RegisterPage() {
           {isSuccess ? (
             <div className="text-center space-y-4 py-4">
               <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-6 shadow-inner shadow-primary/20">
-                <Database className="w-8 h-8 text-primary" />
+                <CheckCircle2 className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-2xl font-black tracking-tight">Registrasi Berhasil!</h3>
               <p className="text-sm font-medium text-muted-foreground mb-8 leading-relaxed">

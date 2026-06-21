@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
+import Link from "next/link"
 import { 
   Plus, MoreVertical, Edit, Trash2, Database, 
   Search, ShieldCheck, Layers, Globe, Package, Zap,
@@ -198,6 +199,11 @@ export default function ContentTypesPage() {
                 {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
                 Seed Global Data
               </Button>
+              <Link href="/admin/content-types/new">
+                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold">
+                  <Plus className="mr-2 h-4 w-4" /> Create
+                </Button>
+              </Link>
             </div>
           </div>
 
@@ -318,6 +324,9 @@ export default function ContentTypesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => router.push(`/admin/content-types/${ct.slug}`)}>
+                                <Database className="mr-2 h-4 w-4" /> Manage Data
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => router.push(`/admin/content-types/edit/${ct.id}`)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Schema
                               </DropdownMenuItem>

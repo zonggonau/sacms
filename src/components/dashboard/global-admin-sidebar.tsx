@@ -16,6 +16,7 @@ import {
   Sun,
   LogOut,
   Building2,
+  Box,
   Menu,
   X,
   Settings,
@@ -27,6 +28,7 @@ import {
   CreditCard,
   ClipboardList,
   Globe,
+  Gem,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -58,6 +60,8 @@ const adminNavSections: NavSection[] = [
     label: "GLOBAL CONTENT",
     items: [
       { title: "Content Builder", href: "/admin/content-types", icon: Database },
+      { title: "Single Types", href: "/admin/single-types", icon: FileText },
+      { title: "Components", href: "/admin/components", icon: Box },
     ],
   },
   {
@@ -74,6 +78,12 @@ const adminNavSections: NavSection[] = [
       { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList },
       { title: "Media Library", href: "/admin/media", icon: ImageIcon },
       { title: "Settings", href: "/admin/settings", icon: Settings },
+    ],
+  },
+  {
+    label: "ENTERPRISE",
+    items: [
+      { title: "Licenses", href: "/admin/enterprise/licenses", icon: Gem },
     ],
   },
 ]

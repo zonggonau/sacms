@@ -6,7 +6,7 @@ import { useSession } from "next-auth/react"
 import { 
   Plus, MoreVertical, Edit, Trash2, FileText, 
   Search, ShieldCheck, Layers, Globe, Package,
-  ArrowRight, Loader2, Info, Copy, ExternalLink
+  ArrowRight, Loader2, Info, Copy, ExternalLink, Zap, Database
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -148,12 +148,27 @@ export default function SingleTypesPage() {
               <h1 className="text-3xl font-extrabold tracking-tight uppercase">Single Types</h1>
               <p className="text-muted-foreground">Manage singleton content schemas for your platform.</p>
             </div>
-            <Button 
-              onClick={() => router.push("/admin/single-types/new")}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold"
-            >
-              <Plus className="mr-2 h-4 w-4" /> Create Single Type
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                onClick={() => {
+                  if (confirm("Seed platform single types? This will create/re-initialize platform schemas.")) {
+                    fetch("/api/admin/global/seed", { method: "POST" }).then(r => r.json()).then(d => {
+                      toast({ title: d.success ? "Seed Successful" : "Seed Failed", description: d.success ? "Single types initialized." : d.error })
+                    })
+                  }
+                }}
+                className="border-orange-200 bg-orange-50 text-orange-600 hover:bg-orange-100 font-bold uppercase text-[10px] tracking-widest h-10 px-4 rounded-xl"
+              >
+                <Zap className="mr-2 h-4 w-4" /> Seed
+              </Button>
+              <Button 
+                onClick={() => router.push("/admin/single-types/new")}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-lg shadow-primary/20 font-bold"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Create
+              </Button>
+            </div>
           </div>
 
           {/* Stats */}
@@ -258,6 +273,9 @@ export default function SingleTypesPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem onClick={() => router.push(`/admin/single-types/${st.slug}`)}>
+                                <Database className="mr-2 h-4 w-4" /> Edit Content
+                              </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => router.push(`/admin/single-types/edit/${st.id}`)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Schema
                               </DropdownMenuItem>
@@ -328,4 +346,4 @@ export default function SingleTypesPage() {
       </Dialog>
     </div>
   )
-}
+}

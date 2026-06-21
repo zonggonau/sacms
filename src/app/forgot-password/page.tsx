@@ -5,7 +5,8 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Database, Loader2, Mail } from "lucide-react"
+import { Loader2, Mail } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
 import { forgotPassword } from "@/app/actions/auth"
 
@@ -47,8 +48,7 @@ export default function ForgotPasswordPage() {
       <div className="w-full max-w-md bg-card border border-border p-8">
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-6">
-            <Database className="w-6 h-6 text-orange-500" />
-            <span className="text-xl font-bold">SaCMS</span>
+            <Logo iconSize="md" showText={true} useOrange={true} />
           </Link>
           <h1 className="text-2xl font-semibold mb-1">Forgot Password</h1>
           <p className="text-sm text-muted-foreground text-center">

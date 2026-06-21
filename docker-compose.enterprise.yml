@@ -1,0 +1,79 @@
+services:
+  app:
+    image: ghcr.io/zonggonau/sacms:enterprise-latest
+    ports:
+      - "3000:3000"
+    environment:
+      - DATABASE_URL=postgresql://sacms:***@postgres:5432/sacms
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
+      - NEXTAUTH_URL=http://localhost:3000
+      - REDIS_URL=redis://redis:6379
+      - LICENSE_KEY=${LICENSE_KEY}
+      - LICENSE_SERVER_URL=https://license.sacms.cloud
+      - ENTERPRISE_MODE=true
+      - NODE_ENV=production
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: sacms
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: sacms
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sacms"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Database backup — runs daily at 2am
+  db-backup:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: postgres
+      PGUSER: sacms
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: sacms
+    volumes:
+      - ./backups:/backups
+    entrypoint: >
+      sh -c '
+        while true; do
+          STAMP=$$(date +%Y%m%d_%H%M%S)
+          pg_dump -Fc > /backups/sacms_$$STAMP.dump
+          ls -t /backups/sacms_*.dump | tail -n +8 | xargs rm -f 2>/dev/null
+          echo "[$$STAMP] Backup complete"
+          sleep 86400
+        done
+      '
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:

@@ -675,3 +675,46 @@ enum ContentStatus {
   ARCHIVED
   REJECTED
 }
+
+// ─── Enterprise Self-Hosting ────────────────────────────────────────────
+
+model EnterpriseLicense {
+  id              String   @id @default(cuid())
+  licenseKey      String   @unique
+  customerName    String
+  customerEmail   String?
+  customerPhone   String?
+  organization    String?
+  type            String   @default("enterprise") // enterprise | partner | trial
+  features        Json?    // ["self-host", "unlimited-workspaces", ...]
+  maxInstances    Int      @default(1)
+  issuedAt        DateTime @default(now())
+  expiresAt       DateTime
+  lastValidatedAt DateTime?
+  validatedCount  Int      @default(0)
+  status          String   @default("active")  // active | expired | revoked
+  metadata        Json?
+  createdBy       String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([licenseKey, status])
+  @@index([expiresAt])
+  @@map("enterprise_licenses")
+}
+
+model LicenseCache {
+  id              String   @id @default("local-license")
+  licenseKey      String
+  customerName    String
+  customerEmail   String?
+  type            String
+  features        Json?
+  issuedAt        DateTime
+  expiresAt       DateTime
+  lastValidatedAt DateTime
+  status          String
+  updatedAt       DateTime @updatedAt
+
+  @@map("license_cache")
+}

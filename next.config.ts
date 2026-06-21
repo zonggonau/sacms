@@ -33,6 +33,7 @@ const nextConfig: NextConfig = {
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
+    "sacms.cloud",
     "wherever-attendance-mae-scenic.trycloudflare.com",
     "*.trycloudflare.com",
     ...getTunnelOrigins(),

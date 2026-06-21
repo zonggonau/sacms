@@ -65,7 +65,12 @@ export async function triggerWebhooks(
     // This allows the main response to be sent immediately while hooks finish
     waitUntil(
       Promise.all(
-        matchingWebhooks.map((webhook) => fireWebhook(webhook, payload))
+        matchingWebhooks.map((webhook) => fireWebhook({
+          id: webhook.id,
+          url: webhook.url,
+          secret: webhook.secret,
+          headers: String(webhook.headers || ""),
+        }, payload))
       )
     )
   } catch (error) {

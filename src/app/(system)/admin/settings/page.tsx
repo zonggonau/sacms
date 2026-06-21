@@ -24,6 +24,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from "@/components/ui/tabs"
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
@@ -138,9 +144,24 @@ export default function AdminSettingsPage() {
             </Button>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            
-            {/* Left Column: Form Settings */}
+          <Tabs defaultValue="general" className="w-full">
+            <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex h-auto mb-6">
+              <TabsTrigger value="general" className="text-xs sm:text-sm py-2">
+                <Globe className="w-4 h-4 mr-2" />
+                General
+              </TabsTrigger>
+              <TabsTrigger value="security" className="text-xs sm:text-sm py-2">
+                <Shield className="w-4 h-4 mr-2" />
+                Security
+              </TabsTrigger>
+              <TabsTrigger value="system" className="text-xs sm:text-sm py-2">
+                <Server className="w-4 h-4 mr-2" />
+                System
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="general">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
               
               {/* Maintenance Mode Card */}
@@ -209,7 +230,13 @@ export default function AdminSettingsPage() {
                 </CardContent>
               </Card>
 
-              {/* Registration & Security */}
+            </div>
+            </div>
+            </TabsContent>
+
+            <TabsContent value="security">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
               <Card className="border-none shadow-sm">
                 <CardHeader>
                   <CardTitle className="text-lg font-bold flex items-center gap-2">
@@ -235,9 +262,12 @@ export default function AdminSettingsPage() {
                 </CardContent>
               </Card>
             </div>
+            </div>
+            </TabsContent>
 
-            {/* Right Column: Platform Limits & Info */}
-            <div className="space-y-6">
+            <TabsContent value="system">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
               
               {/* Tenant Defaults */}
               <Card className="border-none shadow-sm">
@@ -357,6 +387,8 @@ export default function AdminSettingsPage() {
               </div>
             </div>
           </div>
+          </TabsContent>
+          </Tabs>
         </div>
       </div>
     </div>

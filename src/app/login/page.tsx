@@ -7,7 +7,8 @@ import { signIn } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Database, Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Logo } from "@/components/ui/logo"
 import { useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
@@ -21,6 +22,22 @@ export default function LoginPage() {
     email: "",
     password: "",
   })
+
+  // Check if this is the first user (no users in system)
+  useEffect(() => {
+    const checkFirstUser = async () => {
+      try {
+        const res = await fetch("/api/auth/check-first-user")
+        const data = await res.json()
+        if (data.isFirstUser) {
+          router.push("/register")
+        }
+      } catch (err) {
+        console.error("Error checking first user:", err)
+      }
+    }
+    checkFirstUser()
+  }, [router])
 
   // Handle redirects from email verification
   useEffect(() => {
@@ -77,7 +94,10 @@ export default function LoginPage() {
       const sessionData = await sessionRes.json()
       const user = sessionData?.user
 
-      if (user?.role === "super_admin") {
+      const redirectTo = searchParams.get("redirect_to") || ""
+      if (redirectTo) {
+        router.push(redirectTo)
+      } else if (user?.role === "super_admin") {
         router.push("/admin")
       } else if (user?.role === "admin") {
         router.push("/dashboard")
@@ -116,11 +136,8 @@ export default function LoginPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-primary/5">
           <div className="flex flex-col items-center mb-10">
-            <Link href="/" className="flex items-center gap-3 mb-8 group">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20 group-hover:scale-105 transition-transform duration-300">
-                <Database className="w-6 h-6 text-white" />
-              </div>
-              <span className="text-2xl font-black tracking-tight group-hover:text-primary transition-colors">SaCMS</span>
+            <Link href="/" className="inline-block mb-8">
+              <Logo iconSize="lg" showText={true} useOrange={true} />
             </Link>
             <h1 className="text-3xl font-black tracking-tight mb-2">Selamat Datang</h1>
             <p className="text-sm font-medium text-muted-foreground text-center">

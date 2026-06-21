@@ -298,7 +298,8 @@ export default function NewGlobalContentTypePage() {
 
   if (status === "loading") return <div className="flex items-center justify-center flex-1 flex-col w-full"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
 
-  if (session?.user?.role !== "super_admin") {
+  const adminRoles = ["super_admin", "admin", "employee", "karyawan"]
+  if (!session?.user || !adminRoles.includes(session.user.role)) {
     router.push("/dashboard")
     return null
   }

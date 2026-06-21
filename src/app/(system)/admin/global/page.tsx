@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import {
   Loader2, Globe, RefreshCw, CheckCircle2,
-  Database, Zap, FileText, ExternalLink, LayoutDashboard,
+  Database, Zap, FileText, ExternalLink, LayoutDashboard, Edit,
 } from "lucide-react"
 
 interface ContentTypeSummary {

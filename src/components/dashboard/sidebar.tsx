@@ -1,9 +1,10 @@
 "use client"
 
 import { useParams, usePathname } from "next/navigation"
-import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Collapsible,

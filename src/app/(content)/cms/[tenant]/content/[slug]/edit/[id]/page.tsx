@@ -132,9 +132,9 @@ export default function CMSEditEntryPage() {
       if (entData && !entData.error && entData.entry) {
         const data = entData
         const entry = data.entry
-        setEntryStatus(entry.status)
-        setPersistedStatus(entry.status)
-        setScheduledAt(entry.scheduledAt ? new Date(entry.scheduledAt) : undefined)
+        setEntryStatus(entry!.status)
+        setPersistedStatus(entry!.status)
+        setScheduledAt(entry!.scheduledAt ? new Date(entry!.scheduledAt) : undefined)
         // Only update locale if it's explicitly returned from server
         // to avoid infinite loops if the state differs
         if (data.isNewTranslation) {
@@ -144,11 +144,11 @@ export default function CMSEditEntryPage() {
           })
         }
         
-        let parsedData = entry.data
-        if (typeof entry.data === 'string') {
-          try { parsedData = JSON.parse(entry.data) } catch { parsedData = {} }
+        let parsedData = entry!.data
+        if (typeof entry!.data === 'string') {
+          try { parsedData = JSON.parse(entry!.data) } catch { parsedData = {} }
         }
-        setFormData(parsedData || {})
+        setFormData((parsedData || {}) as Record<string, unknown>)
       }
       if (locRes.ok) {
         const data = await locRes.json()
@@ -164,6 +164,24 @@ export default function CMSEditEntryPage() {
   useEffect(() => {
     if (status === "authenticated") fetchData()
   }, [fetchData, status])
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+S / Cmd+S → Save
+      if ((e.metaKey || e.ctrlKey) && e.key === "s") {
+        e.preventDefault()
+        handleSave(false)
+      }
+      // Ctrl+Shift+P / Cmd+Shift+P → Publish
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === "p") {
+        e.preventDefault()
+        handleSave(true)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [])
 
   const handleSave = async (publishNow: boolean = false) => {
     setSaving(true)
@@ -391,6 +409,7 @@ export default function CMSEditEntryPage() {
             >
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
               Save & Publish
+              <kbd className="ml-2 text-[10px] bg-zinc-800/50 dark:bg-zinc-200/50 px-1.5 py-0.5 rounded font-mono">⌘⇧P</kbd>
             </Button>}
           </div>
         </div>
@@ -475,6 +494,7 @@ export default function CMSEditEntryPage() {
                 >
                   {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
                   Update Entry
+                  <kbd className="ml-2 text-[10px] bg-muted/50 px-1.5 py-0.5 rounded font-mono">⌘S</kbd>
                 </Button>
               </CardContent>
             </Card>

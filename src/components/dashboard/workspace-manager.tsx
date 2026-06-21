@@ -34,6 +34,7 @@ import { deleteTenantAction } from "@/actions/tenant"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { WorkspaceCreationDialog } from "./workspace-creation-dialog"
+import { EnterpriseLicenseBanner } from "./enterprise-license-banner"
 
 interface Tenant {
   id: string
@@ -106,6 +107,8 @@ export function WorkspaceManager({
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
+      <EnterpriseLicenseBanner />
+
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-3xl font-bold tracking-tight">Your Workspaces</h2>

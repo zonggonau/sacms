@@ -16,6 +16,24 @@ export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
 
+  // ==================== FIRST USER REDIRECT ====================
+  // If no users exist, redirect /login and / to /register
+  const firstUserPaths = ["/login", "/"]
+  if (firstUserPaths.includes(pathname) && !pathname.startsWith("/api/")) {
+    try {
+      const checkUrl = `http://localhost:3000/api/auth/check-first-user`
+      const res = await fetch(checkUrl, { signal: AbortSignal.timeout(3000) })
+      if (res.ok) {
+        const data = await res.json()
+        if (data.isFirstUser) {
+          return NextResponse.redirect(new URL("/register", request.url))
+        }
+      }
+    } catch {
+      // Fail silently — let the page render normally
+    }
+  }
+
   // ==================== RATE LIMITING ====================
   // Apply rate limiting to all API routes with appropriate configs
   if (pathname.startsWith("/api/public/")) {

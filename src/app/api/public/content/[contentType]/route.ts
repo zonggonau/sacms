@@ -103,7 +103,7 @@ export async function GET(
     // Verify it is a global content type (or explicitly allowed for global access)
     // We'll allow access if it's explicitly published and exists in the global/system context
     // or if it's explicitly assigned to the system tenant
-    const isGlobal = contentType.tenantId === null || contentType.tenants.some(t => t.tenant.slug === SYSTEM_TENANT_SLUG || t.tenant.slug === "system")
+    const isGlobal = contentType.tenantId === null || contentType.tenants.some(t => t.tenant?.slug === SYSTEM_TENANT_SLUG || t.tenant?.slug === "system")
     
     // For now, let's just ensure it exists and is published
     if (!contentType.isPublished) {

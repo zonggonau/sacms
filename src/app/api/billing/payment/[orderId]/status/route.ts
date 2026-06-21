@@ -78,16 +78,19 @@ export async function GET(
             })
 
             // Update user or tenant plan
-            if (orderId.startsWith("SUB") && transaction.subscription.tenantId) {
-              await db.tenant.update({
-                where: { id: transaction.subscription.tenantId },
-                data: { plan: transaction.subscription.plan },
-              })
-            } else if (orderId.startsWith("ACC") && transaction.subscription.userId) {
-              await db.user.update({
-                where: { id: transaction.subscription.userId },
-                data: { plan: transaction.subscription.plan },
-              })
+            const sub = transaction.subscription
+            if (sub) {
+              if (orderId.startsWith("SUB") && sub.tenantId) {
+                await db.tenant.update({
+                  where: { id: sub.tenantId },
+                  data: { plan: sub.plan },
+                })
+              } else if (orderId.startsWith("ACC") && sub.userId) {
+                await db.user.update({
+                  where: { id: sub.userId },
+                  data: { plan: sub.plan },
+                })
+              }
             }
           }
 

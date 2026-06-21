@@ -585,6 +585,41 @@ exports.Prisma.TenantLocaleScalarFieldEnum = {
   isEnabled: 'isEnabled'
 };
 
+exports.Prisma.EnterpriseLicenseScalarFieldEnum = {
+  id: 'id',
+  licenseKey: 'licenseKey',
+  customerName: 'customerName',
+  customerEmail: 'customerEmail',
+  customerPhone: 'customerPhone',
+  organization: 'organization',
+  type: 'type',
+  features: 'features',
+  maxInstances: 'maxInstances',
+  issuedAt: 'issuedAt',
+  expiresAt: 'expiresAt',
+  lastValidatedAt: 'lastValidatedAt',
+  validatedCount: 'validatedCount',
+  status: 'status',
+  metadata: 'metadata',
+  createdBy: 'createdBy',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.LicenseCacheScalarFieldEnum = {
+  id: 'id',
+  licenseKey: 'licenseKey',
+  customerName: 'customerName',
+  customerEmail: 'customerEmail',
+  type: 'type',
+  features: 'features',
+  issuedAt: 'issuedAt',
+  expiresAt: 'expiresAt',
+  lastValidatedAt: 'lastValidatedAt',
+  status: 'status',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -661,7 +696,9 @@ exports.Prisma.ModelName = {
   Webhook: 'Webhook',
   WebhookLog: 'WebhookLog',
   WebhookDeadLetter: 'WebhookDeadLetter',
-  TenantLocale: 'TenantLocale'
+  TenantLocale: 'TenantLocale',
+  EnterpriseLicense: 'EnterpriseLicense',
+  LicenseCache: 'LicenseCache'
 };
 
 /**

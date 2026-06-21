@@ -1,0 +1,66 @@
+/**
+ * POST /api/admin/license/generate
+ * Generate a new enterprise license key (admin only)
+ */
+import crypto from "crypto"
+import { NextRequest, NextResponse } from "next/server"
+import { db } from "@/lib/database"
+import { generateLicenseKey } from "@/lib/license"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+
+export async function POST(request: NextRequest) {
+  try {
+    const session = await getServerSession(authOptions)
+    const adminRoles = ["super_admin", "admin", "employee", "karyawan"]
+    if (!session?.user || !adminRoles.includes(session.user.role)) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
+    }
+
+    const body = await request.json()
+    const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features } = body
+
+    if (!customerName || !expiresAt) {
+      return NextResponse.json({ error: "customerName and expiresAt are required" }, { status: 400 })
+    }
+
+    const expDate = new Date(expiresAt)
+
+    // Generate license key
+    const licenseKey = generateLicenseKey({
+      sub: `ent_${crypto.randomUUID().slice(0, 8)}`,
+      name: customerName,
+      email: customerEmail,
+      org: organization,
+      type: type as "enterprise" | "partner" | "trial",
+      features: features || ["self-host", "unlimited-workspaces"],
+      exp: Math.floor(expDate.getTime() / 1000),
+    })
+
+    // Store in DB
+    const license = await db.enterpriseLicense.create({
+      data: {
+        licenseKey,
+        customerName,
+        customerEmail,
+        organization,
+        type,
+        features: features || ["self-host", "unlimited-workspaces"],
+        expiresAt: expDate,
+        createdBy: session.user.email,
+      },
+    })
+
+    return NextResponse.json({
+      id: license.id,
+      licenseKey,
+      customerName: license.customerName,
+      customerEmail: license.customerEmail,
+      type: license.type,
+      expiresAt: license.expiresAt,
+    })
+  } catch (err) {
+    console.error("Error generating license:", err)
+    return NextResponse.json({ error: "Failed to generate license" }, { status: 500 })
+  }
+}

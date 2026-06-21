@@ -1,9 +1,10 @@
 "use client"
 
-import { useParams, usePathname } from "next/navigation"
 import { usePathname } from "next/navigation"
+import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
+import { Logo } from "@/components/ui/logo"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import {
   Collapsible,
@@ -174,10 +175,10 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
                       variant="ghost"
                       className={cn(
                         "w-full justify-start gap-2",
-                        isActive && "bg-muted"
+                        isActive && "bg-muted text-foreground font-semibold"
                       )}
                     >
-                      <item.icon className="h-4 w-4" />
+                      <item.icon className={cn("h-4 w-4", isActive && "text-orange-500")} />
                       {item.title}
                       <ChevronDown
                         className={cn(
@@ -210,16 +211,17 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
 
             return (
               <Link key={item.title} href={getHref(item.href)} onClick={() => setMobileOpen(false)}>
-                <Button
-                  variant="ghost"
+                <div
                   className={cn(
-                    "w-full justify-start gap-2",
-                    isActive && "bg-muted font-medium"
+                    "flex items-center gap-3 px-2 py-2 text-sm transition-colors",
+                    isActive
+                      ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
                   )}
                 >
-                  <item.icon className="h-4 w-4" />
-                  {item.title}
-                </Button>
+                  <item.icon className={cn("h-4 w-4 shrink-0", isActive && "text-orange-500")} />
+                  <span className="truncate">{item.title}</span>
+                </div>
               </Link>
             )
           })}

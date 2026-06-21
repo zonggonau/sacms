@@ -1,7 +1,7 @@
 import { LandingHeader } from "@/components/landing/header"
 import { ModernLanding } from "@/components/landing/modern-landing"
 import { WhatsAppButton } from "@/components/landing/whatsapp-button"
-import { fetchCollection, fetchSingle } from "@/lib/sacms-client"
+import { db } from "@/lib/database"
 
 export const dynamic = "force-dynamic"
 
@@ -37,49 +37,49 @@ async function getLandingData() {
     const proto = headersList.get("x-forwarded-proto") || "http";
     const baseUrl = `${proto}://${host}`;
 
-    console.log(`[Landing] Fetching data from ${baseUrl}...`);
+    console.log(`[Landing] Fetching data from database...`);
     
-    // Fetch all required data concurrently from the REST API
-    const [
-      heroRes,
-      features,
-      addons,
-      workflow,
-      faq,
-      whatsappRes,
-      aboutRes,
-      owners,
-      testimonials,
-      workspacePlans,
-      accountPlans,
-      sectors,
-      localPrideRes,
-      ctaRes,
-      footerRes
-    ] = await Promise.all([
-      fetchCollection("sacms-hero", "", baseUrl),
-      fetchCollection("sacms-features", "sort=createdAt:asc", baseUrl),
-      fetchCollection("sacms-addons", "sort=price:asc", baseUrl),
-      fetchCollection("sacms-workflow", "sort=step:asc", baseUrl),
-      fetchCollection("sacms-faq", "sort=order:asc", baseUrl),
-      fetchCollection("sacms-whatsapp", "", baseUrl),
-      fetchCollection("sacms-about", "", baseUrl),
-      fetchCollection("sacms-owners", "", baseUrl),
-      fetchCollection("sacms-testimonials", "", baseUrl),
-      fetchGlobalPlans("workspace"),
-      fetchGlobalPlans("account"),
-      fetchCollection("sacms-sectors", "", baseUrl),
-      fetchCollection("sacms-local-pride", "", baseUrl),
-      fetchCollection("sacms-cta", "", baseUrl),
-      fetchCollection("sacms-footer", "", baseUrl)
-    ]);
+  // Fetch data directly from database (server-side, bypasses public API auth)
+  const [
+    heroST,
+    features,
+    addons,
+    workflow,
+    faq,
+    whatsappST,
+    aboutST,
+    owners,
+    testimonials,
+    workspacePlans,
+    accountPlans,
+    sectors,
+    localPrideST,
+    ctaST,
+    footerST
+  ] = await Promise.all([
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-hero" } }, include: { singleType: true } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-features" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-addons" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-workflow" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-faq" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-whatsapp" } } }),
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-about" } } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-owners" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-testimonials" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    fetchGlobalPlans("workspace"),
+    fetchGlobalPlans("account"),
+    db.contentEntry.findMany({ where: { tenantId: null, contentType: { slug: "sacms-sectors" }, status: "PUBLISHED" }, orderBy: { createdAt: "asc" } }),
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-local-pride" } } }),
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-cta" } } }),
+    db.tenantSingleTypeAssignment.findFirst({ where: { tenantId: null, singleType: { slug: "sacms-footer" } } }),
+  ]);
 
-    const hero = heroRes?.[0] || null;
-    const whatsapp = whatsappRes?.[0] || null;
-    const about = aboutRes?.[0] || null;
-    const localPride = localPrideRes?.[0] || null;
-    const cta = ctaRes?.[0] || null;
-    const footer = footerRes?.[0] || null;
+    const hero = heroST?.data as any || null;
+    const whatsapp = whatsappST?.data as any || null;
+    const about = aboutST?.data as any || null;
+    const localPride = localPrideST?.data as any || null;
+    const cta = ctaST?.data as any || null;
+    const footer = footerST?.data as any || null;
 
     console.log(`[Landing] Hero: ${hero ? 'OK' : 'Empty'}`);
     console.log(`[Landing] Features: ${features?.length || 0}`);
@@ -87,17 +87,17 @@ async function getLandingData() {
 
     return {
       hero,
-      features,
+      features: (features || []).map(f => f.data as any),
       pricingAccounts: accountPlans,
       pricingWorkspaces: workspacePlans,
-      addons,
-      workflow,
-      faq,
+      addons: (addons || []).map(f => f.data as any),
+      workflow: (workflow || []).map(f => f.data as any),
+      faq: (faq || []).map(f => f.data as any),
       whatsapp,
       about,
-      owners,
-      testimonials,
-      sectors,
+      owners: (owners || []).map(f => f.data as any),
+      testimonials: (testimonials || []).map(f => f.data as any),
+      sectors: (sectors || []).map(f => f.data as any),
       localPride,
       cta,
       footer

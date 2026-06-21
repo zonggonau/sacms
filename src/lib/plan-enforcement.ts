@@ -1,13 +1,17 @@
 import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
+import { isEnterpriseMode } from "./license"
 
 /**
  * Plan Enforcement Module
- * 
+ *
  * Centralizes all plan limit checks for both User and Workspace plans.
  * Supports custom plan overrides via the CustomPlanOverride table.
- * 
+ *
+ * ENTERPRISE MODE: If this instance is running under a valid enterprise license,
+ * ALL plan limits are bypassed (unlimited workspaces, team, storage, etc.)
+ *
  * Usage:
  *   const result = await enforcePlanLimit(tenantId, "content_types")
  *   if (!result.allowed) return NextResponse.json({ error: result.message }, { status: 403 })
@@ -35,17 +39,44 @@ export interface EnforcementResult {
   planSlug: string
 }
 
+// ==================== ENTERPRISE BYPASS ====================
+
+/**
+ * Check if enterprise mode is active and return a bypass result if so.
+ */
+async function enterpriseBypass(): Promise<EnforcementResult | null> {
+  try {
+    const enterprise = await isEnterpriseMode()
+    if (enterprise) {
+      return {
+        allowed: true,
+        current: 0,
+        max: 999999,
+        planSlug: "enterprise",
+        message: "Enterprise Self-Hosted — Unlimited",
+      }
+    }
+  } catch {
+    // If license check fails, continue to normal limits
+  }
+  return null
+}
+
 // ==================== WORKSPACE PLAN ENFORCEMENT ====================
 
 /**
  * Check if a workspace has capacity for a specific resource.
- * Considers: super admin bypass -> base plan limits -> custom overrides -> current usage.
+ * Considers: enterprise bypass -> super admin bypass -> base plan limits -> custom overrides -> current usage.
  */
 export async function enforcePlanLimit(
   tenantId: string,
   resource: WorkspaceResource,
   userId?: string
 ): Promise<EnforcementResult> {
+  // 0. Enterprise Mode Bypass (entire instance is unlimited)
+  const bypass = await enterpriseBypass()
+  if (bypass) return bypass
+
   // 1. Super Admin Bypass
   if (userId) {
     const user = await db.user.findUnique({
@@ -66,93 +97,26 @@ export async function enforcePlanLimit(
   // 2. Get base plan config
   const planConfig = await getTenantPlanConfig(tenantId)
 
-  // 2. Get custom overrides (if any)
+  // 3. Get custom overrides (if any)
   const override = await getWorkspaceOverride(tenantId)
 
-  // 3. Calculate effective max
+  // 4. Calculate effective max
   const effectiveMax = getEffectiveWorkspaceMax(planConfig, override, resource)
 
-  // 4. Get current usage
+  // 5. Get current usage
   const currentUsage = await getWorkspaceUsage(tenantId, resource)
 
-  // 5. Check
+  // 6. Check
   const allowed = currentUsage < effectiveMax
 
   return {
     allowed,
     current: currentUsage,
     max: effectiveMax,
-    planSlug: planConfig.plan_slug,
+    planSlug: planConfig.slug,
     message: allowed
-      ? `OK — ${resource}: ${currentUsage}/${effectiveMax}`
-      : `Plan limit reached. Your ${planConfig.plan_slug} plan allows max ${effectiveMax} ${formatResourceName(resource)}. Current: ${currentUsage}.`,
-  }
-}
-
-/**
- * Get the current usage of a workspace resource.
- */
-async function getWorkspaceUsage(
-  tenantId: string,
-  resource: WorkspaceResource
-): Promise<number> {
-  // Resolve tenant slug for getTenantDb
-  const tenant = await db.tenant.findUnique({
-    where: { id: tenantId },
-    select: { slug: true },
-  })
-  if (!tenant) return 0
-
-  const tenantDb = await getTenantDb(tenant.slug)
-
-  switch (resource) {
-    case "content_types": {
-      return tenantDb.contentType.count({
-        where: { tenantId },
-      })
-    }
-
-    case "content_entries": {
-      return tenantDb.contentEntry.count({
-        where: { tenantId },
-      })
-    }
-
-    case "team_members": {
-      return db.tenantMember.count({
-        where: { tenantId },
-      })
-    }
-
-    case "storage": {
-      const result = await tenantDb.media.aggregate({
-        where: { tenantId },
-        _sum: { size: true },
-      })
-      // Return in MB for comparison with plan config
-      return Math.ceil((result._sum.size || 0) / (1024 * 1024))
-    }
-
-    case "locales": {
-      return db.tenantLocale.count({
-        where: { tenantId },
-      })
-    }
-
-    case "api_calls": {
-      // Count API calls in current billing period (last 30 days)
-      const thirtyDaysAgo = new Date()
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
-      return db.apiRequest.count({
-        where: {
-          tenantId,
-          createdAt: { gte: thirtyDaysAgo },
-        },
-      })
-    }
-
-    default:
-      return 0
+      ? "OK"
+      : `Limit reached: ${resource} (${currentUsage}/${effectiveMax}). Upgrade your plan or contact support.`,
   }
 }
 
@@ -192,6 +156,10 @@ export async function enforceUserPlanLimit(
   userId: string,
   resource: UserResource
 ): Promise<EnforcementResult> {
+  // 0. Enterprise Mode Bypass
+  const bypass = await enterpriseBypass()
+  if (bypass) return bypass
+
   // 1. Super Admin Bypass
   const user = await db.user.findUnique({
     where: { id: userId },
@@ -272,9 +240,9 @@ export function validateWorkspacePlanBinding(
 
   // Fallback for unknown plans
   if (userIdx === -1 || wsIdx === -1) {
-    return { 
-      allowed: userPlanSlug === "enterprise" || userPlanSlug === "custom", 
-      message: "Invalid plan combination." 
+    return {
+      allowed: userPlanSlug === "enterprise" || userPlanSlug === "custom",
+      message: "Invalid plan combination."
     }
   }
 
@@ -288,6 +256,42 @@ export function validateWorkspacePlanBinding(
   }
 
   return { allowed: true, message: "OK" }
+}
+
+// ==================== WORKSPACE USAGE ====================
+
+async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource): Promise<number> {
+  try {
+    switch (resource) {
+      case "content_types":
+        return db.contentType.count({ where: { tenantId } })
+      case "content_entries":
+        return db.contentEntry.count({ where: { tenantId } })
+      case "team_members":
+        return db.tenantMember.count({ where: { tenantId, role: { not: "owner" } } })
+      case "storage": {
+        // Sum of all media files sizes for this tenant
+        const result = await db.media.aggregate({
+          where: { tenantId },
+          _sum: { fileSize: true },
+        })
+        return result._sum.fileSize || 0
+      }
+      case "locales":
+        return db.tenantLocale.count({ where: { tenantId, isEnabled: true } })
+      case "api_calls":
+        return db.apiRequest.count({
+          where: {
+            tenantId,
+            createdAt: { gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+          },
+        })
+      default:
+        return 0
+    }
+  } catch {
+    return 0
+  }
 }
 
 // ==================== CUSTOM PLAN OVERRIDES ====================

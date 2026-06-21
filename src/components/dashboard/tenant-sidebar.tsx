@@ -253,13 +253,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
                     >
                       <div
                         className={cn(
-                          "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition-all duration-200 group",
+                          "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition-colors group",
                           active
-                            ? "bg-primary text-primary-foreground shadow-none shadow-primary/20 font-bold"
-                            : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                            ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
+                            : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
                         )}
                       >
-                        <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110", active ? "text-primary-foreground" : "text-muted-foreground")} />
+                        <item.icon className={cn("h-4 w-4 shrink-0", active ? "text-orange-500" : "text-muted-foreground")} />
                         <span className="truncate">{item.title}</span>
                         {item.badge && (
                           <Badge variant="secondary" className="ml-auto text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700">{item.badge}</Badge>

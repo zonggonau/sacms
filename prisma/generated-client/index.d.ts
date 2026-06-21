@@ -198,6 +198,16 @@ export type WebhookDeadLetter = $Result.DefaultSelection<Prisma.$WebhookDeadLett
  * 
  */
 export type TenantLocale = $Result.DefaultSelection<Prisma.$TenantLocalePayload>
+/**
+ * Model EnterpriseLicense
+ * 
+ */
+export type EnterpriseLicense = $Result.DefaultSelection<Prisma.$EnterpriseLicensePayload>
+/**
+ * Model LicenseCache
+ * 
+ */
+export type LicenseCache = $Result.DefaultSelection<Prisma.$LicenseCachePayload>
 
 /**
  * Enums
@@ -708,6 +718,26 @@ export class PrismaClient<
     * ```
     */
   get tenantLocale(): Prisma.TenantLocaleDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.enterpriseLicense`: Exposes CRUD operations for the **EnterpriseLicense** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more EnterpriseLicenses
+    * const enterpriseLicenses = await prisma.enterpriseLicense.findMany()
+    * ```
+    */
+  get enterpriseLicense(): Prisma.EnterpriseLicenseDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.licenseCache`: Exposes CRUD operations for the **LicenseCache** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more LicenseCaches
+    * const licenseCaches = await prisma.licenseCache.findMany()
+    * ```
+    */
+  get licenseCache(): Prisma.LicenseCacheDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1185,7 +1215,9 @@ export namespace Prisma {
     Webhook: 'Webhook',
     WebhookLog: 'WebhookLog',
     WebhookDeadLetter: 'WebhookDeadLetter',
-    TenantLocale: 'TenantLocale'
+    TenantLocale: 'TenantLocale',
+    EnterpriseLicense: 'EnterpriseLicense',
+    LicenseCache: 'LicenseCache'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1204,7 +1236,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "permission" | "rolePermission" | "tenantRole" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale"
+      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "permission" | "rolePermission" | "tenantRole" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -3946,6 +3978,154 @@ export namespace Prisma {
           }
         }
       }
+      EnterpriseLicense: {
+        payload: Prisma.$EnterpriseLicensePayload<ExtArgs>
+        fields: Prisma.EnterpriseLicenseFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.EnterpriseLicenseFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.EnterpriseLicenseFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          findFirst: {
+            args: Prisma.EnterpriseLicenseFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.EnterpriseLicenseFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          findMany: {
+            args: Prisma.EnterpriseLicenseFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>[]
+          }
+          create: {
+            args: Prisma.EnterpriseLicenseCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          createMany: {
+            args: Prisma.EnterpriseLicenseCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.EnterpriseLicenseCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>[]
+          }
+          delete: {
+            args: Prisma.EnterpriseLicenseDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          update: {
+            args: Prisma.EnterpriseLicenseUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          deleteMany: {
+            args: Prisma.EnterpriseLicenseDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.EnterpriseLicenseUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.EnterpriseLicenseUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>[]
+          }
+          upsert: {
+            args: Prisma.EnterpriseLicenseUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$EnterpriseLicensePayload>
+          }
+          aggregate: {
+            args: Prisma.EnterpriseLicenseAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateEnterpriseLicense>
+          }
+          groupBy: {
+            args: Prisma.EnterpriseLicenseGroupByArgs<ExtArgs>
+            result: $Utils.Optional<EnterpriseLicenseGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.EnterpriseLicenseCountArgs<ExtArgs>
+            result: $Utils.Optional<EnterpriseLicenseCountAggregateOutputType> | number
+          }
+        }
+      }
+      LicenseCache: {
+        payload: Prisma.$LicenseCachePayload<ExtArgs>
+        fields: Prisma.LicenseCacheFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.LicenseCacheFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.LicenseCacheFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          findFirst: {
+            args: Prisma.LicenseCacheFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.LicenseCacheFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          findMany: {
+            args: Prisma.LicenseCacheFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>[]
+          }
+          create: {
+            args: Prisma.LicenseCacheCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          createMany: {
+            args: Prisma.LicenseCacheCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.LicenseCacheCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>[]
+          }
+          delete: {
+            args: Prisma.LicenseCacheDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          update: {
+            args: Prisma.LicenseCacheUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          deleteMany: {
+            args: Prisma.LicenseCacheDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.LicenseCacheUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.LicenseCacheUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>[]
+          }
+          upsert: {
+            args: Prisma.LicenseCacheUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$LicenseCachePayload>
+          }
+          aggregate: {
+            args: Prisma.LicenseCacheAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateLicenseCache>
+          }
+          groupBy: {
+            args: Prisma.LicenseCacheGroupByArgs<ExtArgs>
+            result: $Utils.Optional<LicenseCacheGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.LicenseCacheCountArgs<ExtArgs>
+            result: $Utils.Optional<LicenseCacheCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -4079,6 +4259,8 @@ export namespace Prisma {
     webhookLog?: WebhookLogOmit
     webhookDeadLetter?: WebhookDeadLetterOmit
     tenantLocale?: TenantLocaleOmit
+    enterpriseLicense?: EnterpriseLicenseOmit
+    licenseCache?: LicenseCacheOmit
   }
 
   /* Types for Logging */
@@ -47967,6 +48149,2269 @@ export namespace Prisma {
 
 
   /**
+   * Model EnterpriseLicense
+   */
+
+  export type AggregateEnterpriseLicense = {
+    _count: EnterpriseLicenseCountAggregateOutputType | null
+    _avg: EnterpriseLicenseAvgAggregateOutputType | null
+    _sum: EnterpriseLicenseSumAggregateOutputType | null
+    _min: EnterpriseLicenseMinAggregateOutputType | null
+    _max: EnterpriseLicenseMaxAggregateOutputType | null
+  }
+
+  export type EnterpriseLicenseAvgAggregateOutputType = {
+    maxInstances: number | null
+    validatedCount: number | null
+  }
+
+  export type EnterpriseLicenseSumAggregateOutputType = {
+    maxInstances: number | null
+    validatedCount: number | null
+  }
+
+  export type EnterpriseLicenseMinAggregateOutputType = {
+    id: string | null
+    licenseKey: string | null
+    customerName: string | null
+    customerEmail: string | null
+    customerPhone: string | null
+    organization: string | null
+    type: string | null
+    maxInstances: number | null
+    issuedAt: Date | null
+    expiresAt: Date | null
+    lastValidatedAt: Date | null
+    validatedCount: number | null
+    status: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type EnterpriseLicenseMaxAggregateOutputType = {
+    id: string | null
+    licenseKey: string | null
+    customerName: string | null
+    customerEmail: string | null
+    customerPhone: string | null
+    organization: string | null
+    type: string | null
+    maxInstances: number | null
+    issuedAt: Date | null
+    expiresAt: Date | null
+    lastValidatedAt: Date | null
+    validatedCount: number | null
+    status: string | null
+    createdBy: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type EnterpriseLicenseCountAggregateOutputType = {
+    id: number
+    licenseKey: number
+    customerName: number
+    customerEmail: number
+    customerPhone: number
+    organization: number
+    type: number
+    features: number
+    maxInstances: number
+    issuedAt: number
+    expiresAt: number
+    lastValidatedAt: number
+    validatedCount: number
+    status: number
+    metadata: number
+    createdBy: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type EnterpriseLicenseAvgAggregateInputType = {
+    maxInstances?: true
+    validatedCount?: true
+  }
+
+  export type EnterpriseLicenseSumAggregateInputType = {
+    maxInstances?: true
+    validatedCount?: true
+  }
+
+  export type EnterpriseLicenseMinAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    customerPhone?: true
+    organization?: true
+    type?: true
+    maxInstances?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    validatedCount?: true
+    status?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type EnterpriseLicenseMaxAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    customerPhone?: true
+    organization?: true
+    type?: true
+    maxInstances?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    validatedCount?: true
+    status?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type EnterpriseLicenseCountAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    customerPhone?: true
+    organization?: true
+    type?: true
+    features?: true
+    maxInstances?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    validatedCount?: true
+    status?: true
+    metadata?: true
+    createdBy?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type EnterpriseLicenseAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which EnterpriseLicense to aggregate.
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EnterpriseLicenses to fetch.
+     */
+    orderBy?: EnterpriseLicenseOrderByWithRelationInput | EnterpriseLicenseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: EnterpriseLicenseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EnterpriseLicenses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EnterpriseLicenses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned EnterpriseLicenses
+    **/
+    _count?: true | EnterpriseLicenseCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: EnterpriseLicenseAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: EnterpriseLicenseSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: EnterpriseLicenseMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: EnterpriseLicenseMaxAggregateInputType
+  }
+
+  export type GetEnterpriseLicenseAggregateType<T extends EnterpriseLicenseAggregateArgs> = {
+        [P in keyof T & keyof AggregateEnterpriseLicense]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateEnterpriseLicense[P]>
+      : GetScalarType<T[P], AggregateEnterpriseLicense[P]>
+  }
+
+
+
+
+  export type EnterpriseLicenseGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: EnterpriseLicenseWhereInput
+    orderBy?: EnterpriseLicenseOrderByWithAggregationInput | EnterpriseLicenseOrderByWithAggregationInput[]
+    by: EnterpriseLicenseScalarFieldEnum[] | EnterpriseLicenseScalarFieldEnum
+    having?: EnterpriseLicenseScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: EnterpriseLicenseCountAggregateInputType | true
+    _avg?: EnterpriseLicenseAvgAggregateInputType
+    _sum?: EnterpriseLicenseSumAggregateInputType
+    _min?: EnterpriseLicenseMinAggregateInputType
+    _max?: EnterpriseLicenseMaxAggregateInputType
+  }
+
+  export type EnterpriseLicenseGroupByOutputType = {
+    id: string
+    licenseKey: string
+    customerName: string
+    customerEmail: string | null
+    customerPhone: string | null
+    organization: string | null
+    type: string
+    features: JsonValue | null
+    maxInstances: number
+    issuedAt: Date
+    expiresAt: Date
+    lastValidatedAt: Date | null
+    validatedCount: number
+    status: string
+    metadata: JsonValue | null
+    createdBy: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: EnterpriseLicenseCountAggregateOutputType | null
+    _avg: EnterpriseLicenseAvgAggregateOutputType | null
+    _sum: EnterpriseLicenseSumAggregateOutputType | null
+    _min: EnterpriseLicenseMinAggregateOutputType | null
+    _max: EnterpriseLicenseMaxAggregateOutputType | null
+  }
+
+  type GetEnterpriseLicenseGroupByPayload<T extends EnterpriseLicenseGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<EnterpriseLicenseGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof EnterpriseLicenseGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], EnterpriseLicenseGroupByOutputType[P]>
+            : GetScalarType<T[P], EnterpriseLicenseGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type EnterpriseLicenseSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    customerPhone?: boolean
+    organization?: boolean
+    type?: boolean
+    features?: boolean
+    maxInstances?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    validatedCount?: boolean
+    status?: boolean
+    metadata?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["enterpriseLicense"]>
+
+  export type EnterpriseLicenseSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    customerPhone?: boolean
+    organization?: boolean
+    type?: boolean
+    features?: boolean
+    maxInstances?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    validatedCount?: boolean
+    status?: boolean
+    metadata?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["enterpriseLicense"]>
+
+  export type EnterpriseLicenseSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    customerPhone?: boolean
+    organization?: boolean
+    type?: boolean
+    features?: boolean
+    maxInstances?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    validatedCount?: boolean
+    status?: boolean
+    metadata?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["enterpriseLicense"]>
+
+  export type EnterpriseLicenseSelectScalar = {
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    customerPhone?: boolean
+    organization?: boolean
+    type?: boolean
+    features?: boolean
+    maxInstances?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    validatedCount?: boolean
+    status?: boolean
+    metadata?: boolean
+    createdBy?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type EnterpriseLicenseOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "licenseKey" | "customerName" | "customerEmail" | "customerPhone" | "organization" | "type" | "features" | "maxInstances" | "issuedAt" | "expiresAt" | "lastValidatedAt" | "validatedCount" | "status" | "metadata" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["enterpriseLicense"]>
+
+  export type $EnterpriseLicensePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "EnterpriseLicense"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      licenseKey: string
+      customerName: string
+      customerEmail: string | null
+      customerPhone: string | null
+      organization: string | null
+      type: string
+      features: Prisma.JsonValue | null
+      maxInstances: number
+      issuedAt: Date
+      expiresAt: Date
+      lastValidatedAt: Date | null
+      validatedCount: number
+      status: string
+      metadata: Prisma.JsonValue | null
+      createdBy: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["enterpriseLicense"]>
+    composites: {}
+  }
+
+  type EnterpriseLicenseGetPayload<S extends boolean | null | undefined | EnterpriseLicenseDefaultArgs> = $Result.GetResult<Prisma.$EnterpriseLicensePayload, S>
+
+  type EnterpriseLicenseCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<EnterpriseLicenseFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: EnterpriseLicenseCountAggregateInputType | true
+    }
+
+  export interface EnterpriseLicenseDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['EnterpriseLicense'], meta: { name: 'EnterpriseLicense' } }
+    /**
+     * Find zero or one EnterpriseLicense that matches the filter.
+     * @param {EnterpriseLicenseFindUniqueArgs} args - Arguments to find a EnterpriseLicense
+     * @example
+     * // Get one EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends EnterpriseLicenseFindUniqueArgs>(args: SelectSubset<T, EnterpriseLicenseFindUniqueArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one EnterpriseLicense that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {EnterpriseLicenseFindUniqueOrThrowArgs} args - Arguments to find a EnterpriseLicense
+     * @example
+     * // Get one EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends EnterpriseLicenseFindUniqueOrThrowArgs>(args: SelectSubset<T, EnterpriseLicenseFindUniqueOrThrowArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first EnterpriseLicense that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseFindFirstArgs} args - Arguments to find a EnterpriseLicense
+     * @example
+     * // Get one EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends EnterpriseLicenseFindFirstArgs>(args?: SelectSubset<T, EnterpriseLicenseFindFirstArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first EnterpriseLicense that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseFindFirstOrThrowArgs} args - Arguments to find a EnterpriseLicense
+     * @example
+     * // Get one EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends EnterpriseLicenseFindFirstOrThrowArgs>(args?: SelectSubset<T, EnterpriseLicenseFindFirstOrThrowArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more EnterpriseLicenses that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all EnterpriseLicenses
+     * const enterpriseLicenses = await prisma.enterpriseLicense.findMany()
+     * 
+     * // Get first 10 EnterpriseLicenses
+     * const enterpriseLicenses = await prisma.enterpriseLicense.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const enterpriseLicenseWithIdOnly = await prisma.enterpriseLicense.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends EnterpriseLicenseFindManyArgs>(args?: SelectSubset<T, EnterpriseLicenseFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a EnterpriseLicense.
+     * @param {EnterpriseLicenseCreateArgs} args - Arguments to create a EnterpriseLicense.
+     * @example
+     * // Create one EnterpriseLicense
+     * const EnterpriseLicense = await prisma.enterpriseLicense.create({
+     *   data: {
+     *     // ... data to create a EnterpriseLicense
+     *   }
+     * })
+     * 
+     */
+    create<T extends EnterpriseLicenseCreateArgs>(args: SelectSubset<T, EnterpriseLicenseCreateArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many EnterpriseLicenses.
+     * @param {EnterpriseLicenseCreateManyArgs} args - Arguments to create many EnterpriseLicenses.
+     * @example
+     * // Create many EnterpriseLicenses
+     * const enterpriseLicense = await prisma.enterpriseLicense.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends EnterpriseLicenseCreateManyArgs>(args?: SelectSubset<T, EnterpriseLicenseCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many EnterpriseLicenses and returns the data saved in the database.
+     * @param {EnterpriseLicenseCreateManyAndReturnArgs} args - Arguments to create many EnterpriseLicenses.
+     * @example
+     * // Create many EnterpriseLicenses
+     * const enterpriseLicense = await prisma.enterpriseLicense.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many EnterpriseLicenses and only return the `id`
+     * const enterpriseLicenseWithIdOnly = await prisma.enterpriseLicense.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends EnterpriseLicenseCreateManyAndReturnArgs>(args?: SelectSubset<T, EnterpriseLicenseCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a EnterpriseLicense.
+     * @param {EnterpriseLicenseDeleteArgs} args - Arguments to delete one EnterpriseLicense.
+     * @example
+     * // Delete one EnterpriseLicense
+     * const EnterpriseLicense = await prisma.enterpriseLicense.delete({
+     *   where: {
+     *     // ... filter to delete one EnterpriseLicense
+     *   }
+     * })
+     * 
+     */
+    delete<T extends EnterpriseLicenseDeleteArgs>(args: SelectSubset<T, EnterpriseLicenseDeleteArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one EnterpriseLicense.
+     * @param {EnterpriseLicenseUpdateArgs} args - Arguments to update one EnterpriseLicense.
+     * @example
+     * // Update one EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends EnterpriseLicenseUpdateArgs>(args: SelectSubset<T, EnterpriseLicenseUpdateArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more EnterpriseLicenses.
+     * @param {EnterpriseLicenseDeleteManyArgs} args - Arguments to filter EnterpriseLicenses to delete.
+     * @example
+     * // Delete a few EnterpriseLicenses
+     * const { count } = await prisma.enterpriseLicense.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends EnterpriseLicenseDeleteManyArgs>(args?: SelectSubset<T, EnterpriseLicenseDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more EnterpriseLicenses.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many EnterpriseLicenses
+     * const enterpriseLicense = await prisma.enterpriseLicense.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends EnterpriseLicenseUpdateManyArgs>(args: SelectSubset<T, EnterpriseLicenseUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more EnterpriseLicenses and returns the data updated in the database.
+     * @param {EnterpriseLicenseUpdateManyAndReturnArgs} args - Arguments to update many EnterpriseLicenses.
+     * @example
+     * // Update many EnterpriseLicenses
+     * const enterpriseLicense = await prisma.enterpriseLicense.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more EnterpriseLicenses and only return the `id`
+     * const enterpriseLicenseWithIdOnly = await prisma.enterpriseLicense.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends EnterpriseLicenseUpdateManyAndReturnArgs>(args: SelectSubset<T, EnterpriseLicenseUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one EnterpriseLicense.
+     * @param {EnterpriseLicenseUpsertArgs} args - Arguments to update or create a EnterpriseLicense.
+     * @example
+     * // Update or create a EnterpriseLicense
+     * const enterpriseLicense = await prisma.enterpriseLicense.upsert({
+     *   create: {
+     *     // ... data to create a EnterpriseLicense
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the EnterpriseLicense we want to update
+     *   }
+     * })
+     */
+    upsert<T extends EnterpriseLicenseUpsertArgs>(args: SelectSubset<T, EnterpriseLicenseUpsertArgs<ExtArgs>>): Prisma__EnterpriseLicenseClient<$Result.GetResult<Prisma.$EnterpriseLicensePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of EnterpriseLicenses.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseCountArgs} args - Arguments to filter EnterpriseLicenses to count.
+     * @example
+     * // Count the number of EnterpriseLicenses
+     * const count = await prisma.enterpriseLicense.count({
+     *   where: {
+     *     // ... the filter for the EnterpriseLicenses we want to count
+     *   }
+     * })
+    **/
+    count<T extends EnterpriseLicenseCountArgs>(
+      args?: Subset<T, EnterpriseLicenseCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], EnterpriseLicenseCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a EnterpriseLicense.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends EnterpriseLicenseAggregateArgs>(args: Subset<T, EnterpriseLicenseAggregateArgs>): Prisma.PrismaPromise<GetEnterpriseLicenseAggregateType<T>>
+
+    /**
+     * Group by EnterpriseLicense.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {EnterpriseLicenseGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends EnterpriseLicenseGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: EnterpriseLicenseGroupByArgs['orderBy'] }
+        : { orderBy?: EnterpriseLicenseGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, EnterpriseLicenseGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetEnterpriseLicenseGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the EnterpriseLicense model
+   */
+  readonly fields: EnterpriseLicenseFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for EnterpriseLicense.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__EnterpriseLicenseClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the EnterpriseLicense model
+   */
+  interface EnterpriseLicenseFieldRefs {
+    readonly id: FieldRef<"EnterpriseLicense", 'String'>
+    readonly licenseKey: FieldRef<"EnterpriseLicense", 'String'>
+    readonly customerName: FieldRef<"EnterpriseLicense", 'String'>
+    readonly customerEmail: FieldRef<"EnterpriseLicense", 'String'>
+    readonly customerPhone: FieldRef<"EnterpriseLicense", 'String'>
+    readonly organization: FieldRef<"EnterpriseLicense", 'String'>
+    readonly type: FieldRef<"EnterpriseLicense", 'String'>
+    readonly features: FieldRef<"EnterpriseLicense", 'Json'>
+    readonly maxInstances: FieldRef<"EnterpriseLicense", 'Int'>
+    readonly issuedAt: FieldRef<"EnterpriseLicense", 'DateTime'>
+    readonly expiresAt: FieldRef<"EnterpriseLicense", 'DateTime'>
+    readonly lastValidatedAt: FieldRef<"EnterpriseLicense", 'DateTime'>
+    readonly validatedCount: FieldRef<"EnterpriseLicense", 'Int'>
+    readonly status: FieldRef<"EnterpriseLicense", 'String'>
+    readonly metadata: FieldRef<"EnterpriseLicense", 'Json'>
+    readonly createdBy: FieldRef<"EnterpriseLicense", 'String'>
+    readonly createdAt: FieldRef<"EnterpriseLicense", 'DateTime'>
+    readonly updatedAt: FieldRef<"EnterpriseLicense", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * EnterpriseLicense findUnique
+   */
+  export type EnterpriseLicenseFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter, which EnterpriseLicense to fetch.
+     */
+    where: EnterpriseLicenseWhereUniqueInput
+  }
+
+  /**
+   * EnterpriseLicense findUniqueOrThrow
+   */
+  export type EnterpriseLicenseFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter, which EnterpriseLicense to fetch.
+     */
+    where: EnterpriseLicenseWhereUniqueInput
+  }
+
+  /**
+   * EnterpriseLicense findFirst
+   */
+  export type EnterpriseLicenseFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter, which EnterpriseLicense to fetch.
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EnterpriseLicenses to fetch.
+     */
+    orderBy?: EnterpriseLicenseOrderByWithRelationInput | EnterpriseLicenseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for EnterpriseLicenses.
+     */
+    cursor?: EnterpriseLicenseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EnterpriseLicenses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EnterpriseLicenses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of EnterpriseLicenses.
+     */
+    distinct?: EnterpriseLicenseScalarFieldEnum | EnterpriseLicenseScalarFieldEnum[]
+  }
+
+  /**
+   * EnterpriseLicense findFirstOrThrow
+   */
+  export type EnterpriseLicenseFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter, which EnterpriseLicense to fetch.
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EnterpriseLicenses to fetch.
+     */
+    orderBy?: EnterpriseLicenseOrderByWithRelationInput | EnterpriseLicenseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for EnterpriseLicenses.
+     */
+    cursor?: EnterpriseLicenseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EnterpriseLicenses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EnterpriseLicenses.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of EnterpriseLicenses.
+     */
+    distinct?: EnterpriseLicenseScalarFieldEnum | EnterpriseLicenseScalarFieldEnum[]
+  }
+
+  /**
+   * EnterpriseLicense findMany
+   */
+  export type EnterpriseLicenseFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter, which EnterpriseLicenses to fetch.
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of EnterpriseLicenses to fetch.
+     */
+    orderBy?: EnterpriseLicenseOrderByWithRelationInput | EnterpriseLicenseOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing EnterpriseLicenses.
+     */
+    cursor?: EnterpriseLicenseWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` EnterpriseLicenses from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` EnterpriseLicenses.
+     */
+    skip?: number
+    distinct?: EnterpriseLicenseScalarFieldEnum | EnterpriseLicenseScalarFieldEnum[]
+  }
+
+  /**
+   * EnterpriseLicense create
+   */
+  export type EnterpriseLicenseCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * The data needed to create a EnterpriseLicense.
+     */
+    data: XOR<EnterpriseLicenseCreateInput, EnterpriseLicenseUncheckedCreateInput>
+  }
+
+  /**
+   * EnterpriseLicense createMany
+   */
+  export type EnterpriseLicenseCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many EnterpriseLicenses.
+     */
+    data: EnterpriseLicenseCreateManyInput | EnterpriseLicenseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * EnterpriseLicense createManyAndReturn
+   */
+  export type EnterpriseLicenseCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * The data used to create many EnterpriseLicenses.
+     */
+    data: EnterpriseLicenseCreateManyInput | EnterpriseLicenseCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * EnterpriseLicense update
+   */
+  export type EnterpriseLicenseUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * The data needed to update a EnterpriseLicense.
+     */
+    data: XOR<EnterpriseLicenseUpdateInput, EnterpriseLicenseUncheckedUpdateInput>
+    /**
+     * Choose, which EnterpriseLicense to update.
+     */
+    where: EnterpriseLicenseWhereUniqueInput
+  }
+
+  /**
+   * EnterpriseLicense updateMany
+   */
+  export type EnterpriseLicenseUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update EnterpriseLicenses.
+     */
+    data: XOR<EnterpriseLicenseUpdateManyMutationInput, EnterpriseLicenseUncheckedUpdateManyInput>
+    /**
+     * Filter which EnterpriseLicenses to update
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * Limit how many EnterpriseLicenses to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * EnterpriseLicense updateManyAndReturn
+   */
+  export type EnterpriseLicenseUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * The data used to update EnterpriseLicenses.
+     */
+    data: XOR<EnterpriseLicenseUpdateManyMutationInput, EnterpriseLicenseUncheckedUpdateManyInput>
+    /**
+     * Filter which EnterpriseLicenses to update
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * Limit how many EnterpriseLicenses to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * EnterpriseLicense upsert
+   */
+  export type EnterpriseLicenseUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * The filter to search for the EnterpriseLicense to update in case it exists.
+     */
+    where: EnterpriseLicenseWhereUniqueInput
+    /**
+     * In case the EnterpriseLicense found by the `where` argument doesn't exist, create a new EnterpriseLicense with this data.
+     */
+    create: XOR<EnterpriseLicenseCreateInput, EnterpriseLicenseUncheckedCreateInput>
+    /**
+     * In case the EnterpriseLicense was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<EnterpriseLicenseUpdateInput, EnterpriseLicenseUncheckedUpdateInput>
+  }
+
+  /**
+   * EnterpriseLicense delete
+   */
+  export type EnterpriseLicenseDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+    /**
+     * Filter which EnterpriseLicense to delete.
+     */
+    where: EnterpriseLicenseWhereUniqueInput
+  }
+
+  /**
+   * EnterpriseLicense deleteMany
+   */
+  export type EnterpriseLicenseDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which EnterpriseLicenses to delete
+     */
+    where?: EnterpriseLicenseWhereInput
+    /**
+     * Limit how many EnterpriseLicenses to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * EnterpriseLicense without action
+   */
+  export type EnterpriseLicenseDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the EnterpriseLicense
+     */
+    select?: EnterpriseLicenseSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the EnterpriseLicense
+     */
+    omit?: EnterpriseLicenseOmit<ExtArgs> | null
+  }
+
+
+  /**
+   * Model LicenseCache
+   */
+
+  export type AggregateLicenseCache = {
+    _count: LicenseCacheCountAggregateOutputType | null
+    _min: LicenseCacheMinAggregateOutputType | null
+    _max: LicenseCacheMaxAggregateOutputType | null
+  }
+
+  export type LicenseCacheMinAggregateOutputType = {
+    id: string | null
+    licenseKey: string | null
+    customerName: string | null
+    customerEmail: string | null
+    type: string | null
+    issuedAt: Date | null
+    expiresAt: Date | null
+    lastValidatedAt: Date | null
+    status: string | null
+    updatedAt: Date | null
+  }
+
+  export type LicenseCacheMaxAggregateOutputType = {
+    id: string | null
+    licenseKey: string | null
+    customerName: string | null
+    customerEmail: string | null
+    type: string | null
+    issuedAt: Date | null
+    expiresAt: Date | null
+    lastValidatedAt: Date | null
+    status: string | null
+    updatedAt: Date | null
+  }
+
+  export type LicenseCacheCountAggregateOutputType = {
+    id: number
+    licenseKey: number
+    customerName: number
+    customerEmail: number
+    type: number
+    features: number
+    issuedAt: number
+    expiresAt: number
+    lastValidatedAt: number
+    status: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type LicenseCacheMinAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    type?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    status?: true
+    updatedAt?: true
+  }
+
+  export type LicenseCacheMaxAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    type?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    status?: true
+    updatedAt?: true
+  }
+
+  export type LicenseCacheCountAggregateInputType = {
+    id?: true
+    licenseKey?: true
+    customerName?: true
+    customerEmail?: true
+    type?: true
+    features?: true
+    issuedAt?: true
+    expiresAt?: true
+    lastValidatedAt?: true
+    status?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type LicenseCacheAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LicenseCache to aggregate.
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LicenseCaches to fetch.
+     */
+    orderBy?: LicenseCacheOrderByWithRelationInput | LicenseCacheOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: LicenseCacheWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LicenseCaches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LicenseCaches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned LicenseCaches
+    **/
+    _count?: true | LicenseCacheCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: LicenseCacheMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: LicenseCacheMaxAggregateInputType
+  }
+
+  export type GetLicenseCacheAggregateType<T extends LicenseCacheAggregateArgs> = {
+        [P in keyof T & keyof AggregateLicenseCache]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateLicenseCache[P]>
+      : GetScalarType<T[P], AggregateLicenseCache[P]>
+  }
+
+
+
+
+  export type LicenseCacheGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: LicenseCacheWhereInput
+    orderBy?: LicenseCacheOrderByWithAggregationInput | LicenseCacheOrderByWithAggregationInput[]
+    by: LicenseCacheScalarFieldEnum[] | LicenseCacheScalarFieldEnum
+    having?: LicenseCacheScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: LicenseCacheCountAggregateInputType | true
+    _min?: LicenseCacheMinAggregateInputType
+    _max?: LicenseCacheMaxAggregateInputType
+  }
+
+  export type LicenseCacheGroupByOutputType = {
+    id: string
+    licenseKey: string
+    customerName: string
+    customerEmail: string | null
+    type: string
+    features: JsonValue | null
+    issuedAt: Date
+    expiresAt: Date
+    lastValidatedAt: Date
+    status: string
+    updatedAt: Date
+    _count: LicenseCacheCountAggregateOutputType | null
+    _min: LicenseCacheMinAggregateOutputType | null
+    _max: LicenseCacheMaxAggregateOutputType | null
+  }
+
+  type GetLicenseCacheGroupByPayload<T extends LicenseCacheGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<LicenseCacheGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof LicenseCacheGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], LicenseCacheGroupByOutputType[P]>
+            : GetScalarType<T[P], LicenseCacheGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type LicenseCacheSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    type?: boolean
+    features?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    status?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["licenseCache"]>
+
+  export type LicenseCacheSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    type?: boolean
+    features?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    status?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["licenseCache"]>
+
+  export type LicenseCacheSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    type?: boolean
+    features?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    status?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["licenseCache"]>
+
+  export type LicenseCacheSelectScalar = {
+    id?: boolean
+    licenseKey?: boolean
+    customerName?: boolean
+    customerEmail?: boolean
+    type?: boolean
+    features?: boolean
+    issuedAt?: boolean
+    expiresAt?: boolean
+    lastValidatedAt?: boolean
+    status?: boolean
+    updatedAt?: boolean
+  }
+
+  export type LicenseCacheOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "licenseKey" | "customerName" | "customerEmail" | "type" | "features" | "issuedAt" | "expiresAt" | "lastValidatedAt" | "status" | "updatedAt", ExtArgs["result"]["licenseCache"]>
+
+  export type $LicenseCachePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "LicenseCache"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      licenseKey: string
+      customerName: string
+      customerEmail: string | null
+      type: string
+      features: Prisma.JsonValue | null
+      issuedAt: Date
+      expiresAt: Date
+      lastValidatedAt: Date
+      status: string
+      updatedAt: Date
+    }, ExtArgs["result"]["licenseCache"]>
+    composites: {}
+  }
+
+  type LicenseCacheGetPayload<S extends boolean | null | undefined | LicenseCacheDefaultArgs> = $Result.GetResult<Prisma.$LicenseCachePayload, S>
+
+  type LicenseCacheCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<LicenseCacheFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: LicenseCacheCountAggregateInputType | true
+    }
+
+  export interface LicenseCacheDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['LicenseCache'], meta: { name: 'LicenseCache' } }
+    /**
+     * Find zero or one LicenseCache that matches the filter.
+     * @param {LicenseCacheFindUniqueArgs} args - Arguments to find a LicenseCache
+     * @example
+     * // Get one LicenseCache
+     * const licenseCache = await prisma.licenseCache.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends LicenseCacheFindUniqueArgs>(args: SelectSubset<T, LicenseCacheFindUniqueArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one LicenseCache that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {LicenseCacheFindUniqueOrThrowArgs} args - Arguments to find a LicenseCache
+     * @example
+     * // Get one LicenseCache
+     * const licenseCache = await prisma.licenseCache.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends LicenseCacheFindUniqueOrThrowArgs>(args: SelectSubset<T, LicenseCacheFindUniqueOrThrowArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LicenseCache that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheFindFirstArgs} args - Arguments to find a LicenseCache
+     * @example
+     * // Get one LicenseCache
+     * const licenseCache = await prisma.licenseCache.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends LicenseCacheFindFirstArgs>(args?: SelectSubset<T, LicenseCacheFindFirstArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first LicenseCache that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheFindFirstOrThrowArgs} args - Arguments to find a LicenseCache
+     * @example
+     * // Get one LicenseCache
+     * const licenseCache = await prisma.licenseCache.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends LicenseCacheFindFirstOrThrowArgs>(args?: SelectSubset<T, LicenseCacheFindFirstOrThrowArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more LicenseCaches that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all LicenseCaches
+     * const licenseCaches = await prisma.licenseCache.findMany()
+     * 
+     * // Get first 10 LicenseCaches
+     * const licenseCaches = await prisma.licenseCache.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const licenseCacheWithIdOnly = await prisma.licenseCache.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends LicenseCacheFindManyArgs>(args?: SelectSubset<T, LicenseCacheFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a LicenseCache.
+     * @param {LicenseCacheCreateArgs} args - Arguments to create a LicenseCache.
+     * @example
+     * // Create one LicenseCache
+     * const LicenseCache = await prisma.licenseCache.create({
+     *   data: {
+     *     // ... data to create a LicenseCache
+     *   }
+     * })
+     * 
+     */
+    create<T extends LicenseCacheCreateArgs>(args: SelectSubset<T, LicenseCacheCreateArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many LicenseCaches.
+     * @param {LicenseCacheCreateManyArgs} args - Arguments to create many LicenseCaches.
+     * @example
+     * // Create many LicenseCaches
+     * const licenseCache = await prisma.licenseCache.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends LicenseCacheCreateManyArgs>(args?: SelectSubset<T, LicenseCacheCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many LicenseCaches and returns the data saved in the database.
+     * @param {LicenseCacheCreateManyAndReturnArgs} args - Arguments to create many LicenseCaches.
+     * @example
+     * // Create many LicenseCaches
+     * const licenseCache = await prisma.licenseCache.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many LicenseCaches and only return the `id`
+     * const licenseCacheWithIdOnly = await prisma.licenseCache.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends LicenseCacheCreateManyAndReturnArgs>(args?: SelectSubset<T, LicenseCacheCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a LicenseCache.
+     * @param {LicenseCacheDeleteArgs} args - Arguments to delete one LicenseCache.
+     * @example
+     * // Delete one LicenseCache
+     * const LicenseCache = await prisma.licenseCache.delete({
+     *   where: {
+     *     // ... filter to delete one LicenseCache
+     *   }
+     * })
+     * 
+     */
+    delete<T extends LicenseCacheDeleteArgs>(args: SelectSubset<T, LicenseCacheDeleteArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one LicenseCache.
+     * @param {LicenseCacheUpdateArgs} args - Arguments to update one LicenseCache.
+     * @example
+     * // Update one LicenseCache
+     * const licenseCache = await prisma.licenseCache.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends LicenseCacheUpdateArgs>(args: SelectSubset<T, LicenseCacheUpdateArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more LicenseCaches.
+     * @param {LicenseCacheDeleteManyArgs} args - Arguments to filter LicenseCaches to delete.
+     * @example
+     * // Delete a few LicenseCaches
+     * const { count } = await prisma.licenseCache.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends LicenseCacheDeleteManyArgs>(args?: SelectSubset<T, LicenseCacheDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LicenseCaches.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many LicenseCaches
+     * const licenseCache = await prisma.licenseCache.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends LicenseCacheUpdateManyArgs>(args: SelectSubset<T, LicenseCacheUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more LicenseCaches and returns the data updated in the database.
+     * @param {LicenseCacheUpdateManyAndReturnArgs} args - Arguments to update many LicenseCaches.
+     * @example
+     * // Update many LicenseCaches
+     * const licenseCache = await prisma.licenseCache.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more LicenseCaches and only return the `id`
+     * const licenseCacheWithIdOnly = await prisma.licenseCache.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends LicenseCacheUpdateManyAndReturnArgs>(args: SelectSubset<T, LicenseCacheUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one LicenseCache.
+     * @param {LicenseCacheUpsertArgs} args - Arguments to update or create a LicenseCache.
+     * @example
+     * // Update or create a LicenseCache
+     * const licenseCache = await prisma.licenseCache.upsert({
+     *   create: {
+     *     // ... data to create a LicenseCache
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the LicenseCache we want to update
+     *   }
+     * })
+     */
+    upsert<T extends LicenseCacheUpsertArgs>(args: SelectSubset<T, LicenseCacheUpsertArgs<ExtArgs>>): Prisma__LicenseCacheClient<$Result.GetResult<Prisma.$LicenseCachePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of LicenseCaches.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheCountArgs} args - Arguments to filter LicenseCaches to count.
+     * @example
+     * // Count the number of LicenseCaches
+     * const count = await prisma.licenseCache.count({
+     *   where: {
+     *     // ... the filter for the LicenseCaches we want to count
+     *   }
+     * })
+    **/
+    count<T extends LicenseCacheCountArgs>(
+      args?: Subset<T, LicenseCacheCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], LicenseCacheCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a LicenseCache.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends LicenseCacheAggregateArgs>(args: Subset<T, LicenseCacheAggregateArgs>): Prisma.PrismaPromise<GetLicenseCacheAggregateType<T>>
+
+    /**
+     * Group by LicenseCache.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {LicenseCacheGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends LicenseCacheGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: LicenseCacheGroupByArgs['orderBy'] }
+        : { orderBy?: LicenseCacheGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, LicenseCacheGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetLicenseCacheGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the LicenseCache model
+   */
+  readonly fields: LicenseCacheFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for LicenseCache.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__LicenseCacheClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the LicenseCache model
+   */
+  interface LicenseCacheFieldRefs {
+    readonly id: FieldRef<"LicenseCache", 'String'>
+    readonly licenseKey: FieldRef<"LicenseCache", 'String'>
+    readonly customerName: FieldRef<"LicenseCache", 'String'>
+    readonly customerEmail: FieldRef<"LicenseCache", 'String'>
+    readonly type: FieldRef<"LicenseCache", 'String'>
+    readonly features: FieldRef<"LicenseCache", 'Json'>
+    readonly issuedAt: FieldRef<"LicenseCache", 'DateTime'>
+    readonly expiresAt: FieldRef<"LicenseCache", 'DateTime'>
+    readonly lastValidatedAt: FieldRef<"LicenseCache", 'DateTime'>
+    readonly status: FieldRef<"LicenseCache", 'String'>
+    readonly updatedAt: FieldRef<"LicenseCache", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * LicenseCache findUnique
+   */
+  export type LicenseCacheFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter, which LicenseCache to fetch.
+     */
+    where: LicenseCacheWhereUniqueInput
+  }
+
+  /**
+   * LicenseCache findUniqueOrThrow
+   */
+  export type LicenseCacheFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter, which LicenseCache to fetch.
+     */
+    where: LicenseCacheWhereUniqueInput
+  }
+
+  /**
+   * LicenseCache findFirst
+   */
+  export type LicenseCacheFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter, which LicenseCache to fetch.
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LicenseCaches to fetch.
+     */
+    orderBy?: LicenseCacheOrderByWithRelationInput | LicenseCacheOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LicenseCaches.
+     */
+    cursor?: LicenseCacheWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LicenseCaches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LicenseCaches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LicenseCaches.
+     */
+    distinct?: LicenseCacheScalarFieldEnum | LicenseCacheScalarFieldEnum[]
+  }
+
+  /**
+   * LicenseCache findFirstOrThrow
+   */
+  export type LicenseCacheFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter, which LicenseCache to fetch.
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LicenseCaches to fetch.
+     */
+    orderBy?: LicenseCacheOrderByWithRelationInput | LicenseCacheOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for LicenseCaches.
+     */
+    cursor?: LicenseCacheWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LicenseCaches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LicenseCaches.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of LicenseCaches.
+     */
+    distinct?: LicenseCacheScalarFieldEnum | LicenseCacheScalarFieldEnum[]
+  }
+
+  /**
+   * LicenseCache findMany
+   */
+  export type LicenseCacheFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter, which LicenseCaches to fetch.
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of LicenseCaches to fetch.
+     */
+    orderBy?: LicenseCacheOrderByWithRelationInput | LicenseCacheOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing LicenseCaches.
+     */
+    cursor?: LicenseCacheWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` LicenseCaches from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` LicenseCaches.
+     */
+    skip?: number
+    distinct?: LicenseCacheScalarFieldEnum | LicenseCacheScalarFieldEnum[]
+  }
+
+  /**
+   * LicenseCache create
+   */
+  export type LicenseCacheCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * The data needed to create a LicenseCache.
+     */
+    data: XOR<LicenseCacheCreateInput, LicenseCacheUncheckedCreateInput>
+  }
+
+  /**
+   * LicenseCache createMany
+   */
+  export type LicenseCacheCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many LicenseCaches.
+     */
+    data: LicenseCacheCreateManyInput | LicenseCacheCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LicenseCache createManyAndReturn
+   */
+  export type LicenseCacheCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * The data used to create many LicenseCaches.
+     */
+    data: LicenseCacheCreateManyInput | LicenseCacheCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * LicenseCache update
+   */
+  export type LicenseCacheUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * The data needed to update a LicenseCache.
+     */
+    data: XOR<LicenseCacheUpdateInput, LicenseCacheUncheckedUpdateInput>
+    /**
+     * Choose, which LicenseCache to update.
+     */
+    where: LicenseCacheWhereUniqueInput
+  }
+
+  /**
+   * LicenseCache updateMany
+   */
+  export type LicenseCacheUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update LicenseCaches.
+     */
+    data: XOR<LicenseCacheUpdateManyMutationInput, LicenseCacheUncheckedUpdateManyInput>
+    /**
+     * Filter which LicenseCaches to update
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * Limit how many LicenseCaches to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * LicenseCache updateManyAndReturn
+   */
+  export type LicenseCacheUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * The data used to update LicenseCaches.
+     */
+    data: XOR<LicenseCacheUpdateManyMutationInput, LicenseCacheUncheckedUpdateManyInput>
+    /**
+     * Filter which LicenseCaches to update
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * Limit how many LicenseCaches to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * LicenseCache upsert
+   */
+  export type LicenseCacheUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * The filter to search for the LicenseCache to update in case it exists.
+     */
+    where: LicenseCacheWhereUniqueInput
+    /**
+     * In case the LicenseCache found by the `where` argument doesn't exist, create a new LicenseCache with this data.
+     */
+    create: XOR<LicenseCacheCreateInput, LicenseCacheUncheckedCreateInput>
+    /**
+     * In case the LicenseCache was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<LicenseCacheUpdateInput, LicenseCacheUncheckedUpdateInput>
+  }
+
+  /**
+   * LicenseCache delete
+   */
+  export type LicenseCacheDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+    /**
+     * Filter which LicenseCache to delete.
+     */
+    where: LicenseCacheWhereUniqueInput
+  }
+
+  /**
+   * LicenseCache deleteMany
+   */
+  export type LicenseCacheDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which LicenseCaches to delete
+     */
+    where?: LicenseCacheWhereInput
+    /**
+     * Limit how many LicenseCaches to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * LicenseCache without action
+   */
+  export type LicenseCacheDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the LicenseCache
+     */
+    select?: LicenseCacheSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the LicenseCache
+     */
+    omit?: LicenseCacheOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -48553,6 +50998,47 @@ export namespace Prisma {
   };
 
   export type TenantLocaleScalarFieldEnum = (typeof TenantLocaleScalarFieldEnum)[keyof typeof TenantLocaleScalarFieldEnum]
+
+
+  export const EnterpriseLicenseScalarFieldEnum: {
+    id: 'id',
+    licenseKey: 'licenseKey',
+    customerName: 'customerName',
+    customerEmail: 'customerEmail',
+    customerPhone: 'customerPhone',
+    organization: 'organization',
+    type: 'type',
+    features: 'features',
+    maxInstances: 'maxInstances',
+    issuedAt: 'issuedAt',
+    expiresAt: 'expiresAt',
+    lastValidatedAt: 'lastValidatedAt',
+    validatedCount: 'validatedCount',
+    status: 'status',
+    metadata: 'metadata',
+    createdBy: 'createdBy',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type EnterpriseLicenseScalarFieldEnum = (typeof EnterpriseLicenseScalarFieldEnum)[keyof typeof EnterpriseLicenseScalarFieldEnum]
+
+
+  export const LicenseCacheScalarFieldEnum: {
+    id: 'id',
+    licenseKey: 'licenseKey',
+    customerName: 'customerName',
+    customerEmail: 'customerEmail',
+    type: 'type',
+    features: 'features',
+    issuedAt: 'issuedAt',
+    expiresAt: 'expiresAt',
+    lastValidatedAt: 'lastValidatedAt',
+    status: 'status',
+    updatedAt: 'updatedAt'
+  };
+
+  export type LicenseCacheScalarFieldEnum = (typeof LicenseCacheScalarFieldEnum)[keyof typeof LicenseCacheScalarFieldEnum]
 
 
   export const SortOrder: {
@@ -51766,6 +54252,207 @@ export namespace Prisma {
     name?: StringWithAggregatesFilter<"TenantLocale"> | string
     isDefault?: BoolWithAggregatesFilter<"TenantLocale"> | boolean
     isEnabled?: BoolWithAggregatesFilter<"TenantLocale"> | boolean
+  }
+
+  export type EnterpriseLicenseWhereInput = {
+    AND?: EnterpriseLicenseWhereInput | EnterpriseLicenseWhereInput[]
+    OR?: EnterpriseLicenseWhereInput[]
+    NOT?: EnterpriseLicenseWhereInput | EnterpriseLicenseWhereInput[]
+    id?: StringFilter<"EnterpriseLicense"> | string
+    licenseKey?: StringFilter<"EnterpriseLicense"> | string
+    customerName?: StringFilter<"EnterpriseLicense"> | string
+    customerEmail?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    customerPhone?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    organization?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    type?: StringFilter<"EnterpriseLicense"> | string
+    features?: JsonNullableFilter<"EnterpriseLicense">
+    maxInstances?: IntFilter<"EnterpriseLicense"> | number
+    issuedAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    expiresAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    lastValidatedAt?: DateTimeNullableFilter<"EnterpriseLicense"> | Date | string | null
+    validatedCount?: IntFilter<"EnterpriseLicense"> | number
+    status?: StringFilter<"EnterpriseLicense"> | string
+    metadata?: JsonNullableFilter<"EnterpriseLicense">
+    createdBy?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    createdAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    updatedAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+  }
+
+  export type EnterpriseLicenseOrderByWithRelationInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrderInput | SortOrder
+    customerPhone?: SortOrderInput | SortOrder
+    organization?: SortOrderInput | SortOrder
+    type?: SortOrder
+    features?: SortOrderInput | SortOrder
+    maxInstances?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrderInput | SortOrder
+    validatedCount?: SortOrder
+    status?: SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnterpriseLicenseWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    licenseKey?: string
+    AND?: EnterpriseLicenseWhereInput | EnterpriseLicenseWhereInput[]
+    OR?: EnterpriseLicenseWhereInput[]
+    NOT?: EnterpriseLicenseWhereInput | EnterpriseLicenseWhereInput[]
+    customerName?: StringFilter<"EnterpriseLicense"> | string
+    customerEmail?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    customerPhone?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    organization?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    type?: StringFilter<"EnterpriseLicense"> | string
+    features?: JsonNullableFilter<"EnterpriseLicense">
+    maxInstances?: IntFilter<"EnterpriseLicense"> | number
+    issuedAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    expiresAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    lastValidatedAt?: DateTimeNullableFilter<"EnterpriseLicense"> | Date | string | null
+    validatedCount?: IntFilter<"EnterpriseLicense"> | number
+    status?: StringFilter<"EnterpriseLicense"> | string
+    metadata?: JsonNullableFilter<"EnterpriseLicense">
+    createdBy?: StringNullableFilter<"EnterpriseLicense"> | string | null
+    createdAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+    updatedAt?: DateTimeFilter<"EnterpriseLicense"> | Date | string
+  }, "id" | "licenseKey">
+
+  export type EnterpriseLicenseOrderByWithAggregationInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrderInput | SortOrder
+    customerPhone?: SortOrderInput | SortOrder
+    organization?: SortOrderInput | SortOrder
+    type?: SortOrder
+    features?: SortOrderInput | SortOrder
+    maxInstances?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrderInput | SortOrder
+    validatedCount?: SortOrder
+    status?: SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdBy?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: EnterpriseLicenseCountOrderByAggregateInput
+    _avg?: EnterpriseLicenseAvgOrderByAggregateInput
+    _max?: EnterpriseLicenseMaxOrderByAggregateInput
+    _min?: EnterpriseLicenseMinOrderByAggregateInput
+    _sum?: EnterpriseLicenseSumOrderByAggregateInput
+  }
+
+  export type EnterpriseLicenseScalarWhereWithAggregatesInput = {
+    AND?: EnterpriseLicenseScalarWhereWithAggregatesInput | EnterpriseLicenseScalarWhereWithAggregatesInput[]
+    OR?: EnterpriseLicenseScalarWhereWithAggregatesInput[]
+    NOT?: EnterpriseLicenseScalarWhereWithAggregatesInput | EnterpriseLicenseScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"EnterpriseLicense"> | string
+    licenseKey?: StringWithAggregatesFilter<"EnterpriseLicense"> | string
+    customerName?: StringWithAggregatesFilter<"EnterpriseLicense"> | string
+    customerEmail?: StringNullableWithAggregatesFilter<"EnterpriseLicense"> | string | null
+    customerPhone?: StringNullableWithAggregatesFilter<"EnterpriseLicense"> | string | null
+    organization?: StringNullableWithAggregatesFilter<"EnterpriseLicense"> | string | null
+    type?: StringWithAggregatesFilter<"EnterpriseLicense"> | string
+    features?: JsonNullableWithAggregatesFilter<"EnterpriseLicense">
+    maxInstances?: IntWithAggregatesFilter<"EnterpriseLicense"> | number
+    issuedAt?: DateTimeWithAggregatesFilter<"EnterpriseLicense"> | Date | string
+    expiresAt?: DateTimeWithAggregatesFilter<"EnterpriseLicense"> | Date | string
+    lastValidatedAt?: DateTimeNullableWithAggregatesFilter<"EnterpriseLicense"> | Date | string | null
+    validatedCount?: IntWithAggregatesFilter<"EnterpriseLicense"> | number
+    status?: StringWithAggregatesFilter<"EnterpriseLicense"> | string
+    metadata?: JsonNullableWithAggregatesFilter<"EnterpriseLicense">
+    createdBy?: StringNullableWithAggregatesFilter<"EnterpriseLicense"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"EnterpriseLicense"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"EnterpriseLicense"> | Date | string
+  }
+
+  export type LicenseCacheWhereInput = {
+    AND?: LicenseCacheWhereInput | LicenseCacheWhereInput[]
+    OR?: LicenseCacheWhereInput[]
+    NOT?: LicenseCacheWhereInput | LicenseCacheWhereInput[]
+    id?: StringFilter<"LicenseCache"> | string
+    licenseKey?: StringFilter<"LicenseCache"> | string
+    customerName?: StringFilter<"LicenseCache"> | string
+    customerEmail?: StringNullableFilter<"LicenseCache"> | string | null
+    type?: StringFilter<"LicenseCache"> | string
+    features?: JsonNullableFilter<"LicenseCache">
+    issuedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    expiresAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    lastValidatedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    status?: StringFilter<"LicenseCache"> | string
+    updatedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+  }
+
+  export type LicenseCacheOrderByWithRelationInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrderInput | SortOrder
+    type?: SortOrder
+    features?: SortOrderInput | SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    status?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LicenseCacheWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: LicenseCacheWhereInput | LicenseCacheWhereInput[]
+    OR?: LicenseCacheWhereInput[]
+    NOT?: LicenseCacheWhereInput | LicenseCacheWhereInput[]
+    licenseKey?: StringFilter<"LicenseCache"> | string
+    customerName?: StringFilter<"LicenseCache"> | string
+    customerEmail?: StringNullableFilter<"LicenseCache"> | string | null
+    type?: StringFilter<"LicenseCache"> | string
+    features?: JsonNullableFilter<"LicenseCache">
+    issuedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    expiresAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    lastValidatedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+    status?: StringFilter<"LicenseCache"> | string
+    updatedAt?: DateTimeFilter<"LicenseCache"> | Date | string
+  }, "id">
+
+  export type LicenseCacheOrderByWithAggregationInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrderInput | SortOrder
+    type?: SortOrder
+    features?: SortOrderInput | SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    status?: SortOrder
+    updatedAt?: SortOrder
+    _count?: LicenseCacheCountOrderByAggregateInput
+    _max?: LicenseCacheMaxOrderByAggregateInput
+    _min?: LicenseCacheMinOrderByAggregateInput
+  }
+
+  export type LicenseCacheScalarWhereWithAggregatesInput = {
+    AND?: LicenseCacheScalarWhereWithAggregatesInput | LicenseCacheScalarWhereWithAggregatesInput[]
+    OR?: LicenseCacheScalarWhereWithAggregatesInput[]
+    NOT?: LicenseCacheScalarWhereWithAggregatesInput | LicenseCacheScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"LicenseCache"> | string
+    licenseKey?: StringWithAggregatesFilter<"LicenseCache"> | string
+    customerName?: StringWithAggregatesFilter<"LicenseCache"> | string
+    customerEmail?: StringNullableWithAggregatesFilter<"LicenseCache"> | string | null
+    type?: StringWithAggregatesFilter<"LicenseCache"> | string
+    features?: JsonNullableWithAggregatesFilter<"LicenseCache">
+    issuedAt?: DateTimeWithAggregatesFilter<"LicenseCache"> | Date | string
+    expiresAt?: DateTimeWithAggregatesFilter<"LicenseCache"> | Date | string
+    lastValidatedAt?: DateTimeWithAggregatesFilter<"LicenseCache"> | Date | string
+    status?: StringWithAggregatesFilter<"LicenseCache"> | string
+    updatedAt?: DateTimeWithAggregatesFilter<"LicenseCache"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -55142,6 +57829,251 @@ export namespace Prisma {
     isEnabled?: BoolFieldUpdateOperationsInput | boolean
   }
 
+  export type EnterpriseLicenseCreateInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    customerPhone?: string | null
+    organization?: string | null
+    type?: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: number
+    issuedAt?: Date | string
+    expiresAt: Date | string
+    lastValidatedAt?: Date | string | null
+    validatedCount?: number
+    status?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EnterpriseLicenseUncheckedCreateInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    customerPhone?: string | null
+    organization?: string | null
+    type?: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: number
+    issuedAt?: Date | string
+    expiresAt: Date | string
+    lastValidatedAt?: Date | string | null
+    validatedCount?: number
+    status?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EnterpriseLicenseUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    customerPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    organization?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: IntFieldUpdateOperationsInput | number
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    validatedCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EnterpriseLicenseUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    customerPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    organization?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: IntFieldUpdateOperationsInput | number
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    validatedCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EnterpriseLicenseCreateManyInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    customerPhone?: string | null
+    organization?: string | null
+    type?: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: number
+    issuedAt?: Date | string
+    expiresAt: Date | string
+    lastValidatedAt?: Date | string | null
+    validatedCount?: number
+    status?: string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type EnterpriseLicenseUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    customerPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    organization?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: IntFieldUpdateOperationsInput | number
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    validatedCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type EnterpriseLicenseUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    customerPhone?: NullableStringFieldUpdateOperationsInput | string | null
+    organization?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    maxInstances?: IntFieldUpdateOperationsInput | number
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    validatedCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdBy?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LicenseCacheCreateInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    type: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt: Date | string
+    expiresAt: Date | string
+    lastValidatedAt: Date | string
+    status: string
+    updatedAt?: Date | string
+  }
+
+  export type LicenseCacheUncheckedCreateInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    type: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt: Date | string
+    expiresAt: Date | string
+    lastValidatedAt: Date | string
+    status: string
+    updatedAt?: Date | string
+  }
+
+  export type LicenseCacheUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    status?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LicenseCacheUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    status?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LicenseCacheCreateManyInput = {
+    id?: string
+    licenseKey: string
+    customerName: string
+    customerEmail?: string | null
+    type: string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt: Date | string
+    expiresAt: Date | string
+    lastValidatedAt: Date | string
+    status: string
+    updatedAt?: Date | string
+  }
+
+  export type LicenseCacheUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    status?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type LicenseCacheUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    licenseKey?: StringFieldUpdateOperationsInput | string
+    customerName?: StringFieldUpdateOperationsInput | string
+    customerEmail?: NullableStringFieldUpdateOperationsInput | string | null
+    type?: StringFieldUpdateOperationsInput | string
+    features?: NullableJsonNullValueInput | InputJsonValue
+    issuedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastValidatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    status?: StringFieldUpdateOperationsInput | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -57453,6 +60385,115 @@ export namespace Prisma {
     name?: SortOrder
     isDefault?: SortOrder
     isEnabled?: SortOrder
+  }
+
+  export type EnterpriseLicenseCountOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    customerPhone?: SortOrder
+    organization?: SortOrder
+    type?: SortOrder
+    features?: SortOrder
+    maxInstances?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    validatedCount?: SortOrder
+    status?: SortOrder
+    metadata?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnterpriseLicenseAvgOrderByAggregateInput = {
+    maxInstances?: SortOrder
+    validatedCount?: SortOrder
+  }
+
+  export type EnterpriseLicenseMaxOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    customerPhone?: SortOrder
+    organization?: SortOrder
+    type?: SortOrder
+    maxInstances?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    validatedCount?: SortOrder
+    status?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnterpriseLicenseMinOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    customerPhone?: SortOrder
+    organization?: SortOrder
+    type?: SortOrder
+    maxInstances?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    validatedCount?: SortOrder
+    status?: SortOrder
+    createdBy?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type EnterpriseLicenseSumOrderByAggregateInput = {
+    maxInstances?: SortOrder
+    validatedCount?: SortOrder
+  }
+
+  export type LicenseCacheCountOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    type?: SortOrder
+    features?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    status?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LicenseCacheMaxOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    type?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    status?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type LicenseCacheMinOrderByAggregateInput = {
+    id?: SortOrder
+    licenseKey?: SortOrder
+    customerName?: SortOrder
+    customerEmail?: SortOrder
+    type?: SortOrder
+    issuedAt?: SortOrder
+    expiresAt?: SortOrder
+    lastValidatedAt?: SortOrder
+    status?: SortOrder
+    updatedAt?: SortOrder
   }
 
   export type AccountCreateNestedManyWithoutUserInput = {
