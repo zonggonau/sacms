@@ -260,7 +260,7 @@ export default function GlobalContentPage() {
                           {ct.publishedEntries > 0 ? `${ct.publishedEntries} Entries` : "Empty"}
                         </Badge>
 
-                        <Link href={`/admin/content-types/${ct.slug}`}>
+                        <Link href={`/admin/cms/content-types/${ct.slug}`}>
                           <Button variant="ghost" size="sm" className="h-8 rounded-none border border-border bg-background hover:bg-muted font-bold text-[10px] uppercase gap-1.5 px-3">
                             <Edit className="h-3 w-3" /> Manage
                           </Button>

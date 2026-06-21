@@ -100,6 +100,8 @@ if (!canRoleTransition(current.status, "PUBLISHED", userRole)) {
 | `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY` | Payment gateway |
 | `CRON_SECRET` | Secret untuk mengamankan cron endpoints |
 | `OPENAI_API_KEY` | AI content generation (optional) |
+| `LICENSE_KEY` | Enterprise license key for self-hosted instances (optional) |
+| `LICENSE_SERVER_URL` | License validation server URL for self-hosted instances (optional) |
 
 ## DO & DON'T
 
@@ -227,6 +229,14 @@ if (!canRoleTransition(current.status, "PUBLISHED", userRole)) {
 - Jangan hardcode locale `"en"` — selalu lookup default locale dari `TenantLocale`
 - Jangan buat raw SQL query tanpa parameterized values
 - Jangan lewatkan `tenantId` check pada semua query — ini critical untuk data isolation
+
+## Enterprise License System
+SaCMS mendukung mode **Self-Hosted Enterprise**. 
+Fitur ini dikelola oleh *Super Admin* melalui halaman `/admin/enterprise/licenses`.
+- **Admin** dapat men-generate lisensi dengan skema *RSA Signature*. Lisensi akan disimpan di `EnterpriseLicense`.
+- **Customer** dapat memasukkan `LICENSE_KEY` ke dalam berkas `.env` server mereka.
+- **Validasi** dilakukan menggunakan *RSA Public Key* untuk memverifikasi keaslian (offline validation), dan jika diperlukan, sistem akan mengecek *online* ke `LICENSE_SERVER_URL` dan melakukan *caching* di database (tabel `LicenseCache`).
+- **Plan Enforcement**: `lib/plan-enforcement.ts` akan mengecek validitas lisensi (`isEnterpriseMode`). Jika lisensi *Enterprise* aktif, *tenant limits* akan di-bypass atau ditingkatkan secara signifikan. Pengguna dapat melihat banner *Enterprise* aktif di `dashboard`.
 
 ## Fitur Unggulan Next.js yang Diterapkan
 SaCMS secara ekstensif memanfaatkan fitur-fitur mutakhir dari Next.js 16 (App Router) untuk performa dan DX yang optimal:

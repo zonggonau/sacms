@@ -59,9 +59,10 @@ const adminNavSections: NavSection[] = [
   {
     label: "GLOBAL CONTENT",
     items: [
-      { title: "Content Builder", href: "/admin/content-types", icon: Database },
-      { title: "Single Types", href: "/admin/single-types", icon: FileText },
-      { title: "Components", href: "/admin/components", icon: Box },
+      { title: "CMS", href: "/admin/cms", icon: Globe },
+      { title: "Content Builder", href: "/admin/cms/content-types", icon: Database },
+      { title: "Single Types", href: "/admin/cms/single-types", icon: FileText },
+      { title: "Components", href: "/admin/cms/components", icon: Box },
     ],
   },
   {
@@ -187,6 +188,10 @@ export function GlobalAdminSidebar() {
       </div>
     </div>
   )
+
+  if (pathname.startsWith('/admin/cms')) {
+    return null
+  }
 
   return (
     <>

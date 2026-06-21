@@ -42,6 +42,14 @@ import { useToast } from "@/hooks/use-toast"
 import { SYSTEM_TENANT_SLUG, TENANT_STATUSES } from "@/lib/constants"
 import { DEFAULT_LIMITS } from "@/lib/tenant-plan"
 import { Skeleton } from "@/components/ui/skeleton"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 
 const TENANT_PLANS = Object.keys(DEFAULT_LIMITS)
 
@@ -516,141 +524,165 @@ export default function AdminTenantsPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-4">
-              {tenants.map((tenant) => {
-                const owner = tenant.members?.[0]?.user
-                const sub = tenant.subscriptions?.[0]
-                
-                return (
-                  <Card key={tenant.id} className="group overflow-hidden rounded-none shadow-none hover:bg-background transition-colors">
-                    <CardContent className="p-0">
-                      <div className="flex flex-col md:flex-row md:items-center p-4 md:p-6 gap-4">
-                        <div className="flex items-center gap-4 flex-1">
-                          <div className="w-12 h-12 shrink-0 bg-muted flex items-center justify-center text-foreground font-bold text-lg border border-border rounded-none">
-                            {tenant.name ? tenant.name.charAt(0).toUpperCase() : "?"}
-                          </div>
-                          <div className="min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="font-bold text-lg truncate">{tenant.name || "Unnamed Workspace"}</span>
-                              {tenant.slug === SYSTEM_TENANT_SLUG && (
-                                <Badge className="rounded-none bg-purple-500 text-white text-xs shrink-0">
-                                  SYSTEM
-                                </Badge>
-                              )}
-                              <Badge variant={tenant.status === "active" ? "default" : "secondary"} className={
-                                tenant.status === "active" ? "bg-green-500 text-white hover:bg-green-600 rounded-none capitalize" : "bg-muted/50 text-foreground hover:bg-zinc-300 rounded-none capitalize"
-                              }>
-                                {tenant.status === "active" ? <CheckCircle className="mr-1 h-3 w-3" /> : <Ban className="mr-1 h-3 w-3" />}
-                                {tenant.status}
-                              </Badge>
-                              <Badge variant="outline" className="capitalize rounded-none border-border">
-                                {tenant.plan}
-                              </Badge>
+            <div className="space-y-4">
+              <Card className="rounded-none shadow-none border border-border overflow-hidden bg-card">
+                <Table>
+                  <TableHeader className="bg-muted/30">
+                    <TableRow className="hover:bg-transparent border-border">
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground pl-6 h-10">Workspace</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground text-center h-10">Status</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground text-center h-10">Plan</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground h-10">Owner & Sub</TableHead>
+                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground text-center h-10">Stats</TableHead>
+                      <TableHead className="text-right pr-6 h-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {tenants.map((tenant) => {
+                      const owner = tenant.members?.[0]?.user
+                      const sub = tenant.subscriptions?.[0]
+                      
+                      return (
+                        <TableRow key={tenant.id} className="group hover:bg-muted/20 transition-colors border-border">
+                          <TableCell className="pl-6 py-4">
+                            <div className="flex items-center gap-4">
+                              <div className="w-10 h-10 shrink-0 bg-primary/10 flex items-center justify-center text-primary font-bold text-sm rounded-none border border-primary/20">
+                                {tenant.name ? tenant.name.charAt(0).toUpperCase() : "?"}
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2 mb-0.5">
+                                  <span className="font-bold text-sm text-foreground truncate">{tenant.name || "Unnamed Workspace"}</span>
+                                  {tenant.slug === SYSTEM_TENANT_SLUG && (
+                                    <Badge className="rounded-none bg-purple-500 text-white text-[9px] font-black uppercase px-1.5 py-0 h-4 shadow-none">
+                                      SYSTEM
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-muted-foreground font-mono">/{tenant.slug}</p>
+                              </div>
                             </div>
-                            <p className="text-sm text-muted-foreground font-mono">/{tenant.slug}</p>
-                            
-                            {/* Owner and Sub info */}
-                            <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
-                              {owner && (
-                                <span className="flex items-center gap-1"><Users className="h-3 w-3" /> Owner: {owner.name || owner.email}</span>
+                          </TableCell>
+                          
+                          <TableCell className="text-center py-4">
+                            <Badge variant={tenant.status === "active" ? "default" : "secondary"} className={
+                              tenant.status === "active" ? "bg-emerald-500 text-white hover:bg-emerald-600 rounded-none capitalize px-2 shadow-none text-[10px]" : "bg-muted text-foreground hover:bg-zinc-300 rounded-none capitalize px-2 shadow-none text-[10px]"
+                            }>
+                              {tenant.status === "active" ? <CheckCircle className="mr-1 h-3 w-3" /> : <Ban className="mr-1 h-3 w-3" />}
+                              {tenant.status}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="text-center py-4">
+                            <Badge variant="outline" className="capitalize rounded-none border-border font-bold text-[10px] px-2 shadow-none">
+                              {tenant.plan}
+                            </Badge>
+                          </TableCell>
+
+                          <TableCell className="py-4">
+                            <div className="flex flex-col gap-1.5 text-[11px]">
+                              {owner ? (
+                                <span className="flex items-center gap-1.5 text-foreground font-medium"><Users className="h-3.5 w-3.5 text-muted-foreground" /> {owner.name || owner.email}</span>
+                              ) : (
+                                <span className="text-muted-foreground italic">No owner</span>
                               )}
-                              {sub && (
-                                <span className="flex items-center gap-1">
-                                  <FileText className="h-3 w-3" /> 
-                                  Sub: <span className="capitalize">{sub.status}</span> 
-                                  {sub.currentPeriodEnd ? ` (ends ${new Date(sub.currentPeriodEnd).toLocaleDateString()})` : ''}
+                              {sub ? (
+                                <span className="flex items-center gap-1.5 text-muted-foreground">
+                                  <FileText className="h-3.5 w-3.5" /> 
+                                  <span className="capitalize">{sub.status}</span> 
+                                  {sub.currentPeriodEnd ? `(ends ${new Date(sub.currentPeriodEnd).toLocaleDateString()})` : ''}
+                                </span>
+                              ) : (
+                                <span className="text-muted-foreground italic opacity-50 flex items-center gap-1.5">
+                                  <FileText className="h-3.5 w-3.5" /> No active sub
                                 </span>
                               )}
                             </div>
-                          </div>
-                        </div>
+                          </TableCell>
 
-                        <div className="grid grid-cols-3 md:flex items-center gap-4 lg:gap-8 text-sm text-muted-foreground border-t md:border-t-0 pt-4 md:pt-0">
-                          <div className="flex flex-col">
-                            <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Members</span>
-                            <span className="flex items-center gap-1.5 text-foreground">
-                              <Users className="h-4 w-4 text-orange-500" /> {tenant._count.members}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Content</span>
-                            <span className="flex items-center gap-1.5 text-foreground">
-                              <Database className="h-4 w-4 text-orange-500" /> {tenant._count.contentTypeAssignments}
-                            </span>
-                          </div>
-                          <div className="flex flex-col">
-                            <span className="text-xs font-medium uppercase text-muted-foreground mb-1">Media</span>
-                            <span className="flex items-center gap-1.5 text-foreground">
-                              <ImageIcon className="h-4 w-4 text-orange-500" /> {tenant._count.media}
-                            </span>
-                          </div>
-                        </div>
+                          <TableCell className="py-4">
+                            <div className="flex items-center justify-center gap-4 text-[11px] font-medium text-muted-foreground">
+                              <div className="flex items-center gap-1" title="Members">
+                                <Users className="h-3 w-3 text-orange-500" /> {tenant._count.members}
+                              </div>
+                              <div className="flex items-center gap-1" title="Content Types">
+                                <Database className="h-3 w-3 text-orange-500" /> {tenant._count.contentTypeAssignments}
+                              </div>
+                              <div className="flex items-center gap-1" title="Media">
+                                <ImageIcon className="h-3 w-3 text-orange-500" /> {tenant._count.media}
+                              </div>
+                            </div>
+                          </TableCell>
 
-                        <div className="flex items-center gap-2 ml-auto">
-                          {tenant.slug === SYSTEM_TENANT_SLUG && (
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              onClick={handleRunSeed}
-                              className="hidden sm:flex rounded-none border-border"
-                            >
-                              <Play className="mr-2 h-4 w-4 text-purple-500" /> Run Seed
-                            </Button>
-                          )}
-                          <Link href={`/dashboard/${tenant.slug}`}>
-                            <Button variant="outline" size="sm" className="hidden sm:flex rounded-none border-border">
-                              Dashboard <ArrowUpRight className="ml-2 h-4 w-4" />
-                            </Button>
-                          </Link>
+                          <TableCell className="text-right pr-6 py-4">
+                            <div className="flex items-center justify-end gap-2 opacity-100 lg:opacity-0 group-hover:opacity-100 transition-opacity">
+                              {tenant.slug === SYSTEM_TENANT_SLUG && (
+                                <Button 
+                                  variant="outline" 
+                                  size="icon" 
+                                  onClick={handleRunSeed}
+                                  title="Run Seed"
+                                  className="h-8 w-8 rounded-none border-border"
+                                >
+                                  <Play className="h-4 w-4 text-purple-500" />
+                                </Button>
+                              )}
+                              <Link href={`/dashboard/${tenant.slug}`}>
+                                <Button variant="outline" size="sm" className="h-8 rounded-none border-border text-xs font-bold px-3">
+                                  Dashboard <ArrowUpRight className="ml-1.5 h-3.5 w-3.5" />
+                                </Button>
+                              </Link>
 
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-9 w-9 rounded-none">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48 rounded-none">
-                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                              <DropdownMenuItem onClick={() => openEdit(tenant)}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Details
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => openOverride(tenant)}>
-                                <Sliders className="mr-2 h-4 w-4 text-orange-500" /> Custom Overrides
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')}>
-                                {tenant.status === 'active' ? (
-                                  <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
-                                ) : (
-                                  <><CheckCircle className="mr-2 h-4 w-4 text-green-500" /> Activate Tenant</>
-                                )}
-                              </DropdownMenuItem>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem 
-                                onClick={() => {
-                                  if (tenant.plan !== "free") {
-                                    toast({ 
-                                      variant: "destructive", 
-                                      title: "Action Denied", 
-                                      description: "Cannot delete a tenant with an active paid plan. Please downgrade the plan to free first." 
-                                    })
-                                  } else {
-                                    setTenantToDelete(tenant)
-                                    setDeleteConfirmation("")
-                                    setIsDeleteOpen(true)
-                                  }
-                                }} 
-                                className="text-red-500 focus:text-red-500"
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )
-              })}
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none">
+                                    <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 rounded-none shadow-sm">
+                                  <DropdownMenuLabel className="text-xs uppercase text-muted-foreground tracking-wider">Actions</DropdownMenuLabel>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => openEdit(tenant)} className="text-xs font-medium cursor-pointer">
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Details
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => openOverride(tenant)} className="text-xs font-medium cursor-pointer">
+                                    <Sliders className="mr-2 h-4 w-4 text-orange-500" /> Custom Overrides
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => handleStatusChange(tenant.id, tenant.status === 'active' ? 'suspended' : 'active')} className="text-xs font-medium cursor-pointer">
+                                    {tenant.status === 'active' ? (
+                                      <><Ban className="mr-2 h-4 w-4 text-orange-500" /> Suspend Tenant</>
+                                    ) : (
+                                      <><CheckCircle className="mr-2 h-4 w-4 text-emerald-500" /> Activate Tenant</>
+                                    )}
+                                  </DropdownMenuItem>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => {
+                                      if (tenant.plan !== "free") {
+                                        toast({ 
+                                          variant: "destructive", 
+                                          title: "Action Denied", 
+                                          description: "Cannot delete a tenant with an active paid plan. Please downgrade the plan to free first." 
+                                        })
+                                      } else {
+                                        setTenantToDelete(tenant)
+                                        setDeleteConfirmation("")
+                                        setIsDeleteOpen(true)
+                                      }
+                                    }} 
+                                    className="text-red-500 focus:text-red-500 focus:bg-red-50 dark:focus:bg-red-950 text-xs font-bold cursor-pointer"
+                                  >
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                  </TableBody>
+                </Table>
+              </Card>
 
               {/* Pagination Controls */}
               <div className="flex items-center justify-between mt-4 p-4 border rounded-none bg-muted/10">

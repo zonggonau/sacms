@@ -25,7 +25,7 @@ export async function GET() {
           select: { id: true, name: true, type: true, slug: true },
           orderBy: { order: "asc" },
         },
-        _count: { select: { contentTypes: true } },
+        _count: { select: { schemaFields: true } },
       },
       orderBy: { createdAt: "desc" },
     })
@@ -35,7 +35,7 @@ export async function GET() {
       name: c.name,
       slug: c.slug,
       fields: c.schemaFields,
-      entryCount: c._count.contentTypes,
+      entryCount: c._count.schemaFields,
       createdAt: c.createdAt.toISOString(),
     }))
 

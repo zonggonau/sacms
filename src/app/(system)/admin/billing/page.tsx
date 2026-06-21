@@ -240,7 +240,7 @@ export default function AdminBillingPage() {
                           </div>
                           <div className="min-w-0">
                             <p className="text-sm font-bold leading-none truncate">
-                              {tx.subscription?.tenant.name || "System Payment"}
+                              {tx.subscription?.tenant?.name || "System Payment"}
                             </p>
                             <p className="text-[10px] text-muted-foreground mt-1.5 font-mono">
                               ID: {tx.orderId} &middot; {tx.paymentType || 'unknown'}

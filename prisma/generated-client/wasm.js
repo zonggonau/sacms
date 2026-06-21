@@ -683,7 +683,7 @@ const config = {
       "value": "prisma-client-js"
     },
     "output": {
-      "value": "/root/.openclaw/workspace/sacms/prisma/generated-client",
+      "value": "D:\\projek\\z.ai\\sacms\\prisma\\generated-client",
       "fromEnvVar": null
     },
     "config": {
@@ -692,12 +692,12 @@ const config = {
     "binaryTargets": [
       {
         "fromEnvVar": null,
-        "value": "debian-openssl-3.0.x",
+        "value": "windows",
         "native": true
       }
     ],
     "previewFeatures": [],
-    "sourceFilePath": "/root/.openclaw/workspace/sacms/prisma/schema.prisma",
+    "sourceFilePath": "D:\\projek\\z.ai\\sacms\\prisma\\schema.prisma",
     "isCustomOutput": true
   },
   "relativeEnvPaths": {

@@ -15,6 +15,7 @@ export async function GET() {
     }
 
     const singleTypes = await db.singleType.findMany({
+      where: { tenantId: null },
       include: { schemaFields: {
           orderBy: { order: "asc" }
         },
@@ -32,12 +33,7 @@ export async function GET() {
       orderBy: { createdAt: "desc" }
     })
 
-    // Filter out tenant-specific single types (only show global single types)
-    // Global single types are those created by super admin
-    // Tenant-specific single types have exactly 1 tenant assignment (the creator)
-    const globalSingleTypes = singleTypes.filter(st => 
-      st._count.tenants === 0 || st._count.tenants > 1
-    ).map(st => ({
+    const globalSingleTypes = singleTypes.map(st => ({
       ...st,
       fields: st.schemaFields || [],
     }))

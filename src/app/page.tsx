@@ -138,9 +138,9 @@ export default async function HomePage() {
   }
 
   return (
-    <div className="overflow-x-hidden">
+    <div className="flex flex-col min-h-screen">
       <LandingHeader />
-      <main>
+      <main className="flex-1">
         <ModernLanding data={data} />
       </main>
       <WhatsAppButton

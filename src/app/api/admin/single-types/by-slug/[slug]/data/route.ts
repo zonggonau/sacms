@@ -68,13 +68,11 @@ export async function POST(
       }
     }
 
-    // Check if assignment already exists
-    let assignment = await db.tenantSingleTypeAssignment.findUnique({
+    // Check if assignment already exists for global (tenantId: null)
+    let assignment = await db.tenantSingleTypeAssignment.findFirst({
       where: {
-        tenantId_singleTypeId: {
-          tenantId: systemTenant.id,
-          singleTypeId: singleType.id,
-        },
+        tenantId: null,
+        singleTypeId: singleType.id,
       },
     })
 
@@ -82,7 +80,7 @@ export async function POST(
     const existingData = assignment?.data ? (typeof assignment.data === 'string' ? JSON.parse(assignment.data) : assignment.data) : {}
     const fullData = { ...existingData, ...data }
     const dataWithSlugs = await processAutoSlugs(
-      systemTenant.id,
+      null as any, // tenantId is null
       singleType.id,
       singleType.schemaFields,
       fullData,
@@ -93,12 +91,7 @@ export async function POST(
     if (assignment) {
       // Update existing assignment
       assignment = await db.tenantSingleTypeAssignment.update({
-        where: {
-          tenantId_singleTypeId: {
-            tenantId: systemTenant.id,
-            singleTypeId: singleType.id,
-          },
-        },
+        where: { id: assignment.id },
         data: {
           data: JSON.stringify(dataWithSlugs),
           publishedAt: new Date(),
@@ -109,7 +102,7 @@ export async function POST(
       // Create new assignment
       assignment = await db.tenantSingleTypeAssignment.create({
         data: {
-          tenantId: systemTenant.id,
+          tenantId: null,
           singleTypeId: singleType.id,
           enabled: true,
           data: JSON.stringify(dataWithSlugs),
@@ -158,33 +151,22 @@ export async function GET(
         slug,
         tenantId: null
       },
+      include: {
+        schemaFields: {
+          orderBy: { order: "asc" }
+        }
+      }
     })
 
     if (!singleType) {
       return NextResponse.json({ error: "Single type not found" }, { status: 404 })
     }
 
-    // Get system tenant
-    const systemTenant = await db.tenant.findFirst({
-      where: { 
-        OR: [
-          { slug: SYSTEM_TENANT_SLUG },
-          { slug: "system" }
-        ]
-      },
-    })
-
-    if (!systemTenant) {
-      return NextResponse.json({ error: "System tenant not found" }, { status: 404 })
-    }
-
-    // Get assignment
-    const assignment = await db.tenantSingleTypeAssignment.findUnique({
+    // Get assignment for global (tenantId: null)
+    const assignment = await db.tenantSingleTypeAssignment.findFirst({
       where: {
-        tenantId_singleTypeId: {
-          tenantId: systemTenant.id,
-          singleTypeId: singleType.id,
-        },
+        tenantId: null,
+        singleTypeId: singleType.id,
       },
     })
 
