@@ -41,6 +41,7 @@ COPY --from=builder /app/package.json ./package.json
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/scripts ./scripts
 
 # static and public were copied inside standalone, but some setups might need them at root
 # Let's ensure they are available where server.js expects them (usually inside standalone)

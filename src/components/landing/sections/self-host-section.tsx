@@ -3,19 +3,19 @@ import { Terminal, CheckCircle2, Server, ShieldCheck, Cpu } from "lucide-react"
 export function SelfHostSection() {
   const steps = [
     {
-      title: "1. Siapkan Server & Environment",
-      desc: "Clone repository SaCMS dan atur environment variables Anda.",
-      code: `git clone git@github.com:zonggonau/sacms.git\ncd sacms\ncp .env.example .env\n# Pastikan SELFHOST_MODE="true"`
+      title: "1. Unduh Konfigurasi",
+      desc: "Download file docker-compose dan environment variables tanpa perlu source code.",
+      code: `mkdir sacms-enterprise && cd sacms-enterprise\ncurl -O https://raw.githubusercontent.com/zonggonau/sacms/master/docker-compose.enterprise.yml\ncurl -O https://raw.githubusercontent.com/zonggonau/sacms/master/.env.example\ncp .env.example .env`
     },
     {
-      title: "2. Jalankan Script Setup Otomatis",
-      desc: "Gunakan script interaktif untuk melakukan setup awal.",
-      code: `bun run scripts/selfhost-setup.ts`
+      title: "2. Jalankan Server Database & App",
+      desc: "Deploy seluruh stack menggunakan Docker Compose.",
+      code: `docker-compose -f docker-compose.enterprise.yml up -d`
     },
     {
-      title: "3. Deploy via Docker",
-      desc: "Server siap dijalankan di production menggunakan Docker Compose.",
-      code: `bash scripts/docker-selfhost-setup.sh`
+      title: "3. Setup Akun Admin Pertama",
+      desc: "Jalankan script setup interaktif langsung di dalam container.",
+      code: `docker-compose -f docker-compose.enterprise.yml exec app bun run scripts/selfhost-setup.ts`
     }
   ]
 
