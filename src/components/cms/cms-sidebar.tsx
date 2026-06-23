@@ -19,7 +19,8 @@ import {
   PenTool,
   FileText,
   Clock,
-  Code2
+  Code2,
+  ArrowLeft
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -39,7 +40,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
-  const href = (path: string) => `/cms/${tenantId}${path}`
+  const href = (path: string) => `/dashboard/${tenantId}/cms${path}`
 
   useEffect(() => {
     setMounted(true)
@@ -52,8 +53,15 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border shadow-none">
       {/* CMS Header */}
-      <div className="border-b border-border px-6 py-6 bg-card">
-        <Link href={href("")} className="flex items-center gap-3">
+      <div className="border-b border-border px-4 py-5 bg-card flex items-center gap-2">
+        <Link 
+          href={`/dashboard/${tenantId}`} 
+          title="Back to Workspace Dashboard"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-none border border-transparent hover:border-border flex items-center justify-center shrink-0"
+        >
+          <ArrowLeft className="h-4.5 w-4.5" />
+        </Link>
+        <Link href={href("")} className="flex items-center gap-3 min-w-0">
           <Logo iconSize="sm" showText={true} />
         </Link>
       </div>
@@ -132,7 +140,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
       {/* Footer User Info */}
       <div className="border-t border-border p-4 space-y-2 bg-card">
         <div className="flex items-center gap-3">
-          <Link href={`/cms/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
+          <Link href={href("/profile")} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
               {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
             </div>

@@ -92,6 +92,21 @@ export function AdminCMSSidebar({ contentTypes = [], singleTypes = [] }: AdminCM
           </div>
 
         </div>
+
+          <div className="space-y-1">
+            <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">System</p>
+            <Link href={href("/system/api")}>
+              <div className={cn(
+                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group",
+                pathname.startsWith(href("/system/api"))
+                  ? "bg-muted text-foreground font-semibold border-orange-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
+              )}>
+                <FileText className={cn("h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100", pathname.startsWith(href("/system/api")) && "text-orange-500")} />
+                <span className="truncate flex-1">API</span>
+              </div>
+            </Link>
+          </div>
       </ScrollArea>
     </div>
   )

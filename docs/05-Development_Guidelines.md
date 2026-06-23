@@ -66,7 +66,6 @@ await tenantDb.contentEntry.findFirst({
 
 Unsafe:
 
-<<<<<<< HEAD
 ```ts
 await tenantDb.contentEntry.findUnique({ where: { id: entryId } })
 ```
@@ -160,57 +159,3 @@ docs(workflow): document scheduled publication invariants
 - Avoid exact test counts or performance claims unless the result/date/environment is recorded.
 - Update release notes after code exists, not before.
 - Add a constraint section when a feature relies on Redis, R2, DNS, cron, or another external service.
-
-=======
-* **Server Components by Default:** Selalu gunakan Server Components kecuali komponen tersebut membutuhkan *interactivity* (seperti `onClick`, `useState`). Gunakan `"use client"` hanya pada ujung komponen (*leaf nodes*).
-* **Server Actions + Zod + React Hook Form:**
-  Untuk mutasi data dari UI (*Forms*), wajib menggunakan pola ini:
-  1. Definisikan skema Zod di `src/types/schemas.ts`.
-  2. Gunakan `useForm({ resolver: zodResolver(schema) })` pada komponen form.
-  3. Lempar data yang tervalidasi di client ke Server Action.
-  4. Di Server Action, validasi ULANG menggunakan `schema.parse(data)` sebelum menyentuh Prisma.
-* **Error Handling Standard:**
-  Gunakan blok `try/catch` di dalam Route Handlers dan Server Actions. Lempar pesan kesalahan ke UI menggunakan pola seragam: `return { error: "Pesan error spesifik", success: false }`.
-* **Multi-Tenant Safety Check:** Jangan pernah melakukan *query* database untuk data sensitif tanpa menyertakan abstraksi `getTenantDb(tenantId)`.
-
-## 4. Git Workflow & Contribution Guide
-
-Kami menggunakan variasi sederhana dari **Git Flow** yang disederhanakan dan berorientasi pada CI/CD:
-
-### Branch Strategy
-* `master`: Cabang produksi yang selalu stabil (*Production-ready*).
-* `develop`: Cabang utama untuk integrasi (*Staging/Development*). 
-* `feature/[nama-fitur]`: Untuk fitur baru. Di-branch dari `develop` dan di-merge kembali ke `develop` via Pull Request (contoh: `feature/webhook-dlq`).
-* `bugfix/[nama-bug]` atau `hotfix/*`: Untuk perbaikan *bug*. Di-branch dari `develop` (untuk bug biasa) atau `master` (untuk darurat), lalu di-merge kembali ke `master` serta `develop`.
-
-### Commit Convention
-Gunakan standar [Conventional Commits](https://www.conventionalcommits.org/):
-* `feat:` (fitur baru)
-* `fix:` (perbaikan bug)
-* `docs:` (perubahan dokumentasi)
-* `style:` (formatting, missing semi colons, tanpa ubah logika)
-* `refactor:` (restrukturisasi kode)
-* `test:` (menambah test)
-* `chore:` (update dependencies, konfigurasi build)
-
-**Contoh Commit:** `feat(api): add content search filtering via pg_tsvector`
-
-### Proses Pull Request (PR)
-1. Push branch `feature/*` Anda ke remote repositori.
-2. Buat Pull Request yang mengarah ke branch `develop`.
-3. Tulis deskripsi PR secara jelas: apa masalahnya, solusinya, dan lampirkan screenshot jika ada perubahan UI.
-4. CI Pipeline (GitHub Actions) wajib berstatus **Passed** (Build sukses & Vitest sukses).
-
-## 5. Standardisasi Kode & Database
-
-### Linting & Formatting
-Proyek ini mengutamakan keterbacaan kode (*Code Readability*).
-- Gunakan ESLint standar bawaan Next.js (`next lint`).
-- Terapkan **Prettier** untuk auto-formatting kode sebelum di-commit.
-- Dilarang keras menggunakan tipe `any` pada TypeScript.
-
-### Sinkronisasi Prisma Schema
-Jika Anda mengubah file `prisma/schema.prisma`:
-1. Buat file migrasi lokal: `npx prisma migrate dev --name deskripsi_perubahan`.
-2. Commit file `.sql` migrasi yang ter-generate. Dilarang mengedit file migrasi SQL secara manual tanpa diskusi dengan Lead Engineer.
->>>>>>> 9b50af6e8ed16d25ac05384876bc74c76e7d32c0

@@ -21,7 +21,7 @@ export async function proxy(request: NextRequest) {
   const firstUserPaths = ["/login", "/"]
   if (firstUserPaths.includes(pathname) && !pathname.startsWith("/api/")) {
     try {
-      const checkUrl = `http://localhost:3000/api/auth/check-first-user`
+      const checkUrl = new URL("/api/auth/check-first-user", request.url).toString()
       const res = await fetch(checkUrl, { signal: AbortSignal.timeout(3000) })
       if (res.ok) {
         const data = await res.json()

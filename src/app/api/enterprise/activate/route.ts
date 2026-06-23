@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       issuedAt: new Date(payload.iat * 1000),
       daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
       status: "active",
-    })
+    }, licenseKey)
 
     // 5. Also store in environment (for persistence on restart)
     // Note: In production, customer should add LICENSE_KEY to their .env file

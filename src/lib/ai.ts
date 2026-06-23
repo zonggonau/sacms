@@ -111,6 +111,7 @@ export interface GenerateContentParams {
   locale?: string
   maxTokens?: number
   tone?: "formal" | "casual" | "professional" | "creative" | "technical"
+  mode?: "generate" | "correct"
 }
 
 export interface GenerateContentResult {
@@ -128,8 +129,8 @@ export interface GenerateContentResult {
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
-  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens } = params
-  const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone })
+  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens, mode = "generate" } = params
+  const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone, mode })
   
   const result = await safeGenerateContent(systemPrompt, prompt, maxTokens)
   
@@ -190,7 +191,13 @@ function buildSystemPrompt(opts: {
   fieldName?: string
   locale?: string
   tone?: string
+  mode?: "generate" | "correct"
 }): string {
+  if (opts.mode === "correct") {
+    const toneText = opts.tone ? ` in a ${opts.tone} tone` : ""
+    return `You are a professional editor. Correct and polish the user's content${toneText}. Fix any grammar issues, spelling mistakes, typos, or punctuation errors. Rewrite it to be more clear, engaging, and professional while keeping its original meaning. If the text contains HTML tags or Markdown formatting, preserve that structure exactly. Return only the corrected/polished text with no extra commentary, explanations, or quotes.`
+  }
+
   const parts = [
     "You are an AI content writing assistant for a headless CMS.",
     `Write in a ${opts.tone || "professional"} tone.`,

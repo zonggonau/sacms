@@ -26,6 +26,14 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
@@ -127,7 +135,7 @@ export function WorkspaceManager({
             <div className="text-sm px-3 py-2 bg-secondary rounded-md flex items-center gap-2 border font-medium text-muted-foreground">
               <span>Limit:</span>
               <span className={cn("font-bold text-foreground", !usage.allowed && "text-destructive")}>
-                {usage.current} / {usage.max === null ? "∞" : usage.max}
+                {usage.current} / {usage.max === null || usage.max > 9000 ? "Unlimited" : usage.max}
               </span>
             </div>
           )}
@@ -215,90 +223,104 @@ export function WorkspaceManager({
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredTenants.map((tenant) => (
-              <Card key={tenant.id} className="flex flex-col">
-                <CardHeader className="pb-4">
-                  <div className="flex items-start justify-between">
-                    <div className="w-12 h-12 rounded-md bg-secondary flex items-center justify-center">
-                      <span className="text-primary font-bold text-lg">
-                        {tenant.name.substring(0, 2).toUpperCase()}
-                      </span>
-                    </div>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8">
-                          <MoreVertical className="h-4 w-4" />
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuLabel>Manage</DropdownMenuLabel>
-                        {['owner', 'admin'].includes(tenant.role) ? (
-                          <>
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <Link href={`/dashboard/${tenant.id}/settings`}>
-                                <Settings className="mr-2 h-4 w-4" /> Settings
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild className="cursor-pointer">
-                              <Link href={`/dashboard/${tenant.id}/subscriptions`}>
-                                <Zap className="mr-2 h-4 w-4" /> Billing & Plans
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
-                              onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete Workspace
-                            </DropdownMenuItem>
-                          </>
-                        ) : (
-                          <DropdownMenuItem asChild className="cursor-pointer">
-                            <Link href={`/cms/${tenant.slug}`}>
-                              <ExternalLink className="mr-2 h-4 w-4" /> Content Studio
-                            </Link>
-                          </DropdownMenuItem>
-                        )}
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </div>
-                  
-                  <div className="mt-4">
-                    <CardTitle className="line-clamp-1">{tenant.name}</CardTitle>
-                    <CardDescription className="mt-1 font-mono">{tenant.slug}.sacms.com</CardDescription>
-                  </div>
-                </CardHeader>
-
-                <CardContent className="flex-1">
-                  <div className="flex flex-wrap gap-2">
-                    {tenant.status === 'provisioning' ? (
-                      <Badge variant="outline" className="text-blue-500 border-blue-200 bg-blue-50">
-                        <Loader2 className="h-3 w-3 animate-spin mr-1" /> Setup
+          <div className="rounded-md border bg-card">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Workspace</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Plan</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredTenants.map((tenant) => (
+                  <TableRow key={tenant.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-md bg-secondary flex items-center justify-center shrink-0">
+                          <span className="text-primary font-bold text-xs">
+                            {tenant.name.substring(0, 2).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="font-medium line-clamp-1">{tenant.name}</p>
+                          <p className="text-xs text-muted-foreground font-mono">{tenant.slug}.sacms.com</p>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      {tenant.status === 'provisioning' ? (
+                        <Badge variant="outline" className="text-blue-500 border-blue-200 bg-blue-50">
+                          <Loader2 className="h-3 w-3 animate-spin mr-1" /> Setup
+                        </Badge>
+                      ) : tenant.status === 'failed' ? (
+                        <Badge variant="destructive">Failed</Badge>
+                      ) : (
+                        <Badge variant={tenant.status === 'active' ? "default" : "secondary"}>
+                          {tenant.status}
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline">{tenant.plan}</Badge>
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className="capitalize">
+                        {tenant.role.replace('_', ' ')}
                       </Badge>
-                    ) : tenant.status === 'failed' ? (
-                      <Badge variant="destructive">Failed</Badge>
-                    ) : (
-                      <Badge variant={tenant.status === 'active' ? "default" : "secondary"}>
-                        {tenant.status}
-                      </Badge>
-                    )}
-                    <Badge variant="outline">{tenant.plan}</Badge>
-                  </div>
-                </CardContent>
-
-                <div className="p-4 bg-muted/50 border-t flex items-center justify-between rounded-b-xl">
-                  <Badge variant="secondary" className="capitalize">
-                    Role: {tenant.role.replace('_', ' ')}
-                  </Badge>
-                  <Link href={tenant.status === 'provisioning' ? '#' : `/dashboard/${tenant.id}`} onClick={(e) => tenant.status === 'provisioning' && e.preventDefault()}>
-                    <Button size="sm" variant="secondary" className="font-medium" disabled={tenant.status === 'provisioning' || tenant.status === 'failed'}>
-                      Open <ArrowRight className="ml-2 h-4 w-4" />
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            ))}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Link href={tenant.status === 'provisioning' ? '#' : `/dashboard/${tenant.id}`} onClick={(e) => tenant.status === 'provisioning' && e.preventDefault()}>
+                          <Button size="sm" variant="secondary" className="font-medium" disabled={tenant.status === 'provisioning' || tenant.status === 'failed'}>
+                            Open <ArrowRight className="ml-2 h-4 w-4" />
+                          </Button>
+                        </Link>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Manage</DropdownMenuLabel>
+                            {['owner', 'admin'].includes(tenant.role) ? (
+                              <>
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href={`/dashboard/${tenant.id}/settings`}>
+                                    <Settings className="mr-2 h-4 w-4" /> Settings
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href={`/dashboard/${tenant.id}/subscriptions`}>
+                                    <Zap className="mr-2 h-4 w-4" /> Billing & Plans
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuSeparator />
+                                <DropdownMenuItem 
+                                  className="text-destructive focus:bg-destructive focus:text-destructive-foreground cursor-pointer"
+                                  onClick={() => { setTenantToDelete(tenant); setDeleteConfirm(""); }}
+                                >
+                                  <Trash2 className="mr-2 h-4 w-4" /> Delete Workspace
+                                </DropdownMenuItem>
+                              </>
+                            ) : (
+                              <DropdownMenuItem asChild className="cursor-pointer">
+                                <Link href={`/dashboard/${tenant.id}/cms`}>
+                                  <ExternalLink className="mr-2 h-4 w-4" /> Content Studio
+                                </Link>
+                              </DropdownMenuItem>
+                            )}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           </div>
         )}
       </section>

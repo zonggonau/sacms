@@ -48,6 +48,7 @@ export function AIAssistantDialog({
   const [prompt, setPrompt] = useState("")
   const [tone, setTone] = useState<string>("professional")
   const [targetLocale, setTargetLocale] = useState("id")
+  const [correctInstruction, setCorrectInstruction] = useState<string>("grammar")
   const [copied, setCopied] = useState(false)
   const { toast } = useToast()
 
@@ -55,7 +56,9 @@ export function AIAssistantDialog({
     if (!prompt) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai/generate`, {
+      const isGlobal = tenantSlug === "global"
+      const url = isGlobal ? `/api/admin/ai/generate` : `/api/tenant/${tenantSlug}/ai/generate`
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -78,11 +81,57 @@ export function AIAssistantDialog({
     }
   }
 
+  const handleCorrect = async () => {
+    const textToCorrect = prompt || currentValue
+    if (!textToCorrect) return
+    setLoading(true)
+    try {
+      let finalPrompt = ""
+      if (correctInstruction === "grammar") {
+        finalPrompt = `Please check spelling, grammar, and typos, and fix them. Do not change the original style: ${textToCorrect}`
+      } else if (correctInstruction === "professional") {
+        finalPrompt = `Rewrite the following text to sound more professional and polished: ${textToCorrect}`
+      } else if (correctInstruction === "casual") {
+        finalPrompt = `Rewrite the following text to sound more casual, friendly, and conversational: ${textToCorrect}`
+      } else if (correctInstruction === "simple") {
+        finalPrompt = `Simplify the language of the following text so that it is easier to read and understand: ${textToCorrect}`
+      } else {
+        finalPrompt = `Improve the following text: ${textToCorrect}`
+      }
+
+      const isGlobal = tenantSlug === "global"
+      const url = isGlobal ? `/api/admin/ai/generate` : `/api/tenant/${tenantSlug}/ai/generate`
+      const res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: finalPrompt,
+          contentType: contentTypeSlug,
+          fieldName,
+          tone,
+          mode: "correct",
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setResult(data.content)
+      } else {
+        throw new Error(data.error || "Failed to correct content")
+      }
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Error", description: err.message })
+    } finally {
+      setLoading(false)
+    }
+  }
+
   const handleTranslate = async () => {
     if (!currentValue && !prompt) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai/translate`, {
+      const isGlobal = tenantSlug === "global"
+      const url = isGlobal ? `/api/admin/ai/translate` : `/api/tenant/${tenantSlug}/ai/translate`
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -107,7 +156,9 @@ export function AIAssistantDialog({
     if (!currentValue) return
     setLoading(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai/summarize`, {
+      const isGlobal = tenantSlug === "global"
+      const url = isGlobal ? `/api/admin/ai/summarize` : `/api/tenant/${tenantSlug}/ai/summarize`
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -150,14 +201,17 @@ export function AIAssistantDialog({
             AI Content Assistant
           </DialogTitle>
           <DialogDescription>
-            Enhance your content using AI power. Generate, translate, or summarize in seconds.
+            Enhance your content using AI power. Generate, translate, summarize, or correct in seconds.
           </DialogDescription>
         </DialogHeader>
 
         <Tabs defaultValue="generate" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="generate" className="flex items-center gap-2">
               <Wand2 className="h-4 w-4" /> Generate
+            </TabsTrigger>
+            <TabsTrigger value="correct" className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4" /> Correct
             </TabsTrigger>
             <TabsTrigger value="translate" className="flex items-center gap-2">
               <Languages className="h-4 w-4" /> Translate
@@ -201,6 +255,42 @@ export function AIAssistantDialog({
                 >
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                   Generate
+                </Button>
+              </div>
+            </TabsContent>
+
+            <TabsContent value="correct" className="space-y-4">
+              <div className="space-y-2">
+                <Label>Text to Correct / Polish</Label>
+                <Textarea
+                  placeholder="Enter text or use current field value..."
+                  value={prompt || currentValue || ""}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  rows={3}
+                />
+              </div>
+              <div className="flex gap-4">
+                <div className="flex-1 space-y-2">
+                  <Label>Correction Mode</Label>
+                  <Select value={correctInstruction} onValueChange={setCorrectInstruction}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="grammar">Grammar & Spelling Only</SelectItem>
+                      <SelectItem value="professional">Rewrite Professionally</SelectItem>
+                      <SelectItem value="casual">Rewrite Casually</SelectItem>
+                      <SelectItem value="simple">Simplify Language</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button 
+                  className="mt-auto bg-emerald-600 hover:bg-emerald-700" 
+                  onClick={handleCorrect}
+                  disabled={loading || (!prompt && !currentValue)}
+                >
+                  {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+                  Correct
                 </Button>
               </div>
             </TabsContent>

@@ -50,6 +50,7 @@ import { SlugField } from "@/components/content/field-renderers/slug-field"
 
 import { getAdminContentTypeBySlugAction } from "@/actions/admin-content-types"
 import { getAdminEntryAction, updateAdminEntryAction } from "@/actions/admin-content"
+import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
 interface Field {
   id: string
@@ -214,6 +215,15 @@ export default function AdminCMSEditEntryPage() {
     const LabelWithAI = () => (
       <div className="flex items-center justify-between">
         <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+        {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
+          <AIAssistantDialog
+            tenantSlug={"global"}
+            contentTypeSlug={contentTypeSlug}
+            fieldName={field.name}
+            currentValue={value as string}
+            onApply={(content) => handleFieldChange(field.slug, content)}
+          />
+        )}
       </div>
     )
 

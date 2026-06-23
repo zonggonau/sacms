@@ -4,6 +4,7 @@ import { redirect } from "next/navigation"
 import BillingClient from "./billing-client"
 import { getTransactionHistoryAction } from "@/actions/billing"
 import { db } from "@/lib/database"
+import { isEnterpriseMode } from "@/lib/license"
 
 export default async function BillingPage() {
   const session = await getServerSession(authOptions)
@@ -14,6 +15,8 @@ export default async function BillingPage() {
 
   const globalToken = process.env.NEXT_PUBLIC_SYSTEM_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd"
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"
+
+  const enterprise = await isEnterpriseMode()
 
   // 1. Fetch Account Plans
   let accountPlans: any[] = []
@@ -96,6 +99,7 @@ export default async function BillingPage() {
       initialActiveWorkspacesCount={activeWorkspacesCount}
       initialUsage={usage}
       initialTransactions={transactions}
+      isEnterpriseMode={enterprise}
     />
   )
 }

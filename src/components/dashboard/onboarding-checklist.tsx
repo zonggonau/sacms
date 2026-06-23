@@ -45,7 +45,7 @@ export function OnboardingChecklist({ tenantId, stats }: OnboardingChecklistProp
       description: "Create and publish your first content item in the Studio.",
       isCompleted: stats.totalEntries > 0,
       icon: Sparkles,
-      href: `/cms/${tenantId}`
+      href: `/dashboard/${tenantId}/cms`
     },
     {
       id: "team",

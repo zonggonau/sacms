@@ -18,7 +18,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
 
 interface NavItem {
   title: string
@@ -26,10 +26,14 @@ interface NavItem {
   icon: React.ElementType
 }
 
-export function GlobalSidebar() {
+interface GlobalSidebarProps {
+  isEnterpriseMode?: boolean
+  session?: any
+}
+
+export function GlobalSidebar({ isEnterpriseMode, session }: GlobalSidebarProps = {}) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { data: session } = useSession()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
 

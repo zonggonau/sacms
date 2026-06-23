@@ -44,6 +44,24 @@ Creating a workspace is subject to the account's `max_workspaces` limit. The wor
 
 The workspace slug becomes part of dashboard, CMS, and API URLs. Treat it as a stable integration identifier.
 
+Canonical plan limits used by the server:
+
+| Account plan | Max workspaces |
+|---|---:|
+| Free | 1 |
+| Starter | 3 |
+| Pro | 10 |
+| Enterprise | 20 |
+| Custom | Approved override |
+
+| Workspace plan | Content types | Entries | Team members | Storage | Locales | API calls/month |
+|---|---:|---:|---:|---:|---:|---:|
+| Free | 3 | 500 | 1 | 100MB | 1 | 1,000 |
+| Starter | 5 | 5,000 | 3 | 1GB | 2 | 10,000 |
+| Pro | 10 | 10,000 | 10 | 5GB | 5 | 100,000 |
+| Enterprise | 20 | 20,000 | 20 | 10GB | 20 | 1,000,000 |
+| Custom | Approved override | Approved override | Approved override | Approved override | Approved override | Approved override |
+
 ## 4. Workspace navigation
 
 Common Dashboard sections:

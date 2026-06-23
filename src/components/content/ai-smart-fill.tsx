@@ -46,7 +46,9 @@ export function AISmartFill({
         required: f.required
       }))
 
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai/smart-fill`, {
+      const isGlobal = tenantSlug === "global"
+      const url = isGlobal ? `/api/admin/ai/smart-fill` : `/api/tenant/${tenantSlug}/ai/smart-fill`
+      const res = await fetch(url, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

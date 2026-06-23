@@ -111,15 +111,14 @@ export default async function WorkspaceSelectionPage() {
       }
     })
 
-    // Check user plan limits
-    const planConfig = await getUserPlanConfig(session.user.id)
-    if (planConfig) {
-      usage = {
-        current: tenants.length,
-        max: planConfig.max_workspaces,
-        allowed: planConfig.max_workspaces === null || tenants.length < planConfig.max_workspaces,
-        plan: planConfig.plan_slug
-      }
+    // Check user plan limits using centralized enforcement (handles enterprise/admin bypasses)
+    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
+    const limitResult = await enforceUserPlanLimit(session.user.id, "workspaces")
+    usage = {
+      current: tenants.length, // Ensure it matches the list we fetched
+      max: limitResult.max,
+      allowed: limitResult.max === null || limitResult.max > 9000 || tenants.length < limitResult.max,
+      plan: limitResult.planSlug
     }
   } catch (e) {
     console.error("Failed to fetch global dependencies in RSC:", e);

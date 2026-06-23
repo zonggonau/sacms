@@ -33,7 +33,7 @@ export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
   },
   enterprise: {
     plan_slug: "enterprise",
-    max_workspaces: 9999,
+    max_workspaces: 20,
   },
   custom: {
     plan_slug: "custom",
@@ -88,7 +88,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_content_types: 5,
     max_content_entries: 5000,
     max_team_members: 3,
-    max_api_calls: 100000,
+    max_api_calls: 10000,
     max_storage: 1024, // 1GB
     max_locales: 2,
     audit_log_retention: 7,
@@ -99,7 +99,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_content_types: 10,
     max_content_entries: 10000,
     max_team_members: 10,
-    max_api_calls: 1000000,
+    max_api_calls: 100000,
     max_storage: 5120, // 5GB
     max_locales: 5,
     audit_log_retention: 30,
@@ -110,7 +110,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_content_types: 20,
     max_content_entries: 20000,
     max_team_members: 20,
-    max_api_calls: 10000000,
+    max_api_calls: 1000000,
     max_storage: 10240, // 10GB
     max_locales: 20,
     audit_log_retention: 365,
@@ -131,7 +131,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
 
 /**
  * Gets the effective plan configuration for a tenant.
- * It tries to fetch dynamic config from CMS (sacms-pricing), 
+ * It tries to fetch dynamic config from CMS (sacms-workspace-pricing),
  * falling back to DEFAULT_LIMITS.
  */
 export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig> {
@@ -229,7 +229,7 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
 
 /**
  * Gets the plan configuration for a user.
- * Fetches dynamic limits from sacms-pricing if available.
+ * Fetches dynamic limits from sacms-account-pricing if available.
  */
 export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig> {
   const user = await db.user.findUnique({

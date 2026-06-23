@@ -1,107 +1,52 @@
-# 🚀 SACMS: Multi-Tenant Startup & Content Management System
+# SaCMS
 
-SACMS is a high-performance, production-ready multi-tenant headless CMS designed for startup ecosystems. It provides a robust foundation for managing isolated tenant workspaces, dynamic content modeling, and integrated subscription billing.
+SaCMS is a multi-tenant headless CMS with built-in workspace billing, RBAC, AI authoring, white-label branding, custom domains, and public REST/GraphQL delivery.
 
-## ✨ Core Features
+If you want the canonical system overview, start with:
 
-### 🏢 Multi-Tenant Architecture
-- **Isolated Workspaces**: Each tenant has their own secure dashboard and data isolation.
-- **Tenant Management**: Super Admin controls tenant lifecycle, roles, and assignments.
-- **White-labeling**: Custom branding, colors, and dashboard personalization for each tenant.
+- [docs/00-README.md](docs/00-README.md)
+- [docs/02-Software_Requirement_Specification.md](docs/02-Software_Requirement_Specification.md)
+- [docs/11-User_Manual_and_Integrations.md](docs/11-User_Manual_and_Integrations.md)
+- [docs/15-Implementation_Traceability.md](docs/15-Implementation_Traceability.md)
 
-### 🏗️ Dynamic Content Modeling (Headless CMS)
-- **Content Types**: Define custom collections (e.g., Blog, Products) with flexible fields.
-- **Single Types**: Perfect for static pages like "About Us" or "Landing Page".
-- **Global Schemas**: Super Admin can create "Startup Schemas" that are automatically available across all tenants.
-- **Component System**: Reusable nested field structures (Components) for complex data layouts.
-- **Rich Field Types**: Text, Rich Text, Media, Relations, Select, Boolean, Date, and more.
+## Current canonical plan rules
 
-### 💳 Subscription & Billing (Midtrans Integrated)
-- **Flexible Plans**: Main workspace plans (Starter, Pro, Business) managed globally.
-- **Add-on System**: Individual feature upgrades like "Daily Backup" or "Additional Storage".
-- **Midtrans Integration**: Seamless payment flow with Snap (QRIS, E-wallet, Virtual Accounts).
-- **Billing History**: Automated invoice generation and payment tracking for every tenant.
+Account plans limit how many workspaces a user can own:
 
-### 🔐 Enterprise-Grade Security & Monitoring
-- **RBAC**: Role-Based Access Control (Owner, Admin, Editor, Viewer).
-- **NextAuth.js**: Secure authentication flows.
-- **Sentry**: Full-stack error tracking and performance monitoring.
-- **Audit Logs**: Track critical actions across the platform.
+- Free: 1 workspace
+- Starter: 3 workspaces
+- Pro: 10 workspaces
+- Enterprise: 20 workspaces
+- Custom: override via approved tenant/user override
 
-## 🛠️ Technology Stack
+Workspace plans limit content and platform usage:
 
-- **Framework**: [Next.js 16](https://nextjs.org/) (App Router, Turbopack)
-- **Language**: [TypeScript](https://www.typescriptlang.org/)
-- **ORM**: [Prisma](https://www.prisma.io/)
-- **Database**: PostgreSQL
-- **Styling**: [Tailwind CSS 4](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/)
-- **Payment**: [Midtrans](https://midtrans.com/)
-- **Auth**: [NextAuth.js](https://next-auth.js.org/)
-- **Monitoring**: [Sentry](https://sentry.io/)
+- Free: 3 content types, 500 entries, 1 team member, 100MB storage, 1 locale, 1,000 API calls/month
+- Starter: 5 content types, 5,000 entries, 3 team members, 1GB storage, 2 locales, 10,000 API calls/month
+- Pro: 10 content types, 10,000 entries, 10 team members, 5GB storage, 5 locales, 100,000 API calls/month
+- Enterprise: 20 content types, 20,000 entries, 20 team members, 10GB storage, 20 locales, 1,000,000 API calls/month
+- Custom: override via `CustomPlanOverride`
 
-## 🚀 Getting Started
+Edge rate limiting is separate from monthly API caps:
 
-### 1. Prerequisites
-- [Node.js](https://nodejs.org/) (v20+)
-- PostgreSQL database
+- Free: 100 requests/minute
+- Pro: 500 requests/minute
+- Enterprise/Custom: configured per deployment
 
-### 2. Environment Setup
-Copy `.env.example` to `.env` and fill in the required variables:
-```bash
-# Database
-DATABASE_URL="postgresql://..."
+## Getting started
 
-# NextAuth
-NEXTAUTH_SECRET="..."
-NEXTAUTH_URL="http://localhost:3000"
-
-# Midtrans (Sandbox/Production)
-MIDTRANS_SERVER_KEY="SB-Mid-server-..."
-MIDTRANS_CLIENT_KEY="SB-Mid-client-..."
-MIDTRANS_MODE="sandbox"
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="SB-Mid-client-..."
-
-# Sentry
-NEXT_PUBLIC_SENTRY_DSN="..."
-```
-
-### 3. Installation & Database
 ```bash
 npm install
-npx prisma generate
-npx prisma migrate dev
-```
-
-### 4. Initial Seeding
-Run the following scripts to set up the base ecosystem:
-```bash
-# Setup base content types
-npx tsx scripts/setup-startup-management-models.ts
-
-# Seed initial pricing and plans
-npx tsx scripts/reseed-pricing.ts
-
-# Assign permissions
-npx tsx scripts/seed-permissions.ts
-```
-
-### 5. Run Development
-```bash
+npm run db:generate
+npm run db:push
 npm run dev
 ```
 
-## 📂 Project Structure
+## Useful scripts
 
-- `src/app/admin`: Super Admin global management dashboard.
-- `src/app/dashboard/[tenant]`: Isolated tenant workspace dashboard.
-- `src/components/cms`: Core CMS engine components (Field renderers, Schema builders).
-- `src/lib/payment`: Payment provider abstraction (Midtrans implementation).
-- `scripts/`: Utility scripts for maintenance, seeding, and debugging.
+- `scripts/setup-sacms.ts` — canonical setup + pricing seed
+- `scripts/setup-startup-management-models.ts`
+- `scripts/reseed-pricing.ts` — legacy landing-page pricing seed
+- `scripts/seed-permissions.ts`
 
-## 🤝 Contributing
-
-This project is optimized for AI-assisted development. Use the built-in scripts and structured patterns to extend functionality.
-
----
-
-Built with ❤️ for the startup community. Powered by SACMS.
+For the full runbook, deployment guidance, and API details, use the docs directory rather than this file.

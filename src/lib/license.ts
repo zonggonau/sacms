@@ -142,13 +142,15 @@ export async function recordValidation(licenseKey: string) {
 /**
  * Upsert the local license cache (singleton)
  */
-export async function upsertLicenseCache(result: LicenseResult) {
+export async function upsertLicenseCache(result: LicenseResult, licenseKey?: string) {
   if (!result.valid || !result.expiresAt || !result.issuedAt) return
+
+  const keyToCache = licenseKey || LICENSE_KEY
 
   await db.licenseCache.upsert({
     where: { id: "local-license" },
     update: {
-      licenseKey: LICENSE_KEY,
+      licenseKey: keyToCache,
       customerName: result.customerName || "",
       customerEmail: result.customerEmail,
       type: result.type || "",
@@ -160,7 +162,7 @@ export async function upsertLicenseCache(result: LicenseResult) {
     },
     create: {
       id: "local-license",
-      licenseKey: LICENSE_KEY,
+      licenseKey: keyToCache,
       customerName: result.customerName || "",
       customerEmail: result.customerEmail,
       type: result.type || "",
@@ -269,7 +271,7 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
           daysRemaining: Math.max(0, Math.floor((new Date(data.expiresAt).getTime() - Date.now()) / 86400000)),
           status: "active",
         }
-        await upsertLicenseCache(result)
+        await upsertLicenseCache(result, key)
         return result
       }
     } catch {
@@ -291,7 +293,7 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
     status: "active",
   }
 
-  await upsertLicenseCache(result)
+  await upsertLicenseCache(result, key)
   return result
 }
 
@@ -299,9 +301,12 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
 
 /**
  * Quick check: is this instance in enterprise mode?
- * Lightweight — reads env + cache
+ * Lightweight — reads cache + env
  */
 export async function isEnterpriseMode(): Promise<boolean> {
+  const cached = await getCachedLicense()
+  if (cached?.valid && cached.type === "enterprise") return true
+
   if (!LICENSE_KEY) return false
   const result = await validateLicense()
   return result.valid && result.type === "enterprise"
@@ -311,13 +316,12 @@ export async function isEnterpriseMode(): Promise<boolean> {
  * Get all current license status (for UI)
  */
 export async function getLicenseStatus(): Promise<LicenseResult> {
+  const cached = await getCachedLicense()
+  if (cached) return cached
+
   if (!LICENSE_KEY) {
     return { valid: false, status: "invalid", error: "No license key configured" }
   }
-
-  // Try cache first (faster)
-  const cached = await getCachedLicense()
-  if (cached) return cached
 
   return validateLicense()
 }

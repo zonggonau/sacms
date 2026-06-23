@@ -15,6 +15,7 @@ const generateSchema = z.object({
   locale: z.string().optional(),
   maxTokens: z.number().int().min(50).max(4096).optional(),
   tone: z.enum(["formal", "casual", "professional", "creative", "technical"]).optional(),
+  mode: z.enum(["generate", "correct"]).optional(),
 })
 
 /**

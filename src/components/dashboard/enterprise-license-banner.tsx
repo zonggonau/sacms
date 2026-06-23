@@ -168,6 +168,15 @@ export function EnterpriseLicenseBanner() {
                 </Badge>
               </div>
               <p className="text-sm font-bold mt-0.5">{license.customerName}</p>
+              {license.expiresAt && (
+                <p className="text-[11px] text-muted-foreground mt-0.5 font-medium">
+                  Activated until: {new Date(license.expiresAt).toLocaleDateString("id-ID", {
+                    day: "numeric",
+                    month: "long",
+                    year: "numeric"
+                  })}
+                </p>
+              )}
             </div>
           </div>
           {isExpiring && (

@@ -18,12 +18,14 @@ export default function BillingClient({
   initialAccountPlans,
   initialActiveWorkspacesCount,
   initialUsage,
-  initialTransactions
+  initialTransactions,
+  isEnterpriseMode
 }: {
   initialAccountPlans: any[]
   initialActiveWorkspacesCount: number
   initialUsage: any
   initialTransactions: any[]
+  isEnterpriseMode?: boolean
 }) {
   const { data: session, status, update } = useSession()
   const router = useRouter()
@@ -98,9 +100,9 @@ export default function BillingClient({
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+        <TabsList className={cn("grid w-full", isEnterpriseMode ? "grid-cols-1 max-w-[200px]" : "grid-cols-2 max-w-[400px]")}>
           <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
-          <TabsTrigger value="history">Transaction History</TabsTrigger>
+          {!isEnterpriseMode && <TabsTrigger value="history">Transaction History</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="plans" className="space-y-6 mt-6">
@@ -206,57 +208,59 @@ export default function BillingClient({
           </section>
         </TabsContent>
 
-        <TabsContent value="history" className="mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Transaction History</CardTitle>
-              <CardDescription>View your past payments and invoices.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {transactions.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <p>No transactions found.</p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {transactions.map((tx) => (
-                    <div key={tx.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg gap-4">
-                      <div>
-                        <p className="font-medium text-sm break-all">{tx.orderId}</p>
-                        <p className="text-xs text-muted-foreground mt-1">
-                          {new Date(tx.createdAt).toLocaleDateString("id-ID", {
-                            day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
-                          })}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <div className="text-right">
-                          <p className="font-bold">Rp {tx.amount.toLocaleString("id-ID")}</p>
-                          <Badge 
-                            variant={tx.status === 'success' ? 'default' : tx.status === 'failed' ? 'destructive' : 'secondary'}
-                            className="mt-1 capitalize"
-                          >
-                            {tx.status}
-                          </Badge>
+        {!isEnterpriseMode && (
+          <TabsContent value="history" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Transaction History</CardTitle>
+                <CardDescription>View your past payments and invoices.</CardDescription>
+              </CardHeader>
+              <CardContent>
+                {transactions.length === 0 ? (
+                  <div className="text-center py-12 text-muted-foreground">
+                    <p>No transactions found.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {transactions.map((tx) => (
+                      <div key={tx.id} className="flex flex-col md:flex-row md:items-center justify-between p-4 border rounded-lg gap-4">
+                        <div>
+                          <p className="font-medium text-sm break-all">{tx.orderId}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {new Date(tx.createdAt).toLocaleDateString("id-ID", {
+                              day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit"
+                            })}
+                          </p>
                         </div>
-                        {tx.status === 'pending' && (
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            disabled={checkingOrderId === tx.orderId}
-                            onClick={() => handleCheckStatus(tx.orderId)}
-                          >
-                            {checkingOrderId === tx.orderId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check Status"}
-                          </Button>
-                        )}
+                        <div className="flex items-center gap-4">
+                          <div className="text-right">
+                            <p className="font-bold">Rp {tx.amount.toLocaleString("id-ID")}</p>
+                            <Badge 
+                              variant={tx.status === 'success' ? 'default' : tx.status === 'failed' ? 'destructive' : 'secondary'}
+                              className="mt-1 capitalize"
+                            >
+                              {tx.status}
+                            </Badge>
+                          </div>
+                          {tx.status === 'pending' && (
+                            <Button 
+                              variant="outline" 
+                              size="sm" 
+                              disabled={checkingOrderId === tx.orderId}
+                              onClick={() => handleCheckStatus(tx.orderId)}
+                            >
+                              {checkingOrderId === tx.orderId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check Status"}
+                            </Button>
+                          )}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

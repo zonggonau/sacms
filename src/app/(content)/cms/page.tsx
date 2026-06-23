@@ -23,7 +23,7 @@ export default async function CMSIndexPage() {
   })
 
   if (membership) {
-    redirect(`/cms/${membership.tenant.slug || membership.tenant.id}`)
+    redirect(`/dashboard/${membership.tenant.slug || membership.tenant.id}/cms`)
   }
 
   // If no CMS access anywhere, send them to dashboard

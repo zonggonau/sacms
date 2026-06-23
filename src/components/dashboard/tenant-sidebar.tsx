@@ -35,12 +35,14 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
 
 interface TenantSidebarProps {
   tenantId?: string
   tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
+  isEnterpriseMode?: boolean
+  session?: any
 }
 
 interface NavItem {
@@ -58,11 +60,10 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, session }: TenantSidebarProps) {
   const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { data: session } = useSession()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -79,7 +80,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
     : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
 
   const href = (path: string) => {
-    if (path === "/cms-redirect") return `/cms/${tenantId}`
+    if (path === "/cms-redirect") return `/dashboard/${tenantId}/cms`
     return `/dashboard/${tenantId}${path}`
   }
 
@@ -126,7 +127,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
     {
       label: "CONTENT",
       items: [
-        { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO", target: "_blank" },
+        { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         { title: "Overview", href: "", icon: LayoutDashboard },
         { title: "Content Types", href: "/content-types", icon: DatabaseIcon, matchPrefix: true },
         { title: "Single Types", href: "/single-types", icon: Layers, matchPrefix: true },
@@ -147,7 +148,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants }: TenantS
         { title: "Team Members", href: "/users", icon: Users },
         { title: "Roles & Permissions", href: "/roles", icon: Shield },
         { title: "Localization", href: "/localization", icon: Languages },
-        { title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true },
+        ...(isEnterpriseMode ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
       ],
     },
     {

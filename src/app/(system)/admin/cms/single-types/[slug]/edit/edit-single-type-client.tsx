@@ -399,8 +399,8 @@ export default function EditSingleTypeClient({
         editingField={editingField}
         setEditingField={setEditingField}
         fields={fields}
-        
-        tenantSlug="global"`n        context="singleType"
+        tenantSlug="global"
+        context="singleType"
         onSave={saveFieldConfig}
       />
     </div>

@@ -49,6 +49,8 @@ import { SlugField } from "@/components/content/field-renderers/slug-field"
 
 import { getAdminContentTypeBySlugAction } from "@/actions/admin-content-types"
 import { createAdminEntryAction } from "@/actions/admin-content"
+import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
+import { AISmartFill } from "@/components/content/ai-smart-fill"
 
 interface Field {
   id: string
@@ -168,6 +170,13 @@ export default function AdminCMSCreateEntryPage() {
     setFormData(prev => ({ ...prev, [slug]: value }))
   }
 
+  const handleAISmartFill = (data: Record<string, any>) => {
+    setFormData(prev => ({
+      ...prev,
+      ...data
+    }))
+  }
+
   const renderField = (field: Field) => {
     const value = formData[field.slug]
     let options: string[] = []
@@ -185,6 +194,15 @@ export default function AdminCMSCreateEntryPage() {
     const LabelWithAI = () => (
       <div className="flex items-center justify-between">
         <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+        {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
+          <AIAssistantDialog
+            tenantSlug={"global"}
+            contentTypeSlug={contentTypeSlug}
+            fieldName={field.name}
+            currentValue={value as string}
+            onApply={(content) => handleFieldChange(field.slug, content)}
+          />
+        )}
       </div>
     )
 
@@ -309,6 +327,13 @@ export default function AdminCMSCreateEntryPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <AISmartFill 
+              tenantSlug={"global"} 
+              contentTypeName={contentType?.name || ""} 
+              schema={contentType?.fields || []}
+              onApply={handleAISmartFill}
+            />
+
             <Select value={entryStatus} onValueChange={setEntryStatus}>
               <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-none border border-border h-11">
                 <SelectValue />

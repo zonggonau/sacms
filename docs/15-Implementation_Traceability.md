@@ -37,6 +37,8 @@ This document prevents requirements, manuals, API examples, and source code from
 | Credentials authentication | Implemented | `src/lib/auth.ts` | Email must be verified; legacy password hash migrates on login |
 | Google/GitHub OAuth | Implemented with constraint | `src/lib/auth.ts` | Provider appears only when its env variables exist |
 | Multi-tenant membership | Implemented | `Tenant`, `TenantMember`, `getTenantAccess()` | Super admin receives an owner-equivalent access context |
+| Account plan limits | Implemented with constraint | `src/lib/tenant-plan.ts`, `src/lib/plan-enforcement.ts`, `src/actions/tenant.ts`, `src/app/api/tenants/route.ts` | Free 1 workspace, Starter 3, Pro 10, Enterprise 20, Custom approved override |
+| Workspace plan limits | Implemented with constraint | `src/lib/tenant-plan.ts`, `src/lib/plan-enforcement.ts`, `src/app/api/admin/global/seed/route.ts` | Free 3 content types/500 entries/1 member/100MB/1 locale/1,000 API calls; Starter 5/5,000/3/1GB/2/10,000; Pro 10/10,000/10/5GB/5/100,000; Enterprise 20/20,000/20/10GB/20/1,000,000 |
 | Dedicated tenant database | Implemented with constraint | `Tenant.databaseUrl`, `getTenantDb()` | Falls back to shared master DB when no dedicated URL is configured |
 | Collection Type modeling | Implemented | `ContentType`, `SchemaField`, content-type actions/routes | Tenant-owned and global-assigned schemas coexist |
 | Single Type modeling | Implemented | `SingleType`, `TenantSingleTypeAssignment` | Uses assignment data rather than `ContentEntry` workflow |

@@ -2,6 +2,7 @@ import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import TemplatesClient from "./templates-client"
+import { isEnterpriseMode } from "@/lib/license"
 
 export default async function TemplatesPage() {
   const session = await getServerSession(authOptions)
@@ -16,6 +17,8 @@ export default async function TemplatesPage() {
   let templates: any[] = []
   let workspacePlans: any[] = []
   let addonPlans: any[] = []
+
+  const enterprise = await isEnterpriseMode()
 
   try {
     const templatesRes = await fetch(`${baseUrl}/api/public/content/templates`, {

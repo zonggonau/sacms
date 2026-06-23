@@ -107,7 +107,7 @@ export default function LoginPage() {
         if (isOwnerOrAdmin) {
           router.push("/dashboard")
         } else if (user?.tenants && user.tenants.length > 0) {
-          router.push(`/cms/${user.tenants[0].slug}`)
+          router.push(`/dashboard/${user.tenants[0].slug}/cms`)
         } else {
           router.push("/dashboard")
         }
