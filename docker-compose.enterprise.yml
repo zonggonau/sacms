@@ -4,7 +4,7 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - DATABASE_URL=postgresql://sacms:***@postgres:5432/sacms
+      - DATABASE_URL=postgresql://sacms:${POSTGRES_PASSWORD}@postgres:5432/sacms
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET}
       - NEXTAUTH_URL=http://localhost:3000
       - REDIS_URL=redis://redis:6379

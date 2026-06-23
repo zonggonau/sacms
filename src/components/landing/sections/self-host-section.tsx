@@ -15,7 +15,7 @@ export function SelfHostSection() {
     {
       title: "3. Setup Akun Admin Pertama",
       desc: "Jalankan script setup interaktif langsung di dalam container.",
-      code: `docker-compose -f docker-compose.enterprise.yml exec app bun run scripts/selfhost-setup.ts`
+      code: `docker-compose -f docker-compose.enterprise.yml exec -u root app bun run scripts/selfhost-setup.ts`
     }
   ]
 
