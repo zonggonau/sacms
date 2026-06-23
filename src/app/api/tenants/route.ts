@@ -59,7 +59,7 @@ export async function GET() {
 
     const formattedTenants = tenants.map(t => {
       const sub = t.subscriptions[0]
-      let daysRemaining = null
+      let daysRemaining: number | null = null
       
       if (sub?.currentPeriodEnd) {
         const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()

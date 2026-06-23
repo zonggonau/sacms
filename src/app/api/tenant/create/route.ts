@@ -8,6 +8,7 @@ import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { isEnterpriseMode } from "@/lib/license"
+import { isSelfHosted } from "@/lib/selfhost"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   let slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
@@ -34,11 +35,12 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Workspace name is required" }, { status: 400 })
     }
 
-    // Check enterprise mode — if active, skip plan limits
+    // Check enterprise/self-hosted mode — if active, skip plan limits
     const enterprise = await isEnterpriseMode()
+    const selfHosted = isSelfHosted()
 
-    // Check user's workspace limit (unless enterprise)
-    if (!enterprise) {
+    // Check user's workspace limit (unless enterprise or self-hosted)
+    if (!enterprise && !selfHosted) {
       const workspaceCount = await db.tenantMember.count({
         where: { userId: session.user.id, role: "owner" },
       })
@@ -55,7 +57,7 @@ export async function POST(request: NextRequest) {
           name: name.trim(),
           slug,
           description: body.description || null,
-          plan: "starter",
+          plan: (enterprise || selfHosted) ? "enterprise" : "starter",
           status: "active",
         },
       })

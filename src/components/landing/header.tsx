@@ -10,6 +10,7 @@ import { Logo } from "@/components/ui/logo"
 const NAV_ITEMS = [
   { label: "Fitur", href: "/#features" },
   { label: "Harga", href: "/#pricing" },
+  { label: "Self-Host", href: "/#self-host" },
   { label: "Layanan", href: "/#sektor" },
   { label: "Dokumentasi", href: "/docs" },
 ]

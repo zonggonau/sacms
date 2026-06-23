@@ -188,7 +188,7 @@ export async function getCachedLicense(): Promise<LicenseResult | null> {
     return {
       valid: cached.status === "active" && cached.expiresAt > new Date(),
       customerName: cached.customerName,
-      customerEmail: cached.customerEmail,
+      customerEmail: cached.customerEmail ?? undefined,
       type: cached.type,
       features: cached.features as string[],
       expiresAt: cached.expiresAt,

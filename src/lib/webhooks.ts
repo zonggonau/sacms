@@ -156,7 +156,7 @@ async function fireWebhook(
         webhookId: webhook.id,
         event: payload.event,
         payload: payload as any,
-        response: responseBody,
+        response: responseBody || undefined,
         statusCode,
         success,
         duration,
@@ -267,7 +267,10 @@ export async function executeSyncHooks(
 
       if (webhook.headers) {
         try {
-          Object.assign(headers, JSON.parse(webhook.headers) as Record<string, string>)
+          const parsedHeaders = typeof webhook.headers === "string" 
+            ? JSON.parse(webhook.headers) 
+            : webhook.headers;
+          Object.assign(headers, parsedHeaders as Record<string, string>)
         } catch {
           console.error(`Sync hook ${webhook.id}: Failed to parse custom headers, skipping`)
         }
@@ -449,12 +452,16 @@ export async function processWebhookRetries(): Promise<{
       }
 
       if (entry.webhook.headers) {
-        Object.assign(headers, JSON.parse(entry.webhook.headers) as Record<string, string>)
+        const parsedHeaders = typeof entry.webhook.headers === "string" 
+          ? JSON.parse(entry.webhook.headers) 
+          : entry.webhook.headers;
+        Object.assign(headers, parsedHeaders as Record<string, string>)
       }
 
       if (entry.webhook.secret) {
+        const payloadString = typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload)
         const signature = createHmac("sha256", entry.webhook.secret)
-          .update(entry.payload)
+          .update(payloadString)
           .digest("hex")
         headers["X-Webhook-Signature"] = `sha256=${signature}`
       }
@@ -462,7 +469,7 @@ export async function processWebhookRetries(): Promise<{
       const response = await fetch(entry.webhook.url, {
         method: "POST",
         headers,
-        body: entry.payload,
+        body: typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload),
         signal: AbortSignal.timeout(10000),
       })
 
@@ -540,12 +547,16 @@ export async function replayDeadLetter(deadLetterId: string): Promise<boolean> {
     }
 
     if (entry.webhook.headers) {
-      Object.assign(headers, JSON.parse(entry.webhook.headers) as Record<string, string>)
+      const parsedHeaders = typeof entry.webhook.headers === "string" 
+        ? JSON.parse(entry.webhook.headers) 
+        : entry.webhook.headers;
+      Object.assign(headers, parsedHeaders as Record<string, string>)
     }
 
     if (entry.webhook.secret) {
+      const payloadString = typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload)
       const signature = createHmac("sha256", entry.webhook.secret)
-        .update(entry.payload)
+        .update(payloadString)
         .digest("hex")
       headers["X-Webhook-Signature"] = `sha256=${signature}`
     }
@@ -553,7 +564,7 @@ export async function replayDeadLetter(deadLetterId: string): Promise<boolean> {
     const response = await fetch(entry.webhook.url, {
       method: "POST",
       headers,
-      body: entry.payload,
+      body: typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload),
       signal: AbortSignal.timeout(10000),
     })
 

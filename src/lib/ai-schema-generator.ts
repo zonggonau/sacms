@@ -1,4 +1,26 @@
-import { AISchema, safeGenerateContent } from "./ai"
+import { safeGenerateContent } from "./ai"
+
+export interface AIField {
+  name: string
+  slug: string
+  type: string
+  required?: boolean
+  componentSlug?: string
+  repeatable?: boolean
+}
+
+export interface AIModel {
+  name: string
+  slug: string
+  description?: string
+  fields: AIField[]
+}
+
+export interface AISchema {
+  contentTypes: AIModel[]
+  singleTypes: AIModel[]
+  components: AIModel[]
+}
 
 /**
  * AI Skill Agent for Professional CMS Schema Generation (Powered by Google Gemini)

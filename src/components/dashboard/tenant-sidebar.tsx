@@ -42,6 +42,7 @@ interface TenantSidebarProps {
   tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
   isEnterpriseMode?: boolean
+  isSelfHosted?: boolean
   session?: any
 }
 
@@ -60,7 +61,7 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, session }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, isSelfHosted, session }: TenantSidebarProps) {
   const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
@@ -148,7 +149,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: "Team Members", href: "/users", icon: Users },
         { title: "Roles & Permissions", href: "/roles", icon: Shield },
         { title: "Localization", href: "/localization", icon: Languages },
-        ...(isEnterpriseMode ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
+        ...((isEnterpriseMode || isSelfHosted) ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
       ],
     },
     {

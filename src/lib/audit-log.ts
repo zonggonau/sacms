@@ -23,7 +23,7 @@ export function logAudit(params: AuditLogParams): void {
         action: params.action,
         entity: params.entity,
         entityId: params.entityId ?? null,
-        data: params.data ? JSON.stringify(params.data) : null,
+        data: params.data ?? undefined,
         ipAddress: params.ipAddress ?? null,
         userAgent: params.userAgent ?? null,
       },

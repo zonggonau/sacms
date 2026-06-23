@@ -181,7 +181,7 @@ export async function PATCH(
     }
 
     const result = await submitReview(entry.id, session.user.id, decision, comment, tenantDb)
-    let nextStatus = entry.status
+    let nextStatus: any = entry.status
     if (result.allApproved || result.rejected) {
       nextStatus = result.allApproved ? "APPROVED" : "REJECTED"
       const updated = await tenantDb.contentEntry.update({

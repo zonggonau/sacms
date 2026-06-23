@@ -281,7 +281,7 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
           totalDeleted += list.Contents.length
         }
 
-        continuationToken = list.NextContinuationToken
+        continuationToken = (list as any).NextContinuationToken
       } while (continuationToken)
 
       if (totalDeleted > 0) {
@@ -315,7 +315,7 @@ export async function generatePresignedUrl(storageKey: string, expiresIn = 3600)
       Bucket: bucket,
       Key: storageKey,
     })
-    return getSignedUrl(s3, command, { expiresIn })
+    return getSignedUrl(s3 as any, command as any, { expiresIn })
   }
   
   // Fallback for local storage: internal proxy route

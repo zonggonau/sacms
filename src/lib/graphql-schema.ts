@@ -4,7 +4,7 @@ import { processAutoSlugs } from "@/lib/slug"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { canTransition } from "@/lib/content-workflow"
 import { resolveContentData } from "@/lib/content-resolver"
-import { triggerWebhooks, executeSyncHooks, Webhooks, WebhookEvents } from "@/lib/webhooks"
+import { triggerWebhooks, executeSyncHooks, WebhookEvents } from "@/lib/webhooks"
 
 // Dynamically build GraphQL schema from content types and single types
 export async function buildDynamicTypeDefs(
@@ -370,7 +370,7 @@ async function resolveMutationCreate(
     contentType.schemaFields,
     hookData,
     undefined,
-    'collection',
+    'content',
     _db
   )
 
@@ -460,7 +460,7 @@ async function resolveMutationUpdate(
     contentType.schemaFields,
     fullData,
     args.id,
-    'collection',
+    'content',
     _db
   )
 

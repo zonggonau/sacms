@@ -6,6 +6,7 @@ import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isEnterpriseMode } from "@/lib/license"
+import { isSelfHosted } from "@/lib/selfhost"
 import { SubscriptionGate } from "./subscription-gate"
 
 export async function generateMetadata({
@@ -48,11 +49,12 @@ export default async function TenantDashboardLayout({
   }
 
   const enterprise = await isEnterpriseMode()
+  const selfHosted = isSelfHosted()
 
   if (resolvedParams.tenant === "account") {
     return (
       <div className="flex h-screen overflow-hidden bg-muted/20">
-        <TenantSidebar tenantSlug="account" isEnterpriseMode={enterprise} session={session} />
+        <TenantSidebar tenantSlug="account" isEnterpriseMode={enterprise} isSelfHosted={selfHosted} session={session} />
         <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
           {children}
         </div>
@@ -87,11 +89,12 @@ export default async function TenantDashboardLayout({
   })
 
   // If there is an end date and it's in the past, it is expired
-  const isExpired = enterprise ? false : (subscription?.currentPeriodEnd ? new Date() > subscription.currentPeriodEnd : false);
+  // Self-hosted and enterprise modes bypass subscription checks
+  const isExpired = (enterprise || selfHosted) ? false : (subscription?.currentPeriodEnd ? new Date() > subscription.currentPeriodEnd : false);
   
   return (
     <div className="flex h-screen overflow-hidden bg-muted/20">
-      <TenantSidebar tenantSlug={resolvedParams.tenant} isEnterpriseMode={enterprise} session={session} />
+      <TenantSidebar tenantSlug={resolvedParams.tenant} isEnterpriseMode={enterprise} isSelfHosted={selfHosted} session={session} />
       <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
         <SubscriptionGate isExpired={isExpired} tenantId={access.tenantId}>
           {children}

@@ -2,6 +2,7 @@ import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
 import { isEnterpriseMode } from "./license"
+import { isSelfHosted } from "./selfhost"
 
 /**
  * Plan Enforcement Module
@@ -42,9 +43,20 @@ export interface EnforcementResult {
 // ==================== ENTERPRISE BYPASS ====================
 
 /**
- * Check if enterprise mode is active and return a bypass result if so.
+ * Check if enterprise mode or self-hosted mode is active and return a bypass result if so.
  */
 async function enterpriseBypass(): Promise<EnforcementResult | null> {
+  // Self-hosted mode always bypasses plan limits
+  if (isSelfHosted()) {
+    return {
+      allowed: true,
+      current: 0,
+      max: 999999,
+      planSlug: "enterprise",
+      message: "Self-Hosted Mode — Unlimited",
+    }
+  }
+
   try {
     const enterprise = await isEnterpriseMode()
     if (enterprise) {
@@ -113,7 +125,7 @@ export async function enforcePlanLimit(
     allowed,
     current: currentUsage,
     max: effectiveMax,
-    planSlug: planConfig.slug,
+    planSlug: planConfig.plan_slug,
     message: allowed
       ? "OK"
       : `Limit reached: ${resource} (${currentUsage}/${effectiveMax}). Upgrade your plan or contact support.`,
@@ -273,9 +285,9 @@ async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource):
         // Sum of all media files sizes for this tenant
         const result = await db.media.aggregate({
           where: { tenantId },
-          _sum: { fileSize: true },
+          _sum: { size: true },
         })
-        return result._sum.fileSize || 0
+        return result._sum.size || 0
       }
       case "locales":
         return db.tenantLocale.count({ where: { tenantId, isEnabled: true } })

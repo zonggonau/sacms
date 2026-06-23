@@ -14,6 +14,7 @@ import { SectorsSection } from "./sections/sectors-section"
 import { LocalPrideSection } from "./sections/local-pride-section"
 import { CtaBanner } from "./sections/cta-banner"
 import { FooterSection } from "./sections/footer-section"
+import { SelfHostSection } from "./sections/self-host-section"
 import { FadeIn } from "@/components/ui/fade-in"
 import type { LandingData } from "./types"
 
@@ -56,6 +57,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
         />
       </FadeIn>
       <FadeIn delay={100}><WorkflowSection workflow={workflow} /></FadeIn>
+      <FadeIn delay={100}><SelfHostSection /></FadeIn>
       <FadeIn delay={100}><AddonsSection addons={addons} /></FadeIn>
       <FadeIn delay={100}><TestimonialsSection testimonials={testimonials} /></FadeIn>
       <FadeIn delay={100}><AboutSection about={about} /></FadeIn>

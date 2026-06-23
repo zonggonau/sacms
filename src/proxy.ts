@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getRedis } from "@/lib/redis"
+import { isSelfHosted, isRouteAllowed } from "@/lib/selfhost"
 
 // The canonical hostname of this app (without https://)
 const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
@@ -10,11 +11,35 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 
 /**
  * Security proxy: adds security headers, CORS, API versioning,
- * rate limiting, and custom domain routing for white-label tenants.
+ * rate limiting, custom domain routing, and self-hosted mode enforcement.
  */
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
+
+  // ==================== SELF-HOSTED MODE GUARD ====================
+  if (isSelfHosted()) {
+    // Root path → redirect to dashboard
+    if (pathname === "/") {
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+
+    // Block disallowed routes (SaaS billing, admin panel, etc.)
+    if (!isRouteAllowed(pathname)) {
+      // For API routes, return JSON 404
+      if (pathname.startsWith("/api/")) {
+        return new NextResponse(
+          JSON.stringify({
+            error: "Not Found",
+            message: "This endpoint is not available in self-hosted mode.",
+          }),
+          { status: 404, headers: { "Content-Type": "application/json" } }
+        )
+      }
+      // For page routes, redirect to dashboard
+      return NextResponse.redirect(new URL("/dashboard", request.url))
+    }
+  }
 
   // ==================== FIRST USER REDIRECT ====================
   // If no users exist, redirect /login and / to /register

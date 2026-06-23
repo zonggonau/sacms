@@ -4,12 +4,14 @@ import { db } from "@/lib/database"
 import { redirect } from "next/navigation"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
+import { isSelfHosted } from "@/lib/selfhost"
 
 const SYSTEM_SLUGS = ["sacms-global"]
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
+  const selfHosted = isSelfHosted()
 
   const tenants = await db.tenant.findMany({
     where: {
@@ -29,6 +31,18 @@ export default async function WorkspaceSelectionPage() {
     },
     orderBy: { createdAt: "desc" }
   })
+
+  // Self-hosted mode: auto-redirect to simplify UX
+  if (selfHosted) {
+    // No workspaces yet → go to setup wizard
+    if (tenants.length === 0) {
+      redirect("/dashboard/setup")
+    }
+    // Single workspace → skip workspace selector, go directly to dashboard
+    if (tenants.length === 1) {
+      redirect(`/dashboard/${tenants[0].slug || tenants[0].id}`)
+    }
+  }
 
   const formattedTenants = tenants.map(t => {
     const sub = t.subscriptions[0]
