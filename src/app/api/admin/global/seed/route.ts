@@ -10,7 +10,7 @@ const CONTENT_TYPES = [
     slug: "sacms-hero",
     name: "SaCMS Hero Section",
     description: "Hero banner for the landing page",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "headline",    name: "Headline",    type: "text",     required: true, order: 0 },
       { slug: "subheadline", name: "Subheadline", type: "text",     required: false, order: 1 },
@@ -139,7 +139,7 @@ const CONTENT_TYPES = [
     slug: "sacms-about",
     name: "SaCMS About Section",
     description: "About section content (single)",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "title",       name: "Title",       type: "text", required: true,  order: 0 },
       { slug: "description", name: "Description", type: "text", required: false, order: 1 },
@@ -151,7 +151,7 @@ const CONTENT_TYPES = [
     slug: "sacms-whatsapp",
     name: "SaCMS WhatsApp Config",
     description: "WhatsApp floating button config (single)",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "phone",     name: "Phone",     type: "text",    required: true,  order: 0 },
       { slug: "message",   name: "Message",   type: "text",    required: false, order: 1 },
@@ -174,7 +174,7 @@ const CONTENT_TYPES = [
     slug: "sacms-local-pride",
     name: "SaCMS Local Pride",
     description: "Section kebanggaan lokal",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "badge", name: "Badge Text", type: "text", required: false, order: 0 },
       { slug: "title", name: "Title", type: "text", required: true, order: 1 },
@@ -185,7 +185,7 @@ const CONTENT_TYPES = [
     slug: "sacms-cta",
     name: "SaCMS CTA Banner",
     description: "Call to Action di bagian bawah",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "title", name: "Title", type: "text", required: true, order: 0 },
       { slug: "description", name: "Description", type: "text", required: false, order: 1 },
@@ -197,7 +197,7 @@ const CONTENT_TYPES = [
     slug: "sacms-footer",
     name: "SaCMS Footer",
     description: "Konfigurasi Footer",
-    isSingleType: true,
+    isSingleType: false,
     fields: [
       { slug: "brand_name", name: "Brand Name", type: "text", required: true, order: 0 },
       { slug: "description", name: "Description", type: "text", required: false, order: 1 },
@@ -390,6 +390,11 @@ export async function POST() {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     if (session.user.role !== "super_admin") return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
+    // Clean up existing global data to ensure a fresh seed
+    await db.contentType.deleteMany({ where: { tenantId: null } })
+    await db.singleType.deleteMany({ where: { tenantId: null } })
+    await db.component.deleteMany({ where: { tenantId: null } })
+
     const results: Record<string, { created: number; skipped: number; updated: number }> = {}
 
     for (const ct of CONTENT_TYPES) {
@@ -532,68 +537,7 @@ export async function POST() {
     }
 
     // === Seed Components ===
-    for (const comp of COMPONENTS) {
-      let component = await db.component.findFirst({
-        where: { slug: comp.slug, tenantId: null },
-      })
-
-      if (!component) {
-        component = await db.component.create({
-          data: {
-            name: comp.name,
-            slug: comp.slug,
-            description: comp.description,
-            category: comp.category,
-            tenantId: null, // Truly Global
-            schemaFields: { create: comp.fields.map((f) => ({
-                name: f.name,
-                slug: f.slug,
-                type: f.type,
-                required: f.required,
-                order: f.order,
-                options: f.options as any,
-              })),
-            },
-          },
-        })
-      } else {
-        // Upgrade existing schema
-        await db.schemaField.deleteMany({
-          where: { componentId: component.id },
-        })
-        await db.component.update({
-          where: { id: component.id },
-          data: {
-            name: comp.name,
-            description: comp.description,
-            category: comp.category,
-            schemaFields: { create: comp.fields.map((f) => ({
-                name: f.name,
-                slug: f.slug,
-                type: f.type,
-                required: f.required,
-                order: f.order,
-                options: f.options as any,
-              })),
-            },
-          },
-        })
-      }
-      
-      // Assign to global scope
-      const existingAssignment = await db.tenantComponentAssignment.findFirst({
-        where: { tenantId: null, componentId: component.id },
-      })
-
-      if (!existingAssignment) {
-        await db.tenantComponentAssignment.create({
-          data: {
-            tenantId: null,
-            componentId: component.id,
-          }
-        })
-      }
-    }
+    // Removed as per user request
 
     // === Seed RBAC Permissions & RolePermissions ===
     const { PERMISSIONS } = await import("@/lib/rbac")

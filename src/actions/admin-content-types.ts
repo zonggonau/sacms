@@ -104,7 +104,7 @@ export async function createAdminContentTypeAction(data: any) {
       },
     })
 
-    revalidatePath(`/admin/cms/content-types`)
+    revalidatePath(`/admin/content-types`)
     return { contentType }
   } catch (error) {
     console.error("Error creating admin content type:", error)
@@ -149,8 +149,8 @@ export async function updateAdminContentTypeAction(id: string, data: any) {
       })
     })
 
-    revalidatePath(`/admin/cms/content-types`)
-    revalidatePath(`/admin/cms/content-types/${updatedContentType.slug}`)
+    revalidatePath(`/admin/content-types`)
+    revalidatePath(`/admin/content-types/${updatedContentType.slug}`)
     
     return { contentType: updatedContentType }
   } catch (error) {
@@ -168,7 +168,7 @@ export async function deleteAdminContentTypeAction(id: string) {
     if (!existing || existing.tenantId !== null) return { error: "Content type not found or not global" }
 
     await db.contentType.delete({ where: { id } })
-    revalidatePath(`/admin/cms/content-types`)
+    revalidatePath(`/admin/content-types`)
     
     return { success: true }
   } catch (error) {

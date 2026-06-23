@@ -1,8 +1,8 @@
 import { Quote } from "lucide-react"
 import type { TestimonialItem } from "../types"
 
-export function TestimonialsSection({ testimonials }: { testimonials: TestimonialItem[] }) {
-  if (testimonials.length === 0) return null
+export function TestimonialsSection({ testimonials = [] }: { testimonials?: TestimonialItem[] }) {
+  if (!testimonials || testimonials.length === 0) return null
 
   return (
     <section id="testimonials" className="py-32 relative bg-background border-t border-border/50 overflow-hidden">

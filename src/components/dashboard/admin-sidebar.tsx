@@ -51,24 +51,6 @@ const superAdminNavItems = [
       { title: "Create New", href: "/content-types/new" },
     ],
   },
-  {
-    title: "Single Types",
-    href: "/single-types",
-    icon: FileText,
-    children: [
-      { title: "All Single Types", href: "/single-types" },
-      { title: "Create New", href: "/single-types/new" },
-    ],
-  },
-  {
-    title: "Components",
-    href: "/components",
-    icon: Layers,
-    children: [
-      { title: "All Components", href: "/components" },
-      { title: "Create New", href: "/components/new" },
-    ],
-  },
   { title: "Media Library", href: "/media", icon: Image },
   { title: "Users & Roles", href: "/users", icon: Users },
   { title: "RBAC", href: "/rbac", icon: Shield },

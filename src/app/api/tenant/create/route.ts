@@ -7,8 +7,6 @@ import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { isEnterpriseMode } from "@/lib/license"
-import { isSelfHosted } from "@/lib/selfhost"
 
 async function generateUniqueSlug(baseName: string): Promise<string> {
   let slug = baseName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")
@@ -35,18 +33,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Workspace name is required" }, { status: 400 })
     }
 
-    // Check enterprise/self-hosted mode — if active, skip plan limits
-    const enterprise = await isEnterpriseMode()
-    const selfHosted = isSelfHosted()
-
-    // Check user's workspace limit (unless enterprise or self-hosted)
-    if (!enterprise && !selfHosted) {
-      const workspaceCount = await db.tenantMember.count({
-        where: { userId: session.user.id, role: "owner" },
-      })
-      if (workspaceCount >= 1) {
-        return NextResponse.json({ error: "Free mode allows 1 workspace. Activate enterprise license for unlimited workspaces." }, { status: 403 })
-      }
+    // Check user's workspace limit
+    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
+    const limitResult = await enforceUserPlanLimit(session.user.id, "workspaces")
+    if (!limitResult.allowed) {
+      return NextResponse.json({ error: limitResult.message }, { status: 403 })
     }
 
     const slug = customSlug ? await generateUniqueSlug(customSlug) : await generateUniqueSlug(name)
@@ -57,7 +48,7 @@ export async function POST(request: NextRequest) {
           name: name.trim(),
           slug,
           description: body.description || null,
-          plan: (enterprise || selfHosted) ? "enterprise" : "starter",
+          plan: "starter",
           status: "active",
         },
       })

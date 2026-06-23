@@ -5,7 +5,7 @@ export function FeaturesBento({ features }: { features: FeatureItem[] }) {
   if (features.length === 0) return null
 
   return (
-    <section id="features" className="py-20 relative bg-background overflow-hidden scroll-mt-24">
+    <section id="fitur" className="py-20 relative bg-background overflow-hidden scroll-mt-24">
       {/* Abstract Background Elements */}
       <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-[1000px] h-[600px] opacity-30 pointer-events-none">
         <div className="absolute inset-0 bg-gradient-to-b from-primary/20 via-primary/5 to-transparent blur-3xl rounded-full" />
@@ -27,7 +27,7 @@ export function FeaturesBento({ features }: { features: FeatureItem[] }) {
           </p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
           {features.map((feature, i) => {
             const Icon = getIcon(feature.icon)
 

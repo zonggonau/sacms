@@ -19,7 +19,10 @@ import {
   Loader2,
 } from "lucide-react"
 
+import { useParams } from "next/navigation"
+
 export default function CustomerLicensePage() {
+  const { tenant } = useParams() as { tenant: string }
   const { toast } = useToast()
   const [license, setLicense] = useState<any>(null)
   const [loading, setLoading] = useState(true)
@@ -30,7 +33,7 @@ export default function CustomerLicensePage() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch("/api/enterprise/status")
+      const res = await fetch(`/api/tenant/${tenant}/license/status`)
       if (res.ok) {
         const data = await res.json()
         setLicense(data)
@@ -53,7 +56,7 @@ export default function CustomerLicensePage() {
     setActivating(true)
 
     try {
-      const res = await fetch("/api/enterprise/activate", {
+      const res = await fetch(`/api/tenant/${tenant}/license/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ licenseKey: licenseKeyInput }),

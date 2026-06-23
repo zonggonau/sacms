@@ -121,7 +121,7 @@ export default function BillingClient({
                 <div className="flex items-end gap-2 mt-2">
                   <h3 className="text-4xl font-bold">{usage ? usage.current : activeWorkspacesCount}</h3>
                   <span className="text-sm text-muted-foreground font-medium mb-1">
-                    / {usage ? (usage.max === null ? '∞' : usage.max) : (session?.user?.plan === 'free' ? '1' : '∞')}
+                    / {usage ? (usage.max === null || usage.max > 9000 ? 'Unlimited' : usage.max) : (session?.user?.plan === 'free' ? '1' : 'Unlimited')}
                   </span>
                 </div>
                 <div className="mt-4 w-full bg-secondary h-2 rounded-full overflow-hidden">
@@ -138,11 +138,12 @@ export default function BillingClient({
             </Card>
           </section>
 
-          <section className="space-y-6">
-            <div>
-              <h3 className="text-xl font-bold">Available Plans</h3>
-              <p className="text-sm text-muted-foreground">Select or upgrade your account tier.</p>
-            </div>
+          {!isEnterpriseMode && (
+            <section className="space-y-6">
+              <div>
+                <h3 className="text-xl font-bold">Available Plans</h3>
+                <p className="text-sm text-muted-foreground">Select or upgrade your account tier.</p>
+              </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {accountPlans.map((plan) => {
@@ -206,6 +207,7 @@ export default function BillingClient({
               </CardContent>
             </Card>
           </section>
+        )}
         </TabsContent>
 
         {!isEnterpriseMode && (

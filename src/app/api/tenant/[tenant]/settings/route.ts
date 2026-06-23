@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
+import { isEnterpriseTenant } from "@/lib/license"
 
 // GET /api/tenant/[tenant]/settings - Get tenant settings
 export async function GET(
@@ -74,6 +75,11 @@ export async function GET(
       daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
     }
 
+    let isEnterprise = await isEnterpriseTenant("sacms-global")
+    if (!isEnterprise) {
+      isEnterprise = await isEnterpriseTenant(tenant.id)
+    }
+
     return NextResponse.json({
       settings: {
         name: tenant.name,
@@ -82,6 +88,7 @@ export async function GET(
         status: tenant.status,
         subscriptionStatus: sub?.status || null,
         daysRemaining,
+        isEnterprise,
         // Custom Infrastructure
         databaseUrl: tenant.databaseUrl || "",
         storageConfig: tenant.storageConfig || null,
@@ -164,6 +171,14 @@ export async function PUT(
       databaseUrl,
       storageConfig,
     } = body
+
+    if ((databaseUrl !== undefined && databaseUrl !== tenant.databaseUrl) || 
+        (storageConfig !== undefined && JSON.stringify(storageConfig) !== JSON.stringify(tenant.storageConfig))) {
+      const isEnterprise = await isEnterpriseTenant(tenant.id)
+      if (!isEnterprise) {
+        return NextResponse.json({ error: "Enterprise license required for custom infrastructure" }, { status: 403 })
+      }
+    }
 
     // Update tenant basic info and custom infrastructure
     if (name !== undefined || description !== undefined || databaseUrl !== undefined || storageConfig !== undefined) {

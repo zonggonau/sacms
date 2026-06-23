@@ -267,8 +267,8 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
 
     logAudit({ tenantId: null, userId: session.user.id, action: AuditAction.CONTENT_CREATED, entity: "content_entry", entityId: entry.id, data: { contentType: contentTypeSlug, status } })
 
-    revalidatePath(`/admin/cms/content/${contentTypeSlug}`)
-    revalidatePath(`/admin/cms/single-types/${contentTypeSlug}`)
+    revalidatePath(`/admin/content/${contentTypeSlug}`)
+    revalidatePath(`/admin/single-types/${contentTypeSlug}`)
     
     return { success: true, entry }
   } catch (error: any) {
@@ -416,8 +416,8 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
 
     logAudit({ tenantId: null, userId: session.user.id, action: existingLocaleEntry ? AuditAction.CONTENT_UPDATED : AuditAction.CONTENT_CREATED, entity: "content_entry", entityId: entry?.id || entryId, data: { contentType: contentTypeSlug, status: entry?.status, locale: targetLocale } })
 
-    revalidatePath(`/admin/cms/content/${contentTypeSlug}`)
-    revalidatePath(`/admin/cms/single-types/${contentTypeSlug}`)
+    revalidatePath(`/admin/content/${contentTypeSlug}`)
+    revalidatePath(`/admin/single-types/${contentTypeSlug}`)
 
     return { success: true, entry }
   } catch (error: any) {
@@ -450,8 +450,8 @@ export async function deleteAdminEntryAction(contentTypeSlug: string, entryId: s
 
     logAudit({ tenantId: null, userId: session.user.id, action: AuditAction.CONTENT_DELETED, entity: "content_entry", entityId: entryId, data: { contentType: contentTypeSlug } })
 
-    revalidatePath(`/admin/cms/content/${contentTypeSlug}`)
-    revalidatePath(`/admin/cms/single-types/${contentTypeSlug}`)
+    revalidatePath(`/admin/content/${contentTypeSlug}`)
+    revalidatePath(`/admin/single-types/${contentTypeSlug}`)
 
     return { success: true }
   } catch (error: any) {

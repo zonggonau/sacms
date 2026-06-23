@@ -8,10 +8,10 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "@/components/ui/logo"
 
 const NAV_ITEMS = [
-  { label: "Fitur", href: "/#features" },
+  { label: "Beranda", href: "/" },
+  { label: "Fitur", href: "/#fitur" },
   { label: "Harga", href: "/#pricing" },
-  { label: "Self-Host", href: "/#self-host" },
-  { label: "Layanan", href: "/#sektor" },
+  { label: "Tentang", href: "/#about" },
   { label: "Dokumentasi", href: "/docs" },
 ]
 

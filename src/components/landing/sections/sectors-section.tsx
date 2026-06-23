@@ -2,8 +2,8 @@ import { Landmark } from "lucide-react"
 import { getIcon } from "../icon-map"
 import type { SectorItem } from "../types"
 
-export function SectorsSection({ sectors }: { sectors: SectorItem[] }) {
-  if (sectors.length === 0) return null
+export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
+  if (!sectors || sectors.length === 0) return null
 
   return (
     <section id="sektor" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">

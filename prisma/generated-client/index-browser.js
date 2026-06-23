@@ -179,6 +179,7 @@ exports.Prisma.TenantScalarFieldEnum = {
   customDomainVerifiedAt: 'customDomainVerifiedAt',
   customEmailSender: 'customEmailSender',
   databaseUrl: 'databaseUrl',
+  licenseKey: 'licenseKey',
   faviconUrl: 'faviconUrl',
   primaryColor: 'primaryColor',
   storageConfig: 'storageConfig'

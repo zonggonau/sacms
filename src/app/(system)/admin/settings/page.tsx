@@ -38,6 +38,7 @@ export default function AdminSettingsPage() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [seeding, setSeeding] = useState(false)
 
   const [settings, setSettings] = useState({
     siteName: "SaCMS",
@@ -109,6 +110,23 @@ export default function AdminSettingsPage() {
       toast({ variant: "destructive", title: "Error", description: "Failed to update global settings" })
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleSeedData = async () => {
+    setSeeding(true)
+    try {
+      const res = await fetch("/api/admin/global/seed", { method: "POST" })
+      if (res.ok) {
+        toast({ title: "Seed Successful", description: "Global Settings & Content seed generated!" })
+      } else {
+        const data = await res.json()
+        throw new Error(data.error || "Failed to seed global data")
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Seed Error", description: error.message })
+    } finally {
+      setSeeding(false)
     }
   }
 
@@ -385,6 +403,30 @@ export default function AdminSettingsPage() {
                   These settings are stored in the database. Environment variables (`.env`) still take precedence for critical secrets like API keys.
                 </p>
               </div>
+
+              {/* Global Seed Actions */}
+              <Card className="border-none shadow-sm bg-orange-50/50">
+                <CardHeader>
+                  <CardTitle className="text-base font-bold flex items-center gap-2">
+                    <Database className="h-5 w-5 text-orange-500" />
+                    Seed Global Data
+                  </CardTitle>
+                  <CardDescription className="text-xs">
+                    Generate global schemas and seed basic structural content to initialize the system.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    onClick={handleSeedData} 
+                    disabled={seeding}
+                    variant="outline" 
+                    className="border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white"
+                  >
+                    {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
+                    {seeding ? "Generating Seed..." : "Generate Global Seed"}
+                  </Button>
+                </CardContent>
+              </Card>
             </div>
           </div>
           </TabsContent>

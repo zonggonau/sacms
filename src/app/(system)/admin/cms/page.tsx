@@ -11,11 +11,11 @@ export default function AdminCMSPage() {
       <div className="space-y-2">
         <h1 className="text-3xl font-bold tracking-tight text-slate-800">Global CMS</h1>
         <p className="text-muted-foreground text-lg max-w-lg">
-          Welcome to the Global Content Management System. Here you can manage data for global content types and single types.
+          Welcome to the Global Content Management System. Here you can manage data for global content types.
         </p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full max-w-2xl mt-8">
+      <div className="grid grid-cols-1 gap-4 w-full max-w-sm mt-8 mx-auto">
         <Card className="bg-white border-slate-200 shadow-sm rounded-none text-left">
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-bold flex items-center gap-2">
@@ -28,21 +28,6 @@ export default function AdminCMSPage() {
           </CardHeader>
           <CardContent>
             <p className="text-xs text-muted-foreground">Select a content type from the sidebar to view, create, or edit its entries.</p>
-          </CardContent>
-        </Card>
-        
-        <Card className="bg-white border-slate-200 shadow-sm rounded-none text-left">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-sm font-bold flex items-center gap-2">
-              <FileText className="h-4 w-4 text-orange-500" />
-              Single Types
-            </CardTitle>
-            <CardDescription className="text-xs">
-              Manage global singleton pages.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <p className="text-xs text-muted-foreground">Select a single type from the sidebar to edit its content.</p>
           </CardContent>
         </Card>
       </div>

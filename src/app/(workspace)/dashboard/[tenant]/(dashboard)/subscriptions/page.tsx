@@ -286,119 +286,121 @@ export default function TenantSubscriptionsPage() {
           </div>
 
           {/* Main Plans Grid */}
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Upgrade your Workspace</h2>
-              
-              <div className="flex items-center p-1 bg-muted/30 rounded-none border border-border w-fit">
-                <Button 
-                  variant="ghost"
-                  size="sm" 
-                  className={cn(
-                    "rounded-none px-6 font-bold h-8 text-xs border-none", 
-                    billingInterval === 'month' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => setBillingInterval('month')}
-                >
-                  Monthly
-                </Button>
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className={cn(
-                    "rounded-none px-6 font-bold h-8 text-xs border-none", 
-                    billingInterval === 'year' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
-                  )}
-                  onClick={() => setBillingInterval('year')}
-                >
-                  Yearly <Badge className="ml-2 bg-orange-600 text-white border-none text-[8px] h-4 rounded-none font-black">-15%</Badge>
-                </Button>
+          {!isEnterpriseMode && (
+            <div className="space-y-6">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Upgrade your Workspace</h2>
+                
+                <div className="flex items-center p-1 bg-muted/30 rounded-none border border-border w-fit">
+                  <Button 
+                    variant="ghost"
+                    size="sm" 
+                    className={cn(
+                      "rounded-none px-6 font-bold h-8 text-xs border-none", 
+                      billingInterval === 'month' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setBillingInterval('month')}
+                  >
+                    Monthly
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className={cn(
+                      "rounded-none px-6 font-bold h-8 text-xs border-none", 
+                      billingInterval === 'year' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
+                    )}
+                    onClick={() => setBillingInterval('year')}
+                  >
+                    Yearly <Badge className="ml-2 bg-orange-600 text-white border-none text-[8px] h-4 rounded-none font-black">-15%</Badge>
+                  </Button>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+                {mainPlans.map((plan) => {
+                  const isCurrent = plan.id === subscription?.plan
+                  const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
+                  const label = billingInterval === 'year' ? '/yr' : '/mo'
+
+                  return (
+                    <Card key={plan.id} className={cn(
+                      "border border-border bg-card shadow-none rounded-none overflow-hidden relative group flex flex-col transition-colors hover:border-orange-500 duration-300",
+                      plan.popular && "border-2 border-orange-500"
+                    )}>
+                      {plan.popular && (
+                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-orange-600">
+                          Most Popular
+                        </div>
+                      )}
+                      <CardHeader className="p-8 pt-6 space-y-4">
+                        <div className="flex justify-between items-start">
+                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
+                          {billingInterval === 'year' && <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest h-5 rounded-none border border-border">Annual</Badge>}
+                        </div>
+                        <div className="flex items-baseline gap-1 mt-4">
+                          <span className="text-3xl font-black">{formatPrice(displayPrice)}</span>
+                          <span className="text-xs text-muted-foreground">{label}</span>
+                        </div>
+                        {billingInterval === 'year' && <p className="text-[10px] text-muted-foreground font-medium italic">Equivalent to {formatPrice(plan.price)}/mo</p>}
+                      </CardHeader>
+                      <CardContent className="p-8 pt-0 space-y-8 flex-1 flex flex-col">
+                        <Separator className="bg-border" />
+                        
+                        {/* Plan Details / Limits */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Schemas</p>
+                            <p className="text-sm font-bold">{plan.maxContentTypes > 100 ? "Unlimited" : plan.maxContentTypes}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Entries</p>
+                            <p className="text-sm font-bold">{plan.maxContentEntries?.toLocaleString() || "Basic"}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Team</p>
+                            <p className="text-sm font-bold">{plan.maxTeamMembers > 100 ? "Unlimited" : plan.maxTeamMembers}</p>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">API Calls</p>
+                            <p className="text-sm font-bold">{plan.maxApiCalls > 1000000 ? "Unlimited" : (plan.maxApiCalls?.toLocaleString() || "Standard")}</p>
+                          </div>
+                        </div>
+
+                        <Separator className="bg-border" />
+
+                        <ul className="space-y-4 flex-1">
+                          {plan.features.map((feature: string) => (
+                            <li key={feature} className="flex items-start gap-3 text-xs font-bold text-muted-foreground">
+                              <div className="mt-0.5 w-4 h-4 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
+                                <Check className="h-2.5 w-2.5 text-orange-500" strokeWidth={4} />
+                              </div>
+                              {feature}
+                            </li>
+                          ))}
+                        </ul>
+                        <Button 
+                          className={cn(
+                            "w-full h-12 font-bold rounded-none shadow-none",
+                            isCurrent 
+                              ? "bg-muted text-muted-foreground cursor-not-allowed border border-border" 
+                              : "bg-orange-500 hover:bg-orange-600 text-white border-none"
+                          )}
+                          onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
+                          disabled={isCurrent}
+                        >
+                          {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-              {mainPlans.map((plan) => {
-                const isCurrent = plan.id === subscription?.plan
-                const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
-                const label = billingInterval === 'year' ? '/yr' : '/mo'
-
-                return (
-                  <Card key={plan.id} className={cn(
-                    "border border-border bg-card shadow-none rounded-none overflow-hidden relative group flex flex-col transition-colors hover:border-orange-500 duration-300",
-                    plan.popular && "border-2 border-orange-500"
-                  )}>
-                    {plan.popular && (
-                      <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-orange-600">
-                        Most Popular
-                      </div>
-                    )}
-                    <CardHeader className="p-8 pt-6 space-y-4">
-                      <div className="flex justify-between items-start">
-                        <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
-                        {billingInterval === 'year' && <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest h-5 rounded-none border border-border">Annual</Badge>}
-                      </div>
-                      <div className="flex items-baseline gap-1 mt-4">
-                        <span className="text-3xl font-black">{formatPrice(displayPrice)}</span>
-                        <span className="text-xs text-muted-foreground">{label}</span>
-                      </div>
-                      {billingInterval === 'year' && <p className="text-[10px] text-muted-foreground font-medium italic">Equivalent to {formatPrice(plan.price)}/mo</p>}
-                    </CardHeader>
-                    <CardContent className="p-8 pt-0 space-y-8 flex-1 flex flex-col">
-                      <Separator className="bg-border" />
-                      
-                      {/* Plan Details / Limits */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Schemas</p>
-                          <p className="text-sm font-bold">{plan.maxContentTypes > 100 ? "Unlimited" : plan.maxContentTypes}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Entries</p>
-                          <p className="text-sm font-bold">{plan.maxContentEntries?.toLocaleString() || "Basic"}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Team</p>
-                          <p className="text-sm font-bold">{plan.maxTeamMembers > 100 ? "Unlimited" : plan.maxTeamMembers}</p>
-                        </div>
-                        <div className="space-y-1">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">API Calls</p>
-                          <p className="text-sm font-bold">{plan.maxApiCalls > 1000000 ? "Unlimited" : (plan.maxApiCalls?.toLocaleString() || "Standard")}</p>
-                        </div>
-                      </div>
-
-                      <Separator className="bg-border" />
-
-                      <ul className="space-y-4 flex-1">
-                        {plan.features.map((feature: string) => (
-                          <li key={feature} className="flex items-start gap-3 text-xs font-bold text-muted-foreground">
-                            <div className="mt-0.5 w-4 h-4 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
-                              <Check className="h-2.5 w-2.5 text-orange-500" strokeWidth={4} />
-                            </div>
-                            {feature}
-                          </li>
-                        ))}
-                      </ul>
-                      <Button 
-                        className={cn(
-                          "w-full h-12 font-bold rounded-none shadow-none",
-                          isCurrent 
-                            ? "bg-muted text-muted-foreground cursor-not-allowed border border-border" 
-                            : "bg-orange-500 hover:bg-orange-600 text-white border-none"
-                        )}
-                        onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
-                        disabled={isCurrent}
-                      >
-                        {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-          </div>
+          )}
 
           {/* Add-ons Section */}
-          {addonPlans.length > 0 && (
+          {!isEnterpriseMode && addonPlans.length > 0 && (
             <div className="space-y-4">
               <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                 <ShieldCheck className="h-4 w-4 text-orange-500" /> Powerful Add-ons

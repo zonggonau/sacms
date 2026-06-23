@@ -21,7 +21,9 @@ export interface PricingPlan {
   name: string
   description: string
   price: number
-  interval: string
+  yearly_price?: number
+  interval?: string
+  period?: string
   features: string[]
   isPopular?: boolean
   cta?: string
@@ -97,6 +99,48 @@ export interface FooterData {
   copyright?: string
 }
 
+export interface PapuaHeroData {
+  title: string
+  subtitle?: string
+  primaryCtaText?: string
+  primaryCtaLink?: string
+  secondaryCtaText?: string
+  secondaryCtaLink?: string
+}
+
+export interface VisionMissionData {
+  vision: string
+  mission: string
+}
+
+export interface ChallengeData {
+  challenge: string
+  solution: string
+  icon?: string
+}
+
+export interface TechConceptData {
+  concept: string
+  description: string
+  benefits?: string
+  icon?: string
+}
+
+export interface ConnectedSiteData {
+  siteName: string
+  domain?: string
+  platformType?: string
+  status?: string
+  description?: string
+}
+
+export interface DigitalInitiativeData {
+  name: string
+  region?: string
+  impact?: string
+  status?: string
+}
+
 export interface LandingData {
   hero: HeroData | null
   features: FeatureItem[]
@@ -113,4 +157,11 @@ export interface LandingData {
   localPride: LocalPrideData | null
   cta: CtaData | null
   footer: FooterData | null
+  // Papua Specific
+  papuaHero?: PapuaHeroData | null
+  papuaVisionMission?: VisionMissionData | null
+  papuaChallenges?: ChallengeData[]
+  papuaTechStack?: TechConceptData[]
+  papuaConnectedSites?: ConnectedSiteData[]
+  papuaInitiatives?: DigitalInitiativeData[]
 }

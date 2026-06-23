@@ -42,7 +42,6 @@ interface TenantSidebarProps {
   tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
   isEnterpriseMode?: boolean
-  isSelfHosted?: boolean
   session?: any
 }
 
@@ -61,7 +60,7 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, isSelfHosted, session }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, session }: TenantSidebarProps) {
   const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
@@ -131,8 +130,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         { title: "Overview", href: "", icon: LayoutDashboard },
         { title: "Content Types", href: "/content-types", icon: DatabaseIcon, matchPrefix: true },
-        { title: "Single Types", href: "/single-types", icon: Layers, matchPrefix: true },
-        { title: "Components", href: "/components", icon: Puzzle, matchPrefix: true },
         // Dynamic collection entries
         ...assignedContentTypes.map(ct => ({
           title: ct.name,
@@ -149,7 +146,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: "Team Members", href: "/users", icon: Users },
         { title: "Roles & Permissions", href: "/roles", icon: Shield },
         { title: "Localization", href: "/localization", icon: Languages },
-        ...((isEnterpriseMode || isSelfHosted) ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
+        ...(isEnterpriseMode ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
       ],
     },
     {

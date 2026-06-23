@@ -145,7 +145,7 @@ export async function createAdminComponentAction(data: any) {
       include: { schemaFields: true },
     })
 
-    revalidatePath(`/admin/cms/components`)
+    revalidatePath(`/admin/components`)
     return { component }
   } catch (error) {
     console.error("Error creating admin component:", error)
@@ -209,7 +209,7 @@ export async function updateAdminComponentAction(id: string, data: any) {
       })
     })
 
-    revalidatePath(`/admin/cms/components`)
+    revalidatePath(`/admin/components`)
     
     const formattedFields = updatedComponent.schemaFields.map(field => {
       let parsedOptions = field.options
@@ -262,7 +262,7 @@ export async function deleteAdminComponentAction(id: string) {
 
     await db.component.delete({ where: { id } })
 
-    revalidatePath(`/admin/cms/components`)
+    revalidatePath(`/admin/components`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting admin component:", error)

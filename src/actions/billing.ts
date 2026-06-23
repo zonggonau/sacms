@@ -4,11 +4,10 @@ import { getDynamicAccountPrices } from "@/lib/midtrans"
 import { db } from "@/lib/database"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { isEnterpriseMode } from "@/lib/license"
 
 export async function checkEnterpriseModeAction() {
   try {
-    return await isEnterpriseMode()
+    return false
   } catch (err) {
     return false
   }

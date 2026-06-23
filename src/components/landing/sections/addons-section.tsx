@@ -2,8 +2,8 @@ import { getIcon } from "../icon-map"
 import { formatRupiah } from "@/lib/utils"
 import type { AddonItem } from "../types"
 
-export function AddonsSection({ addons }: { addons: AddonItem[] }) {
-  if (addons.length === 0) return null
+export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
+  if (!addons || addons.length === 0) return null
 
   return (
     <section id="addons" className="py-32 relative bg-card/50 border-t border-border/50 scroll-mt-24 overflow-hidden">

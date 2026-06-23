@@ -11,7 +11,6 @@ import crypto from "crypto"
 import { db } from "./database"
 
 const LICENSE_SERVER_URL = process.env.LICENSE_SERVER_URL || ""
-const LICENSE_KEY = process.env.LICENSE_KEY || ""
 
 // RSA key paths (for offline validation)
 const PUBLIC_KEY_PATH = path.join(process.cwd(), "keys", "license-public.pem")
@@ -140,17 +139,15 @@ export async function recordValidation(licenseKey: string) {
 // ─── CACHE MANAGEMENT ───────────────────────────────────────────────
 
 /**
- * Upsert the local license cache (singleton)
+ * Upsert the local license cache (per tenant)
  */
-export async function upsertLicenseCache(result: LicenseResult, licenseKey?: string) {
+export async function upsertLicenseCache(result: LicenseResult, tenantId: string, licenseKey: string) {
   if (!result.valid || !result.expiresAt || !result.issuedAt) return
 
-  const keyToCache = licenseKey || LICENSE_KEY
-
   await db.licenseCache.upsert({
-    where: { id: "local-license" },
+    where: { id: tenantId },
     update: {
-      licenseKey: keyToCache,
+      licenseKey,
       customerName: result.customerName || "",
       customerEmail: result.customerEmail,
       type: result.type || "",
@@ -161,8 +158,8 @@ export async function upsertLicenseCache(result: LicenseResult, licenseKey?: str
       status: result.status || "active",
     },
     create: {
-      id: "local-license",
-      licenseKey: keyToCache,
+      id: tenantId,
+      licenseKey,
       customerName: result.customerName || "",
       customerEmail: result.customerEmail,
       type: result.type || "",
@@ -178,10 +175,10 @@ export async function upsertLicenseCache(result: LicenseResult, licenseKey?: str
 /**
  * Get cached license info
  */
-export async function getCachedLicense(): Promise<LicenseResult | null> {
+export async function getCachedLicense(tenantId: string): Promise<LicenseResult | null> {
   try {
     const cached = await db.licenseCache.findUnique({
-      where: { id: "local-license" },
+      where: { id: tenantId },
     })
     if (!cached) return null
 
@@ -209,14 +206,23 @@ export async function getCachedLicense(): Promise<LicenseResult | null> {
  * 2. Online validation via license server
  * 3. Fallback to offline RSA verification
  */
-export async function validateLicense(licenseKey?: string): Promise<LicenseResult> {
-  const key = licenseKey || LICENSE_KEY
+export async function validateLicense(tenantId: string, providedKey?: string): Promise<LicenseResult> {
+  let key = providedKey
+  if (!key) {
+    const cached = await db.licenseCache.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
+    key = cached?.licenseKey || ""
+    if (!key && tenantId !== "sacms-global") {
+      const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
+      key = tenant?.licenseKey || ""
+    }
+  }
+  
   if (!key) {
     return { valid: false, status: "invalid", error: "No license key configured" }
   }
 
   // Step 1: Check cache
-  const cached = await getCachedLicense()
+  const cached = await getCachedLicense(tenantId)
   if (cached?.valid && cached.status === "active") {
     return cached
   }
@@ -271,7 +277,7 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
           daysRemaining: Math.max(0, Math.floor((new Date(data.expiresAt).getTime() - Date.now()) / 86400000)),
           status: "active",
         }
-        await upsertLicenseCache(result, key)
+        await upsertLicenseCache(result, tenantId, key)
         return result
       }
     } catch {
@@ -293,7 +299,7 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
     status: "active",
   }
 
-  await upsertLicenseCache(result, key)
+  await upsertLicenseCache(result, tenantId, key)
   return result
 }
 
@@ -301,27 +307,22 @@ export async function validateLicense(licenseKey?: string): Promise<LicenseResul
 
 /**
  * Quick check: is this instance in enterprise mode?
- * Lightweight — reads cache + env
+ * Lightweight — reads cache + DB
  */
-export async function isEnterpriseMode(): Promise<boolean> {
-  const cached = await getCachedLicense()
+export async function isEnterpriseTenant(tenantId: string): Promise<boolean> {
+  const cached = await getCachedLicense(tenantId)
   if (cached?.valid && cached.type === "enterprise") return true
 
-  if (!LICENSE_KEY) return false
-  const result = await validateLicense()
+  const result = await validateLicense(tenantId)
   return result.valid && result.type === "enterprise"
 }
 
 /**
  * Get all current license status (for UI)
  */
-export async function getLicenseStatus(): Promise<LicenseResult> {
-  const cached = await getCachedLicense()
+export async function getLicenseStatus(tenantId: string): Promise<LicenseResult> {
+  const cached = await getCachedLicense(tenantId)
   if (cached) return cached
 
-  if (!LICENSE_KEY) {
-    return { valid: false, status: "invalid", error: "No license key configured" }
-  }
-
-  return validateLicense()
+  return validateLicense(tenantId)
 }

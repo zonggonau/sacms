@@ -10,8 +10,8 @@ interface PricingGridProps {
   bgClass?: string
 }
 
-export function PricingGrid({ plans, label, title, bgClass = "bg-background" }: PricingGridProps) {
-  if (plans.length === 0) return null
+export function PricingGrid({ plans = [], title, label, bgClass = "bg-card" }: { plans?: PricingPlan[], title?: string, label?: string, bgClass?: string }) {
+  if (!plans || plans.length === 0) return null
 
   return (
     <section id="pricing" className={`py-32 relative ${bgClass} border-t border-border/50 scroll-mt-24 overflow-hidden`}>
@@ -33,7 +33,7 @@ export function PricingGrid({ plans, label, title, bgClass = "bg-background" }: 
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center max-w-5xl mx-auto">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 md:gap-8 items-center max-w-5xl mx-auto w-full">
           {plans.map((plan, i) => (
             <div
               key={i}
@@ -49,7 +49,7 @@ export function PricingGrid({ plans, label, title, bgClass = "bg-background" }: 
               </div>
 
               {plan.isPopular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-xs font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-lg shadow-primary/30">
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-lg shadow-primary/30">
                   Paling Populer
                 </div>
               )}
@@ -59,8 +59,15 @@ export function PricingGrid({ plans, label, title, bgClass = "bg-background" }: 
                 <p className="text-xs text-muted-foreground mb-6 min-h-[40px] font-medium leading-relaxed">{plan.description}</p>
                 
                 <div className="mb-6 pb-6 border-b border-border/50">
-                  <span className="text-3xl sm:text-4xl font-black text-foreground tracking-tight">Rp{plan.price.toLocaleString("id-ID")}</span>
-                  <span className="text-xs text-muted-foreground font-semibold ml-1">/{plan.interval}</span>
+                  <div className="flex items-baseline">
+                    <span className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">Rp{plan.price.toLocaleString("id-ID")}</span>
+                    <span className="text-xs text-muted-foreground font-semibold ml-1">/{plan.period || plan.interval}</span>
+                  </div>
+                  {!!plan.yearly_price && plan.yearly_price > 0 && (
+                    <div className="text-xs font-medium text-muted-foreground mt-1.5 opacity-80">
+                      atau Rp{plan.yearly_price.toLocaleString("id-ID")}/tahun
+                    </div>
+                  )}
                 </div>
                 
                 <ul className="space-y-3 mb-8 flex-1">

@@ -150,7 +150,7 @@ export async function createAdminSingleTypeAction(data: any) {
       include: { schemaFields: true }
     })
 
-    revalidatePath(`/admin/cms/single-types`)
+    revalidatePath(`/admin/single-types`)
     return { singleType }
   } catch (error) {
     console.error("Error creating admin single type:", error)
@@ -221,8 +221,8 @@ export async function updateAdminSingleTypeAction(id: string, data: any) {
       return { ...field, options: parsedOptions || {} }
     })
 
-    revalidatePath(`/admin/cms/single-types`)
-    revalidatePath(`/admin/cms/single-types/${updatedSingleType.slug}`)
+    revalidatePath(`/admin/single-types`)
+    revalidatePath(`/admin/single-types/${updatedSingleType.slug}`)
     
     return { singleType: { ...updatedSingleType, schemaFields: formattedFields } }
   } catch (error) {
@@ -244,7 +244,7 @@ export async function deleteAdminSingleTypeAction(id: string) {
 
     await db.singleType.delete({ where: { id } })
 
-    revalidatePath(`/admin/cms/single-types`)
+    revalidatePath(`/admin/single-types`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting admin single type:", error)
@@ -307,8 +307,8 @@ export async function saveAdminSingleTypeDataAction(singleTypeId: string, data: 
       })
     }
 
-    revalidatePath(`/admin/cms/single-types`)
-    revalidatePath(`/admin/cms/single-types/${singleType.slug}`)
+    revalidatePath(`/admin/single-types`)
+    revalidatePath(`/admin/single-types/${singleType.slug}`)
     
     return {
       singleType: {

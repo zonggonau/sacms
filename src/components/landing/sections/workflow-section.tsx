@@ -1,8 +1,8 @@
 import { getIcon } from "../icon-map"
 import type { WorkflowStep } from "../types"
 
-export function WorkflowSection({ workflow }: { workflow: WorkflowStep[] }) {
-  if (workflow.length === 0) return null
+export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }) {
+  if (!workflow || workflow.length === 0) return null
 
   return (
     <section id="workflow" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">

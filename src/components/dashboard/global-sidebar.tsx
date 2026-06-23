@@ -28,11 +28,10 @@ interface NavItem {
 
 interface GlobalSidebarProps {
   isEnterpriseMode?: boolean
-  isSelfHosted?: boolean
   session?: any
 }
 
-export function GlobalSidebar({ isEnterpriseMode, isSelfHosted, session }: GlobalSidebarProps = {}) {
+export function GlobalSidebar({ isEnterpriseMode, session }: GlobalSidebarProps = {}) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -45,12 +44,11 @@ export function GlobalSidebar({ isEnterpriseMode, isSelfHosted, session }: Globa
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
     { title: "Templates", href: "/dashboard/templates", icon: Layers },
-    // Hide billing in self-hosted or enterprise mode
-    ...(!isSelfHosted && !isEnterpriseMode ? [{ title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard }] : []),
+    { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
   ]
 
-  // Hide SaaS admin panel in self-hosted mode
-  if (session?.user?.role === "super_admin" && !isSelfHosted) {
+  // Add SaaS admin panel for super_admin
+  if (session?.user?.role === "super_admin") {
     navItems.push({
       title: "Global Admin",
       href: "/admin",

@@ -82,6 +82,7 @@ model Tenant {
   customDomainVerifiedAt DateTime?
   customEmailSender      String?
   databaseUrl            String?
+  licenseKey             String?                       @unique
   faviconUrl             String?
   primaryColor           String?
   storageConfig          Json?

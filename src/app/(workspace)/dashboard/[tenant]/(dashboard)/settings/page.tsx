@@ -41,6 +41,7 @@ import {
   CheckCircle,
   Activity,
   Server,
+  ShieldAlert,
 } from "lucide-react"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
@@ -76,6 +77,7 @@ export default function TenantSettingsPage() {
   const [ipWhitelist, setIpWhitelist] = useState(false)
   const [allowedIps, setAllowedIps] = useState("")
   const [auditLogging, setAuditLogging] = useState(true)
+  const [isEnterprise, setIsEnterprise] = useState(false)
 
   // Infrastructure settings
   const [databaseUrl, setDatabaseUrl] = useState("")
@@ -130,6 +132,7 @@ export default function TenantSettingsPage() {
           setIpWhitelist(settings.ipWhitelist ?? false)
           setAllowedIps(settings.allowedIps || "")
           setAuditLogging(settings.auditLogging ?? true)
+          setIsEnterprise(settings.isEnterprise ?? false)
           setDatabaseUrl(settings.databaseUrl || "")
           if (settings.storageConfig) {
             setStorageEndpoint(settings.storageConfig.endpoint || "")
@@ -397,10 +400,12 @@ export default function TenantSettingsPage() {
                 <Activity className="h-4 w-4 mr-2" />
                 Usage
               </TabsTrigger>
-              <TabsTrigger value="infrastructure">
-                <Server className="h-4 w-4 mr-2" />
-                Infrastructure
-              </TabsTrigger>
+              {isEnterprise && (
+                <TabsTrigger value="infrastructure">
+                  <Server className="h-4 w-4 mr-2" />
+                  Infrastructure
+                </TabsTrigger>
+              )}
               <TabsTrigger value="danger">
                 <AlertTriangle className="h-4 w-4 mr-2" />
                 Danger Zone
@@ -628,16 +633,18 @@ export default function TenantSettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="infrastructure">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Bring Your Own Infrastructure</CardTitle>
-                  <CardDescription>
-                    Configure dedicated database and storage specifically for this workspace. 
-                    Leave empty to use the shared platform infrastructure.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-6">
+            {isEnterprise && (
+              <TabsContent value="infrastructure">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Bring Your Own Infrastructure</CardTitle>
+                    <CardDescription>
+                      Configure dedicated database and storage specifically for this workspace. 
+                      Leave empty to use the shared platform infrastructure.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                  
                   <div className="space-y-4">
                     <h3 className="text-lg font-medium flex items-center gap-2">
                       <Database className="h-5 w-5" /> Dedicated Database
@@ -714,6 +721,7 @@ export default function TenantSettingsPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+            )}
 
             <TabsContent value="danger">
               <Card className="border-destructive/50">

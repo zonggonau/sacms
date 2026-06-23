@@ -146,9 +146,9 @@ export default function GlobalAdminDashboard() {
           {/* Schema Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
             {[
-              { label: "Content Types", value: stats.contentTypes, icon: Database, href: "/admin/cms/content-types" },
-              { label: "Single Types", value: stats.singleTypes, icon: FileText, href: "/admin/cms/single-types" },
-              { label: "Components", value: stats.components, icon: Puzzle, href: "#", disabled: true },
+              { label: "Content Types", value: stats.contentTypes, icon: Database, href: "/admin/content-types" },
+              { label: "Single Types", value: stats.singleTypes, icon: FileText, href: "/admin/single-types" },
+              { label: "Components", value: stats.components, icon: Puzzle, href: "/admin/component" },
               { label: "Media Library", value: stats.mediaCount, icon: ImageIcon, href: "/admin/media" },
               { label: "Billing", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
             ].map((s) => (
@@ -274,9 +274,9 @@ export default function GlobalAdminDashboard() {
               <CardContent className="p-0">
                 <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-zinc-200 bg-card">
                   {[
-                    { label: "Content Schema", href: "/admin/cms/content-types", icon: Database },
-                    { label: "Single Types",  href: "/admin/cms/single-types",  icon: FileText },
-                    { label: "Components",    href: "#",     icon: Puzzle, disabled: true },
+                    { label: "Content Schema", href: "/admin/content-types", icon: Database },
+                    { label: "Single Types",  href: "/admin/single-types",  icon: FileText },
+                    { label: "Components",    href: "/admin/component",     icon: Puzzle },
                     { label: "Tenants List",   href: "/admin/tenants",            icon: Building2 },
                     { label: "User Directory", href: "/admin/users",              icon: Users },
                     { label: "RBAC Security",  href: "/admin/rbac",              icon: Shield },

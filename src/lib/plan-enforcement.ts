@@ -1,9 +1,7 @@
 import { db, getTenantDb } from "./database"
 import { getTenantPlanConfig, getUserPlanConfig } from "./tenant-plan"
 import type { PlanConfig, UserPlanConfig } from "./tenant-plan"
-import { isEnterpriseMode } from "./license"
-import { isSelfHosted } from "./selfhost"
-
+import { isEnterpriseTenant } from "./license"
 /**
  * Plan Enforcement Module
  *
@@ -43,29 +41,25 @@ export interface EnforcementResult {
 // ==================== ENTERPRISE BYPASS ====================
 
 /**
- * Check if enterprise mode or self-hosted mode is active and return a bypass result if so.
+ * Check if the tenant has an active enterprise license and return a bypass result if so.
  */
-async function enterpriseBypass(): Promise<EnforcementResult | null> {
-  // Self-hosted mode always bypasses plan limits
-  if (isSelfHosted()) {
-    return {
-      allowed: true,
-      current: 0,
-      max: 999999,
-      planSlug: "enterprise",
-      message: "Self-Hosted Mode — Unlimited",
-    }
-  }
-
+async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | null> {
   try {
-    const enterprise = await isEnterpriseMode()
+    // 1. Check global enterprise license first
+    let enterprise = await isEnterpriseTenant("sacms-global")
+    
+    // 2. Fallback to tenant-specific license if no global license
+    if (!enterprise && tenantId && tenantId !== "sacms-global") {
+      enterprise = await isEnterpriseTenant(tenantId)
+    }
+
     if (enterprise) {
       return {
         allowed: true,
         current: 0,
         max: 999999,
         planSlug: "enterprise",
-        message: "Enterprise Self-Hosted — Unlimited",
+        message: "Enterprise License — Unlimited",
       }
     }
   } catch {
@@ -85,8 +79,8 @@ export async function enforcePlanLimit(
   resource: WorkspaceResource,
   userId?: string
 ): Promise<EnforcementResult> {
-  // 0. Enterprise Mode Bypass (entire instance is unlimited)
-  const bypass = await enterpriseBypass()
+  // 0. Enterprise Mode Bypass (tenant specific)
+  const bypass = await enterpriseBypass(tenantId)
   if (bypass) return bypass
 
   // 1. Super Admin Bypass
@@ -168,9 +162,21 @@ export async function enforceUserPlanLimit(
   userId: string,
   resource: UserResource
 ): Promise<EnforcementResult> {
-  // 0. Enterprise Mode Bypass
-  const bypass = await enterpriseBypass()
-  if (bypass) return bypass
+  // 0. Enterprise Mode Bypass (Check global license)
+  try {
+    const globalEnterprise = await isEnterpriseTenant("sacms-global")
+    if (globalEnterprise) {
+      return {
+        allowed: true,
+        current: 0,
+        max: 999999,
+        planSlug: "enterprise",
+        message: "Enterprise License — Unlimited",
+      }
+    }
+  } catch {
+    // Ignore and proceed to normal limits
+  }
 
   // 1. Super Admin Bypass
   const user = await db.user.findUnique({

@@ -9381,6 +9381,7 @@ export namespace Prisma {
     customDomainVerifiedAt: Date | null
     customEmailSender: string | null
     databaseUrl: string | null
+    licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
   }
@@ -9402,6 +9403,7 @@ export namespace Prisma {
     customDomainVerifiedAt: Date | null
     customEmailSender: string | null
     databaseUrl: string | null
+    licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
   }
@@ -9423,6 +9425,7 @@ export namespace Prisma {
     customDomainVerifiedAt: number
     customEmailSender: number
     databaseUrl: number
+    licenseKey: number
     faviconUrl: number
     primaryColor: number
     storageConfig: number
@@ -9447,6 +9450,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: true
     customEmailSender?: true
     databaseUrl?: true
+    licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
   }
@@ -9468,6 +9472,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: true
     customEmailSender?: true
     databaseUrl?: true
+    licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
   }
@@ -9489,6 +9494,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: true
     customEmailSender?: true
     databaseUrl?: true
+    licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
     storageConfig?: true
@@ -9584,6 +9590,7 @@ export namespace Prisma {
     customDomainVerifiedAt: Date | null
     customEmailSender: string | null
     databaseUrl: string | null
+    licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
     storageConfig: JsonValue | null
@@ -9623,6 +9630,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: boolean
     customEmailSender?: boolean
     databaseUrl?: boolean
+    licenseKey?: boolean
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
@@ -9666,6 +9674,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: boolean
     customEmailSender?: boolean
     databaseUrl?: boolean
+    licenseKey?: boolean
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
@@ -9688,6 +9697,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: boolean
     customEmailSender?: boolean
     databaseUrl?: boolean
+    licenseKey?: boolean
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
@@ -9710,12 +9720,13 @@ export namespace Prisma {
     customDomainVerifiedAt?: boolean
     customEmailSender?: boolean
     databaseUrl?: boolean
+    licenseKey?: boolean
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
   }
 
-  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "faviconUrl" | "primaryColor" | "storageConfig", ExtArgs["result"]["tenant"]>
+  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "licenseKey" | "faviconUrl" | "primaryColor" | "storageConfig", ExtArgs["result"]["tenant"]>
   export type TenantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     apiKeys?: boolean | Tenant$apiKeysArgs<ExtArgs>
     apiRequests?: boolean | Tenant$apiRequestsArgs<ExtArgs>
@@ -9783,6 +9794,7 @@ export namespace Prisma {
       customDomainVerifiedAt: Date | null
       customEmailSender: string | null
       databaseUrl: string | null
+      licenseKey: string | null
       faviconUrl: string | null
       primaryColor: string | null
       storageConfig: Prisma.JsonValue | null
@@ -10245,6 +10257,7 @@ export namespace Prisma {
     readonly customDomainVerifiedAt: FieldRef<"Tenant", 'DateTime'>
     readonly customEmailSender: FieldRef<"Tenant", 'String'>
     readonly databaseUrl: FieldRef<"Tenant", 'String'>
+    readonly licenseKey: FieldRef<"Tenant", 'String'>
     readonly faviconUrl: FieldRef<"Tenant", 'String'>
     readonly primaryColor: FieldRef<"Tenant", 'String'>
     readonly storageConfig: FieldRef<"Tenant", 'Json'>
@@ -50495,6 +50508,7 @@ export namespace Prisma {
     customDomainVerifiedAt: 'customDomainVerifiedAt',
     customEmailSender: 'customEmailSender',
     databaseUrl: 'databaseUrl',
+    licenseKey: 'licenseKey',
     faviconUrl: 'faviconUrl',
     primaryColor: 'primaryColor',
     storageConfig: 'storageConfig'
@@ -51483,6 +51497,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: DateTimeNullableFilter<"Tenant"> | Date | string | null
     customEmailSender?: StringNullableFilter<"Tenant"> | string | null
     databaseUrl?: StringNullableFilter<"Tenant"> | string | null
+    licenseKey?: StringNullableFilter<"Tenant"> | string | null
     faviconUrl?: StringNullableFilter<"Tenant"> | string | null
     primaryColor?: StringNullableFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableFilter<"Tenant">
@@ -51525,6 +51540,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: SortOrderInput | SortOrder
     customEmailSender?: SortOrderInput | SortOrder
     databaseUrl?: SortOrderInput | SortOrder
+    licenseKey?: SortOrderInput | SortOrder
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
@@ -51554,6 +51570,7 @@ export namespace Prisma {
     id?: string
     slug?: string
     customDomain?: string
+    licenseKey?: string
     AND?: TenantWhereInput | TenantWhereInput[]
     OR?: TenantWhereInput[]
     NOT?: TenantWhereInput | TenantWhereInput[]
@@ -51593,7 +51610,7 @@ export namespace Prisma {
     tenantRoles?: TenantRoleListRelationFilter
     singleTypeAssignments?: TenantSingleTypeAssignmentListRelationFilter
     webhooks?: WebhookListRelationFilter
-  }, "id" | "slug" | "customDomain">
+  }, "id" | "slug" | "customDomain" | "licenseKey">
 
   export type TenantOrderByWithAggregationInput = {
     id?: SortOrder
@@ -51612,6 +51629,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: SortOrderInput | SortOrder
     customEmailSender?: SortOrderInput | SortOrder
     databaseUrl?: SortOrderInput | SortOrder
+    licenseKey?: SortOrderInput | SortOrder
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
@@ -51640,6 +51658,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: DateTimeNullableWithAggregatesFilter<"Tenant"> | Date | string | null
     customEmailSender?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     databaseUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
+    licenseKey?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     faviconUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     primaryColor?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableWithAggregatesFilter<"Tenant">
@@ -54773,6 +54792,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54815,6 +54835,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54857,6 +54878,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54899,6 +54921,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54941,6 +54964,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54963,6 +54987,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -54985,6 +55010,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -58628,6 +58654,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: SortOrder
     customEmailSender?: SortOrder
     databaseUrl?: SortOrder
+    licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
     storageConfig?: SortOrder
@@ -58650,6 +58677,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: SortOrder
     customEmailSender?: SortOrder
     databaseUrl?: SortOrder
+    licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
   }
@@ -58671,6 +58699,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: SortOrder
     customEmailSender?: SortOrder
     databaseUrl?: SortOrder
+    licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
   }
@@ -64902,6 +64931,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -64943,6 +64973,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65037,6 +65068,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65078,6 +65110,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65252,6 +65285,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65293,6 +65327,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65426,6 +65461,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65467,6 +65503,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65765,6 +65802,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65806,6 +65844,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65902,6 +65941,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -65943,6 +65983,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66017,6 +66058,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66058,6 +66100,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66222,6 +66265,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66263,6 +66307,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66632,6 +66677,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66673,6 +66719,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66812,6 +66859,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -66853,6 +66901,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67009,6 +67058,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67050,6 +67100,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67144,6 +67195,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67185,6 +67237,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67306,6 +67359,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67347,6 +67401,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67478,6 +67533,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67519,6 +67575,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67675,6 +67732,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67716,6 +67774,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67810,6 +67869,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67851,6 +67911,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67892,6 +67953,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67933,6 +67995,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -67990,6 +68053,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68031,6 +68095,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68144,6 +68209,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68185,6 +68251,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68345,6 +68412,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68386,6 +68454,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68630,6 +68699,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68671,6 +68741,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68728,6 +68799,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68769,6 +68841,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68810,6 +68883,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68851,6 +68925,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68908,6 +68983,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68949,6 +69025,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -68990,6 +69067,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69031,6 +69109,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69088,6 +69167,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69129,6 +69209,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69283,6 +69364,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69324,6 +69406,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69446,6 +69529,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69487,6 +69571,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69555,6 +69640,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69596,6 +69682,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69686,6 +69773,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69727,6 +69815,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69831,6 +69920,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69872,6 +69962,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69958,6 +70049,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -69999,6 +70091,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70040,6 +70133,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70081,6 +70175,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70138,6 +70233,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70179,6 +70275,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70220,6 +70317,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70261,6 +70359,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70318,6 +70417,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70359,6 +70459,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70470,6 +70571,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70511,6 +70613,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70633,6 +70736,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70674,6 +70778,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70883,6 +70988,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70924,6 +71030,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: Date | string | null
     customEmailSender?: string | null
     databaseUrl?: string | null
+    licenseKey?: string | null
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -70981,6 +71088,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
@@ -71022,6 +71130,7 @@ export namespace Prisma {
     customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
     databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue

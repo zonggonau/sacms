@@ -34,7 +34,11 @@ interface EnterpriseLicenseInfo {
   error?: string
 }
 
-export function EnterpriseLicenseBanner() {
+import { useParams } from "next/navigation"
+
+export function EnterpriseLicenseBanner({ tenantId }: { tenantId?: string }) {
+  const params = useParams() as { tenant?: string }
+  const tenant = tenantId || params.tenant || "sacms-global"
   const { toast } = useToast()
   const [license, setLicense] = useState<EnterpriseLicenseInfo | null>(null)
   const [loading, setLoading] = useState(true)
@@ -44,7 +48,7 @@ export function EnterpriseLicenseBanner() {
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch("/api/enterprise/status")
+      const res = await fetch(`/api/tenant/${tenant}/license/status`)
       if (res.ok) {
         const data = await res.json()
         setLicense(data)
@@ -66,7 +70,7 @@ export function EnterpriseLicenseBanner() {
     e.preventDefault()
     setActivating(true)
     try {
-      const res = await fetch("/api/enterprise/activate", {
+      const res = await fetch(`/api/tenant/${tenant}/license/activate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ licenseKey: licenseKeyInput }),

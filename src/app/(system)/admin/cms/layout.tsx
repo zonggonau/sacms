@@ -22,15 +22,9 @@ export default async function AdminCMSLayout({
     orderBy: { updatedAt: "desc" },
   })
 
-  const singleTypes = await db.singleType.findMany({
-    where: { tenantId: null },
-    select: { id: true, name: true, slug: true },
-    orderBy: { updatedAt: "desc" },
-  })
-
   return (
     <div className="flex min-h-[calc(100vh)]">
-      <AdminCMSSidebar contentTypes={contentTypes} singleTypes={singleTypes} />
+      <AdminCMSSidebar contentTypes={contentTypes} />
       <main className="flex-1 overflow-auto bg-muted/10 relative">
         {children}
       </main>
