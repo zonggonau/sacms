@@ -35,7 +35,7 @@ import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
-import { deleteAdminContentTypeAction } from "@/actions/admin-content-types"
+import { deleteAdminContentTypeAction, seedAdminTemplatesAction } from "@/actions/admin-content-types"
 
 interface ContentType {
   id: string
@@ -97,6 +97,17 @@ export function AdminContentTypesClient({ initialContentTypes }: AdminContentTyp
     })
   }
 
+  const handleSeed = () => {
+    startTransition(async () => {
+      const res = await seedAdminTemplatesAction()
+      if (res.error) {
+        toast({ variant: "destructive", title: "Error", description: res.error })
+      } else {
+        toast({ title: "Success", description: `Seeded ${res.seededCount} templates.` })
+      }
+    })
+  }
+
   return (
     <div className="flex flex-1 flex-col w-full">
       <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
@@ -109,6 +120,14 @@ export function AdminContentTypesClient({ initialContentTypes }: AdminContentTyp
               <p className="text-xs text-slate-500 font-medium mt-1">Manage data structures and collection definitions.</p>
             </div>
             <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                className="bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-none shadow-sm border-slate-200"
+                onClick={handleSeed}
+                disabled={isPending}
+              >
+                <Database className="mr-2 h-4 w-4" /> Seed Templates
+              </Button>
               <Button
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/admin/content-types/new`)}

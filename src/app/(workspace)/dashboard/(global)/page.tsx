@@ -41,6 +41,15 @@ export default async function WorkspaceSelectionPage() {
   }
 
 
+  // Redirect non-admin users to their first workspace
+  if (session.user.role !== "admin" && session.user.role !== "super_admin") {
+    if (tenants.length > 0) {
+      redirect(`/dashboard/${tenants[0].id}`)
+    } else {
+      redirect("/")
+    }
+  }
+
   const formattedTenants = tenants.map(t => {
     const sub = t.subscriptions[0]
     let daysRemaining = null

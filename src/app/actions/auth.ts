@@ -47,7 +47,7 @@ export async function registerUser(formData: any) {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: isFirstUser ? "super_admin" : "user",
+        role: isFirstUser ? "super_admin" : "admin",
         plan: isFirstUser ? "enterprise" : "free",
         emailVerified: isFirstUser ? new Date() : null, // Super admin is auto-verified
       },

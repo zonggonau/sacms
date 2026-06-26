@@ -63,7 +63,7 @@ async function main() {
   ]
 
   for (const field of fields) {
-    await prisma.contentTypeField.upsert({
+    await prisma.schemaField.upsert({
       where: {
         contentTypeId_slug: {
           contentTypeId: contentType.id,

@@ -385,6 +385,7 @@ export default function EditComponentClient({
               </div>
 
               <DndContext
+                id="dnd-context"
                 sensors={sensors}
                 collisionDetection={closestCenter}
                 onDragEnd={handleDragEnd}

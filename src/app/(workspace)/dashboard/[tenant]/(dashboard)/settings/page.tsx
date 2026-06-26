@@ -42,6 +42,7 @@ import {
   Activity,
   Server,
   ShieldAlert,
+  Mail,
 } from "lucide-react"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
@@ -86,6 +87,13 @@ export default function TenantSettingsPage() {
   const [storageSecretKey, setStorageSecretKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
   const [storagePublicUrl, setStoragePublicUrl] = useState("")
+  // Email settings
+  const [smtpHost, setSmtpHost] = useState("")
+  const [smtpPort, setSmtpPort] = useState("")
+  const [smtpUser, setSmtpUser] = useState("")
+  const [smtpPassword, setSmtpPassword] = useState("")
+  const [fromEmail, setFromEmail] = useState("")
+  const [fromName, setFromName] = useState("")
 
   const tenants = useMemo(() => {
     return session?.user?.tenants || []
@@ -131,9 +139,14 @@ export default function TenantSettingsPage() {
           setTwoFactorRequired(settings.twoFactorRequired ?? false)
           setIpWhitelist(settings.ipWhitelist ?? false)
           setAllowedIps(settings.allowedIps || "")
-          setAuditLogging(settings.auditLogging ?? true)
           setIsEnterprise(settings.isEnterprise ?? false)
           setDatabaseUrl(settings.databaseUrl || "")
+          setSmtpHost(settings.smtpHost || "")
+          setSmtpPort(settings.smtpPort || "")
+          setSmtpUser(settings.smtpUser || "")
+          setSmtpPassword(settings.smtpPassword || "")
+          setFromEmail(settings.fromEmail || "")
+          setFromName(settings.fromName || "")
           if (settings.storageConfig) {
             setStorageEndpoint(settings.storageConfig.endpoint || "")
             setStorageAccessKey(settings.storageConfig.accessKey || "")
@@ -170,9 +183,14 @@ export default function TenantSettingsPage() {
           corsOrigins,
           twoFactorRequired,
           ipWhitelist,
-          allowedIps,
           auditLogging,
           databaseUrl,
+          smtpHost,
+          smtpPort,
+          smtpUser,
+          smtpPassword,
+          fromEmail,
+          fromName,
           storageConfig: storageEndpoint && storageAccessKey && storageSecretKey && storageBucket ? {
             endpoint: storageEndpoint,
             accessKey: storageAccessKey,
@@ -392,6 +410,10 @@ export default function TenantSettingsPage() {
                 <Globe className="h-4 w-4 mr-2" />
                 API
               </TabsTrigger>
+              <TabsTrigger value="email">
+                <Mail className="h-4 w-4 mr-2" />
+                Email
+              </TabsTrigger>
               <TabsTrigger value="security">
                 <Shield className="h-4 w-4 mr-2" />
                 Security
@@ -572,6 +594,81 @@ export default function TenantSettingsPage() {
                     <p className="text-xs text-muted-foreground">
                       Enter domain names, one per line. Use * for all origins (not recommended for production)
                     </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
+            <TabsContent value="email">
+              <Card>
+                <CardHeader>
+                  <CardTitle>Email Configuration</CardTitle>
+                  <CardDescription>
+                    Configure SMTP settings for outgoing emails from this workspace.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpHost">SMTP Host</Label>
+                      <Input
+                        id="smtpHost"
+                        placeholder="smtp.example.com"
+                        value={smtpHost}
+                        onChange={(e) => setSmtpHost(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpPort">SMTP Port</Label>
+                      <Input
+                        id="smtpPort"
+                        placeholder="587"
+                        value={smtpPort}
+                        onChange={(e) => setSmtpPort(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpUser">SMTP User</Label>
+                      <Input
+                        id="smtpUser"
+                        placeholder="user@example.com"
+                        value={smtpUser}
+                        onChange={(e) => setSmtpUser(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="smtpPassword">SMTP Password</Label>
+                      <Input
+                        id="smtpPassword"
+                        type="password"
+                        placeholder="••••••••"
+                        value={smtpPassword}
+                        onChange={(e) => setSmtpPassword(e.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <Separator />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="fromEmail">Default From Email</Label>
+                      <Input
+                        id="fromEmail"
+                        placeholder="noreply@example.com"
+                        value={fromEmail}
+                        onChange={(e) => setFromEmail(e.target.value)}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="fromName">Default From Name</Label>
+                      <Input
+                        id="fromName"
+                        placeholder="My Workspace"
+                        value={fromName}
+                        onChange={(e) => setFromName(e.target.value)}
+                      />
+                    </div>
                   </div>
                 </CardContent>
               </Card>

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
+import { Prisma } from "@prisma/client"
 import { isEnterpriseTenant } from "@/lib/license"
 
 // GET /api/tenant/[tenant]/settings - Get tenant settings
@@ -68,7 +69,7 @@ export async function GET(
     })
 
     const sub = tenant.subscriptions[0]
-    let daysRemaining = null
+    let daysRemaining: number | null = null
     
     if (sub?.currentPeriodEnd) {
       const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()
@@ -98,6 +99,13 @@ export async function GET(
         requestsPerMinute: parseInt(settingsMap.requestsPerMinute || "60"),
         burstLimit: parseInt(settingsMap.burstLimit || "100"),
         corsOrigins: settingsMap.corsOrigins || "",
+        // Email settings
+        smtpHost: settingsMap.smtpHost || "",
+        smtpPort: settingsMap.smtpPort || "",
+        smtpUser: settingsMap.smtpUser || "",
+        smtpPassword: settingsMap.smtpPassword || "",
+        fromEmail: settingsMap.fromEmail || "",
+        fromName: settingsMap.fromName || "",
         // Security settings
         twoFactorRequired: settingsMap.twoFactorRequired === "true",
         ipWhitelist: settingsMap.ipWhitelist === "true",
@@ -169,6 +177,12 @@ export async function PUT(
       allowedIps,
       auditLogging,
       databaseUrl,
+      smtpHost,
+      smtpPort,
+      smtpUser,
+      smtpPassword,
+      fromEmail,
+      fromName,
       storageConfig,
     } = body
 
@@ -191,7 +205,7 @@ export async function PUT(
           ...(name !== undefined && { name }),
           ...(description !== undefined && { description }),
           ...(databaseUrl !== undefined && { databaseUrl: databaseUrl === "" ? null : databaseUrl }),
-          ...(storageConfig !== undefined && { storageConfig: storageConfig === null ? null : storageConfig }),
+          ...(storageConfig !== undefined && { storageConfig: storageConfig === null ? Prisma.JsonNull : storageConfig }),
         },
       })
     }
@@ -208,6 +222,12 @@ export async function PUT(
     if (ipWhitelist !== undefined) settingsToUpdate.ipWhitelist = String(ipWhitelist)
     if (allowedIps !== undefined) settingsToUpdate.allowedIps = allowedIps
     if (auditLogging !== undefined) settingsToUpdate.auditLogging = String(auditLogging)
+    if (smtpHost !== undefined) settingsToUpdate.smtpHost = smtpHost
+    if (smtpPort !== undefined) settingsToUpdate.smtpPort = smtpPort
+    if (smtpUser !== undefined) settingsToUpdate.smtpUser = smtpUser
+    if (smtpPassword !== undefined) settingsToUpdate.smtpPassword = smtpPassword
+    if (fromEmail !== undefined) settingsToUpdate.fromEmail = fromEmail
+    if (fromName !== undefined) settingsToUpdate.fromName = fromName
 
     // Upsert each setting
     for (const [key, value] of Object.entries(settingsToUpdate)) {

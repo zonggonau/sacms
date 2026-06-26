@@ -61,6 +61,7 @@ const adminNavSections: NavSection[] = [
     items: [
       { title: "CMS", href: "/admin/cms", icon: Globe },
       { title: "Content Builder", href: "/admin/content-types", icon: Database },
+      { title: "Schema Builder", href: "/admin/schema-builder", icon: FileText },
     ],
   },
   {

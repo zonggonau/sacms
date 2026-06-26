@@ -24,6 +24,12 @@ export const updateTenantSettingsSchema = z.object({
     bucket: z.string(),
     publicUrl: z.string().url().or(z.literal(""))
   }).nullable().optional(),
+  smtpHost: z.string().max(200).optional(),
+  smtpPort: z.string().max(10).optional(),
+  smtpUser: z.string().max(200).optional(),
+  smtpPassword: z.string().max(500).optional(),
+  fromEmail: z.string().email().or(z.literal("")).optional(),
+  fromName: z.string().max(200).optional(),
 }).passthrough()
 
 export const saveSingleTypeDataSchema = z.object({

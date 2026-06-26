@@ -19,8 +19,8 @@ import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 
 interface SchemaGeneratorDialogProps {
-  tenantSlug: string
-  type: "schema" | "single-type" | "component"
+  tenantSlug?: string
+  type: "schema" | "single-type" | "component" | "system"
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
@@ -54,13 +54,15 @@ export function SchemaGeneratorDialog({
   const typeLabels = {
     "schema": "Collection Type",
     "single-type": "Single Type",
-    "component": "Component"
+    "component": "Component",
+    "system": "System Architecture"
   }
 
   const apiEndpoints = {
-    "schema": `/api/tenant/${tenantSlug}/ai/generate-schema`,
-    "single-type": `/api/tenant/${tenantSlug}/ai/generate-single-type`,
-    "component": `/api/tenant/${tenantSlug}/ai/generate-component`
+    "schema": tenantSlug ? `/api/tenant/${tenantSlug}/ai/generate-schema` : `/api/admin/ai/generate-schema`,
+    "single-type": tenantSlug ? `/api/tenant/${tenantSlug}/ai/generate-single-type` : `/api/admin/ai/generate-single-type`,
+    "component": tenantSlug ? `/api/tenant/${tenantSlug}/ai/generate-component` : `/api/admin/ai/generate-component`,
+    "system": `/api/admin/ai/generate-system`
   }
 
   const handleGenerate = async () => {
@@ -107,7 +109,13 @@ export function SchemaGeneratorDialog({
       "single-type": "single-types",
       "component": "components"
     }
-    router.push(`/dashboard/${tenantSlug}/${pathMap[type]}/edit/${generatedData.slug}`)
+    const basePath = tenantSlug ? `/dashboard/${tenantSlug}` : `/admin`
+    
+    if (type === "system") {
+      router.push(`/admin/entries/templates`)
+    } else {
+      router.push(`${basePath}/${pathMap[type]}/edit/${generatedData.slug}`)
+    }
   }
 
   const currentTemplates = aiTemplates[type] || []
@@ -147,26 +155,46 @@ export function SchemaGeneratorDialog({
                </div>
                
                <div className="space-y-4 border border-border p-6 bg-muted/20 rounded-none">
-                 <div className="grid grid-cols-2 gap-6">
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Name</p>
-                     <p className="font-bold text-foreground text-base">{generatedData.name}</p>
-                   </div>
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">API Slug</p>
-                     <code className="text-sm font-bold bg-muted px-2 py-1 text-primary border border-border">/{generatedData.slug}</code>
-                   </div>
-                   <div className="col-span-2 pt-2 border-t border-border">
-                     <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Generated Fields</p>
-                     <div className="flex flex-wrap gap-2">
-                       {generatedData.fields?.map((f: any) => (
-                         <Badge key={f.slug} variant="outline" className="bg-background text-xs font-bold rounded-none">
-                           {f.name} <span className="opacity-50 ml-1 font-mono text-[9px] uppercase">{f.type}</span>
-                         </Badge>
-                       ))}
-                     </div>
-                   </div>
-                 </div>
+                  <div className="grid grid-cols-2 gap-6">
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">Name</p>
+                      <p className="font-bold text-foreground text-base">
+                        {type === "system" ? generatedData.data.name : generatedData.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">API Slug / ID</p>
+                      <code className="text-sm font-bold bg-muted px-2 py-1 text-primary border border-border">
+                        /{type === "system" ? generatedData.data.template_id : generatedData.slug}
+                      </code>
+                    </div>
+                    <div className="col-span-2 pt-2 border-t border-border">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
+                        {type === "system" ? "Generated Elements" : "Generated Fields"}
+                      </p>
+                      <div className="flex flex-wrap gap-2">
+                        {type === "system" ? (
+                          <>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.data.schema_template.contentTypes?.length || 0} Content Types
+                            </Badge>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.data.schema_template.singleTypes?.length || 0} Single Types
+                            </Badge>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.data.schema_template.components?.length || 0} Components
+                            </Badge>
+                          </>
+                        ) : (
+                          generatedData.fields?.map((f: any) => (
+                            <Badge key={f.slug} variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {f.name} <span className="opacity-50 ml-1 font-mono text-[9px] uppercase">{f.type}</span>
+                            </Badge>
+                          ))
+                        )}
+                      </div>
+                    </div>
+                  </div>
                </div>
              </div>
           ) : (

@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { createSingleTypeSchema } from "@/lib/validations"
+import { Prisma } from "@prisma/client"
 
 // GET /api/admin/single-types - List all single types
 export async function GET() {
@@ -89,7 +90,7 @@ export async function POST(request: NextRequest) {
             type: field.type as string,
             required: (field.required as boolean) || false,
             unique: (field.unique as boolean) || false,
-            options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : null,
+            options: field.options ? (typeof field.options === 'string' ? field.options : JSON.stringify(field.options)) : Prisma.JsonNull,
             jsonPath: (field.jsonPath as string) || null,
             relationSlug: (field.relationSlug as string) || null,
             order: typeof field.order === 'number' ? field.order as number : index,
