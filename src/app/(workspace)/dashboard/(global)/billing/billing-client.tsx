@@ -13,6 +13,7 @@ import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/act
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { EnterpriseLicenseBanner } from "@/components/dashboard/enterprise-license-banner"
 
 export default function BillingClient({
   initialAccountPlans,
@@ -142,7 +143,7 @@ export default function BillingClient({
             <section className="space-y-6">
               <div>
                 <h3 className="text-xl font-bold">Available Plans</h3>
-                <p className="text-sm text-muted-foreground">Select or upgrade your account tier.</p>
+                <p className="text-sm text-muted-foreground">Select or upgrade your workspace tier.</p>
               </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -193,21 +194,15 @@ export default function BillingClient({
               })}
             </div>
             
-            <Card className="bg-muted/50">
-              <CardContent className="p-6 flex flex-col md:flex-row gap-4 items-center md:items-start text-center md:text-left">
-                <div className="bg-background p-3 rounded-full shrink-0">
-                  <ShieldCheck className="h-6 w-6 text-primary" />
-                </div>
-                <div>
-                  <h4 className="font-semibold text-lg">Enterprise Dedicated Limits</h4>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Need massive custom storage, custom routing domains, isolated database shards, or custom SLAs? <a href="#" className="text-primary hover:underline font-medium">Contact sales support</a> to discuss a tailored enterprise plan.
-                  </p>
-                </div>
-              </CardContent>
-            </Card>
-          </section>
-        )}
+            </section>
+          )}
+
+          <div className="mt-6">
+            <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
+            {session?.user?.id && (
+              <EnterpriseLicenseBanner tenantId={session.user.id} hideActivation={false} />
+            )}
+          </div>
         </TabsContent>
 
         {!isEnterpriseMode && (

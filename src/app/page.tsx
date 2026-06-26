@@ -21,7 +21,7 @@ export default async function HomePage() {
 
   return (
     <div className="flex flex-col min-h-screen">
-      <LandingHeader />
+      <LandingHeader brandName={data.footer?.brand_name} />
       <main className="flex-1">
         <ModernLanding data={data} />
       </main>

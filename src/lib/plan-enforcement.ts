@@ -162,10 +162,14 @@ export async function enforceUserPlanLimit(
   userId: string,
   resource: UserResource
 ): Promise<EnforcementResult> {
-  // 0. Enterprise Mode Bypass (Check global license)
+  // 0. Enterprise Mode Bypass (Check global and user license)
   try {
-    const globalEnterprise = await isEnterpriseTenant("sacms-global")
-    if (globalEnterprise) {
+    let isEnterprise = await isEnterpriseTenant("sacms-global")
+    if (!isEnterprise) {
+      isEnterprise = await isEnterpriseTenant(userId)
+    }
+    
+    if (isEnterprise) {
       return {
         allowed: true,
         current: 0,

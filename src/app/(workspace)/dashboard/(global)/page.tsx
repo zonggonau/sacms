@@ -4,6 +4,7 @@ import { db } from "@/lib/database"
 import { redirect } from "next/navigation"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
+import { isEnterpriseTenant } from "@/lib/license"
 const SYSTEM_SLUGS = ["sacms-global"]
 
 export default async function WorkspaceSelectionPage() {
@@ -29,6 +30,16 @@ export default async function WorkspaceSelectionPage() {
     orderBy: { createdAt: "desc" }
   })
 
+  let isGlobalEnterprise = await isEnterpriseTenant("sacms-global")
+  if (!isGlobalEnterprise) {
+    isGlobalEnterprise = await isEnterpriseTenant(session.user.id)
+  }
+
+  // Redirect to billing if all workspaces are suspended, unless enterprise mode is active
+  if (!isGlobalEnterprise && tenants.length > 0 && tenants.every(t => t.status === "suspended")) {
+    redirect("/dashboard/billing")
+  }
+
 
   const formattedTenants = tenants.map(t => {
     const sub = t.subscriptions[0]
@@ -43,7 +54,7 @@ export default async function WorkspaceSelectionPage() {
       id: t.id,
       name: t.name,
       slug: t.slug,
-      status: t.status,
+      status: (isGlobalEnterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
       role: t.members[0]?.role || 'member',

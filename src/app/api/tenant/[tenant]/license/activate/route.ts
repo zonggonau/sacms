@@ -69,12 +69,21 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       status: "active",
     }, tenantId, licenseKey)
 
-    // 5. Also store in Tenant model for persistence (if not global)
+    // 5. Also store in Tenant model for persistence if it's a valid tenant
     if (tenantId !== "sacms-global") {
-      await db.tenant.update({
-        where: { id: tenantId },
-        data: { licenseKey },
-      })
+      try {
+        await db.tenant.update({
+          where: { id: tenantId },
+          data: { licenseKey },
+        })
+      } catch (err: any) {
+        // If the record was not found (P2025), it means tenantId is likely a User ID 
+        // activating a license for their entire account. The LicenseCache is already updated, 
+        // so we can safely ignore this error.
+        if (err.code !== 'P2025') {
+          throw err;
+        }
+      }
     }
 
     return NextResponse.json({

@@ -6,9 +6,10 @@ interface LogoProps {
   iconSize?: "sm" | "md" | "lg"
   showText?: boolean
   useOrange?: boolean
+  customName?: string
 }
 
-export function Logo({ className, iconSize = "md", showText = true, useOrange = true }: LogoProps) {
+export function Logo({ className, iconSize = "md", showText = true, useOrange = true, customName }: LogoProps) {
   const sizeClasses = {
     sm: "text-xs p-1",
     md: "text-sm p-1.5",
@@ -33,8 +34,14 @@ export function Logo({ className, iconSize = "md", showText = true, useOrange = 
       
       {showText && (
         <div className={cn("font-sans tracking-tight", textSizeClasses[iconSize])}>
-          <span className="font-extrabold text-slate-900 dark:text-white">Sa</span>
-          <span className="font-medium text-slate-600 dark:text-slate-300">CMS</span>
+          {customName ? (
+            <span className="font-extrabold text-slate-900 dark:text-white">{customName}</span>
+          ) : (
+            <>
+              <span className="font-extrabold text-slate-900 dark:text-white">Sa</span>
+              <span className="font-medium text-slate-600 dark:text-slate-300">CMS</span>
+            </>
+          )}
         </div>
       )}
     </div>

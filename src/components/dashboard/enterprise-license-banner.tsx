@@ -36,7 +36,7 @@ interface EnterpriseLicenseInfo {
 
 import { useParams } from "next/navigation"
 
-export function EnterpriseLicenseBanner({ tenantId }: { tenantId?: string }) {
+export function EnterpriseLicenseBanner({ tenantId, hideActivation = false }: { tenantId?: string, hideActivation?: boolean }) {
   const params = useParams() as { tenant?: string }
   const tenant = tenantId || params.tenant || "sacms-global"
   const { toast } = useToast()
@@ -93,6 +93,7 @@ export function EnterpriseLicenseBanner({ tenantId }: { tenantId?: string }) {
 
   if (loading) return null
   if (!license || !license.valid) {
+    if (hideActivation) return null
     return (
       <Card className="border-dashed border-muted-foreground/30">
         <CardContent className="p-4 sm:p-6">

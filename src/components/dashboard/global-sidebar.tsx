@@ -19,6 +19,7 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { Logo } from "@/components/ui/logo"
 
 interface NavItem {
   title: string
@@ -29,9 +30,10 @@ interface NavItem {
 interface GlobalSidebarProps {
   isEnterpriseMode?: boolean
   session?: any
+  brandName?: string
 }
 
-export function GlobalSidebar({ isEnterpriseMode, session }: GlobalSidebarProps = {}) {
+export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSidebarProps = {}) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -70,8 +72,8 @@ export function GlobalSidebar({ isEnterpriseMode, session }: GlobalSidebarProps 
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card">
       <div className="flex h-16 shrink-0 items-center border-b px-6">
-        <Link href="/" className="flex items-center gap-2 font-black tracking-tighter text-xl">
-          Sa<span className="text-primary">CMS</span>
+        <Link href="/" className="flex items-center hover:opacity-80 transition-opacity">
+          <Logo iconSize="md" showText={true} useOrange={true} customName={brandName} />
         </Link>
       </div>
 

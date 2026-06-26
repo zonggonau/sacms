@@ -9,6 +9,7 @@ const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional().nullable(),
   role: z.enum(["super_admin", "admin", "user"]).optional(),
   email: z.string().email().optional(),
+  password: z.string().min(6).optional().nullable(),
 })
 
 export async function GET(
@@ -63,9 +64,19 @@ export async function PATCH(
     const result = await validateBody(request, updateUserSchema)
     if ("error" in result) return result.error
 
+    const updateData: any = { ...result.data }
+    
+    // Hash password if it is provided
+    if (updateData.password) {
+      const { hashPassword } = await import("@/lib/auth")
+      updateData.password = await hashPassword(updateData.password)
+    } else {
+      delete updateData.password // ensure we don't accidentally set it to null if empty
+    }
+
     const user = await db.user.update({
       where: { id: userId },
-      data: result.data,
+      data: updateData,
     })
 
     return NextResponse.json({ user })

@@ -78,15 +78,24 @@ export default async function TenantDashboardLayout({
     redirect(`/dashboard/${access.tenant.slug || access.tenant.id}/cms`)
   }
 
-  // Check trial / subscription expiration
-  const subscription = await db.subscription.findFirst({
-    where: { tenantId: access.tenantId },
-    orderBy: { currentPeriodEnd: "desc" }
-  })
+  // Check trial / subscription expiration and suspension status
+  const [subscription, tenantData] = await Promise.all([
+    db.subscription.findFirst({
+      where: { tenantId: access.tenantId },
+      orderBy: { currentPeriodEnd: "desc" }
+    }),
+    db.tenant.findUnique({
+      where: { id: access.tenantId },
+      select: { status: true }
+    })
+  ])
 
   // Enterprise mode bypasses subscription checks
-  const enterprise = await isEnterpriseTenant(access.tenantId)
-  const isExpired = enterprise ? false : (subscription?.currentPeriodEnd ? new Date() > subscription.currentPeriodEnd : false);
+  const enterprise = await isEnterpriseTenant(access.tenantId, session.user.id)
+  const isExpired = enterprise ? false : (
+    tenantData?.status === "suspended" || 
+    (subscription?.currentPeriodEnd ? new Date() > subscription.currentPeriodEnd : false)
+  );
   
   return (
     <div className="flex h-screen overflow-hidden bg-muted/20">

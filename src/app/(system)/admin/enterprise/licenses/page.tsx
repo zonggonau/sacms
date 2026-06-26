@@ -51,6 +51,7 @@ import {
   Check,
   Search,
   ExternalLink,
+  Trash2,
 } from "lucide-react"
 
 interface License {
@@ -89,6 +90,8 @@ export default function EnterpriseLicensesPage() {
   const [generatedKey, setGeneratedKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState(false)
   const [confirmGenerate, setConfirmGenerate] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const fetchLicenses = async () => {
     try {
@@ -183,6 +186,39 @@ export default function EnterpriseLicensesPage() {
       })
     } finally {
       setGenerating(false)
+    }
+  }
+
+  const handleDelete = async (id: string) => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/admin/license/${id}`, {
+        method: "DELETE",
+      })
+
+      if (res.ok) {
+        toast({
+          title: "License Deleted",
+          description: "The license has been successfully removed.",
+        })
+        setDeletingId(null)
+        fetchLicenses()
+      } else {
+        const errData = await res.json()
+        toast({
+          title: "Deletion Failed",
+          description: errData.error || "Unknown error",
+          variant: "destructive",
+        })
+      }
+    } catch (err) {
+      toast({
+        title: "Error",
+        description: "Failed to delete license",
+        variant: "destructive",
+      })
+    } finally {
+      setIsDeleting(false)
     }
   }
 
@@ -437,7 +473,7 @@ export default function EnterpriseLicensesPage() {
                 <TableHead>Expires</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Validations</TableHead>
-                <TableHead className="w-[80px]">Key</TableHead>
+                <TableHead className="w-[120px]">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -501,15 +537,26 @@ export default function EnterpriseLicensesPage() {
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">{lic.validatedCount}</TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-8 w-8"
-                        onClick={() => handleCopyKey(lic.licenseKey)}
-                        title="Copy license key"
-                      >
-                        <Copy className="w-3.5 h-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                          onClick={() => handleCopyKey(lic.licenseKey)}
+                          title="Copy license key"
+                        >
+                          <Copy className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => setDeletingId(lic.id)}
+                          title="Delete license"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -525,6 +572,28 @@ export default function EnterpriseLicensesPage() {
           Showing {filteredLicenses.length} of {licenses.length} license{licenses.length !== 1 ? "s" : ""}
         </div>
       )}
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!deletingId} onOpenChange={(open) => !open && setDeletingId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the license and remove access for any customers using it.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+            <Button 
+              variant="destructive" 
+              onClick={() => deletingId && handleDelete(deletingId)}
+              disabled={isDeleting}
+            >
+              {isDeleting ? "Deleting..." : "Delete License"}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

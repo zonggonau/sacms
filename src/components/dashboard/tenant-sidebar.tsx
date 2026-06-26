@@ -31,7 +31,8 @@ import {
   Database,
   DatabaseIcon,
   Puzzle,
-  Shield
+  Shield,
+  Code
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -130,6 +131,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         { title: "Overview", href: "", icon: LayoutDashboard },
         { title: "Content Types", href: "/content-types", icon: DatabaseIcon, matchPrefix: true },
+        { title: "Single Types", href: "/single-types", icon: FileText, matchPrefix: true },
+        { title: "Components", href: "/components", icon: Puzzle, matchPrefix: true },
         // Dynamic collection entries
         ...assignedContentTypes.map(ct => ({
           title: ct.name,
@@ -150,18 +153,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       ],
     },
     {
-      label: "DEVELOPER",
-      items: [
-        { title: "API Tokens", href: "/api-keys", icon: Key },
-        { title: "Webhooks", href: "/webhooks", icon: Webhook },
-        { title: "GraphQL Explorer", href: "/developer/graphql", icon: Play },
-        { title: "REST API", href: "/developer/api", icon: Play },
-        { title: "SDK & Docs", href: "/developer/sdk", icon: BookOpen },
-      ],
-    },
-    {
       label: "SETTINGS",
       items: [
+        { title: "Developer", href: "/developer", icon: Code, matchPrefix: true },
         { title: "Audit Trail", href: "/system/audit", icon: ClipboardList },
         { title: "Workspace Settings", href: "/settings", icon: Settings, matchPrefix: true },
       ],

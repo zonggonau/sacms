@@ -16,43 +16,74 @@ export default async function BillingPage() {
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"
 
   const { isEnterpriseTenant } = await import("@/lib/license")
-  const enterprise = await isEnterpriseTenant("sacms-global")
+  const enterprise = await isEnterpriseTenant(session.user.id)
 
-  // 1. Fetch Account Plans
+  // 1. Fetch Workspace Plans directly from DB
   let accountPlans: any[] = []
   try {
-    const res = await fetch(`${baseUrl}/api/public/plans?type=account`, {
-      headers: { "Authorization": `Bearer ${globalToken}` },
-      cache: "no-store"
+    const contentType = await db.contentType.findFirst({
+      where: { slug: "sacms-workspace-pricing", tenantId: null }
     })
-    const json = await res.json()
-    if (json.plans && Array.isArray(json.plans)) {
-      accountPlans = json.plans.map((p: any) => {
-        let displayPrice = "Rp 0"
-        const yearlyPrice = p.yearlyPrice !== undefined ? p.yearlyPrice : p.price * 10
+
+    if (contentType) {
+      const entries = await db.contentEntry.findMany({
+        where: { contentTypeId: contentType.id, tenantId: null, status: "PUBLISHED" },
+        orderBy: { createdAt: "asc" }
+      })
+
+      accountPlans = entries.map(t => {
+        const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
         
-        if (p.price > 0) {
+        let price = 0
+        if (typeof d.price === 'string') {
+          price = parseInt(d.price.replace(/[^\d]/g, ''), 10) || 0
+        } else {
+          price = Number(d.price) || 0
+        }
+
+        let displayPrice = "Rp 0"
+        const yearlyPrice = d.yearly_price !== undefined ? d.yearly_price : price * 10
+        
+        if (price > 0) {
           if (yearlyPrice >= 1000000) {
             displayPrice = `Rp ${(yearlyPrice / 1000000).toLocaleString('id-ID')}M`
           } else {
             displayPrice = `Rp ${(yearlyPrice / 1000).toLocaleString('id-ID')}k`
           }
-        } else if (p.price === 0 && p.cta?.toLowerCase().includes('contact')) {
+        } else if (price === 0 && d.cta_text?.toLowerCase().includes('contact')) {
           displayPrice = "Custom"
         }
-        
+
+        const features = Array.isArray(d.features) 
+          ? d.features 
+          : (typeof d.features === 'string' ? d.features.split(',').map((s: string) => s.trim()) : [])
+
         return {
-          id: p.id,
-          name: p.name,
-          workspaces: p.max_workspaces || "Unlimited",
+          id: d.plan_slug || t.id,
+          name: d.name || "Unnamed Plan",
+          workspaces: d.max_workspaces || "Unlimited",
           price: displayPrice,
-          priceAmount: p.price,
-          features: p.features || []
+          priceAmount: price,
+          features: features
         }
       })
+
+      // Add a fallback Free plan if not present
+      if (!accountPlans.some(p => p.id === "free" || p.priceAmount === 0)) {
+         accountPlans.unshift({
+           id: "free",
+           name: "Free Forever",
+           workspaces: "1",
+           price: "Rp 0",
+           priceAmount: 0,
+           features: ["1 Workspace", "Basic Support"]
+         })
+      }
+      
+      accountPlans.sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
     }
   } catch (err) {
-    console.error("Failed to fetch account plans:", err)
+    console.error("Failed to fetch workspace plans:", err)
   }
 
   // 2. Fetch Active Workspaces Count & Usage

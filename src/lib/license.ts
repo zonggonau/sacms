@@ -215,6 +215,9 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
       const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
       key = tenant?.licenseKey || ""
     }
+    if (!key) {
+      key = process.env.LICENSE_KEY || ""
+    }
   }
   
   if (!key) {
@@ -309,12 +312,32 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
  * Quick check: is this instance in enterprise mode?
  * Lightweight — reads cache + DB
  */
-export async function isEnterpriseTenant(tenantId: string): Promise<boolean> {
+export async function isEnterpriseTenant(tenantId: string, userId?: string): Promise<boolean> {
   const cached = await getCachedLicense(tenantId)
   if (cached?.valid && cached.type === "enterprise") return true
 
   const result = await validateLicense(tenantId)
-  return result.valid && result.type === "enterprise"
+  if (result.valid && result.type === "enterprise") return true
+
+  // Fallback to checking global license
+  if (tenantId !== "sacms-global") {
+    const globalCached = await getCachedLicense("sacms-global")
+    if (globalCached?.valid && globalCached.type === "enterprise") return true
+    
+    const globalResult = await validateLicense("sacms-global")
+    if (globalResult.valid && globalResult.type === "enterprise") return true
+  }
+
+  // Fallback to checking user's license
+  if (userId && tenantId !== userId) {
+    const userCached = await getCachedLicense(userId)
+    if (userCached?.valid && userCached.type === "enterprise") return true
+    
+    const userResult = await validateLicense(userId)
+    if (userResult.valid && userResult.type === "enterprise") return true
+  }
+
+  return false
 }
 
 /**

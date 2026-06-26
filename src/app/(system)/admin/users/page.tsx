@@ -67,8 +67,10 @@ export default function AdminUsersPage() {
 
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
+  const [isPasswordOpen, setIsPasswordOpen] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [newPassword, setNewPassword] = useState("")
 
   // Override States
   const [isOverrideOpen, setIsOverrideOpen] = useState(false)
@@ -169,6 +171,36 @@ export default function AdminUsersPage() {
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Error", description: err.error || "Failed to update user" })
+      }
+    } catch (error) {
+      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
+
+  const handleChangePassword = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!selectedUser) return
+    if (newPassword.length < 6) {
+      toast({ variant: "destructive", title: "Error", description: "Password must be at least 6 characters" })
+      return
+    }
+    setIsSubmitting(true)
+    try {
+      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          password: newPassword
+        }),
+      })
+      if (res.ok) {
+        toast({ title: "Success", description: "User password updated successfully" })
+        setIsPasswordOpen(false)
+      } else {
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to update password" })
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
@@ -285,6 +317,12 @@ export default function AdminUsersPage() {
       role: user.role
     })
     setIsEditOpen(true)
+  }
+
+  const openPassword = (user: User) => {
+    setSelectedUser(user)
+    setNewPassword("")
+    setIsPasswordOpen(true)
   }
 
   if (status === "loading" || loading) {
@@ -500,6 +538,9 @@ export default function AdminUsersPage() {
                             <DropdownMenuItem onClick={() => openEdit(user)}>
                               <Edit className="mr-2 h-4 w-4" /> Edit Profile
                             </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => openPassword(user)}>
+                              <Key className="mr-2 h-4 w-4" /> Change Password
+                            </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => openOverride(user)}>
                               <Sliders className="mr-2 h-4 w-4 text-orange-500" /> Custom Overrides
                             </DropdownMenuItem>
@@ -585,6 +626,37 @@ export default function AdminUsersPage() {
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save Changes
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Change Password Dialog */}
+        <Dialog open={isPasswordOpen} onOpenChange={setIsPasswordOpen}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Change Password: {selectedUser?.name || selectedUser?.email}</DialogTitle>
+              <DialogDescription>Set a new password for this user.</DialogDescription>
+            </DialogHeader>
+            <form onSubmit={handleChangePassword} className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">New Password</Label>
+                <Input 
+                  id="new-password" 
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={newPassword} 
+                  onChange={e => setNewPassword(e.target.value)} 
+                  required 
+                  minLength={6}
+                />
+              </div>
+              <DialogFooter>
+                <Button type="button" variant="outline" onClick={() => setIsPasswordOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Update Password
                 </Button>
               </DialogFooter>
             </form>

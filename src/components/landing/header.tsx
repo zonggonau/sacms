@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { label: "Dokumentasi", href: "/docs" },
 ]
 
-export function LandingHeader() {
+export function LandingHeader({ brandName }: { brandName?: string }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
 
@@ -36,7 +36,7 @@ export function LandingHeader() {
       <div className="container px-6 max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-3 group">
-            <Logo iconSize="lg" showText={true} useOrange={true} />
+            <Logo iconSize="lg" showText={true} useOrange={true} customName={brandName} />
           </Link>
         </div>
 
