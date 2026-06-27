@@ -40,7 +40,7 @@ import {
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { SYSTEM_TENANT_SLUG, TENANT_STATUSES } from "@/lib/constants"
-import { DEFAULT_LIMITS } from "@/lib/tenant-plan"
+import { DEFAULT_LIMITS } from "@/lib/constants/tenant-limits"
 import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,

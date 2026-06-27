@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { USER_PLAN_LIMITS } from "@/lib/tenant-plan"
+import { USER_PLAN_LIMITS } from "@/lib/constants/tenant-limits"
 import { PLAN_HIERARCHY } from "@/lib/plan-enforcement"
 
 /**

@@ -71,7 +71,7 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
                 API Calls (Last 30 Days)
               </div>
               <span className="text-muted-foreground">
-                {usage.apiCalls.toLocaleString()} / {plan.max_api_calls.toLocaleString()}
+                {usage.apiCalls.toLocaleString()} / {plan.max_api_calls >= 999999 ? "Unlimited" : plan.max_api_calls.toLocaleString()}
               </span>
             </div>
             <Progress value={apiPercentage} className={apiPercentage > 90 ? "bg-destructive/20" : ""} />
@@ -85,7 +85,7 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
                 Media Storage
               </div>
               <span className="text-muted-foreground">
-                {usage.storageMB} MB / {plan.max_storage} MB
+                {usage.storageMB} MB / {plan.max_storage >= 999999 ? "Unlimited" : `${plan.max_storage} MB`}
               </span>
             </div>
             <Progress value={storagePercentage} className={storagePercentage > 90 ? "bg-destructive/20" : ""} />
@@ -98,7 +98,7 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
                 Content Types
               </div>
               <span className="text-muted-foreground">
-                {usage.contentTypes} / {plan.max_content_types}
+                {usage.contentTypes} / {plan.max_content_types >= 999999 ? "Unlimited" : plan.max_content_types}
               </span>
             </div>
             <Progress value={ctPercentage} className={ctPercentage > 90 ? "bg-destructive/20" : ""} />

@@ -178,8 +178,8 @@ export function WorkspaceCreationDialog({
                       <div className="flex justify-between items-start mb-1 pr-4">
                         <span className="font-semibold text-sm">{plan.name}</span>
                         <span className="font-bold text-sm text-primary">
-                          {plan.id === "enterprise" 
-                            ? "Custom" 
+                          {plan.id === "enterprise" || plan.id?.startsWith("enterprise-")
+                            ? "Included" 
                             : plan.yearlyPrice === 0 
                               ? "Free" 
                               : `Rp ${(newTenant.isAnnual ? (plan.yearlyPrice || plan.priceAmount! * 10) : plan.priceAmount!).toLocaleString('id-ID')}`}

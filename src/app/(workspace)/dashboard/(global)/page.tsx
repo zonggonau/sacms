@@ -141,6 +141,36 @@ export default async function WorkspaceSelectionPage() {
       allowed: limitResult.max === null || limitResult.max > 9000 || tenants.length < limitResult.max,
       plan: limitResult.planSlug
     }
+
+    if (isGlobalEnterprise) {
+      workspacePlans = [
+        {
+          id: "enterprise-shared",
+          name: "Shared Database",
+          desc: "Satu database utama untuk semua tenant. Ideal untuk tenant ringan dan standar.",
+          priceAmount: 0,
+          yearlyPrice: 0,
+          features: ["Shared Pool", "Auto Scaling", "Cost Effective"]
+        },
+        {
+          id: "enterprise-standalone",
+          name: "Standalone Database",
+          desc: "Diisolasi pada instance PostgreSQL terpisah untuk performa dan keamanan maksimal.",
+          priceAmount: 0,
+          yearlyPrice: 0,
+          features: ["Dedicated DB", "High Performance", "Data Isolation"]
+        },
+        {
+          id: "enterprise-custom",
+          name: "Custom Infrastructure",
+          desc: "Opsi untuk setup manual di infrastruktur, VPC, atau jaringan khusus instansi.",
+          priceAmount: 0,
+          yearlyPrice: 0,
+          features: ["Custom VPC", "On-Premise Ready", "Priority SLA"]
+        }
+      ]
+    }
+
   } catch (e) {
     console.error("Failed to fetch global dependencies in RSC:", e);
   }

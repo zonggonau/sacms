@@ -42,13 +42,32 @@ export default function TenantSubscriptionsPage() {
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
 
-  const [subscription, setSubscription] = useState<Subscription | null>(null)
+  const DEFAULT_FREE_PLAN = {
+    id: 'free',
+    name: 'Free Forever',
+    type: 'workspace',
+    price: 0,
+    yearlyPrice: 0,
+    features: ['3 Content Schemas', '100 Content Entries', '3 Team Members', '10.000 API Calls'],
+    popular: false,
+    maxContentTypes: 3,
+    maxContentEntries: 100,
+    maxTeamMembers: 3,
+    maxApiCalls: 10000,
+    maxStorage: 100,
+    maxLocales: 1,
+  }
+
+  const [subscription, setSubscription] = useState<Subscription>({ id: '', plan: 'free', status: 'active', currentPeriodEnd: null })
+  const [activeAddons, setActiveAddons] = useState<string[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [plans, setPlans] = useState<any[]>([])
+  const [plans, setPlans] = useState<any[]>([DEFAULT_FREE_PLAN])
   const [usage, setUsage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
+  const [cancellingSubscription, setCancellingSubscription] = useState(false)
+  const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
@@ -104,7 +123,11 @@ export default function TenantSubscriptionsPage() {
       
       if (subRes.ok) {
         const data = await subRes.json()
-        setSubscription(data.subscription)
+        // If null, treat as free
+        setSubscription(data.subscription || { plan: 'free', status: 'active', currentPeriodEnd: null })
+        if (data.activeAddons) {
+          setActiveAddons(data.activeAddons)
+        }
       }
       if (invRes.ok) {
         const data = await invRes.json()
@@ -112,7 +135,10 @@ export default function TenantSubscriptionsPage() {
       }
       if (plansRes.ok) {
         const data = await plansRes.json()
-        setPlans(data.plans || [])
+        const fetchedPlans = data.plans || []
+        // Always ensure free plan exists
+        const hasFree = fetchedPlans.some((p: any) => p.id === 'free')
+        setPlans(hasFree ? fetchedPlans : [DEFAULT_FREE_PLAN, ...fetchedPlans])
       }
       if (usageRes.ok) {
         const data = await usageRes.json()
@@ -125,6 +151,30 @@ export default function TenantSubscriptionsPage() {
       console.error("Billing fetch error:", err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleCancelSubscription = async () => {
+    if (!tenantSlug) return
+    setCancellingSubscription(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/subscription/cancel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cancelAtPeriodEnd: true })
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast({ title: "Subscription dibatalkan", description: data.message || "Langganan akan berakhir di akhir periode billing." })
+        setShowCancelConfirm(false)
+        fetchBillingData()
+      } else {
+        toast({ variant: 'destructive', title: "Gagal membatalkan", description: data.error })
+      }
+    } catch {
+      toast({ variant: 'destructive', title: "Error", description: "Gagal membatalkan langganan" })
+    } finally {
+      setCancellingSubscription(false)
     }
   }
 
@@ -148,7 +198,9 @@ export default function TenantSubscriptionsPage() {
     )
   }
 
-  const currentPlan = plans.find(p => p.id === (subscription?.plan || 'free'))
+  // Workspace with no subscription is on 'free' plan
+  const currentPlanSlug = subscription?.plan || 'free'
+  const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
   const mainPlans = plans.filter(p => p.type === "workspace")
   const addonPlans = plans.filter(p => p.type === "addons")
@@ -191,16 +243,24 @@ export default function TenantSubscriptionsPage() {
                   <Badge className="bg-orange-500 text-white hover:bg-orange-600 border-none font-black px-3 py-1 uppercase tracking-widest text-[10px] rounded-none">
                     Current Subscription
                   </Badge>
-                  <h2 className="text-4xl font-black uppercase tracking-tight">{currentPlan?.name || subscription?.plan || "Standard Plan"}</h2>
+                  <h2 className="text-4xl font-black uppercase tracking-tight">
+                    {currentPlan?.name || (currentPlanSlug === 'free' ? 'Free Forever' : currentPlanSlug)}
+                  </h2>
                   <div className="flex flex-wrap gap-6 text-sm font-medium text-muted-foreground">
                     <div className="flex items-center gap-2">
                       <Clock className="h-4 w-4 text-orange-500" />
-                      Status: <span className="font-black uppercase tracking-widest text-xs text-orange-500">{subscription?.status || "Active"}</span>
+                      Status: <span className="font-black uppercase tracking-widest text-xs text-orange-500">{subscription?.status || 'Active'}</span>
                     </div>
                     {subscription?.currentPeriodEnd && (
                       <div className="flex items-center gap-2">
                         <Calendar className="h-4 w-4 text-orange-500" />
-                        Next Billing: <span className="font-bold text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString()}</span>
+                        Next Billing: <span className="font-bold text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString('id-ID')}</span>
+                      </div>
+                    )}
+                    {(subscription as any)?.cancelAtPeriodEnd && (
+                      <div className="flex items-center gap-2 text-red-500">
+                        <AlertCircle className="h-4 w-4" />
+                        <span className="font-bold text-xs">Dibatalkan – aktif hingga akhir periode</span>
                       </div>
                     )}
                   </div>
@@ -218,6 +278,48 @@ export default function TenantSubscriptionsPage() {
                     >
                       Pay Now
                     </Button>
+                  ) : currentPlanSlug !== 'free' && subscription?.status === 'active' && !(subscription as any)?.cancelAtPeriodEnd ? (
+                    <div className="flex gap-3">
+                      <Button 
+                        variant="outline" 
+                        className="h-12 px-6 font-bold rounded-none border-border shadow-none"
+                        onClick={() => {
+                          const el = document.getElementById('billing-history')
+                          if (el) el.scrollIntoView({ behavior: 'smooth' })
+                        }}
+                      >
+                        View Invoices
+                      </Button>
+                      {!showCancelConfirm ? (
+                        <Button
+                          variant="outline"
+                          className="h-12 px-6 font-bold rounded-none border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 shadow-none"
+                          onClick={() => setShowCancelConfirm(true)}
+                        >
+                          Cancel Plan
+                        </Button>
+                      ) : (
+                        <div className="flex items-center gap-2 border border-red-300 rounded-none px-4 py-2 bg-red-50">
+                          <span className="text-xs font-bold text-red-700">Batalkan di akhir periode?</span>
+                          <Button
+                            size="sm"
+                            className="rounded-none bg-red-600 hover:bg-red-700 text-white h-8 px-4 font-bold shadow-none border-none"
+                            disabled={cancellingSubscription}
+                            onClick={handleCancelSubscription}
+                          >
+                            {cancellingSubscription ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ya, Batalkan'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="rounded-none h-8 px-3 font-bold"
+                            onClick={() => setShowCancelConfirm(false)}
+                          >
+                            Batal
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                   ) : (
                     <Button 
                       variant="outline" 
@@ -291,7 +393,7 @@ export default function TenantSubscriptionsPage() {
           {!isEnterpriseMode && (
             <div className="space-y-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Upgrade your Workspace</h2>
+              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Workspace Plans</h2>
                 
                 <div className="flex items-center p-1 bg-muted/30 rounded-none border border-border w-fit">
                   <Button 
@@ -321,20 +423,27 @@ export default function TenantSubscriptionsPage() {
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                 {mainPlans.map((plan) => {
-                  const isCurrent = plan.id === subscription?.plan
+                  const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
                   const label = billingInterval === 'year' ? '/yr' : '/mo'
 
                   return (
                     <Card key={plan.id} className={cn(
-                      "border border-border bg-card shadow-none rounded-none overflow-hidden relative group flex flex-col transition-colors hover:border-orange-500 duration-300",
-                      plan.popular && "border-2 border-orange-500"
+                      "border-2 bg-card shadow-none rounded-none overflow-hidden relative group flex flex-col transition-all duration-300",
+                      isCurrent
+                        ? "border-orange-500 ring-2 ring-orange-500/20"
+                        : "border-border hover:border-orange-400"
                     )}>
-                      {plan.popular && (
-                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-orange-600">
+                      {/* Status badge top-right */}
+                      {isCurrent ? (
+                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-orange-600 z-10 flex items-center gap-1">
+                          <Check className="h-2.5 w-2.5" strokeWidth={4} /> Active
+                        </div>
+                      ) : plan.popular ? (
+                        <div className="absolute top-0 right-0 bg-slate-800 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-slate-700">
                           Most Popular
                         </div>
-                      )}
+                      ) : null}
                       <CardHeader className="p-8 pt-6 space-y-4">
                         <div className="flex justify-between items-start">
                           <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
@@ -374,7 +483,12 @@ export default function TenantSubscriptionsPage() {
                         <ul className="space-y-4 flex-1">
                           {plan.features.map((feature: string) => (
                             <li key={feature} className="flex items-start gap-3 text-xs font-bold text-muted-foreground">
-                              <div className="mt-0.5 w-4 h-4 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center shrink-0">
+                              <div className={cn(
+                                "mt-0.5 w-4 h-4 rounded-none flex items-center justify-center shrink-0",
+                                isCurrent
+                                  ? "bg-orange-500/20 border border-orange-500/40"
+                                  : "bg-orange-500/10 border border-orange-500/20"
+                              )}>
                                 <Check className="h-2.5 w-2.5 text-orange-500" strokeWidth={4} />
                               </div>
                               {feature}
@@ -383,15 +497,18 @@ export default function TenantSubscriptionsPage() {
                         </ul>
                         <Button 
                           className={cn(
-                            "w-full h-12 font-bold rounded-none shadow-none",
+                            "w-full h-12 font-bold rounded-none shadow-none uppercase tracking-widest text-[11px]",
                             isCurrent 
-                              ? "bg-muted text-muted-foreground cursor-not-allowed border border-border" 
+                              ? "bg-orange-500/10 text-orange-600 cursor-default border border-orange-500/40 hover:bg-orange-500/10" 
                               : "bg-orange-500 hover:bg-orange-600 text-white border-none"
                           )}
                           onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
                           disabled={isCurrent}
                         >
-                          {isCurrent ? "Current Plan" : `Upgrade to ${plan.name}`}
+                          {isCurrent
+                            ? <span className="flex items-center gap-2"><Check className="h-4 w-4" strokeWidth={3} /> Current Plan — Active</span>
+                            : `Upgrade to ${plan.name}`
+                          }
                         </Button>
                       </CardContent>
                     </Card>
@@ -439,10 +556,20 @@ export default function TenantSubscriptionsPage() {
                         </div>
                         <div className="flex sm:flex-col justify-end gap-3 shrink-0">
                           <Button 
-                            className="font-bold rounded-none px-6 h-10 bg-orange-500 hover:bg-orange-600 text-white shadow-none border-none"
-                            onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
+                            className={cn(
+                              "font-bold rounded-none px-6 h-10 shadow-none border-none",
+                              activeAddons.includes(addon.id) 
+                                ? "bg-muted text-muted-foreground cursor-default hover:bg-muted" 
+                                : "bg-orange-500 hover:bg-orange-600 text-white"
+                            )}
+                            onClick={() => !activeAddons.includes(addon.id) && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
+                            disabled={activeAddons.includes(addon.id)}
                           >
-                            Activate
+                            {activeAddons.includes(addon.id) ? (
+                              <span className="flex items-center gap-2"><Check className="h-4 w-4" strokeWidth={3} /> Activated</span>
+                            ) : (
+                              "Activate"
+                            )}
                           </Button>
                         </div>
                       </div>

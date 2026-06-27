@@ -7,13 +7,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
-  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database
+  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download
 } from "lucide-react"
 import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/actions/billing"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { EnterpriseLicenseBanner } from "@/components/dashboard/enterprise-license-banner"
+import { generateInvoicePDF } from "@/lib/pdf-generator"
 
 export default function BillingClient({
   initialAccountPlans,
@@ -249,6 +250,23 @@ export default function BillingClient({
                               {checkingOrderId === tx.orderId ? <Loader2 className="h-4 w-4 animate-spin" /> : "Check Status"}
                             </Button>
                           )}
+                          <Button 
+                            variant="secondary" 
+                            size="icon"
+                            title="Download Invoice"
+                            onClick={() => generateInvoicePDF({
+                              orderId: tx.orderId,
+                              amount: tx.amount,
+                              status: tx.status,
+                              date: new Date(tx.createdAt).toLocaleDateString("id-ID", {
+                                day: "numeric", month: "short", year: "numeric"
+                              }),
+                              customerName: session?.user?.name || "Customer",
+                              customerEmail: session?.user?.email || "",
+                            })}
+                          >
+                            <Download className="h-4 w-4" />
+                          </Button>
                         </div>
                       </div>
                     ))}

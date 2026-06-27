@@ -11,6 +11,8 @@ const smartFillSchema = z.object({
   prompt: z.string().min(1).max(4000),
   schema: z.array(z.record(z.string(), z.unknown())).min(1).max(100),
   contentType: z.string().min(1).max(100),
+  tone: z.string().optional(),
+  language: z.string().optional(),
 })
 
 export async function POST(
@@ -38,24 +40,30 @@ export async function POST(
 
     const parsed = await validateBody(request, smartFillSchema)
     if ("error" in parsed) return parsed.error
-    const { prompt, schema, contentType } = parsed.data
+    const { prompt, schema, contentType, tone, language } = parsed.data
 
-    const systemPrompt = `You are an expert content creator for a Headless CMS. 
-    Analyze the user input and fill the form fields provided in the schema.
+    const systemPrompt = `You are an expert content creator, copywriter, and SEO specialist for a Headless CMS. 
+    Your task is to take the user's brief prompt and WRITE robust, full-length content that fills the provided schema fields.
     The content type is "${contentType}".
+    ${tone ? `Target Tone: ${tone}\n` : ""}${language ? `Target Language: ${language}\n` : ""}
     
+    ### CONTENT CREATION RULES:
+    - EXPAND on the user's prompt. Do not just repeat it. If they ask for a blog post, write the actual blog post paragraphs.
+    - SEO Meta: If the schema has fields for SEO (e.g. metaTitle, metaDescription), automatically generate optimal SEO-friendly values based on the content. Meta descriptions should be ~150 characters.
+    - Slug: If there is a slug field, generate a clean, URL-friendly string.
+
     ### DATA TYPE RULES:
     - relation: Provide a URL-friendly slug or ID that represents the related item (e.g., "tech-news").
     - component: Provide a JSON object matching the nested component's fields.
-    - media: Provide a realistic image URL (e.g., from Unsplash).
-    - richText: Provide clean HTML.
+    - media: Generate a highly relevant Unsplash image URL using this exact format: "https://source.unsplash.com/1600x900/?keyword1,keyword2" based on the article's topic. Do NOT just output a generic image URL.
+    - richText: Provide comprehensive content with clean HTML formatting (<h1>, <p>, <ul>, <strong>, etc.).
     - date: Provide ISO 8601 string.
 
     Return ONLY a valid JSON object where keys are field slugs and values are the generated content.
     Do not include any other text or markdown formatting.
     Fields in schema: ${JSON.stringify(schema)}`
 
-    const userPrompt = `Input text to analyze:
+    const userPrompt = `Input text/topic to write about:
     "${prompt}"`
 
     const result = await safeGenerateContent(systemPrompt, userPrompt, {

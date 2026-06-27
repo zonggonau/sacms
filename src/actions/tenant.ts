@@ -49,7 +49,7 @@ export async function createTenantAction(data: any) {
     const { name, description, plan = "free", aiPrompt, websiteType } = validation.data
 
     const userPlan = await getUserPlanConfig(session.user.id)
-    const planBinding = validateWorkspacePlanBinding(userPlan.plan_slug, plan)
+    const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
     if (!planBinding.allowed) {
       return { error: planBinding.message }
     }

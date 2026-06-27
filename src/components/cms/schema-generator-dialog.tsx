@@ -82,7 +82,7 @@ export function SchemaGeneratorDialog({
       if (res.ok) {
         toast({ 
           title: "AI Success!", 
-          description: `${typeLabels[type]} "${data.name}" has been generated.`,
+          description: data.system ? `Full System Architecture has been generated with ${data.contentTypes?.length || 0} Content Types.` : `${typeLabels[type]} "${data.name}" has been generated.`,
           className: "bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-none shadow-none"
         })
         
@@ -113,6 +113,10 @@ export function SchemaGeneratorDialog({
     
     if (type === "system") {
       router.push(`/admin/schema-builder/${generatedData.id}`)
+    } else if (generatedData?.system) {
+      // It's a full system architecture generated in tenant scope
+      router.refresh()
+      router.push(`${basePath}/content-types`)
     } else {
       router.push(`${basePath}/${pathMap[type]}/edit/${generatedData.slug}`)
     }
@@ -165,12 +169,12 @@ export function SchemaGeneratorDialog({
                     <div>
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">API Slug / ID</p>
                       <code className="text-sm font-bold bg-muted px-2 py-1 text-primary border border-border">
-                        /{type === "system" ? generatedData.data.template_id : generatedData.slug}
+                        /{type === "system" ? generatedData.data.template_id : (generatedData.system ? "full-system" : generatedData.slug)}
                       </code>
                     </div>
                     <div className="col-span-2 pt-2 border-t border-border">
                       <p className="text-[10px] font-black uppercase tracking-widest text-muted-foreground mb-1.5">
-                        {type === "system" ? "Generated Elements" : "Generated Fields"}
+                        {(type === "system" || generatedData.system) ? "Generated Elements" : "Generated Fields"}
                       </p>
                       <div className="flex flex-wrap gap-2">
                         {type === "system" ? (
@@ -183,6 +187,18 @@ export function SchemaGeneratorDialog({
                             </Badge>
                             <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
                               {generatedData.data.schema_template.components?.length || 0} Components
+                            </Badge>
+                          </>
+                        ) : generatedData.system ? (
+                          <>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.contentTypes?.length || 0} Content Types
+                            </Badge>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.singleTypes?.length || 0} Single Types
+                            </Badge>
+                            <Badge variant="outline" className="bg-background text-xs font-bold rounded-none">
+                              {generatedData.components?.length || 0} Components
                             </Badge>
                           </>
                         ) : (

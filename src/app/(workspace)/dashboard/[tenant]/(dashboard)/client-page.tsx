@@ -261,7 +261,7 @@ export default function TenantDashboardClient({
                   <CardContent className="p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <span className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{item.label}</span>
-                      <span className="text-[10px] font-bold text-muted-foreground">{formatValue(item.current, item.unit)} / {formatValue(item.limit, item.unit)}</span>
+                      <span className="text-[10px] font-bold text-muted-foreground">{formatValue(item.current, item.unit)} / {(item.unit === 'bytes' ? item.limit >= 999999 * 1024 * 1024 : item.limit >= 999999) ? "Unlimited" : formatValue(item.limit, item.unit)}</span>
                     </div>
                     <div className="h-1 w-full bg-muted rounded-none overflow-hidden">
                       <div 

@@ -114,6 +114,41 @@ export default async function TemplatesPage() {
     console.error("Failed to query addon plans:", err)
   }
 
+  const { isEnterpriseTenant } = await import("@/lib/license")
+  let isGlobalEnterprise = await isEnterpriseTenant("sacms-global")
+  if (!isGlobalEnterprise) {
+    isGlobalEnterprise = await isEnterpriseTenant(session.user.id)
+  }
+
+  if (isGlobalEnterprise) {
+    workspacePlans = [
+      {
+        id: "enterprise-shared",
+        name: "Shared Database",
+        desc: "Satu database utama untuk semua tenant. Ideal untuk tenant ringan dan standar.",
+        priceAmount: 0,
+        yearlyPrice: 0,
+        features: ["Shared Pool", "Auto Scaling", "Cost Effective"]
+      },
+      {
+        id: "enterprise-standalone",
+        name: "Standalone Database",
+        desc: "Diisolasi pada instance PostgreSQL terpisah untuk performa dan keamanan maksimal.",
+        priceAmount: 0,
+        yearlyPrice: 0,
+        features: ["Dedicated DB", "High Performance", "Data Isolation"]
+      },
+      {
+        id: "enterprise-custom",
+        name: "Custom Infrastructure",
+        desc: "Opsi untuk setup manual di infrastruktur, VPC, atau jaringan khusus instansi.",
+        priceAmount: 0,
+        yearlyPrice: 0,
+        features: ["Custom VPC", "On-Premise Ready", "Priority SLA"]
+      }
+    ]
+  }
+
   return (
     <TemplatesClient 
       initialTemplates={templates}

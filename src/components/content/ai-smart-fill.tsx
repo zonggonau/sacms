@@ -15,6 +15,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/hooks/use-toast"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 
 interface AISmartFillProps {
   tenantSlug: string
@@ -32,6 +33,8 @@ export function AISmartFill({
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [prompt, setPrompt] = useState("")
+  const [tone, setTone] = useState<string>("Professional")
+  const [language, setLanguage] = useState<string>("English")
   const { toast } = useToast()
 
   const handleGenerate = async () => {
@@ -55,6 +58,8 @@ export function AISmartFill({
           prompt,
           contentType: contentTypeName,
           schema: aiSchema,
+          tone,
+          language,
         }),
       })
       
@@ -101,20 +106,50 @@ export function AISmartFill({
           </DialogHeader>
  
           <div className="py-6 space-y-6">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Language</Label>
+                <Select value={language} onValueChange={setLanguage}>
+                  <SelectTrigger className="rounded-none font-medium h-10">
+                    <SelectValue placeholder="Select Language" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="English">English</SelectItem>
+                    <SelectItem value="Indonesian">Indonesian</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label className="text-xs font-bold uppercase tracking-wider text-slate-500">Tone</Label>
+                <Select value={tone} onValueChange={setTone}>
+                  <SelectTrigger className="rounded-none font-medium h-10">
+                    <SelectValue placeholder="Select Tone" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-none">
+                    <SelectItem value="Professional">Professional</SelectItem>
+                    <SelectItem value="Casual">Casual</SelectItem>
+                    <SelectItem value="Enthusiastic">Enthusiastic</SelectItem>
+                    <SelectItem value="Journalistic">Journalistic</SelectItem>
+                    <SelectItem value="Funny">Funny</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
             <div className="space-y-3">
               <Label className="text-sm font-bold text-slate-700">Paste your content or draft here:</Label>
               <Textarea
                 placeholder="e.g., Write a blog post about the benefits of AI in CMS. The title should be catchy, and include a summary of 3 key benefits..."
                 value={prompt}
                 onChange={(e) => setPrompt(e.target.value)}
-                className="min-h-[250px] rounded-none border-slate-200 focus-visible:ring-emerald-500 p-4 text-sm leading-relaxed"
+                className="min-h-[200px] rounded-none border-slate-200 focus-visible:ring-emerald-500 p-4 text-sm leading-relaxed"
               />
             </div>
             
             <div className="flex gap-3 p-4 bg-emerald-50 rounded-none border border-emerald-100 text-emerald-800">
               <Info className="h-5 w-5 shrink-0 pt-0.5" />
               <p className="text-xs leading-relaxed font-medium">
-                The AI will analyze your text and try to map it to the fields in this <strong>{contentTypeName}</strong>. You can still manually review and edit the fields after they are filled.
+                The AI will write and map content into the fields of this <strong>{contentTypeName}</strong>. You can manually review and edit the fields after generation.
               </p>
             </div>
           </div>

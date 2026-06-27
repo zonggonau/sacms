@@ -43,14 +43,34 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // Get existing subscription
+    // Get existing subscription for the current workspace plan
     const subscription = await db.subscription.findFirst({
-      where: { tenantId: tenant.id },
+      where: { 
+        tenantId: tenant.id,
+        plan: tenant.plan // Match the actual workspace plan, ignoring addons
+      },
       orderBy: { createdAt: "desc" },
     })
 
+    // Fetch active addons by checking successful payment transactions with 'ADD-' prefix
+    const addonTransactions = await db.paymentTransaction.findMany({
+      where: {
+        orderId: { startsWith: "ADD-" },
+        status: "success",
+        subscription: { tenantId: tenant.id }
+      },
+    })
+
+    const activeAddons = Array.from(new Set(
+      addonTransactions.map(t => {
+        const raw = t.rawResponse as any;
+        return raw?.addonId;
+      }).filter(Boolean)
+    ))
+
     return NextResponse.json({
-      subscription: subscription || { plan: "free", status: "active", currentPeriodEnd: null }
+      subscription: subscription || { plan: "free", status: "active", currentPeriodEnd: null },
+      activeAddons
     })
   } catch (error) {
     console.error("Error fetching subscription:", error)

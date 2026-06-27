@@ -68,13 +68,14 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const pricingContentType = await db.contentType.findFirst({
-        where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing"] } }
+      const pricingContentTypes = await db.contentType.findMany({
+        where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing", "sacms-addons"] } }
       })
 
-      if (pricingContentType) {
+      if (pricingContentTypes.length > 0) {
+        const contentTypeIds = pricingContentTypes.map(ct => ct.id)
         const planEntries = await db.contentEntry.findMany({
-          where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
+          where: { contentTypeId: { in: contentTypeIds }, status: "PUBLISHED" }
         })
         
         const planEntry = planEntries.find(e => {
@@ -110,20 +111,46 @@ export async function POST(request: NextRequest) {
 
           amount = interval === 'year' ? yearlyPrice : monthlyPrice
           planName = data.name || planId
-          isAddon = data.type === "addons"
+          const addonContentType = pricingContentTypes.find(ct => ct.slug === "sacms-addons")
+          isAddon = addonContentType?.id === planEntry.contentTypeId
         } else {
           const dynamicPrices = await getDynamicWorkspacePrices()
           const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
           amount = interval === 'year' ? prices.yearly : prices.monthly
+          // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
+          if (!amount) {
+            const { PLAN_PRICES } = await import('@/lib/midtrans')
+            const base = PLAN_PRICES[planId] ?? 0
+            amount = interval === 'year' ? base * 10 : base
+          }
         }
       } else {
         const dynamicPrices = await getDynamicWorkspacePrices()
         const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
         amount = interval === 'year' ? prices.yearly : prices.monthly
+        // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
+        if (!amount) {
+          const { PLAN_PRICES } = await import('@/lib/midtrans')
+          const base = PLAN_PRICES[planId] ?? 0
+          amount = interval === 'year' ? base * 10 : base
+        }
       }
     }
 
-    const orderId = isAccountPlan ? `ACC-${session.user.id}-${Date.now()}` : `${isAddon ? 'ADD' : 'SUB'}-${dbTenant.id}-${Date.now()}`
+    const today = new Date();
+    const formattedDate = `${today.getDate().toString().padStart(2, '0')}${(today.getMonth() + 1).toString().padStart(2, '0')}${today.getFullYear()}`;
+    
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const countToday = await db.paymentTransaction.count({
+      where: {
+        createdAt: { gte: todayStart }
+      }
+    });
+    
+    const sequenceNumber = 1001 + countToday;
+    const prefix = isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB');
+    const orderId = `${prefix}-${formattedDate}${sequenceNumber}`;
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
@@ -151,6 +178,17 @@ export async function POST(request: NextRequest) {
     }
 
     const subtotal = Math.max(0, amount - credit)
+
+    // Guard: Midtrans requires amount >= 1
+    if (subtotal <= 0 || amount <= 0) {
+      return NextResponse.json(
+        { 
+          error: "Harga paket ini belum dikonfigurasi. Silakan hubungi admin untuk mengatur harga paket terlebih dahulu.",
+          code: "PRICE_NOT_CONFIGURED"
+        },
+        { status: 400 }
+      )
+    }
 
     // Calculate PPN (11%) on subtotal
     const vatAmount = Math.round(subtotal * 0.11)

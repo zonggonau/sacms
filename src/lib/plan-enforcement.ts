@@ -57,7 +57,7 @@ async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | 
       return {
         allowed: true,
         current: 0,
-        max: 999999,
+        max: 999999999,
         planSlug: "enterprise",
         message: "Enterprise License — Unlimited",
       }
