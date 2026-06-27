@@ -108,7 +108,8 @@ export async function POST(request: NextRequest) {
 
         const isAccountPlan = !subscription.tenantId
         const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-        const planPrice = dynamicPrices[subscription.plan]?.monthly ?? PLAN_PRICES[subscription.plan] ?? 0
+        const rawPrice = dynamicPrices[subscription.plan] ?? PLAN_PRICES[subscription.plan] ?? 0
+        const planPrice = typeof rawPrice === 'number' ? rawPrice : rawPrice.monthly
 
         if (planPrice === 0) {
           // Free plan - extend period
@@ -235,7 +236,8 @@ export async function GET(request: NextRequest) {
     const preview = activeSubscriptions.map((sub) => {
       const isAccountPlan = !sub.tenantId
       const dynamicPrices = isAccountPlan ? dynamicAccountPrices : dynamicWorkspacePrices
-      const price = dynamicPrices[sub.plan] ?? PLAN_PRICES[sub.plan] ?? 0
+      const rawPrice = dynamicPrices[sub.plan] ?? PLAN_PRICES[sub.plan] ?? 0
+      const price = typeof rawPrice === 'number' ? rawPrice : rawPrice.monthly
 
       return {
       subscriptionId: sub.id,

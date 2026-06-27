@@ -237,8 +237,8 @@ export function AdminContentEntriesManager({
                                     alt="" 
                                     className="w-full h-full object-cover" 
                                     onError={(e) => {
-                                      (e.target as HTMLImageElement).src = ""
-                                      (e.target as HTMLImageElement).className = "hidden"
+                                      (e.target as HTMLImageElement).src = "";
+                                      (e.target as HTMLImageElement).className = "hidden";
                                     }}
                                   />
                                 ) : (

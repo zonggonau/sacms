@@ -178,6 +178,15 @@ export default function AdminMonitoringPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
+                onClick={() => window.open('https://sentry.io/', '_blank')}
+                className="rounded-none border-border shadow-none h-8 font-mono text-xs hidden md:flex items-center"
+              >
+                <AlertTriangle className="h-3 w-3 mr-2" />
+                SENTRY DASHBOARD
+              </Button>
+              <Button 
+                variant="outline" 
+                size="sm" 
                 onClick={fetchData} 
                 disabled={refreshing} 
                 className="h-8 rounded-none border-border font-black text-xs hover:bg-muted/20"

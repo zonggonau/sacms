@@ -31,9 +31,10 @@ export async function GET(request: NextRequest) {
 
   // 1. Try to serve from Redis cache
   if (redis) {
-    const cachedBuffer = await redis.getBuffer(cacheKey).catch(() => null)
-    if (cachedBuffer) {
-      return new NextResponse(cachedBuffer, {
+    const cachedB64 = await redis.get<string>(cacheKey).catch(() => null)
+    if (cachedB64) {
+      const cachedBuffer = Buffer.from(cachedB64, 'base64')
+      return new NextResponse(cachedBuffer as unknown as BodyInit, {
         headers: {
           "Content-Type": "image/webp",
           "Cache-Control": "public, max-age=31536000, immutable",
@@ -70,11 +71,12 @@ export async function GET(request: NextRequest) {
 
     // 4. Save to cache (TTL 7 days)
     if (redis) {
-      await redis.setex(cacheKey, 60 * 60 * 24 * 7, outputBuffer).catch(() => {})
+      const base64Output = outputBuffer.toString('base64')
+      await redis.setex(cacheKey, 60 * 60 * 24 * 7, base64Output).catch(() => {})
     }
 
     // 5. Return response
-    return new NextResponse(outputBuffer, {
+    return new NextResponse(outputBuffer as unknown as BodyInit, {
       headers: {
         "Content-Type": "image/webp",
         "Cache-Control": "public, max-age=31536000, immutable",

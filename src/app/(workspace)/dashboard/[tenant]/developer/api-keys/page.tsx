@@ -19,5 +19,5 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
     )
   }
 
-  return <ApiKeysClient initialTokens={tokensData.tokens || []} tenantSlug={tenant} />
+  return <ApiKeysClient initialTokens={(tokensData.tokens as any) || []} tenantSlug={tenant} />
 }

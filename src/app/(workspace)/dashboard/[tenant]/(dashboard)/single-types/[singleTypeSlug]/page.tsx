@@ -19,7 +19,7 @@ export default async function SingleTypeDetailPage({
   const tenantSlug = resolvedParams.tenant
   const singleTypeSlug = resolvedParams.singleTypeSlug
 
-  let initialSingleType = null
+  let initialSingleType: any = null
   let initialLocales = [{ locale: "en", name: "English" }]
 
   try {

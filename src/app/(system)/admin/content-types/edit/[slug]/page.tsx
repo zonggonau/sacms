@@ -18,8 +18,8 @@ export default async function EditContentTypePage({
   const tenantSlug = resolvedParams.tenant
   const contentTypeSlug = resolvedParams.slug
 
-  let initialContentType = null
-  let initialFields = []
+  let initialContentType: any = null
+  let initialFields: any[] = []
 
   try {
     const response = await getAdminContentTypeBySlugAction(contentTypeSlug)

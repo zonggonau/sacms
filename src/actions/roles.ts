@@ -154,7 +154,7 @@ export async function saveRoleAction(
             }
           }
         } else {
-          const rolePermsData = []
+          const rolePermsData: any[] = []
           for (const [permName, granted] of Object.entries(permissions)) {
             const permId = permMap.get(permName)
             if (permId && granted) {

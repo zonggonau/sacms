@@ -36,7 +36,7 @@ describe("Webhooks - executeSyncHooks", () => {
       planId: "free",
       isActive: true,
       customDomain: null
-    })
+    } as any)
   })
 
   afterEach(() => {

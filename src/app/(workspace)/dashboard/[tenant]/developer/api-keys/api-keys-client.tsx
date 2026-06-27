@@ -84,6 +84,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug }: ApiKeysClientProps)
     startTransition(async () => {
       const res = await createApiTokenAction(tenantSlug, {
         name: newTokenName,
+        type: "read-only",
         permissions: newTokenPermissions,
       })
 

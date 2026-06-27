@@ -11,6 +11,14 @@ import {
 } from "lucide-react"
 import { Input } from "@/components/ui/input"
 import { WorkspaceCreationDialog } from "@/components/dashboard/workspace-creation-dialog"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
 import { cn } from "@/lib/utils"
 
 export default function TemplatesClient({
@@ -94,54 +102,70 @@ export default function TemplatesClient({
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-        {loadingTemplates ? (
-          Array(4).fill(0).map((_, i) => (
-            <Card key={i} className="animate-pulse h-[280px]">
-              <CardContent className="p-6 h-full flex flex-col justify-between">
-                <div className="space-y-4">
-                  <div className="w-12 h-12 bg-secondary rounded-lg"></div>
-                  <div className="h-4 bg-secondary rounded w-3/4"></div>
-                  <div className="h-4 bg-secondary rounded w-full"></div>
-                  <div className="h-4 bg-secondary rounded w-5/6"></div>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        ) : filteredTemplates.length === 0 ? (
-          <div className="col-span-full py-20 text-center border rounded-xl bg-card">
-            <Globe className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-            <h3 className="text-xl font-bold">No templates found</h3>
-            <p className="text-muted-foreground mt-1">Try adjusting your search or filter criteria</p>
-          </div>
-        ) : (
-          filteredTemplates.map((tpl) => (
-            <Card 
-              key={tpl.id} 
-              onClick={() => { setCreationTemplateId(tpl.template_id || tpl.id); setIsCreateOpen(true); }}
-              className="group cursor-pointer hover:border-primary transition-colors flex flex-col overflow-hidden"
-            >
-              <CardHeader className="pb-4">
-                <div className="flex justify-between items-start mb-4">
-                  <div className="w-12 h-12 rounded-lg bg-secondary flex items-center justify-center">
-                    <Globe className="h-6 w-6 text-primary" />
-                  </div>
-                  <Badge variant="secondary">
-                    {tpl.kategori_website || tpl.category || "General"}
-                  </Badge>
-                </div>
-                <CardTitle className="text-xl line-clamp-1">{tpl.name || tpl.nama_template}</CardTitle>
-              </CardHeader>
-              <CardContent className="flex-1 flex flex-col justify-between">
-                <div className="text-sm text-muted-foreground line-clamp-3 mb-6" dangerouslySetInnerHTML={{ __html: tpl.description || "" }} />
-                <Button variant="ghost" className="w-full justify-between mt-auto group-hover:bg-primary group-hover:text-primary-foreground">
-                  Use Template
-                  <ArrowRight className="h-4 w-4" />
-                </Button>
-              </CardContent>
-            </Card>
-          ))
-        )}
+      <div className="rounded-md border bg-card overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/50">
+              <TableHead className="w-[60px]"></TableHead>
+              <TableHead>Template Name</TableHead>
+              <TableHead className="w-[150px]">Category</TableHead>
+              <TableHead className="hidden md:table-cell">Description</TableHead>
+              <TableHead className="text-right w-[140px]">Action</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loadingTemplates ? (
+              Array(4).fill(0).map((_, i) => (
+                <TableRow key={i}>
+                  <TableCell><div className="w-10 h-10 bg-secondary animate-pulse rounded-md"></div></TableCell>
+                  <TableCell><div className="h-4 w-32 bg-secondary animate-pulse rounded"></div></TableCell>
+                  <TableCell><div className="h-4 w-20 bg-secondary animate-pulse rounded"></div></TableCell>
+                  <TableCell className="hidden md:table-cell"><div className="h-4 w-48 bg-secondary animate-pulse rounded"></div></TableCell>
+                  <TableCell className="text-right"><div className="h-8 w-24 bg-secondary animate-pulse rounded ml-auto"></div></TableCell>
+                </TableRow>
+              ))
+            ) : filteredTemplates.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="py-20 text-center text-muted-foreground">
+                  <Globe className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p className="font-medium text-lg text-foreground">No templates found</p>
+                  <p className="text-sm">Try adjusting your search or filter criteria</p>
+                </TableCell>
+              </TableRow>
+            ) : (
+              filteredTemplates.map((tpl) => (
+                <TableRow 
+                  key={tpl.id}
+                  className="group cursor-pointer hover:bg-muted/50 transition-colors"
+                  onClick={() => { setCreationTemplateId(tpl.template_id || tpl.id); setIsCreateOpen(true); }}
+                >
+                  <TableCell>
+                    <div className="w-10 h-10 rounded-lg bg-secondary flex items-center justify-center">
+                      <Globe className="h-5 w-5 text-primary" />
+                    </div>
+                  </TableCell>
+                  <TableCell className="font-medium text-base">
+                    {tpl.name || tpl.nama_template}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="secondary">
+                      {tpl.kategori_website || tpl.category || "General"}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="hidden md:table-cell max-w-[300px]">
+                    <div className="text-sm text-muted-foreground truncate" dangerouslySetInnerHTML={{ __html: tpl.description || "" }} />
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button variant="ghost" size="sm" className="group-hover:bg-primary group-hover:text-primary-foreground">
+                      Use Template
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
+          </TableBody>
+        </Table>
       </div>
 
       <WorkspaceCreationDialog 

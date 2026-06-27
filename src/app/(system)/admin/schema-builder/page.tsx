@@ -8,6 +8,8 @@ export const metadata: Metadata = {
 import { AdminSchemaBuilderClient } from "./client"
 import { db } from "@/lib/database"
 
+export const dynamic = "force-dynamic"
+
 export default async function AdminSchemaBuilderPage() {
   const templatesContentType = await db.contentType.findFirst({
     where: { slug: "templates", tenantId: null }

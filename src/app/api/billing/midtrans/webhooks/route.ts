@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
 
       if (transaction.subscription?.tenant) {
         await triggerWebhooks(
-          transaction.subscription.tenantId,
+          transaction.subscription.tenantId!,
           "payment.completed",
           {
             orderId,
@@ -126,7 +126,7 @@ export async function POST(request: NextRequest) {
 
       if (transaction.subscription?.tenant) {
         await triggerWebhooks(
-          transaction.subscription.tenantId,
+          transaction.subscription.tenantId!,
           "payment.failed",
           {
             orderId,

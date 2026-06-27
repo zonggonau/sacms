@@ -38,7 +38,7 @@ export default async function SuratAddonPage({
         </div>
         
         {/* Mengamankan halaman ini dengan pengecekan subscription addon */}
-        <SubscriptionGate requiredAddon="format_surat_plugin" tenantSlug={params.tenant}>
+        <SubscriptionGate isExpired={false} tenantId={params.tenant}>
           <SuratClient tenantSlug={params.tenant} initialTemplates={templates} />
         </SubscriptionGate>
       </div>

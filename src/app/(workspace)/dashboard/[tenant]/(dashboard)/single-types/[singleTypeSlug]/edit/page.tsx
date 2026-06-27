@@ -18,8 +18,8 @@ export default async function EditSingleTypePage({
   const tenantSlug = resolvedParams.tenant
   const singleTypeSlug = resolvedParams.singleTypeSlug
 
-  let initialSingleType = null
-  let initialFields = []
+  let initialSingleType: any = null
+  let initialFields: any[] = []
 
   try {
     const response = await getSingleTypeBySlugAction(tenantSlug, singleTypeSlug)

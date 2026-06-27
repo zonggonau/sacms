@@ -1,7 +1,7 @@
 # Business Requirement Document (BRD)
 **Project Name:** SaCMS (SaaS Headless CMS)
-**Date:** 17 Juni 2026
-**Status:** Approved business direction; implementation status is tracked separately in document 15
+**Date:** 27 Juni 2026
+**Status:** Approved business direction; synchronized with codebase on 27 Juni 2026
 
 > Sections that mention “v1.0” preserve the original launch scope. They are not a statement that acceptance metrics were measured on the current repository baseline.
 

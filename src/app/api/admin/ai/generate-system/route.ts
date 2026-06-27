@@ -3,6 +3,7 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { safeGenerateContent } from "@/lib/ai"
+import { revalidatePath } from "next/cache"
 
 export async function POST(request: NextRequest) {
   try {
@@ -102,7 +103,7 @@ export async function POST(request: NextRequest) {
     const newTemplateEntry = await db.contentEntry.create({
       data: {
         contentTypeId: templatesContentType.id,
-        tenantId: systemTenant.id,
+        tenantId: null,
         status: "PUBLISHED",
         data: {
           name: generatedData.name,
@@ -114,6 +115,7 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    revalidatePath("/admin/schema-builder")
     return NextResponse.json(newTemplateEntry)
   } catch (error: any) {
     console.error("AI System Generation Error:", error)

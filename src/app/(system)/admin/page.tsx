@@ -152,7 +152,7 @@ export default function GlobalAdminDashboard() {
               { label: "Media Library", value: stats.mediaCount, icon: ImageIcon, href: "/admin/media" },
               { label: "Billing", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
             ].map((s) => (
-              s.disabled ? (
+              (s as any).disabled ? (
                 <Card key={s.label} className="rounded-none border border-border shadow-none h-full bg-muted/20 opacity-70 cursor-not-allowed">
                   <CardContent className="p-6 flex flex-col items-center text-center relative">
                     <div className="absolute top-2 right-2 text-[8px] font-bold uppercase bg-muted px-1 py-0.5 rounded text-muted-foreground">Soon</div>
@@ -283,7 +283,7 @@ export default function GlobalAdminDashboard() {
                     { label: "Monitoring",       href: "/admin/monitoring",         icon: Activity },
                     { label: "Billing Admin",    href: "/admin/billing",           icon: CreditCard },
                   ].map((action, index) => (
-                    action.disabled ? (
+                    (action as any).disabled ? (
                       <div key={action.label} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 bg-muted/20 opacity-60 cursor-not-allowed">
                         <action.icon className="h-6 w-6 text-muted-foreground" />
                         <span className="text-xs font-semibold text-muted-foreground">{action.label} <span className="text-[9px] uppercase ml-1 opacity-50">(Soon)</span></span>

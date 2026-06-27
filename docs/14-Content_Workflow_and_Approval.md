@@ -1,7 +1,7 @@
 # Content Workflow & Approval Guide
 
 **Document status:** Implemented baseline  
-**Last synchronized:** 19 June 2026  
+**Last synchronized:** 27 June 2026  
 **Primary implementation:** `src/lib/content-workflow-rules.ts`, `src/actions/content.ts`, and `src/app/api/tenant/[tenant]/workflow/reviewers/route.ts`
 
 ## 1. Purpose

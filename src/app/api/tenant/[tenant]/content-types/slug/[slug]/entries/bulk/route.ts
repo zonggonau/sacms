@@ -35,7 +35,7 @@ export async function POST(
     }
 
     // RBAC Check
-    let permission = PERMISSIONS.CONTENT_UPDATE
+    let permission: string = PERMISSIONS.CONTENT_UPDATE
     if (action === "delete") permission = PERMISSIONS.CONTENT_DELETE
     
     const rbac = await checkPermission(tenantSlug, permission)

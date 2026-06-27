@@ -136,52 +136,6 @@ export function WorkspaceCreationDialog({
               />
             </div>
 
-            <div className="space-y-4">
-              <Label>Choose a Starting Point</Label>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div 
-                  onClick={() => setNewMember({...newTenant, websiteType: 'custom'})}
-                  className={cn(
-                    "cursor-pointer p-4 rounded-lg border transition-all flex flex-col gap-2",
-                    newTenant.websiteType === 'custom' 
-                      ? "border-primary bg-primary/5 ring-1 ring-primary" 
-                      : "border-border hover:border-primary/50"
-                  )}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-sm">Blank Workspace</span>
-                    {newTenant.websiteType === 'custom' && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                  </div>
-                  <p className="text-[10px] text-muted-foreground">Start with a clean slate and build your own architecture.</p>
-                </div>
-
-                {dbTemplates.map((tpl) => (
-                  <div 
-                    key={tpl.template_id || tpl.id}
-                    onClick={() => setNewMember({...newTenant, websiteType: tpl.template_id || tpl.id})}
-                    className={cn(
-                      "cursor-pointer p-4 rounded-lg border transition-all flex flex-col gap-2",
-                      newTenant.websiteType === (tpl.template_id || tpl.id)
-                        ? "border-primary bg-primary/5 ring-1 ring-primary" 
-                        : "border-border hover:border-primary/50"
-                    )}
-                  >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-sm">{tpl.name || tpl.nama_template}</span>
-                      {newTenant.websiteType === (tpl.template_id || tpl.id) && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                    </div>
-                    <div className="flex items-center justify-between mt-auto">
-                      <p className="text-[10px] text-muted-foreground truncate mr-2">{tpl.category || tpl.kategori_website || "Premium"}</p>
-                      {tpl.is_premium ? (
-                        <Badge variant="outline" className="text-[9px] h-4 bg-orange-50 text-orange-600 border-orange-200">Premium</Badge>
-                      ) : (
-                        <Badge variant="outline" className="text-[9px] h-4 bg-emerald-50 text-emerald-600 border-emerald-200">Free</Badge>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
 
             <div className="space-y-4">
               <div className="flex items-center justify-between mb-2">

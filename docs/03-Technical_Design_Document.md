@@ -1,7 +1,7 @@
 # Technical Design & System Architecture
 
-**Baseline:** 19 June 2026  
-**Status:** Living technical design synchronized by static inspection  
+**Baseline:** 27 June 2026  
+**Status:** Living technical design synchronized with codebase on 27 June 2026  
 **Runtime:** Next.js 16 / React 19 / TypeScript / Prisma 6 / PostgreSQL
 
 ## 1. Architectural style

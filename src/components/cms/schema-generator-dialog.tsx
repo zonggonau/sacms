@@ -112,7 +112,7 @@ export function SchemaGeneratorDialog({
     const basePath = tenantSlug ? `/dashboard/${tenantSlug}` : `/admin`
     
     if (type === "system") {
-      router.push(`/admin/entries/templates`)
+      router.push(`/admin/schema-builder/${generatedData.id}`)
     } else {
       router.push(`${basePath}/${pathMap[type]}/edit/${generatedData.slug}`)
     }

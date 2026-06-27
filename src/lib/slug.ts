@@ -21,7 +21,7 @@ export function slugify(text: string): string {
  * Generates a unique slug for a content entry
  */
 export async function generateUniqueContentSlug(
-  tenantId: string,
+  tenantId: string | null,
   contentTypeId: string,
   fieldSlug: string,
   baseValue: string,
@@ -66,7 +66,7 @@ export async function generateUniqueContentSlug(
  * Generates a unique slug for a single type assignment
  */
 export async function generateUniqueSingleTypeSlug(
-  tenantId: string,
+  tenantId: string | null,
   singleTypeId: string,
   fieldSlug: string,
   baseValue: string,
@@ -111,7 +111,7 @@ export async function generateUniqueSingleTypeSlug(
  * Processes all auto-generate slug fields in an entry
  */
 export async function processAutoSlugs(
-  tenantId: string,
+  tenantId: string | null,
   typeId: string,
   fields: any[],
   data: Record<string, any>,

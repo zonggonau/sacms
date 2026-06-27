@@ -92,7 +92,7 @@ export async function POST(
         
         const permMap = new Map(dbPerms.map(p => [p.name, p.id]))
 
-        const rolePermsData = []
+        const rolePermsData: any[] = []
         for (const [permName, granted] of Object.entries(permissions)) {
           const permId = permMap.get(permName)
           if (permId && granted) {

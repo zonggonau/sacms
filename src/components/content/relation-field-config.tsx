@@ -33,6 +33,8 @@ interface RelationFieldConfigProps {
   onTargetModelChange: (v: string) => void
   onTargetSlugChange: (v: string) => void
   disabled?: boolean
+  customContentTypes?: TypeItem[]
+  customSingleTypes?: TypeItem[]
 }
 
 export function RelationFieldConfig({
@@ -44,12 +46,21 @@ export function RelationFieldConfig({
   onTargetModelChange,
   onTargetSlugChange,
   disabled,
+  customContentTypes,
+  customSingleTypes,
 }: RelationFieldConfigProps) {
-  const [contentTypes, setContentTypes] = useState<TypeItem[]>([])
-  const [singleTypes, setSingleTypes] = useState<TypeItem[]>([])
+  const [contentTypes, setContentTypes] = useState<TypeItem[]>(customContentTypes || [])
+  const [singleTypes, setSingleTypes] = useState<TypeItem[]>(customSingleTypes || [])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (customContentTypes && customSingleTypes) {
+      setContentTypes(customContentTypes)
+      setSingleTypes(customSingleTypes)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     const fetchCT = tenantSlug 
       ? fetch(`/api/tenant/${tenantSlug}/content-types`).then(r => r.json())
@@ -66,7 +77,7 @@ export function RelationFieldConfig({
       })
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [tenantSlug])
+  }, [tenantSlug, customContentTypes, customSingleTypes])
 
   useEffect(() => {
     if (!targetModel) {
@@ -162,6 +173,7 @@ interface ComponentFieldConfigProps {
   onRepeatableChange: (v: boolean) => void
   excludeSlug?: string
   disabled?: boolean
+  customComponents?: ComponentItem[]
 }
 
 export function ComponentFieldConfig({
@@ -172,11 +184,18 @@ export function ComponentFieldConfig({
   onRepeatableChange,
   excludeSlug,
   disabled,
+  customComponents,
 }: ComponentFieldConfigProps) {
-  const [components, setComponents] = useState<ComponentItem[]>([])
+  const [components, setComponents] = useState<ComponentItem[]>(customComponents || [])
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
+    if (customComponents) {
+      setComponents(customComponents)
+      setLoading(false)
+      return
+    }
+
     setLoading(true)
     const fetchComponents = tenantSlug
       ? fetch(`/api/tenant/${tenantSlug}/components`).then(r => r.json())
@@ -186,7 +205,7 @@ export function ComponentFieldConfig({
       .then((data) => setComponents(Array.isArray(data) ? data : []))
       .catch(console.error)
       .finally(() => setLoading(false))
-  }, [tenantSlug])
+  }, [tenantSlug, customComponents])
 
   const filtered = useMemo(() => {
     const list = excludeSlug

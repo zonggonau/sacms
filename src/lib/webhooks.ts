@@ -68,8 +68,11 @@ export async function triggerWebhooks(
         matchingWebhooks.map((webhook) => fireWebhook({
           id: webhook.id,
           url: webhook.url,
-          secret: webhook.secret,
-          headers: String(webhook.headers || ""),
+          secret: webhook.secret || undefined,
+          headers: webhook.headers ? String(webhook.headers) : undefined,
+          events: webhook.events as unknown as string[],
+          enabled: webhook.enabled,
+          hookType: webhook.hookType as "async" | "sync",
         }, payload))
       )
     )
@@ -81,8 +84,11 @@ export async function triggerWebhooks(
 interface WebhookRecord {
   id: string
   url: string
-  secret: string | null
-  headers: string | null
+  secret?: string
+  headers?: string
+  events: string[]
+  enabled: boolean
+  hookType: "async" | "sync"
 }
 
 /**

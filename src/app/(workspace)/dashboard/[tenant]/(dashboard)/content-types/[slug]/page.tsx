@@ -18,8 +18,8 @@ export default async function ContentTypeEntriesPage({
   const tenantSlug = params.tenant
   const contentTypeSlug = params.slug
 
-  let initialContentType = null
-  let initialEntries = []
+  let initialContentType: any = null
+  let initialEntries: any[] = []
 
   try {
     const ctRes = await getContentTypeBySlugAction(tenantSlug, contentTypeSlug)

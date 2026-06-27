@@ -31,6 +31,8 @@ interface Invoice {
   status: string
   createdAt: string
   midtransInvoiceId: string | null
+  isTransaction?: boolean
+  plan?: string
 }
 
 export default function TenantSubscriptionsPage() {

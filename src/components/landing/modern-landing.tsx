@@ -38,7 +38,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
     <div className="bg-card text-foreground selection:bg-primary/30">
       <HeroSection data={hero} />
       <FadeIn delay={100}><FeaturesBento features={features} /></FadeIn>
-      <FadeIn delay={100}><LocalPrideSection data={localPride} /></FadeIn>
+      <FadeIn delay={100}><LocalPrideSection localPride={localPride} /></FadeIn>
       <FadeIn delay={100}><SectorsSection sectors={sectors} /></FadeIn>
       <FadeIn delay={100}><WorkflowSection workflow={workflow} /></FadeIn>
       <FadeIn delay={100}>

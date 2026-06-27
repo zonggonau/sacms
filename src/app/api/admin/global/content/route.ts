@@ -86,7 +86,7 @@ export async function PATCH(request: NextRequest) {
         const entry = await db.contentEntry.update({
           where: { id: entryId },
           data: {
-            data,
+            data: data as any,
             status,
             publishedAt: status === "PUBLISHED" ? new Date() : undefined,
           },
@@ -101,7 +101,7 @@ export async function PATCH(request: NextRequest) {
       entry = await db.contentEntry.update({
         where: { id: entryId },
         data: {
-          data,
+          data: data as any,
           status,
           publishedAt: status === "PUBLISHED" ? new Date() : undefined,
         },
@@ -112,7 +112,7 @@ export async function PATCH(request: NextRequest) {
         data: {
           tenantId: null, // Truly Global
           contentTypeId: contentType!.id,
-          data,
+          data: data as any,
           status,
           publishedAt: status === "PUBLISHED" ? new Date() : undefined,
         },

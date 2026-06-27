@@ -25,12 +25,15 @@ export async function POST(
     const { tenantId, singleTypeId } = await params
     const body = await request.json()
 
+    const locale = body.locale || "en"
+
     // Check if assignment exists
     const existing = await db.tenantSingleTypeAssignment.findUnique({
       where: {
-        tenantId_singleTypeId: {
+        tenantId_singleTypeId_locale: {
           tenantId,
           singleTypeId,
+          locale,
         },
       },
     })
@@ -39,9 +42,10 @@ export async function POST(
       // Update existing assignment
       const updated = await db.tenantSingleTypeAssignment.update({
         where: {
-          tenantId_singleTypeId: {
+          tenantId_singleTypeId_locale: {
             tenantId,
             singleTypeId,
+            locale,
           },
         },
         data: {
@@ -55,6 +59,7 @@ export async function POST(
         data: {
           tenantId,
           singleTypeId,
+          locale,
           enabled: body.enabled,
         },
       })

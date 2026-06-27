@@ -81,7 +81,7 @@ export default function CMSSingleTypeDetailPage() {
       ])
       
       if (stRes.singleType) {
-        setSingleType(stRes.singleType)
+        setSingleType(stRes.singleType as any)
         setFormData(stRes.singleType.data || {})
       } else if (stRes.error) {
         toast({ variant: "destructive", title: "Error", description: stRes.error })
@@ -257,7 +257,7 @@ export default function CMSSingleTypeDetailPage() {
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2"><LabelWithAI /><ComponentField tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-2"><LabelWithAI /><ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold text-slate-700">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>

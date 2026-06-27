@@ -99,6 +99,13 @@ export function GlobalAdminSidebar() {
     setMounted(true)
   }, [])
 
+  // Hide the global admin sidebar when inside a specific schema builder template editor 
+  // (but show it on the general /admin/schema-builder listing)
+  const isTemplateEditor = pathname.startsWith('/admin/schema-builder/')
+  if (isTemplateEditor) {
+    return null
+  }
+
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
   }

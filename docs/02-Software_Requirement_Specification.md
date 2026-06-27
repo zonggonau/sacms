@@ -1,8 +1,8 @@
 # Software Requirement Specification (SRS)
 
 **Product:** SaCMS — Multi-tenant SaaS Headless CMS  
-**Baseline:** 19 June 2026  
-**Status:** Living specification; implementation traceability is maintained in document 15
+**Baseline:** 27 June 2026  
+**Status:** Living specification; implementation traceability is maintained in document 15; synchronized with codebase on 27 June 2026.
 
 ## 1. Purpose and conventions
 

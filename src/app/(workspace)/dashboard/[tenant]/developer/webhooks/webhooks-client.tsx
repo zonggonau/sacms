@@ -120,12 +120,13 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
     }
 
     startTransition(async () => {
-      const payload = {
+      const payload: any = {
         name,
         url,
         secret: secret || undefined,
         events: selectedEvents,
         enabled,
+        hookType: "async",
       }
 
       let res

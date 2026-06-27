@@ -18,7 +18,7 @@ export default async function ComponentDetailPage({
   const tenantSlug = resolvedParams.tenant
   const componentSlug = resolvedParams.componentSlug
 
-  let initialComponent = null
+  let initialComponent: any = null
   let initialFields: any[] = []
 
   try {

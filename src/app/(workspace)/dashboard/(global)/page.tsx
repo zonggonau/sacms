@@ -52,7 +52,7 @@ export default async function WorkspaceSelectionPage() {
 
   const formattedTenants = tenants.map(t => {
     const sub = t.subscriptions[0]
-    let daysRemaining = null
+    let daysRemaining: number | null = null
     
     if (sub?.currentPeriodEnd) {
       const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()
@@ -68,7 +68,8 @@ export default async function WorkspaceSelectionPage() {
       createdAt: t.createdAt.toISOString(),
       role: t.members[0]?.role || 'member',
       daysRemaining,
-      subscriptionStatus: sub?.status || null
+      subscriptionStatus: sub?.status || null,
+      expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null
     }
   })
 
@@ -76,7 +77,7 @@ export default async function WorkspaceSelectionPage() {
   let dbTemplates: any[] = []
   let workspacePlans: any[] = []
   let addonPlans: any[] = []
-  let usage = null
+  let usage: any = null
 
   try {
     console.log("[Dashboard] Fetching platform data...");

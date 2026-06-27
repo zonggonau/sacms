@@ -86,8 +86,7 @@ export function RelationSelectField({
         // Mock a single entry from the single type
         setEntries([{
           id: stResult.singleType.id,
-          data: stResult.singleType.data || {},
-          status: "PUBLISHED"
+          data: stResult.singleType.data || {}
         }])
         return
       }

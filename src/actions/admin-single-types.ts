@@ -3,7 +3,7 @@
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
-import { createSingleTypeSchema, updateSingleTypeSchema, saveSingleTypeDataSchema } from "@/lib/validations/admin"
+import { createSingleTypeSchema, updateSingleTypeSchema } from "@/lib/validations/admin"
 import { processAutoSlugs } from "@/lib/slug"
 import { revalidatePath } from "next/cache"
 import { Prisma } from "@prisma/client"

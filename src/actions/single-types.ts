@@ -1,5 +1,6 @@
 "use server"
 
+import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
@@ -390,7 +391,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
           tenantId: tenantId,
           singleTypeId,
           enabled: true,
-          data: processedData ? JSON.stringify(processedData) : null,
+          data: (processedData ? processedData : Prisma.JsonNull) as any,
           publishedAt: publish ? new Date() : null,
         },
         include: { singleType: true },

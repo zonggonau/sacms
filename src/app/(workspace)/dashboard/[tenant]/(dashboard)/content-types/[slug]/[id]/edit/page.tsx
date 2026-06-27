@@ -131,7 +131,7 @@ export default function EditEntryPage() {
           if (typeof entry.data === 'string') {
             try { parsedData = JSON.parse(entry.data) } catch { parsedData = {} }
           }
-          setFormData(parsedData || {})
+          setFormData((parsedData || {}) as Record<string, unknown>)
         }
         if (locRes.ok) {
           const data = await locRes.json()
@@ -293,7 +293,7 @@ export default function EditEntryPage() {
         return <ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "component":
         const cOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <ComponentField tenantSlug={tenantSlug} componentSlug={cOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={cOpts?.repeatable} />
+        return <ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={cOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={cOpts?.repeatable} />
       case "json":
         return <AdvancedField type="json" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "color":

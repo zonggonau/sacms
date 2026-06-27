@@ -1,7 +1,7 @@
 # Implementation Traceability & Documentation Baseline
 
 **Audit method:** Static inspection only; no test, build, lint, migration, or external service call was executed.  
-**Baseline date:** 19 June 2026  
+**Baseline date:** 27 June 2026  
 **Repository package version:** `0.2.0`  
 **Documentation release label:** Product capability baseline; not a declaration that production acceptance tests passed.
 

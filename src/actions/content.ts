@@ -540,7 +540,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
     if (existingLocaleEntry && status && status !== existingLocaleEntry.status) {
       const canTransition = canUserTransition(
         existingLocaleEntry.status,
-        status,
+        status as ContentStatus,
         workflow.role,
         workflow.customPermissions
       )

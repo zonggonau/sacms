@@ -54,6 +54,9 @@ interface FieldConfigModalProps {
   tenantSlug: string
   context: "contentType" | "singleType" | "component"
   onSave: () => void
+  templateComponents?: any[]
+  templateContentTypes?: any[]
+  templateSingleTypes?: any[]
 }
 
 export function FieldConfigModal({
@@ -64,7 +67,10 @@ export function FieldConfigModal({
   fields,
   tenantSlug,
   context,
-  onSave
+  onSave,
+  templateComponents,
+  templateContentTypes,
+  templateSingleTypes
 }: FieldConfigModalProps) {
   
   const [isUploading, setIsUploading] = useState(false)
@@ -143,6 +149,8 @@ export function FieldConfigModal({
                   onRelationTypeChange={(v) => setEditingField(prev => prev ? ({ ...prev, relationType: v }) : null)}
                   onTargetModelChange={(v) => setEditingField(prev => prev ? ({ ...prev, targetModel: v, targetSlug: "" }) : null)}
                   onTargetSlugChange={(v) => setEditingField(prev => prev ? ({ ...prev, targetSlug: v }) : null)}
+                  customContentTypes={templateContentTypes}
+                  customSingleTypes={templateSingleTypes}
                 />
               </div>
             )}
@@ -155,6 +163,7 @@ export function FieldConfigModal({
                   repeatable={editingField.repeatable}
                   onComponentSlugChange={(v) => setEditingField(prev => prev ? ({ ...prev, componentSlug: v }) : null)}
                   onRepeatableChange={(v) => setEditingField(prev => prev ? ({ ...prev, repeatable: v }) : null)}
+                  customComponents={templateComponents}
                 />
               </div>
             )}

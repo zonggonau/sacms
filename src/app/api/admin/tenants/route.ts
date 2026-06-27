@@ -56,7 +56,7 @@ export async function GET(request: NextRequest) {
 
     const [sortField, sortOrder] = sort.split(":")
     const validSortFields = ["createdAt", "name", "plan", "status"]
-    const orderBy = validSortFields.includes(sortField) 
+    const orderBy: any = validSortFields.includes(sortField) 
       ? { [sortField]: sortOrder === "asc" ? "asc" : "desc" }
       : { createdAt: "desc" }
 

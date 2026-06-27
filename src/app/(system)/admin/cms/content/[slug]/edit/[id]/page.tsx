@@ -317,7 +317,7 @@ export default function AdminCMSEditEntryPage() {
 
       case "component":
         const compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        return <div className="space-y-2"><LabelWithAI /><ComponentField tenantSlug={"global"} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-2"><LabelWithAI /><ComponentField label={field.name} tenantSlug={"global"} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>

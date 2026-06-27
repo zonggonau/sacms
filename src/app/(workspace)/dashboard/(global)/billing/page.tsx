@@ -88,7 +88,7 @@ export default async function BillingPage() {
 
   // 2. Fetch Active Workspaces Count & Usage
   let activeWorkspacesCount = 0
-  let usage = null
+  let usage: any = null
   try {
     // Get usage from enforcement
     const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")

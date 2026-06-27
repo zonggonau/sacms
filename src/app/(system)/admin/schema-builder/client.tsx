@@ -125,7 +125,7 @@ export function AdminSchemaBuilderClient({ templates = [] }: { templates?: any[]
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
                             <DropdownMenuItem asChild>
-                              <Link href={`/admin/entries/${tpl.id}`} className="cursor-pointer">
+                              <Link href={`/admin/schema-builder/${tpl.id}`} className="cursor-pointer">
                                 <Pencil className="mr-2 h-4 w-4" />
                                 Edit Schema
                               </Link>

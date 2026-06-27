@@ -126,7 +126,7 @@ export default function CMSCreateEntryPage() {
           setContentType(ctData.contentType as any)
           // Init empty form
           const initialData: Record<string, any> = {}
-          ctData.contentType.fields.forEach((f: Field) => {
+          ctData.contentType.fields.forEach((f: any) => {
             let isMultiple = false
             if (f.type === "relation" && f.options) {
               try {

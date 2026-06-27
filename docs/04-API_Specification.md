@@ -1,7 +1,7 @@
 # SaCMS API Specification
 
-**Baseline:** 19 June 2026  
-**Contract status:** Public collection, Single Type, and GraphQL routes are the stable external surface. Tenant routes are session-authenticated dashboard APIs and may evolve with the UI. `04-openapi.yaml` documents only the stable public subset.
+**Baseline:** 27 June 2026  
+**Contract status:** Public collection, Single Type, and GraphQL routes are the stable external surface. Tenant routes are session-authenticated dashboard APIs and may evolve with the UI. `04-openapi.yaml` documents only the stable public subset. Synchronized with codebase on 27 June 2026.
 
 Dokumentasi ini menjelaskan Public API SaCMS, API internal tenant, developer endpoint, dan cron. Semua contoh `{tenant}` menerima slug tenant kecuali dinyatakan lain.
 

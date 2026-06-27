@@ -115,7 +115,7 @@ export default function CreateEntryPage() {
           setContentType(data as any)
           // Init empty form
           const initialData: Record<string, any> = {}
-          data.fields.forEach((f: Field) => {
+          data.fields.forEach((f: any) => {
             let isMultiple = false
             if (f.type === "relation" && f.options) {
               try {

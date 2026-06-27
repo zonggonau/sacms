@@ -6,5 +6,5 @@ export default async function GlobalProfilePage() {
   const data = await getProfileAction()
   if (data.error) redirect("/login")
   
-  return <UserProfile initialData={data.user} />
+  return <UserProfile initialData={data.user ? { ...data.user, name: data.user.name || "" } : undefined} />
 }
