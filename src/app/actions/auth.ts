@@ -31,7 +31,35 @@ export async function registerUser(formData: any) {
     })
 
     if (existingUser) {
-      return { error: "An account with this email already exists" }
+      if (existingUser.emailVerified) {
+        return { error: "An account with this email already exists and is verified. Please log in." }
+      } else {
+        // Generate Verification Token
+        const token = crypto.randomBytes(32).toString("hex")
+        const expires = new Date()
+        expires.setHours(expires.getHours() + 24)
+
+        // Remove old unverified tokens
+        await db.verificationToken.deleteMany({
+          where: { identifier: existingUser.email },
+        })
+
+        await db.verificationToken.create({
+          data: {
+            identifier: existingUser.email,
+            token,
+            expires,
+          },
+        })
+
+        // Send email
+        await sendVerificationEmail(existingUser.email, token, existingUser.name || "User")
+
+        return { 
+          success: true, 
+          message: "Akun sudah terdaftar tapi belum diverifikasi. Kami telah mengirim ulang email verifikasi ke kotak masuk Anda." 
+        }
+      }
     }
 
     // Check if this is the first user

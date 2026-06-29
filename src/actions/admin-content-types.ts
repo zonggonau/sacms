@@ -182,29 +182,7 @@ export async function seedAdminTemplatesAction() {
     const session = await getServerSession(authOptions)
     if (!session?.user || session.user.role !== "super_admin") return { error: "Unauthorized" }
 
-    const SYSTEM_TENANT_SLUG = "sacms-global"
-
-    // 1. Ensure System Tenant exists
-    let systemTenant = await db.tenant.findFirst({
-      where: { slug: SYSTEM_TENANT_SLUG },
-    })
-
-    if (!systemTenant) {
-      // Try fallback to 'system'
-      systemTenant = await db.tenant.findFirst({ where: { slug: "system" } })
-
-      if (!systemTenant) {
-        systemTenant = await db.tenant.create({
-          data: {
-            name: "SaCMS Global",
-            slug: SYSTEM_TENANT_SLUG,
-            description: "Internal system tenant for global content.",
-            status: "active",
-            plan: "enterprise",
-          },
-        })
-      }
-    }
+    // 1. Removed Global Tenant logic as requested
 
     // 2. Create Templates Content Type (Global)
     let contentType = await db.contentType.findFirst({
@@ -371,7 +349,7 @@ export async function seedAdminTemplatesAction() {
         await db.contentEntry.create({
           data: {
             contentTypeId: contentType.id,
-            tenantId: systemTenant.id,
+            tenantId: null,
             status: "PUBLISHED",
             data: tpl
           }
