@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -22,6 +23,8 @@ export default function RegisterPage() {
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
+  const { data: session, status } = useSession()
+  
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -42,6 +45,31 @@ export default function RegisterPage() {
   const strength = getPasswordStrength(formData.password)
   const strengthLabels = ["Sangat Lemah", "Lemah", "Sedang", "Kuat", "Sangat Kuat"]
   const strengthColors = ["bg-red-500", "bg-red-500", "bg-yellow-500", "bg-green-400", "bg-green-600"]
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const user = session.user as any
+      const redirectTo = searchParams.get("redirect_to") || ""
+      if (redirectTo) {
+        router.push(redirectTo)
+      } else if (user?.role === "super_admin") {
+        router.push("/admin")
+      } else if (user?.role === "admin") {
+        router.push("/dashboard")
+      } else {
+        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        
+        if (isOwnerOrAdmin) {
+          router.push("/dashboard")
+        } else if (user?.tenants && user.tenants.length > 0) {
+          router.push(`/dashboard/${user.tenants[0].slug}/cms`)
+        } else {
+          router.push("/dashboard")
+        }
+      }
+    }
+  }, [status, session, router, searchParams])
 
   useEffect(() => {
     const checkFirstUser = async () => {

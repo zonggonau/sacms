@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
-import { signIn } from "next-auth/react"
+import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -18,10 +18,36 @@ export default function LoginPage() {
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
+  const { data: session, status } = useSession()
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   })
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (status === "authenticated" && session?.user) {
+      const user = session.user as any
+      const redirectTo = searchParams.get("redirect_to") || ""
+      if (redirectTo) {
+        router.push(redirectTo)
+      } else if (user?.role === "super_admin") {
+        router.push("/admin")
+      } else if (user?.role === "admin") {
+        router.push("/dashboard")
+      } else {
+        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        
+        if (isOwnerOrAdmin) {
+          router.push("/dashboard")
+        } else if (user?.tenants && user.tenants.length > 0) {
+          router.push(`/dashboard/${user.tenants[0].slug}/cms`)
+        } else {
+          router.push("/dashboard")
+        }
+      }
+    }
+  }, [status, session, router, searchParams])
 
   // Check if this is the first user (no users in system)
   useEffect(() => {
