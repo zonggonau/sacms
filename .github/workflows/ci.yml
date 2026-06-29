@@ -2,9 +2,9 @@ name: CI/CD
 
 on:
   push:
-    branches: [main, Main, develop]
+    branches: [master, develop]
   pull_request:
-    branches: [main]
+    branches: [master]
 
 permissions:
   contents: read
@@ -60,7 +60,7 @@ jobs:
     name: Build and Push Docker Image
     needs: [build]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'heads/Main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
       
@@ -89,7 +89,7 @@ jobs:
     name: Deploy to Server
     needs: [docker-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || github.ref == 'heads/Main' || github.ref == 'refs/heads/develop'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
       - uses: actions/checkout@v4
 

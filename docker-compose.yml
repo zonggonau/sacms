@@ -3,10 +3,12 @@ services:
     image: ghcr.io/zonggonau/sacms:latest
     ports:
       - "3000:3000"
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgresql://sacms:sacms@postgres:5432/sacms
+      - DATABASE_URL=postgresql://sacms:Z0ngg0n4U@postgres:5432/sacms
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-dev-secret-change-me}
-      - NEXTAUTH_URL=http://localhost:3000
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
       - REDIS_URL=redis://redis:6379
     depends_on:
       postgres:
