@@ -54,17 +54,23 @@ export async function GET(
       })
     }
 
+    // 0. Find the API Key in ApiKey table
+    const apiKey = await db.apiKey.findUnique({
+      where: { key: token },
+      include: { tenant: true },
+    })
+
     // Hash the token for database lookup (SHA-256)
     const hashedToken = createHash("sha256").update(token).digest("hex")
 
     // 1. Find the API token in ApiToken table
-    const apiToken = await db.apiToken.findUnique({
+    const apiToken = !apiKey ? await db.apiToken.findUnique({
       where: { token: hashedToken },
       include: { tenant: true },
-    })
+    }) : null
 
     // 2. If not found, check if it matches the global systemApiKey in settings
-    if (!apiToken) {
+    if (!apiToken && !apiKey) {
       const systemApiKeySetting = await db.setting.findUnique({
         where: { key: "systemApiKey" }
       })
@@ -74,8 +80,10 @@ export async function GET(
       }
     }
 
-    // Check if token is expired (only for ApiToken table entries)
-    if (apiToken && apiToken.expiresAt && apiToken.expiresAt < new Date()) {
+    const expiresAt = apiKey?.expiresAt || apiToken?.expiresAt
+
+    // Check if token is expired (only for ApiToken/ApiKey table entries)
+    if (expiresAt && expiresAt < new Date()) {
       return NextResponse.json({ error: "API token expired" }, { status: 401 })
     }
 

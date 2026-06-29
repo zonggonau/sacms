@@ -62,6 +62,14 @@ export async function GET(
       },
     })
 
+    // Get API key
+    const apiKeys = await db.apiKey.findMany({
+      where: { tenantId: tenant.id },
+      orderBy: { createdAt: "desc" },
+      take: 1
+    })
+    const defaultApiKey = apiKeys.length > 0 ? apiKeys[0].key : ""
+
     // Build settings object
     const settingsMap: Record<string, string> = {}
     settings.forEach((s) => {
@@ -94,6 +102,7 @@ export async function GET(
         databaseUrl: tenant.databaseUrl || "",
         storageConfig: tenant.storageConfig || null,
         // API settings with defaults
+        apiKey: defaultApiKey,
         apiVersion: settingsMap.apiVersion || "v1",
         rateLimiting: settingsMap.rateLimiting !== "false",
         requestsPerMinute: parseInt(settingsMap.requestsPerMinute || "60"),

@@ -148,7 +148,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
               </Button>
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
-                onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/new`)}
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/new`)}
                 disabled={isLimitReached}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Single Type
@@ -252,7 +252,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                   </TableHeader>
                   <TableBody>
                     {filteredSingleTypes.map((st) => (
-                      <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/${st.slug}/edit`)}>
+                      <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}>
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
                             <div className="w-9 h-9 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
@@ -298,7 +298,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
                                 {(!st.isGlobal || isSuperAdmin) && (
-                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/single-types/${st.slug}/edit`)}>
+                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}>
                                     <Layout className="mr-2 h-4 w-4" /> Edit Schema
                                   </DropdownMenuItem>
                                 )}

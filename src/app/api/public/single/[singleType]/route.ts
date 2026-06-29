@@ -30,30 +30,38 @@ export async function GET(
       return NextResponse.json({ error: "Rate limit exceeded" }, { status: 429 })
     }
 
-    // Verify token
-    const apiToken = await db.apiToken.findUnique({
-      where: { token: hashedToken },
+    // Verify token (Check ApiKey first)
+    const apiKey = await db.apiKey.findUnique({
+      where: { key: token },
       include: { tenant: true },
     })
 
-    if (!apiToken) {
+    const apiToken = !apiKey ? await db.apiToken.findUnique({
+      where: { token: hashedToken },
+      include: { tenant: true },
+    }) : null
+
+    if (!apiToken && !apiKey) {
       const systemApiKeySetting = await db.setting.findUnique({ where: { key: "systemApiKey" } })
       if (!systemApiKeySetting || systemApiKeySetting.value !== token) {
         return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
       }
     }
 
+    const tenantId = apiKey?.tenantId || apiToken?.tenantId
+    const apiTokenType = apiKey ? "full-access" : apiToken?.type
+
     const { searchParams } = new URL(request.url)
-    const defaultLocale = apiToken?.tenantId
+    const defaultLocale = tenantId
       ? (await db.tenantLocale.findFirst({
-          where: { tenantId: apiToken.tenantId, isDefault: true },
+          where: { tenantId: tenantId, isDefault: true },
           select: { locale: true },
         }))?.locale || "en"
       : "en"
     const locale = searchParams.get("locale") || defaultLocale
 
     // Cache check only after authentication.
-    const cacheOwner = apiToken ? `${apiToken.tenantId}:${apiToken.type}` : "system"
+    const cacheOwner = tenantId ? `${tenantId}:${apiTokenType}` : "system"
     const cacheKey = `public_api_single_global:${cacheOwner}:${singleTypeSlug}:${locale}`
     const cached = await getCache(cacheKey)
     if (cached) return NextResponse.json(cached, { headers: { "X-Cache": "HIT" } })
@@ -86,7 +94,7 @@ export async function GET(
       return NextResponse.json({ error: "Single type data not published" }, { status: 404 })
     }
 
-    if (apiToken && apiToken.type !== "full-access" && !assignment.publishedAt) {
+    if ((apiKey || apiToken) && apiTokenType !== "full-access" && !assignment.publishedAt) {
       return NextResponse.json({ error: "Single type data not published" }, { status: 404 })
     }
 

@@ -66,20 +66,21 @@ export default function ApiExplorerPage() {
     const fetchData = async () => {
       if (!tenantSlug || status !== "authenticated") return
       try {
-        const [ctData, stData, akRes] = await Promise.all([
+        const [ctData, stData, settingsRes] = await Promise.all([
           getContentTypesAction(tenantSlug),
           getSingleTypesAction(tenantSlug),
-          fetch(`/api/tenant/${tenantSlug}/api-tokens`)
+          fetch(`/api/tenant/${tenantSlug}/settings`)
         ])
         if (ctData && !ctData.error) setContentTypes(ctData.contentTypes || [])
         if (stData && !stData.error) setSingleTypes(stData.singleTypes || [])
-        if (akRes.ok) {
-          const akData = await akRes.json()
-          const tokens = akData.tokens || []
-          setApiKeys(tokens)
-          if (tokens.length > 0 && !selectedKey) {
-            const firstToken = tokens[0].token
-            if (firstToken && !firstToken.includes("*")) setSelectedKey(firstToken)
+        if (settingsRes.ok) {
+          const settingsData = await settingsRes.json()
+          const key = settingsData.settings?.apiKey
+          if (key) {
+            setApiKeys([{ id: 'default', name: 'Default API Key', token: key }])
+            if (!selectedKey) setSelectedKey(key)
+          } else {
+            setApiKeys([])
           }
         }
       } catch (err) { console.error("Error fetching data", err) }

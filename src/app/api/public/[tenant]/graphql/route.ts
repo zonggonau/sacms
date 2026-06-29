@@ -40,14 +40,56 @@ export async function POST(
     let allowMutations = false
     let rateLimitResult = { success: true, limit: 100, remaining: 99 }
     let apiTokenId: string | null = null
+    let isApiKey = false
 
     // Validate API token
     const authHeader = request.headers.get("authorization")
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.replace("Bearer ", "")
 
-      // Rate limit
-      const limitRes = await rateLimit(`public:${token}`, RATE_LIMITS.publicApi)
+      // First try to find in ApiKey (plain text)
+      let tenantId = null
+      let tenantSlugFromDb = null
+      let expiresAt = null
+      let apiTokenType = "read-only"
+
+      const apiKey = await db.apiKey.findUnique({
+        where: { key: token },
+        include: { tenant: true },
+      })
+
+      if (apiKey) {
+        tenantId = apiKey.tenantId
+        tenantSlugFromDb = apiKey.tenant.slug
+        expiresAt = apiKey.expiresAt
+        apiTokenType = "full-access"
+        apiTokenId = apiKey.id
+        isApiKey = true
+      } else {
+        // Fallback to ApiToken (hashed)
+        const hashedToken = createHash("sha256").update(token).digest("hex")
+        const apiToken = await db.apiToken.findUnique({
+          where: { token: hashedToken },
+          include: { tenant: true },
+        })
+
+        if (!apiToken) {
+          return logResponse(NextResponse.json(
+            { errors: [{ message: "Invalid API token" }] },
+            { status: 401 }
+          ))
+        }
+
+        tenantId = apiToken.tenantId
+        tenantSlugFromDb = apiToken.tenant.slug
+        expiresAt = apiToken.expiresAt
+        apiTokenType = apiToken.type
+        apiTokenId = apiToken.id
+      }
+
+      // Rate limit by hash
+      const hashedTokenForRateLimit = createHash("sha256").update(token).digest("hex")
+      const limitRes = await rateLimit(`public:${hashedTokenForRateLimit}`, RATE_LIMITS.publicApi)
       if (!limitRes.success) {
         return logResponse(NextResponse.json(
           { errors: [{ message: "Rate limit exceeded" }] },
@@ -56,27 +98,10 @@ export async function POST(
       }
       rateLimitResult = { success: limitRes.success, limit: limitRes.limit ?? 100, remaining: limitRes.remaining ?? 99 }
 
-      // Hash the token for database lookup (SHA-256)
-      const hashedToken = createHash("sha256").update(token).digest("hex")
-
-      // Find the API token
-      const apiToken = await db.apiToken.findUnique({
-        where: { token: hashedToken },
-        include: { tenant: true },
-      })
-
-      if (!apiToken) {
-        return logResponse(NextResponse.json(
-          { errors: [{ message: "Invalid API token" }] },
-          { status: 401 }
-        ))
-      }
-
-      resolvedTenantId = apiToken.tenantId
-      apiTokenId = apiToken.id
+      resolvedTenantId = tenantId
 
       // Verify tenant matches (check both ID and Slug)
-      const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+      const isMatchingTenant = tenantId === tenantSlug || tenantSlugFromDb === tenantSlug
       
       if (!isMatchingTenant) {
         return logResponse(NextResponse.json(
@@ -85,14 +110,14 @@ export async function POST(
         ))
       }
 
-      if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
+      if (expiresAt && expiresAt < new Date()) {
         return logResponse(NextResponse.json(
           { errors: [{ message: "API token expired" }] },
           { status: 401 }
         ))
       }
 
-      allowMutations = apiToken.type === "full-access"
+      allowMutations = apiTokenType === "full-access"
     } else {
       // Fallback: Check if session exists (e.g. for Apollo Sandbox/GraphiQL)
       const session = await getServerSession(authOptions)
@@ -192,10 +217,17 @@ export async function POST(
 
     // Update last used (only for API keys)
     if (apiTokenId) {
-      await db.apiToken.update({
-        where: { id: apiTokenId },
-        data: { lastUsedAt: new Date() },
-      })
+      if (isApiKey) {
+        await db.apiKey.update({
+          where: { id: apiTokenId },
+          data: { lastUsedAt: new Date() },
+        })
+      } else {
+        await db.apiToken.update({
+          where: { id: apiTokenId },
+          data: { lastUsedAt: new Date() },
+        })
+      }
     }
 
     return logResponse(NextResponse.json(gqlResult, {

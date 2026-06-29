@@ -40,10 +40,44 @@ export async function GET(
     }
 
     const token = authHeader.replace("Bearer ", "")
-    const hashedToken = createHash("sha256").update(token).digest("hex")
+
+    // First try to find in ApiKey (plain text)
+    let tenantId = null
+    let tenantSlugFromDb = null
+    let expiresAt = null
+    let apiTokenType = "read-only"
+
+    const apiKey = await db.apiKey.findUnique({
+      where: { key: token },
+      include: { tenant: true },
+    })
+
+    if (apiKey) {
+      tenantId = apiKey.tenantId
+      tenantSlugFromDb = apiKey.tenant.slug
+      expiresAt = apiKey.expiresAt
+      apiTokenType = "full-access" // Default for ApiKey in our system currently
+    } else {
+      // Fallback to ApiToken (hashed)
+      const hashedToken = createHash("sha256").update(token).digest("hex")
+      const apiToken = await db.apiToken.findUnique({
+        where: { token: hashedToken },
+        include: { tenant: true },
+      })
+
+      if (!apiToken) {
+        return logResponse(NextResponse.json({ error: "Invalid API token" }, { status: 401 }))
+      }
+      
+      tenantId = apiToken.tenantId
+      tenantSlugFromDb = apiToken.tenant.slug
+      expiresAt = apiToken.expiresAt
+      apiTokenType = apiToken.type
+    }
 
     // Rate limit by token hash so the raw secret never reaches Redis.
-    const rateLimitResult = await rateLimit(`public:${hashedToken}`, RATE_LIMITS.publicApi)
+    const hashedTokenForRateLimit = createHash("sha256").update(token).digest("hex")
+    const rateLimitResult = await rateLimit(`public:${hashedTokenForRateLimit}`, RATE_LIMITS.publicApi)
     if (!rateLimitResult.success) {
       return logResponse(NextResponse.json(
         { error: "Rate limit exceeded. Try again later." },
@@ -51,41 +85,31 @@ export async function GET(
       ))
     }
 
-    // Find the API token
-    const apiToken = await db.apiToken.findUnique({
-      where: { token: hashedToken },
-      include: { tenant: true },
-    })
-
-    if (!apiToken) {
-      return logResponse(NextResponse.json({ error: "Invalid API token" }, { status: 401 }))
-    }
-
     // Update resolved tenant ID once token is verified
-    resolvedTenantId = apiToken.tenantId
+    resolvedTenantId = tenantId
 
     // Verify tenant matches (check both ID and Slug)
-    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    const isMatchingTenant = tenantId === tenantSlug || tenantSlugFromDb === tenantSlug
     
     if (!isMatchingTenant) {
       return logResponse(NextResponse.json({ error: "Token does not match tenant" }, { status: 403 }))
     }
 
     // Check if token is expired
-    if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
+    if (expiresAt && expiresAt < new Date()) {
       return logResponse(NextResponse.json({ error: "API token expired" }, { status: 401 }))
     }
 
     // Parse query parameters and resolve tenant default locale.
     const { searchParams } = new URL(request.url)
     const defaultLocale = (await db.tenantLocale.findFirst({
-      where: { tenantId: apiToken.tenantId, isDefault: true },
+      where: { tenantId: tenantId, isDefault: true },
       select: { locale: true },
     }))?.locale || "en"
     const locale = searchParams.get("locale") || defaultLocale
 
     // CACHE CHECK
-    const cacheKey = `single:${apiToken.tenantId}:${singleTypeSlug}:${locale}:${apiToken.type}`
+    const cacheKey = `single:${tenantId}:${singleTypeSlug}:${locale}:${apiTokenType}`
     const cached = await getCache(cacheKey)
     if (cached) {
       return logResponse(NextResponse.json(cached, {
@@ -100,15 +124,15 @@ export async function GET(
 
     // Get the correct DB client (Shared or Dedicated)
     const { getTenantDb } = await import("@/lib/database")
-    const tenantDb = await getTenantDb(apiToken.tenantId)
+    const tenantDb = await getTenantDb(tenantId)
 
     // Get single type (prefer tenant-specific over global)
     const singleType = await tenantDb.singleType.findFirst({
       where: { 
         slug: singleTypeSlug,
         OR: [
-          { tenantId: apiToken.tenantId },
-          { tenantId: null }
+          { tenantId: tenantId },
+          { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
         ]
       },
       orderBy: {
@@ -126,7 +150,7 @@ export async function GET(
     const assignment = await tenantDb.tenantSingleTypeAssignment.findUnique({
       where: {
         tenantId_singleTypeId_locale: {
-          tenantId: apiToken.tenantId,
+          tenantId: tenantId,
           singleTypeId: singleType.id,
           locale,
         },
@@ -140,7 +164,7 @@ export async function GET(
       ))
     }
 
-    if (apiToken.type !== "full-access" && !assignment.publishedAt) {
+    if (apiTokenType !== "full-access" && !assignment.publishedAt) {
       return logResponse(NextResponse.json(
         { error: "Single type not available for this tenant" },
         { status: 404 }
@@ -148,10 +172,17 @@ export async function GET(
     }
 
     // Update last used
-    await db.apiToken.update({
-      where: { id: apiToken.id },
-      data: { lastUsedAt: new Date() },
-    })
+    if (apiKey) {
+      await db.apiKey.update({
+        where: { id: apiTokenId },
+        data: { lastUsedAt: new Date() },
+      })
+    } else {
+      await db.apiToken.update({
+        where: { id: apiTokenId },
+        data: { lastUsedAt: new Date() },
+      })
+    }
 
     // Return content
     let rawData: any = {}
@@ -161,7 +192,7 @@ export async function GET(
     
     // Resolve dynamic data (Relations and Components)
     const resolvedData = await resolveContentData(
-      apiToken.tenantId,
+      tenantId,
       rawData,
       singleType.schemaFields
     )

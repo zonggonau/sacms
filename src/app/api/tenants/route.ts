@@ -164,6 +164,17 @@ export async function POST(request: NextRequest) {
         }
       })
 
+      // Create default API key
+      const newApiKey = `sacms_${randomBytes(24).toString("hex")}`
+      await tx.apiKey.create({
+        data: {
+          tenantId: newTenant.id,
+          name: "Default API Key",
+          key: newApiKey,
+          permissions: { fullAccess: true },
+        }
+      })
+
       return newTenant
     })
 

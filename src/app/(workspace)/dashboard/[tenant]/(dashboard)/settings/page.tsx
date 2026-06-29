@@ -43,6 +43,7 @@ import {
   Server,
   ShieldAlert,
   Mail,
+  Copy,
 } from "lucide-react"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
@@ -67,6 +68,8 @@ export default function TenantSettingsPage() {
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
 
   // API settings
+  const [apiKey, setApiKey] = useState("")
+  const [generatingApiKey, setGeneratingApiKey] = useState(false)
   const [apiVersion, setApiVersion] = useState("v1")
   const [rateLimiting, setRateLimiting] = useState(true)
   const [requestsPerMinute, setRequestsPerMinute] = useState("60")
@@ -131,6 +134,7 @@ export default function TenantSettingsPage() {
           setTenantStatus(settings.status || "active")
           setSubscriptionStatus(settings.subscriptionStatus || null)
           setDaysRemaining(settings.daysRemaining !== undefined ? settings.daysRemaining : null)
+          setApiKey(settings.apiKey || "")
           setApiVersion(settings.apiVersion || "v1")
           setRateLimiting(settings.rateLimiting ?? true)
           setRequestsPerMinute(String(settings.requestsPerMinute || 60))
@@ -212,6 +216,38 @@ export default function TenantSettingsPage() {
       alert("Failed to save settings")
     } finally {
       setSaving(false)
+    }
+  }
+
+  const handleGenerateApiKey = async () => {
+    if (!confirm("Are you sure you want to generate a new API key? The old key will no longer work for new integrations if you rely on it.")) return
+    
+    setGeneratingApiKey(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/api-keys`, {
+        method: "POST",
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        setApiKey(data.apiKey)
+        alert("New API key generated successfully!")
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to generate API key")
+      }
+    } catch (error) {
+      console.error("Failed to generate API key:", error)
+      alert("Failed to generate API key")
+    } finally {
+      setGeneratingApiKey(false)
+    }
+  }
+
+  const handleCopyApiKey = () => {
+    if (apiKey) {
+      navigator.clipboard.writeText(apiKey)
+      alert("API Key copied to clipboard")
     }
   }
 
@@ -540,6 +576,42 @@ export default function TenantSettingsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>API Key</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type="text"
+                          value={apiKey || "No API key generated"}
+                          readOnly
+                          className="pr-10 font-mono text-sm"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={handleCopyApiKey}
+                          disabled={!apiKey}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      <Button 
+                        variant="secondary" 
+                        onClick={handleGenerateApiKey}
+                        disabled={generatingApiKey}
+                      >
+                        {generatingApiKey ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : null}
+                        Generate
+                      </Button>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Use this key to authenticate external applications and integrations.
+                    </p>
+                  </div>
+                  <Separator />
                   <div className="space-y-2">
                     <Label>API Version</Label>
                     <Select value={apiVersion} onValueChange={setApiVersion}>

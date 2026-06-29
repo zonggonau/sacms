@@ -48,12 +48,18 @@ interface TenantSidebarProps {
 
 interface NavItem {
   title: string
-  href: string
+  href?: string
   icon: React.ElementType
   badge?: string
   indent?: boolean
   matchPrefix?: boolean
   target?: string
+  children?: {
+    title: string
+    href: string
+    icon: React.ElementType
+    matchPrefix?: boolean
+  }[]
 }
 
 interface NavSection {
@@ -68,6 +74,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   
   const [liveTenants, setLiveTenants] = useState<any[]>([])
   const [assignedContentTypes, setAssignedContentTypes] = useState<any[]>([])
@@ -85,10 +92,15 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     return `/dashboard/${tenantId}${path}`
   }
 
-  const isActive = (item: NavItem) => {
+  const isActive = (item: { href?: string, matchPrefix?: boolean }) => {
+    if (!item.href) return false;
     const fullPath = href(item.href)
     if (item.matchPrefix) return pathname?.startsWith(fullPath)
     return pathname === fullPath
+  }
+
+  const toggleMenu = (title: string) => {
+    setOpenMenus((prev) => ({ ...prev, [title]: !prev[title] }))
   }
 
   // Fetch live list of user's tenants
@@ -126,13 +138,16 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
 
   const navSections: NavSection[] = [
     {
+      label: "",
+      items: [
+        { title: "Overview", href: "", icon: LayoutDashboard },
+      ],
+    },
+    {
       label: "CONTENT",
       items: [
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        { title: "Overview", href: "", icon: LayoutDashboard },
-        { title: "Content Types", href: "/content-types", icon: DatabaseIcon, matchPrefix: true },
-        { title: "Single Types", href: "/single-types", icon: FileText, matchPrefix: true },
-        { title: "Components", href: "/components", icon: Puzzle, matchPrefix: true },
+        { title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true },
         // Dynamic collection entries
         ...assignedContentTypes.map(ct => ({
           title: ct.name,
@@ -162,8 +177,26 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     },
   ]
 
+  useEffect(() => {
+    if (!mounted) return;
+    navSections.forEach(section => {
+      section.items.forEach(item => {
+        if (item.children) {
+          const isAnyChildActive = item.children.some(child => isActive(child));
+          if (isAnyChildActive) {
+            setOpenMenus(prev => ({ ...prev, [item.title]: true }));
+          }
+        }
+      })
+    })
+  }, [pathname, tenantId, mounted])
+
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
+  }
+
+  if (pathname?.includes("/content-type-builder")) {
+    return null
   }
 
   const renderSidebarContent = () => (
@@ -229,18 +262,71 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
         <nav className="px-3 space-y-6">
-          {navSections.map((section) => (
-            <div key={section.label}>
-              <p className="px-3 mb-2 text-[10px] font-black tracking-widest text-muted-foreground/50 uppercase">
-                {section.label}
-              </p>
+          {navSections.map((section, idx) => (
+            <div key={section.label || `section-${idx}`}>
+              {section.label && (
+                <p className="px-3 mb-2 text-[10px] font-black tracking-widest text-muted-foreground/50 uppercase">
+                  {section.label}
+                </p>
+              )}
               <div className="space-y-1">
                 {section.items.map((item) => {
+                  if (item.children) {
+                    const isExpanded = openMenus[item.title];
+                    const isAnyChildActive = item.children.some(child => isActive(child));
+                    
+                    return (
+                      <div key={item.title} className="space-y-1">
+                        <button
+                          onClick={() => toggleMenu(item.title)}
+                          className={cn(
+                            "w-full flex items-center justify-between gap-3 rounded-none px-3 py-2 text-sm transition-colors group",
+                            isAnyChildActive && !isExpanded
+                              ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
+                              : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                          )}
+                        >
+                          <div className="flex items-center gap-3">
+                            <item.icon className={cn("h-4 w-4 shrink-0", (isAnyChildActive && !isExpanded) ? "text-orange-500" : "text-muted-foreground")} />
+                            <span className="truncate">{item.title}</span>
+                          </div>
+                          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                        </button>
+                        {isExpanded && (
+                          <div className="mt-1 space-y-1">
+                            {item.children.map(child => {
+                              const childActive = isActive(child);
+                              return (
+                                <Link
+                                  key={child.title + child.href}
+                                  href={href(child.href)}
+                                  onClick={() => setMobileOpen(false)}
+                                >
+                                  <div
+                                    className={cn(
+                                      "flex items-center gap-3 rounded-none pl-10 pr-3 py-2 text-sm transition-colors group",
+                                      childActive
+                                        ? "bg-muted/50 text-foreground font-semibold border-l-2 border-orange-500"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                                    )}
+                                  >
+                                    <child.icon className={cn("h-3.5 w-3.5 shrink-0", childActive ? "text-orange-500" : "text-muted-foreground")} />
+                                    <span className="truncate">{child.title}</span>
+                                  </div>
+                                </Link>
+                              )
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  }
+
                   const active = isActive(item)
                   return (
                     <Link
-                      key={item.title + item.href}
-                      href={href(item.href)}
+                      key={item.title + (item.href || "")}
+                      href={item.href ? href(item.href) : "#"}
                       onClick={() => setMobileOpen(false)}
                       target={item.target}
                     >

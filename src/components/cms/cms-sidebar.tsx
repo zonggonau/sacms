@@ -27,6 +27,7 @@ import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
+import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
 interface CMSSidebarProps {
   tenantId: string
@@ -53,18 +54,7 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border shadow-none">
       {/* CMS Header */}
-      <div className="border-b border-border px-4 py-5 bg-card flex items-center gap-2">
-        <Link 
-          href={`/dashboard/${tenantId}`} 
-          title="Back to Workspace Dashboard"
-          className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-none border border-transparent hover:border-border flex items-center justify-center shrink-0"
-        >
-          <ArrowLeft className="h-4.5 w-4.5" />
-        </Link>
-        <Link href={href("")} className="flex items-center gap-3 min-w-0">
-          <Logo iconSize="sm" showText={true} />
-        </Link>
-      </div>
+      <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} />
 
       <ScrollArea className="flex-1 py-6">
         <div className="px-3 space-y-8">

@@ -132,7 +132,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
                     <Plus className="mr-2 h-4 w-4" /> Create Component
                   </span>
                 ) : (
-                  <Link href={`/dashboard/${tenantSlug}/components/new`}>
+                  <Link href={`/dashboard/${tenantSlug}/content-type-builder/components/new`}>
                     <Plus className="mr-2 h-4 w-4" /> Create Component
                   </Link>
                 )}
@@ -228,7 +228,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
                             <div className="flex flex-col">
                               <div className="flex items-center gap-2">
                                 <Link 
-                                  href={`/dashboard/${tenantSlug}/components/${component.slug}`}
+                                  href={`/dashboard/${tenantSlug}/content-type-builder/components/${component.slug}`}
                                   className="text-sm font-bold text-foreground hover:text-primary transition-colors"
                                 >
                                   {component.name}
@@ -260,7 +260,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
                               <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/${tenantSlug}/components/${component.slug}`}>
+                                <Link href={`/dashboard/${tenantSlug}/content-type-builder/components/${component.slug}`}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit Schema
                                 </Link>
                               </DropdownMenuItem>

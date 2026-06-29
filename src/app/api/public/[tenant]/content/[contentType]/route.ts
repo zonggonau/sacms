@@ -62,36 +62,64 @@ export async function GET(
 
     const token = authHeader.replace("Bearer ", "")
 
-    // Hash the token for database lookup (SHA-256)
-    const hashedToken = createHash("sha256").update(token).digest("hex")
+    // First try to find in ApiKey (plain text)
+    let tenantId = null
+    let tenantSlugFromDb = null
+    let expiresAt = null
+    let apiTokenType = "read-only"
+    let apiTokenId = ""
+    let isApiKey = false
 
-    // Find the API token
-    const apiToken = await db.apiToken.findUnique({
-      where: { token: hashedToken },
+    const apiKey = await db.apiKey.findUnique({
+      where: { key: token },
       include: { tenant: true },
     })
 
-    if (!apiToken) {
-      return logResponse(NextResponse.json({ error: "Invalid API token" }, { status: 401 }))
+    if (apiKey) {
+      tenantId = apiKey.tenantId
+      tenantSlugFromDb = apiKey.tenant.slug
+      expiresAt = apiKey.expiresAt
+      apiTokenType = "full-access"
+      apiTokenId = apiKey.id
+      isApiKey = true
+    } else {
+      // Fallback to ApiToken (hashed)
+      const hashedToken = createHash("sha256").update(token).digest("hex")
+      const apiToken = await db.apiToken.findUnique({
+        where: { token: hashedToken },
+        include: { tenant: true },
+      })
+
+      if (!apiToken) {
+        return logResponse(NextResponse.json({ error: "Invalid API token" }, { status: 401 }))
+      }
+      
+      tenantId = apiToken.tenantId
+      tenantSlugFromDb = apiToken.tenant.slug
+      expiresAt = apiToken.expiresAt
+      apiTokenType = apiToken.type
+      apiTokenId = apiToken.id
     }
 
     // Update resolved tenant ID once token is verified
-    resolvedTenantId = apiToken.tenantId
+    resolvedTenantId = tenantId
 
     // Verify tenant matches (check both ID and Slug)
-    const isMatchingTenant = apiToken.tenantId === tenantSlug || apiToken.tenant.slug === tenantSlug
+    const isMatchingTenant = tenantId === tenantSlug || tenantSlugFromDb === tenantSlug
     
     if (!isMatchingTenant) {
       return logResponse(NextResponse.json({ error: "Token does not match tenant" }, { status: 403 }))
     }
 
     // Check if token is expired
-    if (apiToken.expiresAt && apiToken.expiresAt < new Date()) {
+    if (expiresAt && expiresAt < new Date()) {
       return logResponse(NextResponse.json({ error: "API token expired" }, { status: 401 }))
     }
 
     // Rate-limit only after authentication. The raw credential is never used as a Redis key.
-    const rateLimitResult = await rateLimit(`public:${hashedToken}`, RATE_LIMITS.publicApi)
+    // Hash the token for rate limiting to avoid storing raw tokens in Redis
+    const hashedTokenForRateLimit = createHash("sha256").update(token).digest("hex")
+    const rateLimitResult = await rateLimit(`public:${hashedTokenForRateLimit}`, RATE_LIMITS.publicApi)
     if (!rateLimitResult.success) {
       return logResponse(NextResponse.json(
         { error: "Rate limit exceeded. Try again later." },
@@ -109,15 +137,15 @@ export async function GET(
 
     // Get the correct DB client (Shared or Dedicated)
     const { getTenantDb } = await import("@/lib/database")
-    const tenantDb = await getTenantDb(apiToken.tenantId)
+    const tenantDb = await getTenantDb(tenantId)
 
     // Get content type with fields (must belong to this tenant or be global and assigned to this tenant)
     const contentType = await tenantDb.contentType.findFirst({
       where: { 
         slug: contentTypeSlug,
         OR: [
-          { tenantId: apiToken.tenantId },
-          { tenantId: null, tenants: { some: { tenantId: apiToken.tenantId, enabled: true } } }
+          { tenantId: tenantId },
+          { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
         ]
       },
       include: { schemaFields: { orderBy: { order: "asc" } },
@@ -133,7 +161,7 @@ export async function GET(
     // 1. It is global (has no tenant assignments)
     // 2. It is explicitly assigned to this tenant
     const isGlobal = contentType.tenants.length === 0
-    const isAssigned = contentType.tenants.some(t => t.tenantId === apiToken.tenantId && t.enabled)
+    const isAssigned = contentType.tenants.some(t => t.tenantId === tenantId && t.enabled)
 
     if (!isGlobal && !isAssigned) {
       return logResponse(NextResponse.json(
@@ -154,7 +182,7 @@ export async function GET(
     
     // Resolve the tenant's default locale (used for fallback)
     const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
-      where: { tenantId: apiToken.tenantId, isDefault: true },
+      where: { tenantId: tenantId, isDefault: true },
       select: { locale: true },
     })
     const defaultLocale = tenantDefaultLocale?.locale ?? "en"
@@ -162,13 +190,13 @@ export async function GET(
 
     // Status (default: only PUBLISHED for public API)
     const statusParam = searchParams.get("status")
-    if (apiToken.type !== "full-access" && statusParam && statusParam !== "PUBLISHED") {
+    if (apiTokenType !== "full-access" && statusParam && statusParam !== "PUBLISHED") {
       return logResponse(NextResponse.json(
         { error: "A full-access API token is required to read non-published content" },
         { status: 403 }
       ))
     }
-    const status = apiToken.type === "full-access" ? (statusParam || "PUBLISHED") : "PUBLISHED"
+    const status = apiTokenType === "full-access" ? (statusParam || "PUBLISHED") : "PUBLISHED"
 
     if (!isWorkflowStatus(status)) {
       return logResponse(NextResponse.json({ error: "Invalid content status" }, { status: 400 }))
@@ -176,7 +204,7 @@ export async function GET(
 
     // Cache is checked only after token, tenant, expiry, content type, and status authorization.
     // Include token id because full-access tokens may have a different view from read-only tokens.
-    const cacheKey = `public_api:${tenantSlug}:${contentTypeSlug}:${apiToken.id}:${fullUrl}`
+    const cacheKey = `public_api:${tenantSlug}:${contentTypeSlug}:${apiTokenId}:${fullUrl}`
     const cachedResponse = await getCache(cacheKey)
     if (cachedResponse) {
       return logResponse(NextResponse.json(cachedResponse, {
@@ -203,7 +231,7 @@ export async function GET(
     // Build base WHERE conditions using Prisma
     const baseWhere: Record<string, unknown> = {
       contentTypeId: contentType.id,
-      tenantId: apiToken.tenantId,
+      tenantId: tenantId,
       status,
     }
     if (locale) baseWhere.locale = locale
@@ -225,7 +253,7 @@ export async function GET(
         `"tenantId" = $2`,
         `"status"::text = $3`,
       ]
-      const queryParams: unknown[] = [contentType.id, apiToken.tenantId, status]
+      const queryParams: unknown[] = [contentType.id, tenantId, status]
       let paramIdx = 4
 
       if (locale) {
@@ -345,8 +373,8 @@ export async function GET(
       const relatedEntries = await tenantDb.contentEntry.findMany({
         where: {
           id: { in: Array.from(allRelatedIds) },
-          tenantId: apiToken.tenantId,
-          ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
+          tenantId: tenantId,
+          ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
         },
         select: { id: true, data: true, locale: true, status: true }
       })
@@ -378,8 +406,8 @@ export async function GET(
           where: {
             documentId: { in: documentIds },
             contentTypeId: contentType.id,
-            tenantId: apiToken.tenantId,
-            ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
+            tenantId: tenantId,
+            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
           select: { documentId: true, locale: true, status: true },
         })
@@ -412,8 +440,8 @@ export async function GET(
             documentId: { in: docIdsNeedingFallback },
             locale: defaultLocale,
             contentTypeId: contentType.id,
-            tenantId: apiToken.tenantId,
-            ...(apiToken.type === "full-access" ? {} : { status: "PUBLISHED" as const }),
+            tenantId: tenantId,
+            ...(apiTokenType === "full-access" ? {} : { status: "PUBLISHED" as const }),
           },
         })
         const fallbackMap = new Map(fallbacks.map((f) => [f.documentId, f]))
@@ -470,10 +498,17 @@ export async function GET(
     // ----------------------------------------------
 
     // Update last used (fire and forget)
-    db.apiToken.update({
-      where: { id: apiToken.id },
-      data: { lastUsedAt: new Date() },
-    }).catch(() => {})
+    if (isApiKey) {
+      db.apiKey.update({
+        where: { id: apiTokenId },
+        data: { lastUsedAt: new Date() },
+      }).catch(() => {})
+    } else {
+      db.apiToken.update({
+        where: { id: apiTokenId },
+        data: { lastUsedAt: new Date() },
+      }).catch(() => {})
+    }
 
     const headers = new Headers({
       "X-RateLimit-Limit": String(rateLimitResult.limit),

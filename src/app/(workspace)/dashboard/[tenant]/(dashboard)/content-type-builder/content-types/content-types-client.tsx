@@ -126,7 +126,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
               </Button>
               <Button
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
-                onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/new`)}
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
                 disabled={isLimitReached}
               >
                 <Plus className="mr-2 h-4 w-4" /> Create New Schema
@@ -222,7 +222,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                       <TableRow
                         key={ct.id}
                         className="group hover:bg-muted/5 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/edit/${ct.slug}`)}
+                        onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)}
                       >
                         <TableCell className="pl-6">
                           <div className="flex items-center gap-3">
@@ -267,7 +267,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/edit/${ct.slug}`)}>
+                              <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Schema
                               </DropdownMenuItem>
                               <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}>
