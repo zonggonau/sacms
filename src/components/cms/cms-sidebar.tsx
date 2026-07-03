@@ -32,9 +32,10 @@ import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-heade
 interface CMSSidebarProps {
   tenantId: string
   contentTypes?: { id: string; name: string; slug: string }[]
+  singleTypes?: { id: string; name: string; slug: string }[]
 }
 
-export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [] }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const { data: session } = useSession()
@@ -112,16 +113,27 @@ export function CMSSidebar({ tenantId, contentTypes = [] }: CMSSidebarProps) {
           {/* Single Pages */}
           <div className="space-y-1">
             <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">Static Pages</p>
-            <Link href={href("/single-types")}>
-              <div className={cn(
-                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2",
-                pathname.startsWith(href("/single-types"))
-                  ? "bg-muted text-foreground font-semibold border-orange-500"
-                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
-              )}>
-                <Layers className={cn("h-4 w-4 shrink-0", pathname.startsWith(href("/single-types")) && "text-orange-500")} /> Manage Singles
-              </div>
-            </Link>
+            {singleTypes.length === 0 ? (
+              <p className="px-2 text-xs text-muted-foreground italic">No static pages assigned</p>
+            ) : (
+              singleTypes.map(st => {
+                const active = pathname.startsWith(href(`/single-types/${st.slug}`))
+                return (
+                  <Link key={st.id} href={href(`/single-types/${st.slug}`)}>
+                    <div className={cn(
+                      "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group",
+                      active
+                        ? "bg-muted text-foreground font-semibold border-orange-500"
+                        : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
+                    )}>
+                      <Layers className={cn("h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100", active && "text-orange-500")} />
+                      <span className="truncate flex-1">{st.name}</span>
+                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </div>
+                  </Link>
+                )
+              })
+            )}
           </div>
 
         </div>

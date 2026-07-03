@@ -45,7 +45,11 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
                 <div className="relative z-10 flex-1">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
                     <h3 className="text-xl font-bold text-foreground">{addon.name}</h3>
-                    {addon.price > 0 ? (
+                    {addon.price_label ? (
+                      <span className="inline-flex items-center text-sm font-bold text-primary px-3 py-1 bg-primary/10 rounded-full">
+                        {addon.price_label}
+                      </span>
+                    ) : addon.price > 0 ? (
                       <span className="inline-flex items-center text-sm font-black text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-600 px-3 py-1 bg-primary/10 rounded-full">
                         {formatRupiah(addon.price)}
                         {addon.unit && <span className="text-xs text-muted-foreground font-medium ml-1">/{addon.unit}</span>}

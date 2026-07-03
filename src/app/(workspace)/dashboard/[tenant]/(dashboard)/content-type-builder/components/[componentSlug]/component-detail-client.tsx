@@ -93,7 +93,7 @@ export default function ComponentDetailClient({
       
       if (!response.error) {
         toast({ title: "Deleted", description: "Component removed successfully" })
-        router.push(`/dashboard/${tenantSlug}/components`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
         toast({ variant: "destructive", title: "Error", description: response.error })
       }
@@ -119,7 +119,7 @@ export default function ComponentDetailClient({
 
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/components`)}>
+              <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -153,7 +153,7 @@ export default function ComponentDetailClient({
                 </AlertDialogContent>
               </AlertDialog>
               <Button className="bg-primary hover:bg-primary/90 font-bold shadow-none shadow-none" asChild>
-                <Link href={`/dashboard/${tenantSlug}/components/${componentSlug}/edit`}>
+                <Link href={`/dashboard/${tenantSlug}/content-type-builder/components/${componentSlug}/edit`}>
                   <Edit className="mr-2 h-4 w-4" /> Edit Schema
                 </Link>
               </Button>
@@ -233,3 +233,4 @@ export default function ComponentDetailClient({
     </div>
   )
 }
+

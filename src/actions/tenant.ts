@@ -135,6 +135,10 @@ export async function deleteTenantAction(tenantId: string) {
     const tenant = member?.tenant || await db.tenant.findUnique({ where: { id: tenantId } })
     if (!tenant) return { error: "Tenant not found" }
 
+    if (tenant.slug === "sacms-global" && session.user.role !== "super_admin") {
+      return { error: "Global tenant can only be deleted by Super Admin" }
+    }
+
     const activeSub = await db.subscription.findFirst({
       where: {
         tenantId,

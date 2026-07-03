@@ -42,6 +42,7 @@ export interface AddonItem {
   description: string
   price: number
   unit?: string
+  price_label?: string
 }
 
 export interface TestimonialItem {

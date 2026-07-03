@@ -123,7 +123,7 @@ export default function RegisterPage() {
           title: "Sukses",
           description: "Akun Super Admin berhasil dibuat. Silakan masuk.",
         })
-        router.push(`/login?email=${formData.email}&redirect_to=/dashboard/setup`)
+        router.push(`/login?email=${formData.email}&redirect_to=/dashboard`)
       } else {
         setIsSuccess(true)
       }

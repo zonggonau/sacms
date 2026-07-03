@@ -91,6 +91,7 @@ export async function GET(
 
     return NextResponse.json({
       settings: {
+        id: tenant.id,
         name: tenant.name,
         description: tenant.description,
         plan: tenant.plan,

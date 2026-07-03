@@ -25,10 +25,11 @@ export default async function NewSingleTypePage({
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
   const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
   if (!enforcement.allowed) {
-    redirect(`/dashboard/${tenantSlug}/single-types`)
+    redirect(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
   }
 
   return (
     <NewSingleTypeClient tenantSlug={tenantSlug} />
   )
 }
+

@@ -7,29 +7,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
-import { Textarea } from "@/components/ui/textarea"
-import { Label } from "@/components/ui/label"
-import { Switch } from "@/components/ui/switch"
 import { 
-  Loader2, Settings, Save, Database, Globe, Bell, 
-  Shield, Server, Construction, Mail, HardDrive, Cpu, 
-  Info, AlertTriangle, RefreshCw, Key, Copy
+  Loader2, Save, Server, Info, RefreshCw, Key, Copy
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
-import { Separator } from "@/components/ui/separator"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs"
+import { Label } from "@/components/ui/label"
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
@@ -38,20 +20,8 @@ export default function AdminSettingsPage() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [seeding, setSeeding] = useState(false)
 
   const [settings, setSettings] = useState({
-    siteName: "SaCMS",
-    siteUrl: "http://localhost:3000",
-    description: "Multi-tenant Content Management System",
-    email: "admin@sacms.com",
-    allowRegistration: "true",
-    requireEmailVerification: "true",
-    defaultTenantPlan: "free",
-    maxTenants: "100",
-    maxUsersPerTenant: "10",
-    maintenanceMode: "false",
-    maintenanceMessage: "System is currently undergoing maintenance. Please check back soon.",
     systemApiKey: ""
   })
 
@@ -113,27 +83,10 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const handleSeedData = async () => {
-    setSeeding(true)
-    try {
-      const res = await fetch("/api/admin/global/seed", { method: "POST" })
-      if (res.ok) {
-        toast({ title: "Seed Successful", description: "Global Settings & Content seed generated!" })
-      } else {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to seed global data")
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Seed Error", description: error.message })
-    } finally {
-      setSeeding(false)
-    }
-  }
-
   if (status === "loading" || loading) {
     return (
       <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
+        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
         </div>
       </div>
@@ -147,14 +100,14 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 flex-col w-full">
+        <div className="p-6 lg:p-8 w-full max-w-4xl space-y-6">
           
           {/* Header */}
           <div className="flex items-center justify-between mb-2">
             <div>
               <h1 className="text-3xl font-bold">Platform Configuration</h1>
-              <p className="text-muted-foreground">Adjust global defaults, maintenance settings, and system policies.</p>
+              <p className="text-muted-foreground">Manage core system security and API access.</p>
             </div>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -162,160 +115,8 @@ export default function AdminSettingsPage() {
             </Button>
           </div>
 
-          <Tabs defaultValue="general" className="w-full">
-            <TabsList className="w-full sm:w-auto grid grid-cols-3 sm:inline-flex h-auto mb-6">
-              <TabsTrigger value="general" className="text-xs sm:text-sm py-2">
-                <Globe className="w-4 h-4 mr-2" />
-                General
-              </TabsTrigger>
-              <TabsTrigger value="security" className="text-xs sm:text-sm py-2">
-                <Shield className="w-4 h-4 mr-2" />
-                Security
-              </TabsTrigger>
-              <TabsTrigger value="system" className="text-xs sm:text-sm py-2">
-                <Server className="w-4 h-4 mr-2" />
-                System
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="general">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Maintenance Mode Card */}
-              <Card className={`border-none shadow-sm transition-colors ${settings.maintenanceMode === 'true' ? 'bg-amber-50 ring-1 ring-amber-200' : 'bg-card'}`}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="space-y-1">
-                      <CardTitle className="text-lg font-bold flex items-center gap-2">
-                        <Construction className={`h-5 w-5 ${settings.maintenanceMode === 'true' ? 'text-amber-600' : 'text-muted-foreground'}`} />
-                        Maintenance Mode
-                      </CardTitle>
-                      <CardDescription>Disable platform access during updates</CardDescription>
-                    </div>
-                    <Switch
-                      checked={settings.maintenanceMode === "true"}
-                      onCheckedChange={(v) => setSettings({...settings, maintenanceMode: String(v)})}
-                    />
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  {settings.maintenanceMode === 'true' && (
-                    <div className="space-y-2">
-                      <Label htmlFor="maint-msg" className="text-xs font-bold text-amber-700">Display Message</Label>
-                      <Textarea 
-                        id="maint-msg" 
-                        value={settings.maintenanceMessage}
-                        onChange={e => setSettings({...settings, maintenanceMessage: e.target.value})}
-                        className="bg-card border-amber-200 focus-visible:ring-amber-500" 
-                        rows={2}
-                      />
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* General Config */}
-              <Card className="border-none shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Globe className="h-5 w-5 text-blue-500" />
-                    Branding & SEO
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="siteName">Platform Name</Label>
-                      <Input id="siteName" value={settings.siteName} onChange={e => setSettings({...settings, siteName: e.target.value})} />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="siteUrl">Base URL</Label>
-                      <Input id="siteUrl" value={settings.siteUrl} onChange={e => setSettings({...settings, siteUrl: e.target.value})} />
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="site-desc">Meta Description</Label>
-                    <Textarea id="site-desc" value={settings.description} onChange={e => setSettings({...settings, description: e.target.value})} rows={2} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="admin-email">System Email (SMTP Sender)</Label>
-                    <div className="relative">
-                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                      <Input id="admin-email" className="pl-10" value={settings.email} onChange={e => setSettings({...settings, email: e.target.value})} />
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-            </div>
-            </div>
-            </TabsContent>
-
-            <TabsContent value="security">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-lg font-bold flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-emerald-500" />
-                    Access Policies
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-bold">Public Registration</Label>
-                      <p className="text-xs text-muted-foreground">Allow new users to sign up themselves</p>
-                    </div>
-                    <Switch checked={settings.allowRegistration === "true"} onCheckedChange={v => setSettings({...settings, allowRegistration: String(v)})} />
-                  </div>
-                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/30">
-                    <div className="space-y-0.5">
-                      <Label className="text-sm font-bold">Email Verification</Label>
-                      <p className="text-xs text-muted-foreground">Mandatory verify before login</p>
-                    </div>
-                    <Switch checked={settings.requireEmailVerification === "true"} onCheckedChange={v => setSettings({...settings, requireEmailVerification: String(v)})} />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-            </div>
-            </TabsContent>
-
-            <TabsContent value="system">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <div className="lg:col-span-2 space-y-6">
-              
-              {/* Tenant Defaults */}
-              <Card className="border-none shadow-sm">
-                <CardHeader>
-                  <CardTitle className="text-base font-bold">Resource Quotas</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs">Default Tenant Plan</Label>
-                    <Select value={settings.defaultTenantPlan} onValueChange={v => setSettings({...settings, defaultTenantPlan: v})}>
-                      <SelectTrigger><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="free">Free</SelectItem>
-                        <SelectItem value="starter">Starter</SelectItem>
-                        <SelectItem value="pro">Pro</SelectItem>
-                        <SelectItem value="enterprise">Enterprise</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Max Tenants Limit</Label>
-                    <Input type="number" value={settings.maxTenants} onChange={e => setSettings({...settings, maxTenants: e.target.value})} />
-                  </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs">Default Users/Tenant</Label>
-                    <Input type="number" value={settings.maxUsersPerTenant} onChange={e => setSettings({...settings, maxUsersPerTenant: e.target.value})} />
-                  </div>
-                </CardContent>
-              </Card>
-
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="space-y-6">
               {/* Global API Access */}
               <Card className="border-none shadow-sm bg-primary/5">
                 <CardHeader className="pb-2">
@@ -323,11 +124,11 @@ export default function AdminSettingsPage() {
                     <Key className="h-4 w-4 text-primary" />
                     Global API Access
                   </CardTitle>
-                  <CardDescription className="text-[10px]">Manage the master key for public content API</CardDescription>
+                  <CardDescription className="text-xs">Manage the master key for public content API</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="global-api-key" className="text-[10px] font-bold uppercase tracking-tight">System API Key</Label>
+                    <Label htmlFor="global-api-key" className="text-xs font-bold uppercase tracking-tight">System API Key</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input 
@@ -335,7 +136,7 @@ export default function AdminSettingsPage() {
                           value={settings.systemApiKey} 
                           readOnly 
                           placeholder="No key generated"
-                          className="pr-9 font-mono text-xs bg-card h-9" 
+                          className="pr-9 font-mono text-sm bg-card" 
                         />
                         <Button 
                           variant="ghost" 
@@ -361,12 +162,22 @@ export default function AdminSettingsPage() {
                       </Button>
                     </div>
                   </div>
-                  <p className="text-[9px] text-muted-foreground italic leading-tight">
+                  <p className="text-xs text-muted-foreground italic leading-tight">
                     This key allows public read access to all system/global content types without tenant restrictions.
                   </p>
                 </CardContent>
               </Card>
 
+              {/* Security Hint */}
+              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3 text-blue-800">
+                <Info className="h-5 w-5 shrink-0" />
+                <p className="text-xs leading-relaxed">
+                  These settings are stored in the database. Environment variables (`.env`) still take precedence for critical secrets like API keys.
+                </p>
+              </div>
+            </div>
+
+            <div className="space-y-6">
               {/* System Info */}
               <Card className="bg-card shadow-sm border-none overflow-hidden">
                 <CardHeader className="bg-muted/30 border-b py-3">
@@ -375,62 +186,29 @@ export default function AdminSettingsPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
-                  <div className="divide-y text-xs">
-                    <div className="p-3 flex justify-between">
+                  <div className="divide-y text-sm">
+                    <div className="p-4 flex justify-between items-center">
                       <span className="text-muted-foreground">CMS Version</span>
                       <span className="font-mono font-bold">v0.2.0</span>
                     </div>
-                    <div className="p-3 flex justify-between">
+                    <div className="p-4 flex justify-between items-center">
                       <span className="text-muted-foreground">Environment</span>
-                      <Badge variant="outline" className="text-[9px] uppercase font-bold">{process.env.NODE_ENV}</Badge>
+                      <Badge variant="outline" className="text-xs uppercase font-bold">{process.env.NODE_ENV}</Badge>
                     </div>
-                    <div className="p-3 flex justify-between">
+                    <div className="p-4 flex justify-between items-center">
                       <span className="text-muted-foreground">Database Engine</span>
                       <span className="font-medium">PostgreSQL</span>
                     </div>
-                    <div className="p-3 flex justify-between">
+                    <div className="p-4 flex justify-between items-center">
                       <span className="text-muted-foreground">Object Storage</span>
                       <span className="font-medium text-blue-600">Cloudflare R2</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
-
-              {/* Security Hint */}
-              <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3 text-blue-800">
-                <Info className="h-5 w-5 shrink-0" />
-                <p className="text-[11px] leading-relaxed">
-                  These settings are stored in the database. Environment variables (`.env`) still take precedence for critical secrets like API keys.
-                </p>
-              </div>
-
-              {/* Global Seed Actions */}
-              <Card className="border-none shadow-sm bg-orange-50/50">
-                <CardHeader>
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Database className="h-5 w-5 text-orange-500" />
-                    Seed Global Data
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Generate global schemas and seed basic structural content to initialize the system.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    onClick={handleSeedData} 
-                    disabled={seeding}
-                    variant="outline" 
-                    className="border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white"
-                  >
-                    {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                    {seeding ? "Generating Seed..." : "Generate Global Seed"}
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
           </div>
-          </TabsContent>
-          </Tabs>
+
         </div>
       </div>
     </div>

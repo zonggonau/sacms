@@ -63,9 +63,9 @@ export async function GET(
     const token = authHeader.replace("Bearer ", "")
 
     // First try to find in ApiKey (plain text)
-    let tenantId = null
-    let tenantSlugFromDb = null
-    let expiresAt = null
+    let tenantId: string | null = null
+    let tenantSlugFromDb: string | null = null
+    let expiresAt: Date | null = null
     let apiTokenType = "read-only"
     let apiTokenId = ""
     let isApiKey = false
@@ -137,6 +137,9 @@ export async function GET(
 
     // Get the correct DB client (Shared or Dedicated)
     const { getTenantDb } = await import("@/lib/database")
+    if (!tenantId) {
+      return logResponse(NextResponse.json({ error: "Invalid tenant ID" }, { status: 401 }))
+    }
     const tenantDb = await getTenantDb(tenantId)
 
     // Get content type with fields (must belong to this tenant or be global and assigned to this tenant)
@@ -145,7 +148,7 @@ export async function GET(
         slug: contentTypeSlug,
         OR: [
           { tenantId: tenantId },
-          { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
+          { tenantId: null }
         ]
       },
       include: { schemaFields: { orderBy: { order: "asc" } },
@@ -501,7 +504,7 @@ export async function GET(
     if (isApiKey) {
       db.apiKey.update({
         where: { id: apiTokenId },
-        data: { lastUsedAt: new Date() },
+        data: { lastUsed: new Date() },
       }).catch(() => {})
     } else {
       db.apiToken.update({

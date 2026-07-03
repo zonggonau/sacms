@@ -34,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
-import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
+
 import { deleteComponentAction } from "@/actions/components"
 import { useRouter } from "next/navigation"
 
@@ -62,7 +62,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
   const [isDeleting, setIsDeleting] = useState(false)
   const [componentToDelete, setComponentToDelete] = useState<Component | null>(null)
   const [deleteConfirmName, setDeleteConfirmName] = useState("")
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+
 
   const filteredComponents = useMemo(() => {
     return initialComponents.filter(c => 
@@ -114,14 +114,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
               <p className="text-xs text-slate-500 font-medium mt-1">Reusable data structures for nested content fields.</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
-                onClick={() => setIsAIModalOpen(true)}
-                disabled={isLimitReached}
-              >
-                <Sparkles className="mr-2 h-4 w-4" /> AI Generate
-              </Button>
+
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 disabled={isLimitReached}
@@ -300,14 +293,6 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
           </div>
         </div>
       </div>
-
-      <SchemaGeneratorDialog
-        tenantSlug={tenantSlug}
-        type="component"
-        open={isAIModalOpen}
-        onOpenChange={setIsAIModalOpen}
-        onSuccess={() => { router.refresh() }}
-      />
 
       {/* Delete Confirmation */}
       <Dialog open={!!componentToDelete} onOpenChange={(open) => {

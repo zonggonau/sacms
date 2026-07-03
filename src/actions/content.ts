@@ -84,7 +84,8 @@ export async function getEntriesAction(
         slug: contentTypeSlug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
@@ -200,7 +201,8 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
         slug: contentTypeSlug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: { orderBy: { order: 'asc' } } },
@@ -311,7 +313,8 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
         slug: contentTypeSlug,
         OR: [
           { tenantId },
-          { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: true },
@@ -463,7 +466,8 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         slug: contentTypeSlug,
         OR: [
           { tenantId },
-          { tenantId: null, tenants: { some: { tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: { schemaFields: true },
@@ -747,7 +751,8 @@ export async function updateContentEntryStatusAction(tenantSlug: string, content
         slug: contentTypeSlug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       }
     })
@@ -793,7 +798,8 @@ export async function bulkContentAction(tenantSlug: string, contentTypeSlug: str
         slug: contentTypeSlug,
         OR: [
           { tenantId: access.tenantId },
-          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       }
     })

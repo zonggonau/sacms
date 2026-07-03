@@ -140,7 +140,7 @@ export default function SingleTypeDetailClient({
       
       if (publishNow) {
         // Redirect to list page after publish
-        router.push(`/dashboard/${tenantSlug}/single-types`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
       } else {
         // Refresh data if only saving draft
         fetchData()
@@ -230,7 +230,7 @@ export default function SingleTypeDetailClient({
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/single-types`)}>
+              <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)}>
                 <ArrowLeft className="h-5 w-5" />
               </Button>
               <div>
@@ -245,7 +245,7 @@ export default function SingleTypeDetailClient({
             </div>
             <div className="flex items-center gap-2">
               <Button variant="outline" className="bg-card" asChild>
-                <Link href={`/dashboard/${tenantSlug}/single-types/${singleType.slug}/edit`}>
+                <Link href={`/dashboard/${tenantSlug}/content-type-builder/single-types/${singleType.slug}/edit`}>
                   <Edit2 className="h-4 w-4 mr-2" /> Schema
                 </Link>
               </Button>
@@ -332,3 +332,4 @@ export default function SingleTypeDetailClient({
     </div>
   )
 }
+

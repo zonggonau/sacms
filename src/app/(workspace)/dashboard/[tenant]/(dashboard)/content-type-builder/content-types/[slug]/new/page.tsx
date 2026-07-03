@@ -172,7 +172,7 @@ export default function CreateEntryPage() {
 
       if (res.success) {
         toast({ title: publishNow ? "Published Successfully!" : "Entry Created" })
-        router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error || "Failed to create entry" })
       }
@@ -525,3 +525,4 @@ export default function CreateEntryPage() {
     </div>
   )
 }
+

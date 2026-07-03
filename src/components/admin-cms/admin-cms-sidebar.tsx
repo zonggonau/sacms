@@ -3,8 +3,9 @@
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { Database, FileText, ChevronRight, LayoutDashboard, ArrowLeft } from "lucide-react"
+import { Database, FileText, ChevronRight, LayoutDashboard } from "lucide-react"
 import { usePathname } from "next/navigation"
+import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
 interface AdminCMSSidebarProps {
   contentTypes?: { id: string; name: string; slug: string }[]
@@ -17,13 +18,11 @@ export function AdminCMSSidebar({ contentTypes = [], singleTypes = [] }: AdminCM
 
   return (
     <div className="flex h-full flex-col bg-muted/30 border-r border-border shadow-none w-64 shrink-0">
-      <div className="border-b border-border px-6 py-6">
-        <Link href="/admin" className="inline-flex items-center gap-1.5 text-xs font-bold text-muted-foreground hover:text-foreground mb-4 transition-colors">
-          <ArrowLeft className="h-3 w-3" /> Back to Admin
-        </Link>
-        <h2 className="font-bold tracking-tight text-lg">Global CMS</h2>
-        <p className="text-xs text-muted-foreground">Manage global data</p>
-      </div>
+      <NestedSidebarHeader 
+        backHref="/admin" 
+        backTooltip="Back to Admin Control Panel"
+        logoHref="/admin" 
+      />
 
       <ScrollArea className="flex-1 py-6">
         <div className="px-3 space-y-8">

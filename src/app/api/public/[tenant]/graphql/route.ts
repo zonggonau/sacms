@@ -48,9 +48,9 @@ export async function POST(
       const token = authHeader.replace("Bearer ", "")
 
       // First try to find in ApiKey (plain text)
-      let tenantId = null
-      let tenantSlugFromDb = null
-      let expiresAt = null
+      let tenantId: string | null = null
+      let tenantSlugFromDb: string | null = null
+      let expiresAt: Date | null = null
       let apiTokenType = "read-only"
 
       const apiKey = await db.apiKey.findUnique({
@@ -162,6 +162,9 @@ export async function POST(
 
     // Build dynamic schema for this tenant using the correct DB client
     const { getTenantDb } = await import("@/lib/database")
+    if (!resolvedTenantId) {
+      return logResponse(NextResponse.json({ errors: [{ message: "Tenant ID is missing" }] }, { status: 400 }))
+    }
     const tenantDb = await getTenantDb(resolvedTenantId)
 
     const typeDefs = await buildDynamicTypeDefs(resolvedTenantId, allowMutations, tenantDb)
@@ -220,7 +223,7 @@ export async function POST(
       if (isApiKey) {
         await db.apiKey.update({
           where: { id: apiTokenId },
-          data: { lastUsedAt: new Date() },
+          data: { lastUsed: new Date() },
         })
       } else {
         await db.apiToken.update({

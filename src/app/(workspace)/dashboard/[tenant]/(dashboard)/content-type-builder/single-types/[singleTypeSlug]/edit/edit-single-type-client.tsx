@@ -281,7 +281,7 @@ export default function EditSingleTypeClient({
       })
       if (!res.error) {
         toast({ title: "Success" })
-        router.push(`/dashboard/${tenantSlug}/single-types`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error })
       }
@@ -308,7 +308,7 @@ export default function EditSingleTypeClient({
             
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/${tenantSlug}/single-types`}>
+              <Link href={`/dashboard/${tenantSlug}/content-type-builder/single-types`}>
                 <Button variant="ghost" size="icon" className="rounded-none">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -407,3 +407,4 @@ export default function EditSingleTypeClient({
     </div>
   )
 }
+

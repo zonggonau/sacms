@@ -179,7 +179,7 @@ export default function EditEntryPage() {
       if (res.success) {
         toast({ title: publishNow ? "Published Successfully!" : "Entry Updated" })
         if (publishNow) {
-          router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`)
+          router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}`)
         } else {
           router.refresh()
         }
@@ -584,3 +584,4 @@ export default function EditEntryPage() {
     </div>
   )
 }
+

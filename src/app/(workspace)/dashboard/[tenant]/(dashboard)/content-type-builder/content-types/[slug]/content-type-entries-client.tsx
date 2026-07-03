@@ -220,7 +220,7 @@ export default function ContentTypeEntriesClient({
               </div>
               <Button 
                 className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold" 
-                onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/new`)}
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/new`)}
                 disabled={isLimitReached}
               >
                 <Plus className="mr-2 h-4 w-4" /> New Entry
@@ -347,7 +347,7 @@ export default function ContentTypeEntriesClient({
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
                                 <Eye className="h-4 w-4" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => router.push(`/dashboard/${tenantSlug}/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
                                 <Edit className="h-4 w-4" />
                               </Button>
                               <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(entry.id)}>
@@ -368,3 +368,4 @@ export default function ContentTypeEntriesClient({
     </div>
   )
 }
+

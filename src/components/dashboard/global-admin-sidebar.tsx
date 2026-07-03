@@ -56,14 +56,7 @@ const adminNavSections: NavSection[] = [
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
     ],
   },
-  {
-    label: "GLOBAL CONTENT",
-    items: [
-      { title: "CMS", href: "/admin/cms", icon: Globe },
-      { title: "Content Builder", href: "/admin/content-types", icon: Database },
-      { title: "Schema Builder", href: "/admin/schema-builder", icon: FileText },
-    ],
-  },
+
   {
     label: "ADMINISTRATION",
     items: [
@@ -94,10 +87,29 @@ export function GlobalAdminSidebar() {
   const { data: session } = useSession()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
+  const [permittedPaths, setPermittedPaths] = useState<string[] | null>(null)
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+    
+    // Fetch dynamic permissions
+    const fetchPerms = async () => {
+      if (session?.user) {
+        try {
+          const res = await fetch('/api/user/permissions')
+          if (res.ok) {
+            const data = await res.json()
+            setPermittedPaths(data.permissions)
+          } else {
+            setPermittedPaths([])
+          }
+        } catch (e) {
+          setPermittedPaths([])
+        }
+      }
+    }
+    fetchPerms()
+  }, [session])
 
   // Hide the global admin sidebar when inside a specific schema builder template editor 
   // (but show it on the general /admin/schema-builder listing)
@@ -113,6 +125,25 @@ export function GlobalAdminSidebar() {
   const isActive = (item: NavItem) =>
     item.exact ? pathname === item.href : pathname.startsWith(item.href)
 
+  const getFilteredNav = () => {
+    const role = session?.user?.role
+    if (!role || role === "super_admin" || role === "admin" || (permittedPaths && permittedPaths.includes("*"))) return adminNavSections
+
+    if (!permittedPaths) return [] // Loading state
+
+    return adminNavSections
+      .map((section) => {
+        const items = section.items.filter((item) => {
+          // Check if the user has a permission name that matches the item.href or a wildcard that covers it
+          return permittedPaths.some(p => item.href === p || item.href.startsWith(p + '/'))
+        })
+        return { ...section, items }
+      })
+      .filter((section) => section.items.length > 0)
+  }
+
+  const filteredNavSections = getFilteredNav()
+
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Header */}
@@ -125,7 +156,7 @@ export function GlobalAdminSidebar() {
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
         <nav className="px-3 space-y-6">
-          {adminNavSections.map((section) => (
+          {filteredNavSections.map((section) => (
             <div key={section.label}>
               <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase">
                 {section.label}

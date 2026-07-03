@@ -8,6 +8,7 @@ import {
   FileText,
   Puzzle,
   ArrowLeft,
+  LayoutDashboard
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
@@ -19,6 +20,7 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
   const pathname = usePathname()
 
   const navItems = [
+    { title: "Overview", href: `/dashboard/${tenantId}/content-type-builder/overview`, icon: LayoutDashboard },
     { title: "Collection Types", href: `/dashboard/${tenantId}/content-type-builder/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/content-type-builder/single-types`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/content-type-builder/components`, icon: Puzzle },

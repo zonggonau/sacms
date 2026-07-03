@@ -1,4 +1,3 @@
-import { LandingHeader } from "@/components/landing/header"
 import { Copy, Terminal, Key, Database, ChevronRight } from "lucide-react"
 
 export const metadata = {
@@ -9,9 +8,14 @@ export const metadata = {
 export default function DocsPage() {
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      <LandingHeader />
+      {/* Simple Header for Docs */}
+      <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur">
+        <div className="container mx-auto px-4 h-16 flex items-center">
+          <span className="font-bold text-xl">SaCMS Docs</span>
+        </div>
+      </header>
 
-      <div className="pt-24 pb-20 px-6 max-w-7xl mx-auto flex flex-col md:flex-row gap-12">
+      <div className="pt-12 pb-20 px-6 max-w-7xl mx-auto flex flex-col md:flex-row gap-12">
         {/* Sidebar */}
         <aside className="md:w-64 shrink-0">
           <div className="sticky top-28 space-y-6">

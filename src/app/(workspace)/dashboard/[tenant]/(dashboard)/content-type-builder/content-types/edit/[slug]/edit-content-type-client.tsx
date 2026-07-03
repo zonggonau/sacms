@@ -304,7 +304,7 @@ export default function EditContentTypeClient({
 
       if (!res.error) {
         toast({ title: "Success", description: "Content type updated successfully" })
-        router.push(`/dashboard/${tenantSlug}/content-types`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error || "Failed to update content type" })
       }
@@ -335,7 +335,7 @@ export default function EditContentTypeClient({
           
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/${tenantSlug}/content-types`}>
+              <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
                 <Button variant="ghost" size="icon" className="rounded-none">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -440,3 +440,4 @@ export default function EditContentTypeClient({
     </div>
   )
 }
+

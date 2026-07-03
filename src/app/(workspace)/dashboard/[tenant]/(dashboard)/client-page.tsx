@@ -130,8 +130,8 @@ export default function TenantDashboardClient({
         const ctResPromise = getContentTypesAction(tenantId)
         const [ctRes, statsRes, usageRes] = await Promise.all([
           ctResPromise,
-          fetch(`/api/tenant/${tenantId}/stats`),
-          fetch(`/api/tenant/${tenantId}/billing/usage`),
+          fetch(`/api/tenant/${tenantId}/stats`, { cache: 'no-store' }),
+          fetch(`/api/tenant/${tenantId}/billing/usage`, { cache: 'no-store' }),
         ])
         
         if (ctRes.error) {

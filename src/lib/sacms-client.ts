@@ -1,94 +1,82 @@
-// src/lib/sacms-client.ts
+import fs from 'fs'
+import path from 'path'
 
-/**
- * A lightweight client to consume the SaCMS public REST API.
- * This demonstrates how an external frontend (or this frontend itself)
- * fetches content headlessly.
- */
-
-const API_KEY = process.env.NEXT_PUBLIC_SACMS_GLOBAL_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd";
-const DEFAULT_BASE_URL = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
-const TENANT_SLUG = "sacms-global";
-
-async function getBaseUrl() {
-  if (typeof window !== 'undefined') return window.location.origin;
-  return DEFAULT_BASE_URL;
-}
-
-export async function fetchCollection(contentTypeSlug: string, queryParams: string = "", customBaseUrl?: string) {
+let API_KEY = process.env.FRONTEND_API_KEY
+// Fallback to read from .env directly if the server was not restarted
+if (!API_KEY) {
   try {
-    const baseUrl = customBaseUrl || await getBaseUrl();
-    // Fetch from global content endpoint (tenantId IS NULL)
-    const url = `${baseUrl}/api/public/content/${contentTypeSlug}${queryParams ? `?${queryParams}` : ''}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store'
-    });
-
-    if (!res.ok) {
-      // Fallback: If global fetch fails, try legacy sacms-global tenant route
-      const legacyUrl = `${baseUrl}/api/public/${TENANT_SLUG}/content/${contentTypeSlug}${queryParams ? `?${queryParams}` : ''}`;
-      const legacyRes = await fetch(legacyUrl, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${API_KEY}` },
-        cache: 'no-store'
-      });
-      
-      if (!legacyRes.ok) {
-        console.warn(`[SaCMS Client] Failed to fetch collection ${contentTypeSlug}: ${legacyRes.statusText}`);
-        return [];
-      }
-      const legacyJson = await legacyRes.json();
-      return legacyJson.data || [];
+    const envPath = path.join(process.cwd(), '.env')
+    const envContent = fs.readFileSync(envPath, 'utf8')
+    const match = envContent.match(/FRONTEND_API_KEY="?([^"\n\r]+)"?/)
+    if (match) {
+      API_KEY = match[1]
     }
-
-    const json = await res.json();
-    return json.data || [];
-  } catch (error) {
-    console.error(`[SaCMS Client] Error fetching ${contentTypeSlug}:`, error);
-    return [];
+  } catch (e) {
+    // Ignore error
   }
 }
 
-export async function fetchSingle(singleTypeSlug: string, queryParams: string = "", customBaseUrl?: string) {
-  try {
-    const baseUrl = customBaseUrl || await getBaseUrl();
-    // Fetch from global single type endpoint
-    const url = `${baseUrl}/api/public/single/${singleTypeSlug}${queryParams ? `?${queryParams}` : ''}`;
-    const res = await fetch(url, {
-      method: 'GET',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store'
-    });
+// For server-side fetching during dev, we use NEXT_PUBLIC_APP_URL
+// We replace 'localhost' with '127.0.0.1' to avoid Node.js IPv6 fetch errors.
+const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://127.0.0.1:3001"
+const BASE_URL = appUrl.replace('localhost', '127.0.0.1')
+const GLOBAL_TENANT = "sacms-global"
 
-    if (!res.ok) {
-      // Fallback to legacy sacms-global route
-      const legacyUrl = `${baseUrl}/api/public/${TENANT_SLUG}/single/${singleTypeSlug}${queryParams ? `?${queryParams}` : ''}`;
-      const legacyRes = await fetch(legacyUrl, {
-        method: 'GET',
-        headers: { 'Authorization': `Bearer ${API_KEY}` },
-        cache: 'no-store'
-      });
-      
-      if (!legacyRes.ok) {
-        console.warn(`[SaCMS Client] Failed to fetch single ${singleTypeSlug}: ${legacyRes.statusText}`);
-        return null;
-      }
-      const legacyJson = await legacyRes.json();
-      return legacyJson.data || null;
-    }
-
-    const json = await res.json();
-    return json.data || null;
-  } catch (error) {
-    console.error(`[SaCMS Client] Error fetching ${singleTypeSlug}:`, error);
-    return null;
+const getHeaders = () => {
+  if (!API_KEY) {
+    console.warn("FRONTEND_API_KEY is not set in environment variables")
   }
+  return {
+    "Authorization": `Bearer ${API_KEY}`,
+    "Content-Type": "application/json",
+  }
+}
+
+async function fetchFromSaCMS<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const url = `${BASE_URL}/api/public/${GLOBAL_TENANT}${endpoint}`
+  const response = await fetch(url, {
+    ...options,
+    headers: {
+      ...getHeaders(),
+      ...options.headers,
+    },
+    // Disable cache for testing
+    cache: "no-store"
+  })
+
+  if (!response.ok) {
+    console.error(`Failed to fetch ${url}: ${response.status} ${response.statusText}`)
+    const text = await response.text()
+    console.error(`Response body: ${text}`)
+    console.error(`API KEY used: ${API_KEY ? "Present" : "Missing"}`)
+    throw new Error(`Failed to fetch data from SaCMS: ${response.status}`)
+  }
+
+  const json = await response.json()
+  return json as T
+}
+
+export async function getLandingPage() {
+  return fetchFromSaCMS<any>("/single/sacms-landing-page")
+}
+
+export async function getAboutUs() {
+  return fetchFromSaCMS<any>("/single/sacms-about")
+}
+
+export async function getWhatsappConfig() {
+  return fetchFromSaCMS<any>("/single/sacms-whatsapp")
+}
+
+export async function getPricingPlans() {
+  // Addons and Pricing should probably be sorted by a specific order if needed, but the API handles defaults
+  return fetchFromSaCMS<any>("/content/sacms-pricing")
+}
+
+export async function getAddons() {
+  return fetchFromSaCMS<any>("/content/sacms-addons")
+}
+
+export async function getTemplates() {
+  return fetchFromSaCMS<any>("/content/templates")
 }

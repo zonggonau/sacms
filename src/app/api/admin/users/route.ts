@@ -83,7 +83,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, createUserSchema)
     if ("error" in result) return result.error
-    const { name, email, role, password } = result.data
+    const { name, email, role, password, requireVerification = true } = result.data
 
     const existing = await db.user.findUnique({ where: { email } })
     if (existing) {
@@ -99,6 +99,7 @@ export async function POST(request: NextRequest) {
         name: name || null,
         role: role || "user",
         password: hashedPassword,
+        emailVerified: requireVerification ? null : new Date(),
       },
       select: {
         id: true,

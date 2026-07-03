@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Sparkles, Loader2, Wand2, X, AlertCircle } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -24,6 +24,7 @@ interface SchemaGeneratorDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
   onSuccess?: () => void
+  initialPrompt?: string
 }
 
 import { aiTemplates } from "@/lib/ai-templates"
@@ -34,18 +35,26 @@ export function SchemaGeneratorDialog({
   open,
   onOpenChange,
   onSuccess,
+  initialPrompt,
 }: SchemaGeneratorDialogProps) {
   const [loading, setLoading] = useState(false)
-  const [prompt, setPrompt] = useState("")
+  const [prompt, setPrompt] = useState(initialPrompt || "")
   const [error, setError] = useState<string | null>(null)
   const [generatedData, setGeneratedData] = useState<any>(null)
   const { toast } = useToast()
   const router = useRouter()
 
+
+  useEffect(() => {
+    if (open && initialPrompt) {
+      setPrompt(initialPrompt)
+    }
+  }, [open, initialPrompt])
+
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setGeneratedData(null)
-      setPrompt("")
+      setPrompt(initialPrompt || "")
       setError(null)
     }
     onOpenChange(isOpen)

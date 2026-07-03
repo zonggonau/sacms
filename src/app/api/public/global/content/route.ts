@@ -3,12 +3,14 @@ import { db } from "@/lib/database"
 
 export async function GET() {
   try {
+    const workspaceId = process.env.WORKSPACE_ID || "sacms-global";
+
     // Ambil Single Types global (tanpa tenant)
     const singleTypes = await db.singleType.findMany({
       where: { tenantId: null },
       include: {
         tenants: {
-          where: { tenantId: null }
+          where: { tenantId: workspaceId }
         }
       }
     })
@@ -25,7 +27,7 @@ export async function GET() {
     })
 
     const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: null }
+      where: { tenantId: workspaceId }
     })
 
     const collectionsData = contentTypes.reduce((acc, ct) => {

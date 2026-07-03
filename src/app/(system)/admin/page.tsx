@@ -111,10 +111,10 @@ export default function GlobalAdminDashboard() {
               </p>
             </div>
             <div className="flex gap-3 shrink-0">
-              <Link href="/admin/tenants">
+              <Link href="/dashboard">
                 <Button variant="outline" className="rounded-none border-border">
-                  <Building2 className="mr-2 h-4 w-4" />
-                  All Tenants
+                  <ArrowRight className="mr-2 h-4 w-4" />
+                  Go to Dashboard
                 </Button>
               </Link>
             </div>

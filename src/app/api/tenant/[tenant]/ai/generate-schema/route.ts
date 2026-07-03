@@ -99,9 +99,9 @@ export async function POST(
       })
     }
 
-    const createdComponents = []
-    const createdSingleTypes = []
-    const createdContentTypes = []
+    const createdComponents: any[] = []
+    const createdSingleTypes: any[] = []
+    const createdContentTypes: any[] = []
 
     // 1. Create Components first (so they can be referenced by Single/Content Types)
     if (Array.isArray(schema.components)) {

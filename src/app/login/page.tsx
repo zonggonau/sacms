@@ -31,10 +31,8 @@ export default function LoginPage() {
       const redirectTo = searchParams.get("redirect_to") || ""
       if (redirectTo) {
         router.push(redirectTo)
-      } else if (user?.role === "super_admin") {
+      } else if (user?.role && user.role !== "user") {
         router.push("/admin")
-      } else if (user?.role === "admin") {
-        router.push("/dashboard")
       } else {
         const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
         

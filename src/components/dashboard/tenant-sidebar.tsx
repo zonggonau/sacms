@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
+import { getContentTypesAction } from "@/actions/content-types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -124,10 +125,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     async function fetchContentTypes() {
       if (!tenantId) return
       try {
-        const res = await fetch(`/api/tenant/${tenantId}/content-types`)
-        if (res.ok) {
-          const data = await res.json()
-          setAssignedContentTypes(data.contentTypes || [])
+        const data = await getContentTypesAction(tenantId)
+        if (data.contentTypes) {
+          setAssignedContentTypes(data.contentTypes as any)
         }
       } catch (error) {
         console.error("Failed to fetch tenant content types:", error)
@@ -149,12 +149,14 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         { title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true },
         // Dynamic collection entries
-        ...assignedContentTypes.map(ct => ({
-          title: ct.name,
-          href: `/content/${ct.slug}`,
-          icon: Database,
-          matchPrefix: true
-        })),
+        ...assignedContentTypes
+          .filter(ct => !['templates', 'sacms-addons', 'sacms-pricing', 'sacms-workspace-pricing', 'sacms-account-pricing'].includes(ct.slug))
+          .map(ct => ({
+            title: ct.name,
+            href: `/content/${ct.slug}`,
+            icon: Database,
+            matchPrefix: true
+          })),
         { title: "Media Library", href: "/media", icon: ImageIcon },
       ],
     },

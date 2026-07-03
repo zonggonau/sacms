@@ -296,7 +296,7 @@ export default function EditComponentClient({
 
       if (!res.error) {
         toast({ title: "Success", description: "Component updated successfully" })
-        router.push(`/dashboard/${tenantSlug}/components`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error })
       }
@@ -327,7 +327,7 @@ export default function EditComponentClient({
 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <Link href={`/dashboard/${tenantSlug}/components`}>
+              <Link href={`/dashboard/${tenantSlug}/content-type-builder/components`}>
                 <Button variant="ghost" size="icon" className="rounded-none">
                   <ArrowLeft className="h-5 w-5" />
                 </Button>
@@ -430,3 +430,4 @@ export default function EditComponentClient({
     </div>
   )
 }
+

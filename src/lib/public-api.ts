@@ -9,47 +9,88 @@ export async function getLandingData() {
 
     console.log(`[Public API] Fetching live data from API endpoint...`);
     
-    // Fetch data from the public API endpoint
-    const res = await fetch(`${baseUrl}/api/public/global/content`, { 
-      cache: "no-store",
-    })
+    // Fetch data from the public API endpoint using WORKSPACE_ID
+    const workspaceId = process.env.WORKSPACE_ID || "sacms-global";
+    const apiKey = process.env.FRONTEND_API_KEY || "";
     
-    if (!res.ok) {
-      throw new Error(`Failed to fetch API: ${res.statusText}`)
-    }
-    
-    const responseData = await res.json()
-    const data = responseData.data || { singleTypes: {}, collections: {} }
-    
-    const { singleTypes, collections } = data
+    const fetchApi = async (path: string, defaultValue: any) => {
+      try {
+        const res = await fetch(`${baseUrl}/api/public/${workspaceId}${path}`, {
+          cache: "no-store",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`
+          }
+        });
+        if (!res.ok) {
+          console.warn(`Failed to fetch ${path}: ${res.statusText}`);
+          return defaultValue;
+        }
+        const json = await res.json();
+        return json.data || defaultValue;
+      } catch (e) {
+        console.error(`Error fetching ${path}:`, e);
+        return defaultValue;
+      }
+    };
 
-    // Parse specific single types (now stored as collections)
-    const hero = collections["sacms-hero"]?.[0] || null
-    const whatsapp = collections["sacms-whatsapp"]?.[0] || null
-    const about = collections["sacms-about"]?.[0] || null
-    const localPride = collections["sacms-local-pride"]?.[0] || null
-    const cta = collections["sacms-cta"]?.[0] || null
-    const footer = collections["sacms-footer"]?.[0] || null
-    
-    // Papua-specific single type
-    const papuaHomepage = singleTypes["papua-homepage"] || {}
+    const [
+      landingData,
+      aboutData,
+      whatsappData,
+      rawAddons,
+      pricingAccounts,
+      pricingWorkspaces
+    ] = await Promise.all([
+      fetchApi("/single/sacms-landing-page", {}),
+      fetchApi("/single/sacms-about", null),
+      fetchApi("/single/sacms-whatsapp", null),
+      fetchApi("/content/sacms-addons", []),
+      fetchApi("/content/sacms-account-pricing", []),
+      fetchApi("/content/sacms-workspace-pricing", [])
+    ]);
 
-    // Parse collections
-    const features = collections["sacms-features"] || []
-    const addons = collections["sacms-addons"] || []
-    const workflow = collections["sacms-workflow"] || []
-    const faq = collections["sacms-faq"] || []
-    const owners = collections["sacms-owners"] || []
-    const testimonials = collections["sacms-testimonials"] || []
-    const sectors = collections["sacms-sectors"] || []
+    const landing = landingData || {}
+    const whatsapp = whatsappData || null
+
+    const hero = landing.hero_title ? {
+      headline: landing.hero_title,
+      subheadline: landing.hero_subtitle,
+      badge_text: landing.hero_badge,
+      cta_primary: landing.hero_cta_primary,
+      cta_secondary: landing.hero_cta_secondary
+    } : null
+
+    // Collections from landing page single type
+    const features = landing.features || []
+    const workflow = landing.workflows || []
+    const faq = landing.faqs || []
+    const testimonials = landing.testimonials || []
     
-    // Pricing accounts and workspaces
-    const pricingAccounts = collections["sacms-account-pricing"] || []
-    const pricingWorkspaces = collections["sacms-workspace-pricing"] || []
+    const owners = []
+    const sectors = []
+    const localPride = null
+    const cta = null
+    const footer = null
     
-    // Papua-specific collections
-    const papuaConnectedSites = collections["connected-sites"] || []
-    const papuaInitiatives = collections["digital-initiatives"] || []
+    const about = aboutData ? {
+      title: aboutData.title,
+      description: aboutData.content || aboutData.description,
+      image: aboutData.image,
+      mission: aboutData.mission,
+      founded: aboutData.founded,
+    } : null
+
+    const addons = (Array.isArray(rawAddons) ? rawAddons : []).map((a: any) => ({
+      ...a,
+      name: a.title || a.name || "",
+      price_label: a.price_label || null,
+      price: a.price || 0,
+    }))
+    
+    // Papua-specific
+    const papuaHomepage = {}
+    const papuaConnectedSites = []
+    const papuaInitiatives = []
 
     return {
       hero,

@@ -154,7 +154,7 @@ export default function NewComponentClient({
       })
       if (!res.error) {
         toast({ title: "Success", description: "Component created" })
-        router.push(`/dashboard/${tenantSlug}/components`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error })
       }
@@ -286,3 +286,4 @@ export default function NewComponentClient({
     </div>
   )
 }
+

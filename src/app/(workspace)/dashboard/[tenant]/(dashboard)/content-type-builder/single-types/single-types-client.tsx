@@ -8,7 +8,7 @@ import {
   Save, Eye, EyeOff, FileText, Plus, Edit2, 
   Trash2, Loader2, Sparkles, Search, X, 
   Layers, Globe, MoreVertical, Layout,
-  CheckCircle2, AlertCircle, ShieldCheck
+  CheckCircle2, AlertCircle, ShieldCheck, ArrowLeft
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
+
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -66,7 +66,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
 
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+
   const [searchTerm, setSearchTerm] = useState("")
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; singleType: SingleType | null }>({
     open: false,
@@ -131,21 +131,19 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
         <div className="p-6 lg:p-8 w-full space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-xl font-bold text-slate-800">Single Types</h1>
-              <p className="text-xs text-slate-500 font-medium mt-1">
-                Manage your singleton content structures and data.
-              </p>
+            <div className="flex items-center gap-4">
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted">
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+              <div>
+                <h1 className="text-xl font-bold text-slate-800">Single Types</h1>
+                <p className="text-xs text-slate-500 font-medium mt-1">
+                  Manage your singleton content structures and data.
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-3">
-              <Button 
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
-                onClick={() => setIsAIModalOpen(true)}
-                disabled={isLimitReached}
-              >
-                <Sparkles className="mr-2 h-4 w-4" /> AI Generate
-              </Button>
+
               <Button 
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/new`)}
@@ -229,14 +227,6 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                   <p className="text-xs text-muted-foreground/60 mt-1">
                     {searchTerm ? `No results for "${searchTerm}". Try another keyword.` : "Start by creating a new structure for your singleton content."}
                   </p>
-                  {!searchTerm && (
-                    <Button 
-                      className="mt-8 rounded-none font-bold bg-primary hover:bg-primary/90 text-white shadow-none"
-                      onClick={() => setIsAIModalOpen(true)}
-                    >
-                      <Sparkles className="mr-2 h-4 w-4" /> Generate with AI
-                    </Button>
-                  )}
                 </div>
               ) : (
                 <Table>
@@ -336,14 +326,6 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
 
         </div>
       </div>
-
-      <SchemaGeneratorDialog
-        tenantSlug={tenantSlug}
-        type="single-type"
-        open={isAIModalOpen}
-        onOpenChange={setIsAIModalOpen}
-        onSuccess={() => {}}
-      />
 
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
         <DialogContent className="rounded-none border-none shadow-none">

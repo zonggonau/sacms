@@ -7,7 +7,7 @@ import { z } from "zod/v4"
 
 const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional().nullable(),
-  role: z.enum(["super_admin", "admin", "user"]).optional(),
+  role: z.string().optional(),
   email: z.string().email().optional(),
   password: z.string().min(6).optional().nullable(),
 })

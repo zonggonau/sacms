@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
+import { db } from "@/lib/database"
+
 export default async function AdminLayout({
   children,
 }: {
@@ -10,8 +12,23 @@ export default async function AdminLayout({
 }) {
   const session = await getServerSession(authOptions)
 
-  if (!session?.user || !["super_admin", "admin", "employee", "karyawan"].includes(session.user.role)) {
-    redirect("/dashboard")
+  if (!session?.user) {
+    redirect("/login")
+  }
+
+  // Hardcoded built-in admins
+  if (["super_admin", "admin"].includes(session.user.role)) {
+    // allowed
+  } else {
+    // Check if the role is a dynamic SystemRole
+    const systemRole = await db.systemRole.findUnique({
+      where: { slug: session.user.role }
+    })
+    
+    // Also support legacy tenant-level employee roles temporarily
+    if (!systemRole && !["employee", "karyawan"].includes(session.user.role)) {
+      redirect("/dashboard")
+    }
   }
 
   return (

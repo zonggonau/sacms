@@ -42,10 +42,12 @@ export async function GET(
     const token = authHeader.replace("Bearer ", "")
 
     // First try to find in ApiKey (plain text)
-    let tenantId = null
-    let tenantSlugFromDb = null
-    let expiresAt = null
+    let tenantId: string | null = null
+    let tenantSlugFromDb: string | null = null
+    let expiresAt: Date | null = null
     let apiTokenType = "read-only"
+    let apiTokenId = ""
+    let isApiKey = false
 
     const apiKey = await db.apiKey.findUnique({
       where: { key: token },
@@ -57,6 +59,8 @@ export async function GET(
       tenantSlugFromDb = apiKey.tenant.slug
       expiresAt = apiKey.expiresAt
       apiTokenType = "full-access" // Default for ApiKey in our system currently
+      apiTokenId = apiKey.id
+      isApiKey = true
     } else {
       // Fallback to ApiToken (hashed)
       const hashedToken = createHash("sha256").update(token).digest("hex")
@@ -73,6 +77,7 @@ export async function GET(
       tenantSlugFromDb = apiToken.tenant.slug
       expiresAt = apiToken.expiresAt
       apiTokenType = apiToken.type
+      apiTokenId = apiToken.id
     }
 
     // Rate limit by token hash so the raw secret never reaches Redis.
@@ -124,6 +129,9 @@ export async function GET(
 
     // Get the correct DB client (Shared or Dedicated)
     const { getTenantDb } = await import("@/lib/database")
+    if (!tenantId) {
+      return logResponse(NextResponse.json({ error: "Invalid tenant ID" }, { status: 401 }))
+    }
     const tenantDb = await getTenantDb(tenantId)
 
     // Get single type (prefer tenant-specific over global)
@@ -132,7 +140,7 @@ export async function GET(
         slug: singleTypeSlug,
         OR: [
           { tenantId: tenantId },
-          { tenantId: null, tenants: { some: { tenantId: tenantId, enabled: true } } }
+          { tenantId: null }
         ]
       },
       orderBy: {
@@ -172,10 +180,10 @@ export async function GET(
     }
 
     // Update last used
-    if (apiKey) {
+    if (isApiKey) {
       await db.apiKey.update({
         where: { id: apiTokenId },
-        data: { lastUsedAt: new Date() },
+        data: { lastUsed: new Date() },
       })
     } else {
       await db.apiToken.update({

@@ -3,6 +3,8 @@ import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { redirect, notFound } from "next/navigation"
 import { CMSSidebar } from "@/components/cms/cms-sidebar"
+import { getTenantAccess } from "@/lib/tenant-access"
+import { isEnterpriseTenant } from "@/lib/license"
 
 export default async function CMSLayout({
   children,
@@ -19,32 +21,12 @@ export default async function CMSLayout({
   }
 
   // Check if user has access to this tenant and allowed CMS roles
-  // Support both ID and Slug for membership lookup
-  const membership = await db.tenantMember.findFirst({
-    where: {
-      userId: session.user.id,
-      OR: [
-        { tenantId: tenantIdOrSlug },
-        { tenant: { slug: tenantIdOrSlug } }
-      ]
-    },
-    include: {
-      tenant: {
-        include: {
-          subscriptions: {
-            where: { status: { in: ["active", "trialing"] } },
-            orderBy: { currentPeriodEnd: "desc" },
-            take: 1
-          }
-        }
-      }
-    }
-  })
+  const access = await getTenantAccess(session, tenantIdOrSlug)
 
   // Allowed CMS Roles: owner, admin, editor, contributor, viewer
   const allowedRoles = ["owner", "admin", "editor", "contributor", "viewer"]
   
-  if (!membership) {
+  if (!access) {
     // Fallback: If they mistyped the tenant slug, redirect to their first available tenant
     const fallbackMembership = await db.tenantMember.findFirst({
       where: { userId: session.user.id },
@@ -58,25 +40,35 @@ export default async function CMSLayout({
     redirect("/dashboard")
   }
 
-  if (!allowedRoles.includes(membership.role)) {
+  if (!allowedRoles.includes(access.role)) {
     notFound()
   }
 
-  const tenant = membership.tenant
+  const tenant = access.tenant
+  const tenantId = tenant.id
   
-  if (tenant.status === 'suspended') {
-    redirect(`/dashboard/${tenant.id}/subscriptions?suspended=true`)
-  }
+  const enterprise = await isEnterpriseTenant(tenantId, session.user.id)
+  
+  if (!enterprise) {
+    const tenantData = await db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { status: true }
+    })
+    
+    if (tenantData?.status === 'suspended') {
+      redirect(`/dashboard/${tenantId}/subscriptions?suspended=true`)
+    }
 
-  if (tenant.plan === 'trial') {
-    const sub = tenant.subscriptions?.[0]
-    if (!sub || (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd).getTime() <= Date.now())) {
-      redirect(`/dashboard/${tenant.id}/subscriptions?expired=true`)
+    if (tenant.plan === 'trial') {
+      const sub = await db.subscription.findFirst({
+        where: { tenantId: tenantId },
+        orderBy: { currentPeriodEnd: "desc" }
+      })
+      if (!sub || (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd).getTime() <= Date.now())) {
+        redirect(`/dashboard/${tenantId}/subscriptions?expired=true`)
+      }
     }
   }
-
-  // Use the canonical tenant ID for the sidebar and subsequent paths
-  const tenantId = membership.tenant.id
 
   // Fetch content types directly in Server Component
   const tenantDb = await getTenantDb(tenantId)
@@ -91,7 +83,27 @@ export default async function CMSLayout({
               enabled: true
             }
           }
-        }
+        },
+        ...(tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+      ]
+    },
+    select: { id: true, name: true, slug: true },
+    orderBy: { updatedAt: "desc" },
+  })
+
+  const availableSingleTypes = await tenantDb.singleType.findMany({
+    where: {
+      OR: [
+        { tenantId: tenantId },
+        {
+          tenants: {
+            some: {
+              tenantId: tenantId,
+              enabled: true
+            }
+          }
+        },
+        ...(tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
       ]
     },
     select: { id: true, name: true, slug: true },
@@ -100,7 +112,7 @@ export default async function CMSLayout({
 
   return (
     <div className="flex min-h-screen">
-      <CMSSidebar tenantId={tenantId} contentTypes={availableContentTypes} />
+      <CMSSidebar tenantId={tenantId} contentTypes={availableContentTypes} singleTypes={availableSingleTypes} />
       <main className="flex-1 overflow-auto bg-muted/10">
         {children}
       </main>

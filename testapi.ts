@@ -1,0 +1,1 @@
+import { getLandingData } from './src/lib/public-api'; async function run() { const data = await getLandingData(); console.log('Addons:', data.addons.length); console.log('About:', data.about); console.log('Pricing:', data.pricingWorkspaces.length); } run();

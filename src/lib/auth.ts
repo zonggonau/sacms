@@ -2,6 +2,7 @@ import { NextAuthOptions } from "next-auth"
 import CredentialsProvider from "next-auth/providers/credentials"
 import GoogleProvider from "next-auth/providers/google"
 import GitHubProvider from "next-auth/providers/github"
+import { PrismaAdapter } from "@next-auth/prisma-adapter"
 import { db } from "@/lib/database"
 import bcrypt from "bcrypt"
 import crypto from "crypto"
@@ -37,6 +38,7 @@ function legacySimpleHash(password: string): string {
 }
 
 export const authOptions: NextAuthOptions = {
+  adapter: PrismaAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
   useSecureCookies: process.env.NODE_ENV === "production",
   session: {

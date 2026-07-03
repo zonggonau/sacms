@@ -16,5 +16,6 @@ export default async function EditComponentPage({
   const tenantSlug = resolvedParams.tenant
   const componentSlug = resolvedParams.componentSlug
 
-  redirect(`/dashboard/${tenantSlug}/components/${componentSlug}`)
+  redirect(`/dashboard/${tenantSlug}/content-type-builder/components/${componentSlug}`)
 }
+

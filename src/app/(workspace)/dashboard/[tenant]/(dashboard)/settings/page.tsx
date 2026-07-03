@@ -60,6 +60,7 @@ export default function TenantSettingsPage() {
   const [deleteConfirm, setDeleteConfirm] = useState("")
 
   // Tenant settings state
+  const [tenantId, setTenantId] = useState("")
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
   const [plan, setPlan] = useState("free")
@@ -128,6 +129,7 @@ export default function TenantSettingsPage() {
         if (settingsRes.ok) {
           const data = await settingsRes.json()
           const settings = data.settings
+          setTenantId(settings.id || "")
           setName(settings.name || "")
           setDescription(settings.description || "")
           setPlan(settings.plan || "free")
@@ -576,6 +578,35 @@ export default function TenantSettingsPage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  <div className="space-y-2">
+                    <Label>Workspace ID / Tenant ID</Label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Input
+                          type="text"
+                          value={tenantId || ""}
+                          readOnly
+                          className="pr-10 font-mono text-sm bg-muted/50"
+                        />
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+                          onClick={() => {
+                            if (tenantId) {
+                              navigator.clipboard.writeText(tenantId)
+                              alert("Workspace ID copied to clipboard")
+                            }
+                          }}
+                        >
+                          <Copy className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Use this ID for API paths (e.g., <code>/api/public/{tenantId || '[tenant-id]'}/content</code>)
+                    </p>
+                  </div>
                   <div className="space-y-2">
                     <Label>API Key</Label>
                     <div className="flex gap-2">

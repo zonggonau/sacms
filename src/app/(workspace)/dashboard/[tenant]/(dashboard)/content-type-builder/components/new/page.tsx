@@ -25,10 +25,11 @@ export default async function NewComponentPage({
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
   const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
   if (!enforcement.allowed) {
-    redirect(`/dashboard/${tenantSlug}/components`)
+    redirect(`/dashboard/${tenantSlug}/content-type-builder/components`)
   }
 
   return (
     <NewComponentClient tenantSlug={tenantSlug} />
   )
 }
+

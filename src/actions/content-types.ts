@@ -33,7 +33,8 @@ export async function getContentTypesAction(tenantSlug: string) {
                 enabled: true
               }
             }
-          }
+          },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -105,7 +106,8 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
         id,
         OR: [
           { tenantId: access.tenantId },
-          { tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -151,7 +153,8 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
         slug,
         OR: [
           { tenantId: access.tenantId },
-          { tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+          { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -279,8 +282,11 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
     const isGlobal = existingContentType.tenantId === null
     const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
 
-    if (isGlobal || isOwnedByOther) {
-      return { error: "Global or cross-tenant content types cannot be modified by tenant admins" }
+    if (isGlobal && access.tenant.slug !== "sacms-global") {
+      return { error: "Global content types cannot be modified by tenant admins" }
+    }
+    if (isOwnedByOther) {
+      return { error: "Cross-tenant content types cannot be modified by tenant admins" }
     }
 
     const updatedContentType = await tenantDb.$transaction(async (tx) => {
@@ -355,8 +361,11 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
     const isGlobal = existingContentType.tenantId === null
     const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
 
-    if (isGlobal || isOwnedByOther) {
+    if (isGlobal && access.tenant.slug !== "sacms-global") {
       return { error: "Global content types cannot be deleted by tenant admins" }
+    }
+    if (isOwnedByOther) {
+      return { error: "Cross-tenant content types cannot be deleted by tenant admins" }
     }
 
     await tenantDb.contentType.delete({ where: { id } })

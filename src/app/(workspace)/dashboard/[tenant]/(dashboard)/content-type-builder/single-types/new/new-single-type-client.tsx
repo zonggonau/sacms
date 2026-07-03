@@ -160,7 +160,7 @@ export default function NewSingleTypeClient({
 
       if (!res.error) {
         toast({ title: "Success", description: "Single type created" })
-        router.push(`/dashboard/${tenantSlug}/single-types`)
+        router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
       } else {
         toast({ variant: "destructive", title: "Error", description: res.error })
       }
@@ -283,3 +283,4 @@ export default function NewSingleTypeClient({
     </div>
   )
 }
+

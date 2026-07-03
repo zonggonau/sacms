@@ -10,7 +10,7 @@ import { AboutSection } from "./sections/about-section"
 import { TeamSection } from "./sections/team-section"
 import { FaqSection } from "./sections/faq-section"
 import { SectorsSection } from "./sections/sectors-section"
-import { LocalPrideSection } from "./sections/local-pride-section"
+// import { LocalPrideSection } from "./sections/local-pride-section"
 import { CtaBanner } from "./sections/cta-banner"
 import { FooterSection } from "./sections/footer-section"
 import { FadeIn } from "@/components/ui/fade-in"
@@ -38,7 +38,6 @@ export function ModernLanding({ data }: { data: LandingData }) {
     <div className="bg-card text-foreground selection:bg-primary/30">
       <HeroSection data={hero} />
       <FadeIn delay={100}><FeaturesBento features={features} /></FadeIn>
-      <FadeIn delay={100}><LocalPrideSection localPride={localPride} /></FadeIn>
       <FadeIn delay={100}><SectorsSection sectors={sectors} /></FadeIn>
       <FadeIn delay={100}><WorkflowSection workflow={workflow} /></FadeIn>
       <FadeIn delay={100}>
@@ -61,6 +60,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
       <FadeIn delay={100}><AboutSection about={about} /></FadeIn>
       <FadeIn delay={100}><TeamSection owners={owners} /></FadeIn>
       <FadeIn delay={100}><FaqSection faq={faq} /></FadeIn>
+      {/* <FadeIn delay={100}><LocalPrideSection localPride={localPride} /></FadeIn> */}
       <FadeIn delay={100} direction="up"><CtaBanner cta={cta} /></FadeIn>
       <FooterSection footer={footer} />
     </div>

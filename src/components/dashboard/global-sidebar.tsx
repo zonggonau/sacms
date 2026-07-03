@@ -45,7 +45,6 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
 
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
-    { title: "Templates", href: "/dashboard/templates", icon: Layers },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
   ]
 

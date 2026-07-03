@@ -157,7 +157,7 @@ export default function CMSSingleTypeDetailPage() {
       }
     }
 
-    const LabelWithAI = () => (
+    const renderLabelWithAI = () => (
       <div className="flex items-center justify-between mb-2">
         <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
         {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
@@ -175,9 +175,9 @@ export default function CMSSingleTypeDetailPage() {
     switch (field.type) {
       case "text":
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
-          return <div className="space-y-2"><LabelWithAI /><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
+          return <div className="space-y-2">{renderLabelWithAI()}<TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
         }
-        return <div className="space-y-2"><LabelWithAI /><TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} /></div>
       
       case "slug":
       case "uid":
@@ -188,7 +188,7 @@ export default function CMSSingleTypeDetailPage() {
         return (
           <div className="space-y-2">
             <SlugField 
-              label={<LabelWithAI />}
+              label={renderLabelWithAI()}
               value={value as string} 
               onChange={v => handleFieldChange(field.slug, v)} 
               required={field.required} 
@@ -201,10 +201,10 @@ export default function CMSSingleTypeDetailPage() {
       
       case "textarea":
       case "markdown":
-        return <div className="space-y-2"><LabelWithAI /><TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "richText":
-        return <div className="space-y-2"><LabelWithAI /><RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "number":
       case "integer":
@@ -236,7 +236,7 @@ export default function CMSSingleTypeDetailPage() {
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
           <div className="space-y-2">
-            <LabelWithAI />
+            {renderLabelWithAI()}
             <RelationSelectField 
               value={value as any} 
               onChange={v => handleFieldChange(field.slug, v)} 
@@ -252,12 +252,12 @@ export default function CMSSingleTypeDetailPage() {
       case "json":
       case "color":
       case "location":
-        return <div className="space-y-2"><LabelWithAI /><AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
 
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2"><LabelWithAI /><ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold text-slate-700">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>

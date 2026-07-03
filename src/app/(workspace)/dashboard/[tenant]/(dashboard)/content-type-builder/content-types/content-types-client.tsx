@@ -34,7 +34,7 @@ import {
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
-import { SchemaGeneratorDialog } from "@/components/cms/schema-generator-dialog"
+
 import { deleteContentTypeAction } from "@/actions/content-types"
 
 interface ContentType {
@@ -61,7 +61,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
   const [isPending, startTransition] = useTransition()
 
   const [searchQuery, setSearchQuery] = useState("")
-  const [isAIModalOpen, setIsAIModalOpen] = useState(false)
+
 
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; contentType: ContentType | null }>({
     open: false,
@@ -116,14 +116,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
               <p className="text-xs text-slate-500 font-medium mt-1">Manage data structures and collection definitions.</p>
             </div>
             <div className="flex items-center gap-3">
-              <Button
-                variant="outline"
-                className="border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-bold rounded-none"
-                onClick={() => setIsAIModalOpen(true)}
-                disabled={isLimitReached}
-              >
-                <Sparkles className="mr-2 h-4 w-4" /> AI Generate
-              </Button>
+
               <Button
                 className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
@@ -262,7 +255,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                         <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground transition-colors">
                                 <MoreVertical className="h-4 w-4" />
                               </Button>
                             </DropdownMenuTrigger>
@@ -273,7 +266,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                               <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}>
                                 <Layout className="mr-2 h-4 w-4" /> Browse Entries
                               </DropdownMenuItem>
-                              {!ct.isGlobal && (
+                              {(!ct.isGlobal || tenantSlug === 'sacms-global') && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:text-destructive">
@@ -293,16 +286,6 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
           </Card>
         </div>
       </div>
-
-      <SchemaGeneratorDialog
-        open={isAIModalOpen}
-        onOpenChange={setIsAIModalOpen}
-        tenantSlug={tenantSlug}
-        type="schema"
-        onSuccess={() => {
-          // Handled via revalidatePath now, but can keep callback if needed
-        }}
-      />
 
       <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, contentType: null })}>
         <DialogContent className="sm:max-w-[425px]">

@@ -12,10 +12,17 @@ export default async function WorkspaceSelectionPage() {
   if (!session?.user) redirect("/login")
 
   const tenants = await db.tenant.findMany({
-    where: {
-      members: { some: { userId: session.user.id } },
-      slug: { notIn: SYSTEM_SLUGS },
-    },
+    where: session.user.role === "super_admin" 
+      ? {
+          OR: [
+            { members: { some: { userId: session.user.id } } },
+            { slug: "sacms-global" }
+          ]
+        }
+      : {
+          members: { some: { userId: session.user.id } },
+          slug: { notIn: SYSTEM_SLUGS },
+        },
     include: {
       members: {
         where: { userId: session.user.id },
@@ -66,7 +73,7 @@ export default async function WorkspaceSelectionPage() {
       status: (isGlobalEnterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
-      role: t.members[0]?.role || 'member',
+      role: (session.user.role === "super_admin" && t.slug === "sacms-global") ? 'owner' : (t.members[0]?.role || 'member'),
       daysRemaining,
       subscriptionStatus: sub?.status || null,
       expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null

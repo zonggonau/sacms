@@ -3,7 +3,7 @@ import { ArrowLeft } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 
 interface NestedSidebarHeaderProps {
-  tenantId: string
+  tenantId?: string
   backHref?: string
   backTooltip?: string
   logoHref?: string
@@ -15,8 +15,8 @@ export function NestedSidebarHeader({
   backTooltip = "Back to Workspace Dashboard",
   logoHref
 }: NestedSidebarHeaderProps) {
-  const actualBackHref = backHref || `/dashboard/${tenantId}`
-  const actualLogoHref = logoHref || `/dashboard/${tenantId}`
+  const actualBackHref = backHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
+  const actualLogoHref = logoHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
 
   return (
     <div className="border-b border-border px-4 py-5 bg-card flex items-center gap-2">

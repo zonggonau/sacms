@@ -328,9 +328,8 @@ async function main() {
             name: ct.name,
             slug: ct.slug,
             description: ct.description,
-            tenantId: null,
             isPublished: true,
-            fields: {
+            schemaFields: {
               create: ct.fields.map((f) => ({
                 name: f.name,
                 slug: f.slug,
@@ -357,9 +356,8 @@ async function main() {
             name: ct.name,
             slug: ct.slug,
             description: ct.description,
-            tenantId: null,
             isPublished: true,
-            fields: {
+            schemaFields: {
               create: ct.fields.map((f) => ({
                 name: f.name,
                 slug: f.slug,
@@ -400,7 +398,6 @@ async function main() {
 
       await prisma.tenantSingleTypeAssignment.create({
         data: {
-          tenantId: null,
           singleTypeId: st.id,
           data: seedData as any,
           publishedAt: new Date(),
@@ -427,7 +424,6 @@ async function main() {
         await prisma.contentEntry.create({
           data: {
             contentTypeId: contentType.id,
-            tenantId: null,
             status: "PUBLISHED",
             publishedAt: new Date(),
             data: entry,
