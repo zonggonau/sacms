@@ -59,7 +59,8 @@ async function main() {
     { name: "Description", slug: "description", type: "textarea", order: 1 },
     { name: "Icon", slug: "icon", type: "text", order: 2 },
     { name: "Template ID", slug: "template_id", type: "text", order: 3, required: true },
-    { name: "Schema Template", slug: "schema_template", type: "json", order: 4 },
+    { name: "Category", slug: "category", type: "text", order: 4 },
+    { name: "Schema Template", slug: "schema_template", type: "json", order: 5 },
   ]
 
   for (const field of fields) {

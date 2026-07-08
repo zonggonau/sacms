@@ -188,6 +188,41 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
       components = kit.components
     }
 
+    // 2.5 Inject System Collection Types (User and Role) like Strapi
+    const hasUsers = contentTypes.some((ct: any) => ct.slug === "users")
+    if (!hasUsers) {
+      contentTypes.push({
+        name: "User",
+        slug: "users",
+        description: "System user collection",
+        fields: [
+          { name: "Username", slug: "username", type: "text", required: true },
+          { name: "Email", slug: "email", type: "email", required: true },
+          { name: "Provider", slug: "provider", type: "text" },
+          { name: "Password", slug: "password", type: "text" },
+          { name: "Reset Password Token", slug: "resetPasswordToken", type: "text" },
+          { name: "Confirmation Token", slug: "confirmationToken", type: "text" },
+          { name: "Confirmed", slug: "confirmed", type: "boolean" },
+          { name: "Blocked", slug: "blocked", type: "boolean" },
+          { name: "Role", slug: "role", type: "relation", relationSlug: "roles" }
+        ]
+      })
+    }
+    
+    const hasRoles = contentTypes.some((ct: any) => ct.slug === "roles")
+    if (!hasRoles) {
+      contentTypes.push({
+        name: "Role",
+        slug: "roles",
+        description: "System role collection for users",
+        fields: [
+          { name: "Name", slug: "name", type: "text", required: true },
+          { name: "Description", slug: "description", type: "textarea" },
+          { name: "Type", slug: "type", type: "text" }
+        ]
+      })
+    }
+
     // 3. Create Components
     for (const comp of components) {
       await tenantDb.$transaction(async (tx) => {

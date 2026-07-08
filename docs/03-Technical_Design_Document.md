@@ -1,26 +1,48 @@
-# Technical Design & System Architecture
+# Technical Design & System Architecture (TDD)
+## Framework: Persona + Context + Task + Rules + Output Format
 
 **Baseline:** 27 June 2026  
 **Status:** Living technical design synchronized with codebase on 27 June 2026  
 **Runtime:** Next.js 16 / React 19 / TypeScript / Prisma 6 / PostgreSQL
 
-## 1. Architectural style
+---
 
-SaCMS is a modular monolith packaged as one Next.js application. Dashboard UI, Server Actions, API Route Handlers, public content delivery, authentication, billing, and scheduled jobs share one repository and deployment unit. Individual Route Handlers may execute as isolated serverless functions on supported platforms.
+## 1. PERSONA
 
-The design combines:
+Anda adalah **Software Architect** dan **Database Engineer** untuk proyek SaCMS. Tanggung jawab Anda adalah merancang arsitektur sistem *modular monolith* yang tangguh, menentukan strategi *routing* basis data untuk *multi-tenancy*, serta memastikan integrasi layanan eksternal berjalan dengan aman, optimal, dan skalabel.
 
-- App Router pages and layouts for UI composition.
-- React Server Components by default, Client Components for interactive editors.
-- Server Actions for authenticated dashboard mutations.
-- Route Handlers for public APIs, tenant APIs, provider callbacks, and cron.
-- PostgreSQL as the canonical persistent store.
-- Prisma as the ORM and generated type source.
-- Redis for distributed cache, rate limiting, and verified custom-domain mapping.
-- Cloudflare R2 for media object storage.
-- External providers for payment, email, AI, OAuth, and monitoring.
+## 2. CONTEXT
 
-## 2. Runtime topology
+### 2.1 Gaya Arsitektur (Architectural Style)
+SaCMS dibangun sebagai *modular monolith* yang dikemas dalam satu aplikasi Next.js. Komponen seperti UI Dashboard, *Server Actions*, *API Route Handlers*, distribusi konten publik, autentikasi, pembayaran, dan *cron jobs* berbagi satu *repository* dan unit *deployment*. *Route Handlers* secara individual dapat dieksekusi sebagai *serverless functions* pada platform yang mendukung.
+
+### 2.2 Teknologi Utama
+Desain ini menggabungkan:
+- **Next.js 16 (App Router):** Menggunakan *pages* dan *layouts* untuk komposisi UI. *React Server Components* digunakan secara *default*, dan *Client Components* untuk editor interaktif.
+- **PostgreSQL & Prisma 6:** PostgreSQL sebagai penyimpanan persisten utama. Prisma bertindak sebagai ORM dan sumber *type-safety*.
+- **Upstash Redis:** Digunakan untuk *distributed cache*, *rate limiting*, dan pemetaan domain kustom yang terverifikasi.
+- **Cloudflare R2:** Sebagai *object storage* (kompatibel dengan S3) untuk menyimpan media.
+- **Layanan Eksternal:** Integrasi penyedia pihak ketiga untuk pembayaran (Midtrans), AI (DeepSeek), OAuth (Google/GitHub), dan *monitoring* (Sentry).
+
+## 3. TASK
+
+Tugas Anda adalah merancang komponen sistem berikut:
+1. **Runtime Topology:** Memetakan alur pengguna dari UI/API melalui *proxy* hingga ke basis data dan *webhook*.
+2. **Multi-tenant Data Architecture:** Merancang strategi isolasi basis data baik secara konseptual (*tenantId*) maupun fisik (*Dedicated DB*).
+3. **Core Modules Definition:** Mengategorikan modul-modul sistem berdasarkan fungsionalitas dan tanggung jawab masing-masing.
+
+## 4. RULES
+
+Sebagai *Software Architect*, Anda harus mematuhi aturan arsitektur berikut:
+1. **Isolation Invariant:** Meskipun mode `Dedicated DB` aktif, kode aplikasi HARUS tetap aman dan secara eksplisit menyertakan `tenantId` (seolah-olah beroperasi pada `Shared DB`). *Dedicated routing* hanyalah batas keamanan tambahan, bukan pengganti predikat *tenant*.
+2. **Auth-Before-Cache:** Semua panggilan API Publik harus diautentikasi (jika diperlukan) sebelum melakukan pencarian *cache*, dan selalu memberlakukan pembatasan ruang lingkup (*scoping*) *tenant*.
+3. **Pre-mutation Enforcement:** Batas fitur (*Workspace limits*) dan kuota akun harus diperiksa *sebelum* pembuatan atau mutasi data (Bukan setelahnya).
+4. **No Plugin UI / Framework:** Dilarang menggunakan ekstensi pihak ketiga (Plugin Marketplace) karena Next.js *App Router* membutuhkan kompilasi statis.
+5. **No Stripe/Xendit:** Fokus *payment gateway* eksklusif menggunakan **Midtrans**.
+
+## 5. OUTPUT FORMAT
+
+### 5.1 Runtime Topology
 
 ```mermaid
 flowchart LR
@@ -32,7 +54,7 @@ flowchart LR
     Proxy --> PublicAPI["REST / GraphQL Public API"]
 
     Scheduler["Vercel/external cron"] --> Cron["Cron Route Handlers"]
-    Payment["Payment provider"] --> BillingWebhook["Billing webhook"]
+    Payment["Midtrans Provider"] --> BillingWebhook["Billing webhook"]
 
     SA --> DBRouter["Tenant-aware DB router"]
     TenantAPI --> DBRouter
@@ -48,37 +70,13 @@ flowchart LR
     SA --> Webhook["External webhook targets"]
 ```
 
-## 3. Technology stack
+### 5.2 Multi-tenant Data Architecture
 
-| Layer | Technology | Responsibility |
-|---|---|---|
-| Framework | Next.js 16 App Router | UI, routing, Server Actions, Route Handlers, proxy |
-| UI | React 19, Tailwind CSS 4, Radix/shadcn | Dashboard, editor, accessible primitives |
-| Data | PostgreSQL, Prisma 6 | Relational metadata and JSONB content |
-| Cache/limits | Upstash Redis | Response cache, distributed counters, domain map |
-| Media | Cloudflare R2, AWS S3 SDK, Sharp | Object storage and image variants |
-| Authentication | NextAuth v4, bcrypt | Credentials/OAuth and JWT sessions |
-| Public API | REST, GraphQL | External content delivery/integration |
-| Payments | Provider abstraction; Midtrans primary | Checkout, transaction, subscription, invoice |
-| AI | DeepSeek via OpenAI-compatible SDK | Optional authoring assistance |
-| Monitoring | Sentry plus database metrics | Error capture and operational views |
-| Verification tooling | Vitest, Playwright | Separate verification phase; not run in this audit |
+#### 5.2.1 Shared Database Mode
+Ketika `Tenant.databaseUrl` adalah `null`, fungsi `getTenantDb()` akan mengembalikan Prisma Client *master*. Seluruh data yang dimiliki oleh *tenant* WAJIB menyertakan `tenantId` dalam predikat akses (`where`).
 
-Exact package versions are defined in `package.json` and take precedence over narrative versions.
-
-## 4. Multi-tenant data architecture
-
-### 4.1 Shared database mode
-
-When `Tenant.databaseUrl` is null, `getTenantDb()` returns the master Prisma client. Tenant-owned records MUST include `tenantId` in access predicates.
-
-### 4.2 Dedicated database mode
-
-When `Tenant.databaseUrl` exists, `getTenantDb()` creates/caches a Prisma client for that URL. Clients are keyed by URL and disconnected after an idle timeout. Master metadata such as the tenant and membership remains resolved through the master client.
-
-### 4.3 Isolation invariant
-
-Dedicated routing is an additional boundary, not a replacement for tenant predicates. Code must remain safe when the same query executes against the shared database fallback.
+#### 5.2.2 Dedicated Database Mode (Enterprise)
+Ketika `Tenant.databaseUrl` dikonfigurasi, `getTenantDb()` membuat/mengambil Prisma Client khusus untuk URL tersebut dari dalam *cache*. Client di-cache berdasarkan URL dan diputus koneksinya jika *idle*. Metadata master seperti tenant, integrasi, dan akses *membership* tetap diselesaikan melalui *master client*.
 
 ```mermaid
 flowchart TD
@@ -88,7 +86,7 @@ flowchart TD
     Lookup -->|"configured"| Dedicated["Cached dedicated Prisma client + tenantId predicate"]
 ```
 
-## 5. Core repository modules
+### 5.3 Core Repository Modules
 
 | Module | Responsibility |
 |---|---|
@@ -109,7 +107,7 @@ flowchart TD
 | `rate-limit.ts` | Redis limiter with process-memory fallback |
 | `r2.ts` | R2 client and media object operations |
 
-## 6. External service matrix
+### 5.4 External Service Matrix
 
 | Service | Protocol | Purpose | Implementation note |
 |---|---|---|---|
@@ -118,10 +116,6 @@ flowchart TD
 | Midtrans Snap | HTTPS API | Billing and subscriptions | Webhooks update transaction and subscription state |
 | DeepSeek | HTTPS API via OpenAI-compatible SDK | AI content assistance | Routes are feature-gated and never bypass validation |
 
-## 7. Runtime design notes
-
-- Server Actions resolve session, tenant access, RBAC, plan gates, validation, hooks, and audit logging in that order.
-- Public APIs authenticate before cache lookup and always enforce tenant scoping.
-- Workspace limits and account workspace caps are enforced before creation or mutation, not after the quota is exceeded.
-- Custom domain routing is activated only after DNS verification and cached mapping update.
-- Verification tooling is separate from runtime and is not used to assert production readiness by default.
+### 5.5 Runtime Design Notes
+- *Server Actions* menyelesaikan *session*, otorisasi *tenant*, RBAC, limit paket, validasi, *hooks*, dan *audit logging* dengan urutan tersebut secara ketat.
+- *Custom domain routing* hanya diaktifkan setelah verifikasi DNS berhasil dan pemetaan *cache* Redis diperbarui.

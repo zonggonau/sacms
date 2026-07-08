@@ -64,6 +64,11 @@ export type ContentType = $Result.DefaultSelection<Prisma.$ContentTypePayload>
  */
 export type SchemaField = $Result.DefaultSelection<Prisma.$SchemaFieldPayload>
 /**
+ * Model AiQuotaLedger
+ * 
+ */
+export type AiQuotaLedger = $Result.DefaultSelection<Prisma.$AiQuotaLedgerPayload>
+/**
  * Model TenantContentTypeAssignment
  * 
  */
@@ -213,6 +218,11 @@ export type EnterpriseLicense = $Result.DefaultSelection<Prisma.$EnterpriseLicen
  * 
  */
 export type LicenseCache = $Result.DefaultSelection<Prisma.$LicenseCachePayload>
+/**
+ * Model CustomDomain
+ * 
+ */
+export type CustomDomain = $Result.DefaultSelection<Prisma.$CustomDomainPayload>
 
 /**
  * Enums
@@ -453,6 +463,16 @@ export class PrismaClient<
     * ```
     */
   get schemaField(): Prisma.SchemaFieldDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.aiQuotaLedger`: Exposes CRUD operations for the **AiQuotaLedger** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more AiQuotaLedgers
+    * const aiQuotaLedgers = await prisma.aiQuotaLedger.findMany()
+    * ```
+    */
+  get aiQuotaLedger(): Prisma.AiQuotaLedgerDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.tenantContentTypeAssignment`: Exposes CRUD operations for the **TenantContentTypeAssignment** model.
@@ -753,6 +773,16 @@ export class PrismaClient<
     * ```
     */
   get licenseCache(): Prisma.LicenseCacheDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.customDomain`: Exposes CRUD operations for the **CustomDomain** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more CustomDomains
+    * const customDomains = await prisma.customDomain.findMany()
+    * ```
+    */
+  get customDomain(): Prisma.CustomDomainDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1204,6 +1234,7 @@ export namespace Prisma {
     CustomPlanOverride: 'CustomPlanOverride',
     ContentType: 'ContentType',
     SchemaField: 'SchemaField',
+    AiQuotaLedger: 'AiQuotaLedger',
     TenantContentTypeAssignment: 'TenantContentTypeAssignment',
     ContentEntry: 'ContentEntry',
     ContentVersion: 'ContentVersion',
@@ -1233,7 +1264,8 @@ export namespace Prisma {
     WebhookDeadLetter: 'WebhookDeadLetter',
     TenantLocale: 'TenantLocale',
     EnterpriseLicense: 'EnterpriseLicense',
-    LicenseCache: 'LicenseCache'
+    LicenseCache: 'LicenseCache',
+    CustomDomain: 'CustomDomain'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1252,7 +1284,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "systemRole" | "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "permission" | "rolePermission" | "tenantRole" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache"
+      modelProps: "systemRole" | "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "permission" | "rolePermission" | "tenantRole" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1993,6 +2025,80 @@ export namespace Prisma {
           count: {
             args: Prisma.SchemaFieldCountArgs<ExtArgs>
             result: $Utils.Optional<SchemaFieldCountAggregateOutputType> | number
+          }
+        }
+      }
+      AiQuotaLedger: {
+        payload: Prisma.$AiQuotaLedgerPayload<ExtArgs>
+        fields: Prisma.AiQuotaLedgerFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.AiQuotaLedgerFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.AiQuotaLedgerFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          findFirst: {
+            args: Prisma.AiQuotaLedgerFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.AiQuotaLedgerFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          findMany: {
+            args: Prisma.AiQuotaLedgerFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>[]
+          }
+          create: {
+            args: Prisma.AiQuotaLedgerCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          createMany: {
+            args: Prisma.AiQuotaLedgerCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.AiQuotaLedgerCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>[]
+          }
+          delete: {
+            args: Prisma.AiQuotaLedgerDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          update: {
+            args: Prisma.AiQuotaLedgerUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          deleteMany: {
+            args: Prisma.AiQuotaLedgerDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.AiQuotaLedgerUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.AiQuotaLedgerUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>[]
+          }
+          upsert: {
+            args: Prisma.AiQuotaLedgerUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$AiQuotaLedgerPayload>
+          }
+          aggregate: {
+            args: Prisma.AiQuotaLedgerAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateAiQuotaLedger>
+          }
+          groupBy: {
+            args: Prisma.AiQuotaLedgerGroupByArgs<ExtArgs>
+            result: $Utils.Optional<AiQuotaLedgerGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.AiQuotaLedgerCountArgs<ExtArgs>
+            result: $Utils.Optional<AiQuotaLedgerCountAggregateOutputType> | number
           }
         }
       }
@@ -4216,6 +4322,80 @@ export namespace Prisma {
           }
         }
       }
+      CustomDomain: {
+        payload: Prisma.$CustomDomainPayload<ExtArgs>
+        fields: Prisma.CustomDomainFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.CustomDomainFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.CustomDomainFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          findFirst: {
+            args: Prisma.CustomDomainFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.CustomDomainFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          findMany: {
+            args: Prisma.CustomDomainFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>[]
+          }
+          create: {
+            args: Prisma.CustomDomainCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          createMany: {
+            args: Prisma.CustomDomainCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.CustomDomainCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>[]
+          }
+          delete: {
+            args: Prisma.CustomDomainDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          update: {
+            args: Prisma.CustomDomainUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          deleteMany: {
+            args: Prisma.CustomDomainDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.CustomDomainUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.CustomDomainUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>[]
+          }
+          upsert: {
+            args: Prisma.CustomDomainUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$CustomDomainPayload>
+          }
+          aggregate: {
+            args: Prisma.CustomDomainAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateCustomDomain>
+          }
+          groupBy: {
+            args: Prisma.CustomDomainGroupByArgs<ExtArgs>
+            result: $Utils.Optional<CustomDomainGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.CustomDomainCountArgs<ExtArgs>
+            result: $Utils.Optional<CustomDomainCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -4322,6 +4502,7 @@ export namespace Prisma {
     customPlanOverride?: CustomPlanOverrideOmit
     contentType?: ContentTypeOmit
     schemaField?: SchemaFieldOmit
+    aiQuotaLedger?: AiQuotaLedgerOmit
     tenantContentTypeAssignment?: TenantContentTypeAssignmentOmit
     contentEntry?: ContentEntryOmit
     contentVersion?: ContentVersionOmit
@@ -4352,6 +4533,7 @@ export namespace Prisma {
     tenantLocale?: TenantLocaleOmit
     enterpriseLicense?: EnterpriseLicenseOmit
     licenseCache?: LicenseCacheOmit
+    customDomain?: CustomDomainOmit
   }
 
   /* Types for Logging */
@@ -4510,6 +4692,8 @@ export namespace Prisma {
     tenantRoles: number
     singleTypeAssignments: number
     webhooks: number
+    aiQuotaLedgers: number
+    customDomains: number
   }
 
   export type TenantCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -4533,6 +4717,8 @@ export namespace Prisma {
     tenantRoles?: boolean | TenantCountOutputTypeCountTenantRolesArgs
     singleTypeAssignments?: boolean | TenantCountOutputTypeCountSingleTypeAssignmentsArgs
     webhooks?: boolean | TenantCountOutputTypeCountWebhooksArgs
+    aiQuotaLedgers?: boolean | TenantCountOutputTypeCountAiQuotaLedgersArgs
+    customDomains?: boolean | TenantCountOutputTypeCountCustomDomainsArgs
   }
 
   // Custom InputTypes
@@ -4684,6 +4870,20 @@ export namespace Prisma {
    */
   export type TenantCountOutputTypeCountWebhooksArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: WebhookWhereInput
+  }
+
+  /**
+   * TenantCountOutputType without action
+   */
+  export type TenantCountOutputTypeCountAiQuotaLedgersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiQuotaLedgerWhereInput
+  }
+
+  /**
+   * TenantCountOutputType without action
+   */
+  export type TenantCountOutputTypeCountCustomDomainsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CustomDomainWhereInput
   }
 
 
@@ -6058,6 +6258,7 @@ export namespace Prisma {
     createdAt: Date | null
     updatedAt: Date | null
     plan: string | null
+    masterDatabaseUrl: string | null
   }
 
   export type UserMaxAggregateOutputType = {
@@ -6071,6 +6272,7 @@ export namespace Prisma {
     createdAt: Date | null
     updatedAt: Date | null
     plan: string | null
+    masterDatabaseUrl: string | null
   }
 
   export type UserCountAggregateOutputType = {
@@ -6084,6 +6286,8 @@ export namespace Prisma {
     createdAt: number
     updatedAt: number
     plan: number
+    masterDatabaseUrl: number
+    masterStorageConfig: number
     _all: number
   }
 
@@ -6099,6 +6303,7 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     plan?: true
+    masterDatabaseUrl?: true
   }
 
   export type UserMaxAggregateInputType = {
@@ -6112,6 +6317,7 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     plan?: true
+    masterDatabaseUrl?: true
   }
 
   export type UserCountAggregateInputType = {
@@ -6125,6 +6331,8 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     plan?: true
+    masterDatabaseUrl?: true
+    masterStorageConfig?: true
     _all?: true
   }
 
@@ -6211,6 +6419,8 @@ export namespace Prisma {
     createdAt: Date
     updatedAt: Date
     plan: string
+    masterDatabaseUrl: string | null
+    masterStorageConfig: JsonValue | null
     _count: UserCountAggregateOutputType | null
     _min: UserMinAggregateOutputType | null
     _max: UserMaxAggregateOutputType | null
@@ -6241,6 +6451,8 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     plan?: boolean
+    masterDatabaseUrl?: boolean
+    masterStorageConfig?: boolean
     accounts?: boolean | User$accountsArgs<ExtArgs>
     sessions?: boolean | User$sessionsArgs<ExtArgs>
     subscriptions?: boolean | User$subscriptionsArgs<ExtArgs>
@@ -6259,6 +6471,8 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     plan?: boolean
+    masterDatabaseUrl?: boolean
+    masterStorageConfig?: boolean
   }, ExtArgs["result"]["user"]>
 
   export type UserSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -6272,6 +6486,8 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     plan?: boolean
+    masterDatabaseUrl?: boolean
+    masterStorageConfig?: boolean
   }, ExtArgs["result"]["user"]>
 
   export type UserSelectScalar = {
@@ -6285,9 +6501,11 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     plan?: boolean
+    masterDatabaseUrl?: boolean
+    masterStorageConfig?: boolean
   }
 
-  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "name" | "password" | "image" | "role" | "emailVerified" | "createdAt" | "updatedAt" | "plan", ExtArgs["result"]["user"]>
+  export type UserOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "email" | "name" | "password" | "image" | "role" | "emailVerified" | "createdAt" | "updatedAt" | "plan" | "masterDatabaseUrl" | "masterStorageConfig", ExtArgs["result"]["user"]>
   export type UserInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     accounts?: boolean | User$accountsArgs<ExtArgs>
     sessions?: boolean | User$sessionsArgs<ExtArgs>
@@ -6317,6 +6535,8 @@ export namespace Prisma {
       createdAt: Date
       updatedAt: Date
       plan: string
+      masterDatabaseUrl: string | null
+      masterStorageConfig: Prisma.JsonValue | null
     }, ExtArgs["result"]["user"]>
     composites: {}
   }
@@ -6754,6 +6974,8 @@ export namespace Prisma {
     readonly createdAt: FieldRef<"User", 'DateTime'>
     readonly updatedAt: FieldRef<"User", 'DateTime'>
     readonly plan: FieldRef<"User", 'String'>
+    readonly masterDatabaseUrl: FieldRef<"User", 'String'>
+    readonly masterStorageConfig: FieldRef<"User", 'Json'>
   }
     
 
@@ -10459,8 +10681,18 @@ export namespace Prisma {
 
   export type AggregateTenant = {
     _count: TenantCountAggregateOutputType | null
+    _avg: TenantAvgAggregateOutputType | null
+    _sum: TenantSumAggregateOutputType | null
     _min: TenantMinAggregateOutputType | null
     _max: TenantMaxAggregateOutputType | null
+  }
+
+  export type TenantAvgAggregateOutputType = {
+    aiTokensUsed: number | null
+  }
+
+  export type TenantSumAggregateOutputType = {
+    aiTokensUsed: number | null
   }
 
   export type TenantMinAggregateOutputType = {
@@ -10483,6 +10715,7 @@ export namespace Prisma {
     licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
+    aiTokensUsed: number | null
   }
 
   export type TenantMaxAggregateOutputType = {
@@ -10505,6 +10738,7 @@ export namespace Prisma {
     licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
+    aiTokensUsed: number | null
   }
 
   export type TenantCountAggregateOutputType = {
@@ -10528,9 +10762,18 @@ export namespace Prisma {
     faviconUrl: number
     primaryColor: number
     storageConfig: number
+    aiTokensUsed: number
     _all: number
   }
 
+
+  export type TenantAvgAggregateInputType = {
+    aiTokensUsed?: true
+  }
+
+  export type TenantSumAggregateInputType = {
+    aiTokensUsed?: true
+  }
 
   export type TenantMinAggregateInputType = {
     id?: true
@@ -10552,6 +10795,7 @@ export namespace Prisma {
     licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
+    aiTokensUsed?: true
   }
 
   export type TenantMaxAggregateInputType = {
@@ -10574,6 +10818,7 @@ export namespace Prisma {
     licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
+    aiTokensUsed?: true
   }
 
   export type TenantCountAggregateInputType = {
@@ -10597,6 +10842,7 @@ export namespace Prisma {
     faviconUrl?: true
     primaryColor?: true
     storageConfig?: true
+    aiTokensUsed?: true
     _all?: true
   }
 
@@ -10638,6 +10884,18 @@ export namespace Prisma {
     /**
      * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
      * 
+     * Select which fields to average
+    **/
+    _avg?: TenantAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: TenantSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
      * Select which fields to find the minimum value
     **/
     _min?: TenantMinAggregateInputType
@@ -10668,6 +10926,8 @@ export namespace Prisma {
     take?: number
     skip?: number
     _count?: TenantCountAggregateInputType | true
+    _avg?: TenantAvgAggregateInputType
+    _sum?: TenantSumAggregateInputType
     _min?: TenantMinAggregateInputType
     _max?: TenantMaxAggregateInputType
   }
@@ -10693,7 +10953,10 @@ export namespace Prisma {
     faviconUrl: string | null
     primaryColor: string | null
     storageConfig: JsonValue | null
+    aiTokensUsed: number
     _count: TenantCountAggregateOutputType | null
+    _avg: TenantAvgAggregateOutputType | null
+    _sum: TenantSumAggregateOutputType | null
     _min: TenantMinAggregateOutputType | null
     _max: TenantMaxAggregateOutputType | null
   }
@@ -10733,6 +10996,7 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    aiTokensUsed?: boolean
     apiKeys?: boolean | Tenant$apiKeysArgs<ExtArgs>
     apiRequests?: boolean | Tenant$apiRequestsArgs<ExtArgs>
     apiTokens?: boolean | Tenant$apiTokensArgs<ExtArgs>
@@ -10753,6 +11017,8 @@ export namespace Prisma {
     tenantRoles?: boolean | Tenant$tenantRolesArgs<ExtArgs>
     singleTypeAssignments?: boolean | Tenant$singleTypeAssignmentsArgs<ExtArgs>
     webhooks?: boolean | Tenant$webhooksArgs<ExtArgs>
+    aiQuotaLedgers?: boolean | Tenant$aiQuotaLedgersArgs<ExtArgs>
+    customDomains?: boolean | Tenant$customDomainsArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenant"]>
 
@@ -10777,6 +11043,7 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    aiTokensUsed?: boolean
   }, ExtArgs["result"]["tenant"]>
 
   export type TenantSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
@@ -10800,6 +11067,7 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    aiTokensUsed?: boolean
   }, ExtArgs["result"]["tenant"]>
 
   export type TenantSelectScalar = {
@@ -10823,9 +11091,10 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    aiTokensUsed?: boolean
   }
 
-  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "licenseKey" | "faviconUrl" | "primaryColor" | "storageConfig", ExtArgs["result"]["tenant"]>
+  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "licenseKey" | "faviconUrl" | "primaryColor" | "storageConfig" | "aiTokensUsed", ExtArgs["result"]["tenant"]>
   export type TenantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     apiKeys?: boolean | Tenant$apiKeysArgs<ExtArgs>
     apiRequests?: boolean | Tenant$apiRequestsArgs<ExtArgs>
@@ -10847,6 +11116,8 @@ export namespace Prisma {
     tenantRoles?: boolean | Tenant$tenantRolesArgs<ExtArgs>
     singleTypeAssignments?: boolean | Tenant$singleTypeAssignmentsArgs<ExtArgs>
     webhooks?: boolean | Tenant$webhooksArgs<ExtArgs>
+    aiQuotaLedgers?: boolean | Tenant$aiQuotaLedgersArgs<ExtArgs>
+    customDomains?: boolean | Tenant$customDomainsArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TenantIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -10875,6 +11146,8 @@ export namespace Prisma {
       tenantRoles: Prisma.$TenantRolePayload<ExtArgs>[]
       singleTypeAssignments: Prisma.$TenantSingleTypeAssignmentPayload<ExtArgs>[]
       webhooks: Prisma.$WebhookPayload<ExtArgs>[]
+      aiQuotaLedgers: Prisma.$AiQuotaLedgerPayload<ExtArgs>[]
+      customDomains: Prisma.$CustomDomainPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -10897,6 +11170,7 @@ export namespace Prisma {
       faviconUrl: string | null
       primaryColor: string | null
       storageConfig: Prisma.JsonValue | null
+      aiTokensUsed: number
     }, ExtArgs["result"]["tenant"]>
     composites: {}
   }
@@ -11311,6 +11585,8 @@ export namespace Prisma {
     tenantRoles<T extends Tenant$tenantRolesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$tenantRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     singleTypeAssignments<T extends Tenant$singleTypeAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$singleTypeAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantSingleTypeAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     webhooks<T extends Tenant$webhooksArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$webhooksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WebhookPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    aiQuotaLedgers<T extends Tenant$aiQuotaLedgersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$aiQuotaLedgersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    customDomains<T extends Tenant$customDomainsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$customDomainsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11360,6 +11636,7 @@ export namespace Prisma {
     readonly faviconUrl: FieldRef<"Tenant", 'String'>
     readonly primaryColor: FieldRef<"Tenant", 'String'>
     readonly storageConfig: FieldRef<"Tenant", 'Json'>
+    readonly aiTokensUsed: FieldRef<"Tenant", 'Int'>
   }
     
 
@@ -12225,6 +12502,54 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: WebhookScalarFieldEnum | WebhookScalarFieldEnum[]
+  }
+
+  /**
+   * Tenant.aiQuotaLedgers
+   */
+  export type Tenant$aiQuotaLedgersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    where?: AiQuotaLedgerWhereInput
+    orderBy?: AiQuotaLedgerOrderByWithRelationInput | AiQuotaLedgerOrderByWithRelationInput[]
+    cursor?: AiQuotaLedgerWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: AiQuotaLedgerScalarFieldEnum | AiQuotaLedgerScalarFieldEnum[]
+  }
+
+  /**
+   * Tenant.customDomains
+   */
+  export type Tenant$customDomainsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    where?: CustomDomainWhereInput
+    orderBy?: CustomDomainOrderByWithRelationInput | CustomDomainOrderByWithRelationInput[]
+    cursor?: CustomDomainWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: CustomDomainScalarFieldEnum | CustomDomainScalarFieldEnum[]
   }
 
   /**
@@ -13341,6 +13666,8 @@ export namespace Prisma {
     maxStorage: number | null
     maxLocales: number | null
     maxApiCalls: number | null
+    maxAiTokens: number | null
+    maxCustomDomains: number | null
   }
 
   export type CustomPlanOverrideSumAggregateOutputType = {
@@ -13351,6 +13678,8 @@ export namespace Prisma {
     maxStorage: number | null
     maxLocales: number | null
     maxApiCalls: number | null
+    maxAiTokens: number | null
+    maxCustomDomains: number | null
   }
 
   export type CustomPlanOverrideMinAggregateOutputType = {
@@ -13364,6 +13693,8 @@ export namespace Prisma {
     maxStorage: number | null
     maxLocales: number | null
     maxApiCalls: number | null
+    maxAiTokens: number | null
+    maxCustomDomains: number | null
     note: string | null
     createdBy: string | null
     createdAt: Date | null
@@ -13381,6 +13712,8 @@ export namespace Prisma {
     maxStorage: number | null
     maxLocales: number | null
     maxApiCalls: number | null
+    maxAiTokens: number | null
+    maxCustomDomains: number | null
     note: string | null
     createdBy: string | null
     createdAt: Date | null
@@ -13398,6 +13731,8 @@ export namespace Prisma {
     maxStorage: number
     maxLocales: number
     maxApiCalls: number
+    maxAiTokens: number
+    maxCustomDomains: number
     note: number
     createdBy: number
     createdAt: number
@@ -13414,6 +13749,8 @@ export namespace Prisma {
     maxStorage?: true
     maxLocales?: true
     maxApiCalls?: true
+    maxAiTokens?: true
+    maxCustomDomains?: true
   }
 
   export type CustomPlanOverrideSumAggregateInputType = {
@@ -13424,6 +13761,8 @@ export namespace Prisma {
     maxStorage?: true
     maxLocales?: true
     maxApiCalls?: true
+    maxAiTokens?: true
+    maxCustomDomains?: true
   }
 
   export type CustomPlanOverrideMinAggregateInputType = {
@@ -13437,6 +13776,8 @@ export namespace Prisma {
     maxStorage?: true
     maxLocales?: true
     maxApiCalls?: true
+    maxAiTokens?: true
+    maxCustomDomains?: true
     note?: true
     createdBy?: true
     createdAt?: true
@@ -13454,6 +13795,8 @@ export namespace Prisma {
     maxStorage?: true
     maxLocales?: true
     maxApiCalls?: true
+    maxAiTokens?: true
+    maxCustomDomains?: true
     note?: true
     createdBy?: true
     createdAt?: true
@@ -13471,6 +13814,8 @@ export namespace Prisma {
     maxStorage?: true
     maxLocales?: true
     maxApiCalls?: true
+    maxAiTokens?: true
+    maxCustomDomains?: true
     note?: true
     createdBy?: true
     createdAt?: true
@@ -13575,6 +13920,8 @@ export namespace Prisma {
     maxStorage: number | null
     maxLocales: number | null
     maxApiCalls: number | null
+    maxAiTokens: number | null
+    maxCustomDomains: number | null
     note: string | null
     createdBy: string | null
     createdAt: Date
@@ -13611,6 +13958,8 @@ export namespace Prisma {
     maxStorage?: boolean
     maxLocales?: boolean
     maxApiCalls?: boolean
+    maxAiTokens?: boolean
+    maxCustomDomains?: boolean
     note?: boolean
     createdBy?: boolean
     createdAt?: boolean
@@ -13628,6 +13977,8 @@ export namespace Prisma {
     maxStorage?: boolean
     maxLocales?: boolean
     maxApiCalls?: boolean
+    maxAiTokens?: boolean
+    maxCustomDomains?: boolean
     note?: boolean
     createdBy?: boolean
     createdAt?: boolean
@@ -13645,6 +13996,8 @@ export namespace Prisma {
     maxStorage?: boolean
     maxLocales?: boolean
     maxApiCalls?: boolean
+    maxAiTokens?: boolean
+    maxCustomDomains?: boolean
     note?: boolean
     createdBy?: boolean
     createdAt?: boolean
@@ -13662,13 +14015,15 @@ export namespace Prisma {
     maxStorage?: boolean
     maxLocales?: boolean
     maxApiCalls?: boolean
+    maxAiTokens?: boolean
+    maxCustomDomains?: boolean
     note?: boolean
     createdBy?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type CustomPlanOverrideOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "tenantId" | "maxWorkspaces" | "maxContentTypes" | "maxContentEntries" | "maxTeamMembers" | "maxStorage" | "maxLocales" | "maxApiCalls" | "note" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["customPlanOverride"]>
+  export type CustomPlanOverrideOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "userId" | "tenantId" | "maxWorkspaces" | "maxContentTypes" | "maxContentEntries" | "maxTeamMembers" | "maxStorage" | "maxLocales" | "maxApiCalls" | "maxAiTokens" | "maxCustomDomains" | "note" | "createdBy" | "createdAt" | "updatedAt", ExtArgs["result"]["customPlanOverride"]>
 
   export type $CustomPlanOverridePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     name: "CustomPlanOverride"
@@ -13684,6 +14039,8 @@ export namespace Prisma {
       maxStorage: number | null
       maxLocales: number | null
       maxApiCalls: number | null
+      maxAiTokens: number | null
+      maxCustomDomains: number | null
       note: string | null
       createdBy: string | null
       createdAt: Date
@@ -14121,6 +14478,8 @@ export namespace Prisma {
     readonly maxStorage: FieldRef<"CustomPlanOverride", 'Int'>
     readonly maxLocales: FieldRef<"CustomPlanOverride", 'Int'>
     readonly maxApiCalls: FieldRef<"CustomPlanOverride", 'Int'>
+    readonly maxAiTokens: FieldRef<"CustomPlanOverride", 'Int'>
+    readonly maxCustomDomains: FieldRef<"CustomPlanOverride", 'Int'>
     readonly note: FieldRef<"CustomPlanOverride", 'String'>
     readonly createdBy: FieldRef<"CustomPlanOverride", 'String'>
     readonly createdAt: FieldRef<"CustomPlanOverride", 'DateTime'>
@@ -16981,6 +17340,1128 @@ export namespace Prisma {
      * Choose, which related nodes to fetch as well
      */
     include?: SchemaFieldInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model AiQuotaLedger
+   */
+
+  export type AggregateAiQuotaLedger = {
+    _count: AiQuotaLedgerCountAggregateOutputType | null
+    _avg: AiQuotaLedgerAvgAggregateOutputType | null
+    _sum: AiQuotaLedgerSumAggregateOutputType | null
+    _min: AiQuotaLedgerMinAggregateOutputType | null
+    _max: AiQuotaLedgerMaxAggregateOutputType | null
+  }
+
+  export type AiQuotaLedgerAvgAggregateOutputType = {
+    tokens: number | null
+    words: number | null
+  }
+
+  export type AiQuotaLedgerSumAggregateOutputType = {
+    tokens: number | null
+    words: number | null
+  }
+
+  export type AiQuotaLedgerMinAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    action: string | null
+    tokens: number | null
+    words: number | null
+    model: string | null
+    createdAt: Date | null
+  }
+
+  export type AiQuotaLedgerMaxAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    action: string | null
+    tokens: number | null
+    words: number | null
+    model: string | null
+    createdAt: Date | null
+  }
+
+  export type AiQuotaLedgerCountAggregateOutputType = {
+    id: number
+    tenantId: number
+    action: number
+    tokens: number
+    words: number
+    model: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type AiQuotaLedgerAvgAggregateInputType = {
+    tokens?: true
+    words?: true
+  }
+
+  export type AiQuotaLedgerSumAggregateInputType = {
+    tokens?: true
+    words?: true
+  }
+
+  export type AiQuotaLedgerMinAggregateInputType = {
+    id?: true
+    tenantId?: true
+    action?: true
+    tokens?: true
+    words?: true
+    model?: true
+    createdAt?: true
+  }
+
+  export type AiQuotaLedgerMaxAggregateInputType = {
+    id?: true
+    tenantId?: true
+    action?: true
+    tokens?: true
+    words?: true
+    model?: true
+    createdAt?: true
+  }
+
+  export type AiQuotaLedgerCountAggregateInputType = {
+    id?: true
+    tenantId?: true
+    action?: true
+    tokens?: true
+    words?: true
+    model?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type AiQuotaLedgerAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiQuotaLedger to aggregate.
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiQuotaLedgers to fetch.
+     */
+    orderBy?: AiQuotaLedgerOrderByWithRelationInput | AiQuotaLedgerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: AiQuotaLedgerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiQuotaLedgers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiQuotaLedgers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned AiQuotaLedgers
+    **/
+    _count?: true | AiQuotaLedgerCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: AiQuotaLedgerAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: AiQuotaLedgerSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: AiQuotaLedgerMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: AiQuotaLedgerMaxAggregateInputType
+  }
+
+  export type GetAiQuotaLedgerAggregateType<T extends AiQuotaLedgerAggregateArgs> = {
+        [P in keyof T & keyof AggregateAiQuotaLedger]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateAiQuotaLedger[P]>
+      : GetScalarType<T[P], AggregateAiQuotaLedger[P]>
+  }
+
+
+
+
+  export type AiQuotaLedgerGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: AiQuotaLedgerWhereInput
+    orderBy?: AiQuotaLedgerOrderByWithAggregationInput | AiQuotaLedgerOrderByWithAggregationInput[]
+    by: AiQuotaLedgerScalarFieldEnum[] | AiQuotaLedgerScalarFieldEnum
+    having?: AiQuotaLedgerScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: AiQuotaLedgerCountAggregateInputType | true
+    _avg?: AiQuotaLedgerAvgAggregateInputType
+    _sum?: AiQuotaLedgerSumAggregateInputType
+    _min?: AiQuotaLedgerMinAggregateInputType
+    _max?: AiQuotaLedgerMaxAggregateInputType
+  }
+
+  export type AiQuotaLedgerGroupByOutputType = {
+    id: string
+    tenantId: string
+    action: string
+    tokens: number
+    words: number
+    model: string | null
+    createdAt: Date
+    _count: AiQuotaLedgerCountAggregateOutputType | null
+    _avg: AiQuotaLedgerAvgAggregateOutputType | null
+    _sum: AiQuotaLedgerSumAggregateOutputType | null
+    _min: AiQuotaLedgerMinAggregateOutputType | null
+    _max: AiQuotaLedgerMaxAggregateOutputType | null
+  }
+
+  type GetAiQuotaLedgerGroupByPayload<T extends AiQuotaLedgerGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<AiQuotaLedgerGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof AiQuotaLedgerGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], AiQuotaLedgerGroupByOutputType[P]>
+            : GetScalarType<T[P], AiQuotaLedgerGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type AiQuotaLedgerSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    action?: boolean
+    tokens?: boolean
+    words?: boolean
+    model?: boolean
+    createdAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiQuotaLedger"]>
+
+  export type AiQuotaLedgerSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    action?: boolean
+    tokens?: boolean
+    words?: boolean
+    model?: boolean
+    createdAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiQuotaLedger"]>
+
+  export type AiQuotaLedgerSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    action?: boolean
+    tokens?: boolean
+    words?: boolean
+    model?: boolean
+    createdAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["aiQuotaLedger"]>
+
+  export type AiQuotaLedgerSelectScalar = {
+    id?: boolean
+    tenantId?: boolean
+    action?: boolean
+    tokens?: boolean
+    words?: boolean
+    model?: boolean
+    createdAt?: boolean
+  }
+
+  export type AiQuotaLedgerOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "action" | "tokens" | "words" | "model" | "createdAt", ExtArgs["result"]["aiQuotaLedger"]>
+  export type AiQuotaLedgerInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type AiQuotaLedgerIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type AiQuotaLedgerIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+
+  export type $AiQuotaLedgerPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "AiQuotaLedger"
+    objects: {
+      tenant: Prisma.$TenantPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      tenantId: string
+      action: string
+      tokens: number
+      words: number
+      model: string | null
+      createdAt: Date
+    }, ExtArgs["result"]["aiQuotaLedger"]>
+    composites: {}
+  }
+
+  type AiQuotaLedgerGetPayload<S extends boolean | null | undefined | AiQuotaLedgerDefaultArgs> = $Result.GetResult<Prisma.$AiQuotaLedgerPayload, S>
+
+  type AiQuotaLedgerCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<AiQuotaLedgerFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: AiQuotaLedgerCountAggregateInputType | true
+    }
+
+  export interface AiQuotaLedgerDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['AiQuotaLedger'], meta: { name: 'AiQuotaLedger' } }
+    /**
+     * Find zero or one AiQuotaLedger that matches the filter.
+     * @param {AiQuotaLedgerFindUniqueArgs} args - Arguments to find a AiQuotaLedger
+     * @example
+     * // Get one AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends AiQuotaLedgerFindUniqueArgs>(args: SelectSubset<T, AiQuotaLedgerFindUniqueArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one AiQuotaLedger that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {AiQuotaLedgerFindUniqueOrThrowArgs} args - Arguments to find a AiQuotaLedger
+     * @example
+     * // Get one AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends AiQuotaLedgerFindUniqueOrThrowArgs>(args: SelectSubset<T, AiQuotaLedgerFindUniqueOrThrowArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiQuotaLedger that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerFindFirstArgs} args - Arguments to find a AiQuotaLedger
+     * @example
+     * // Get one AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends AiQuotaLedgerFindFirstArgs>(args?: SelectSubset<T, AiQuotaLedgerFindFirstArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first AiQuotaLedger that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerFindFirstOrThrowArgs} args - Arguments to find a AiQuotaLedger
+     * @example
+     * // Get one AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends AiQuotaLedgerFindFirstOrThrowArgs>(args?: SelectSubset<T, AiQuotaLedgerFindFirstOrThrowArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more AiQuotaLedgers that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all AiQuotaLedgers
+     * const aiQuotaLedgers = await prisma.aiQuotaLedger.findMany()
+     * 
+     * // Get first 10 AiQuotaLedgers
+     * const aiQuotaLedgers = await prisma.aiQuotaLedger.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const aiQuotaLedgerWithIdOnly = await prisma.aiQuotaLedger.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends AiQuotaLedgerFindManyArgs>(args?: SelectSubset<T, AiQuotaLedgerFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a AiQuotaLedger.
+     * @param {AiQuotaLedgerCreateArgs} args - Arguments to create a AiQuotaLedger.
+     * @example
+     * // Create one AiQuotaLedger
+     * const AiQuotaLedger = await prisma.aiQuotaLedger.create({
+     *   data: {
+     *     // ... data to create a AiQuotaLedger
+     *   }
+     * })
+     * 
+     */
+    create<T extends AiQuotaLedgerCreateArgs>(args: SelectSubset<T, AiQuotaLedgerCreateArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many AiQuotaLedgers.
+     * @param {AiQuotaLedgerCreateManyArgs} args - Arguments to create many AiQuotaLedgers.
+     * @example
+     * // Create many AiQuotaLedgers
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends AiQuotaLedgerCreateManyArgs>(args?: SelectSubset<T, AiQuotaLedgerCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many AiQuotaLedgers and returns the data saved in the database.
+     * @param {AiQuotaLedgerCreateManyAndReturnArgs} args - Arguments to create many AiQuotaLedgers.
+     * @example
+     * // Create many AiQuotaLedgers
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many AiQuotaLedgers and only return the `id`
+     * const aiQuotaLedgerWithIdOnly = await prisma.aiQuotaLedger.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends AiQuotaLedgerCreateManyAndReturnArgs>(args?: SelectSubset<T, AiQuotaLedgerCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a AiQuotaLedger.
+     * @param {AiQuotaLedgerDeleteArgs} args - Arguments to delete one AiQuotaLedger.
+     * @example
+     * // Delete one AiQuotaLedger
+     * const AiQuotaLedger = await prisma.aiQuotaLedger.delete({
+     *   where: {
+     *     // ... filter to delete one AiQuotaLedger
+     *   }
+     * })
+     * 
+     */
+    delete<T extends AiQuotaLedgerDeleteArgs>(args: SelectSubset<T, AiQuotaLedgerDeleteArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one AiQuotaLedger.
+     * @param {AiQuotaLedgerUpdateArgs} args - Arguments to update one AiQuotaLedger.
+     * @example
+     * // Update one AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends AiQuotaLedgerUpdateArgs>(args: SelectSubset<T, AiQuotaLedgerUpdateArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more AiQuotaLedgers.
+     * @param {AiQuotaLedgerDeleteManyArgs} args - Arguments to filter AiQuotaLedgers to delete.
+     * @example
+     * // Delete a few AiQuotaLedgers
+     * const { count } = await prisma.aiQuotaLedger.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends AiQuotaLedgerDeleteManyArgs>(args?: SelectSubset<T, AiQuotaLedgerDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiQuotaLedgers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many AiQuotaLedgers
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends AiQuotaLedgerUpdateManyArgs>(args: SelectSubset<T, AiQuotaLedgerUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more AiQuotaLedgers and returns the data updated in the database.
+     * @param {AiQuotaLedgerUpdateManyAndReturnArgs} args - Arguments to update many AiQuotaLedgers.
+     * @example
+     * // Update many AiQuotaLedgers
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more AiQuotaLedgers and only return the `id`
+     * const aiQuotaLedgerWithIdOnly = await prisma.aiQuotaLedger.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends AiQuotaLedgerUpdateManyAndReturnArgs>(args: SelectSubset<T, AiQuotaLedgerUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one AiQuotaLedger.
+     * @param {AiQuotaLedgerUpsertArgs} args - Arguments to update or create a AiQuotaLedger.
+     * @example
+     * // Update or create a AiQuotaLedger
+     * const aiQuotaLedger = await prisma.aiQuotaLedger.upsert({
+     *   create: {
+     *     // ... data to create a AiQuotaLedger
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the AiQuotaLedger we want to update
+     *   }
+     * })
+     */
+    upsert<T extends AiQuotaLedgerUpsertArgs>(args: SelectSubset<T, AiQuotaLedgerUpsertArgs<ExtArgs>>): Prisma__AiQuotaLedgerClient<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of AiQuotaLedgers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerCountArgs} args - Arguments to filter AiQuotaLedgers to count.
+     * @example
+     * // Count the number of AiQuotaLedgers
+     * const count = await prisma.aiQuotaLedger.count({
+     *   where: {
+     *     // ... the filter for the AiQuotaLedgers we want to count
+     *   }
+     * })
+    **/
+    count<T extends AiQuotaLedgerCountArgs>(
+      args?: Subset<T, AiQuotaLedgerCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], AiQuotaLedgerCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a AiQuotaLedger.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends AiQuotaLedgerAggregateArgs>(args: Subset<T, AiQuotaLedgerAggregateArgs>): Prisma.PrismaPromise<GetAiQuotaLedgerAggregateType<T>>
+
+    /**
+     * Group by AiQuotaLedger.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {AiQuotaLedgerGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends AiQuotaLedgerGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: AiQuotaLedgerGroupByArgs['orderBy'] }
+        : { orderBy?: AiQuotaLedgerGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, AiQuotaLedgerGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetAiQuotaLedgerGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the AiQuotaLedger model
+   */
+  readonly fields: AiQuotaLedgerFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for AiQuotaLedger.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__AiQuotaLedgerClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the AiQuotaLedger model
+   */
+  interface AiQuotaLedgerFieldRefs {
+    readonly id: FieldRef<"AiQuotaLedger", 'String'>
+    readonly tenantId: FieldRef<"AiQuotaLedger", 'String'>
+    readonly action: FieldRef<"AiQuotaLedger", 'String'>
+    readonly tokens: FieldRef<"AiQuotaLedger", 'Int'>
+    readonly words: FieldRef<"AiQuotaLedger", 'Int'>
+    readonly model: FieldRef<"AiQuotaLedger", 'String'>
+    readonly createdAt: FieldRef<"AiQuotaLedger", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * AiQuotaLedger findUnique
+   */
+  export type AiQuotaLedgerFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter, which AiQuotaLedger to fetch.
+     */
+    where: AiQuotaLedgerWhereUniqueInput
+  }
+
+  /**
+   * AiQuotaLedger findUniqueOrThrow
+   */
+  export type AiQuotaLedgerFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter, which AiQuotaLedger to fetch.
+     */
+    where: AiQuotaLedgerWhereUniqueInput
+  }
+
+  /**
+   * AiQuotaLedger findFirst
+   */
+  export type AiQuotaLedgerFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter, which AiQuotaLedger to fetch.
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiQuotaLedgers to fetch.
+     */
+    orderBy?: AiQuotaLedgerOrderByWithRelationInput | AiQuotaLedgerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiQuotaLedgers.
+     */
+    cursor?: AiQuotaLedgerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiQuotaLedgers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiQuotaLedgers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiQuotaLedgers.
+     */
+    distinct?: AiQuotaLedgerScalarFieldEnum | AiQuotaLedgerScalarFieldEnum[]
+  }
+
+  /**
+   * AiQuotaLedger findFirstOrThrow
+   */
+  export type AiQuotaLedgerFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter, which AiQuotaLedger to fetch.
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiQuotaLedgers to fetch.
+     */
+    orderBy?: AiQuotaLedgerOrderByWithRelationInput | AiQuotaLedgerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for AiQuotaLedgers.
+     */
+    cursor?: AiQuotaLedgerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiQuotaLedgers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiQuotaLedgers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of AiQuotaLedgers.
+     */
+    distinct?: AiQuotaLedgerScalarFieldEnum | AiQuotaLedgerScalarFieldEnum[]
+  }
+
+  /**
+   * AiQuotaLedger findMany
+   */
+  export type AiQuotaLedgerFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter, which AiQuotaLedgers to fetch.
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of AiQuotaLedgers to fetch.
+     */
+    orderBy?: AiQuotaLedgerOrderByWithRelationInput | AiQuotaLedgerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing AiQuotaLedgers.
+     */
+    cursor?: AiQuotaLedgerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` AiQuotaLedgers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` AiQuotaLedgers.
+     */
+    skip?: number
+    distinct?: AiQuotaLedgerScalarFieldEnum | AiQuotaLedgerScalarFieldEnum[]
+  }
+
+  /**
+   * AiQuotaLedger create
+   */
+  export type AiQuotaLedgerCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * The data needed to create a AiQuotaLedger.
+     */
+    data: XOR<AiQuotaLedgerCreateInput, AiQuotaLedgerUncheckedCreateInput>
+  }
+
+  /**
+   * AiQuotaLedger createMany
+   */
+  export type AiQuotaLedgerCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many AiQuotaLedgers.
+     */
+    data: AiQuotaLedgerCreateManyInput | AiQuotaLedgerCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * AiQuotaLedger createManyAndReturn
+   */
+  export type AiQuotaLedgerCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * The data used to create many AiQuotaLedgers.
+     */
+    data: AiQuotaLedgerCreateManyInput | AiQuotaLedgerCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiQuotaLedger update
+   */
+  export type AiQuotaLedgerUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * The data needed to update a AiQuotaLedger.
+     */
+    data: XOR<AiQuotaLedgerUpdateInput, AiQuotaLedgerUncheckedUpdateInput>
+    /**
+     * Choose, which AiQuotaLedger to update.
+     */
+    where: AiQuotaLedgerWhereUniqueInput
+  }
+
+  /**
+   * AiQuotaLedger updateMany
+   */
+  export type AiQuotaLedgerUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update AiQuotaLedgers.
+     */
+    data: XOR<AiQuotaLedgerUpdateManyMutationInput, AiQuotaLedgerUncheckedUpdateManyInput>
+    /**
+     * Filter which AiQuotaLedgers to update
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * Limit how many AiQuotaLedgers to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiQuotaLedger updateManyAndReturn
+   */
+  export type AiQuotaLedgerUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * The data used to update AiQuotaLedgers.
+     */
+    data: XOR<AiQuotaLedgerUpdateManyMutationInput, AiQuotaLedgerUncheckedUpdateManyInput>
+    /**
+     * Filter which AiQuotaLedgers to update
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * Limit how many AiQuotaLedgers to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * AiQuotaLedger upsert
+   */
+  export type AiQuotaLedgerUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * The filter to search for the AiQuotaLedger to update in case it exists.
+     */
+    where: AiQuotaLedgerWhereUniqueInput
+    /**
+     * In case the AiQuotaLedger found by the `where` argument doesn't exist, create a new AiQuotaLedger with this data.
+     */
+    create: XOR<AiQuotaLedgerCreateInput, AiQuotaLedgerUncheckedCreateInput>
+    /**
+     * In case the AiQuotaLedger was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<AiQuotaLedgerUpdateInput, AiQuotaLedgerUncheckedUpdateInput>
+  }
+
+  /**
+   * AiQuotaLedger delete
+   */
+  export type AiQuotaLedgerDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
+    /**
+     * Filter which AiQuotaLedger to delete.
+     */
+    where: AiQuotaLedgerWhereUniqueInput
+  }
+
+  /**
+   * AiQuotaLedger deleteMany
+   */
+  export type AiQuotaLedgerDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which AiQuotaLedgers to delete
+     */
+    where?: AiQuotaLedgerWhereInput
+    /**
+     * Limit how many AiQuotaLedgers to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * AiQuotaLedger without action
+   */
+  export type AiQuotaLedgerDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the AiQuotaLedger
+     */
+    select?: AiQuotaLedgerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the AiQuotaLedger
+     */
+    omit?: AiQuotaLedgerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: AiQuotaLedgerInclude<ExtArgs> | null
   }
 
 
@@ -51524,6 +53005,1103 @@ export namespace Prisma {
 
 
   /**
+   * Model CustomDomain
+   */
+
+  export type AggregateCustomDomain = {
+    _count: CustomDomainCountAggregateOutputType | null
+    _min: CustomDomainMinAggregateOutputType | null
+    _max: CustomDomainMaxAggregateOutputType | null
+  }
+
+  export type CustomDomainMinAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    domain: string | null
+    status: string | null
+    verifiedAt: Date | null
+    isPrimary: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CustomDomainMaxAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    domain: string | null
+    status: string | null
+    verifiedAt: Date | null
+    isPrimary: boolean | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type CustomDomainCountAggregateOutputType = {
+    id: number
+    tenantId: number
+    domain: number
+    status: number
+    verifiedAt: number
+    isPrimary: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type CustomDomainMinAggregateInputType = {
+    id?: true
+    tenantId?: true
+    domain?: true
+    status?: true
+    verifiedAt?: true
+    isPrimary?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CustomDomainMaxAggregateInputType = {
+    id?: true
+    tenantId?: true
+    domain?: true
+    status?: true
+    verifiedAt?: true
+    isPrimary?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type CustomDomainCountAggregateInputType = {
+    id?: true
+    tenantId?: true
+    domain?: true
+    status?: true
+    verifiedAt?: true
+    isPrimary?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type CustomDomainAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CustomDomain to aggregate.
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CustomDomains to fetch.
+     */
+    orderBy?: CustomDomainOrderByWithRelationInput | CustomDomainOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: CustomDomainWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CustomDomains from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CustomDomains.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned CustomDomains
+    **/
+    _count?: true | CustomDomainCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: CustomDomainMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: CustomDomainMaxAggregateInputType
+  }
+
+  export type GetCustomDomainAggregateType<T extends CustomDomainAggregateArgs> = {
+        [P in keyof T & keyof AggregateCustomDomain]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateCustomDomain[P]>
+      : GetScalarType<T[P], AggregateCustomDomain[P]>
+  }
+
+
+
+
+  export type CustomDomainGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: CustomDomainWhereInput
+    orderBy?: CustomDomainOrderByWithAggregationInput | CustomDomainOrderByWithAggregationInput[]
+    by: CustomDomainScalarFieldEnum[] | CustomDomainScalarFieldEnum
+    having?: CustomDomainScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: CustomDomainCountAggregateInputType | true
+    _min?: CustomDomainMinAggregateInputType
+    _max?: CustomDomainMaxAggregateInputType
+  }
+
+  export type CustomDomainGroupByOutputType = {
+    id: string
+    tenantId: string
+    domain: string
+    status: string
+    verifiedAt: Date | null
+    isPrimary: boolean
+    createdAt: Date
+    updatedAt: Date
+    _count: CustomDomainCountAggregateOutputType | null
+    _min: CustomDomainMinAggregateOutputType | null
+    _max: CustomDomainMaxAggregateOutputType | null
+  }
+
+  type GetCustomDomainGroupByPayload<T extends CustomDomainGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<CustomDomainGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof CustomDomainGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], CustomDomainGroupByOutputType[P]>
+            : GetScalarType<T[P], CustomDomainGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type CustomDomainSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    domain?: boolean
+    status?: boolean
+    verifiedAt?: boolean
+    isPrimary?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["customDomain"]>
+
+  export type CustomDomainSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    domain?: boolean
+    status?: boolean
+    verifiedAt?: boolean
+    isPrimary?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["customDomain"]>
+
+  export type CustomDomainSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    domain?: boolean
+    status?: boolean
+    verifiedAt?: boolean
+    isPrimary?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["customDomain"]>
+
+  export type CustomDomainSelectScalar = {
+    id?: boolean
+    tenantId?: boolean
+    domain?: boolean
+    status?: boolean
+    verifiedAt?: boolean
+    isPrimary?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type CustomDomainOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "domain" | "status" | "verifiedAt" | "isPrimary" | "createdAt" | "updatedAt", ExtArgs["result"]["customDomain"]>
+  export type CustomDomainInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type CustomDomainIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type CustomDomainIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+
+  export type $CustomDomainPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "CustomDomain"
+    objects: {
+      tenant: Prisma.$TenantPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      tenantId: string
+      domain: string
+      status: string
+      verifiedAt: Date | null
+      isPrimary: boolean
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["customDomain"]>
+    composites: {}
+  }
+
+  type CustomDomainGetPayload<S extends boolean | null | undefined | CustomDomainDefaultArgs> = $Result.GetResult<Prisma.$CustomDomainPayload, S>
+
+  type CustomDomainCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<CustomDomainFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: CustomDomainCountAggregateInputType | true
+    }
+
+  export interface CustomDomainDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['CustomDomain'], meta: { name: 'CustomDomain' } }
+    /**
+     * Find zero or one CustomDomain that matches the filter.
+     * @param {CustomDomainFindUniqueArgs} args - Arguments to find a CustomDomain
+     * @example
+     * // Get one CustomDomain
+     * const customDomain = await prisma.customDomain.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends CustomDomainFindUniqueArgs>(args: SelectSubset<T, CustomDomainFindUniqueArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one CustomDomain that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {CustomDomainFindUniqueOrThrowArgs} args - Arguments to find a CustomDomain
+     * @example
+     * // Get one CustomDomain
+     * const customDomain = await prisma.customDomain.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends CustomDomainFindUniqueOrThrowArgs>(args: SelectSubset<T, CustomDomainFindUniqueOrThrowArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CustomDomain that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainFindFirstArgs} args - Arguments to find a CustomDomain
+     * @example
+     * // Get one CustomDomain
+     * const customDomain = await prisma.customDomain.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends CustomDomainFindFirstArgs>(args?: SelectSubset<T, CustomDomainFindFirstArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first CustomDomain that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainFindFirstOrThrowArgs} args - Arguments to find a CustomDomain
+     * @example
+     * // Get one CustomDomain
+     * const customDomain = await prisma.customDomain.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends CustomDomainFindFirstOrThrowArgs>(args?: SelectSubset<T, CustomDomainFindFirstOrThrowArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more CustomDomains that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all CustomDomains
+     * const customDomains = await prisma.customDomain.findMany()
+     * 
+     * // Get first 10 CustomDomains
+     * const customDomains = await prisma.customDomain.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const customDomainWithIdOnly = await prisma.customDomain.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends CustomDomainFindManyArgs>(args?: SelectSubset<T, CustomDomainFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a CustomDomain.
+     * @param {CustomDomainCreateArgs} args - Arguments to create a CustomDomain.
+     * @example
+     * // Create one CustomDomain
+     * const CustomDomain = await prisma.customDomain.create({
+     *   data: {
+     *     // ... data to create a CustomDomain
+     *   }
+     * })
+     * 
+     */
+    create<T extends CustomDomainCreateArgs>(args: SelectSubset<T, CustomDomainCreateArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many CustomDomains.
+     * @param {CustomDomainCreateManyArgs} args - Arguments to create many CustomDomains.
+     * @example
+     * // Create many CustomDomains
+     * const customDomain = await prisma.customDomain.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends CustomDomainCreateManyArgs>(args?: SelectSubset<T, CustomDomainCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many CustomDomains and returns the data saved in the database.
+     * @param {CustomDomainCreateManyAndReturnArgs} args - Arguments to create many CustomDomains.
+     * @example
+     * // Create many CustomDomains
+     * const customDomain = await prisma.customDomain.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many CustomDomains and only return the `id`
+     * const customDomainWithIdOnly = await prisma.customDomain.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends CustomDomainCreateManyAndReturnArgs>(args?: SelectSubset<T, CustomDomainCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a CustomDomain.
+     * @param {CustomDomainDeleteArgs} args - Arguments to delete one CustomDomain.
+     * @example
+     * // Delete one CustomDomain
+     * const CustomDomain = await prisma.customDomain.delete({
+     *   where: {
+     *     // ... filter to delete one CustomDomain
+     *   }
+     * })
+     * 
+     */
+    delete<T extends CustomDomainDeleteArgs>(args: SelectSubset<T, CustomDomainDeleteArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one CustomDomain.
+     * @param {CustomDomainUpdateArgs} args - Arguments to update one CustomDomain.
+     * @example
+     * // Update one CustomDomain
+     * const customDomain = await prisma.customDomain.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends CustomDomainUpdateArgs>(args: SelectSubset<T, CustomDomainUpdateArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more CustomDomains.
+     * @param {CustomDomainDeleteManyArgs} args - Arguments to filter CustomDomains to delete.
+     * @example
+     * // Delete a few CustomDomains
+     * const { count } = await prisma.customDomain.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends CustomDomainDeleteManyArgs>(args?: SelectSubset<T, CustomDomainDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CustomDomains.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many CustomDomains
+     * const customDomain = await prisma.customDomain.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends CustomDomainUpdateManyArgs>(args: SelectSubset<T, CustomDomainUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more CustomDomains and returns the data updated in the database.
+     * @param {CustomDomainUpdateManyAndReturnArgs} args - Arguments to update many CustomDomains.
+     * @example
+     * // Update many CustomDomains
+     * const customDomain = await prisma.customDomain.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more CustomDomains and only return the `id`
+     * const customDomainWithIdOnly = await prisma.customDomain.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends CustomDomainUpdateManyAndReturnArgs>(args: SelectSubset<T, CustomDomainUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one CustomDomain.
+     * @param {CustomDomainUpsertArgs} args - Arguments to update or create a CustomDomain.
+     * @example
+     * // Update or create a CustomDomain
+     * const customDomain = await prisma.customDomain.upsert({
+     *   create: {
+     *     // ... data to create a CustomDomain
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the CustomDomain we want to update
+     *   }
+     * })
+     */
+    upsert<T extends CustomDomainUpsertArgs>(args: SelectSubset<T, CustomDomainUpsertArgs<ExtArgs>>): Prisma__CustomDomainClient<$Result.GetResult<Prisma.$CustomDomainPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of CustomDomains.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainCountArgs} args - Arguments to filter CustomDomains to count.
+     * @example
+     * // Count the number of CustomDomains
+     * const count = await prisma.customDomain.count({
+     *   where: {
+     *     // ... the filter for the CustomDomains we want to count
+     *   }
+     * })
+    **/
+    count<T extends CustomDomainCountArgs>(
+      args?: Subset<T, CustomDomainCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], CustomDomainCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a CustomDomain.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends CustomDomainAggregateArgs>(args: Subset<T, CustomDomainAggregateArgs>): Prisma.PrismaPromise<GetCustomDomainAggregateType<T>>
+
+    /**
+     * Group by CustomDomain.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {CustomDomainGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends CustomDomainGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: CustomDomainGroupByArgs['orderBy'] }
+        : { orderBy?: CustomDomainGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, CustomDomainGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetCustomDomainGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the CustomDomain model
+   */
+  readonly fields: CustomDomainFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for CustomDomain.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__CustomDomainClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the CustomDomain model
+   */
+  interface CustomDomainFieldRefs {
+    readonly id: FieldRef<"CustomDomain", 'String'>
+    readonly tenantId: FieldRef<"CustomDomain", 'String'>
+    readonly domain: FieldRef<"CustomDomain", 'String'>
+    readonly status: FieldRef<"CustomDomain", 'String'>
+    readonly verifiedAt: FieldRef<"CustomDomain", 'DateTime'>
+    readonly isPrimary: FieldRef<"CustomDomain", 'Boolean'>
+    readonly createdAt: FieldRef<"CustomDomain", 'DateTime'>
+    readonly updatedAt: FieldRef<"CustomDomain", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * CustomDomain findUnique
+   */
+  export type CustomDomainFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter, which CustomDomain to fetch.
+     */
+    where: CustomDomainWhereUniqueInput
+  }
+
+  /**
+   * CustomDomain findUniqueOrThrow
+   */
+  export type CustomDomainFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter, which CustomDomain to fetch.
+     */
+    where: CustomDomainWhereUniqueInput
+  }
+
+  /**
+   * CustomDomain findFirst
+   */
+  export type CustomDomainFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter, which CustomDomain to fetch.
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CustomDomains to fetch.
+     */
+    orderBy?: CustomDomainOrderByWithRelationInput | CustomDomainOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CustomDomains.
+     */
+    cursor?: CustomDomainWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CustomDomains from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CustomDomains.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CustomDomains.
+     */
+    distinct?: CustomDomainScalarFieldEnum | CustomDomainScalarFieldEnum[]
+  }
+
+  /**
+   * CustomDomain findFirstOrThrow
+   */
+  export type CustomDomainFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter, which CustomDomain to fetch.
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CustomDomains to fetch.
+     */
+    orderBy?: CustomDomainOrderByWithRelationInput | CustomDomainOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for CustomDomains.
+     */
+    cursor?: CustomDomainWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CustomDomains from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CustomDomains.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CustomDomains.
+     */
+    distinct?: CustomDomainScalarFieldEnum | CustomDomainScalarFieldEnum[]
+  }
+
+  /**
+   * CustomDomain findMany
+   */
+  export type CustomDomainFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter, which CustomDomains to fetch.
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of CustomDomains to fetch.
+     */
+    orderBy?: CustomDomainOrderByWithRelationInput | CustomDomainOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing CustomDomains.
+     */
+    cursor?: CustomDomainWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` CustomDomains from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` CustomDomains.
+     */
+    skip?: number
+    distinct?: CustomDomainScalarFieldEnum | CustomDomainScalarFieldEnum[]
+  }
+
+  /**
+   * CustomDomain create
+   */
+  export type CustomDomainCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * The data needed to create a CustomDomain.
+     */
+    data: XOR<CustomDomainCreateInput, CustomDomainUncheckedCreateInput>
+  }
+
+  /**
+   * CustomDomain createMany
+   */
+  export type CustomDomainCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many CustomDomains.
+     */
+    data: CustomDomainCreateManyInput | CustomDomainCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * CustomDomain createManyAndReturn
+   */
+  export type CustomDomainCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * The data used to create many CustomDomains.
+     */
+    data: CustomDomainCreateManyInput | CustomDomainCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CustomDomain update
+   */
+  export type CustomDomainUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * The data needed to update a CustomDomain.
+     */
+    data: XOR<CustomDomainUpdateInput, CustomDomainUncheckedUpdateInput>
+    /**
+     * Choose, which CustomDomain to update.
+     */
+    where: CustomDomainWhereUniqueInput
+  }
+
+  /**
+   * CustomDomain updateMany
+   */
+  export type CustomDomainUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update CustomDomains.
+     */
+    data: XOR<CustomDomainUpdateManyMutationInput, CustomDomainUncheckedUpdateManyInput>
+    /**
+     * Filter which CustomDomains to update
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * Limit how many CustomDomains to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * CustomDomain updateManyAndReturn
+   */
+  export type CustomDomainUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * The data used to update CustomDomains.
+     */
+    data: XOR<CustomDomainUpdateManyMutationInput, CustomDomainUncheckedUpdateManyInput>
+    /**
+     * Filter which CustomDomains to update
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * Limit how many CustomDomains to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * CustomDomain upsert
+   */
+  export type CustomDomainUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * The filter to search for the CustomDomain to update in case it exists.
+     */
+    where: CustomDomainWhereUniqueInput
+    /**
+     * In case the CustomDomain found by the `where` argument doesn't exist, create a new CustomDomain with this data.
+     */
+    create: XOR<CustomDomainCreateInput, CustomDomainUncheckedCreateInput>
+    /**
+     * In case the CustomDomain was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<CustomDomainUpdateInput, CustomDomainUncheckedUpdateInput>
+  }
+
+  /**
+   * CustomDomain delete
+   */
+  export type CustomDomainDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+    /**
+     * Filter which CustomDomain to delete.
+     */
+    where: CustomDomainWhereUniqueInput
+  }
+
+  /**
+   * CustomDomain deleteMany
+   */
+  export type CustomDomainDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which CustomDomains to delete
+     */
+    where?: CustomDomainWhereInput
+    /**
+     * Limit how many CustomDomains to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * CustomDomain without action
+   */
+  export type CustomDomainDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the CustomDomain
+     */
+    select?: CustomDomainSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the CustomDomain
+     */
+    omit?: CustomDomainOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: CustomDomainInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -51559,7 +54137,9 @@ export namespace Prisma {
     emailVerified: 'emailVerified',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
-    plan: 'plan'
+    plan: 'plan',
+    masterDatabaseUrl: 'masterDatabaseUrl',
+    masterStorageConfig: 'masterStorageConfig'
   };
 
   export type UserScalarFieldEnum = (typeof UserScalarFieldEnum)[keyof typeof UserScalarFieldEnum]
@@ -51622,7 +54202,8 @@ export namespace Prisma {
     licenseKey: 'licenseKey',
     faviconUrl: 'faviconUrl',
     primaryColor: 'primaryColor',
-    storageConfig: 'storageConfig'
+    storageConfig: 'storageConfig',
+    aiTokensUsed: 'aiTokensUsed'
   };
 
   export type TenantScalarFieldEnum = (typeof TenantScalarFieldEnum)[keyof typeof TenantScalarFieldEnum]
@@ -51651,6 +54232,8 @@ export namespace Prisma {
     maxStorage: 'maxStorage',
     maxLocales: 'maxLocales',
     maxApiCalls: 'maxApiCalls',
+    maxAiTokens: 'maxAiTokens',
+    maxCustomDomains: 'maxCustomDomains',
     note: 'note',
     createdBy: 'createdBy',
     createdAt: 'createdAt',
@@ -51693,6 +54276,19 @@ export namespace Prisma {
   };
 
   export type SchemaFieldScalarFieldEnum = (typeof SchemaFieldScalarFieldEnum)[keyof typeof SchemaFieldScalarFieldEnum]
+
+
+  export const AiQuotaLedgerScalarFieldEnum: {
+    id: 'id',
+    tenantId: 'tenantId',
+    action: 'action',
+    tokens: 'tokens',
+    words: 'words',
+    model: 'model',
+    createdAt: 'createdAt'
+  };
+
+  export type AiQuotaLedgerScalarFieldEnum = (typeof AiQuotaLedgerScalarFieldEnum)[keyof typeof AiQuotaLedgerScalarFieldEnum]
 
 
   export const TenantContentTypeAssignmentScalarFieldEnum: {
@@ -52166,6 +54762,20 @@ export namespace Prisma {
   export type LicenseCacheScalarFieldEnum = (typeof LicenseCacheScalarFieldEnum)[keyof typeof LicenseCacheScalarFieldEnum]
 
 
+  export const CustomDomainScalarFieldEnum: {
+    id: 'id',
+    tenantId: 'tenantId',
+    domain: 'domain',
+    status: 'status',
+    verifiedAt: 'verifiedAt',
+    isPrimary: 'isPrimary',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type CustomDomainScalarFieldEnum = (typeof CustomDomainScalarFieldEnum)[keyof typeof CustomDomainScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -52248,20 +54858,6 @@ export namespace Prisma {
 
 
   /**
-   * Reference to a field of type 'Int'
-   */
-  export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
-    
-
-
-  /**
-   * Reference to a field of type 'Int[]'
-   */
-  export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
-    
-
-
-  /**
    * Reference to a field of type 'Json'
    */
   export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
@@ -52272,6 +54868,20 @@ export namespace Prisma {
    * Reference to a field of type 'QueryMode'
    */
   export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'Int'
+   */
+  export type IntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int'>
+    
+
+
+  /**
+   * Reference to a field of type 'Int[]'
+   */
+  export type ListIntFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Int[]'>
     
 
 
@@ -52384,6 +54994,8 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     plan?: StringFilter<"User"> | string
+    masterDatabaseUrl?: StringNullableFilter<"User"> | string | null
+    masterStorageConfig?: JsonNullableFilter<"User">
     accounts?: AccountListRelationFilter
     sessions?: SessionListRelationFilter
     subscriptions?: SubscriptionListRelationFilter
@@ -52401,6 +55013,8 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     plan?: SortOrder
+    masterDatabaseUrl?: SortOrderInput | SortOrder
+    masterStorageConfig?: SortOrderInput | SortOrder
     accounts?: AccountOrderByRelationAggregateInput
     sessions?: SessionOrderByRelationAggregateInput
     subscriptions?: SubscriptionOrderByRelationAggregateInput
@@ -52421,6 +55035,8 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"User"> | Date | string
     updatedAt?: DateTimeFilter<"User"> | Date | string
     plan?: StringFilter<"User"> | string
+    masterDatabaseUrl?: StringNullableFilter<"User"> | string | null
+    masterStorageConfig?: JsonNullableFilter<"User">
     accounts?: AccountListRelationFilter
     sessions?: SessionListRelationFilter
     subscriptions?: SubscriptionListRelationFilter
@@ -52438,6 +55054,8 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     plan?: SortOrder
+    masterDatabaseUrl?: SortOrderInput | SortOrder
+    masterStorageConfig?: SortOrderInput | SortOrder
     _count?: UserCountOrderByAggregateInput
     _max?: UserMaxOrderByAggregateInput
     _min?: UserMinOrderByAggregateInput
@@ -52457,6 +55075,8 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"User"> | Date | string
     plan?: StringWithAggregatesFilter<"User"> | string
+    masterDatabaseUrl?: StringNullableWithAggregatesFilter<"User"> | string | null
+    masterStorageConfig?: JsonNullableWithAggregatesFilter<"User">
   }
 
   export type AccountWhereInput = {
@@ -52669,6 +55289,7 @@ export namespace Prisma {
     faviconUrl?: StringNullableFilter<"Tenant"> | string | null
     primaryColor?: StringNullableFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableFilter<"Tenant">
+    aiTokensUsed?: IntFilter<"Tenant"> | number
     apiKeys?: ApiKeyListRelationFilter
     apiRequests?: ApiRequestListRelationFilter
     apiTokens?: ApiTokenListRelationFilter
@@ -52689,6 +55310,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleListRelationFilter
     singleTypeAssignments?: TenantSingleTypeAssignmentListRelationFilter
     webhooks?: WebhookListRelationFilter
+    aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
+    customDomains?: CustomDomainListRelationFilter
   }
 
   export type TenantOrderByWithRelationInput = {
@@ -52712,6 +55335,7 @@ export namespace Prisma {
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
+    aiTokensUsed?: SortOrder
     apiKeys?: ApiKeyOrderByRelationAggregateInput
     apiRequests?: ApiRequestOrderByRelationAggregateInput
     apiTokens?: ApiTokenOrderByRelationAggregateInput
@@ -52732,6 +55356,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleOrderByRelationAggregateInput
     singleTypeAssignments?: TenantSingleTypeAssignmentOrderByRelationAggregateInput
     webhooks?: WebhookOrderByRelationAggregateInput
+    aiQuotaLedgers?: AiQuotaLedgerOrderByRelationAggregateInput
+    customDomains?: CustomDomainOrderByRelationAggregateInput
   }
 
   export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -52758,6 +55384,7 @@ export namespace Prisma {
     faviconUrl?: StringNullableFilter<"Tenant"> | string | null
     primaryColor?: StringNullableFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableFilter<"Tenant">
+    aiTokensUsed?: IntFilter<"Tenant"> | number
     apiKeys?: ApiKeyListRelationFilter
     apiRequests?: ApiRequestListRelationFilter
     apiTokens?: ApiTokenListRelationFilter
@@ -52778,6 +55405,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleListRelationFilter
     singleTypeAssignments?: TenantSingleTypeAssignmentListRelationFilter
     webhooks?: WebhookListRelationFilter
+    aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
+    customDomains?: CustomDomainListRelationFilter
   }, "id" | "slug" | "customDomain" | "licenseKey">
 
   export type TenantOrderByWithAggregationInput = {
@@ -52801,9 +55430,12 @@ export namespace Prisma {
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
+    aiTokensUsed?: SortOrder
     _count?: TenantCountOrderByAggregateInput
+    _avg?: TenantAvgOrderByAggregateInput
     _max?: TenantMaxOrderByAggregateInput
     _min?: TenantMinOrderByAggregateInput
+    _sum?: TenantSumOrderByAggregateInput
   }
 
   export type TenantScalarWhereWithAggregatesInput = {
@@ -52830,6 +55462,7 @@ export namespace Prisma {
     faviconUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     primaryColor?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableWithAggregatesFilter<"Tenant">
+    aiTokensUsed?: IntWithAggregatesFilter<"Tenant"> | number
   }
 
   export type TenantMemberWhereInput = {
@@ -52910,6 +55543,8 @@ export namespace Prisma {
     maxStorage?: IntNullableFilter<"CustomPlanOverride"> | number | null
     maxLocales?: IntNullableFilter<"CustomPlanOverride"> | number | null
     maxApiCalls?: IntNullableFilter<"CustomPlanOverride"> | number | null
+    maxAiTokens?: IntNullableFilter<"CustomPlanOverride"> | number | null
+    maxCustomDomains?: IntNullableFilter<"CustomPlanOverride"> | number | null
     note?: StringNullableFilter<"CustomPlanOverride"> | string | null
     createdBy?: StringNullableFilter<"CustomPlanOverride"> | string | null
     createdAt?: DateTimeFilter<"CustomPlanOverride"> | Date | string
@@ -52927,6 +55562,8 @@ export namespace Prisma {
     maxStorage?: SortOrderInput | SortOrder
     maxLocales?: SortOrderInput | SortOrder
     maxApiCalls?: SortOrderInput | SortOrder
+    maxAiTokens?: SortOrderInput | SortOrder
+    maxCustomDomains?: SortOrderInput | SortOrder
     note?: SortOrderInput | SortOrder
     createdBy?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -52947,6 +55584,8 @@ export namespace Prisma {
     maxStorage?: IntNullableFilter<"CustomPlanOverride"> | number | null
     maxLocales?: IntNullableFilter<"CustomPlanOverride"> | number | null
     maxApiCalls?: IntNullableFilter<"CustomPlanOverride"> | number | null
+    maxAiTokens?: IntNullableFilter<"CustomPlanOverride"> | number | null
+    maxCustomDomains?: IntNullableFilter<"CustomPlanOverride"> | number | null
     note?: StringNullableFilter<"CustomPlanOverride"> | string | null
     createdBy?: StringNullableFilter<"CustomPlanOverride"> | string | null
     createdAt?: DateTimeFilter<"CustomPlanOverride"> | Date | string
@@ -52964,6 +55603,8 @@ export namespace Prisma {
     maxStorage?: SortOrderInput | SortOrder
     maxLocales?: SortOrderInput | SortOrder
     maxApiCalls?: SortOrderInput | SortOrder
+    maxAiTokens?: SortOrderInput | SortOrder
+    maxCustomDomains?: SortOrderInput | SortOrder
     note?: SortOrderInput | SortOrder
     createdBy?: SortOrderInput | SortOrder
     createdAt?: SortOrder
@@ -52989,6 +55630,8 @@ export namespace Prisma {
     maxStorage?: IntNullableWithAggregatesFilter<"CustomPlanOverride"> | number | null
     maxLocales?: IntNullableWithAggregatesFilter<"CustomPlanOverride"> | number | null
     maxApiCalls?: IntNullableWithAggregatesFilter<"CustomPlanOverride"> | number | null
+    maxAiTokens?: IntNullableWithAggregatesFilter<"CustomPlanOverride"> | number | null
+    maxCustomDomains?: IntNullableWithAggregatesFilter<"CustomPlanOverride"> | number | null
     note?: StringNullableWithAggregatesFilter<"CustomPlanOverride"> | string | null
     createdBy?: StringNullableWithAggregatesFilter<"CustomPlanOverride"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"CustomPlanOverride"> | Date | string
@@ -53189,6 +55832,73 @@ export namespace Prisma {
     contentTypeId?: StringNullableWithAggregatesFilter<"SchemaField"> | string | null
     singleTypeId?: StringNullableWithAggregatesFilter<"SchemaField"> | string | null
     componentId?: StringNullableWithAggregatesFilter<"SchemaField"> | string | null
+  }
+
+  export type AiQuotaLedgerWhereInput = {
+    AND?: AiQuotaLedgerWhereInput | AiQuotaLedgerWhereInput[]
+    OR?: AiQuotaLedgerWhereInput[]
+    NOT?: AiQuotaLedgerWhereInput | AiQuotaLedgerWhereInput[]
+    id?: StringFilter<"AiQuotaLedger"> | string
+    tenantId?: StringFilter<"AiQuotaLedger"> | string
+    action?: StringFilter<"AiQuotaLedger"> | string
+    tokens?: IntFilter<"AiQuotaLedger"> | number
+    words?: IntFilter<"AiQuotaLedger"> | number
+    model?: StringNullableFilter<"AiQuotaLedger"> | string | null
+    createdAt?: DateTimeFilter<"AiQuotaLedger"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+  }
+
+  export type AiQuotaLedgerOrderByWithRelationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    action?: SortOrder
+    tokens?: SortOrder
+    words?: SortOrder
+    model?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    tenant?: TenantOrderByWithRelationInput
+  }
+
+  export type AiQuotaLedgerWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: AiQuotaLedgerWhereInput | AiQuotaLedgerWhereInput[]
+    OR?: AiQuotaLedgerWhereInput[]
+    NOT?: AiQuotaLedgerWhereInput | AiQuotaLedgerWhereInput[]
+    tenantId?: StringFilter<"AiQuotaLedger"> | string
+    action?: StringFilter<"AiQuotaLedger"> | string
+    tokens?: IntFilter<"AiQuotaLedger"> | number
+    words?: IntFilter<"AiQuotaLedger"> | number
+    model?: StringNullableFilter<"AiQuotaLedger"> | string | null
+    createdAt?: DateTimeFilter<"AiQuotaLedger"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+  }, "id">
+
+  export type AiQuotaLedgerOrderByWithAggregationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    action?: SortOrder
+    tokens?: SortOrder
+    words?: SortOrder
+    model?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    _count?: AiQuotaLedgerCountOrderByAggregateInput
+    _avg?: AiQuotaLedgerAvgOrderByAggregateInput
+    _max?: AiQuotaLedgerMaxOrderByAggregateInput
+    _min?: AiQuotaLedgerMinOrderByAggregateInput
+    _sum?: AiQuotaLedgerSumOrderByAggregateInput
+  }
+
+  export type AiQuotaLedgerScalarWhereWithAggregatesInput = {
+    AND?: AiQuotaLedgerScalarWhereWithAggregatesInput | AiQuotaLedgerScalarWhereWithAggregatesInput[]
+    OR?: AiQuotaLedgerScalarWhereWithAggregatesInput[]
+    NOT?: AiQuotaLedgerScalarWhereWithAggregatesInput | AiQuotaLedgerScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"AiQuotaLedger"> | string
+    tenantId?: StringWithAggregatesFilter<"AiQuotaLedger"> | string
+    action?: StringWithAggregatesFilter<"AiQuotaLedger"> | string
+    tokens?: IntWithAggregatesFilter<"AiQuotaLedger"> | number
+    words?: IntWithAggregatesFilter<"AiQuotaLedger"> | number
+    model?: StringNullableWithAggregatesFilter<"AiQuotaLedger"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"AiQuotaLedger"> | Date | string
   }
 
   export type TenantContentTypeAssignmentWhereInput = {
@@ -55642,6 +58352,76 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"LicenseCache"> | Date | string
   }
 
+  export type CustomDomainWhereInput = {
+    AND?: CustomDomainWhereInput | CustomDomainWhereInput[]
+    OR?: CustomDomainWhereInput[]
+    NOT?: CustomDomainWhereInput | CustomDomainWhereInput[]
+    id?: StringFilter<"CustomDomain"> | string
+    tenantId?: StringFilter<"CustomDomain"> | string
+    domain?: StringFilter<"CustomDomain"> | string
+    status?: StringFilter<"CustomDomain"> | string
+    verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
+    isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
+    updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+  }
+
+  export type CustomDomainOrderByWithRelationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    domain?: SortOrder
+    status?: SortOrder
+    verifiedAt?: SortOrderInput | SortOrder
+    isPrimary?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    tenant?: TenantOrderByWithRelationInput
+  }
+
+  export type CustomDomainWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    domain?: string
+    AND?: CustomDomainWhereInput | CustomDomainWhereInput[]
+    OR?: CustomDomainWhereInput[]
+    NOT?: CustomDomainWhereInput | CustomDomainWhereInput[]
+    tenantId?: StringFilter<"CustomDomain"> | string
+    status?: StringFilter<"CustomDomain"> | string
+    verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
+    isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
+    updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+  }, "id" | "domain">
+
+  export type CustomDomainOrderByWithAggregationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    domain?: SortOrder
+    status?: SortOrder
+    verifiedAt?: SortOrderInput | SortOrder
+    isPrimary?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: CustomDomainCountOrderByAggregateInput
+    _max?: CustomDomainMaxOrderByAggregateInput
+    _min?: CustomDomainMinOrderByAggregateInput
+  }
+
+  export type CustomDomainScalarWhereWithAggregatesInput = {
+    AND?: CustomDomainScalarWhereWithAggregatesInput | CustomDomainScalarWhereWithAggregatesInput[]
+    OR?: CustomDomainScalarWhereWithAggregatesInput[]
+    NOT?: CustomDomainScalarWhereWithAggregatesInput | CustomDomainScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"CustomDomain"> | string
+    tenantId?: StringWithAggregatesFilter<"CustomDomain"> | string
+    domain?: StringWithAggregatesFilter<"CustomDomain"> | string
+    status?: StringWithAggregatesFilter<"CustomDomain"> | string
+    verifiedAt?: DateTimeNullableWithAggregatesFilter<"CustomDomain"> | Date | string | null
+    isPrimary?: BoolWithAggregatesFilter<"CustomDomain"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"CustomDomain"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"CustomDomain"> | Date | string
+  }
+
   export type SystemRoleCreateInput = {
     id?: string
     name: string
@@ -55716,6 +58496,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountCreateNestedManyWithoutUserInput
     sessions?: SessionCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
@@ -55733,6 +58515,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -55750,6 +58534,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUpdateManyWithoutUserNestedInput
     sessions?: SessionUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
@@ -55767,6 +58553,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -55784,6 +58572,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type UserUpdateManyMutationInput = {
@@ -55797,6 +58587,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type UserUncheckedUpdateManyInput = {
@@ -55810,6 +58602,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
   }
 
   export type AccountCreateInput = {
@@ -56027,6 +58821,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -56047,6 +58842,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateInput = {
@@ -56070,6 +58867,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -56090,6 +58888,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUpdateInput = {
@@ -56113,6 +58913,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -56133,6 +58934,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateInput = {
@@ -56156,6 +58959,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -56176,6 +58980,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateManyInput = {
@@ -56199,6 +59005,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
   }
 
   export type TenantUpdateManyMutationInput = {
@@ -56222,6 +59029,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
   }
 
   export type TenantUncheckedUpdateManyInput = {
@@ -56245,6 +59053,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
   }
 
   export type TenantMemberCreateInput = {
@@ -56319,6 +59128,8 @@ export namespace Prisma {
     maxStorage?: number | null
     maxLocales?: number | null
     maxApiCalls?: number | null
+    maxAiTokens?: number | null
+    maxCustomDomains?: number | null
     note?: string | null
     createdBy?: string | null
     createdAt?: Date | string
@@ -56336,6 +59147,8 @@ export namespace Prisma {
     maxStorage?: number | null
     maxLocales?: number | null
     maxApiCalls?: number | null
+    maxAiTokens?: number | null
+    maxCustomDomains?: number | null
     note?: string | null
     createdBy?: string | null
     createdAt?: Date | string
@@ -56353,6 +59166,8 @@ export namespace Prisma {
     maxStorage?: NullableIntFieldUpdateOperationsInput | number | null
     maxLocales?: NullableIntFieldUpdateOperationsInput | number | null
     maxApiCalls?: NullableIntFieldUpdateOperationsInput | number | null
+    maxAiTokens?: NullableIntFieldUpdateOperationsInput | number | null
+    maxCustomDomains?: NullableIntFieldUpdateOperationsInput | number | null
     note?: NullableStringFieldUpdateOperationsInput | string | null
     createdBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -56370,6 +59185,8 @@ export namespace Prisma {
     maxStorage?: NullableIntFieldUpdateOperationsInput | number | null
     maxLocales?: NullableIntFieldUpdateOperationsInput | number | null
     maxApiCalls?: NullableIntFieldUpdateOperationsInput | number | null
+    maxAiTokens?: NullableIntFieldUpdateOperationsInput | number | null
+    maxCustomDomains?: NullableIntFieldUpdateOperationsInput | number | null
     note?: NullableStringFieldUpdateOperationsInput | string | null
     createdBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -56387,6 +59204,8 @@ export namespace Prisma {
     maxStorage?: number | null
     maxLocales?: number | null
     maxApiCalls?: number | null
+    maxAiTokens?: number | null
+    maxCustomDomains?: number | null
     note?: string | null
     createdBy?: string | null
     createdAt?: Date | string
@@ -56404,6 +59223,8 @@ export namespace Prisma {
     maxStorage?: NullableIntFieldUpdateOperationsInput | number | null
     maxLocales?: NullableIntFieldUpdateOperationsInput | number | null
     maxApiCalls?: NullableIntFieldUpdateOperationsInput | number | null
+    maxAiTokens?: NullableIntFieldUpdateOperationsInput | number | null
+    maxCustomDomains?: NullableIntFieldUpdateOperationsInput | number | null
     note?: NullableStringFieldUpdateOperationsInput | string | null
     createdBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -56421,6 +59242,8 @@ export namespace Prisma {
     maxStorage?: NullableIntFieldUpdateOperationsInput | number | null
     maxLocales?: NullableIntFieldUpdateOperationsInput | number | null
     maxApiCalls?: NullableIntFieldUpdateOperationsInput | number | null
+    maxAiTokens?: NullableIntFieldUpdateOperationsInput | number | null
+    maxCustomDomains?: NullableIntFieldUpdateOperationsInput | number | null
     note?: NullableStringFieldUpdateOperationsInput | string | null
     createdBy?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
@@ -56636,6 +59459,75 @@ export namespace Prisma {
     contentTypeId?: NullableStringFieldUpdateOperationsInput | string | null
     singleTypeId?: NullableStringFieldUpdateOperationsInput | string | null
     componentId?: NullableStringFieldUpdateOperationsInput | string | null
+  }
+
+  export type AiQuotaLedgerCreateInput = {
+    id?: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutAiQuotaLedgersInput
+  }
+
+  export type AiQuotaLedgerUncheckedCreateInput = {
+    id?: string
+    tenantId: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AiQuotaLedgerUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutAiQuotaLedgersNestedInput
+  }
+
+  export type AiQuotaLedgerUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiQuotaLedgerCreateManyInput = {
+    id?: string
+    tenantId: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AiQuotaLedgerUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiQuotaLedgerUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type TenantContentTypeAssignmentCreateInput = {
@@ -59331,6 +62223,82 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type CustomDomainCreateInput = {
+    id?: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutCustomDomainsInput
+  }
+
+  export type CustomDomainUncheckedCreateInput = {
+    id?: string
+    tenantId: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CustomDomainUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutCustomDomainsNestedInput
+  }
+
+  export type CustomDomainUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CustomDomainCreateManyInput = {
+    id?: string
+    tenantId: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CustomDomainUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CustomDomainUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -59464,6 +62432,29 @@ export namespace Prisma {
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
   }
+  export type JsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type AccountListRelationFilter = {
     every?: AccountWhereInput
@@ -59516,6 +62507,8 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     plan?: SortOrder
+    masterDatabaseUrl?: SortOrder
+    masterStorageConfig?: SortOrder
   }
 
   export type UserMaxOrderByAggregateInput = {
@@ -59529,6 +62522,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     plan?: SortOrder
+    masterDatabaseUrl?: SortOrder
   }
 
   export type UserMinOrderByAggregateInput = {
@@ -59542,6 +62536,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     plan?: SortOrder
+    masterDatabaseUrl?: SortOrder
   }
 
   export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
@@ -59556,6 +62551,32 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedJsonNullableFilter<$PrismaModel>
+    _max?: NestedJsonNullableFilter<$PrismaModel>
   }
 
   export type IntNullableFilter<$PrismaModel = never> = {
@@ -59691,28 +62712,16 @@ export namespace Prisma {
     token?: SortOrder
     expires?: SortOrder
   }
-  export type JsonNullableFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableFilterBase<$PrismaModel>>, 'path'>>
 
-  export type JsonNullableFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  export type IntFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntFilter<$PrismaModel> | number
   }
 
   export type ApiKeyListRelationFilter = {
@@ -59823,6 +62832,18 @@ export namespace Prisma {
     none?: WebhookWhereInput
   }
 
+  export type AiQuotaLedgerListRelationFilter = {
+    every?: AiQuotaLedgerWhereInput
+    some?: AiQuotaLedgerWhereInput
+    none?: AiQuotaLedgerWhereInput
+  }
+
+  export type CustomDomainListRelationFilter = {
+    every?: CustomDomainWhereInput
+    some?: CustomDomainWhereInput
+    none?: CustomDomainWhereInput
+  }
+
   export type ApiKeyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -59895,6 +62916,14 @@ export namespace Prisma {
     _count?: SortOrder
   }
 
+  export type AiQuotaLedgerOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type CustomDomainOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
   export type TenantCountOrderByAggregateInput = {
     id?: SortOrder
     name?: SortOrder
@@ -59916,6 +62945,11 @@ export namespace Prisma {
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
     storageConfig?: SortOrder
+    aiTokensUsed?: SortOrder
+  }
+
+  export type TenantAvgOrderByAggregateInput = {
+    aiTokensUsed?: SortOrder
   }
 
   export type TenantMaxOrderByAggregateInput = {
@@ -59938,6 +62972,7 @@ export namespace Prisma {
     licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
+    aiTokensUsed?: SortOrder
   }
 
   export type TenantMinOrderByAggregateInput = {
@@ -59960,32 +62995,27 @@ export namespace Prisma {
     licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
+    aiTokensUsed?: SortOrder
   }
-  export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
-        Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<JsonNullableWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
 
-  export type JsonNullableWithAggregatesFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedJsonNullableFilter<$PrismaModel>
-    _max?: NestedJsonNullableFilter<$PrismaModel>
+  export type TenantSumOrderByAggregateInput = {
+    aiTokensUsed?: SortOrder
+  }
+
+  export type IntWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: number | IntFieldRefInput<$PrismaModel>
+    in?: number[] | ListIntFieldRefInput<$PrismaModel>
+    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
+    lt?: number | IntFieldRefInput<$PrismaModel>
+    lte?: number | IntFieldRefInput<$PrismaModel>
+    gt?: number | IntFieldRefInput<$PrismaModel>
+    gte?: number | IntFieldRefInput<$PrismaModel>
+    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
+    _count?: NestedIntFilter<$PrismaModel>
+    _avg?: NestedFloatFilter<$PrismaModel>
+    _sum?: NestedIntFilter<$PrismaModel>
+    _min?: NestedIntFilter<$PrismaModel>
+    _max?: NestedIntFilter<$PrismaModel>
   }
 
   export type TenantScalarRelationFilter = {
@@ -60034,6 +63064,8 @@ export namespace Prisma {
     maxStorage?: SortOrder
     maxLocales?: SortOrder
     maxApiCalls?: SortOrder
+    maxAiTokens?: SortOrder
+    maxCustomDomains?: SortOrder
     note?: SortOrder
     createdBy?: SortOrder
     createdAt?: SortOrder
@@ -60048,6 +63080,8 @@ export namespace Prisma {
     maxStorage?: SortOrder
     maxLocales?: SortOrder
     maxApiCalls?: SortOrder
+    maxAiTokens?: SortOrder
+    maxCustomDomains?: SortOrder
   }
 
   export type CustomPlanOverrideMaxOrderByAggregateInput = {
@@ -60061,6 +63095,8 @@ export namespace Prisma {
     maxStorage?: SortOrder
     maxLocales?: SortOrder
     maxApiCalls?: SortOrder
+    maxAiTokens?: SortOrder
+    maxCustomDomains?: SortOrder
     note?: SortOrder
     createdBy?: SortOrder
     createdAt?: SortOrder
@@ -60078,6 +63114,8 @@ export namespace Prisma {
     maxStorage?: SortOrder
     maxLocales?: SortOrder
     maxApiCalls?: SortOrder
+    maxAiTokens?: SortOrder
+    maxCustomDomains?: SortOrder
     note?: SortOrder
     createdBy?: SortOrder
     createdAt?: SortOrder
@@ -60092,6 +63130,8 @@ export namespace Prisma {
     maxStorage?: SortOrder
     maxLocales?: SortOrder
     maxApiCalls?: SortOrder
+    maxAiTokens?: SortOrder
+    maxCustomDomains?: SortOrder
   }
 
   export type BoolFilter<$PrismaModel = never> = {
@@ -60161,17 +63201,6 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedBoolFilter<$PrismaModel>
     _max?: NestedBoolFilter<$PrismaModel>
-  }
-
-  export type IntFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntFilter<$PrismaModel> | number
   }
 
   export type ContentTypeNullableScalarRelationFilter = {
@@ -60261,20 +63290,44 @@ export namespace Prisma {
     order?: SortOrder
   }
 
-  export type IntWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: number | IntFieldRefInput<$PrismaModel>
-    in?: number[] | ListIntFieldRefInput<$PrismaModel>
-    notIn?: number[] | ListIntFieldRefInput<$PrismaModel>
-    lt?: number | IntFieldRefInput<$PrismaModel>
-    lte?: number | IntFieldRefInput<$PrismaModel>
-    gt?: number | IntFieldRefInput<$PrismaModel>
-    gte?: number | IntFieldRefInput<$PrismaModel>
-    not?: NestedIntWithAggregatesFilter<$PrismaModel> | number
-    _count?: NestedIntFilter<$PrismaModel>
-    _avg?: NestedFloatFilter<$PrismaModel>
-    _sum?: NestedIntFilter<$PrismaModel>
-    _min?: NestedIntFilter<$PrismaModel>
-    _max?: NestedIntFilter<$PrismaModel>
+  export type AiQuotaLedgerCountOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    action?: SortOrder
+    tokens?: SortOrder
+    words?: SortOrder
+    model?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiQuotaLedgerAvgOrderByAggregateInput = {
+    tokens?: SortOrder
+    words?: SortOrder
+  }
+
+  export type AiQuotaLedgerMaxOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    action?: SortOrder
+    tokens?: SortOrder
+    words?: SortOrder
+    model?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiQuotaLedgerMinOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    action?: SortOrder
+    tokens?: SortOrder
+    words?: SortOrder
+    model?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type AiQuotaLedgerSumOrderByAggregateInput = {
+    tokens?: SortOrder
+    words?: SortOrder
   }
 
   export type ContentTypeScalarRelationFilter = {
@@ -61783,6 +64836,39 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
+  export type CustomDomainCountOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    domain?: SortOrder
+    status?: SortOrder
+    verifiedAt?: SortOrder
+    isPrimary?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CustomDomainMaxOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    domain?: SortOrder
+    status?: SortOrder
+    verifiedAt?: SortOrder
+    isPrimary?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type CustomDomainMinOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    domain?: SortOrder
+    status?: SortOrder
+    verifiedAt?: SortOrder
+    isPrimary?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type StringFieldUpdateOperationsInput = {
     set?: string
   }
@@ -62143,6 +65229,20 @@ export namespace Prisma {
     connect?: WebhookWhereUniqueInput | WebhookWhereUniqueInput[]
   }
 
+  export type AiQuotaLedgerCreateNestedManyWithoutTenantInput = {
+    create?: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput> | AiQuotaLedgerCreateWithoutTenantInput[] | AiQuotaLedgerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: AiQuotaLedgerCreateOrConnectWithoutTenantInput | AiQuotaLedgerCreateOrConnectWithoutTenantInput[]
+    createMany?: AiQuotaLedgerCreateManyTenantInputEnvelope
+    connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+  }
+
+  export type CustomDomainCreateNestedManyWithoutTenantInput = {
+    create?: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput> | CustomDomainCreateWithoutTenantInput[] | CustomDomainUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: CustomDomainCreateOrConnectWithoutTenantInput | CustomDomainCreateOrConnectWithoutTenantInput[]
+    createMany?: CustomDomainCreateManyTenantInputEnvelope
+    connect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+  }
+
   export type ApiKeyUncheckedCreateNestedManyWithoutTenantInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -62281,6 +65381,28 @@ export namespace Prisma {
     connectOrCreate?: WebhookCreateOrConnectWithoutTenantInput | WebhookCreateOrConnectWithoutTenantInput[]
     createMany?: WebhookCreateManyTenantInputEnvelope
     connect?: WebhookWhereUniqueInput | WebhookWhereUniqueInput[]
+  }
+
+  export type AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput = {
+    create?: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput> | AiQuotaLedgerCreateWithoutTenantInput[] | AiQuotaLedgerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: AiQuotaLedgerCreateOrConnectWithoutTenantInput | AiQuotaLedgerCreateOrConnectWithoutTenantInput[]
+    createMany?: AiQuotaLedgerCreateManyTenantInputEnvelope
+    connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+  }
+
+  export type CustomDomainUncheckedCreateNestedManyWithoutTenantInput = {
+    create?: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput> | CustomDomainCreateWithoutTenantInput[] | CustomDomainUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: CustomDomainCreateOrConnectWithoutTenantInput | CustomDomainCreateOrConnectWithoutTenantInput[]
+    createMany?: CustomDomainCreateManyTenantInputEnvelope
+    connect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+  }
+
+  export type IntFieldUpdateOperationsInput = {
+    set?: number
+    increment?: number
+    decrement?: number
+    multiply?: number
+    divide?: number
   }
 
   export type ApiKeyUpdateManyWithoutTenantNestedInput = {
@@ -62563,6 +65685,34 @@ export namespace Prisma {
     deleteMany?: WebhookScalarWhereInput | WebhookScalarWhereInput[]
   }
 
+  export type AiQuotaLedgerUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput> | AiQuotaLedgerCreateWithoutTenantInput[] | AiQuotaLedgerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: AiQuotaLedgerCreateOrConnectWithoutTenantInput | AiQuotaLedgerCreateOrConnectWithoutTenantInput[]
+    upsert?: AiQuotaLedgerUpsertWithWhereUniqueWithoutTenantInput | AiQuotaLedgerUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: AiQuotaLedgerCreateManyTenantInputEnvelope
+    set?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    disconnect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    delete?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    update?: AiQuotaLedgerUpdateWithWhereUniqueWithoutTenantInput | AiQuotaLedgerUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: AiQuotaLedgerUpdateManyWithWhereWithoutTenantInput | AiQuotaLedgerUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
+  }
+
+  export type CustomDomainUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput> | CustomDomainCreateWithoutTenantInput[] | CustomDomainUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: CustomDomainCreateOrConnectWithoutTenantInput | CustomDomainCreateOrConnectWithoutTenantInput[]
+    upsert?: CustomDomainUpsertWithWhereUniqueWithoutTenantInput | CustomDomainUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: CustomDomainCreateManyTenantInputEnvelope
+    set?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    disconnect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    delete?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    connect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    update?: CustomDomainUpdateWithWhereUniqueWithoutTenantInput | CustomDomainUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: CustomDomainUpdateManyWithWhereWithoutTenantInput | CustomDomainUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: CustomDomainScalarWhereInput | CustomDomainScalarWhereInput[]
+  }
+
   export type ApiKeyUncheckedUpdateManyWithoutTenantNestedInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -62843,6 +65993,34 @@ export namespace Prisma {
     deleteMany?: WebhookScalarWhereInput | WebhookScalarWhereInput[]
   }
 
+  export type AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput> | AiQuotaLedgerCreateWithoutTenantInput[] | AiQuotaLedgerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: AiQuotaLedgerCreateOrConnectWithoutTenantInput | AiQuotaLedgerCreateOrConnectWithoutTenantInput[]
+    upsert?: AiQuotaLedgerUpsertWithWhereUniqueWithoutTenantInput | AiQuotaLedgerUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: AiQuotaLedgerCreateManyTenantInputEnvelope
+    set?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    disconnect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    delete?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+    update?: AiQuotaLedgerUpdateWithWhereUniqueWithoutTenantInput | AiQuotaLedgerUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: AiQuotaLedgerUpdateManyWithWhereWithoutTenantInput | AiQuotaLedgerUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
+  }
+
+  export type CustomDomainUncheckedUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput> | CustomDomainCreateWithoutTenantInput[] | CustomDomainUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: CustomDomainCreateOrConnectWithoutTenantInput | CustomDomainCreateOrConnectWithoutTenantInput[]
+    upsert?: CustomDomainUpsertWithWhereUniqueWithoutTenantInput | CustomDomainUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: CustomDomainCreateManyTenantInputEnvelope
+    set?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    disconnect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    delete?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    connect?: CustomDomainWhereUniqueInput | CustomDomainWhereUniqueInput[]
+    update?: CustomDomainUpdateWithWhereUniqueWithoutTenantInput | CustomDomainUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: CustomDomainUpdateManyWithWhereWithoutTenantInput | CustomDomainUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: CustomDomainScalarWhereInput | CustomDomainScalarWhereInput[]
+  }
+
   export type TenantCreateNestedOneWithoutMembersInput = {
     create?: XOR<TenantCreateWithoutMembersInput, TenantUncheckedCreateWithoutMembersInput>
     connectOrCreate?: TenantCreateOrConnectWithoutMembersInput
@@ -63035,14 +66213,6 @@ export namespace Prisma {
     connect?: ComponentWhereUniqueInput
   }
 
-  export type IntFieldUpdateOperationsInput = {
-    set?: number
-    increment?: number
-    decrement?: number
-    multiply?: number
-    divide?: number
-  }
-
   export type ContentTypeUpdateOneWithoutSchemaFieldsNestedInput = {
     create?: XOR<ContentTypeCreateWithoutSchemaFieldsInput, ContentTypeUncheckedCreateWithoutSchemaFieldsInput>
     connectOrCreate?: ContentTypeCreateOrConnectWithoutSchemaFieldsInput
@@ -63071,6 +66241,20 @@ export namespace Prisma {
     delete?: ComponentWhereInput | boolean
     connect?: ComponentWhereUniqueInput
     update?: XOR<XOR<ComponentUpdateToOneWithWhereWithoutSchemaFieldsInput, ComponentUpdateWithoutSchemaFieldsInput>, ComponentUncheckedUpdateWithoutSchemaFieldsInput>
+  }
+
+  export type TenantCreateNestedOneWithoutAiQuotaLedgersInput = {
+    create?: XOR<TenantCreateWithoutAiQuotaLedgersInput, TenantUncheckedCreateWithoutAiQuotaLedgersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutAiQuotaLedgersInput
+    connect?: TenantWhereUniqueInput
+  }
+
+  export type TenantUpdateOneRequiredWithoutAiQuotaLedgersNestedInput = {
+    create?: XOR<TenantCreateWithoutAiQuotaLedgersInput, TenantUncheckedCreateWithoutAiQuotaLedgersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutAiQuotaLedgersInput
+    upsert?: TenantUpsertWithoutAiQuotaLedgersInput
+    connect?: TenantWhereUniqueInput
+    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutAiQuotaLedgersInput, TenantUpdateWithoutAiQuotaLedgersInput>, TenantUncheckedUpdateWithoutAiQuotaLedgersInput>
   }
 
   export type ContentTypeCreateNestedOneWithoutTenantsInput = {
@@ -64221,6 +67405,20 @@ export namespace Prisma {
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutLocalesInput, TenantUpdateWithoutLocalesInput>, TenantUncheckedUpdateWithoutLocalesInput>
   }
 
+  export type TenantCreateNestedOneWithoutCustomDomainsInput = {
+    create?: XOR<TenantCreateWithoutCustomDomainsInput, TenantUncheckedCreateWithoutCustomDomainsInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutCustomDomainsInput
+    connect?: TenantWhereUniqueInput
+  }
+
+  export type TenantUpdateOneRequiredWithoutCustomDomainsNestedInput = {
+    create?: XOR<TenantCreateWithoutCustomDomainsInput, TenantUncheckedCreateWithoutCustomDomainsInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutCustomDomainsInput
+    upsert?: TenantUpsertWithoutCustomDomainsInput
+    connect?: TenantWhereUniqueInput
+    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutCustomDomainsInput, TenantUpdateWithoutCustomDomainsInput>, TenantUncheckedUpdateWithoutCustomDomainsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -64354,6 +67552,29 @@ export namespace Prisma {
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
   }
+  export type NestedJsonNullableFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonNullableFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
 
   export type NestedIntNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel> | null
@@ -64381,42 +67602,6 @@ export namespace Prisma {
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatNullableFilter<$PrismaModel> | number | null
   }
-  export type NestedJsonNullableFilter<$PrismaModel = never> =
-    | PatchUndefined<
-        Either<Required<NestedJsonNullableFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>,
-        Required<NestedJsonNullableFilterBase<$PrismaModel>>
-      >
-    | OptionalFlat<Omit<Required<NestedJsonNullableFilterBase<$PrismaModel>>, 'path'>>
-
-  export type NestedJsonNullableFilterBase<$PrismaModel = never> = {
-    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-    path?: string[]
-    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
-    string_contains?: string | StringFieldRefInput<$PrismaModel>
-    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
-    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
-    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
-    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
-    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
-  }
-
-  export type NestedBoolFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolFilter<$PrismaModel> | boolean
-  }
-
-  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
-    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedBoolFilter<$PrismaModel>
-    _max?: NestedBoolFilter<$PrismaModel>
-  }
 
   export type NestedIntWithAggregatesFilter<$PrismaModel = never> = {
     equals?: number | IntFieldRefInput<$PrismaModel>
@@ -64443,6 +67628,19 @@ export namespace Prisma {
     gt?: number | FloatFieldRefInput<$PrismaModel>
     gte?: number | FloatFieldRefInput<$PrismaModel>
     not?: NestedFloatFilter<$PrismaModel> | number
+  }
+
+  export type NestedBoolFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolFilter<$PrismaModel> | boolean
+  }
+
+  export type NestedBoolWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: boolean | BooleanFieldRefInput<$PrismaModel>
+    not?: NestedBoolWithAggregatesFilter<$PrismaModel> | boolean
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedBoolFilter<$PrismaModel>
+    _max?: NestedBoolFilter<$PrismaModel>
   }
 
   export type NestedEnumContentStatusFilter<$PrismaModel = never> = {
@@ -64762,6 +67960,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     sessions?: SessionCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
@@ -64778,6 +67978,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
@@ -64810,6 +68012,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     sessions?: SessionUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
@@ -64826,6 +68030,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
@@ -64842,6 +68048,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
@@ -64858,6 +68066,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
@@ -64890,6 +68100,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
@@ -64906,6 +68118,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
@@ -65583,6 +68797,64 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type AiQuotaLedgerCreateWithoutTenantInput = {
+    id?: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AiQuotaLedgerUncheckedCreateWithoutTenantInput = {
+    id?: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+  }
+
+  export type AiQuotaLedgerCreateOrConnectWithoutTenantInput = {
+    where: AiQuotaLedgerWhereUniqueInput
+    create: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput>
+  }
+
+  export type AiQuotaLedgerCreateManyTenantInputEnvelope = {
+    data: AiQuotaLedgerCreateManyTenantInput | AiQuotaLedgerCreateManyTenantInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type CustomDomainCreateWithoutTenantInput = {
+    id?: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CustomDomainUncheckedCreateWithoutTenantInput = {
+    id?: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type CustomDomainCreateOrConnectWithoutTenantInput = {
+    where: CustomDomainWhereUniqueInput
+    create: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput>
+  }
+
+  export type CustomDomainCreateManyTenantInputEnvelope = {
+    data: CustomDomainCreateManyTenantInput | CustomDomainCreateManyTenantInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ApiKeyUpsertWithWhereUniqueWithoutTenantInput = {
     where: ApiKeyWhereUniqueInput
     update: XOR<ApiKeyUpdateWithoutTenantInput, ApiKeyUncheckedUpdateWithoutTenantInput>
@@ -66172,6 +69444,65 @@ export namespace Prisma {
     headers?: JsonNullableFilter<"Webhook">
   }
 
+  export type AiQuotaLedgerUpsertWithWhereUniqueWithoutTenantInput = {
+    where: AiQuotaLedgerWhereUniqueInput
+    update: XOR<AiQuotaLedgerUpdateWithoutTenantInput, AiQuotaLedgerUncheckedUpdateWithoutTenantInput>
+    create: XOR<AiQuotaLedgerCreateWithoutTenantInput, AiQuotaLedgerUncheckedCreateWithoutTenantInput>
+  }
+
+  export type AiQuotaLedgerUpdateWithWhereUniqueWithoutTenantInput = {
+    where: AiQuotaLedgerWhereUniqueInput
+    data: XOR<AiQuotaLedgerUpdateWithoutTenantInput, AiQuotaLedgerUncheckedUpdateWithoutTenantInput>
+  }
+
+  export type AiQuotaLedgerUpdateManyWithWhereWithoutTenantInput = {
+    where: AiQuotaLedgerScalarWhereInput
+    data: XOR<AiQuotaLedgerUpdateManyMutationInput, AiQuotaLedgerUncheckedUpdateManyWithoutTenantInput>
+  }
+
+  export type AiQuotaLedgerScalarWhereInput = {
+    AND?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
+    OR?: AiQuotaLedgerScalarWhereInput[]
+    NOT?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
+    id?: StringFilter<"AiQuotaLedger"> | string
+    tenantId?: StringFilter<"AiQuotaLedger"> | string
+    action?: StringFilter<"AiQuotaLedger"> | string
+    tokens?: IntFilter<"AiQuotaLedger"> | number
+    words?: IntFilter<"AiQuotaLedger"> | number
+    model?: StringNullableFilter<"AiQuotaLedger"> | string | null
+    createdAt?: DateTimeFilter<"AiQuotaLedger"> | Date | string
+  }
+
+  export type CustomDomainUpsertWithWhereUniqueWithoutTenantInput = {
+    where: CustomDomainWhereUniqueInput
+    update: XOR<CustomDomainUpdateWithoutTenantInput, CustomDomainUncheckedUpdateWithoutTenantInput>
+    create: XOR<CustomDomainCreateWithoutTenantInput, CustomDomainUncheckedCreateWithoutTenantInput>
+  }
+
+  export type CustomDomainUpdateWithWhereUniqueWithoutTenantInput = {
+    where: CustomDomainWhereUniqueInput
+    data: XOR<CustomDomainUpdateWithoutTenantInput, CustomDomainUncheckedUpdateWithoutTenantInput>
+  }
+
+  export type CustomDomainUpdateManyWithWhereWithoutTenantInput = {
+    where: CustomDomainScalarWhereInput
+    data: XOR<CustomDomainUpdateManyMutationInput, CustomDomainUncheckedUpdateManyWithoutTenantInput>
+  }
+
+  export type CustomDomainScalarWhereInput = {
+    AND?: CustomDomainScalarWhereInput | CustomDomainScalarWhereInput[]
+    OR?: CustomDomainScalarWhereInput[]
+    NOT?: CustomDomainScalarWhereInput | CustomDomainScalarWhereInput[]
+    id?: StringFilter<"CustomDomain"> | string
+    tenantId?: StringFilter<"CustomDomain"> | string
+    domain?: StringFilter<"CustomDomain"> | string
+    status?: StringFilter<"CustomDomain"> | string
+    verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
+    isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
+    updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
+  }
+
   export type TenantCreateWithoutMembersInput = {
     id?: string
     name: string
@@ -66193,6 +69524,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -66212,6 +69544,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMembersInput = {
@@ -66235,6 +69569,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -66254,6 +69589,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMembersInput = {
@@ -66272,6 +69609,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountCreateNestedManyWithoutUserInput
     sessions?: SessionCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
@@ -66288,6 +69627,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
@@ -66330,6 +69671,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -66349,6 +69691,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -66372,6 +69716,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -66391,6 +69736,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutTenantsInput = {
@@ -66415,6 +69762,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUpdateManyWithoutUserNestedInput
     sessions?: SessionUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
@@ -66431,6 +69780,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
@@ -66547,6 +69898,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -66566,6 +69918,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypesInput = {
@@ -66589,6 +69943,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -66608,6 +69963,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypesInput = {
@@ -66723,6 +70080,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -66742,6 +70100,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypesInput = {
@@ -66765,6 +70125,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -66784,6 +70145,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantContentTypeAssignmentUpsertWithWhereUniqueWithoutContentTypeInput = {
@@ -67010,6 +70373,202 @@ export namespace Prisma {
     tenants?: TenantComponentAssignmentUncheckedUpdateManyWithoutComponentNestedInput
   }
 
+  export type TenantCreateWithoutAiQuotaLedgersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
+    components?: ComponentCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
+    media?: MediaCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
+    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
+    settings?: SettingCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
+    members?: TenantMemberCreateNestedManyWithoutTenantInput
+    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantUncheckedCreateWithoutAiQuotaLedgersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
+    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
+    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
+    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
+    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
+    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantCreateOrConnectWithoutAiQuotaLedgersInput = {
+    where: TenantWhereUniqueInput
+    create: XOR<TenantCreateWithoutAiQuotaLedgersInput, TenantUncheckedCreateWithoutAiQuotaLedgersInput>
+  }
+
+  export type TenantUpsertWithoutAiQuotaLedgersInput = {
+    update: XOR<TenantUpdateWithoutAiQuotaLedgersInput, TenantUncheckedUpdateWithoutAiQuotaLedgersInput>
+    create: XOR<TenantCreateWithoutAiQuotaLedgersInput, TenantUncheckedCreateWithoutAiQuotaLedgersInput>
+    where?: TenantWhereInput
+  }
+
+  export type TenantUpdateToOneWithWhereWithoutAiQuotaLedgersInput = {
+    where?: TenantWhereInput
+    data: XOR<TenantUpdateWithoutAiQuotaLedgersInput, TenantUncheckedUpdateWithoutAiQuotaLedgersInput>
+  }
+
+  export type TenantUpdateWithoutAiQuotaLedgersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
+    components?: ComponentUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
+    media?: MediaUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
+    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
+    settings?: SettingUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUpdateManyWithoutTenantNestedInput
+    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantUncheckedUpdateWithoutAiQuotaLedgersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
+    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
+    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
+    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
+    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
+  }
+
   export type ContentTypeCreateWithoutTenantsInput = {
     id?: string
     name: string
@@ -67064,6 +70623,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -67083,6 +70643,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypeAssignmentsInput = {
@@ -67106,6 +70668,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -67125,6 +70688,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypeAssignmentsInput = {
@@ -67203,6 +70768,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -67222,6 +70788,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypeAssignmentsInput = {
@@ -67245,6 +70813,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -67264,6 +70833,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentTypeCreateWithoutEntriesInput = {
@@ -67320,6 +70891,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -67339,6 +70911,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentEntriesInput = {
@@ -67362,6 +70936,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -67381,6 +70956,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentEntriesInput = {
@@ -67527,6 +71104,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -67546,6 +71124,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentEntriesInput = {
@@ -67569,6 +71149,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -67588,6 +71169,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentReviewAssignmentUpsertWithWhereUniqueWithoutContentEntryInput = {
@@ -67939,6 +71522,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -67958,6 +71542,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypesInput = {
@@ -67981,6 +71567,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -68000,6 +71587,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypesInput = {
@@ -68121,6 +71710,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -68140,6 +71730,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypesInput = {
@@ -68163,6 +71755,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -68182,6 +71775,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantSingleTypeAssignmentUpsertWithWhereUniqueWithoutSingleTypeInput = {
@@ -68320,6 +71915,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -68339,6 +71935,8 @@ export namespace Prisma {
     members?: TenantMemberCreateNestedManyWithoutTenantInput
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypeAssignmentsInput = {
@@ -68362,6 +71960,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -68381,6 +71980,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypeAssignmentsInput = {
@@ -68457,6 +72058,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -68476,6 +72078,8 @@ export namespace Prisma {
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypeAssignmentsInput = {
@@ -68499,6 +72103,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -68518,6 +72123,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ComponentFieldCreateWithoutComponentInput = {
@@ -68621,6 +72228,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -68640,6 +72248,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentsInput = {
@@ -68663,6 +72273,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -68682,6 +72293,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentsInput = {
@@ -68795,6 +72408,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -68814,6 +72428,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentsInput = {
@@ -68837,6 +72453,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -68856,6 +72473,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantComponentAssignmentUpsertWithWhereUniqueWithoutComponentInput = {
@@ -68994,6 +72613,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -69013,6 +72633,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentAssignmentsInput = {
@@ -69036,6 +72658,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -69055,6 +72678,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentAssignmentsInput = {
@@ -69131,6 +72756,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -69150,6 +72776,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentAssignmentsInput = {
@@ -69173,6 +72801,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -69192,6 +72821,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiKeysInput = {
@@ -69215,6 +72846,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
@@ -69234,6 +72866,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiKeysInput = {
@@ -69257,6 +72891,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
@@ -69276,6 +72911,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiKeysInput = {
@@ -69315,6 +72952,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
@@ -69334,6 +72972,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiKeysInput = {
@@ -69357,6 +72997,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
@@ -69376,6 +73017,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InvoiceCreateWithoutSubscriptionInput = {
@@ -69471,6 +73114,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -69490,6 +73134,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSubscriptionsInput = {
@@ -69513,6 +73159,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -69532,6 +73179,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSubscriptionsInput = {
@@ -69550,6 +73199,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountCreateNestedManyWithoutUserInput
     sessions?: SessionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
@@ -69566,6 +73217,8 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     plan?: string
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
@@ -69674,6 +73327,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -69693,6 +73347,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSubscriptionsInput = {
@@ -69716,6 +73372,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -69735,6 +73392,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutSubscriptionsInput = {
@@ -69759,6 +73418,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUpdateManyWithoutUserNestedInput
     sessions?: SessionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
@@ -69775,6 +73436,8 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     plan?: StringFieldUpdateOperationsInput | string
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
     accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
@@ -69961,6 +73624,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -69980,6 +73644,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAuditLogsInput = {
@@ -70003,6 +73669,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -70022,6 +73689,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAuditLogsInput = {
@@ -70061,6 +73730,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -70080,6 +73750,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAuditLogsInput = {
@@ -70103,6 +73775,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -70122,6 +73795,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSettingsInput = {
@@ -70145,6 +73820,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -70164,6 +73840,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSettingsInput = {
@@ -70187,6 +73865,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -70206,6 +73885,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSettingsInput = {
@@ -70245,6 +73926,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -70264,6 +73946,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSettingsInput = {
@@ -70287,6 +73971,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -70306,6 +73991,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiRequestsInput = {
@@ -70329,6 +74016,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
@@ -70348,6 +74036,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiRequestsInput = {
@@ -70371,6 +74061,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
@@ -70390,6 +74081,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiRequestsInput = {
@@ -70429,6 +74122,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
@@ -70448,6 +74142,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiRequestsInput = {
@@ -70471,6 +74167,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
@@ -70490,6 +74187,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaCreateWithoutFolderInput = {
@@ -70626,6 +74325,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -70645,6 +74345,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaFoldersInput = {
@@ -70668,6 +74370,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -70687,6 +74390,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaFoldersInput = {
@@ -70791,6 +74496,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -70810,6 +74516,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaFoldersInput = {
@@ -70833,6 +74541,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -70852,6 +74561,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaFolderCreateWithoutMediaInput = {
@@ -70902,6 +74613,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -70921,6 +74633,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaInput = {
@@ -70944,6 +74658,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -70963,6 +74678,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaInput = {
@@ -71035,6 +74752,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -71054,6 +74772,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaInput = {
@@ -71077,6 +74797,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -71096,6 +74817,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type RolePermissionCreateWithoutPermissionInput = {
@@ -71182,6 +74905,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -71201,6 +74925,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutRolePermissionsInput = {
@@ -71224,6 +74950,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -71243,6 +74970,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutRolePermissionsInput = {
@@ -71311,6 +75040,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -71330,6 +75060,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutRolePermissionsInput = {
@@ -71353,6 +75085,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -71372,6 +75105,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutTenantRolesInput = {
@@ -71395,6 +75130,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -71414,6 +75150,8 @@ export namespace Prisma {
     members?: TenantMemberCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutTenantRolesInput = {
@@ -71437,6 +75175,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -71456,6 +75195,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutTenantRolesInput = {
@@ -71495,6 +75236,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -71514,6 +75256,8 @@ export namespace Prisma {
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutTenantRolesInput = {
@@ -71537,6 +75281,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -71556,6 +75301,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiTokensInput = {
@@ -71579,6 +75326,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
@@ -71598,6 +75346,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiTokensInput = {
@@ -71621,6 +75371,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
@@ -71640,6 +75391,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiTokensInput = {
@@ -71679,6 +75432,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
@@ -71698,6 +75452,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiTokensInput = {
@@ -71721,6 +75477,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
@@ -71740,6 +75497,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookDeadLetterCreateWithoutWebhookInput = {
@@ -71833,6 +75592,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -71852,6 +75612,8 @@ export namespace Prisma {
     members?: TenantMemberCreateNestedManyWithoutTenantInput
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutWebhooksInput = {
@@ -71875,6 +75637,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -71894,6 +75657,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutWebhooksInput = {
@@ -71998,6 +75763,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -72017,6 +75783,8 @@ export namespace Prisma {
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutWebhooksInput = {
@@ -72040,6 +75808,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -72059,6 +75828,8 @@ export namespace Prisma {
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookCreateWithoutLogsInput = {
@@ -72250,6 +76021,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
@@ -72269,6 +76041,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutLocalesInput = {
@@ -72292,6 +76066,7 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
     apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
     apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
     apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
@@ -72311,6 +76086,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutLocalesInput = {
@@ -72350,6 +76127,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
@@ -72369,6 +76147,8 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutLocalesInput = {
@@ -72392,6 +76172,7 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
     apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
     apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
     apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
@@ -72411,6 +76192,204 @@ export namespace Prisma {
     tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantCreateWithoutCustomDomainsInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
+    components?: ComponentCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
+    media?: MediaCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
+    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
+    settings?: SettingCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
+    members?: TenantMemberCreateNestedManyWithoutTenantInput
+    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantUncheckedCreateWithoutCustomDomainsInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
+    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
+    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
+    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
+    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
+    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantCreateOrConnectWithoutCustomDomainsInput = {
+    where: TenantWhereUniqueInput
+    create: XOR<TenantCreateWithoutCustomDomainsInput, TenantUncheckedCreateWithoutCustomDomainsInput>
+  }
+
+  export type TenantUpsertWithoutCustomDomainsInput = {
+    update: XOR<TenantUpdateWithoutCustomDomainsInput, TenantUncheckedUpdateWithoutCustomDomainsInput>
+    create: XOR<TenantCreateWithoutCustomDomainsInput, TenantUncheckedCreateWithoutCustomDomainsInput>
+    where?: TenantWhereInput
+  }
+
+  export type TenantUpdateToOneWithWhereWithoutCustomDomainsInput = {
+    where?: TenantWhereInput
+    data: XOR<TenantUpdateWithoutCustomDomainsInput, TenantUncheckedUpdateWithoutCustomDomainsInput>
+  }
+
+  export type TenantUpdateWithoutCustomDomainsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
+    components?: ComponentUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
+    media?: MediaUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
+    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
+    settings?: SettingUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUpdateManyWithoutTenantNestedInput
+    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantUncheckedUpdateWithoutCustomDomainsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
+    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
+    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
+    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
+    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type AccountCreateManyUserInput = {
@@ -72802,6 +76781,25 @@ export namespace Prisma {
     hookType?: string
     events: JsonNullValueInput | InputJsonValue
     headers?: NullableJsonNullValueInput | InputJsonValue
+  }
+
+  export type AiQuotaLedgerCreateManyTenantInput = {
+    id?: string
+    action: string
+    tokens?: number
+    words?: number
+    model?: string | null
+    createdAt?: Date | string
+  }
+
+  export type CustomDomainCreateManyTenantInput = {
+    id?: string
+    domain: string
+    status?: string
+    verifiedAt?: Date | string | null
+    isPrimary?: boolean
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type ApiKeyUpdateWithoutTenantInput = {
@@ -73493,6 +77491,63 @@ export namespace Prisma {
     hookType?: StringFieldUpdateOperationsInput | string
     events?: JsonNullValueInput | InputJsonValue
     headers?: NullableJsonNullValueInput | InputJsonValue
+  }
+
+  export type AiQuotaLedgerUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiQuotaLedgerUncheckedUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type AiQuotaLedgerUncheckedUpdateManyWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    action?: StringFieldUpdateOperationsInput | string
+    tokens?: IntFieldUpdateOperationsInput | number
+    words?: IntFieldUpdateOperationsInput | number
+    model?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CustomDomainUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CustomDomainUncheckedUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type CustomDomainUncheckedUpdateManyWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    domain?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ContentEntryCreateManyContentTypeInput = {

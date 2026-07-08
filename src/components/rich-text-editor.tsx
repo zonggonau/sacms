@@ -1,15 +1,26 @@
 "use client"
 
 import dynamic from "next/dynamic"
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
+import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog"
 import { Sparkles, Loader2 } from "lucide-react"
 import { toast } from "@/hooks/use-toast"
 import "react-quill-new/dist/quill.snow.css"
+import * as Y from "yjs"
+import { WebrtcProvider } from "y-webrtc"
+import { QuillBinding } from "y-quill"
+import QuillCursors from "quill-cursors"
+import Quill from "quill"
+
+if (!Quill.imports["modules/cursors"]) {
+  Quill.register("modules/cursors", QuillCursors)
+}
 
 const ReactQuill = dynamic(() => import("react-quill-new"), { ssr: false })
+const ReactQuillAny = ReactQuill as any
 
 const fullModules = {
   toolbar: [
@@ -22,6 +33,11 @@ const fullModules = {
     ["blockquote", "code-block"],
     ["clean"],
   ],
+  cursors: true,
+  history: {
+    // Disable native quill history since yjs handles it
+    userOnly: true
+  }
 }
 
 const simpleModules = {
@@ -62,6 +78,8 @@ interface RichTextEditorProps {
   minHeight?: number
   simple?: boolean
   tenantSlug?: string
+  documentId?: string
+  fieldSlug?: string
 }
 
 export function RichTextEditor({
@@ -71,10 +89,45 @@ export function RichTextEditor({
   minHeight = 260,
   simple = false,
   tenantSlug,
+  documentId,
+  fieldSlug,
 }: RichTextEditorProps) {
+  const { data: session } = useSession()
   const [aiPrompt, setAiPrompt] = useState("")
   const [isGenerating, setIsGenerating] = useState(false)
   const [isAiOpen, setIsAiOpen] = useState(false)
+  const quillRef = useRef<any>(null)
+  
+  useEffect(() => {
+    // Only setup CRDT if we have a document ID (e.g. editing a specific content entry)
+    if (!documentId || !fieldSlug || !quillRef.current) return
+
+    const editor = quillRef.current.getEditor()
+    if (!editor) return
+
+    const ydoc = new Y.Doc()
+    
+    // Setup WebRTC Provider
+    const roomName = `sacms-room-${tenantSlug || 'global'}-${documentId}-${fieldSlug}`
+    const provider = new WebrtcProvider(roomName, ydoc)
+    
+    const ytext = ydoc.getText("quill")
+    const binding = new QuillBinding(ytext, editor, provider.awareness)
+    
+    // Set user info for awareness
+    if (session?.user) {
+      provider.awareness.setLocalStateField("user", {
+        name: session.user.name || "Anonymous",
+        color: "#" + Math.floor(Math.random()*16777215).toString(16) // Random color
+      })
+    }
+    
+    return () => {
+      binding.destroy()
+      provider.destroy()
+      ydoc.destroy()
+    }
+  }, [documentId, fieldSlug, tenantSlug, session])
 
   const handleGenerateAI = async () => {
     if (!aiPrompt.trim() || !tenantSlug) return
@@ -145,7 +198,8 @@ export function RichTextEditor({
           </Dialog>
         </div>
       )}
-      <ReactQuill
+      <ReactQuillAny
+        ref={quillRef}
         theme="snow"
         value={value || ""}
         onChange={onChange}

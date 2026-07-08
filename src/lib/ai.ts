@@ -1,4 +1,6 @@
 import OpenAI from "openai"
+import { db } from "./database"
+import { getTenantPlanConfig } from "./tenant-plan"
 
 // Menggunakan DeepSeek Chat model (DeepSeek-V3) sebagai default
 const MODELS_TO_TRY = [
@@ -30,6 +32,8 @@ export interface AIConfig {
   maxTokens?: number
   temperature?: number
   responseFormat?: "text" | "json_object"
+  tenantId?: string
+  action?: string
 }
 
 /**
@@ -42,6 +46,29 @@ export async function safeGenerateContent(
 ): Promise<{ text: string; model: string; usage: any }> {
   const finalConfig: AIConfig = typeof config === 'number' ? { maxTokens: config } : config
   let lastError: any = null
+  
+  if (finalConfig.tenantId) {
+    const tenant = await db.tenant.findUnique({
+      where: { id: finalConfig.tenantId },
+      select: { aiTokensUsed: true }
+    })
+    
+    if (tenant) {
+      const planConfig = await getTenantPlanConfig(finalConfig.tenantId)
+      let maxAiTokens = planConfig.max_ai_tokens || 0
+      
+      const override = await db.customPlanOverride.findUnique({ where: { tenantId: finalConfig.tenantId } })
+      if (override && override.maxAiTokens !== null) {
+        maxAiTokens = override.maxAiTokens
+      }
+      
+      if (maxAiTokens > 0 && tenant.aiTokensUsed >= maxAiTokens) {
+        const error: any = new Error(`AI Quota Exceeded. Used: ${tenant.aiTokensUsed}, Limit: ${maxAiTokens}`)
+        error.status = 429
+        throw error
+      }
+    }
+  }
   
   for (const modelName of MODELS_TO_TRY) {
     let attempts = 0
@@ -70,14 +97,35 @@ export async function safeGenerateContent(
         const text = completion.choices[0]?.message?.content
         
         if (text) {
+          const usage = {
+            promptTokens: completion.usage?.prompt_tokens ?? 0,
+            completionTokens: completion.usage?.completion_tokens ?? 0,
+            totalTokens: completion.usage?.total_tokens ?? 0,
+          }
+          
+          if (finalConfig.tenantId && usage.totalTokens > 0) {
+            // Update ledger and tenant in background to avoid blocking response
+            db.$transaction([
+              db.tenant.update({
+                where: { id: finalConfig.tenantId },
+                data: { aiTokensUsed: { increment: usage.totalTokens } }
+              }),
+              db.aiQuotaLedger.create({
+                data: {
+                  tenantId: finalConfig.tenantId,
+                  action: finalConfig.action || "generate",
+                  tokens: usage.totalTokens,
+                  words: text.split(/\s+/).length,
+                  model: modelName
+                }
+              })
+            ]).catch(err => console.error("[AI Quota Ledger Error]", err))
+          }
+          
           return { 
             text, 
             model: modelName,
-            usage: {
-              promptTokens: completion.usage?.prompt_tokens ?? 0,
-              completionTokens: completion.usage?.completion_tokens ?? 0,
-              totalTokens: completion.usage?.total_tokens ?? 0,
-            }
+            usage
           }
         }
       } catch (error: any) {
@@ -112,6 +160,7 @@ export interface GenerateContentParams {
   maxTokens?: number
   tone?: "formal" | "casual" | "professional" | "creative" | "technical"
   mode?: "generate" | "correct"
+  tenantId?: string
 }
 
 export interface GenerateContentResult {
@@ -129,10 +178,10 @@ export interface GenerateContentResult {
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
-  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens, mode = "generate" } = params
+  const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens, mode = "generate", tenantId } = params
   const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone, mode })
   
-  const result = await safeGenerateContent(systemPrompt, prompt, maxTokens)
+  const result = await safeGenerateContent(systemPrompt, prompt, { maxTokens, tenantId, action: "generate" })
   
   return {
     content: result.text,
@@ -144,6 +193,7 @@ export interface SummarizeParams {
   text: string
   maxLength?: number
   locale?: string
+  tenantId?: string
 }
 
 /**
@@ -152,10 +202,10 @@ export interface SummarizeParams {
 export async function summarizeContent(
   params: SummarizeParams
 ): Promise<GenerateContentResult> {
-  const { text, maxLength = 200, locale = "en" } = params
+  const { text, maxLength = 200, locale = "en", tenantId } = params
   const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`
   
-  const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`, Math.max(maxLength, 500))
+  const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`, { maxTokens: Math.max(maxLength, 500), tenantId, action: "summarize" })
   
   return {
     content: result.text,
@@ -167,6 +217,7 @@ export interface TranslateParams {
   text: string
   targetLocale: string
   sourceLocale?: string
+  tenantId?: string
 }
 
 /**
@@ -175,10 +226,10 @@ export interface TranslateParams {
 export async function translateContent(
   params: TranslateParams
 ): Promise<GenerateContentResult> {
-  const { text, targetLocale, sourceLocale = "auto" } = params
+  const { text, targetLocale, sourceLocale = "auto", tenantId } = params
   const prompt = `You are a professional translator. Translate the given text${sourceLocale !== "auto" ? ` from ${sourceLocale}` : ""} to ${targetLocale}. Preserve formatting (Markdown, HTML). Return only the translation, no extra commentary.`
   
-  const result = await safeGenerateContent("", `${prompt}\n\nText to translate:\n${text}`)
+  const result = await safeGenerateContent("", `${prompt}\n\nText to translate:\n${text}`, { tenantId, action: "translate" })
   
   return {
     content: result.text,

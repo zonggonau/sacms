@@ -47,11 +47,14 @@ export async function POST(
     const result = await validateBody(request, summarizeSchema)
     if ("error" in result) return result.error
 
-    const summary = await summarizeContent(result.data)
+    const summary = await summarizeContent({ ...result.data, tenantId: access.tenantId })
 
     return NextResponse.json(summary)
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI summarize error:", error)
+    if (error.status === 429) {
+      return NextResponse.json({ error: error.message }, { status: 429 })
+    }
     return NextResponse.json(
       { error: "Failed to summarize content" },
       { status: 500 }

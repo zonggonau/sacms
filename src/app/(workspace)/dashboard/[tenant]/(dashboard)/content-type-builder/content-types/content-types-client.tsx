@@ -53,9 +53,10 @@ interface ContentTypesClientProps {
   tenantSlug: string
   limit?: number
   current?: number
+  isGlobalTenant?: boolean
 }
 
-export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0 }: ContentTypesClientProps) {
+export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false }: ContentTypesClientProps) {
   const router = useRouter()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -266,7 +267,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                               <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}>
                                 <Layout className="mr-2 h-4 w-4" /> Browse Entries
                               </DropdownMenuItem>
-                              {(!ct.isGlobal || tenantSlug === 'sacms-global') && (
+                              {(!ct.isGlobal || isGlobalTenant) && (
                                 <>
                                   <DropdownMenuSeparator />
                                   <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:text-destructive">

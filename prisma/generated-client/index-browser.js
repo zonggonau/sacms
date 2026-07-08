@@ -140,7 +140,9 @@ exports.Prisma.UserScalarFieldEnum = {
   emailVerified: 'emailVerified',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
-  plan: 'plan'
+  plan: 'plan',
+  masterDatabaseUrl: 'masterDatabaseUrl',
+  masterStorageConfig: 'masterStorageConfig'
 };
 
 exports.Prisma.AccountScalarFieldEnum = {
@@ -191,7 +193,8 @@ exports.Prisma.TenantScalarFieldEnum = {
   licenseKey: 'licenseKey',
   faviconUrl: 'faviconUrl',
   primaryColor: 'primaryColor',
-  storageConfig: 'storageConfig'
+  storageConfig: 'storageConfig',
+  aiTokensUsed: 'aiTokensUsed'
 };
 
 exports.Prisma.TenantMemberScalarFieldEnum = {
@@ -214,6 +217,8 @@ exports.Prisma.CustomPlanOverrideScalarFieldEnum = {
   maxStorage: 'maxStorage',
   maxLocales: 'maxLocales',
   maxApiCalls: 'maxApiCalls',
+  maxAiTokens: 'maxAiTokens',
+  maxCustomDomains: 'maxCustomDomains',
   note: 'note',
   createdBy: 'createdBy',
   createdAt: 'createdAt',
@@ -247,6 +252,16 @@ exports.Prisma.SchemaFieldScalarFieldEnum = {
   contentTypeId: 'contentTypeId',
   singleTypeId: 'singleTypeId',
   componentId: 'componentId'
+};
+
+exports.Prisma.AiQuotaLedgerScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  action: 'action',
+  tokens: 'tokens',
+  words: 'words',
+  model: 'model',
+  createdAt: 'createdAt'
 };
 
 exports.Prisma.TenantContentTypeAssignmentScalarFieldEnum = {
@@ -630,6 +645,17 @@ exports.Prisma.LicenseCacheScalarFieldEnum = {
   updatedAt: 'updatedAt'
 };
 
+exports.Prisma.CustomDomainScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  domain: 'domain',
+  status: 'status',
+  verifiedAt: 'verifiedAt',
+  isPrimary: 'isPrimary',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -680,6 +706,7 @@ exports.Prisma.ModelName = {
   CustomPlanOverride: 'CustomPlanOverride',
   ContentType: 'ContentType',
   SchemaField: 'SchemaField',
+  AiQuotaLedger: 'AiQuotaLedger',
   TenantContentTypeAssignment: 'TenantContentTypeAssignment',
   ContentEntry: 'ContentEntry',
   ContentVersion: 'ContentVersion',
@@ -709,7 +736,8 @@ exports.Prisma.ModelName = {
   WebhookDeadLetter: 'WebhookDeadLetter',
   TenantLocale: 'TenantLocale',
   EnterpriseLicense: 'EnterpriseLicense',
-  LicenseCache: 'LicenseCache'
+  LicenseCache: 'LicenseCache',
+  CustomDomain: 'CustomDomain'
 };
 
 /**

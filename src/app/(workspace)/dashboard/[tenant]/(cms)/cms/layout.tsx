@@ -112,7 +112,12 @@ export default async function CMSLayout({
 
   return (
     <div className="flex min-h-screen">
-      <CMSSidebar tenantId={tenantId} contentTypes={availableContentTypes} singleTypes={availableSingleTypes} />
+      <CMSSidebar 
+        tenantId={tenantId} 
+        contentTypes={availableContentTypes} 
+        singleTypes={availableSingleTypes} 
+        user={session.user}
+      />
       <main className="flex-1 overflow-auto bg-muted/10">
         {children}
       </main>

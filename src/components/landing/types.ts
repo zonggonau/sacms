@@ -69,6 +69,15 @@ export interface OwnerItem {
   linkedin?: string
 }
 
+export interface BlogItem {
+  title: string
+  excerpt: string
+  date: string
+  author?: string
+  image_url?: string
+  slug?: string
+}
+
 export interface FaqItem {
   question: string
   answer: string
@@ -158,6 +167,7 @@ export interface LandingData {
   localPride: LocalPrideData | null
   cta: CtaData | null
   footer: FooterData | null
+  blogs: BlogItem[]
   // Papua Specific
   papuaHero?: PapuaHeroData | null
   papuaVisionMission?: VisionMissionData | null

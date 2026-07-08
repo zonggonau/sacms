@@ -124,6 +124,21 @@ export default async function BillingPage() {
     console.error("Failed to fetch transactions:", err)
   }
 
+  // 4. Fetch User's Master Infrastructure Settings
+  let masterInfra = { databaseUrl: "", storageConfig: null as any }
+  try {
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { masterDatabaseUrl: true, masterStorageConfig: true }
+    })
+    if (user) {
+      masterInfra.databaseUrl = user.masterDatabaseUrl || ""
+      masterInfra.storageConfig = user.masterStorageConfig
+    }
+  } catch (err) {
+    console.error("Failed to fetch master infra:", err)
+  }
+
   return (
     <BillingClient 
       initialAccountPlans={accountPlans}
@@ -131,6 +146,7 @@ export default async function BillingPage() {
       initialUsage={usage}
       initialTransactions={transactions}
       isEnterpriseMode={enterprise}
+      initialMasterInfra={masterInfra}
     />
   )
 }

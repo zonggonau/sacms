@@ -25,7 +25,8 @@ export default async function CMSContentTypeEntriesPage({
       slug: contentTypeSlug,
       OR: [
         { tenantId: access.tenantId },
-        { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } }
+        { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+        ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
       ]
     },
     include: { schemaFields: { orderBy: { order: 'asc' } } },

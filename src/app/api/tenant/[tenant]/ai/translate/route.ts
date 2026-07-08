@@ -47,11 +47,14 @@ export async function POST(
     const result = await validateBody(request, translateSchema)
     if ("error" in result) return result.error
 
-    const translated = await translateContent(result.data)
+    const translated = await translateContent({ ...result.data, tenantId: access.tenantId })
 
     return NextResponse.json(translated)
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI translate error:", error)
+    if (error.status === 429) {
+      return NextResponse.json({ error: error.message }, { status: 429 })
+    }
     return NextResponse.json(
       { error: "Failed to translate content" },
       { status: 500 }

@@ -58,9 +58,10 @@ interface SingleTypesClientProps {
   tenantSlug: string
   limit?: number
   current?: number
+  isGlobalTenant?: boolean
 }
 
-export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, current = 0 }: SingleTypesClientProps) {
+export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, current = 0, isGlobalTenant = false }: SingleTypesClientProps) {
   const { data: session } = useSession()
   const router = useRouter()
   const { toast } = useToast()
@@ -287,12 +288,12 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48">
-                                {(!st.isGlobal || isSuperAdmin) && (
+                                {(!st.isGlobal || isGlobalTenant) && (
                                   <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}>
                                     <Layout className="mr-2 h-4 w-4" /> Edit Schema
                                   </DropdownMenuItem>
                                 )}
-                                {(!st.isGlobal || isSuperAdmin) && (
+                                {(!st.isGlobal || isGlobalTenant) && (
                                   <>
                                     <DropdownMenuSeparator />
                                     <DropdownMenuItem onClick={() => handleDeleteClick(st)} className="text-destructive focus:text-destructive">

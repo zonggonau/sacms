@@ -226,7 +226,7 @@ export function GlobalAdminSidebar() {
     </div>
   )
 
-  if (pathname.startsWith('/admin/cms')) {
+  if (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/content')) {
     return null
   }
 

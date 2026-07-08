@@ -4,6 +4,12 @@ import { useEffect, useState, useMemo } from "react"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Checkbox } from "@/components/ui/checkbox"
+import { getContentTypesAction } from "@/actions/content-types"
+import { getSingleTypesAction } from "@/actions/single-types"
+import { getComponentsAction } from "@/actions/components"
+import { getAdminContentTypesAction } from "@/actions/admin-content-types"
+import { getAdminSingleTypesAction } from "@/actions/admin-single-types"
+import { getAdminComponentsAction } from "@/actions/admin-components"
 
 // ── Relation types ────────────────────────────────────────────────────────────
 const RELATION_TYPES = [
@@ -63,12 +69,12 @@ export function RelationFieldConfig({
 
     setLoading(true)
     const fetchCT = tenantSlug 
-      ? fetch(`/api/tenant/${tenantSlug}/content-types`).then(r => r.json())
-      : fetch(`/api/admin/content-types`).then(r => r.json().then(data => data.contentTypes || []))
+      ? getContentTypesAction(tenantSlug).then(r => r.contentTypes || [])
+      : getAdminContentTypesAction().then(r => r.contentTypes || [])
     
     const fetchST = tenantSlug
-      ? fetch(`/api/tenant/${tenantSlug}/single-types`).then(r => r.json())
-      : fetch(`/api/admin/single-types`).then(r => r.json().then(data => data.singleTypes || []))
+      ? getSingleTypesAction(tenantSlug).then(r => r.singleTypes || [])
+      : getAdminSingleTypesAction().then(r => r.singleTypes || [])
 
     Promise.all([fetchCT, fetchST])
       .then(([cts, sts]) => {
@@ -162,7 +168,7 @@ interface ComponentItem {
   id?: string
   slug: string
   name: string
-  category?: string
+  category?: string | null
 }
 
 interface ComponentFieldConfigProps {
@@ -198,8 +204,8 @@ export function ComponentFieldConfig({
 
     setLoading(true)
     const fetchComponents = tenantSlug
-      ? fetch(`/api/tenant/${tenantSlug}/components`).then(r => r.json())
-      : fetch(`/api/admin/components`).then(r => r.json().then(data => data.components || []))
+      ? getComponentsAction(tenantSlug).then(r => r.components || [])
+      : getAdminComponentsAction().then(r => r.components || [])
 
     fetchComponents
       .then((data) => setComponents(Array.isArray(data) ? data : []))

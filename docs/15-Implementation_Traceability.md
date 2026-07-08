@@ -62,7 +62,6 @@ This document prevents requirements, manuals, API examples, and source code from
 | Audit trail | Implemented with constraint | `AuditLog`, audit helper/routes | Retention policy values exist; automatic purge must be operated separately |
 | Export/import | Implemented with constraint | tenant export/import routes | JSON-oriented workspace transfer; inspect route response for exact archive support |
 | Billing and Midtrans | Implemented with constraint | billing routes, payment provider layer | Environment/provider configuration determines active flow |
-| Stripe/Xendit provider modules | Partial | `src/lib/payment/*` | Modules exist; Midtrans remains the documented primary UI flow |
 | AI generation | Implemented with constraint | `src/lib/ai.ts`, tenant AI routes | DeepSeek key plus enabled feature/add-on required |
 | Legacy `/addons/ai` mock | Historical/retired | Tenant add-on route returns HTTP 410 | Use `/ai/smart-fill` |
 | AI usage quota accounting | Planned | Token usage returned by some operations | No canonical persisted per-tenant AI quota ledger was found |

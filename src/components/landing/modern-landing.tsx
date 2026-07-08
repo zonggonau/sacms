@@ -32,6 +32,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
     localPride = null,
     cta = null,
     footer = null,
+    blogs = [],
   } = data
 
   return (

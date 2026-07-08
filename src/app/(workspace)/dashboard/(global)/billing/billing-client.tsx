@@ -6,8 +6,10 @@ import { useRouter } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { 
-  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download
+  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download, Cloud, Save
 } from "lucide-react"
 import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/actions/billing"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -21,13 +23,15 @@ export default function BillingClient({
   initialActiveWorkspacesCount,
   initialUsage,
   initialTransactions,
-  isEnterpriseMode
+  isEnterpriseMode,
+  initialMasterInfra
 }: {
   initialAccountPlans: any[]
   initialActiveWorkspacesCount: number
   initialUsage: any
   initialTransactions: any[]
   isEnterpriseMode?: boolean
+  initialMasterInfra?: { databaseUrl: string, storageConfig: any }
 }) {
   const { data: session, status, update } = useSession()
   const router = useRouter()
@@ -38,6 +42,15 @@ export default function BillingClient({
   const [usage, setUsage] = useState<{current: number, max: number | null, allowed: boolean, plan: string} | null>(initialUsage)
   const [transactions, setTransactions] = useState<any[]>(initialTransactions)
   const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null)
+
+  const [infra, setInfra] = useState({
+    databaseUrl: initialMasterInfra?.databaseUrl || "",
+    s3Bucket: initialMasterInfra?.storageConfig?.bucket || "",
+    s3Region: initialMasterInfra?.storageConfig?.region || "",
+    s3AccessKey: initialMasterInfra?.storageConfig?.accessKeyId || "",
+    s3SecretKey: initialMasterInfra?.storageConfig?.secretAccessKey || "",
+  })
+  const [savingInfra, setSavingInfra] = useState(false)
 
   const handleCheckStatus = async (orderId: string) => {
     setCheckingOrderId(orderId)
@@ -86,6 +99,37 @@ export default function BillingClient({
     }
   }
 
+  const handleSaveInfra = async () => {
+    setSavingInfra(true)
+    try {
+      const storageConfig = {
+        bucket: infra.s3Bucket,
+        region: infra.s3Region,
+        accessKeyId: infra.s3AccessKey,
+        secretAccessKey: infra.s3SecretKey
+      }
+      const res = await fetch("/api/auth/user/infrastructure", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          masterDatabaseUrl: infra.databaseUrl,
+          masterStorageConfig: storageConfig
+        })
+      })
+      if (res.ok) {
+        toast({ title: "Infrastructure Saved", description: "Master infrastructure settings have been updated." })
+        router.refresh()
+      } else {
+        const error = await res.json()
+        toast({ variant: "destructive", title: "Error", description: error.error || "Failed to save settings" })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to save infrastructure settings." })
+    } finally {
+      setSavingInfra(false)
+    }
+  }
+
   if (status === "loading") {
     return (
       <div className="flex h-[80vh] items-center justify-center">
@@ -102,9 +146,10 @@ export default function BillingClient({
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
-        <TabsList className={cn("grid w-full", isEnterpriseMode ? "grid-cols-1 max-w-[200px]" : "grid-cols-2 max-w-[400px]")}>
+        <TabsList className={cn("grid w-full", isEnterpriseMode ? "grid-cols-2 max-w-[400px]" : "grid-cols-2 max-w-[400px]")}>
           <TabsTrigger value="plans">Subscription Plans</TabsTrigger>
           {!isEnterpriseMode && <TabsTrigger value="history">Transaction History</TabsTrigger>}
+          {isEnterpriseMode && <TabsTrigger value="infrastructure">Infrastructure</TabsTrigger>}
         </TabsList>
         
         <TabsContent value="plans" className="space-y-6 mt-6">
@@ -274,6 +319,97 @@ export default function BillingClient({
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+        )}
+
+        {isEnterpriseMode && (
+          <TabsContent value="infrastructure" className="mt-6">
+            <div className="flex justify-between items-center mb-6">
+              <div>
+                <h3 className="text-xl font-bold">Master Infrastructure Override</h3>
+                <p className="text-sm text-muted-foreground">
+                  Configure default database and S3 credentials for all new workspaces created under this account.
+                </p>
+              </div>
+              <Button onClick={handleSaveInfra} disabled={savingInfra}>
+                {savingInfra ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Settings
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-6">
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-4 border-b bg-muted/20">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Database className="h-4 w-4 text-primary" />
+                    Master Database Override
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-6">
+                  <div className="space-y-2">
+                    <Label htmlFor="masterDatabaseUrl">PostgreSQL Connection URL</Label>
+                    <Input 
+                      id="masterDatabaseUrl" 
+                      value={infra.databaseUrl} 
+                      onChange={(e) => setInfra({ ...infra, databaseUrl: e.target.value })}
+                      placeholder="postgresql://user:password@host:port/database"
+                      type="password"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="border-none shadow-sm">
+                <CardHeader className="pb-4 border-b bg-muted/20">
+                  <CardTitle className="text-sm font-bold flex items-center gap-2">
+                    <Cloud className="h-4 w-4 text-primary" />
+                    Master S3 Storage Override
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="masterS3Bucket">Bucket Name</Label>
+                      <Input 
+                        id="masterS3Bucket" 
+                        value={infra.s3Bucket} 
+                        onChange={(e) => setInfra({ ...infra, s3Bucket: e.target.value })}
+                        placeholder="my-enterprise-bucket"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="masterS3Region">Region</Label>
+                      <Input 
+                        id="masterS3Region" 
+                        value={infra.s3Region} 
+                        onChange={(e) => setInfra({ ...infra, s3Region: e.target.value })}
+                        placeholder="ap-southeast-1 (or auto for R2)"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="masterS3AccessKey">Access Key ID</Label>
+                      <Input 
+                        id="masterS3AccessKey" 
+                        value={infra.s3AccessKey} 
+                        onChange={(e) => setInfra({ ...infra, s3AccessKey: e.target.value })}
+                        type="password"
+                        placeholder="Enter access key"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="masterS3SecretKey">Secret Access Key</Label>
+                      <Input 
+                        id="masterS3SecretKey" 
+                        value={infra.s3SecretKey} 
+                        onChange={(e) => setInfra({ ...infra, s3SecretKey: e.target.value })}
+                        type="password"
+                        placeholder="Enter secret key"
+                      />
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
         )}
       </Tabs>

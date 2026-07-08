@@ -8,6 +8,8 @@ export interface PlanConfig {
   max_locales: number
   audit_log_retention: number // in days
   support_level: string
+  max_ai_tokens: number // 0 means AI is disabled
+  max_custom_domains: number
 }
 
 export interface UserPlanConfig {
@@ -80,6 +82,8 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 1,
     audit_log_retention: 0,
     support_level: "Community",
+    max_ai_tokens: 10000,
+    max_custom_domains: 0,
   },
   starter: {
     plan_slug: "starter",
@@ -91,6 +95,8 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 2,
     audit_log_retention: 7,
     support_level: "Email Support",
+    max_ai_tokens: 100000,
+    max_custom_domains: 1,
   },
   pro: {
     plan_slug: "pro",
@@ -102,6 +108,8 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 5,
     audit_log_retention: 30,
     support_level: "Priority Support",
+    max_ai_tokens: 500000,
+    max_custom_domains: 3,
   },
   enterprise: {
     plan_slug: "enterprise",
@@ -113,6 +121,8 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 20,
     audit_log_retention: 365,
     support_level: "24/7 Dedicated Support",
+    max_ai_tokens: 2000000,
+    max_custom_domains: 10,
   },
   custom: {
     plan_slug: "custom",
@@ -124,5 +134,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 99,
     audit_log_retention: 9999,
     support_level: "Custom Support",
+    max_ai_tokens: 99999999,
+    max_custom_domains: 9999,
   },
 }

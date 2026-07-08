@@ -8,7 +8,7 @@ import { z } from "zod/v4"
 import { resolveTxt } from "dns/promises"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { getRedis } from "@/lib/redis"
-import { isFeatureEnabled } from "@/lib/tenant-plan"
+import { isFeatureEnabled, getTenantPlanConfig } from "@/lib/tenant-plan"
 
 const setDomainSchema = z.object({
   customDomain: z
@@ -18,14 +18,16 @@ const setDomainSchema = z.object({
     .regex(
       /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
       "Invalid domain format"
-    )
-    .optional()
-    .nullable(),
+    ),
+})
+
+const verifyOrDeleteSchema = z.object({
+  customDomain: z.string().min(3),
 })
 
 /**
  * GET /api/tenant/[tenant]/white-label/domain
- * Get current custom domain status and DNS verification record
+ * Get current custom domains and DNS verification records
  */
 export async function GET(
   _request: NextRequest,
@@ -49,11 +51,10 @@ export async function GET(
 
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
-      select: {
-        slug: true,
-        customDomain: true,
-        customDomainStatus: true,
-        customDomainVerifiedAt: true,
+      include: {
+        customDomains: {
+          orderBy: { createdAt: 'desc' }
+        }
       },
     })
 
@@ -63,28 +64,29 @@ export async function GET(
 
     const verificationToken = buildVerificationToken(access.tenantId)
 
+    const domains = tenantRecord.customDomains.map(d => ({
+      ...d,
+      dnsVerification: {
+        type: "TXT",
+        name: `_sacms-verify.${d.domain}`,
+        value: verificationToken,
+      }
+    }))
+
     return NextResponse.json({
-      ...tenantRecord,
-      // DNS TXT record the user must create to prove domain ownership
-      dnsVerification: tenantRecord.customDomain
-        ? {
-            type: "TXT",
-            name: `_sacms-verify.${tenantRecord.customDomain}`,
-            value: verificationToken,
-          }
-        : null,
+      domains,
     })
   } catch (error) {
-    console.error("Error fetching custom domain:", error)
+    console.error("Error fetching custom domains:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 /**
- * PUT /api/tenant/[tenant]/white-label/domain
- * Set (or clear) the custom domain for the tenant
+ * POST /api/tenant/[tenant]/white-label/domain
+ * Add a new custom domain for the tenant
  */
-export async function PUT(
+export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
@@ -107,58 +109,40 @@ export async function PUT(
     const result = await validateBody(request, setDomainSchema)
     if ("error" in result) return result.error
 
-    const customDomain = result.data.customDomain?.toLowerCase() || null
+    const customDomain = result.data.customDomain.toLowerCase()
 
-    const currentTenant = await db.tenant.findUnique({
-      where: { id: access.tenantId },
-      select: { customDomain: true },
+    const planConfig = await getTenantPlanConfig(access.tenantId)
+    const currentDomainCount = await db.customDomain.count({
+      where: { tenantId: access.tenantId }
     })
 
-    // Clearing domain
-    if (!customDomain) {
-      await db.tenant.update({
-        where: { id: access.tenantId },
-        data: {
-          customDomain: null,
-          customDomainStatus: null,
-          customDomainVerifiedAt: null,
-        },
-      })
-      
-      if (currentTenant?.customDomain) {
-        const redis = getRedis()
-        if (redis) await redis.del(`domain:${currentTenant.customDomain}`)
-      }
-
-      return NextResponse.json({ customDomain: null, status: "cleared" })
+    if (currentDomainCount >= planConfig.max_custom_domains) {
+      return NextResponse.json(
+        { error: `You have reached the limit of ${planConfig.max_custom_domains} custom domains for your plan.` },
+        { status: 403 }
+      )
     }
 
     // Check no other tenant already owns this domain
-    const existing = await db.tenant.findUnique({
-      where: { customDomain },
-      select: { id: true },
+    const existing = await db.customDomain.findUnique({
+      where: { domain: customDomain },
+      select: { tenantId: true },
     })
-    if (existing && existing.id !== access.tenantId) {
+    if (existing) {
       return NextResponse.json(
         { error: "This domain is already in use by another tenant" },
         { status: 409 }
       )
     }
 
-    await db.tenant.update({
-      where: { id: access.tenantId },
+    const newDomain = await db.customDomain.create({
       data: {
-        customDomain,
-        customDomainStatus: "pending",
-        customDomainVerifiedAt: null,
-      },
+        tenantId: access.tenantId,
+        domain: customDomain,
+        status: "pending",
+        isPrimary: currentDomainCount === 0, // Make primary if it's the first one
+      }
     })
-
-    // A pending domain must never keep routing through a previously verified map.
-    if (currentTenant?.customDomain) {
-      const redis = getRedis()
-      if (redis) await redis.del(`domain:${currentTenant.customDomain}`)
-    }
 
     const verificationToken = buildVerificationToken(access.tenantId)
 
@@ -167,13 +151,12 @@ export async function PUT(
       userId: session.user.id,
       action: AuditAction.SETTINGS_UPDATED,
       entity: "tenant_custom_domain",
-      entityId: access.tenantId,
-      data: { customDomain },
+      entityId: newDomain.id,
+      data: { action: "add", domain: customDomain },
     })
 
     return NextResponse.json({
-      customDomain,
-      customDomainStatus: "pending",
+      ...newDomain,
       dnsVerification: {
         type: "TXT",
         name: `_sacms-verify.${customDomain}`,
@@ -187,11 +170,11 @@ export async function PUT(
 }
 
 /**
- * POST /api/tenant/[tenant]/white-label/domain
- * Trigger DNS verification for the custom domain
+ * PUT /api/tenant/[tenant]/white-label/domain
+ * Trigger DNS verification for a specific custom domain
  */
-export async function POST(
-  _request: NextRequest,
+export async function PUT(
+  request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
   try {
@@ -206,35 +189,39 @@ export async function POST(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    if (!await isFeatureEnabled(access.tenantId, "ENABLE_CUSTOM_DOMAIN")) {
-      return NextResponse.json({ error: "Custom domain requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
+    const result = await validateBody(request, verifyOrDeleteSchema)
+    if ("error" in result) return result.error
+
+    const { customDomain } = result.data
+
+    const domainRecord = await db.customDomain.findUnique({
+      where: { domain: customDomain },
+    })
+
+    if (!domainRecord || domainRecord.tenantId !== access.tenantId) {
+      return NextResponse.json(
+        { error: "Custom domain not found or you don't have access" },
+        { status: 404 }
+      )
     }
 
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
-      select: { customDomain: true, slug: true },
+      select: { slug: true }
     })
 
-    if (!tenantRecord?.customDomain) {
-      return NextResponse.json(
-        { error: "No custom domain configured" },
-        { status: 400 }
-      )
-    }
-
-    const { customDomain } = tenantRecord
     const expectedToken = buildVerificationToken(access.tenantId)
     const verified = await verifyDnsTxt(customDomain, expectedToken)
 
-    await db.tenant.update({
-      where: { id: access.tenantId },
+    const updatedDomain = await db.customDomain.update({
+      where: { id: domainRecord.id },
       data: {
-        customDomainStatus: verified ? "verified" : "failed",
-        customDomainVerifiedAt: verified ? new Date() : null,
+        status: verified ? "verified" : "failed",
+        verifiedAt: verified ? new Date() : null,
       },
     })
 
-    if (verified) {
+    if (verified && tenantRecord) {
       const redis = getRedis()
       if (redis) {
         await redis.set(`domain:${customDomain}`, tenantRecord.slug)
@@ -261,12 +248,69 @@ export async function POST(
 
     return NextResponse.json({
       verified: true,
-      customDomain,
-      customDomainStatus: "verified",
-      customDomainVerifiedAt: new Date().toISOString(),
+      ...updatedDomain,
     })
   } catch (error) {
     console.error("Error verifying custom domain:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/tenant/[tenant]/white-label/domain
+ * Remove a custom domain
+ */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { tenant } = await params
+    const access = await getTenantAccess(session, tenant)
+    if (!access || !["owner", "admin"].includes(access.role)) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const result = await validateBody(request, verifyOrDeleteSchema)
+    if ("error" in result) return result.error
+
+    const { customDomain } = result.data
+
+    const domainRecord = await db.customDomain.findUnique({
+      where: { domain: customDomain },
+    })
+
+    if (!domainRecord || domainRecord.tenantId !== access.tenantId) {
+      return NextResponse.json(
+        { error: "Custom domain not found or you don't have access" },
+        { status: 404 }
+      )
+    }
+
+    await db.customDomain.delete({
+      where: { id: domainRecord.id }
+    })
+
+    const redis = getRedis()
+    if (redis) await redis.del(`domain:${customDomain}`)
+
+    logAudit({
+      tenantId: access.tenantId,
+      userId: session.user.id,
+      action: AuditAction.SETTINGS_UPDATED,
+      entity: "tenant_custom_domain",
+      entityId: domainRecord.id,
+      data: { action: "delete", domain: customDomain },
+    })
+
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error("Error deleting custom domain:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
@@ -287,7 +331,7 @@ function buildVerificationToken(tenantId: string): string {
 }
 
 /**
- * Check if a DNS TXT record exists under `_sacms-verify.<domain>`.
+ * Check if a DNS TXT record exists under \`_sacms-verify.<domain>\`.
  */
 async function verifyDnsTxt(domain: string, expectedValue: string): Promise<boolean> {
   try {

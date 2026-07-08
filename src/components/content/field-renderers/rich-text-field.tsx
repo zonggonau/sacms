@@ -11,6 +11,8 @@ interface RichTextFieldProps {
   required?: boolean
   error?: string
   tenantSlug?: string
+  documentId?: string
+  fieldSlug?: string
 }
 
 export function RichTextField({
@@ -21,6 +23,8 @@ export function RichTextField({
   required = false,
   error,
   tenantSlug,
+  documentId,
+  fieldSlug,
 }: RichTextFieldProps) {
   return (
     <div className="space-y-2">
@@ -37,6 +41,8 @@ export function RichTextField({
           placeholder={placeholder}
           minHeight={300}
           tenantSlug={tenantSlug}
+          documentId={documentId}
+          fieldSlug={fieldSlug}
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}

@@ -5,9 +5,10 @@ import { db } from "@/lib/database"
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -20,7 +21,7 @@ export async function PUT(
     const { name, description } = body
 
     const role = await db.systemRole.update({
-      where: { id: params.id },
+      where: { id },
       data: { name, description }
     })
 
@@ -33,9 +34,10 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params
     const session = await getServerSession(authOptions)
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
@@ -45,7 +47,7 @@ export async function DELETE(
     }
 
     await db.systemRole.delete({
-      where: { id: params.id }
+      where: { id }
     })
 
     return NextResponse.json({ success: true })

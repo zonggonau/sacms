@@ -63,7 +63,9 @@ export async function POST(
 
     // Use the robust AI utility with model fallback and quota handling
     const aiResult = await safeGenerateContent(systemPrompt, `Generate a full CMS system architecture for: ${prompt}`, {
-      responseFormat: "json_object"
+      responseFormat: "json_object",
+      tenantId: access.tenantId,
+      action: "generate-schema"
     })
 
     console.log(`[AI System Schema] Generated using model: ${aiResult.model}`)

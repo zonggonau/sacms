@@ -76,13 +76,6 @@ SMTP_PASS="..."
 SMTP_FROM="SaCMS <no-reply@example.com>"
 
 # =========================================
-# Payment provider abstraction (Opsional)
-# =========================================
-PAYMENT_PROVIDER="midtrans"          # midtrans | stripe | xendit, sesuai flow aktif
-STRIPE_SECRET_KEY="..."
-XENDIT_SECRET_KEY="..."
-
-# =========================================
 # Sentry Monitoring (Opsional)
 # =========================================
 SENTRY_DSN="https://xxx@sentry.io/xxx"

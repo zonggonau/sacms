@@ -9,21 +9,34 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
+model SystemRole {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("system_roles")
+}
+
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  password      String?
-  image         String?
-  role          String         @default("user")
-  emailVerified DateTime?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  plan          String         @default("free")
-  accounts      Account[]
-  sessions      Session[]
-  subscriptions Subscription[]
-  tenants       TenantMember[]
+  id                  String         @id @default(cuid())
+  email               String         @unique
+  name                String?
+  password            String?
+  image               String?
+  role                String         @default("user")
+  emailVerified       DateTime?
+  createdAt           DateTime       @default(now())
+  updatedAt           DateTime       @updatedAt
+  plan                String         @default("free")
+  masterDatabaseUrl   String?
+  masterStorageConfig Json?
+  accounts            Account[]
+  sessions            Session[]
+  subscriptions       Subscription[]
+  tenants             TenantMember[]
 
   @@map("users")
 }
@@ -87,6 +100,7 @@ model Tenant {
   faviconUrl             String?
   primaryColor           String?
   storageConfig          Json?
+  aiTokensUsed           Int                           @default(0)
   apiKeys                ApiKey[]
   apiRequests            ApiRequest[]
   apiTokens              ApiToken[]
@@ -107,6 +121,8 @@ model Tenant {
   tenantRoles            TenantRole[]
   singleTypeAssignments  TenantSingleTypeAssignment[]
   webhooks               Webhook[]
+  aiQuotaLedgers         AiQuotaLedger[]
+  customDomains          CustomDomain[]
 
   @@map("tenants")
 }
@@ -136,6 +152,8 @@ model CustomPlanOverride {
   maxStorage        Int?
   maxLocales        Int?
   maxApiCalls       Int?
+  maxAiTokens       Int?
+  maxCustomDomains  Int?
   note              String?
   createdBy         String?
   createdAt         DateTime @default(now())
@@ -191,6 +209,20 @@ model SchemaField {
   @@unique([singleTypeId, slug])
   @@unique([componentId, slug])
   @@map("schema_fields")
+}
+
+model AiQuotaLedger {
+  id        String   @id @default(cuid())
+  tenantId  String
+  action    String
+  tokens    Int      @default(0)
+  words     Int      @default(0)
+  model     String?
+  createdAt DateTime @default(now())
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("ai_quota_ledgers")
 }
 
 model TenantContentTypeAssignment {
@@ -719,4 +751,19 @@ model LicenseCache {
   updatedAt       DateTime @updatedAt
 
   @@map("license_cache")
+}
+
+model CustomDomain {
+  id         String    @id @default(cuid())
+  tenantId   String
+  domain     String    @unique
+  status     String    @default("pending") // pending, verified, failed
+  verifiedAt DateTime?
+  isPrimary  Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  tenant     Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("custom_domains")
 }

@@ -2,7 +2,6 @@
 
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { getContentTypesAction } from "@/actions/content-types"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -76,9 +75,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
-  
   const [liveTenants, setLiveTenants] = useState<any[]>([])
-  const [assignedContentTypes, setAssignedContentTypes] = useState<any[]>([])
 
   useEffect(() => {
     setMounted(true)
@@ -120,22 +117,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     if (session?.user) fetchTenants()
   }, [session])
 
-  // Fetch assigned content types for this tenant
-  useEffect(() => {
-    async function fetchContentTypes() {
-      if (!tenantId) return
-      try {
-        const data = await getContentTypesAction(tenantId)
-        if (data.contentTypes) {
-          setAssignedContentTypes(data.contentTypes as any)
-        }
-      } catch (error) {
-        console.error("Failed to fetch tenant content types:", error)
-      }
-    }
-    fetchContentTypes()
-  }, [tenantId])
-
   const navSections: NavSection[] = [
     {
       label: "",
@@ -148,15 +129,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       items: [
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         { title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true },
-        // Dynamic collection entries
-        ...assignedContentTypes
-          .filter(ct => !['templates', 'sacms-addons', 'sacms-pricing', 'sacms-workspace-pricing', 'sacms-account-pricing'].includes(ct.slug))
-          .map(ct => ({
-            title: ct.name,
-            href: `/content/${ct.slug}`,
-            icon: Database,
-            matchPrefix: true
-          })),
         { title: "Media Library", href: "/media", icon: ImageIcon },
       ],
     },
@@ -413,3 +385,4 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     </>
   )
 }
+

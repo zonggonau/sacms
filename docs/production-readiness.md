@@ -127,7 +127,6 @@ Auth support Google & GitHub provider, tapi tidak ada `GOOGLE_CLIENT_ID` / `GITH
 | Midtrans integration | ✅ Ada | Core + webhook |
 | Midtrans mode | ⚠️ **Sandbox** | Belum production |
 | Midtrans webhook handler | ✅ Ada | `/api/billing/midtrans/webhooks` |
-| Stripe integration | ⚠️ **Key placeholder** | `sk_test_...holder` — tidak aktif |
 | Invoice generation | ✅ Ada | `/api/admin/billing/generate-invoices` |
 | Plans & pricing | ✅ Ada | Workspace + Account plans |
 | Checkout flow | ✅ Ada | `/dashboard/billing/checkout` |

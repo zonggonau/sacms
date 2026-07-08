@@ -114,6 +114,55 @@ export async function createTenantAction(data: any) {
   }
 }
 
+export async function applyTemplateAction(tenantIdOrSlug: string, templateId: string) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return { error: "Unauthorized" }
+
+    const tenant = await db.tenant.findFirst({
+      where: {
+        OR: [{ id: tenantIdOrSlug }, { slug: tenantIdOrSlug }]
+      }
+    })
+
+    if (!tenant) return { error: "Tenant not found" }
+    const tenantId = tenant.id
+
+    // Check if user is owner or admin of this tenant
+    const membership = await db.tenantMember.findFirst({
+      where: {
+        tenantId,
+        userId: session.user.id,
+        role: { in: ["owner", "admin"] }
+      }
+    })
+
+    if (!membership) {
+      return { error: "Forbidden: Only workspace owner or admin can apply templates." }
+    }
+
+    // Call provisionTenant to apply the template safely (it skips existing slugs)
+    await provisionTenant(tenantId, undefined, templateId)
+
+    await logAudit({
+      userId: session.user.id,
+      tenantId,
+      action: AuditAction.CONTENT_UPDATED,
+      entity: "schema",
+      entityId: tenantId,
+      data: { templateId }
+    })
+
+    // Revalidate the CTB overview path
+    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/overview`)
+
+    return { success: true }
+  } catch (error: any) {
+    console.error("[ApplyTemplateAction] Error:", error)
+    return { error: error.message || "Failed to apply template" }
+  }
+}
+
 export async function deleteTenantAction(tenantId: string) {
   try {
     const session = await getServerSession(authOptions)

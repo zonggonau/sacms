@@ -56,7 +56,7 @@ export async function POST(
     const result = await validateBody(request, generateSchema)
     if ("error" in result) return result.error
 
-    const generated = await generateContent(result.data)
+    const generated = await generateContent({ ...result.data, tenantId: access.tenantId })
 
     logAudit({
       tenantId: access.tenantId,
@@ -70,8 +70,11 @@ export async function POST(
     })
 
     return NextResponse.json(generated)
-  } catch (error) {
+  } catch (error: any) {
     console.error("AI generation error:", error)
+    if (error.status === 429) {
+      return NextResponse.json({ error: error.message }, { status: 429 })
+    }
     return NextResponse.json(
       { error: "Failed to generate content" },
       { status: 500 }

@@ -24,7 +24,7 @@ import {
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
-import { signOut, useSession } from "next-auth/react"
+import { signOut } from "next-auth/react"
 import { usePathname } from "next/navigation"
 import { Logo } from "@/components/ui/logo"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
@@ -33,12 +33,12 @@ interface CMSSidebarProps {
   tenantId: string
   contentTypes?: { id: string; name: string; slug: string }[]
   singleTypes?: { id: string; name: string; slug: string }[]
+  user?: { name?: string | null; email?: string | null; image?: string | null }
 }
 
-export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [] }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
-  const { data: session } = useSession()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
@@ -113,27 +113,35 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [] }: CM
           {/* Single Pages */}
           <div className="space-y-1">
             <p className="px-2 mb-2 text-xs font-semibold tracking-wider text-muted-foreground uppercase opacity-75">Static Pages</p>
-            {singleTypes.length === 0 ? (
-              <p className="px-2 text-xs text-muted-foreground italic">No static pages assigned</p>
-            ) : (
-              singleTypes.map(st => {
-                const active = pathname.startsWith(href(`/single-types/${st.slug}`))
-                return (
-                  <Link key={st.id} href={href(`/single-types/${st.slug}`)}>
-                    <div className={cn(
-                      "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group",
-                      active
-                        ? "bg-muted text-foreground font-semibold border-orange-500"
-                        : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
-                    )}>
-                      <Layers className={cn("h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100", active && "text-orange-500")} />
-                      <span className="truncate flex-1">{st.name}</span>
-                      <ChevronRight className="h-3 w-3 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
-                  </Link>
-                )
-              })
-            )}
+            
+            <Link href={href("/single-types")}>
+              <div className={cn(
+                "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 mb-1 group",
+                pathname === href("/single-types")
+                  ? "bg-muted text-foreground font-semibold border-orange-500"
+                  : "text-muted-foreground hover:text-foreground hover:bg-background border-transparent"
+              )}>
+                <Layers className={cn("h-4 w-4 shrink-0 opacity-70 group-hover:opacity-100", pathname === href("/single-types") && "text-orange-500 opacity-100")} />
+                <span className="truncate flex-1">Overview</span>
+              </div>
+            </Link>
+
+            {singleTypes.length > 0 && singleTypes.map(st => {
+              const active = pathname.startsWith(href(`/single-types/${st.slug}`))
+              return (
+                <Link key={st.id} href={href(`/single-types/${st.slug}`)}>
+                  <div className={cn(
+                    "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none border-l-2 group ml-2 border-l-border",
+                    active
+                      ? "bg-muted text-foreground font-semibold border-l-orange-500 text-orange-500"
+                      : "text-muted-foreground hover:text-foreground hover:bg-background hover:border-l-foreground"
+                  )}>
+                    <FileText className={cn("h-3.5 w-3.5 shrink-0 opacity-70 group-hover:opacity-100", active && "text-orange-500")} />
+                    <span className="truncate flex-1">{st.name}</span>
+                  </div>
+                </Link>
+              )
+            })}
           </div>
 
         </div>
@@ -144,10 +152,10 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [] }: CM
         <div className="flex items-center gap-3">
           <Link href={href("/profile")} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
             <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none border border-border">
-              {session?.user?.name?.[0]?.toUpperCase() ?? "E"}
+              {user?.name?.[0]?.toUpperCase() ?? "E"}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-semibold text-foreground truncate leading-none mb-1">{session?.user?.name}</p>
+              <p className="text-sm font-semibold text-foreground truncate leading-none mb-1">{user?.name || "User"}</p>
               <Badge variant="outline" className="text-[9px] h-4 px-1.5 rounded-none font-bold bg-muted/30 border-border text-muted-foreground">EDITOR</Badge>
             </div>
           </Link>

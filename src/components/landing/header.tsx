@@ -12,7 +12,8 @@ const NAV_ITEMS = [
   { label: "Fitur", href: "/#fitur" },
   { label: "Harga", href: "/#pricing" },
   { label: "Tentang", href: "/#about" },
-  { label: "Dokumentasi", href: "/docs" },
+  { label: "Docs", href: "/docs" },
+  { label: "Blog", href: "/blog" },
 ]
 
 export function LandingHeader({ brandName }: { brandName?: string }) {

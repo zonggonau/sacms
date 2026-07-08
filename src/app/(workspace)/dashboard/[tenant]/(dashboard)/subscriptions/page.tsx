@@ -11,7 +11,7 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package, Shield, Bot
+  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -69,6 +69,15 @@ export default function TenantSubscriptionsPage() {
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
+  
+  const [infra, setInfra] = useState({
+    databaseUrl: "",
+    s3Bucket: "",
+    s3Region: "",
+    s3AccessKey: "",
+    s3SecretKey: "",
+  })
+  const [savingInfra, setSavingInfra] = useState(false)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session])
   const [liveTenants, setLiveTenants] = useState<any[]>([])
@@ -114,11 +123,12 @@ export default function TenantSubscriptionsPage() {
   const fetchBillingData = async () => {
     if (!tenantSlug) return
     try {
-      const [subRes, invRes, plansRes, usageRes] = await Promise.all([
+      const [subRes, invRes, plansRes, usageRes, settingsRes] = await Promise.all([
         fetch(`/api/tenant/${tenantSlug}/subscription/prorate`),
         fetch(`/api/tenant/${tenantSlug}/invoices`),
         fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`),
-        fetch(`/api/tenant/${tenantSlug}/billing/usage`)
+        fetch(`/api/tenant/${tenantSlug}/billing/usage`),
+        fetch(`/api/tenant/${tenantSlug}/settings`)
       ])
       
       if (subRes.ok) {
@@ -143,6 +153,20 @@ export default function TenantSubscriptionsPage() {
       if (usageRes.ok) {
         const data = await usageRes.json()
         setUsage(data.usage || [])
+      }
+
+      if (settingsRes.ok) {
+        const data = await settingsRes.json()
+        const s = data.settings
+        if (s) {
+          setInfra({
+            databaseUrl: s.databaseUrl || "",
+            s3Bucket: s.storageConfig?.bucket || "",
+            s3Region: s.storageConfig?.region || "",
+            s3AccessKey: s.storageConfig?.accessKeyId || "",
+            s3SecretKey: s.storageConfig?.secretAccessKey || "",
+          })
+        }
       }
 
       const enterprise = await checkEnterpriseModeAction()
@@ -175,6 +199,38 @@ export default function TenantSubscriptionsPage() {
       toast({ variant: 'destructive', title: "Error", description: "Gagal membatalkan langganan" })
     } finally {
       setCancellingSubscription(false)
+    }
+  }
+
+  const handleSaveInfra = async () => {
+    if (!tenantSlug) return
+    setSavingInfra(true)
+    try {
+      const storageConfig = {
+        bucket: infra.s3Bucket,
+        region: infra.s3Region,
+        accessKeyId: infra.s3AccessKey,
+        secretAccessKey: infra.s3SecretKey
+      }
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          databaseUrl: infra.databaseUrl,
+          storageConfig: storageConfig
+        })
+      })
+      if (res.ok) {
+        toast({ title: "Infrastructure Saved", description: "Workspace infrastructure settings have been updated." })
+        router.refresh()
+      } else {
+        const error = await res.json()
+        toast({ variant: "destructive", title: "Error", description: error.error || "Failed to save settings" })
+      }
+    } catch (err) {
+      toast({ variant: "destructive", title: "Error", description: "Failed to save infrastructure settings." })
+    } finally {
+      setSavingInfra(false)
     }
   }
 
@@ -642,6 +698,96 @@ export default function TenantSubscriptionsPage() {
                 )}
               </CardContent>
             </Card>
+          )}
+
+          {/* Infrastructure Overrides */}
+          {isEnterpriseMode && (
+            <div className="space-y-6 mt-12">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h3 className="text-xl font-bold uppercase tracking-tight">Workspace Infrastructure</h3>
+                  <p className="text-sm text-muted-foreground font-medium mt-1">
+                    Override the default database and S3 credentials specifically for this workspace.
+                  </p>
+                </div>
+                <Button onClick={handleSaveInfra} disabled={savingInfra} className="rounded-none font-bold uppercase tracking-widest text-[10px]">
+                  {savingInfra ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                  Save Settings
+                </Button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <Card className="border border-border shadow-none rounded-none">
+                  <CardHeader className="pb-4 border-b bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase">
+                      <Database className="h-4 w-4 text-orange-500" />
+                      Database Override
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-6">
+                    <div className="space-y-2">
+                      <label className="text-xs font-bold uppercase text-muted-foreground">PostgreSQL Connection URL</label>
+                      <input 
+                        className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                        value={infra.databaseUrl} 
+                        onChange={(e) => setInfra({ ...infra, databaseUrl: e.target.value })}
+                        placeholder="postgresql://user:password@host:port/database"
+                        type="password"
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border shadow-none rounded-none">
+                  <CardHeader className="pb-4 border-b bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase">
+                      <Cloud className="h-4 w-4 text-orange-500" />
+                      S3 Storage Override
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4 pt-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Bucket Name</label>
+                        <input 
+                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          value={infra.s3Bucket} 
+                          onChange={(e) => setInfra({ ...infra, s3Bucket: e.target.value })}
+                          placeholder="tenant-bucket"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Region</label>
+                        <input 
+                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          value={infra.s3Region} 
+                          onChange={(e) => setInfra({ ...infra, s3Region: e.target.value })}
+                          placeholder="auto"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Access Key</label>
+                        <input 
+                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          value={infra.s3AccessKey} 
+                          onChange={(e) => setInfra({ ...infra, s3AccessKey: e.target.value })}
+                          type="password"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold uppercase text-muted-foreground">Secret Key</label>
+                        <input 
+                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          value={infra.s3SecretKey} 
+                          onChange={(e) => setInfra({ ...infra, s3SecretKey: e.target.value })}
+                          type="password"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </div>
           )}
             </>
           )}

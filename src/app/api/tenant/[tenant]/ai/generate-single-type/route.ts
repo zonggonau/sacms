@@ -53,7 +53,9 @@ export async function POST(
     `
 
     const aiResult = await safeGenerateContent(systemPrompt, `Generate an ecosystem for: ${prompt}`, {
-      responseFormat: "json_object"
+      responseFormat: "json_object",
+      tenantId: access.tenantId,
+      action: "generate-single-type"
     })
 
     let schema
@@ -154,6 +156,9 @@ export async function POST(
     return NextResponse.json(result)
   } catch (error: any) {
     console.error("AI Single Type Ecosystem Generation Error:", error)
+    if (error.status === 429) {
+      return NextResponse.json({ error: error.message }, { status: 429 })
+    }
     return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
 }

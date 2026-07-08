@@ -204,7 +204,7 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-2">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "richText":
-        return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} documentId={singleType?.slug} fieldSlug={field.slug} tenantSlug={tenantSlug} /></div>
       
       case "number":
       case "integer":
@@ -369,3 +369,5 @@ export default function CMSSingleTypeDetailPage() {
     </div>
   )
 }
+
+

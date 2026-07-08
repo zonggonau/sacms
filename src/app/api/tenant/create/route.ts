@@ -42,6 +42,12 @@ export async function POST(request: NextRequest) {
 
     const slug = customSlug ? await generateUniqueSlug(customSlug) : await generateUniqueSlug(name)
 
+    // Fetch user to get master settings
+    const user = await db.user.findUnique({
+      where: { id: session.user.id },
+      select: { masterDatabaseUrl: true, masterStorageConfig: true },
+    })
+
     const tenant = await db.$transaction(async (tx) => {
       const newTenant = await tx.tenant.create({
         data: {
@@ -50,6 +56,8 @@ export async function POST(request: NextRequest) {
           description: body.description || null,
           plan: "starter",
           status: "active",
+          databaseUrl: user?.masterDatabaseUrl || null,
+          storageConfig: user?.masterStorageConfig ? JSON.parse(JSON.stringify(user.masterStorageConfig)) : null,
         },
       })
 

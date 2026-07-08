@@ -48,6 +48,7 @@ export default async function SingleTypesPage({ params }: { params: Promise<{ te
       tenantSlug={tenant} 
       limit={maxLimit}
       current={currentUsageCount}
+      isGlobalTenant={access?.tenant.slug === "sacms-global"}
     />
   )
 }

@@ -18,8 +18,11 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   if (!tenant) return DEFAULT_LIMITS.free
 
   try {
+    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
+    if (!globalTenant) return DEFAULT_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
+        tenantId: globalTenant.id,
         contentType: { slug: "sacms-workspace-pricing" },
         status: "PUBLISHED",
       },
@@ -43,6 +46,8 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
         max_locales: Number(data.max_locales) || base.max_locales,
         audit_log_retention: Number(data.audit_log_retention) || base.audit_log_retention,
         support_level: data.support_level || base.support_level,
+        max_ai_tokens: Number(data.max_ai_tokens) || base.max_ai_tokens,
+        max_custom_domains: Number(data.max_custom_domains) || base.max_custom_domains,
       }
     }
   } catch (error) {
@@ -148,8 +153,11 @@ export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig>
   if (!user) return USER_PLAN_LIMITS.free
 
   try {
+    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
+    if (!globalTenant) return USER_PLAN_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
+        tenantId: globalTenant.id,
         contentType: { slug: "sacms-account-pricing" },
         status: "PUBLISHED",
       },

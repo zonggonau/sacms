@@ -264,6 +264,47 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
 
+    if (tenantSlug === "admin") {
+      if (session.user.role !== "super_admin") return { error: "Forbidden: Not Super Admin" }
+      const { data, status, locale, scheduledAt } = payload
+      if (!data || typeof data !== "object" || Array.isArray(data)) {
+        return { error: "Content data must be an object" }
+      }
+      if (!isWorkflowStatus(status)) return { error: "Invalid content status" }
+      
+      const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
+      const targetLocale = locale || "en"
+
+      const contentType = await db.contentType.findFirst({
+        where: { slug: contentTypeSlug, tenantId: null }
+      })
+      if (!contentType) return { error: "Content Type not found" }
+      
+      const validation = await validateContentEntry(contentType.id, data, db)
+      if (!validation.valid) {
+        return { error: `Validation failed: ${validation.errors.map((e) => `${e.field}: ${e.message}`).join(", ")}` }
+      }
+      const processedData = await processAutoSlugs(data, contentType.id, null)
+      const documentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
+
+      const entry = await db.contentEntry.create({
+        data: {
+          contentTypeId: contentType.id,
+          tenantId: null,
+          data: processedData,
+          status,
+          locale: targetLocale,
+          documentId,
+          createdBy: session.user.id,
+          scheduledAt: normalizedScheduledAt,
+          publishedAt: status === "PUBLISHED" ? new Date() : null,
+        }
+      })
+      logAudit({ action: AuditAction.CONTENT_CREATED, userId: session.user.id, entity: "ContentEntry", entityId: entry.id, data: { contentType: contentType.slug } })
+      revalidatePath(`/admin/content/${contentTypeSlug}`)
+      return { entry, documentId, contentType }
+    }
+
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
@@ -434,6 +475,43 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
+
+    if (tenantSlug === "admin") {
+      if (session.user.role !== "super_admin") return { error: "Forbidden: Not Super Admin" }
+      const { data, status, locale, scheduledAt } = payload
+      const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
+      
+      const entry = await db.contentEntry.findUnique({
+        where: { id: entryId, tenantId: null },
+        include: { contentType: true }
+      })
+      if (!entry) return { error: "Entry not found" }
+      
+      const validation = await validateContentEntry(entry.contentTypeId, data, db)
+      if (!validation.valid) {
+        return { error: `Validation failed: ${validation.errors.map((e) => `${e.field}: ${e.message}`).join(", ")}` }
+      }
+      const processedData = await processAutoSlugs(data, entry.contentTypeId, entryId)
+      
+      const updateData: any = { data: processedData }
+      if (status && isWorkflowStatus(status)) {
+        updateData.status = status
+        updateData.scheduledAt = normalizedScheduledAt
+        if (status === "PUBLISHED" && entry.status !== "PUBLISHED") {
+          updateData.publishedAt = new Date()
+        } else if (status !== "PUBLISHED" && status !== "SCHEDULED") {
+          updateData.publishedAt = null
+        }
+      }
+
+      const updated = await db.contentEntry.update({
+        where: { id: entryId },
+        data: updateData
+      })
+      logAudit({ action: AuditAction.CONTENT_UPDATED, userId: session.user.id, entity: "ContentEntry", entityId: entry.id, data: { contentType: entry.contentType.slug } })
+      revalidatePath(`/admin/content/${contentTypeSlug}`)
+      return { entry: updated }
+    }
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
@@ -691,6 +769,19 @@ export async function deleteEntryAction(tenantSlug: string, contentTypeSlug: str
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
 
+    if (tenantSlug === "admin") {
+      if (session.user.role !== "super_admin") return { error: "Forbidden: Not Super Admin" }
+      const entry = await db.contentEntry.findUnique({
+        where: { id: entryId, tenantId: null },
+        include: { contentType: true }
+      })
+      if (!entry) return { error: "Entry not found" }
+      await db.contentEntry.delete({ where: { id: entryId } })
+      logAudit({ action: AuditAction.CONTENT_DELETED, userId: session.user.id, entity: "ContentEntry", entityId: entry.id, data: { contentType: entry.contentType.slug } })
+      revalidatePath(`/admin/content/${contentTypeSlug}`)
+      return { success: true }
+    }
+
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
@@ -738,6 +829,24 @@ export async function updateContentEntryStatusAction(tenantSlug: string, content
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
 
+    if (tenantSlug === "admin") {
+      if (session.user.role !== "super_admin") return { error: "Forbidden: Not Super Admin" }
+      if (!isWorkflowStatus(status)) return { error: "Invalid status" }
+      const entry = await db.contentEntry.findUnique({
+        where: { id: entryId, tenantId: null },
+        include: { contentType: true }
+      })
+      if (!entry) return { error: "Entry not found" }
+      
+      const updateData: any = { status }
+      if (status === "PUBLISHED" && entry.status !== "PUBLISHED") updateData.publishedAt = new Date()
+      else if (status !== "PUBLISHED" && status !== "SCHEDULED") updateData.publishedAt = null
+
+      await db.contentEntry.update({ where: { id: entryId }, data: updateData })
+      revalidatePath(`/admin/content/${contentTypeSlug}`)
+      return { success: true }
+    }
+
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
@@ -784,6 +893,20 @@ export async function bulkContentAction(tenantSlug: string, contentTypeSlug: str
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
+
+    if (tenantSlug === "admin") {
+      if (session.user.role !== "super_admin") return { error: "Forbidden: Not Super Admin" }
+      if (action === "delete") {
+        await db.contentEntry.deleteMany({ where: { id: { in: entryIds }, tenantId: null } })
+      } else if (["DRAFT", "PUBLISHED", "ARCHIVED"].includes(action)) {
+        const updateData: any = { status: action }
+        if (action === "PUBLISHED") updateData.publishedAt = new Date()
+        else updateData.publishedAt = null
+        await db.contentEntry.updateMany({ where: { id: { in: entryIds }, tenantId: null }, data: updateData })
+      }
+      revalidatePath(`/admin/content/${contentTypeSlug}`)
+      return { success: true }
+    }
 
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }

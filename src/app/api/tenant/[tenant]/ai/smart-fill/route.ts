@@ -67,7 +67,9 @@ export async function POST(
     "${prompt}"`
 
     const result = await safeGenerateContent(systemPrompt, userPrompt, {
-      responseFormat: "json_object"
+      responseFormat: "json_object",
+      tenantId: access.tenantId,
+      action: "smart-fill"
     })
 
     try {
@@ -87,6 +89,9 @@ export async function POST(
     }
   } catch (error: any) {
     console.error("Smart Fill Error:", error)
+    if (error.status === 429) {
+      return NextResponse.json({ error: error.message }, { status: 429 })
+    }
     return NextResponse.json({ error: error.message || "Failed to process request" }, { status: 500 })
   }
 }

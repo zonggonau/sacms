@@ -1,120 +1,67 @@
 import { headers } from "next/headers"
 
+import { db } from "@/lib/database"
+import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
+
 export async function getLandingData() {
   try {
-    const headersList = await headers();
-    const host = headersList.get("host") || "localhost:3000";
-    const proto = headersList.get("x-forwarded-proto") || "http";
-    const baseUrl = `${proto}://${host}`;
+    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
+    const globalEntries = globalTenant ? await db.contentEntry.findMany({
+      where: { tenantId: globalTenant.id, status: "PUBLISHED" },
+      include: { contentType: true }
+    }) : []
 
-    console.log(`[Public API] Fetching live data from API endpoint...`);
+    const globalSingleTypes = globalTenant ? await db.tenantSingleTypeAssignment.findMany({
+      where: { tenantId: globalTenant.id, enabled: true, publishedAt: { not: null } },
+      include: { singleType: true }
+    }) : []
+
+    const data: Record<string, any> = {}
     
-    // Fetch data from the public API endpoint using WORKSPACE_ID
-    const workspaceId = process.env.WORKSPACE_ID || "sacms-global";
-    const apiKey = process.env.FRONTEND_API_KEY || "";
-    
-    const fetchApi = async (path: string, defaultValue: any) => {
-      try {
-        const res = await fetch(`${baseUrl}/api/public/${workspaceId}${path}`, {
-          cache: "no-store",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`
-          }
-        });
-        if (!res.ok) {
-          console.warn(`Failed to fetch ${path}: ${res.statusText}`);
-          return defaultValue;
-        }
-        const json = await res.json();
-        return json.data || defaultValue;
-      } catch (e) {
-        console.error(`Error fetching ${path}:`, e);
-        return defaultValue;
+    // Group entries by their schema slug
+    globalEntries.forEach(entry => {
+      const slug = entry.contentType.slug
+      const parsedData = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data
+      
+      // Some schemas are lists (features, workflow), others are singletons (hero, about)
+      if (["sacms-features", "sacms-workflow", "sacms-faq", "sacms-owners", "sacms-blogs", "sacms-testimonials", "sacms-sectors", "sacms-workspace-pricing", "sacms-account-pricing", "sacms-addons"].includes(slug)) {
+        if (!data[slug]) data[slug] = []
+        data[slug].push(parsedData)
+      } else {
+        data[slug] = parsedData
       }
-    };
+    })
 
-    const [
-      landingData,
-      aboutData,
-      whatsappData,
-      rawAddons,
-      pricingAccounts,
-      pricingWorkspaces
-    ] = await Promise.all([
-      fetchApi("/single/sacms-landing-page", {}),
-      fetchApi("/single/sacms-about", null),
-      fetchApi("/single/sacms-whatsapp", null),
-      fetchApi("/content/sacms-addons", []),
-      fetchApi("/content/sacms-account-pricing", []),
-      fetchApi("/content/sacms-workspace-pricing", [])
-    ]);
-
-    const landing = landingData || {}
-    const whatsapp = whatsappData || null
-
-    const hero = landing.hero_title ? {
-      headline: landing.hero_title,
-      subheadline: landing.hero_subtitle,
-      badge_text: landing.hero_badge,
-      cta_primary: landing.hero_cta_primary,
-      cta_secondary: landing.hero_cta_secondary
-    } : null
-
-    // Collections from landing page single type
-    const features = landing.features || []
-    const workflow = landing.workflows || []
-    const faq = landing.faqs || []
-    const testimonials = landing.testimonials || []
-    
-    const owners = []
-    const sectors = []
-    const localPride = null
-    const cta = null
-    const footer = null
-    
-    const about = aboutData ? {
-      title: aboutData.title,
-      description: aboutData.content || aboutData.description,
-      image: aboutData.image,
-      mission: aboutData.mission,
-      founded: aboutData.founded,
-    } : null
-
-    const addons = (Array.isArray(rawAddons) ? rawAddons : []).map((a: any) => ({
-      ...a,
-      name: a.title || a.name || "",
-      price_label: a.price_label || null,
-      price: a.price || 0,
-    }))
-    
-    // Papua-specific
-    const papuaHomepage = {}
-    const papuaConnectedSites = []
-    const papuaInitiatives = []
+    // Group single types
+    globalSingleTypes.forEach(assignment => {
+      const slug = assignment.singleType.slug
+      const parsedData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : (assignment.data || {})
+      data[slug] = parsedData
+    })
 
     return {
-      hero,
-      features,
-      pricingAccounts,
-      pricingWorkspaces,
-      addons,
-      workflow,
-      faq,
-      whatsapp,
-      about,
-      owners,
-      testimonials,
-      sectors,
-      localPride,
-      cta,
-      footer,
-      // Papua
-      papuaHero: papuaHomepage.hero || null,
-      papuaVisionMission: papuaHomepage.visionMission || null,
-      papuaChallenges: papuaHomepage.challenges || [],
-      papuaTechStack: papuaHomepage.techStack || [],
-      papuaConnectedSites,
-      papuaInitiatives,
+      hero: data["sacms-hero"] || null,
+      features: data["sacms-features"] || [],
+      pricingAccounts: data["sacms-account-pricing"] || [],
+      pricingWorkspaces: data["sacms-workspace-pricing"] || [],
+      addons: data["sacms-addons"] || [],
+      workflow: data["sacms-workflow"] || [],
+      faq: data["sacms-faq"] || [],
+      whatsapp: data["sacms-whatsapp"] || null,
+      about: data["sacms-about"] || null,
+      owners: data["sacms-owners"] || [],
+      blogs: data["sacms-blogs"] || [],
+      testimonials: data["sacms-testimonials"] || [],
+      sectors: data["sacms-sectors"] || [],
+      localPride: data["sacms-local-pride"] || null,
+      cta: data["sacms-cta"] || null,
+      footer: data["sacms-footer"] || null,
+      papuaHero: null,
+      papuaVisionMission: null,
+      papuaChallenges: [],
+      papuaTechStack: [],
+      papuaConnectedSites: [],
+      papuaInitiatives: [],
     }
   } catch (err) {
     console.error("Error in getLandingData:", err);
@@ -123,22 +70,24 @@ export async function getLandingData() {
 }
 
 function getDefaultData() {
+  const landing = DEFAULT_LANDING_PAGE_DATA;
   return {
-    hero: null,
-    features: [],
-    addons: [],
+    hero: landing["sacms-hero"],
+    features: landing["sacms-features"],
+    addons: landing["sacms-addons"],
     pricingAccounts: [],
     pricingWorkspaces: [],
-    workflow: [],
-    faq: [],
-    whatsapp: null,
-    about: null,
-    owners: [],
-    testimonials: [],
-    sectors: [],
-    localPride: null,
-    cta: null,
-    footer: null,
+    workflow: landing["sacms-workflow"],
+    faq: landing["sacms-faq"],
+    whatsapp: landing["sacms-whatsapp"],
+    about: landing["sacms-about"],
+    owners: landing["sacms-owners"],
+    blogs: landing["sacms-blogs"] || [],
+    testimonials: landing["sacms-testimonials"],
+    sectors: landing["sacms-sectors"],
+    localPride: landing["sacms-local-pride"],
+    cta: landing["sacms-cta"],
+    footer: landing["sacms-footer"],
     papuaHero: null,
     papuaVisionMission: null,
     papuaChallenges: [],

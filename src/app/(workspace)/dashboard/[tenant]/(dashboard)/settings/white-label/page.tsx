@@ -26,16 +26,21 @@ import {
   AlertCircle,
   Clock,
   ArrowLeft,
+  Trash2,
 } from "lucide-react"
 import Link from "next/link"
-interface DomainStatus {
-  customDomain: string | null
-  customDomainStatus: string | null
+
+interface DomainRecord {
+  id: string
+  domain: string
+  status: string
+  verifiedAt: string | null
+  isPrimary: boolean
   dnsVerification: {
     name: string
     type: string
     value: string
-  } | null
+  }
 }
 
 interface BrandSettings {
@@ -55,10 +60,9 @@ export default function WhiteLabelPage() {
   const [accessError, setAccessError] = useState<string | null>(null)
   const [savingBrand, setSavingBrand] = useState(false)
   const [savingDomain, setSavingDomain] = useState(false)
-  const [verifying, setVerifying] = useState(false)
-  const [copiedRecord, setCopiedRecord] = useState<"name" | "value" | null>(
-    null
-  )
+  const [verifyingDomain, setVerifyingDomain] = useState<string | null>(null)
+  const [deletingDomain, setDeletingDomain] = useState<string | null>(null)
+  const [copiedRecord, setCopiedRecord] = useState<string | null>(null)
 
   const [brand, setBrand] = useState<BrandSettings>({
     brandName: "",
@@ -69,11 +73,7 @@ export default function WhiteLabelPage() {
   })
 
   const [domainInput, setDomainInput] = useState("")
-  const [domainStatus, setDomainStatus] = useState<DomainStatus>({
-    customDomain: null,
-    customDomainStatus: null,
-    dnsVerification: null,
-  })
+  const [domains, setDomains] = useState<DomainRecord[]>([])
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -81,23 +81,35 @@ export default function WhiteLabelPage() {
     }
   }, [status, router])
 
+  const fetchDomains = async () => {
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/white-label/domain`)
+      if (res.ok) {
+        const data = await res.json()
+        setDomains(data.domains || [])
+      }
+    } catch {
+      // ignore
+    }
+  }
+
   useEffect(() => {
     async function fetchData() {
       if (!tenantSlug || !session?.user) return
 
       try {
-        const [wlRes, domRes] = await Promise.all([
+        const [wlRes] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/white-label`),
-          fetch(`/api/tenant/${tenantSlug}/white-label/domain`),
+          fetchDomains(),
         ])
 
-        if (wlRes.status === 403) {
+        if (wlRes?.status === 403) {
           const error = await wlRes.json().catch(() => ({}))
           setAccessError(error.error || "White-label is not available for this workspace")
           return
         }
 
-        if (wlRes.ok) {
+        if (wlRes?.ok) {
           const data = await wlRes.json()
           setBrand({
             brandName: data.brandName || "",
@@ -108,11 +120,6 @@ export default function WhiteLabelPage() {
           })
         }
 
-        if (domRes.ok) {
-          const data = await domRes.json()
-          setDomainStatus(data)
-          setDomainInput(data.customDomain || "")
-        }
       } catch {
         // ignore fetch errors on initial load
       } finally {
@@ -140,54 +147,82 @@ export default function WhiteLabelPage() {
     }
   }
 
-  async function handleSaveDomain() {
+  async function handleAddDomain() {
+    if (!domainInput.trim()) return
     setSavingDomain(true)
     try {
       const res = await fetch(
         `/api/tenant/${tenantSlug}/white-label/domain`,
         {
-          method: "PUT",
+          method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ customDomain: domainInput.trim() || null }),
+          body: JSON.stringify({ customDomain: domainInput.trim() }),
         }
       )
       const data = await res.json()
       if (res.ok) {
-        setDomainStatus(data)
+        setDomainInput("")
+        await fetchDomains()
       } else {
-        alert(data.error || "Failed to save domain")
+        alert(data.error || "Failed to add domain")
       }
     } finally {
       setSavingDomain(false)
     }
   }
 
-  async function handleVerifyDomain() {
-    setVerifying(true)
+  async function handleVerifyDomain(domain: string) {
+    setVerifyingDomain(domain)
     try {
       const res = await fetch(
         `/api/tenant/${tenantSlug}/white-label/domain`,
-        { method: "POST" }
+        { 
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customDomain: domain }),
+        }
       )
       const data = await res.json()
       if (res.ok) {
-        setDomainStatus(data)
+        await fetchDomains()
       } else {
         alert(data.error || "Verification failed. Check your DNS record.")
       }
     } finally {
-      setVerifying(false)
+      setVerifyingDomain(null)
     }
   }
 
-  function copyToClipboard(text: string, field: "name" | "value") {
+  async function handleDeleteDomain(domain: string) {
+    if (!confirm(`Are you sure you want to remove ${domain}?`)) return
+    setDeletingDomain(domain)
+    try {
+      const res = await fetch(
+        `/api/tenant/${tenantSlug}/white-label/domain`,
+        { 
+          method: "DELETE",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ customDomain: domain }),
+        }
+      )
+      if (res.ok) {
+        await fetchDomains()
+      } else {
+        const data = await res.json()
+        alert(data.error || "Failed to remove domain.")
+      }
+    } finally {
+      setDeletingDomain(null)
+    }
+  }
+
+  function copyToClipboard(text: string, fieldId: string) {
     navigator.clipboard.writeText(text)
-    setCopiedRecord(field)
+    setCopiedRecord(fieldId)
     setTimeout(() => setCopiedRecord(null), 2000)
   }
 
-  function StatusBadge({ status }: { status: string | null }) {
-    if (!status) return null
+  function StatusBadge({ status }: { status: string }) {
     const map = {
       pending: { label: "Pending Verification", icon: Clock, variant: "secondary" },
       verified: { label: "Verified", icon: CheckCircle, variant: "default" },
@@ -364,15 +399,15 @@ export default function WhiteLabelPage() {
             </CardContent>
           </Card>
 
-          {/* ── Custom Domain ─────────────────────────────────────────── */}
+          {/* ── Custom Domains ─────────────────────────────────────────── */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Globe className="h-5 w-5" />
-                Custom Domain
+                Custom Domains
               </CardTitle>
               <CardDescription>
-                Serve your public API on your own domain (e.g.{" "}
+                Serve your public API on your own domains (e.g.{" "}
                 <code className="bg-muted px-1 rounded text-xs">
                   api.yourcompany.com
                 </code>
@@ -380,9 +415,144 @@ export default function WhiteLabelPage() {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              {/* Domain input */}
-              <div className="space-y-2">
-                <Label htmlFor="customDomain">Domain</Label>
+              
+              {domains.length > 0 && (
+                <div className="space-y-6">
+                  {domains.map((dom) => (
+                    <div key={dom.id} className="rounded-md border p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <h3 className="font-semibold">{dom.domain}</h3>
+                          <StatusBadge status={dom.status} />
+                          {dom.isPrimary && <Badge variant="outline">Primary</Badge>}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDeleteDomain(dom.domain)}
+                          disabled={deletingDomain === dom.domain}
+                          className="text-destructive hover:text-destructive"
+                        >
+                          {deletingDomain === dom.domain ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                        </Button>
+                      </div>
+
+                      {dom.status !== "verified" && dom.dnsVerification && (
+                        <div className="space-y-3">
+                          <Separator />
+                          <p className="text-sm font-medium">
+                            DNS Verification Required
+                          </p>
+                          <p className="text-sm text-muted-foreground">
+                            Add the following TXT record to your DNS provider, then click Verify.
+                          </p>
+
+                          <div className="rounded-md border bg-muted/40 p-4 space-y-3 text-sm">
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Name / Host
+                                </p>
+                                <code className="break-all">
+                                  {dom.dnsVerification.name}
+                                </code>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 shrink-0"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    dom.dnsVerification.name,
+                                    `name-${dom.id}`
+                                  )
+                                }
+                              >
+                                {copiedRecord === `name-${dom.id}` ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Type
+                                </p>
+                                <code>TXT</code>
+                              </div>
+                            </div>
+
+                            <div className="flex items-start justify-between gap-4">
+                              <div>
+                                <p className="text-xs text-muted-foreground mb-1">
+                                  Value
+                                </p>
+                                <code className="break-all">
+                                  {dom.dnsVerification.value}
+                                </code>
+                              </div>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7 shrink-0"
+                                onClick={() =>
+                                  copyToClipboard(
+                                    dom.dnsVerification.value,
+                                    `value-${dom.id}`
+                                  )
+                                }
+                              >
+                                {copiedRecord === `value-${dom.id}` ? (
+                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                ) : (
+                                  <Copy className="h-4 w-4" />
+                                )}
+                              </Button>
+                            </div>
+                          </div>
+
+                          <div className="flex justify-between items-center mt-2">
+                            <p className="text-xs text-muted-foreground">
+                              DNS changes can take up to 48 hours to propagate.
+                            </p>
+                            <Button
+                              size="sm"
+                              onClick={() => handleVerifyDomain(dom.domain)}
+                              disabled={verifyingDomain === dom.domain}
+                            >
+                              {verifyingDomain === dom.domain ? (
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                              ) : (
+                                <RefreshCw className="mr-2 h-4 w-4" />
+                              )}
+                              Verify Record
+                            </Button>
+                          </div>
+                        </div>
+                      )}
+
+                      {dom.status === "verified" && (
+                        <div className="space-y-2 text-sm text-muted-foreground pt-2">
+                          <p>
+                            Point your DNS (A record or CNAME) for{" "}
+                            <code className="bg-muted px-1 rounded">
+                              {dom.domain}
+                            </code>{" "}
+                            to this server&apos;s IP address.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Add Domain input */}
+              <div className="space-y-2 pt-2">
+                <Label htmlFor="customDomain">Add New Domain</Label>
                 <div className="flex gap-2">
                   <Input
                     id="customDomain"
@@ -391,156 +561,19 @@ export default function WhiteLabelPage() {
                     onChange={(e) => setDomainInput(e.target.value)}
                   />
                   <Button
-                    onClick={handleSaveDomain}
-                    disabled={savingDomain}
-                    variant="outline"
+                    onClick={handleAddDomain}
+                    disabled={savingDomain || !domainInput}
+                    variant="default"
                   >
                     {savingDomain ? (
                       <Loader2 className="h-4 w-4 animate-spin" />
                     ) : (
-                      "Save"
+                      "Add Domain"
                     )}
                   </Button>
                 </div>
-                {domainStatus.customDomain && (
-                  <div className="flex items-center gap-2 pt-1">
-                    <StatusBadge status={domainStatus.customDomainStatus} />
-                  </div>
-                )}
               </div>
 
-              {/* DNS verification instructions */}
-              {domainStatus.customDomain &&
-                domainStatus.customDomainStatus !== "verified" &&
-                domainStatus.dnsVerification && (
-                  <>
-                    <Separator />
-                    <div className="space-y-3">
-                      <p className="text-sm font-medium">
-                        DNS Verification Required
-                      </p>
-                      <p className="text-sm text-muted-foreground">
-                        Add the following TXT record to your DNS provider, then
-                        click &ldquo;Verify&rdquo;.
-                      </p>
-
-                      <div className="rounded-md border bg-muted/40 p-4 space-y-3 text-sm">
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              Name / Host
-                            </p>
-                            <code className="break-all">
-                              {domainStatus.dnsVerification.name}
-                            </code>
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 shrink-0"
-                            onClick={() =>
-                              copyToClipboard(
-                                domainStatus.dnsVerification!.name,
-                                "name"
-                              )
-                            }
-                          >
-                            {copiedRecord === "name" ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              Type
-                            </p>
-                            <code>TXT</code>
-                          </div>
-                        </div>
-
-                        <div className="flex items-start justify-between gap-4">
-                          <div>
-                            <p className="text-xs text-muted-foreground mb-1">
-                              Value
-                            </p>
-                            <code className="break-all">
-                              {domainStatus.dnsVerification.value}
-                            </code>
-                          </div>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 shrink-0"
-                            onClick={() =>
-                              copyToClipboard(
-                                domainStatus.dnsVerification!.value,
-                                "value"
-                              )
-                            }
-                          >
-                            {copiedRecord === "value" ? (
-                              <CheckCircle className="h-4 w-4 text-green-500" />
-                            ) : (
-                              <Copy className="h-4 w-4" />
-                            )}
-                          </Button>
-                        </div>
-                      </div>
-
-                      <p className="text-xs text-muted-foreground">
-                        DNS changes can take up to 48 hours to propagate.
-                      </p>
-
-                      <Button
-                        onClick={handleVerifyDomain}
-                        disabled={verifying}
-                      >
-                        {verifying ? (
-                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                        ) : (
-                          <RefreshCw className="mr-2 h-4 w-4" />
-                        )}
-                        Verify DNS Record
-                      </Button>
-                    </div>
-                  </>
-                )}
-
-              {/* Point DNS instructions */}
-              {domainStatus.customDomain && (
-                <>
-                  <Separator />
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <p className="font-medium text-foreground">
-                      Point your DNS to SaCMS
-                    </p>
-                    <p>
-                      After verification, create an{" "}
-                      <strong>A record</strong> (or CNAME) pointing{" "}
-                      <code className="bg-muted px-1 rounded">
-                        {domainStatus.customDomain}
-                      </code>{" "}
-                      to this server&apos;s IP address.
-                    </p>
-                    {domainStatus.customDomainStatus === "verified" && (
-                      <div className="flex items-center gap-2 pt-1 text-green-600">
-                        <CheckCircle className="h-4 w-4" />
-                        <span>
-                          Your custom domain is active! API requests to{" "}
-                          <code className="bg-muted px-1 rounded text-foreground">
-                            https://{domainStatus.customDomain}/content/...
-                          </code>{" "}
-                          will be served for this tenant.
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </>
-              )}
             </CardContent>
           </Card>
         </div>
