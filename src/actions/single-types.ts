@@ -33,7 +33,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -110,7 +110,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {

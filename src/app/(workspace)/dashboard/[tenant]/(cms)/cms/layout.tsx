@@ -84,7 +84,7 @@ export default async function CMSLayout({
             }
           }
         },
-        ...(tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+        ...(access.isGlobal ? [{ tenantId: null }] : [])
       ]
     },
     select: { id: true, name: true, slug: true },
@@ -103,7 +103,7 @@ export default async function CMSLayout({
             }
           }
         },
-        ...(tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+        ...(access.isGlobal ? [{ tenantId: null }] : [])
       ]
     },
     select: { id: true, name: true, slug: true },

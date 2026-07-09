@@ -60,7 +60,7 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
                       </span>
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground leading-relaxed font-medium">{addon.description}</p>
+                  <div className="text-sm text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: addon.description || '' }} />
                 </div>
               </div>
             )

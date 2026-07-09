@@ -70,7 +70,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }, tenantId, licenseKey)
 
     // 5. Also store in Tenant model for persistence if it's a valid tenant
-    if (tenantId !== "sacms-global") {
+    const { getGlobalWorkspaceId } = await import("@/lib/settings");
+  const globalId = await getGlobalWorkspaceId();
+  if (tenantId !== globalId) {
       try {
         await db.tenant.update({
           where: { id: tenantId },

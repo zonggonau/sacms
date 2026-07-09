@@ -34,7 +34,7 @@ export async function getContentTypesAction(tenantSlug: string) {
               }
             }
           },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -107,7 +107,7 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -154,7 +154,7 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
         OR: [
           { tenantId: access.tenantId },
           { tenants: { some: { tenantId: access.tenantId, enabled: true } } },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -282,7 +282,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
     const isGlobal = existingContentType.tenantId === null
     const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
 
-    if (isGlobal && access.tenant.slug !== "sacms-global") {
+    if (isGlobal && !access.isGlobal) {
       return { error: "Global content types cannot be modified by tenant admins" }
     }
     if (isOwnedByOther) {
@@ -361,7 +361,7 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
     const isGlobal = existingContentType.tenantId === null
     const isOwnedByOther = existingContentType.tenantId !== null && existingContentType.tenantId !== access.tenantId
 
-    if (isGlobal && access.tenant.slug !== "sacms-global") {
+    if (isGlobal && !access.isGlobal) {
       return { error: "Global content types cannot be deleted by tenant admins" }
     }
     if (isOwnedByOther) {

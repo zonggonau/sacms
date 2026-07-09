@@ -17,6 +17,7 @@ import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
+import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 
 interface Subscription {
   id: string
@@ -69,6 +70,7 @@ export default function TenantSubscriptionsPage() {
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
+  const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
   
   const [infra, setInfra] = useState({
     databaseUrl: "",
@@ -171,6 +173,9 @@ export default function TenantSubscriptionsPage() {
 
       const enterprise = await checkEnterpriseModeAction()
       setIsEnterpriseMode(enterprise)
+      
+      const globalId = await getGlobalWorkspaceIdAction()
+      setGlobalTenantId(globalId)
     } catch (err) {
       console.error("Billing fetch error:", err)
     } finally {
@@ -281,7 +286,7 @@ export default function TenantSubscriptionsPage() {
             </div>
           </div>
 
-          {tenantSlug === "sacms-global" ? (
+          {tenantSlug === globalTenantId ? (
             <Card className="border border-border shadow-none bg-card text-card-foreground overflow-hidden rounded-none relative">
               <CardContent className="p-16 relative flex flex-col items-center justify-center text-center">
                 <ShieldCheck className="h-20 w-20 text-orange-500 mb-6 opacity-30" />

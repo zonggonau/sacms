@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export async function GET() {
   try {
-    const workspaceId = process.env.WORKSPACE_ID || "sacms-global";
+    const workspaceId = await getGlobalWorkspaceId();
 
     // Ambil Single Types global (tanpa tenant)
     const singleTypes = await db.singleType.findMany({

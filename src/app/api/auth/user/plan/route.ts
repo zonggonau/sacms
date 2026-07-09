@@ -82,7 +82,7 @@ export async function PUT(request: NextRequest) {
         where: {
           userId: session.user.id,
           role: "owner",
-          tenant: { slug: { notIn: ["sacms-global"] } },
+          tenantId: { notIn: [await (await import("@/lib/settings")).getGlobalWorkspaceId()] },
         },
       })
 

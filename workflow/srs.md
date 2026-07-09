@@ -203,7 +203,7 @@ flowchart LR
 | FR-SCH-006 | Creating schema MUST respect plan limits |
 
 **Supported Field Types:**
-`text` · `textarea/markdown` · `richText` · `slug/uid` · `email` · `integer/number` · `boolean` · `date/datetime` · `select` · `json/color/location` · `media` · `mediaMultiple` · `relation` · `component` · `tags` · `file`
+`text` · `textarea/markdown` · `richText` · `slug/uid` · `email` · `integer/number/currency` · `boolean` · `date/datetime/time/dateRange` · `select/multiselect` · `json/color/location/rating/button/document_template` · `media/mediaMultiple/file` · `relation` · `component` · `repeater` (Dynamic Zone) · `tags`
 
 #### FR-03b: Workspace Templates
 | ID | Requirement |

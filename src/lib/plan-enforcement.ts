@@ -45,11 +45,13 @@ export interface EnforcementResult {
  */
 async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | null> {
   try {
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    const globalTenantId = await getGlobalWorkspaceId()
     // 1. Check global enterprise license first
-    let enterprise = await isEnterpriseTenant("sacms-global")
+    let enterprise = await isEnterpriseTenant(globalTenantId)
     
     // 2. Fallback to tenant-specific license if no global license
-    if (!enterprise && tenantId && tenantId !== "sacms-global") {
+    if (!enterprise && tenantId && tenantId !== globalTenantId) {
       enterprise = await isEnterpriseTenant(tenantId)
     }
 
@@ -164,7 +166,10 @@ export async function enforceUserPlanLimit(
 ): Promise<EnforcementResult> {
   // 0. Enterprise Mode Bypass (Check global and user license)
   try {
-    let isEnterprise = await isEnterpriseTenant("sacms-global")
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    const globalTenantId = await getGlobalWorkspaceId()
+    // Check Global License explicitly for SaaS mode wide bypassing (Enterprise Plan bypass)
+    let isEnterprise = await isEnterpriseTenant(globalTenantId)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(userId)
     }
@@ -220,12 +225,14 @@ export async function enforceUserPlanLimit(
 async function getUserUsage(userId: string, resource: UserResource): Promise<number> {
   switch (resource) {
     case "workspaces": {
+      const { getGlobalWorkspaceId } = await import('@/lib/settings')
+      const globalTenantId = await getGlobalWorkspaceId()
       // Count workspaces where user is owner (excluding system tenants)
       return db.tenantMember.count({
         where: {
           userId,
           role: "owner",
-          tenant: { slug: { notIn: ["sacms-global"] } },
+          tenant: { slug: { notIn: [globalTenantId] } },
         },
       })
     }

@@ -19,7 +19,8 @@ export async function GET() {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
 
     // System tenants are hidden from stats
-    const SYSTEM_SLUGS = ["sacms-global"]
+    const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
+    const SYSTEM_SLUGS = [globalId]
     const notSystemTenant = { slug: { notIn: SYSTEM_SLUGS } }
 
     const [

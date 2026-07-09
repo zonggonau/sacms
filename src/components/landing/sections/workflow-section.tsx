@@ -49,7 +49,7 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
                     <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
-                    <p className="text-xs text-muted-foreground leading-relaxed font-medium">{step.description}</p>
+                    <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: step.description || '' }} />
                   </div>
                 </div>
               </div>

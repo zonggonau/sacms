@@ -13,6 +13,7 @@ import {
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
+import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
@@ -32,6 +33,7 @@ export default function CheckoutPage() {
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [snapToken, setSnapToken] = useState<string | null>(null)
   const [liveTenants, setLiveTenants] = useState<any[]>([])
+  const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
 
   useEffect(() => {
     async function fetchLiveTenants() {
@@ -96,12 +98,15 @@ export default function CheckoutPage() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ newPlan: planId })
         })
-        if (prorateRes.ok) {
-          const prorateData = await prorateRes.json();
-          console.log("Proration data:", prorateData);
-          setProration(prorateData)
-        }
-      } catch (error) {
+          if (prorateRes.ok) {
+            const prorateData = await prorateRes.json();
+            console.log("Proration data:", prorateData);
+            setProration(prorateData)
+          }
+
+          const globalId = await getGlobalWorkspaceIdAction();
+          setGlobalTenantId(globalId);
+        } catch (error) {
         console.error("Failed to fetch checkout data", error)
       }
     }
@@ -132,7 +137,7 @@ export default function CheckoutPage() {
 
   const handleCheckout = async () => {
     const isAccount = tenantSlug === "account"
-    const isSystemTenant = tenantSlug === "sacms-global"
+    const isSystemTenant = tenantSlug === globalTenantId
     if (!currentTenant && !isAccount && !isSystemTenant) {
       console.error("Missing tenant data. TenantSlug:", tenantSlug, "Available tenants:", tenants);
       toast({ variant: "destructive", title: "Error", description: "Tenant information not found. Please try again." });

@@ -84,7 +84,9 @@ export async function GET(
       daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
     }
 
-    let isEnterprise = await isEnterpriseTenant("sacms-global", session.user.id)
+    const { getGlobalWorkspaceId } = await import("@/lib/settings");
+    const globalId = await getGlobalWorkspaceId();
+    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
     }
@@ -198,7 +200,9 @@ export async function PUT(
 
     if ((databaseUrl !== undefined && databaseUrl !== tenant.databaseUrl) || 
         (storageConfig !== undefined && JSON.stringify(storageConfig) !== JSON.stringify(tenant.storageConfig))) {
-      let isEnterprise = await isEnterpriseTenant("sacms-global", session.user.id)
+      const { getGlobalWorkspaceId } = await import("@/lib/settings");
+    const globalId = await getGlobalWorkspaceId();
+    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
       if (!isEnterprise) {
         isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
       }

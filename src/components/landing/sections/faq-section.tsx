@@ -58,9 +58,10 @@ export function FaqSection({ faq }: { faq: FaqItem[] }) {
                   }`}
                 >
                   <div className="overflow-hidden">
-                    <div className="px-6 pb-6 text-base text-muted-foreground leading-relaxed font-medium">
-                      {item.answer}
-                    </div>
+                      <div 
+                        className="px-6 pb-6 text-base text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
+                        dangerouslySetInnerHTML={{ __html: item.answer || "" }}
+                      />
                   </div>
                 </div>
               </div>

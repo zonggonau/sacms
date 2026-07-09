@@ -56,7 +56,7 @@ export function PricingGrid({ plans = [], title, label, bgClass = "bg-card" }: {
               
               <div className="relative z-10 flex-1 flex flex-col">
                 <h3 className="text-xl font-black text-foreground mb-2">{plan.name}</h3>
-                <p className="text-xs text-muted-foreground mb-6 min-h-[40px] font-medium leading-relaxed">{plan.description}</p>
+                <div className="text-xs text-muted-foreground mb-6 min-h-[40px] font-medium leading-relaxed [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: plan.description || '' }} />
                 
                 <div className="mb-6 pb-6 border-b border-border/50">
                   <div className="flex items-baseline">

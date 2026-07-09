@@ -211,7 +211,7 @@ export async function validateLicense(tenantId: string, providedKey?: string): P
   if (!key) {
     const cached = await db.licenseCache.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
     key = cached?.licenseKey || ""
-    if (!key && tenantId !== "sacms-global") {
+    if (!key && tenantId !== "globalId") {
       const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { licenseKey: true } })
       key = tenant?.licenseKey || ""
     }
@@ -320,11 +320,11 @@ export async function isEnterpriseTenant(tenantId: string, userId?: string): Pro
   if (result.valid && result.type === "enterprise") return true
 
   // Fallback to checking global license
-  if (tenantId !== "sacms-global") {
-    const globalCached = await getCachedLicense("sacms-global")
+  if (tenantId !== "globalId") {
+    const globalCached = await getCachedLicense("globalId")
     if (globalCached?.valid && globalCached.type === "enterprise") return true
     
-    const globalResult = await validateLicense("sacms-global")
+    const globalResult = await validateLicense("globalId")
     if (globalResult.valid && globalResult.type === "enterprise") return true
   }
 

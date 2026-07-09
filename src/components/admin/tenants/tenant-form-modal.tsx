@@ -50,7 +50,7 @@ export function TenantFormModal({
   onSubmit,
   isSubmitting
 }: TenantFormModalProps) {
-  const isSystemTenant = formData.slug === SYSTEM_TENANT_SLUG
+  const isSystemTenant = false // formData.slug === globalTenantId
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>

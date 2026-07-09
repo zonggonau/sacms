@@ -21,9 +21,10 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight leading-[1.1]">
               {cta.title}
             </h2>
-            <p className="text-lg md:text-xl text-primary-foreground/90 font-medium mb-10 leading-relaxed max-w-2xl mx-auto">
-              {cta.description}
-            </p>
+              <div 
+                className="text-lg md:text-xl text-primary-foreground/90 font-medium mb-10 leading-relaxed max-w-2xl mx-auto [&>p]:mb-0 [&_p]:mb-0"
+                dangerouslySetInnerHTML={{ __html: cta.description || "" }}
+              />
             <div className="flex flex-col sm:flex-row gap-5 justify-center">
               <Link href="/register">
                 <Button size="lg" className="w-full sm:w-auto h-14 px-10 bg-white text-primary hover:bg-white/90 rounded-full font-black text-lg shadow-xl shadow-black/10 transition-all hover:scale-105">

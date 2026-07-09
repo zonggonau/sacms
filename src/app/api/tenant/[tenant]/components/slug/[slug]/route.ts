@@ -26,7 +26,7 @@ export async function GET(request: NextRequest, context: Context) {
         ]
       },
       include: {
-        fields: {
+        schemaFields: {
           orderBy: { order: "asc" }
         },
         tenants: true
@@ -45,7 +45,12 @@ export async function GET(request: NextRequest, context: Context) {
       return NextResponse.json({ error: "Forbidden: Component belongs to another workspace" }, { status: 403 })
     }
 
-    return NextResponse.json(component)
+    return NextResponse.json({
+      id: component.id,
+      name: component.name,
+      slug: component.slug,
+      fields: component.schemaFields
+    })
   } catch (error) {
     console.error("Error fetching component by slug:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

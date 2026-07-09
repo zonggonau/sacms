@@ -38,11 +38,11 @@ export default async function BlogPage() {
               {blogs.map((blog: any, idx: number) => (
                 <FadeIn key={idx} delay={100 + (idx * 50)}>
                   <Card className="h-full flex flex-col hover:border-primary/50 transition-colors overflow-hidden">
-                    {blog.image_url && (
+                    {blog.cover_image && (
                       <div className="w-full h-48 overflow-hidden bg-muted">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
-                          src={blog.image_url} 
+                          src={blog.cover_image} 
                           alt={blog.title} 
                           className="w-full h-full object-cover transition-transform hover:scale-105 duration-300"
                         />
@@ -56,10 +56,10 @@ export default async function BlogPage() {
                             {blog.date}
                           </div>
                         )}
-                        {blog.author && (
+                        {blog.category && (
                           <div className="flex items-center gap-1.5">
                             <User className="h-3.5 w-3.5" />
-                            {blog.author}
+                            {blog.category}
                           </div>
                         )}
                       </div>
@@ -69,7 +69,7 @@ export default async function BlogPage() {
                     </CardHeader>
                     <CardContent className="flex-1">
                       <CardDescription className="text-sm line-clamp-3 text-muted-foreground/80">
-                        {blog.excerpt}
+                        {(blog.excerpt || (blog.content ? blog.content.replace(/<[^>]+>/g, '') : ''))}
                       </CardDescription>
                     </CardContent>
                   </Card>

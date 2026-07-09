@@ -18,7 +18,8 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   if (!tenant) return DEFAULT_LIMITS.free
 
   try {
-    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
+    const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
+    const globalTenant = await db.tenant.findUnique({ where: { id: globalId } })
     if (!globalTenant) return DEFAULT_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
@@ -124,7 +125,8 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     select: { plan: true },
   })
 
-  let isEnterprise = await isEnterpriseTenant("sacms-global")
+  const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
+  let isEnterprise = await isEnterpriseTenant(globalId)
   if (!isEnterprise) {
     isEnterprise = await isEnterpriseTenant(tenantId)
   }
@@ -153,7 +155,8 @@ export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig>
   if (!user) return USER_PLAN_LIMITS.free
 
   try {
-    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
+    const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
+    const globalTenant = await db.tenant.findUnique({ where: { id: globalId } })
     if (!globalTenant) return USER_PLAN_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {

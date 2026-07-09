@@ -53,7 +53,10 @@ export function TeamSection({ owners }: { owners: OwnerItem[] }) {
               <div className="relative z-10 w-full">
                 <h3 className="text-2xl font-black text-foreground mb-1 group-hover:text-primary transition-colors">{owner.name}</h3>
                 <p className="text-sm font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500 mb-5 tracking-wide uppercase">{owner.role}</p>
-                <p className="text-base text-muted-foreground leading-relaxed mb-6 font-medium">{owner.bio}</p>
+                <div 
+                  className="text-base text-muted-foreground leading-relaxed mb-6 font-medium [&>p]:mb-0 [&_p]:mb-0"
+                  dangerouslySetInnerHTML={{ __html: owner.bio || "" }}
+                />
                 
                 {owner.linkedin && (
                   <div className="flex justify-center mt-auto">

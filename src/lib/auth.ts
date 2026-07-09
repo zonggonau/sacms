@@ -130,6 +130,9 @@ export const authOptions: NextAuthOptions = {
           }).catch(() => {})
         }
 
+        const { getGlobalWorkspaceId } = await import("@/lib/settings")
+        const globalTenantId = await getGlobalWorkspaceId()
+
         return {
           id: user.id,
           email: user.email,
@@ -137,7 +140,7 @@ export const authOptions: NextAuthOptions = {
           role: user.role,
           plan: user.plan,
           tenants: user.tenants
-            .filter((t) => t.tenant.slug !== "sacms-global")
+            .filter((t) => t.tenant.id !== globalTenantId && t.tenant.slug !== globalTenantId)
             .map((t) => ({
               id: t.tenant.id,
               slug: t.tenant.slug,
@@ -177,10 +180,13 @@ export const authOptions: NextAuthOptions = {
           },
         })
         if (dbUser) {
+          const { getGlobalWorkspaceId } = await import("@/lib/settings")
+          const globalTenantId = await getGlobalWorkspaceId()
+          
           token.role = dbUser.role
           token.plan = dbUser.plan
           token.tenants = dbUser.tenants
-            .filter((t) => t.tenant.slug !== "sacms-global")
+            .filter((t) => t.tenant.id !== globalTenantId && t.tenant.slug !== globalTenantId)
             .map((t) => ({
               id: t.tenant.id,
               slug: t.tenant.slug,

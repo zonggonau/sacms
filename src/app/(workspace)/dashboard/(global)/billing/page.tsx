@@ -22,12 +22,14 @@ export default async function BillingPage() {
   let accountPlans: any[] = []
   try {
     const contentType = await db.contentType.findFirst({
-      where: { slug: "sacms-workspace-pricing", tenantId: null }
+      where: { slug: "sacms-account-pricing", tenantId: null }
     })
 
     if (contentType) {
+      const { getGlobalWorkspaceId } = await import("@/lib/settings")
+      const globalTenantId = await getGlobalWorkspaceId();
       const entries = await db.contentEntry.findMany({
-        where: { contentTypeId: contentType.id, tenantId: null, status: "PUBLISHED" },
+        where: { contentTypeId: contentType.id, tenantId: globalTenantId, status: "PUBLISHED" },
         orderBy: { createdAt: "asc" }
       })
 
@@ -107,7 +109,7 @@ export default async function BillingPage() {
     const tenants = await db.tenant.count({
       where: {
         members: { some: { userId: session.user.id } },
-        slug: { notIn: ["sacms-global"] }
+        id: { notIn: [await (await import("@/lib/settings")).getGlobalWorkspaceId()] }
       }
     })
     activeWorkspacesCount = tenants

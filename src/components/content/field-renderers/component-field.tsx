@@ -21,6 +21,15 @@ import { MediaField } from "./media-field"
 import { RichTextField } from "./rich-text-field"
 import { RelationSelectField } from "./relation-select-field"
 import { AdvancedField } from "./advanced-fields"
+import { UrlField } from "./url-field"
+import { PhoneField } from "./phone-field"
+import { MultiSelectField } from "./multiselect-field"
+import { RatingField } from "./rating-field"
+import { ButtonField } from "./button-field"
+import { MarkdownField } from "./markdown-field"
+import { CurrencyField } from "./currency-field"
+import { DateRangeField } from "./date-range-field"
+import { DynamicZoneField } from "./dynamic-zone-field"
 
 interface FieldDefinition {
   id: string
@@ -132,21 +141,32 @@ export function ComponentField({
       case "richText": 
         return <RichTextField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
       case "markdown": 
-        return <TextareaField value={fieldValue as string} onChange={onFieldChange} required={field.required} placeholder="Enter markdown..." />
+        return <MarkdownField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
       case "number": 
       case "integer":
       case "decimal":
       case "float":
         return <NumberField value={fieldValue as any} onChange={onFieldChange} required={field.required} type={field.type as any} />
+      case "currency":
+        return <CurrencyField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
       case "boolean": 
         return <BooleanField value={fieldValue as boolean} onChange={onFieldChange} required={field.required} />
       case "date": 
         return <DateField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
       case "datetime": 
       case "timestamp":
+      case "time":
         return <DateTimeField value={fieldValue as string} onChange={onFieldChange} required={field.required} type={field.type as any} />
+      case "dateRange":
+        return <DateRangeField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
       case "select": 
         return <SelectField value={fieldValue as string} onChange={onFieldChange} options={selectOptions} required={field.required} />
+      case "component":
+        let compOpts: any = {}
+        try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
+        return <ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} />
+      case "repeater":
+        return <DynamicZoneField label={field.name} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} />
       case "relation":
         const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
@@ -169,6 +189,16 @@ export function ComponentField({
       case "color":
       case "location":
         return <AdvancedField value={fieldValue} onChange={onFieldChange} type={field.type} required={field.required} />
+      case "url":
+        return <UrlField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
+      case "phone":
+        return <PhoneField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
+      case "multiselect":
+        return <MultiSelectField value={fieldValue as any} onChange={onFieldChange} options={selectOptions} required={field.required} />
+      case "rating":
+        return <RatingField value={fieldValue as number} onChange={onFieldChange} required={field.required} />
+      case "button":
+        return <ButtonField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
       default: 
         return <Input value={fieldValue as string || ""} onChange={e => onFieldChange(e.target.value)} />
     }

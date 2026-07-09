@@ -184,7 +184,9 @@ export async function deleteTenantAction(tenantId: string) {
     const tenant = member?.tenant || await db.tenant.findUnique({ where: { id: tenantId } })
     if (!tenant) return { error: "Tenant not found" }
 
-    if (tenant.slug === "sacms-global" && session.user.role !== "super_admin") {
+    const { getGlobalWorkspaceId } = await import("@/lib/settings")
+    const globalTenantId = await getGlobalWorkspaceId()
+    if ((tenant.slug === globalTenantId || tenant.id === globalTenantId) && session.user.role !== "super_admin") {
       return { error: "Global tenant can only be deleted by Super Admin" }
     }
 
@@ -226,4 +228,9 @@ export async function deleteTenantAction(tenantId: string) {
     console.error("Error deleting tenant:", error)
     return { error: "Internal server error" }
   }
+}
+
+export async function getGlobalWorkspaceIdAction() {
+  const { getGlobalWorkspaceId } = await import("@/lib/settings");
+  return await getGlobalWorkspaceId();
 }

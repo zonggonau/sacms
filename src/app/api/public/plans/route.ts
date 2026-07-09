@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 
 /**
  * Truly Global Plans API - /api/public/plans
@@ -35,10 +36,11 @@ export async function GET(request: NextRequest) {
     }
 
     if (contentType) {
+      const globalTenantId = await getGlobalWorkspaceId();
       const entries = await db.contentEntry.findMany({
         where: {
           contentTypeId: contentType.id,
-          tenantId: null,
+          tenantId: globalTenantId,
           status: "PUBLISHED"
         },
         orderBy: { createdAt: "asc" }

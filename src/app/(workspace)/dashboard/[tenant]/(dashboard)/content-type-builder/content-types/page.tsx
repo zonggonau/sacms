@@ -47,7 +47,7 @@ export default async function ContentTypesPage({ params }: { params: Promise<{ t
       tenantSlug={tenant} 
       limit={maxLimit}
       current={currentUsageCount}
-      isGlobalTenant={access?.tenant.slug === "sacms-global"}
+      isGlobalTenant={access?.isGlobal}
     />
   )
 }

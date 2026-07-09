@@ -5,7 +5,8 @@ import { redirect } from "next/navigation"
 import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
-const SYSTEM_SLUGS = ["sacms-global"]
+const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
+  const SYSTEM_SLUGS = [globalId]
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
@@ -16,7 +17,7 @@ export default async function WorkspaceSelectionPage() {
       ? {
           OR: [
             { members: { some: { userId: session.user.id } } },
-            { slug: "sacms-global" }
+            { id: globalId }
           ]
         }
       : {
@@ -37,7 +38,7 @@ export default async function WorkspaceSelectionPage() {
     orderBy: { createdAt: "desc" }
   })
 
-  let isGlobalEnterprise = await isEnterpriseTenant("sacms-global")
+  let isGlobalEnterprise = await isEnterpriseTenant(globalId)
   if (!isGlobalEnterprise) {
     isGlobalEnterprise = await isEnterpriseTenant(session.user.id)
   }
@@ -73,7 +74,7 @@ export default async function WorkspaceSelectionPage() {
       status: (isGlobalEnterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
-      role: (session.user.role === "super_admin" && t.slug === "sacms-global") ? 'owner' : (t.members[0]?.role || 'member'),
+      role: (session.user.role === "super_admin" && t.id === globalId) ? 'owner' : (t.members[0]?.role || 'member'),
       daysRemaining,
       subscriptionStatus: sub?.status || null,
       expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null

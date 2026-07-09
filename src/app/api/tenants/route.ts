@@ -30,18 +30,17 @@ async function generateUniqueSlug(): Promise<string> {
   return slug
 }
 
-// System tenants hidden from all user-facing lists
-const SYSTEM_SLUGS = ["sacms-global"]
-
 export async function GET() {
   try {
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    const globalTenantId = await getGlobalWorkspaceId()
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
     const tenants = await db.tenant.findMany({
       where: {
         members: { some: { userId: session.user.id } },
-        slug: { notIn: SYSTEM_SLUGS },
+        slug: { notIn: [globalTenantId] },
       },
       include: {
         members: {

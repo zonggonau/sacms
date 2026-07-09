@@ -3,7 +3,17 @@
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
-import { MapPin, Palette, Code } from "lucide-react"
+import { MapPin, Palette, Code, Loader2 } from "lucide-react"
+import dynamic from "next/dynamic"
+
+const MapPicker = dynamic(() => import("./map-picker"), {
+  ssr: false,
+  loading: () => (
+    <div className="h-[300px] w-full bg-slate-100 flex items-center justify-center rounded-md border border-slate-200">
+      <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+    </div>
+  )
+})
 
 interface AdvancedFieldProps {
   value: unknown
@@ -111,23 +121,30 @@ export function AdvancedField({
               {required && <span className="text-destructive ml-1">*</span>}
             </Label>
           )}
-          <div className="grid grid-cols-2 gap-2">
+          
+          <MapPicker 
+            value={typeof value === 'object' && value !== null ? value as { lat?: number; lng?: number } : {}}
+            onChange={onChange}
+          />
+          
+          <div className="grid grid-cols-2 gap-2 mt-2">
             <div className="relative">
               <MapPin className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
               <Input
                 type="number"
                 step="0.000001"
                 placeholder="Latitude"
-                value={typeof value === "object" ? (value as { lat?: number }).lat || "" : ""}
+                value={typeof value === "object" && value !== null ? (value as { lat?: number }).lat || "" : ""}
                 onChange={(e) => {
-                  const current = typeof value === "object" ? value : {}
+                  const current = typeof value === "object" && value !== null ? value : {}
                   onChange({
                     ...current,
                     lat: parseFloat(e.target.value) || 0,
                   })
                 }}
                 required={required}
-                className="pl-9"
+                className="pl-9 bg-slate-50"
+                readOnly
               />
             </div>
             <div className="relative">
@@ -136,20 +153,21 @@ export function AdvancedField({
                 type="number"
                 step="0.000001"
                 placeholder="Longitude"
-                value={typeof value === "object" ? (value as { lng?: number }).lng || "" : ""}
+                value={typeof value === "object" && value !== null ? (value as { lng?: number }).lng || "" : ""}
                 onChange={(e) => {
-                  const current = typeof value === "object" ? value : {}
+                  const current = typeof value === "object" && value !== null ? value : {}
                   onChange({
                     ...current,
                     lng: parseFloat(e.target.value) || 0,
                   })
                 }}
                 required={required}
-                className="pl-9"
+                className="pl-9 bg-slate-50"
+                readOnly
               />
             </div>
           </div>
-          <p className="text-xs text-muted-foreground">Enter GPS coordinates</p>
+          <p className="text-xs text-muted-foreground">Pilih lokasi di peta atau gunakan fitur cari</p>
         </div>
       )
 

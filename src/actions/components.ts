@@ -35,7 +35,7 @@ export async function getComponentsAction(tenantSlug: string) {
               }
             }
           },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {
@@ -119,7 +119,7 @@ export async function getComponentBySlugAction(tenantSlug: string, slug: string)
             tenantId: null,
             tenants: { some: { tenantId: access.tenantId, enabled: true } }
           },
-          ...(access.tenant.slug === "sacms-global" ? [{ tenantId: null }] : [])
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
         ]
       },
       include: {

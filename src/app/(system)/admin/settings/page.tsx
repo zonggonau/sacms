@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { 
-  Loader2, Save, Server, Info, RefreshCw, Key, Copy, Database
+  Loader2, Save, Server, Info, RefreshCw, Copy, Database, Key
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { Label } from "@/components/ui/label"
+import { v4 as uuidv4 } from "uuid"
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
@@ -20,20 +21,16 @@ export default function AdminSettingsPage() {
   
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
-  const [seeding, setSeeding] = useState(false)
 
   const [settings, setSettings] = useState({
-    systemApiKey: ""
+    globalTenantId: ""
   })
 
-  const generateApiKey = () => {
-    const chars = "abcdefghijklmnopqrstuvwxyz0123456789"
-    let result = "cf_"
-    for (let i = 0; i < 32; i++) {
-      result += chars.charAt(Math.floor(Math.random() * chars.length))
-    }
-    setSettings({ ...settings, systemApiKey: result })
-    toast({ title: "API Key Generated", description: "Remember to save changes to apply." })
+  const generateTenantId = () => {
+    // Generate a secure UUID or CUID-like string for tenant ID
+    const newId = "wks_" + uuidv4().replace(/-/g, '').substring(0, 24)
+    setSettings({ ...settings, globalTenantId: newId })
+    toast({ title: "Global Workspace ID Generated", description: "Remember to save changes to apply." })
   }
 
   useEffect(() => {
@@ -84,23 +81,6 @@ export default function AdminSettingsPage() {
     }
   }
 
-  const handleSeedData = async () => {
-    setSeeding(true)
-    try {
-      const res = await fetch("/api/admin/global/seed", { method: "POST" })
-      if (res.ok) {
-        toast({ title: "Seed Successful", description: "Global Settings & Content seed generated!" })
-      } else {
-        const data = await res.json()
-        throw new Error(data.error || "Failed to seed global data")
-      }
-    } catch (error: any) {
-      toast({ variant: "destructive", title: "Seed Error", description: error.message })
-    } finally {
-      setSeeding(false)
-    }
-  }
-
   if (status === "loading" || loading) {
     return (
       <div className="flex">
@@ -125,7 +105,7 @@ export default function AdminSettingsPage() {
           <div className="flex items-center justify-between mb-2">
             <div>
               <h1 className="text-3xl font-bold">Platform Configuration</h1>
-              <p className="text-muted-foreground">Manage core system security and API access.</p>
+              <p className="text-muted-foreground">Manage core system security and global workspaces.</p>
             </div>
             <Button onClick={handleSave} disabled={saving} className="bg-primary hover:bg-primary/90">
               {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
@@ -135,25 +115,25 @@ export default function AdminSettingsPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-6">
-              {/* Global API Access */}
+              {/* Global Workspace ID */}
               <Card className="border-none shadow-sm bg-primary/5">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm font-bold flex items-center gap-2">
-                    <Key className="h-4 w-4 text-primary" />
-                    Global API Access
+                    <Database className="h-4 w-4 text-primary" />
+                    Global Workspace ID
                   </CardTitle>
-                  <CardDescription className="text-xs">Manage the master key for public content API</CardDescription>
+                  <CardDescription className="text-xs">Identifies the master tenant containing public API content (Landing Page, Plans, Addons)</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="global-api-key" className="text-xs font-bold uppercase tracking-tight">System API Key</Label>
+                    <Label htmlFor="global-tenant-id" className="text-xs font-bold uppercase tracking-tight">Active Workspace ID</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input 
-                          id="global-api-key" 
-                          value={settings.systemApiKey} 
+                          id="global-tenant-id" 
+                          value={settings.globalTenantId || ""} 
                           readOnly 
-                          placeholder="No key generated"
+                          placeholder="Default: sacms-global"
                           className="pr-9 font-mono text-sm bg-card" 
                         />
                         <Button 
@@ -161,10 +141,9 @@ export default function AdminSettingsPage() {
                           size="icon" 
                           className="absolute right-0 top-0 h-9 w-9 text-muted-foreground hover:text-primary"
                           onClick={() => {
-                            if (settings.systemApiKey) {
-                              navigator.clipboard.writeText(settings.systemApiKey)
-                              toast({ title: "Copied", description: "API key copied to clipboard" })
-                            }
+                            const val = settings.globalTenantId || "";
+                            navigator.clipboard.writeText(val)
+                            toast({ title: "Copied", description: "Workspace ID copied to clipboard" })
                           }}
                         >
                           <Copy className="h-4 w-4" />
@@ -173,15 +152,16 @@ export default function AdminSettingsPage() {
                       <Button 
                         variant="outline" 
                         size="icon" 
+                        title="Generate New Workspace ID"
                         className="h-9 w-9 shrink-0 border-primary/20 hover:bg-primary hover:text-primary-foreground"
-                        onClick={generateApiKey}
+                        onClick={generateTenantId}
                       >
                         <RefreshCw className="h-4 w-4" />
                       </Button>
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground italic leading-tight">
-                    This key allows public read access to all system/global content types without tenant restrictions.
+                    Generating a new ID maps the system's global APIs to a completely new tenant. Content from the previous global tenant will still exist in the database but won't be accessed by the public APIs until data is migrated or recreated.
                   </p>
                 </CardContent>
               </Card>
@@ -190,33 +170,9 @@ export default function AdminSettingsPage() {
               <div className="p-4 bg-blue-50 border border-blue-100 rounded-xl flex gap-3 text-blue-800">
                 <Info className="h-5 w-5 shrink-0" />
                 <p className="text-xs leading-relaxed">
-                  These settings are stored in the database. Environment variables (`.env`) still take precedence for critical secrets like API keys.
+                  These settings are securely stored in the database. The system automatically reads from here instead of `.env` configuration.
                 </p>
               </div>
-
-              {/* Global Seed Actions */}
-              <Card className="border-none shadow-sm bg-orange-50/50">
-                <CardHeader>
-                  <CardTitle className="text-base font-bold flex items-center gap-2">
-                    <Database className="h-5 w-5 text-orange-500" />
-                    Seed Global Data
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Generate global schemas and seed basic structural content to initialize the system.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Button 
-                    onClick={handleSeedData} 
-                    disabled={seeding}
-                    variant="outline" 
-                    className="border-orange-500 text-orange-600 hover:bg-orange-500 hover:text-white"
-                  >
-                    {seeding ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Database className="mr-2 h-4 w-4" />}
-                    {seeding ? "Generating Seed..." : "Generate Global Seed"}
-                  </Button>
-                </CardContent>
-              </Card>
             </div>
 
             <div className="space-y-6">
@@ -256,3 +212,4 @@ export default function AdminSettingsPage() {
     </div>
   )
 }
+

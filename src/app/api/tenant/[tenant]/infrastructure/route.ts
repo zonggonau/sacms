@@ -40,7 +40,9 @@ export async function PUT(
     }
 
     // Only Enterprise tenants can override infrastructure
-    let isEnterprise = await isEnterpriseTenant("sacms-global", session.user.id)
+    const { getGlobalWorkspaceId } = await import("@/lib/settings");
+    const globalId = await getGlobalWorkspaceId();
+    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
     }

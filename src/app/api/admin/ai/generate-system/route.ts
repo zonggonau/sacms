@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
     // The systemTenant is required to attach the content entry to the global system space.
     // In setup-templates.ts, it uses slug 'sacms-global' or 'system'
     const systemTenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: "sacms-global" }, { slug: "system" }] }
+      where: { OR: [{ id: await (await import("@/lib/settings")).getGlobalWorkspaceId() }, { slug: "system" }] }
     })
 
     if (!systemTenant) {

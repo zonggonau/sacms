@@ -126,11 +126,11 @@ export function FieldConfigModal({
             </div>
 
             {/* Field Specific Configs */}
-            {(editingField?.type === "select" || editingField?.type === "tags") && (
+            {(editingField?.type === "select" || editingField?.type === "multiselect" || editingField?.type === "tags") && (
               <div className="space-y-2">
                 <Label className="text-xs font-bold text-slate-700">Options (Comma separated)</Label>
                 <Input 
-                  value={editingField.options as string || ""} 
+                  value={typeof editingField.options === 'string' ? editingField.options : (editingField.options?.choices?.join(', ') || (Array.isArray(editingField.options) ? editingField.options.join(', ') : ''))} 
                   onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)}
                   placeholder="Option A, Option B, Option C"
                   className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"

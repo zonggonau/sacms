@@ -44,7 +44,7 @@ export function FeaturesBento({ features }: { features: FeatureItem[] }) {
                   </div>
                   <div>
                     <h3 className="text-lg font-bold tracking-tight text-foreground mb-2 group-hover:text-primary transition-colors duration-300">{feature.title}</h3>
-                    <p className="text-muted-foreground leading-relaxed text-sm">{feature.description}</p>
+                    <div className="text-muted-foreground leading-relaxed text-sm [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: feature.description || '' }} />
                   </div>
                 </div>
               </div>

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 
 export async function GET(
   request: NextRequest,
@@ -51,11 +52,12 @@ export async function GET(
     }
 
     if (pricingContentType) {
+      const globalTenantId = await getGlobalWorkspaceId();
       const pricingEntries = await db.contentEntry.findMany({
         where: {
           contentTypeId: pricingContentType.id,
           status: "PUBLISHED",
-          tenantId: null
+          tenantId: globalTenantId
         },
         orderBy: { createdAt: "asc" }
       })
@@ -114,10 +116,12 @@ export async function GET(
     }
 
     if (addonContentType) {
+      const globalTenantId = await getGlobalWorkspaceId();
       const addonEntries = await db.contentEntry.findMany({
         where: {
           contentTypeId: addonContentType.id,
-          status: "PUBLISHED"
+          status: "PUBLISHED",
+          tenantId: globalTenantId
         },
         orderBy: { createdAt: "asc" }
       })

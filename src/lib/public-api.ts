@@ -1,61 +1,87 @@
-import { headers } from "next/headers"
-
-import { db } from "@/lib/database"
 import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
+import { getGlobalWorkspaceId } from "@/lib/settings"
+import { db } from "@/lib/database"
 
 export async function getLandingData() {
   try {
-    const globalTenant = await db.tenant.findUnique({ where: { slug: "sacms-global" } })
-    const globalEntries = globalTenant ? await db.contentEntry.findMany({
-      where: { tenantId: globalTenant.id, status: "PUBLISHED" },
-      include: { contentType: true }
-    }) : []
-
-    const globalSingleTypes = globalTenant ? await db.tenantSingleTypeAssignment.findMany({
-      where: { tenantId: globalTenant.id, enabled: true, publishedAt: { not: null } },
-      include: { singleType: true }
-    }) : []
-
-    const data: Record<string, any> = {}
+    const globalWorkspaceId = await getGlobalWorkspaceId()
     
-    // Group entries by their schema slug
-    globalEntries.forEach(entry => {
-      const slug = entry.contentType.slug
-      const parsedData = typeof entry.data === 'string' ? JSON.parse(entry.data) : entry.data
-      
-      // Some schemas are lists (features, workflow), others are singletons (hero, about)
-      if (["sacms-features", "sacms-workflow", "sacms-faq", "sacms-owners", "sacms-blogs", "sacms-testimonials", "sacms-sectors", "sacms-workspace-pricing", "sacms-account-pricing", "sacms-addons"].includes(slug)) {
-        if (!data[slug]) data[slug] = []
-        data[slug].push(parsedData)
-      } else {
-        data[slug] = parsedData
+    // Direct database query instead of HTTP self-fetch to avoid Next.js dev server deadlock
+    const singleTypes = await db.singleType.findMany({
+      where: { tenantId: null },
+      include: {
+        tenants: {
+          where: { tenantId: globalWorkspaceId }
+        }
       }
     })
 
-    // Group single types
-    globalSingleTypes.forEach(assignment => {
-      const slug = assignment.singleType.slug
-      const parsedData = typeof assignment.data === 'string' ? JSON.parse(assignment.data) : (assignment.data || {})
-      data[slug] = parsedData
+    const singleTypesData = singleTypes.reduce((acc, st) => {
+      let data = st.tenants[0]?.data || {}
+      if (typeof data === 'string') {
+        try { data = JSON.parse(data) } catch (e) {}
+      }
+      acc[st.slug] = data
+      return acc
+    }, {} as Record<string, any>)
+
+    const contentTypes = await db.contentType.findMany({
+      where: { tenantId: null }
     })
 
+    const contentEntries = await db.contentEntry.findMany({
+      where: { tenantId: globalWorkspaceId }
+    })
+
+    const collectionsData = contentTypes.reduce((acc, ct) => {
+      const entries = contentEntries.filter(e => e.contentTypeId === ct.id).map(e => {
+        let data = e.data;
+        if (typeof data === 'string') {
+          try { data = JSON.parse(data) } catch (e) {}
+        }
+        return data;
+      })
+      acc[ct.slug] = entries
+      return acc
+    }, {} as Record<string, any>)
+
+    // Mapping format baru: "sacms-landing-page" berisi object komplit
+    const lp = singleTypesData?.["sacms-landing-page"] || {};
+
+    // Pricing dan addons masih berbentuk collections
+    const pricingAccounts = collectionsData?.["sacms-account-pricing"] || [];
+    const pricingWorkspaces = collectionsData?.["sacms-workspace-pricing"] || [];
+    const addons = collectionsData?.["sacms-addons"] || [];
+
     return {
-      hero: data["sacms-hero"] || null,
-      features: data["sacms-features"] || [],
-      pricingAccounts: data["sacms-account-pricing"] || [],
-      pricingWorkspaces: data["sacms-workspace-pricing"] || [],
-      addons: data["sacms-addons"] || [],
-      workflow: data["sacms-workflow"] || [],
-      faq: data["sacms-faq"] || [],
-      whatsapp: data["sacms-whatsapp"] || null,
-      about: data["sacms-about"] || null,
-      owners: data["sacms-owners"] || [],
-      blogs: data["sacms-blogs"] || [],
-      testimonials: data["sacms-testimonials"] || [],
-      sectors: data["sacms-sectors"] || [],
-      localPride: data["sacms-local-pride"] || null,
-      cta: data["sacms-cta"] || null,
-      footer: data["sacms-footer"] || null,
+      hero: {
+        headline: lp.hero_title || "",
+        subheadline: lp.hero_subtitle || "",
+        badge_text: lp.hero_badge || "",
+        image_url: lp.hero_image || "",
+        cta_primary: lp.hero_cta_primary || "",
+        cta_secondary: lp.hero_cta_secondary || "",
+      },
+      features: lp.features || [],
+      pricingAccounts: pricingAccounts,
+      pricingWorkspaces: pricingWorkspaces,
+      addons: addons,
+      workflow: lp.workflows || [],
+      faq: lp.faqs || [],
+      whatsapp: lp.whatsapp || null,
+      about: lp.about || null,
+      owners: lp.owners || [],
+      blogs: collectionsData?.["posts"] || [],
+      testimonials: lp.testimonials || [],
+      sectors: lp.sectors || [],
+      localPride: lp.local_pride || null,
+      cta: {
+        title: lp.cta_banner?.title || "",
+        description: lp.cta_banner?.description || "",
+        button_primary_text: lp.cta_banner?.button_primary_text || "",
+        button_secondary_text: lp.cta_banner?.button_secondary_text || "",
+      },
+      footer: lp.footer || null,
       papuaHero: null,
       papuaVisionMission: null,
       papuaChallenges: [],

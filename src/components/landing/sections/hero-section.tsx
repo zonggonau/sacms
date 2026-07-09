@@ -38,9 +38,10 @@ export function HeroSection({ data }: { data: HeroData | null }) {
           <HighlightedHeadline text={hero.headline} />
         </h1>
 
-        <p className="text-base md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both">
-          {hero.subheadline}
-        </p>
+        <div 
+          className="text-base md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both [&>p]:mb-0 [&_p]:mb-0"
+          dangerouslySetInnerHTML={{ __html: hero.subheadline || "" }}
+        />
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-500 fill-mode-both">
           <Link href={hero.cta_href || "/register"}>

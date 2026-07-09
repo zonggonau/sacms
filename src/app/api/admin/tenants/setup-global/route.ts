@@ -14,16 +14,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
+    const { getGlobalWorkspaceId } = await import("@/lib/settings")
+    const globalTenantId = await getGlobalWorkspaceId()
+
     let globalTenant = await db.tenant.findUnique({
-      where: { slug: "sacms-global" }
+      where: { id: globalTenantId }
     })
 
     if (!globalTenant) {
       globalTenant = await db.tenant.create({
         data: {
-          id: "sacms-global",
+          id: globalTenantId,
           name: "SaCMS Global",
-          slug: "sacms-global",
+          slug: globalTenantId,
           plan: "ENTERPRISE",
           status: "active"
         }

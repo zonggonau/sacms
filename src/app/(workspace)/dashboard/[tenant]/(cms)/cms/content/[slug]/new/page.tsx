@@ -50,6 +50,14 @@ import { ButtonField } from "@/components/content/field-renderers/button-field"
 import { TagsField } from "@/components/content/field-renderers/tags-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
+import { UrlField } from "@/components/content/field-renderers/url-field"
+import { PhoneField } from "@/components/content/field-renderers/phone-field"
+import { MultiSelectField } from "@/components/content/field-renderers/multiselect-field"
+import { RatingField } from "@/components/content/field-renderers/rating-field"
+import { MarkdownField } from "@/components/content/field-renderers/markdown-field"
+import { CurrencyField } from "@/components/content/field-renderers/currency-field"
+import { DateRangeField } from "@/components/content/field-renderers/date-range-field"
+import { DynamicZoneField } from "@/components/content/field-renderers/dynamic-zone-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
@@ -214,7 +222,7 @@ export default function CMSCreateEntryPage() {
     if (field.options) {
       try {
         const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        if (Array.isArray(opts)) options = opts
+        if (Array.isArray(opts)) options = opts; else if (opts && Array.isArray(opts.choices)) options = opts.choices
         else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim()).filter(Boolean)
       } catch (e) {
         if (typeof field.options === 'string') options = field.options.split(",").map(o => o.trim()).filter(Boolean)
@@ -263,8 +271,10 @@ export default function CMSCreateEntryPage() {
         )
       
       case "textarea":
-      case "markdown":
         return <div className="space-y-2">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+      
+      case "markdown":
+        return <div className="space-y-2">{renderLabelWithAI()}<MarkdownField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "richText":
         return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
@@ -273,12 +283,18 @@ export default function CMSCreateEntryPage() {
       case "integer":
         return <div className="space-y-2">{renderLabelWithAI()}<NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
+      case "currency":
+        return <div className="space-y-2">{renderLabelWithAI()}<CurrencyField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+      
       case "boolean":
         return <div className="space-y-2">{renderLabelWithAI()}<BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "date":
       case "datetime":
         return <div className="space-y-2">{renderLabelWithAI()}<DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+      
+      case "dateRange":
+        return <div className="space-y-2">{renderLabelWithAI()}<DateRangeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "select":
         return <div className="space-y-2">{renderLabelWithAI()}<SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
@@ -326,6 +342,24 @@ export default function CMSCreateEntryPage() {
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
         return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
+
+      case "repeater":
+        return <div className="space-y-2">{renderLabelWithAI()}<DynamicZoneField label={field.name} tenantSlug={tenantSlug} value={value as any[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
+
+      case "url":
+        return <div className="space-y-2">{renderLabelWithAI()}<UrlField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "phone":
+        return <div className="space-y-2">{renderLabelWithAI()}<PhoneField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "multiselect":
+        return <div className="space-y-2">{renderLabelWithAI()}<MultiSelectField value={value as any} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
+
+      case "rating":
+        return <div className="space-y-2">{renderLabelWithAI()}<RatingField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "button":
+        return <div className="space-y-2">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>

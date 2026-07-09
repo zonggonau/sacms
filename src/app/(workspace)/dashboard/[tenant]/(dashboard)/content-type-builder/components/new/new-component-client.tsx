@@ -126,6 +126,26 @@ export default function NewComponentClient({
   }
 
   const serializeFieldOptions = (field: Field) => {
+    let options: any = {}
+    
+    try {
+      if (typeof field.options === 'string') {
+        try {
+          options = JSON.parse(field.options)
+        } catch (e) {
+          if (field.type === 'select' || field.type === 'tags') {
+            options = { choices: field.options.split(',').map(v => v.trim()).filter(Boolean) }
+          } else {
+            options = field.options
+          }
+        }
+      } else {
+        options = field.options || {}
+      }
+    } catch (e) {
+      options = {}
+    }
+
     if (field.type === "relation") {
       return JSON.stringify({ relationType: field.relationType, targetModel: field.targetModel, targetSlug: field.targetSlug })
     }

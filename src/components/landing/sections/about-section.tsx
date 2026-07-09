@@ -21,9 +21,10 @@ export function AboutSection({ about }: { about: AboutData | null }) {
             </h2>
           </div>
           
-          <p className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium">
-            {about.description}
-          </p>
+          <div 
+            className="text-lg md:text-xl text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0"
+            dangerouslySetInnerHTML={{ __html: about.description || "" }}
+          />
           
           {about.mission && (
             <blockquote className="relative p-6 rounded-2xl bg-card/40 backdrop-blur-md border border-border/50 shadow-lg group hover:border-primary/30 transition-colors duration-300">

@@ -210,6 +210,18 @@ const COLLECTION_TYPES = [
       { name: "Template ID", slug: "template_id", type: "text", order: 3, required: true },
       { name: "Schema Template", slug: "schema_template", type: "json", order: 4 },
     ]
+  },
+  {
+    name: "Posts",
+    slug: "posts",
+    description: "Blog posts and articles",
+    fields: [
+      { name: "Title", slug: "title", type: "text", order: 0, required: true },
+      { name: "Slug", slug: "slug", type: "text", order: 1, required: true },
+      { name: "Content", slug: "content", type: "richText", order: 2 },
+      { name: "Category", slug: "category", type: "select", order: 3, options: { choices: ["Berita", "Artikel", "Pengumuman"] } },
+      { name: "Cover Image", slug: "cover_image", type: "media", order: 4 },
+    ]
   }
 ]
 
@@ -408,6 +420,12 @@ const SEED_DATA: Record<string, any> = {
         template_id: "corporate",
         schema_template: { contentTypes: [], singleTypes: [], components: [] }
     },
+  ],
+
+  // ───── POSTS (Collection) ─────
+  "posts": [
+    { title: "Selamat Datang di SaCMS", slug: "selamat-datang", content: "<p>Ini adalah post pertama Anda.</p>", category: "Pengumuman", cover_image: "" },
+    { title: "Cara Mengelola Konten", slug: "cara-mengelola", content: "<p>Gunakan menu sebelah kiri untuk mengelola konten.</p>", category: "Tutorial", cover_image: "" }
   ]
 }
 
@@ -532,13 +550,23 @@ async function main() {
   console.log("══════════════════════════════════════════════════\n")
 
   // ─── STEP 0: Ensure Global Tenant exists ───
-  let globalTenant = await prisma.tenant.findUnique({ where: { slug: "sacms-global" } })
+  let globalTenantId = "sacms-global";
+  try {
+    const setting = await prisma.setting.findUnique({ where: { key: "globalTenantId" } });
+    if (setting && setting.value) {
+      globalTenantId = setting.value;
+    }
+  } catch (err) {
+    console.error("Error reading globalTenantId setting", err);
+  }
+
+  let globalTenant = await prisma.tenant.findUnique({ where: { id: globalTenantId } })
   if (!globalTenant) {
     globalTenant = await prisma.tenant.create({
       data: {
-        id: "sacms-global",
+        id: globalTenantId,
         name: "SaCMS Global",
-        slug: "sacms-global",
+        slug: globalTenantId,
         plan: "ENTERPRISE",
         status: "active"
       }

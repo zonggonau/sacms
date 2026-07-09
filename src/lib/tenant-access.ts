@@ -11,6 +11,7 @@ interface TenantAccess {
     slug: string
     plan: string
   }
+  isGlobal: boolean
 }
 
 /**
@@ -22,6 +23,9 @@ export async function getTenantAccess(
   session: Session,
   tenantIdOrSlug: string
 ): Promise<TenantAccess | null> {
+  const { getGlobalWorkspaceId } = await import("@/lib/settings")
+  const globalId = await getGlobalWorkspaceId()
+
   // Super admin can access any tenant
   if (session.user.role === "super_admin") {
     const tenant = await db.tenant.findFirst({
@@ -43,7 +47,8 @@ export async function getTenantAccess(
         name: tenant.name,
         slug: tenant.slug,
         plan: tenant.plan
-      }
+      },
+      isGlobal: tenant.id === globalId || tenant.slug === globalId
     }
   }
 
@@ -75,6 +80,7 @@ export async function getTenantAccess(
     tenantId: membership.tenantId, 
     userId: session.user.id,
     role: membership.role,
-    tenant: membership.tenant
+    tenant: membership.tenant,
+    isGlobal: membership.tenant.id === globalId || membership.tenant.slug === globalId
   }
 }

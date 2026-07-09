@@ -35,20 +35,31 @@ interface EnterpriseLicenseInfo {
 }
 
 import { useParams } from "next/navigation"
+import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 
 export function EnterpriseLicenseBanner({ tenantId, hideActivation = false }: { tenantId?: string, hideActivation?: boolean }) {
   const params = useParams() as { tenant?: string }
-  const tenant = tenantId || params.tenant || "sacms-global"
   const { toast } = useToast()
   const [license, setLicense] = useState<EnterpriseLicenseInfo | null>(null)
   const [loading, setLoading] = useState(true)
   const [showActivate, setShowActivate] = useState(false)
   const [licenseKeyInput, setLicenseKeyInput] = useState("")
   const [activating, setActivating] = useState(false)
+  const [tenant, setTenant] = useState<string>(tenantId || params.tenant || "")
 
   const fetchStatus = async () => {
     try {
-      const res = await fetch(`/api/tenant/${tenant}/license/status`)
+      let currentTenant = tenantId || params.tenant
+      if (!currentTenant) {
+        currentTenant = await getGlobalWorkspaceIdAction()
+        setTenant(currentTenant || "")
+      }
+      if (!currentTenant) {
+        setLicense(null)
+        setLoading(false)
+        return
+      }
+      const res = await fetch(`/api/tenant/${currentTenant}/license/status`)
       if (res.ok) {
         const data = await res.json()
         setLicense(data)

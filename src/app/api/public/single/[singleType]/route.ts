@@ -75,13 +75,14 @@ export async function GET(
     if (!singleType) return NextResponse.json({ error: "Single type not found" }, { status: 404 })
 
     // Find assignment for this single type (Try Truly Global first, then sacms-global fallback)
+    const systemTenantId = await getGlobalWorkspaceId();
     let assignment = await db.tenantSingleTypeAssignment.findFirst({
       where: {
         singleTypeId: singleType.id,
         locale,
         OR: [
           { tenantId: null },
-          { tenant: { slug: SYSTEM_TENANT_SLUG } },
+          { tenantId: systemTenantId },
           { tenant: { slug: "system" } }
         ]
       },

@@ -37,7 +37,9 @@ export function TestimonialsSection({ testimonials = [] }: { testimonials?: Test
 
               <div className="relative z-10">
                 <Quote className="w-10 h-10 text-primary/20 mb-6 group-hover:text-primary/40 transition-colors duration-300" />
-                <p className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 italic font-medium">"{t.content}"</p>
+                <div className="text-base sm:text-lg text-muted-foreground leading-relaxed mb-8 italic font-medium [&>p]:mb-0 [&_p]:mb-0">
+                  &quot;<span dangerouslySetInnerHTML={{ __html: t.content || '' }} />&quot;
+                </div>
               </div>
               
               <div className="relative z-10 flex items-center gap-4 pt-6 border-t border-border/50">
