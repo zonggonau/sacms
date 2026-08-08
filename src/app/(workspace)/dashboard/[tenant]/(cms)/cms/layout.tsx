@@ -23,8 +23,8 @@ export default async function CMSLayout({
   // Check if user has access to this tenant and allowed CMS roles
   const access = await getTenantAccess(session, tenantIdOrSlug)
 
-  // Allowed CMS Roles: owner, admin, editor, contributor, viewer
-  const allowedRoles = ["owner", "admin", "editor", "contributor", "viewer"]
+  // Allowed CMS Roles: owner, admin, editor, author, contributor, subscriber, viewer, user, member
+  const allowedRoles = ["owner", "admin", "editor", "author", "contributor", "subscriber", "viewer", "user", "member"]
   
   if (!access) {
     // Fallback: If they mistyped the tenant slug, redirect to their first available tenant
@@ -74,6 +74,7 @@ export default async function CMSLayout({
   const tenantDb = await getTenantDb(tenantId)
   const availableContentTypes = await tenantDb.contentType.findMany({
     where: {
+      showInCms: true,
       OR: [
         { tenantId: tenantId },
         {
@@ -93,6 +94,7 @@ export default async function CMSLayout({
 
   const availableSingleTypes = await tenantDb.singleType.findMany({
     where: {
+      showInCms: true,
       OR: [
         { tenantId: tenantId },
         {
@@ -117,6 +119,7 @@ export default async function CMSLayout({
         contentTypes={availableContentTypes} 
         singleTypes={availableSingleTypes} 
         user={session.user}
+        userRole={access.role}
       />
       <main className="flex-1 overflow-auto bg-muted/10">
         {children}

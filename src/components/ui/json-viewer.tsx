@@ -11,11 +11,15 @@ interface JsonViewerProps {
  * A simple, clean JSON viewer component with syntax highlighting colors
  */
 export function JsonViewer({ data, className }: JsonViewerProps) {
+  const escapeHtml = (str: string) =>
+    str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
+
   // Simple syntax highlighting using regex on stringified JSON
   const formatJson = (obj: any) => {
     try {
-      const json = JSON.stringify(obj, null, 2)
-      return json.replace(
+      const json = typeof obj === "string" ? obj : JSON.stringify(obj, null, 2)
+      const safeJson = escapeHtml(json)
+      return safeJson.replace(
         /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
         (match) => {
           let cls = "text-orange-600 dark:text-orange-400" // numbers
@@ -34,7 +38,7 @@ export function JsonViewer({ data, className }: JsonViewerProps) {
         }
       )
     } catch (e) {
-      return String(obj)
+      return escapeHtml(String(obj))
     }
   }
 

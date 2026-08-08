@@ -108,6 +108,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
     }
 
+    if (tenant.slug === "sacms-global" || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global") {
+      return NextResponse.json({ error: "Cannot delete global tenant" }, { status: 400 })
+    }
+
     // 1. Delete physical assets from storage (R2 or Local)
     if (tenant.slug) {
       await deleteTenantStorage(tenant.slug)

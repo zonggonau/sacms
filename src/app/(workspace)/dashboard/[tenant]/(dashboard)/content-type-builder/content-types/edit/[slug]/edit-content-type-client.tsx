@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -50,6 +51,7 @@ interface ContentType {
   slug: string
   description: string | null
   docxTemplateUrl: string | null
+  showInCms?: boolean
   isPublished: boolean
   isGlobal: boolean
   fields: Field[]
@@ -166,6 +168,7 @@ export default function EditContentTypeClient({
   const [name, setName] = useState(initialContentType?.name || "")
   const [slug, setSlug] = useState(initialContentType?.slug || "")
   const [description, setDescription] = useState(initialContentType?.description || "")
+  const [showInCms, setShowInCms] = useState((initialContentType as any)?.showInCms ?? true)
   const [docxTemplateUrl, setDocxTemplateUrl] = useState(initialContentType?.docxTemplateUrl || "")
   const [fields, setFields] = useState<Field[]>(initialFields)
 
@@ -301,6 +304,7 @@ export default function EditContentTypeClient({
         name,
         slug,
         description,
+        showInCms,
         docxTemplateUrl: docxTemplateUrl || null,
         fields: fields.map((f, index) => ({
           name: f.name,
@@ -385,6 +389,17 @@ export default function EditContentTypeClient({
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this collection for?" rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  </div>
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsEdit">Tampilkan di Menu CMS</Label>
+                      <p className="text-[10px] text-muted-foreground">Tampilkan koleksi ini di menu navigasi /cms</p>
+                    </div>
+                    <Switch 
+                      id="showInCmsEdit"
+                      checked={showInCms} 
+                      onCheckedChange={setShowInCms} 
+                    />
                   </div>
                 </CardContent>
               </Card>

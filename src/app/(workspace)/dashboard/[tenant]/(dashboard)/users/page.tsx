@@ -1,5 +1,5 @@
 import { getTenantUsersAction } from "@/actions/users"
-import { getRolesAction } from "@/actions/roles"
+
 import { UsersClient } from "./users-client"
 import { enforcePlanLimit } from "@/lib/plan-enforcement"
 import { getServerSession } from "next-auth"
@@ -12,10 +12,7 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
   const session = await getServerSession(authOptions)
   const access = session ? await getTenantAccess(session, tenant) : null
   
-  const [usersData, rolesData] = await Promise.all([
-    getTenantUsersAction(tenant),
-    getRolesAction(tenant)
-  ])
+  const usersData = await getTenantUsersAction(tenant)
   
   if (usersData.error) {
     return (
@@ -46,7 +43,7 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
     <UsersClient 
       initialMembers={initialMembers as any} 
       tenantSlug={tenant} 
-      customRoles={rolesData.roles || []} 
+
       limit={maxLimit}
       current={currentUsageCount}
     />

@@ -43,6 +43,7 @@ src/
     rbac.ts             ← Role-based access control
     tenant-plan.ts      ← Plan limits enforcement
     database.ts         ← Prisma client singleton + enterprise DB routing
+
   proxy.ts              ← Security headers, rate limiting, CORS, custom domain routing
 prisma/
   schema.prisma         ← Main schema (709 lines)
@@ -100,6 +101,7 @@ if (!canRoleTransition(current.status, "PUBLISHED", userRole)) {
 | `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY` | Payment gateway |
 | `CRON_SECRET` | Secret untuk mengamankan cron endpoints |
 | `OPENAI_API_KEY` | AI content generation (optional) |
+
 | `LICENSE_KEY` | Enterprise license key for self-hosted instances (optional) |
 | `LICENSE_SERVER_URL` | License validation server URL for self-hosted instances (optional) |
 

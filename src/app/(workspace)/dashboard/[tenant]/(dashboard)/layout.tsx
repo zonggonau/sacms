@@ -7,6 +7,7 @@ import { redirect } from "next/navigation"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isEnterpriseTenant } from "@/lib/license"
 import { SubscriptionGate } from "./subscription-gate"
+import { DashboardLayoutShell } from "@/components/dashboard/dashboard-layout-shell"
 
 export async function generateMetadata({
   params,
@@ -98,13 +99,15 @@ export default async function TenantDashboardLayout({
   );
   
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/20">
-      <TenantSidebar tenantSlug={resolvedParams.tenant} isEnterpriseMode={enterprise} session={session} />
-      <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
+    <DashboardLayoutShell
+      sidebar={
+        <TenantSidebar tenantSlug={resolvedParams.tenant} isEnterpriseMode={enterprise} session={session} />
+      }
+      subscriptionGate={
         <SubscriptionGate isExpired={isExpired} tenantId={access.tenantId}>
           {children}
         </SubscriptionGate>
-      </div>
-    </div>
+      }
+    />
   )
 }

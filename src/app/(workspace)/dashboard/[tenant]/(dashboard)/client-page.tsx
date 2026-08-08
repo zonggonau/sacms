@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
-import { OnboardingChecklist } from "@/components/dashboard/onboarding-checklist"
 import { getContentTypesAction } from "@/actions/content-types"
 
 interface AssignedContentType {
@@ -208,17 +207,6 @@ export default function TenantDashboardClient({
               </Link>
             </div>
           </div>
-
-          <OnboardingChecklist 
-            tenantId={tenantId} 
-            stats={{
-              contentTypeCount: stats?.contentTypeCount ?? 0,
-              mediaCount: stats?.mediaCount ?? 0,
-              memberCount: stats?.memberCount ?? 1,
-              apiTokenCount: stats?.apiTokenCount ?? 0,
-              totalEntries: totalEntries
-            }} 
-          />
 
           {/* Quota Usage Alerts */}
           {usageAlerts.length > 0 && (

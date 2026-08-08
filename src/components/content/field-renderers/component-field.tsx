@@ -18,12 +18,14 @@ import { BooleanField } from "./boolean-field"
 import { DateField } from "./date-field"
 import { SelectField } from "./select-field"
 import { MediaField } from "./media-field"
+import { SlugField } from "./slug-field"
 import { RichTextField } from "./rich-text-field"
 import { RelationSelectField } from "./relation-select-field"
 import { AdvancedField } from "./advanced-fields"
 import { UrlField } from "./url-field"
 import { PhoneField } from "./phone-field"
 import { MultiSelectField } from "./multiselect-field"
+import { PasswordField } from "./password-field"
 import { RatingField } from "./rating-field"
 import { ButtonField } from "./button-field"
 import { MarkdownField } from "./markdown-field"
@@ -164,9 +166,9 @@ export function ComponentField({
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} />
+        return <ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={fieldValue} onChange={onFieldChange} repeatable={compOpts?.repeatable} />
       case "repeater":
-        return <DynamicZoneField label={field.name} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} />
+        return <DynamicZoneField label={null} tenantSlug={tenantSlug} value={fieldValue as any[]} onChange={onFieldChange} />
       case "relation":
         const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
@@ -176,7 +178,6 @@ export function ComponentField({
             onChange={onFieldChange} 
             tenantSlug={tenantSlug}
             targetSlug={(field as any).relationSlug || relOpts?.targetSlug || ""}
-            label={field.name}
             required={field.required}
             multiple={isMultiple}
           />
@@ -185,6 +186,11 @@ export function ComponentField({
         return <MediaField value={fieldValue as string} onChange={onFieldChange} tenantSlug={tenantSlug} type="image" />
       case "file":
         return <MediaField value={fieldValue as string} onChange={onFieldChange} tenantSlug={tenantSlug} type="file" />
+      case "slug":
+      case "uid":
+        return <SlugField value={fieldValue} onChange={onFieldChange} required={field.required} />
+      case "password":
+        return <PasswordField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
       case "json":
       case "color":
       case "location":
@@ -224,14 +230,16 @@ export function ComponentField({
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between">
-        {typeof label === 'string' ? <Label className="text-sm font-bold">{label}</Label> : label}
-        {repeatable && (
-          <Badge variant="outline" className="text-[10px] font-bold uppercase bg-primary/5 text-primary border-primary/20">
-            Repeatable
-          </Badge>
-        )}
-      </div>
+      {label && (
+        <div className="flex items-center justify-between">
+          {typeof label === 'string' ? <Label className="text-sm font-bold">{label}</Label> : label}
+          {repeatable && (
+            <Badge variant="outline" className="text-[10px] font-bold uppercase bg-primary/5 text-primary border-primary/20">
+              Repeatable
+            </Badge>
+          )}
+        </div>
+      )}
 
       <div className="bg-muted/30 rounded-none p-4 border border-dashed border-muted-foreground/20">
         {!repeatable ? (

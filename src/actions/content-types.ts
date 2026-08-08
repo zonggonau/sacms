@@ -1,4 +1,5 @@
 "use server"
+// Trigger Next.js rebuild for Prisma Client patch
 
 import { getServerSession } from "next-auth/next"
 import { authOptions } from "@/lib/auth"
@@ -197,7 +198,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
       console.error("Zod validation error in createContentTypeAction:", result.error)
       return { error: result.error.issues[0]?.message ?? "Validation failed" }
     }
-    const { name, slug, description, docxTemplateUrl, fields } = result.data
+    const { name, slug, description, showInCms, docxTemplateUrl, fields } = result.data
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
     const enforcement = await enforcePlanLimit(access.tenantId, "content_types", session.user.id)
@@ -220,6 +221,7 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
         name,
         slug,
         description,
+        showInCms: showInCms ?? true,
         docxTemplateUrl,
         isPublished: true,
         schemaFields: {
@@ -269,7 +271,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const result = updateContentTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
-    const { name, description, docxTemplateUrl, fields } = result.data
+    const { name, description, showInCms, docxTemplateUrl, fields } = result.data
 
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -299,6 +301,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
         data: {
           name,
           description,
+          showInCms: showInCms !== undefined ? showInCms : (existingContentType as any).showInCms ?? true,
           docxTemplateUrl: docxTemplateUrl !== undefined ? docxTemplateUrl : existingContentType.docxTemplateUrl,
           schemaFields: {
             create: fields?.map((field: any, index: number) => ({

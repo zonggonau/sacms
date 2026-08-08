@@ -50,7 +50,7 @@ describe("Rate Limiter", () => {
   describe("RATE_LIMITS presets", () => {
     it("should have correct predefined limits", () => {
       expect(RATE_LIMITS.publicApi.limit).toBe(1000)
-      expect(RATE_LIMITS.auth.limit).toBe(30)
+      expect(RATE_LIMITS.auth.limit).toBe(200)
       expect(RATE_LIMITS.api.limit).toBe(300)
     })
   })

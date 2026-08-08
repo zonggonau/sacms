@@ -6,7 +6,7 @@ class SaCMS {
         this.baseUrl = config.baseUrl.replace(/\/+$/, "");
         this.tenant = config.tenant;
         this.token = config.token;
-        this.defaultLocale = config.locale;
+        this.defaultLocale = config.locale ?? "id";
     }
     collection(slug) {
         return new CollectionClient(this, slug);

@@ -14,11 +14,6 @@ export type PrismaPromise<T> = $Public.PrismaPromise<T>
 
 
 /**
- * Model SystemRole
- * 
- */
-export type SystemRole = $Result.DefaultSelection<Prisma.$SystemRolePayload>
-/**
  * Model User
  * 
  */
@@ -169,21 +164,6 @@ export type MediaFolder = $Result.DefaultSelection<Prisma.$MediaFolderPayload>
  */
 export type Media = $Result.DefaultSelection<Prisma.$MediaPayload>
 /**
- * Model Permission
- * 
- */
-export type Permission = $Result.DefaultSelection<Prisma.$PermissionPayload>
-/**
- * Model RolePermission
- * 
- */
-export type RolePermission = $Result.DefaultSelection<Prisma.$RolePermissionPayload>
-/**
- * Model TenantRole
- * 
- */
-export type TenantRole = $Result.DefaultSelection<Prisma.$TenantRolePayload>
-/**
  * Model ApiToken
  * 
  */
@@ -253,8 +233,8 @@ export const ContentStatus: typeof $Enums.ContentStatus
  * @example
  * ```
  * const prisma = new PrismaClient()
- * // Fetch zero or more SystemRoles
- * const systemRoles = await prisma.systemRole.findMany()
+ * // Fetch zero or more Users
+ * const users = await prisma.user.findMany()
  * ```
  *
  *
@@ -274,8 +254,8 @@ export class PrismaClient<
    * @example
    * ```
    * const prisma = new PrismaClient()
-   * // Fetch zero or more SystemRoles
-   * const systemRoles = await prisma.systemRole.findMany()
+   * // Fetch zero or more Users
+   * const users = await prisma.user.findMany()
    * ```
    *
    *
@@ -365,16 +345,6 @@ export class PrismaClient<
   }>>
 
       /**
-   * `prisma.systemRole`: Exposes CRUD operations for the **SystemRole** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more SystemRoles
-    * const systemRoles = await prisma.systemRole.findMany()
-    * ```
-    */
-  get systemRole(): Prisma.SystemRoleDelegate<ExtArgs, ClientOptions>;
-
-  /**
    * `prisma.user`: Exposes CRUD operations for the **User** model.
     * Example usage:
     * ```ts
@@ -673,36 +643,6 @@ export class PrismaClient<
     * ```
     */
   get media(): Prisma.MediaDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.permission`: Exposes CRUD operations for the **Permission** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more Permissions
-    * const permissions = await prisma.permission.findMany()
-    * ```
-    */
-  get permission(): Prisma.PermissionDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.rolePermission`: Exposes CRUD operations for the **RolePermission** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more RolePermissions
-    * const rolePermissions = await prisma.rolePermission.findMany()
-    * ```
-    */
-  get rolePermission(): Prisma.RolePermissionDelegate<ExtArgs, ClientOptions>;
-
-  /**
-   * `prisma.tenantRole`: Exposes CRUD operations for the **TenantRole** model.
-    * Example usage:
-    * ```ts
-    * // Fetch zero or more TenantRoles
-    * const tenantRoles = await prisma.tenantRole.findMany()
-    * ```
-    */
-  get tenantRole(): Prisma.TenantRoleDelegate<ExtArgs, ClientOptions>;
 
   /**
    * `prisma.apiToken`: Exposes CRUD operations for the **ApiToken** model.
@@ -1224,7 +1164,6 @@ export namespace Prisma {
 
 
   export const ModelName: {
-    SystemRole: 'SystemRole',
     User: 'User',
     Account: 'Account',
     Session: 'Session',
@@ -1255,9 +1194,6 @@ export namespace Prisma {
     ApiRequest: 'ApiRequest',
     MediaFolder: 'MediaFolder',
     Media: 'Media',
-    Permission: 'Permission',
-    RolePermission: 'RolePermission',
-    TenantRole: 'TenantRole',
     ApiToken: 'ApiToken',
     Webhook: 'Webhook',
     WebhookLog: 'WebhookLog',
@@ -1284,84 +1220,10 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "systemRole" | "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "permission" | "rolePermission" | "tenantRole" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain"
+      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
-      SystemRole: {
-        payload: Prisma.$SystemRolePayload<ExtArgs>
-        fields: Prisma.SystemRoleFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.SystemRoleFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.SystemRoleFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          findFirst: {
-            args: Prisma.SystemRoleFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.SystemRoleFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          findMany: {
-            args: Prisma.SystemRoleFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>[]
-          }
-          create: {
-            args: Prisma.SystemRoleCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          createMany: {
-            args: Prisma.SystemRoleCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.SystemRoleCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>[]
-          }
-          delete: {
-            args: Prisma.SystemRoleDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          update: {
-            args: Prisma.SystemRoleUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          deleteMany: {
-            args: Prisma.SystemRoleDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.SystemRoleUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.SystemRoleUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>[]
-          }
-          upsert: {
-            args: Prisma.SystemRoleUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$SystemRolePayload>
-          }
-          aggregate: {
-            args: Prisma.SystemRoleAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateSystemRole>
-          }
-          groupBy: {
-            args: Prisma.SystemRoleGroupByArgs<ExtArgs>
-            result: $Utils.Optional<SystemRoleGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.SystemRoleCountArgs<ExtArgs>
-            result: $Utils.Optional<SystemRoleCountAggregateOutputType> | number
-          }
-        }
-      }
       User: {
         payload: Prisma.$UserPayload<ExtArgs>
         fields: Prisma.UserFieldRefs
@@ -3582,228 +3444,6 @@ export namespace Prisma {
           }
         }
       }
-      Permission: {
-        payload: Prisma.$PermissionPayload<ExtArgs>
-        fields: Prisma.PermissionFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.PermissionFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.PermissionFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          findFirst: {
-            args: Prisma.PermissionFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.PermissionFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          findMany: {
-            args: Prisma.PermissionFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>[]
-          }
-          create: {
-            args: Prisma.PermissionCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          createMany: {
-            args: Prisma.PermissionCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.PermissionCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>[]
-          }
-          delete: {
-            args: Prisma.PermissionDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          update: {
-            args: Prisma.PermissionUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          deleteMany: {
-            args: Prisma.PermissionDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.PermissionUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.PermissionUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>[]
-          }
-          upsert: {
-            args: Prisma.PermissionUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$PermissionPayload>
-          }
-          aggregate: {
-            args: Prisma.PermissionAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregatePermission>
-          }
-          groupBy: {
-            args: Prisma.PermissionGroupByArgs<ExtArgs>
-            result: $Utils.Optional<PermissionGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.PermissionCountArgs<ExtArgs>
-            result: $Utils.Optional<PermissionCountAggregateOutputType> | number
-          }
-        }
-      }
-      RolePermission: {
-        payload: Prisma.$RolePermissionPayload<ExtArgs>
-        fields: Prisma.RolePermissionFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.RolePermissionFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.RolePermissionFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          findFirst: {
-            args: Prisma.RolePermissionFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.RolePermissionFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          findMany: {
-            args: Prisma.RolePermissionFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>[]
-          }
-          create: {
-            args: Prisma.RolePermissionCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          createMany: {
-            args: Prisma.RolePermissionCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.RolePermissionCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>[]
-          }
-          delete: {
-            args: Prisma.RolePermissionDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          update: {
-            args: Prisma.RolePermissionUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          deleteMany: {
-            args: Prisma.RolePermissionDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.RolePermissionUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.RolePermissionUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>[]
-          }
-          upsert: {
-            args: Prisma.RolePermissionUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$RolePermissionPayload>
-          }
-          aggregate: {
-            args: Prisma.RolePermissionAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateRolePermission>
-          }
-          groupBy: {
-            args: Prisma.RolePermissionGroupByArgs<ExtArgs>
-            result: $Utils.Optional<RolePermissionGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.RolePermissionCountArgs<ExtArgs>
-            result: $Utils.Optional<RolePermissionCountAggregateOutputType> | number
-          }
-        }
-      }
-      TenantRole: {
-        payload: Prisma.$TenantRolePayload<ExtArgs>
-        fields: Prisma.TenantRoleFieldRefs
-        operations: {
-          findUnique: {
-            args: Prisma.TenantRoleFindUniqueArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload> | null
-          }
-          findUniqueOrThrow: {
-            args: Prisma.TenantRoleFindUniqueOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          findFirst: {
-            args: Prisma.TenantRoleFindFirstArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload> | null
-          }
-          findFirstOrThrow: {
-            args: Prisma.TenantRoleFindFirstOrThrowArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          findMany: {
-            args: Prisma.TenantRoleFindManyArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>[]
-          }
-          create: {
-            args: Prisma.TenantRoleCreateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          createMany: {
-            args: Prisma.TenantRoleCreateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          createManyAndReturn: {
-            args: Prisma.TenantRoleCreateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>[]
-          }
-          delete: {
-            args: Prisma.TenantRoleDeleteArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          update: {
-            args: Prisma.TenantRoleUpdateArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          deleteMany: {
-            args: Prisma.TenantRoleDeleteManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateMany: {
-            args: Prisma.TenantRoleUpdateManyArgs<ExtArgs>
-            result: BatchPayload
-          }
-          updateManyAndReturn: {
-            args: Prisma.TenantRoleUpdateManyAndReturnArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>[]
-          }
-          upsert: {
-            args: Prisma.TenantRoleUpsertArgs<ExtArgs>
-            result: $Utils.PayloadToResult<Prisma.$TenantRolePayload>
-          }
-          aggregate: {
-            args: Prisma.TenantRoleAggregateArgs<ExtArgs>
-            result: $Utils.Optional<AggregateTenantRole>
-          }
-          groupBy: {
-            args: Prisma.TenantRoleGroupByArgs<ExtArgs>
-            result: $Utils.Optional<TenantRoleGroupByOutputType>[]
-          }
-          count: {
-            args: Prisma.TenantRoleCountArgs<ExtArgs>
-            result: $Utils.Optional<TenantRoleCountAggregateOutputType> | number
-          }
-        }
-      }
       ApiToken: {
         payload: Prisma.$ApiTokenPayload<ExtArgs>
         fields: Prisma.ApiTokenFieldRefs
@@ -4492,7 +4132,6 @@ export namespace Prisma {
     omit?: Prisma.GlobalOmitConfig
   }
   export type GlobalOmitConfig = {
-    systemRole?: SystemRoleOmit
     user?: UserOmit
     account?: AccountOmit
     session?: SessionOmit
@@ -4523,9 +4162,6 @@ export namespace Prisma {
     apiRequest?: ApiRequestOmit
     mediaFolder?: MediaFolderOmit
     media?: MediaOmit
-    permission?: PermissionOmit
-    rolePermission?: RolePermissionOmit
-    tenantRole?: TenantRoleOmit
     apiToken?: ApiTokenOmit
     webhook?: WebhookOmit
     webhookLog?: WebhookLogOmit
@@ -4681,7 +4317,6 @@ export namespace Prisma {
     contentTypes: number
     media: number
     mediaFolders: number
-    rolePermissions: number
     settings: number
     singleTypes: number
     subscriptions: number
@@ -4689,7 +4324,6 @@ export namespace Prisma {
     contentTypeAssignments: number
     locales: number
     members: number
-    tenantRoles: number
     singleTypeAssignments: number
     webhooks: number
     aiQuotaLedgers: number
@@ -4706,7 +4340,6 @@ export namespace Prisma {
     contentTypes?: boolean | TenantCountOutputTypeCountContentTypesArgs
     media?: boolean | TenantCountOutputTypeCountMediaArgs
     mediaFolders?: boolean | TenantCountOutputTypeCountMediaFoldersArgs
-    rolePermissions?: boolean | TenantCountOutputTypeCountRolePermissionsArgs
     settings?: boolean | TenantCountOutputTypeCountSettingsArgs
     singleTypes?: boolean | TenantCountOutputTypeCountSingleTypesArgs
     subscriptions?: boolean | TenantCountOutputTypeCountSubscriptionsArgs
@@ -4714,7 +4347,6 @@ export namespace Prisma {
     contentTypeAssignments?: boolean | TenantCountOutputTypeCountContentTypeAssignmentsArgs
     locales?: boolean | TenantCountOutputTypeCountLocalesArgs
     members?: boolean | TenantCountOutputTypeCountMembersArgs
-    tenantRoles?: boolean | TenantCountOutputTypeCountTenantRolesArgs
     singleTypeAssignments?: boolean | TenantCountOutputTypeCountSingleTypeAssignmentsArgs
     webhooks?: boolean | TenantCountOutputTypeCountWebhooksArgs
     aiQuotaLedgers?: boolean | TenantCountOutputTypeCountAiQuotaLedgersArgs
@@ -4798,13 +4430,6 @@ export namespace Prisma {
   /**
    * TenantCountOutputType without action
    */
-  export type TenantCountOutputTypeCountRolePermissionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: RolePermissionWhereInput
-  }
-
-  /**
-   * TenantCountOutputType without action
-   */
   export type TenantCountOutputTypeCountSettingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SettingWhereInput
   }
@@ -4849,13 +4474,6 @@ export namespace Prisma {
    */
   export type TenantCountOutputTypeCountMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: TenantMemberWhereInput
-  }
-
-  /**
-   * TenantCountOutputType without action
-   */
-  export type TenantCountOutputTypeCountTenantRolesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: TenantRoleWhereInput
   }
 
   /**
@@ -5155,37 +4773,6 @@ export namespace Prisma {
 
 
   /**
-   * Count Type PermissionCountOutputType
-   */
-
-  export type PermissionCountOutputType = {
-    roles: number
-  }
-
-  export type PermissionCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    roles?: boolean | PermissionCountOutputTypeCountRolesArgs
-  }
-
-  // Custom InputTypes
-  /**
-   * PermissionCountOutputType without action
-   */
-  export type PermissionCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the PermissionCountOutputType
-     */
-    select?: PermissionCountOutputTypeSelect<ExtArgs> | null
-  }
-
-  /**
-   * PermissionCountOutputType without action
-   */
-  export type PermissionCountOutputTypeCountRolesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: RolePermissionWhereInput
-  }
-
-
-  /**
    * Count Type WebhookCountOutputType
    */
 
@@ -5228,1014 +4815,6 @@ export namespace Prisma {
   /**
    * Models
    */
-
-  /**
-   * Model SystemRole
-   */
-
-  export type AggregateSystemRole = {
-    _count: SystemRoleCountAggregateOutputType | null
-    _min: SystemRoleMinAggregateOutputType | null
-    _max: SystemRoleMaxAggregateOutputType | null
-  }
-
-  export type SystemRoleMinAggregateOutputType = {
-    id: string | null
-    name: string | null
-    slug: string | null
-    description: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type SystemRoleMaxAggregateOutputType = {
-    id: string | null
-    name: string | null
-    slug: string | null
-    description: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type SystemRoleCountAggregateOutputType = {
-    id: number
-    name: number
-    slug: number
-    description: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type SystemRoleMinAggregateInputType = {
-    id?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type SystemRoleMaxAggregateInputType = {
-    id?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type SystemRoleCountAggregateInputType = {
-    id?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type SystemRoleAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SystemRole to aggregate.
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SystemRoles to fetch.
-     */
-    orderBy?: SystemRoleOrderByWithRelationInput | SystemRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: SystemRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SystemRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SystemRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned SystemRoles
-    **/
-    _count?: true | SystemRoleCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: SystemRoleMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: SystemRoleMaxAggregateInputType
-  }
-
-  export type GetSystemRoleAggregateType<T extends SystemRoleAggregateArgs> = {
-        [P in keyof T & keyof AggregateSystemRole]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateSystemRole[P]>
-      : GetScalarType<T[P], AggregateSystemRole[P]>
-  }
-
-
-
-
-  export type SystemRoleGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: SystemRoleWhereInput
-    orderBy?: SystemRoleOrderByWithAggregationInput | SystemRoleOrderByWithAggregationInput[]
-    by: SystemRoleScalarFieldEnum[] | SystemRoleScalarFieldEnum
-    having?: SystemRoleScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: SystemRoleCountAggregateInputType | true
-    _min?: SystemRoleMinAggregateInputType
-    _max?: SystemRoleMaxAggregateInputType
-  }
-
-  export type SystemRoleGroupByOutputType = {
-    id: string
-    name: string
-    slug: string
-    description: string | null
-    createdAt: Date
-    updatedAt: Date
-    _count: SystemRoleCountAggregateOutputType | null
-    _min: SystemRoleMinAggregateOutputType | null
-    _max: SystemRoleMaxAggregateOutputType | null
-  }
-
-  type GetSystemRoleGroupByPayload<T extends SystemRoleGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<SystemRoleGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof SystemRoleGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], SystemRoleGroupByOutputType[P]>
-            : GetScalarType<T[P], SystemRoleGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type SystemRoleSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["systemRole"]>
-
-  export type SystemRoleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["systemRole"]>
-
-  export type SystemRoleSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }, ExtArgs["result"]["systemRole"]>
-
-  export type SystemRoleSelectScalar = {
-    id?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type SystemRoleOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "createdAt" | "updatedAt", ExtArgs["result"]["systemRole"]>
-
-  export type $SystemRolePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "SystemRole"
-    objects: {}
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      name: string
-      slug: string
-      description: string | null
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["systemRole"]>
-    composites: {}
-  }
-
-  type SystemRoleGetPayload<S extends boolean | null | undefined | SystemRoleDefaultArgs> = $Result.GetResult<Prisma.$SystemRolePayload, S>
-
-  type SystemRoleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<SystemRoleFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: SystemRoleCountAggregateInputType | true
-    }
-
-  export interface SystemRoleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SystemRole'], meta: { name: 'SystemRole' } }
-    /**
-     * Find zero or one SystemRole that matches the filter.
-     * @param {SystemRoleFindUniqueArgs} args - Arguments to find a SystemRole
-     * @example
-     * // Get one SystemRole
-     * const systemRole = await prisma.systemRole.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends SystemRoleFindUniqueArgs>(args: SelectSubset<T, SystemRoleFindUniqueArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one SystemRole that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {SystemRoleFindUniqueOrThrowArgs} args - Arguments to find a SystemRole
-     * @example
-     * // Get one SystemRole
-     * const systemRole = await prisma.systemRole.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends SystemRoleFindUniqueOrThrowArgs>(args: SelectSubset<T, SystemRoleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SystemRole that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleFindFirstArgs} args - Arguments to find a SystemRole
-     * @example
-     * // Get one SystemRole
-     * const systemRole = await prisma.systemRole.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends SystemRoleFindFirstArgs>(args?: SelectSubset<T, SystemRoleFindFirstArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first SystemRole that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleFindFirstOrThrowArgs} args - Arguments to find a SystemRole
-     * @example
-     * // Get one SystemRole
-     * const systemRole = await prisma.systemRole.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends SystemRoleFindFirstOrThrowArgs>(args?: SelectSubset<T, SystemRoleFindFirstOrThrowArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more SystemRoles that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all SystemRoles
-     * const systemRoles = await prisma.systemRole.findMany()
-     * 
-     * // Get first 10 SystemRoles
-     * const systemRoles = await prisma.systemRole.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const systemRoleWithIdOnly = await prisma.systemRole.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends SystemRoleFindManyArgs>(args?: SelectSubset<T, SystemRoleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a SystemRole.
-     * @param {SystemRoleCreateArgs} args - Arguments to create a SystemRole.
-     * @example
-     * // Create one SystemRole
-     * const SystemRole = await prisma.systemRole.create({
-     *   data: {
-     *     // ... data to create a SystemRole
-     *   }
-     * })
-     * 
-     */
-    create<T extends SystemRoleCreateArgs>(args: SelectSubset<T, SystemRoleCreateArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many SystemRoles.
-     * @param {SystemRoleCreateManyArgs} args - Arguments to create many SystemRoles.
-     * @example
-     * // Create many SystemRoles
-     * const systemRole = await prisma.systemRole.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends SystemRoleCreateManyArgs>(args?: SelectSubset<T, SystemRoleCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many SystemRoles and returns the data saved in the database.
-     * @param {SystemRoleCreateManyAndReturnArgs} args - Arguments to create many SystemRoles.
-     * @example
-     * // Create many SystemRoles
-     * const systemRole = await prisma.systemRole.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many SystemRoles and only return the `id`
-     * const systemRoleWithIdOnly = await prisma.systemRole.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends SystemRoleCreateManyAndReturnArgs>(args?: SelectSubset<T, SystemRoleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a SystemRole.
-     * @param {SystemRoleDeleteArgs} args - Arguments to delete one SystemRole.
-     * @example
-     * // Delete one SystemRole
-     * const SystemRole = await prisma.systemRole.delete({
-     *   where: {
-     *     // ... filter to delete one SystemRole
-     *   }
-     * })
-     * 
-     */
-    delete<T extends SystemRoleDeleteArgs>(args: SelectSubset<T, SystemRoleDeleteArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one SystemRole.
-     * @param {SystemRoleUpdateArgs} args - Arguments to update one SystemRole.
-     * @example
-     * // Update one SystemRole
-     * const systemRole = await prisma.systemRole.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends SystemRoleUpdateArgs>(args: SelectSubset<T, SystemRoleUpdateArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more SystemRoles.
-     * @param {SystemRoleDeleteManyArgs} args - Arguments to filter SystemRoles to delete.
-     * @example
-     * // Delete a few SystemRoles
-     * const { count } = await prisma.systemRole.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends SystemRoleDeleteManyArgs>(args?: SelectSubset<T, SystemRoleDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SystemRoles.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many SystemRoles
-     * const systemRole = await prisma.systemRole.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends SystemRoleUpdateManyArgs>(args: SelectSubset<T, SystemRoleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more SystemRoles and returns the data updated in the database.
-     * @param {SystemRoleUpdateManyAndReturnArgs} args - Arguments to update many SystemRoles.
-     * @example
-     * // Update many SystemRoles
-     * const systemRole = await prisma.systemRole.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more SystemRoles and only return the `id`
-     * const systemRoleWithIdOnly = await prisma.systemRole.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends SystemRoleUpdateManyAndReturnArgs>(args: SelectSubset<T, SystemRoleUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one SystemRole.
-     * @param {SystemRoleUpsertArgs} args - Arguments to update or create a SystemRole.
-     * @example
-     * // Update or create a SystemRole
-     * const systemRole = await prisma.systemRole.upsert({
-     *   create: {
-     *     // ... data to create a SystemRole
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the SystemRole we want to update
-     *   }
-     * })
-     */
-    upsert<T extends SystemRoleUpsertArgs>(args: SelectSubset<T, SystemRoleUpsertArgs<ExtArgs>>): Prisma__SystemRoleClient<$Result.GetResult<Prisma.$SystemRolePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of SystemRoles.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleCountArgs} args - Arguments to filter SystemRoles to count.
-     * @example
-     * // Count the number of SystemRoles
-     * const count = await prisma.systemRole.count({
-     *   where: {
-     *     // ... the filter for the SystemRoles we want to count
-     *   }
-     * })
-    **/
-    count<T extends SystemRoleCountArgs>(
-      args?: Subset<T, SystemRoleCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], SystemRoleCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a SystemRole.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends SystemRoleAggregateArgs>(args: Subset<T, SystemRoleAggregateArgs>): Prisma.PrismaPromise<GetSystemRoleAggregateType<T>>
-
-    /**
-     * Group by SystemRole.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {SystemRoleGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends SystemRoleGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: SystemRoleGroupByArgs['orderBy'] }
-        : { orderBy?: SystemRoleGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, SystemRoleGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSystemRoleGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the SystemRole model
-   */
-  readonly fields: SystemRoleFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for SystemRole.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__SystemRoleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the SystemRole model
-   */
-  interface SystemRoleFieldRefs {
-    readonly id: FieldRef<"SystemRole", 'String'>
-    readonly name: FieldRef<"SystemRole", 'String'>
-    readonly slug: FieldRef<"SystemRole", 'String'>
-    readonly description: FieldRef<"SystemRole", 'String'>
-    readonly createdAt: FieldRef<"SystemRole", 'DateTime'>
-    readonly updatedAt: FieldRef<"SystemRole", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * SystemRole findUnique
-   */
-  export type SystemRoleFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter, which SystemRole to fetch.
-     */
-    where: SystemRoleWhereUniqueInput
-  }
-
-  /**
-   * SystemRole findUniqueOrThrow
-   */
-  export type SystemRoleFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter, which SystemRole to fetch.
-     */
-    where: SystemRoleWhereUniqueInput
-  }
-
-  /**
-   * SystemRole findFirst
-   */
-  export type SystemRoleFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter, which SystemRole to fetch.
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SystemRoles to fetch.
-     */
-    orderBy?: SystemRoleOrderByWithRelationInput | SystemRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SystemRoles.
-     */
-    cursor?: SystemRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SystemRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SystemRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SystemRoles.
-     */
-    distinct?: SystemRoleScalarFieldEnum | SystemRoleScalarFieldEnum[]
-  }
-
-  /**
-   * SystemRole findFirstOrThrow
-   */
-  export type SystemRoleFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter, which SystemRole to fetch.
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SystemRoles to fetch.
-     */
-    orderBy?: SystemRoleOrderByWithRelationInput | SystemRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for SystemRoles.
-     */
-    cursor?: SystemRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SystemRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SystemRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of SystemRoles.
-     */
-    distinct?: SystemRoleScalarFieldEnum | SystemRoleScalarFieldEnum[]
-  }
-
-  /**
-   * SystemRole findMany
-   */
-  export type SystemRoleFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter, which SystemRoles to fetch.
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of SystemRoles to fetch.
-     */
-    orderBy?: SystemRoleOrderByWithRelationInput | SystemRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing SystemRoles.
-     */
-    cursor?: SystemRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` SystemRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` SystemRoles.
-     */
-    skip?: number
-    distinct?: SystemRoleScalarFieldEnum | SystemRoleScalarFieldEnum[]
-  }
-
-  /**
-   * SystemRole create
-   */
-  export type SystemRoleCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * The data needed to create a SystemRole.
-     */
-    data: XOR<SystemRoleCreateInput, SystemRoleUncheckedCreateInput>
-  }
-
-  /**
-   * SystemRole createMany
-   */
-  export type SystemRoleCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many SystemRoles.
-     */
-    data: SystemRoleCreateManyInput | SystemRoleCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * SystemRole createManyAndReturn
-   */
-  export type SystemRoleCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * The data used to create many SystemRoles.
-     */
-    data: SystemRoleCreateManyInput | SystemRoleCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * SystemRole update
-   */
-  export type SystemRoleUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * The data needed to update a SystemRole.
-     */
-    data: XOR<SystemRoleUpdateInput, SystemRoleUncheckedUpdateInput>
-    /**
-     * Choose, which SystemRole to update.
-     */
-    where: SystemRoleWhereUniqueInput
-  }
-
-  /**
-   * SystemRole updateMany
-   */
-  export type SystemRoleUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update SystemRoles.
-     */
-    data: XOR<SystemRoleUpdateManyMutationInput, SystemRoleUncheckedUpdateManyInput>
-    /**
-     * Filter which SystemRoles to update
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * Limit how many SystemRoles to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SystemRole updateManyAndReturn
-   */
-  export type SystemRoleUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * The data used to update SystemRoles.
-     */
-    data: XOR<SystemRoleUpdateManyMutationInput, SystemRoleUncheckedUpdateManyInput>
-    /**
-     * Filter which SystemRoles to update
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * Limit how many SystemRoles to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * SystemRole upsert
-   */
-  export type SystemRoleUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * The filter to search for the SystemRole to update in case it exists.
-     */
-    where: SystemRoleWhereUniqueInput
-    /**
-     * In case the SystemRole found by the `where` argument doesn't exist, create a new SystemRole with this data.
-     */
-    create: XOR<SystemRoleCreateInput, SystemRoleUncheckedCreateInput>
-    /**
-     * In case the SystemRole was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<SystemRoleUpdateInput, SystemRoleUncheckedUpdateInput>
-  }
-
-  /**
-   * SystemRole delete
-   */
-  export type SystemRoleDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-    /**
-     * Filter which SystemRole to delete.
-     */
-    where: SystemRoleWhereUniqueInput
-  }
-
-  /**
-   * SystemRole deleteMany
-   */
-  export type SystemRoleDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which SystemRoles to delete
-     */
-    where?: SystemRoleWhereInput
-    /**
-     * Limit how many SystemRoles to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * SystemRole without action
-   */
-  export type SystemRoleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the SystemRole
-     */
-    select?: SystemRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the SystemRole
-     */
-    omit?: SystemRoleOmit<ExtArgs> | null
-  }
-
 
   /**
    * Model User
@@ -11006,7 +9585,6 @@ export namespace Prisma {
     contentTypes?: boolean | Tenant$contentTypesArgs<ExtArgs>
     media?: boolean | Tenant$mediaArgs<ExtArgs>
     mediaFolders?: boolean | Tenant$mediaFoldersArgs<ExtArgs>
-    rolePermissions?: boolean | Tenant$rolePermissionsArgs<ExtArgs>
     settings?: boolean | Tenant$settingsArgs<ExtArgs>
     singleTypes?: boolean | Tenant$singleTypesArgs<ExtArgs>
     subscriptions?: boolean | Tenant$subscriptionsArgs<ExtArgs>
@@ -11014,7 +9592,6 @@ export namespace Prisma {
     contentTypeAssignments?: boolean | Tenant$contentTypeAssignmentsArgs<ExtArgs>
     locales?: boolean | Tenant$localesArgs<ExtArgs>
     members?: boolean | Tenant$membersArgs<ExtArgs>
-    tenantRoles?: boolean | Tenant$tenantRolesArgs<ExtArgs>
     singleTypeAssignments?: boolean | Tenant$singleTypeAssignmentsArgs<ExtArgs>
     webhooks?: boolean | Tenant$webhooksArgs<ExtArgs>
     aiQuotaLedgers?: boolean | Tenant$aiQuotaLedgersArgs<ExtArgs>
@@ -11105,7 +9682,6 @@ export namespace Prisma {
     contentTypes?: boolean | Tenant$contentTypesArgs<ExtArgs>
     media?: boolean | Tenant$mediaArgs<ExtArgs>
     mediaFolders?: boolean | Tenant$mediaFoldersArgs<ExtArgs>
-    rolePermissions?: boolean | Tenant$rolePermissionsArgs<ExtArgs>
     settings?: boolean | Tenant$settingsArgs<ExtArgs>
     singleTypes?: boolean | Tenant$singleTypesArgs<ExtArgs>
     subscriptions?: boolean | Tenant$subscriptionsArgs<ExtArgs>
@@ -11113,7 +9689,6 @@ export namespace Prisma {
     contentTypeAssignments?: boolean | Tenant$contentTypeAssignmentsArgs<ExtArgs>
     locales?: boolean | Tenant$localesArgs<ExtArgs>
     members?: boolean | Tenant$membersArgs<ExtArgs>
-    tenantRoles?: boolean | Tenant$tenantRolesArgs<ExtArgs>
     singleTypeAssignments?: boolean | Tenant$singleTypeAssignmentsArgs<ExtArgs>
     webhooks?: boolean | Tenant$webhooksArgs<ExtArgs>
     aiQuotaLedgers?: boolean | Tenant$aiQuotaLedgersArgs<ExtArgs>
@@ -11135,7 +9710,6 @@ export namespace Prisma {
       contentTypes: Prisma.$ContentTypePayload<ExtArgs>[]
       media: Prisma.$MediaPayload<ExtArgs>[]
       mediaFolders: Prisma.$MediaFolderPayload<ExtArgs>[]
-      rolePermissions: Prisma.$RolePermissionPayload<ExtArgs>[]
       settings: Prisma.$SettingPayload<ExtArgs>[]
       singleTypes: Prisma.$SingleTypePayload<ExtArgs>[]
       subscriptions: Prisma.$SubscriptionPayload<ExtArgs>[]
@@ -11143,7 +9717,6 @@ export namespace Prisma {
       contentTypeAssignments: Prisma.$TenantContentTypeAssignmentPayload<ExtArgs>[]
       locales: Prisma.$TenantLocalePayload<ExtArgs>[]
       members: Prisma.$TenantMemberPayload<ExtArgs>[]
-      tenantRoles: Prisma.$TenantRolePayload<ExtArgs>[]
       singleTypeAssignments: Prisma.$TenantSingleTypeAssignmentPayload<ExtArgs>[]
       webhooks: Prisma.$WebhookPayload<ExtArgs>[]
       aiQuotaLedgers: Prisma.$AiQuotaLedgerPayload<ExtArgs>[]
@@ -11574,7 +10147,6 @@ export namespace Prisma {
     contentTypes<T extends Tenant$contentTypesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$contentTypesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$ContentTypePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     media<T extends Tenant$mediaArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$mediaArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MediaPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     mediaFolders<T extends Tenant$mediaFoldersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$mediaFoldersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MediaFolderPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    rolePermissions<T extends Tenant$rolePermissionsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$rolePermissionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     settings<T extends Tenant$settingsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$settingsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SettingPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     singleTypes<T extends Tenant$singleTypesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$singleTypesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SingleTypePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     subscriptions<T extends Tenant$subscriptionsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$subscriptionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubscriptionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -11582,7 +10154,6 @@ export namespace Prisma {
     contentTypeAssignments<T extends Tenant$contentTypeAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$contentTypeAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantContentTypeAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     locales<T extends Tenant$localesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$localesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantLocalePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     members<T extends Tenant$membersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$membersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    tenantRoles<T extends Tenant$tenantRolesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$tenantRolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     singleTypeAssignments<T extends Tenant$singleTypeAssignmentsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$singleTypeAssignmentsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantSingleTypeAssignmentPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     webhooks<T extends Tenant$webhooksArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$webhooksArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$WebhookPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     aiQuotaLedgers<T extends Tenant$aiQuotaLedgersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$aiQuotaLedgersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
@@ -12241,30 +10812,6 @@ export namespace Prisma {
   }
 
   /**
-   * Tenant.rolePermissions
-   */
-  export type Tenant$rolePermissionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    where?: RolePermissionWhereInput
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    cursor?: RolePermissionWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: RolePermissionScalarFieldEnum | RolePermissionScalarFieldEnum[]
-  }
-
-  /**
    * Tenant.settings
    */
   export type Tenant$settingsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -12430,30 +10977,6 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: TenantMemberScalarFieldEnum | TenantMemberScalarFieldEnum[]
-  }
-
-  /**
-   * Tenant.tenantRoles
-   */
-  export type Tenant$tenantRolesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    where?: TenantRoleWhereInput
-    orderBy?: TenantRoleOrderByWithRelationInput | TenantRoleOrderByWithRelationInput[]
-    cursor?: TenantRoleWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: TenantRoleScalarFieldEnum | TenantRoleScalarFieldEnum[]
   }
 
   /**
@@ -14866,6 +13389,7 @@ export namespace Prisma {
     slug: string | null
     description: string | null
     isPublished: boolean | null
+    showInCms: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
     tenantId: string | null
@@ -14878,6 +13402,7 @@ export namespace Prisma {
     slug: string | null
     description: string | null
     isPublished: boolean | null
+    showInCms: boolean | null
     createdAt: Date | null
     updatedAt: Date | null
     tenantId: string | null
@@ -14890,6 +13415,7 @@ export namespace Prisma {
     slug: number
     description: number
     isPublished: number
+    showInCms: number
     createdAt: number
     updatedAt: number
     tenantId: number
@@ -14904,6 +13430,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    showInCms?: true
     createdAt?: true
     updatedAt?: true
     tenantId?: true
@@ -14916,6 +13443,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    showInCms?: true
     createdAt?: true
     updatedAt?: true
     tenantId?: true
@@ -14928,6 +13456,7 @@ export namespace Prisma {
     slug?: true
     description?: true
     isPublished?: true
+    showInCms?: true
     createdAt?: true
     updatedAt?: true
     tenantId?: true
@@ -15013,6 +13542,7 @@ export namespace Prisma {
     slug: string
     description: string | null
     isPublished: boolean
+    showInCms: boolean
     createdAt: Date
     updatedAt: Date
     tenantId: string | null
@@ -15042,6 +13572,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenantId?: boolean
@@ -15059,6 +13590,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenantId?: boolean
@@ -15072,6 +13604,7 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenantId?: boolean
@@ -15085,13 +13618,14 @@ export namespace Prisma {
     slug?: boolean
     description?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenantId?: boolean
     docxTemplateUrl?: boolean
   }
 
-  export type ContentTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "isPublished" | "createdAt" | "updatedAt" | "tenantId" | "docxTemplateUrl", ExtArgs["result"]["contentType"]>
+  export type ContentTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "isPublished" | "showInCms" | "createdAt" | "updatedAt" | "tenantId" | "docxTemplateUrl", ExtArgs["result"]["contentType"]>
   export type ContentTypeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     entries?: boolean | ContentType$entriesArgs<ExtArgs>
     schemaFields?: boolean | ContentType$schemaFieldsArgs<ExtArgs>
@@ -15120,6 +13654,7 @@ export namespace Prisma {
       slug: string
       description: string | null
       isPublished: boolean
+      showInCms: boolean
       createdAt: Date
       updatedAt: Date
       tenantId: string | null
@@ -15556,6 +14091,7 @@ export namespace Prisma {
     readonly slug: FieldRef<"ContentType", 'String'>
     readonly description: FieldRef<"ContentType", 'String'>
     readonly isPublished: FieldRef<"ContentType", 'Boolean'>
+    readonly showInCms: FieldRef<"ContentType", 'Boolean'>
     readonly createdAt: FieldRef<"ContentType", 'DateTime'>
     readonly updatedAt: FieldRef<"ContentType", 'DateTime'>
     readonly tenantId: FieldRef<"ContentType", 'String'>
@@ -23147,6 +21683,7 @@ export namespace Prisma {
     createdAt: Date | null
     updatedAt: Date | null
     isPublished: boolean | null
+    showInCms: boolean | null
     tenantId: string | null
   }
 
@@ -23158,6 +21695,7 @@ export namespace Prisma {
     createdAt: Date | null
     updatedAt: Date | null
     isPublished: boolean | null
+    showInCms: boolean | null
     tenantId: string | null
   }
 
@@ -23169,6 +21707,7 @@ export namespace Prisma {
     createdAt: number
     updatedAt: number
     isPublished: number
+    showInCms: number
     tenantId: number
     _all: number
   }
@@ -23182,6 +21721,7 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     isPublished?: true
+    showInCms?: true
     tenantId?: true
   }
 
@@ -23193,6 +21733,7 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     isPublished?: true
+    showInCms?: true
     tenantId?: true
   }
 
@@ -23204,6 +21745,7 @@ export namespace Prisma {
     createdAt?: true
     updatedAt?: true
     isPublished?: true
+    showInCms?: true
     tenantId?: true
     _all?: true
   }
@@ -23288,6 +21830,7 @@ export namespace Prisma {
     createdAt: Date
     updatedAt: Date
     isPublished: boolean
+    showInCms: boolean
     tenantId: string | null
     _count: SingleTypeCountAggregateOutputType | null
     _min: SingleTypeMinAggregateOutputType | null
@@ -23316,6 +21859,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: boolean
     fields?: boolean | SingleType$fieldsArgs<ExtArgs>
     schemaFields?: boolean | SingleType$schemaFieldsArgs<ExtArgs>
@@ -23332,6 +21876,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: boolean
     tenant?: boolean | SingleType$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["singleType"]>
@@ -23344,6 +21889,7 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: boolean
     tenant?: boolean | SingleType$tenantArgs<ExtArgs>
   }, ExtArgs["result"]["singleType"]>
@@ -23356,10 +21902,11 @@ export namespace Prisma {
     createdAt?: boolean
     updatedAt?: boolean
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: boolean
   }
 
-  export type SingleTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "createdAt" | "updatedAt" | "isPublished" | "tenantId", ExtArgs["result"]["singleType"]>
+  export type SingleTypeOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "createdAt" | "updatedAt" | "isPublished" | "showInCms" | "tenantId", ExtArgs["result"]["singleType"]>
   export type SingleTypeInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     fields?: boolean | SingleType$fieldsArgs<ExtArgs>
     schemaFields?: boolean | SingleType$schemaFieldsArgs<ExtArgs>
@@ -23390,6 +21937,7 @@ export namespace Prisma {
       createdAt: Date
       updatedAt: Date
       isPublished: boolean
+      showInCms: boolean
       tenantId: string | null
     }, ExtArgs["result"]["singleType"]>
     composites: {}
@@ -23825,6 +22373,7 @@ export namespace Prisma {
     readonly createdAt: FieldRef<"SingleType", 'DateTime'>
     readonly updatedAt: FieldRef<"SingleType", 'DateTime'>
     readonly isPublished: FieldRef<"SingleType", 'Boolean'>
+    readonly showInCms: FieldRef<"SingleType", 'Boolean'>
     readonly tenantId: FieldRef<"SingleType", 'String'>
   }
     
@@ -41686,3258 +40235,6 @@ export namespace Prisma {
 
 
   /**
-   * Model Permission
-   */
-
-  export type AggregatePermission = {
-    _count: PermissionCountAggregateOutputType | null
-    _min: PermissionMinAggregateOutputType | null
-    _max: PermissionMaxAggregateOutputType | null
-  }
-
-  export type PermissionMinAggregateOutputType = {
-    id: string | null
-    name: string | null
-    displayName: string | null
-    description: string | null
-    category: string | null
-    createdAt: Date | null
-  }
-
-  export type PermissionMaxAggregateOutputType = {
-    id: string | null
-    name: string | null
-    displayName: string | null
-    description: string | null
-    category: string | null
-    createdAt: Date | null
-  }
-
-  export type PermissionCountAggregateOutputType = {
-    id: number
-    name: number
-    displayName: number
-    description: number
-    category: number
-    createdAt: number
-    _all: number
-  }
-
-
-  export type PermissionMinAggregateInputType = {
-    id?: true
-    name?: true
-    displayName?: true
-    description?: true
-    category?: true
-    createdAt?: true
-  }
-
-  export type PermissionMaxAggregateInputType = {
-    id?: true
-    name?: true
-    displayName?: true
-    description?: true
-    category?: true
-    createdAt?: true
-  }
-
-  export type PermissionCountAggregateInputType = {
-    id?: true
-    name?: true
-    displayName?: true
-    description?: true
-    category?: true
-    createdAt?: true
-    _all?: true
-  }
-
-  export type PermissionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which Permission to aggregate.
-     */
-    where?: PermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of Permissions to fetch.
-     */
-    orderBy?: PermissionOrderByWithRelationInput | PermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: PermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` Permissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` Permissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned Permissions
-    **/
-    _count?: true | PermissionCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: PermissionMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: PermissionMaxAggregateInputType
-  }
-
-  export type GetPermissionAggregateType<T extends PermissionAggregateArgs> = {
-        [P in keyof T & keyof AggregatePermission]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregatePermission[P]>
-      : GetScalarType<T[P], AggregatePermission[P]>
-  }
-
-
-
-
-  export type PermissionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: PermissionWhereInput
-    orderBy?: PermissionOrderByWithAggregationInput | PermissionOrderByWithAggregationInput[]
-    by: PermissionScalarFieldEnum[] | PermissionScalarFieldEnum
-    having?: PermissionScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: PermissionCountAggregateInputType | true
-    _min?: PermissionMinAggregateInputType
-    _max?: PermissionMaxAggregateInputType
-  }
-
-  export type PermissionGroupByOutputType = {
-    id: string
-    name: string
-    displayName: string
-    description: string | null
-    category: string
-    createdAt: Date
-    _count: PermissionCountAggregateOutputType | null
-    _min: PermissionMinAggregateOutputType | null
-    _max: PermissionMaxAggregateOutputType | null
-  }
-
-  type GetPermissionGroupByPayload<T extends PermissionGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<PermissionGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof PermissionGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], PermissionGroupByOutputType[P]>
-            : GetScalarType<T[P], PermissionGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type PermissionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    displayName?: boolean
-    description?: boolean
-    category?: boolean
-    createdAt?: boolean
-    roles?: boolean | Permission$rolesArgs<ExtArgs>
-    _count?: boolean | PermissionCountOutputTypeDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["permission"]>
-
-  export type PermissionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    displayName?: boolean
-    description?: boolean
-    category?: boolean
-    createdAt?: boolean
-  }, ExtArgs["result"]["permission"]>
-
-  export type PermissionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    name?: boolean
-    displayName?: boolean
-    description?: boolean
-    category?: boolean
-    createdAt?: boolean
-  }, ExtArgs["result"]["permission"]>
-
-  export type PermissionSelectScalar = {
-    id?: boolean
-    name?: boolean
-    displayName?: boolean
-    description?: boolean
-    category?: boolean
-    createdAt?: boolean
-  }
-
-  export type PermissionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "displayName" | "description" | "category" | "createdAt", ExtArgs["result"]["permission"]>
-  export type PermissionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    roles?: boolean | Permission$rolesArgs<ExtArgs>
-    _count?: boolean | PermissionCountOutputTypeDefaultArgs<ExtArgs>
-  }
-  export type PermissionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-  export type PermissionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
-
-  export type $PermissionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "Permission"
-    objects: {
-      roles: Prisma.$RolePermissionPayload<ExtArgs>[]
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      name: string
-      displayName: string
-      description: string | null
-      category: string
-      createdAt: Date
-    }, ExtArgs["result"]["permission"]>
-    composites: {}
-  }
-
-  type PermissionGetPayload<S extends boolean | null | undefined | PermissionDefaultArgs> = $Result.GetResult<Prisma.$PermissionPayload, S>
-
-  type PermissionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<PermissionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: PermissionCountAggregateInputType | true
-    }
-
-  export interface PermissionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Permission'], meta: { name: 'Permission' } }
-    /**
-     * Find zero or one Permission that matches the filter.
-     * @param {PermissionFindUniqueArgs} args - Arguments to find a Permission
-     * @example
-     * // Get one Permission
-     * const permission = await prisma.permission.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends PermissionFindUniqueArgs>(args: SelectSubset<T, PermissionFindUniqueArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one Permission that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {PermissionFindUniqueOrThrowArgs} args - Arguments to find a Permission
-     * @example
-     * // Get one Permission
-     * const permission = await prisma.permission.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends PermissionFindUniqueOrThrowArgs>(args: SelectSubset<T, PermissionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first Permission that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionFindFirstArgs} args - Arguments to find a Permission
-     * @example
-     * // Get one Permission
-     * const permission = await prisma.permission.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends PermissionFindFirstArgs>(args?: SelectSubset<T, PermissionFindFirstArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first Permission that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionFindFirstOrThrowArgs} args - Arguments to find a Permission
-     * @example
-     * // Get one Permission
-     * const permission = await prisma.permission.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends PermissionFindFirstOrThrowArgs>(args?: SelectSubset<T, PermissionFindFirstOrThrowArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more Permissions that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all Permissions
-     * const permissions = await prisma.permission.findMany()
-     * 
-     * // Get first 10 Permissions
-     * const permissions = await prisma.permission.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const permissionWithIdOnly = await prisma.permission.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends PermissionFindManyArgs>(args?: SelectSubset<T, PermissionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a Permission.
-     * @param {PermissionCreateArgs} args - Arguments to create a Permission.
-     * @example
-     * // Create one Permission
-     * const Permission = await prisma.permission.create({
-     *   data: {
-     *     // ... data to create a Permission
-     *   }
-     * })
-     * 
-     */
-    create<T extends PermissionCreateArgs>(args: SelectSubset<T, PermissionCreateArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many Permissions.
-     * @param {PermissionCreateManyArgs} args - Arguments to create many Permissions.
-     * @example
-     * // Create many Permissions
-     * const permission = await prisma.permission.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends PermissionCreateManyArgs>(args?: SelectSubset<T, PermissionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many Permissions and returns the data saved in the database.
-     * @param {PermissionCreateManyAndReturnArgs} args - Arguments to create many Permissions.
-     * @example
-     * // Create many Permissions
-     * const permission = await prisma.permission.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many Permissions and only return the `id`
-     * const permissionWithIdOnly = await prisma.permission.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends PermissionCreateManyAndReturnArgs>(args?: SelectSubset<T, PermissionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a Permission.
-     * @param {PermissionDeleteArgs} args - Arguments to delete one Permission.
-     * @example
-     * // Delete one Permission
-     * const Permission = await prisma.permission.delete({
-     *   where: {
-     *     // ... filter to delete one Permission
-     *   }
-     * })
-     * 
-     */
-    delete<T extends PermissionDeleteArgs>(args: SelectSubset<T, PermissionDeleteArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one Permission.
-     * @param {PermissionUpdateArgs} args - Arguments to update one Permission.
-     * @example
-     * // Update one Permission
-     * const permission = await prisma.permission.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends PermissionUpdateArgs>(args: SelectSubset<T, PermissionUpdateArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more Permissions.
-     * @param {PermissionDeleteManyArgs} args - Arguments to filter Permissions to delete.
-     * @example
-     * // Delete a few Permissions
-     * const { count } = await prisma.permission.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends PermissionDeleteManyArgs>(args?: SelectSubset<T, PermissionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more Permissions.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many Permissions
-     * const permission = await prisma.permission.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends PermissionUpdateManyArgs>(args: SelectSubset<T, PermissionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more Permissions and returns the data updated in the database.
-     * @param {PermissionUpdateManyAndReturnArgs} args - Arguments to update many Permissions.
-     * @example
-     * // Update many Permissions
-     * const permission = await prisma.permission.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more Permissions and only return the `id`
-     * const permissionWithIdOnly = await prisma.permission.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends PermissionUpdateManyAndReturnArgs>(args: SelectSubset<T, PermissionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one Permission.
-     * @param {PermissionUpsertArgs} args - Arguments to update or create a Permission.
-     * @example
-     * // Update or create a Permission
-     * const permission = await prisma.permission.upsert({
-     *   create: {
-     *     // ... data to create a Permission
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the Permission we want to update
-     *   }
-     * })
-     */
-    upsert<T extends PermissionUpsertArgs>(args: SelectSubset<T, PermissionUpsertArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of Permissions.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionCountArgs} args - Arguments to filter Permissions to count.
-     * @example
-     * // Count the number of Permissions
-     * const count = await prisma.permission.count({
-     *   where: {
-     *     // ... the filter for the Permissions we want to count
-     *   }
-     * })
-    **/
-    count<T extends PermissionCountArgs>(
-      args?: Subset<T, PermissionCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], PermissionCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a Permission.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends PermissionAggregateArgs>(args: Subset<T, PermissionAggregateArgs>): Prisma.PrismaPromise<GetPermissionAggregateType<T>>
-
-    /**
-     * Group by Permission.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {PermissionGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends PermissionGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: PermissionGroupByArgs['orderBy'] }
-        : { orderBy?: PermissionGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, PermissionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetPermissionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the Permission model
-   */
-  readonly fields: PermissionFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for Permission.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__PermissionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    roles<T extends Permission$rolesArgs<ExtArgs> = {}>(args?: Subset<T, Permission$rolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the Permission model
-   */
-  interface PermissionFieldRefs {
-    readonly id: FieldRef<"Permission", 'String'>
-    readonly name: FieldRef<"Permission", 'String'>
-    readonly displayName: FieldRef<"Permission", 'String'>
-    readonly description: FieldRef<"Permission", 'String'>
-    readonly category: FieldRef<"Permission", 'String'>
-    readonly createdAt: FieldRef<"Permission", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * Permission findUnique
-   */
-  export type PermissionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which Permission to fetch.
-     */
-    where: PermissionWhereUniqueInput
-  }
-
-  /**
-   * Permission findUniqueOrThrow
-   */
-  export type PermissionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which Permission to fetch.
-     */
-    where: PermissionWhereUniqueInput
-  }
-
-  /**
-   * Permission findFirst
-   */
-  export type PermissionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which Permission to fetch.
-     */
-    where?: PermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of Permissions to fetch.
-     */
-    orderBy?: PermissionOrderByWithRelationInput | PermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for Permissions.
-     */
-    cursor?: PermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` Permissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` Permissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of Permissions.
-     */
-    distinct?: PermissionScalarFieldEnum | PermissionScalarFieldEnum[]
-  }
-
-  /**
-   * Permission findFirstOrThrow
-   */
-  export type PermissionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which Permission to fetch.
-     */
-    where?: PermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of Permissions to fetch.
-     */
-    orderBy?: PermissionOrderByWithRelationInput | PermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for Permissions.
-     */
-    cursor?: PermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` Permissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` Permissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of Permissions.
-     */
-    distinct?: PermissionScalarFieldEnum | PermissionScalarFieldEnum[]
-  }
-
-  /**
-   * Permission findMany
-   */
-  export type PermissionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which Permissions to fetch.
-     */
-    where?: PermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of Permissions to fetch.
-     */
-    orderBy?: PermissionOrderByWithRelationInput | PermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing Permissions.
-     */
-    cursor?: PermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` Permissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` Permissions.
-     */
-    skip?: number
-    distinct?: PermissionScalarFieldEnum | PermissionScalarFieldEnum[]
-  }
-
-  /**
-   * Permission create
-   */
-  export type PermissionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * The data needed to create a Permission.
-     */
-    data: XOR<PermissionCreateInput, PermissionUncheckedCreateInput>
-  }
-
-  /**
-   * Permission createMany
-   */
-  export type PermissionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many Permissions.
-     */
-    data: PermissionCreateManyInput | PermissionCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * Permission createManyAndReturn
-   */
-  export type PermissionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * The data used to create many Permissions.
-     */
-    data: PermissionCreateManyInput | PermissionCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * Permission update
-   */
-  export type PermissionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * The data needed to update a Permission.
-     */
-    data: XOR<PermissionUpdateInput, PermissionUncheckedUpdateInput>
-    /**
-     * Choose, which Permission to update.
-     */
-    where: PermissionWhereUniqueInput
-  }
-
-  /**
-   * Permission updateMany
-   */
-  export type PermissionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update Permissions.
-     */
-    data: XOR<PermissionUpdateManyMutationInput, PermissionUncheckedUpdateManyInput>
-    /**
-     * Filter which Permissions to update
-     */
-    where?: PermissionWhereInput
-    /**
-     * Limit how many Permissions to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * Permission updateManyAndReturn
-   */
-  export type PermissionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * The data used to update Permissions.
-     */
-    data: XOR<PermissionUpdateManyMutationInput, PermissionUncheckedUpdateManyInput>
-    /**
-     * Filter which Permissions to update
-     */
-    where?: PermissionWhereInput
-    /**
-     * Limit how many Permissions to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * Permission upsert
-   */
-  export type PermissionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * The filter to search for the Permission to update in case it exists.
-     */
-    where: PermissionWhereUniqueInput
-    /**
-     * In case the Permission found by the `where` argument doesn't exist, create a new Permission with this data.
-     */
-    create: XOR<PermissionCreateInput, PermissionUncheckedCreateInput>
-    /**
-     * In case the Permission was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<PermissionUpdateInput, PermissionUncheckedUpdateInput>
-  }
-
-  /**
-   * Permission delete
-   */
-  export type PermissionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-    /**
-     * Filter which Permission to delete.
-     */
-    where: PermissionWhereUniqueInput
-  }
-
-  /**
-   * Permission deleteMany
-   */
-  export type PermissionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which Permissions to delete
-     */
-    where?: PermissionWhereInput
-    /**
-     * Limit how many Permissions to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * Permission.roles
-   */
-  export type Permission$rolesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    where?: RolePermissionWhereInput
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    cursor?: RolePermissionWhereUniqueInput
-    take?: number
-    skip?: number
-    distinct?: RolePermissionScalarFieldEnum | RolePermissionScalarFieldEnum[]
-  }
-
-  /**
-   * Permission without action
-   */
-  export type PermissionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Permission
-     */
-    select?: PermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Permission
-     */
-    omit?: PermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: PermissionInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model RolePermission
-   */
-
-  export type AggregateRolePermission = {
-    _count: RolePermissionCountAggregateOutputType | null
-    _min: RolePermissionMinAggregateOutputType | null
-    _max: RolePermissionMaxAggregateOutputType | null
-  }
-
-  export type RolePermissionMinAggregateOutputType = {
-    id: string | null
-    roleId: string | null
-    permissionId: string | null
-    granted: boolean | null
-    tenantId: string | null
-  }
-
-  export type RolePermissionMaxAggregateOutputType = {
-    id: string | null
-    roleId: string | null
-    permissionId: string | null
-    granted: boolean | null
-    tenantId: string | null
-  }
-
-  export type RolePermissionCountAggregateOutputType = {
-    id: number
-    roleId: number
-    permissionId: number
-    granted: number
-    tenantId: number
-    _all: number
-  }
-
-
-  export type RolePermissionMinAggregateInputType = {
-    id?: true
-    roleId?: true
-    permissionId?: true
-    granted?: true
-    tenantId?: true
-  }
-
-  export type RolePermissionMaxAggregateInputType = {
-    id?: true
-    roleId?: true
-    permissionId?: true
-    granted?: true
-    tenantId?: true
-  }
-
-  export type RolePermissionCountAggregateInputType = {
-    id?: true
-    roleId?: true
-    permissionId?: true
-    granted?: true
-    tenantId?: true
-    _all?: true
-  }
-
-  export type RolePermissionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which RolePermission to aggregate.
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of RolePermissions to fetch.
-     */
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: RolePermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` RolePermissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` RolePermissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned RolePermissions
-    **/
-    _count?: true | RolePermissionCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: RolePermissionMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: RolePermissionMaxAggregateInputType
-  }
-
-  export type GetRolePermissionAggregateType<T extends RolePermissionAggregateArgs> = {
-        [P in keyof T & keyof AggregateRolePermission]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateRolePermission[P]>
-      : GetScalarType<T[P], AggregateRolePermission[P]>
-  }
-
-
-
-
-  export type RolePermissionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: RolePermissionWhereInput
-    orderBy?: RolePermissionOrderByWithAggregationInput | RolePermissionOrderByWithAggregationInput[]
-    by: RolePermissionScalarFieldEnum[] | RolePermissionScalarFieldEnum
-    having?: RolePermissionScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: RolePermissionCountAggregateInputType | true
-    _min?: RolePermissionMinAggregateInputType
-    _max?: RolePermissionMaxAggregateInputType
-  }
-
-  export type RolePermissionGroupByOutputType = {
-    id: string
-    roleId: string
-    permissionId: string
-    granted: boolean
-    tenantId: string | null
-    _count: RolePermissionCountAggregateOutputType | null
-    _min: RolePermissionMinAggregateOutputType | null
-    _max: RolePermissionMaxAggregateOutputType | null
-  }
-
-  type GetRolePermissionGroupByPayload<T extends RolePermissionGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<RolePermissionGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof RolePermissionGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], RolePermissionGroupByOutputType[P]>
-            : GetScalarType<T[P], RolePermissionGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type RolePermissionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    roleId?: boolean
-    permissionId?: boolean
-    granted?: boolean
-    tenantId?: boolean
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }, ExtArgs["result"]["rolePermission"]>
-
-  export type RolePermissionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    roleId?: boolean
-    permissionId?: boolean
-    granted?: boolean
-    tenantId?: boolean
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }, ExtArgs["result"]["rolePermission"]>
-
-  export type RolePermissionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    roleId?: boolean
-    permissionId?: boolean
-    granted?: boolean
-    tenantId?: boolean
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }, ExtArgs["result"]["rolePermission"]>
-
-  export type RolePermissionSelectScalar = {
-    id?: boolean
-    roleId?: boolean
-    permissionId?: boolean
-    granted?: boolean
-    tenantId?: boolean
-  }
-
-  export type RolePermissionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "roleId" | "permissionId" | "granted" | "tenantId", ExtArgs["result"]["rolePermission"]>
-  export type RolePermissionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }
-  export type RolePermissionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }
-  export type RolePermissionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    permission?: boolean | PermissionDefaultArgs<ExtArgs>
-    tenant?: boolean | RolePermission$tenantArgs<ExtArgs>
-  }
-
-  export type $RolePermissionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "RolePermission"
-    objects: {
-      permission: Prisma.$PermissionPayload<ExtArgs>
-      tenant: Prisma.$TenantPayload<ExtArgs> | null
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      roleId: string
-      permissionId: string
-      granted: boolean
-      tenantId: string | null
-    }, ExtArgs["result"]["rolePermission"]>
-    composites: {}
-  }
-
-  type RolePermissionGetPayload<S extends boolean | null | undefined | RolePermissionDefaultArgs> = $Result.GetResult<Prisma.$RolePermissionPayload, S>
-
-  type RolePermissionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<RolePermissionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: RolePermissionCountAggregateInputType | true
-    }
-
-  export interface RolePermissionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['RolePermission'], meta: { name: 'RolePermission' } }
-    /**
-     * Find zero or one RolePermission that matches the filter.
-     * @param {RolePermissionFindUniqueArgs} args - Arguments to find a RolePermission
-     * @example
-     * // Get one RolePermission
-     * const rolePermission = await prisma.rolePermission.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends RolePermissionFindUniqueArgs>(args: SelectSubset<T, RolePermissionFindUniqueArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one RolePermission that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {RolePermissionFindUniqueOrThrowArgs} args - Arguments to find a RolePermission
-     * @example
-     * // Get one RolePermission
-     * const rolePermission = await prisma.rolePermission.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends RolePermissionFindUniqueOrThrowArgs>(args: SelectSubset<T, RolePermissionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first RolePermission that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionFindFirstArgs} args - Arguments to find a RolePermission
-     * @example
-     * // Get one RolePermission
-     * const rolePermission = await prisma.rolePermission.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends RolePermissionFindFirstArgs>(args?: SelectSubset<T, RolePermissionFindFirstArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first RolePermission that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionFindFirstOrThrowArgs} args - Arguments to find a RolePermission
-     * @example
-     * // Get one RolePermission
-     * const rolePermission = await prisma.rolePermission.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends RolePermissionFindFirstOrThrowArgs>(args?: SelectSubset<T, RolePermissionFindFirstOrThrowArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more RolePermissions that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all RolePermissions
-     * const rolePermissions = await prisma.rolePermission.findMany()
-     * 
-     * // Get first 10 RolePermissions
-     * const rolePermissions = await prisma.rolePermission.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const rolePermissionWithIdOnly = await prisma.rolePermission.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends RolePermissionFindManyArgs>(args?: SelectSubset<T, RolePermissionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a RolePermission.
-     * @param {RolePermissionCreateArgs} args - Arguments to create a RolePermission.
-     * @example
-     * // Create one RolePermission
-     * const RolePermission = await prisma.rolePermission.create({
-     *   data: {
-     *     // ... data to create a RolePermission
-     *   }
-     * })
-     * 
-     */
-    create<T extends RolePermissionCreateArgs>(args: SelectSubset<T, RolePermissionCreateArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many RolePermissions.
-     * @param {RolePermissionCreateManyArgs} args - Arguments to create many RolePermissions.
-     * @example
-     * // Create many RolePermissions
-     * const rolePermission = await prisma.rolePermission.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends RolePermissionCreateManyArgs>(args?: SelectSubset<T, RolePermissionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many RolePermissions and returns the data saved in the database.
-     * @param {RolePermissionCreateManyAndReturnArgs} args - Arguments to create many RolePermissions.
-     * @example
-     * // Create many RolePermissions
-     * const rolePermission = await prisma.rolePermission.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many RolePermissions and only return the `id`
-     * const rolePermissionWithIdOnly = await prisma.rolePermission.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends RolePermissionCreateManyAndReturnArgs>(args?: SelectSubset<T, RolePermissionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a RolePermission.
-     * @param {RolePermissionDeleteArgs} args - Arguments to delete one RolePermission.
-     * @example
-     * // Delete one RolePermission
-     * const RolePermission = await prisma.rolePermission.delete({
-     *   where: {
-     *     // ... filter to delete one RolePermission
-     *   }
-     * })
-     * 
-     */
-    delete<T extends RolePermissionDeleteArgs>(args: SelectSubset<T, RolePermissionDeleteArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one RolePermission.
-     * @param {RolePermissionUpdateArgs} args - Arguments to update one RolePermission.
-     * @example
-     * // Update one RolePermission
-     * const rolePermission = await prisma.rolePermission.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends RolePermissionUpdateArgs>(args: SelectSubset<T, RolePermissionUpdateArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more RolePermissions.
-     * @param {RolePermissionDeleteManyArgs} args - Arguments to filter RolePermissions to delete.
-     * @example
-     * // Delete a few RolePermissions
-     * const { count } = await prisma.rolePermission.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends RolePermissionDeleteManyArgs>(args?: SelectSubset<T, RolePermissionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more RolePermissions.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many RolePermissions
-     * const rolePermission = await prisma.rolePermission.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends RolePermissionUpdateManyArgs>(args: SelectSubset<T, RolePermissionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more RolePermissions and returns the data updated in the database.
-     * @param {RolePermissionUpdateManyAndReturnArgs} args - Arguments to update many RolePermissions.
-     * @example
-     * // Update many RolePermissions
-     * const rolePermission = await prisma.rolePermission.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more RolePermissions and only return the `id`
-     * const rolePermissionWithIdOnly = await prisma.rolePermission.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends RolePermissionUpdateManyAndReturnArgs>(args: SelectSubset<T, RolePermissionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one RolePermission.
-     * @param {RolePermissionUpsertArgs} args - Arguments to update or create a RolePermission.
-     * @example
-     * // Update or create a RolePermission
-     * const rolePermission = await prisma.rolePermission.upsert({
-     *   create: {
-     *     // ... data to create a RolePermission
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the RolePermission we want to update
-     *   }
-     * })
-     */
-    upsert<T extends RolePermissionUpsertArgs>(args: SelectSubset<T, RolePermissionUpsertArgs<ExtArgs>>): Prisma__RolePermissionClient<$Result.GetResult<Prisma.$RolePermissionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of RolePermissions.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionCountArgs} args - Arguments to filter RolePermissions to count.
-     * @example
-     * // Count the number of RolePermissions
-     * const count = await prisma.rolePermission.count({
-     *   where: {
-     *     // ... the filter for the RolePermissions we want to count
-     *   }
-     * })
-    **/
-    count<T extends RolePermissionCountArgs>(
-      args?: Subset<T, RolePermissionCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], RolePermissionCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a RolePermission.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends RolePermissionAggregateArgs>(args: Subset<T, RolePermissionAggregateArgs>): Prisma.PrismaPromise<GetRolePermissionAggregateType<T>>
-
-    /**
-     * Group by RolePermission.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {RolePermissionGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends RolePermissionGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: RolePermissionGroupByArgs['orderBy'] }
-        : { orderBy?: RolePermissionGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, RolePermissionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetRolePermissionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the RolePermission model
-   */
-  readonly fields: RolePermissionFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for RolePermission.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__RolePermissionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    permission<T extends PermissionDefaultArgs<ExtArgs> = {}>(args?: Subset<T, PermissionDefaultArgs<ExtArgs>>): Prisma__PermissionClient<$Result.GetResult<Prisma.$PermissionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    tenant<T extends RolePermission$tenantArgs<ExtArgs> = {}>(args?: Subset<T, RolePermission$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the RolePermission model
-   */
-  interface RolePermissionFieldRefs {
-    readonly id: FieldRef<"RolePermission", 'String'>
-    readonly roleId: FieldRef<"RolePermission", 'String'>
-    readonly permissionId: FieldRef<"RolePermission", 'String'>
-    readonly granted: FieldRef<"RolePermission", 'Boolean'>
-    readonly tenantId: FieldRef<"RolePermission", 'String'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * RolePermission findUnique
-   */
-  export type RolePermissionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which RolePermission to fetch.
-     */
-    where: RolePermissionWhereUniqueInput
-  }
-
-  /**
-   * RolePermission findUniqueOrThrow
-   */
-  export type RolePermissionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which RolePermission to fetch.
-     */
-    where: RolePermissionWhereUniqueInput
-  }
-
-  /**
-   * RolePermission findFirst
-   */
-  export type RolePermissionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which RolePermission to fetch.
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of RolePermissions to fetch.
-     */
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for RolePermissions.
-     */
-    cursor?: RolePermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` RolePermissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` RolePermissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of RolePermissions.
-     */
-    distinct?: RolePermissionScalarFieldEnum | RolePermissionScalarFieldEnum[]
-  }
-
-  /**
-   * RolePermission findFirstOrThrow
-   */
-  export type RolePermissionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which RolePermission to fetch.
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of RolePermissions to fetch.
-     */
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for RolePermissions.
-     */
-    cursor?: RolePermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` RolePermissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` RolePermissions.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of RolePermissions.
-     */
-    distinct?: RolePermissionScalarFieldEnum | RolePermissionScalarFieldEnum[]
-  }
-
-  /**
-   * RolePermission findMany
-   */
-  export type RolePermissionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter, which RolePermissions to fetch.
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of RolePermissions to fetch.
-     */
-    orderBy?: RolePermissionOrderByWithRelationInput | RolePermissionOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing RolePermissions.
-     */
-    cursor?: RolePermissionWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` RolePermissions from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` RolePermissions.
-     */
-    skip?: number
-    distinct?: RolePermissionScalarFieldEnum | RolePermissionScalarFieldEnum[]
-  }
-
-  /**
-   * RolePermission create
-   */
-  export type RolePermissionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * The data needed to create a RolePermission.
-     */
-    data: XOR<RolePermissionCreateInput, RolePermissionUncheckedCreateInput>
-  }
-
-  /**
-   * RolePermission createMany
-   */
-  export type RolePermissionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many RolePermissions.
-     */
-    data: RolePermissionCreateManyInput | RolePermissionCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * RolePermission createManyAndReturn
-   */
-  export type RolePermissionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * The data used to create many RolePermissions.
-     */
-    data: RolePermissionCreateManyInput | RolePermissionCreateManyInput[]
-    skipDuplicates?: boolean
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * RolePermission update
-   */
-  export type RolePermissionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * The data needed to update a RolePermission.
-     */
-    data: XOR<RolePermissionUpdateInput, RolePermissionUncheckedUpdateInput>
-    /**
-     * Choose, which RolePermission to update.
-     */
-    where: RolePermissionWhereUniqueInput
-  }
-
-  /**
-   * RolePermission updateMany
-   */
-  export type RolePermissionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update RolePermissions.
-     */
-    data: XOR<RolePermissionUpdateManyMutationInput, RolePermissionUncheckedUpdateManyInput>
-    /**
-     * Filter which RolePermissions to update
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * Limit how many RolePermissions to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * RolePermission updateManyAndReturn
-   */
-  export type RolePermissionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * The data used to update RolePermissions.
-     */
-    data: XOR<RolePermissionUpdateManyMutationInput, RolePermissionUncheckedUpdateManyInput>
-    /**
-     * Filter which RolePermissions to update
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * Limit how many RolePermissions to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * RolePermission upsert
-   */
-  export type RolePermissionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * The filter to search for the RolePermission to update in case it exists.
-     */
-    where: RolePermissionWhereUniqueInput
-    /**
-     * In case the RolePermission found by the `where` argument doesn't exist, create a new RolePermission with this data.
-     */
-    create: XOR<RolePermissionCreateInput, RolePermissionUncheckedCreateInput>
-    /**
-     * In case the RolePermission was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<RolePermissionUpdateInput, RolePermissionUncheckedUpdateInput>
-  }
-
-  /**
-   * RolePermission delete
-   */
-  export type RolePermissionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-    /**
-     * Filter which RolePermission to delete.
-     */
-    where: RolePermissionWhereUniqueInput
-  }
-
-  /**
-   * RolePermission deleteMany
-   */
-  export type RolePermissionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which RolePermissions to delete
-     */
-    where?: RolePermissionWhereInput
-    /**
-     * Limit how many RolePermissions to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * RolePermission.tenant
-   */
-  export type RolePermission$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the Tenant
-     */
-    select?: TenantSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the Tenant
-     */
-    omit?: TenantOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantInclude<ExtArgs> | null
-    where?: TenantWhereInput
-  }
-
-  /**
-   * RolePermission without action
-   */
-  export type RolePermissionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the RolePermission
-     */
-    select?: RolePermissionSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the RolePermission
-     */
-    omit?: RolePermissionOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: RolePermissionInclude<ExtArgs> | null
-  }
-
-
-  /**
-   * Model TenantRole
-   */
-
-  export type AggregateTenantRole = {
-    _count: TenantRoleCountAggregateOutputType | null
-    _min: TenantRoleMinAggregateOutputType | null
-    _max: TenantRoleMaxAggregateOutputType | null
-  }
-
-  export type TenantRoleMinAggregateOutputType = {
-    id: string | null
-    tenantId: string | null
-    name: string | null
-    slug: string | null
-    description: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type TenantRoleMaxAggregateOutputType = {
-    id: string | null
-    tenantId: string | null
-    name: string | null
-    slug: string | null
-    description: string | null
-    createdAt: Date | null
-    updatedAt: Date | null
-  }
-
-  export type TenantRoleCountAggregateOutputType = {
-    id: number
-    tenantId: number
-    name: number
-    slug: number
-    description: number
-    createdAt: number
-    updatedAt: number
-    _all: number
-  }
-
-
-  export type TenantRoleMinAggregateInputType = {
-    id?: true
-    tenantId?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type TenantRoleMaxAggregateInputType = {
-    id?: true
-    tenantId?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-  }
-
-  export type TenantRoleCountAggregateInputType = {
-    id?: true
-    tenantId?: true
-    name?: true
-    slug?: true
-    description?: true
-    createdAt?: true
-    updatedAt?: true
-    _all?: true
-  }
-
-  export type TenantRoleAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which TenantRole to aggregate.
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of TenantRoles to fetch.
-     */
-    orderBy?: TenantRoleOrderByWithRelationInput | TenantRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the start position
-     */
-    cursor?: TenantRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` TenantRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` TenantRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Count returned TenantRoles
-    **/
-    _count?: true | TenantRoleCountAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the minimum value
-    **/
-    _min?: TenantRoleMinAggregateInputType
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-     * 
-     * Select which fields to find the maximum value
-    **/
-    _max?: TenantRoleMaxAggregateInputType
-  }
-
-  export type GetTenantRoleAggregateType<T extends TenantRoleAggregateArgs> = {
-        [P in keyof T & keyof AggregateTenantRole]: P extends '_count' | 'count'
-      ? T[P] extends true
-        ? number
-        : GetScalarType<T[P], AggregateTenantRole[P]>
-      : GetScalarType<T[P], AggregateTenantRole[P]>
-  }
-
-
-
-
-  export type TenantRoleGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    where?: TenantRoleWhereInput
-    orderBy?: TenantRoleOrderByWithAggregationInput | TenantRoleOrderByWithAggregationInput[]
-    by: TenantRoleScalarFieldEnum[] | TenantRoleScalarFieldEnum
-    having?: TenantRoleScalarWhereWithAggregatesInput
-    take?: number
-    skip?: number
-    _count?: TenantRoleCountAggregateInputType | true
-    _min?: TenantRoleMinAggregateInputType
-    _max?: TenantRoleMaxAggregateInputType
-  }
-
-  export type TenantRoleGroupByOutputType = {
-    id: string
-    tenantId: string
-    name: string
-    slug: string
-    description: string | null
-    createdAt: Date
-    updatedAt: Date
-    _count: TenantRoleCountAggregateOutputType | null
-    _min: TenantRoleMinAggregateOutputType | null
-    _max: TenantRoleMaxAggregateOutputType | null
-  }
-
-  type GetTenantRoleGroupByPayload<T extends TenantRoleGroupByArgs> = Prisma.PrismaPromise<
-    Array<
-      PickEnumerable<TenantRoleGroupByOutputType, T['by']> &
-        {
-          [P in ((keyof T) & (keyof TenantRoleGroupByOutputType))]: P extends '_count'
-            ? T[P] extends boolean
-              ? number
-              : GetScalarType<T[P], TenantRoleGroupByOutputType[P]>
-            : GetScalarType<T[P], TenantRoleGroupByOutputType[P]>
-        }
-      >
-    >
-
-
-  export type TenantRoleSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    tenantId?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["tenantRole"]>
-
-  export type TenantRoleSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    tenantId?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["tenantRole"]>
-
-  export type TenantRoleSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
-    id?: boolean
-    tenantId?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }, ExtArgs["result"]["tenantRole"]>
-
-  export type TenantRoleSelectScalar = {
-    id?: boolean
-    tenantId?: boolean
-    name?: boolean
-    slug?: boolean
-    description?: boolean
-    createdAt?: boolean
-    updatedAt?: boolean
-  }
-
-  export type TenantRoleOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "name" | "slug" | "description" | "createdAt" | "updatedAt", ExtArgs["result"]["tenantRole"]>
-  export type TenantRoleInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }
-  export type TenantRoleIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }
-  export type TenantRoleIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    tenant?: boolean | TenantDefaultArgs<ExtArgs>
-  }
-
-  export type $TenantRolePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    name: "TenantRole"
-    objects: {
-      tenant: Prisma.$TenantPayload<ExtArgs>
-    }
-    scalars: $Extensions.GetPayloadResult<{
-      id: string
-      tenantId: string
-      name: string
-      slug: string
-      description: string | null
-      createdAt: Date
-      updatedAt: Date
-    }, ExtArgs["result"]["tenantRole"]>
-    composites: {}
-  }
-
-  type TenantRoleGetPayload<S extends boolean | null | undefined | TenantRoleDefaultArgs> = $Result.GetResult<Prisma.$TenantRolePayload, S>
-
-  type TenantRoleCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
-    Omit<TenantRoleFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
-      select?: TenantRoleCountAggregateInputType | true
-    }
-
-  export interface TenantRoleDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
-    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['TenantRole'], meta: { name: 'TenantRole' } }
-    /**
-     * Find zero or one TenantRole that matches the filter.
-     * @param {TenantRoleFindUniqueArgs} args - Arguments to find a TenantRole
-     * @example
-     * // Get one TenantRole
-     * const tenantRole = await prisma.tenantRole.findUnique({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUnique<T extends TenantRoleFindUniqueArgs>(args: SelectSubset<T, TenantRoleFindUniqueArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find one TenantRole that matches the filter or throw an error with `error.code='P2025'`
-     * if no matches were found.
-     * @param {TenantRoleFindUniqueOrThrowArgs} args - Arguments to find a TenantRole
-     * @example
-     * // Get one TenantRole
-     * const tenantRole = await prisma.tenantRole.findUniqueOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findUniqueOrThrow<T extends TenantRoleFindUniqueOrThrowArgs>(args: SelectSubset<T, TenantRoleFindUniqueOrThrowArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first TenantRole that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleFindFirstArgs} args - Arguments to find a TenantRole
-     * @example
-     * // Get one TenantRole
-     * const tenantRole = await prisma.tenantRole.findFirst({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirst<T extends TenantRoleFindFirstArgs>(args?: SelectSubset<T, TenantRoleFindFirstArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find the first TenantRole that matches the filter or
-     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleFindFirstOrThrowArgs} args - Arguments to find a TenantRole
-     * @example
-     * // Get one TenantRole
-     * const tenantRole = await prisma.tenantRole.findFirstOrThrow({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     */
-    findFirstOrThrow<T extends TenantRoleFindFirstOrThrowArgs>(args?: SelectSubset<T, TenantRoleFindFirstOrThrowArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Find zero or more TenantRoles that matches the filter.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleFindManyArgs} args - Arguments to filter and select certain fields only.
-     * @example
-     * // Get all TenantRoles
-     * const tenantRoles = await prisma.tenantRole.findMany()
-     * 
-     * // Get first 10 TenantRoles
-     * const tenantRoles = await prisma.tenantRole.findMany({ take: 10 })
-     * 
-     * // Only select the `id`
-     * const tenantRoleWithIdOnly = await prisma.tenantRole.findMany({ select: { id: true } })
-     * 
-     */
-    findMany<T extends TenantRoleFindManyArgs>(args?: SelectSubset<T, TenantRoleFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
-
-    /**
-     * Create a TenantRole.
-     * @param {TenantRoleCreateArgs} args - Arguments to create a TenantRole.
-     * @example
-     * // Create one TenantRole
-     * const TenantRole = await prisma.tenantRole.create({
-     *   data: {
-     *     // ... data to create a TenantRole
-     *   }
-     * })
-     * 
-     */
-    create<T extends TenantRoleCreateArgs>(args: SelectSubset<T, TenantRoleCreateArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Create many TenantRoles.
-     * @param {TenantRoleCreateManyArgs} args - Arguments to create many TenantRoles.
-     * @example
-     * // Create many TenantRoles
-     * const tenantRole = await prisma.tenantRole.createMany({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     *     
-     */
-    createMany<T extends TenantRoleCreateManyArgs>(args?: SelectSubset<T, TenantRoleCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Create many TenantRoles and returns the data saved in the database.
-     * @param {TenantRoleCreateManyAndReturnArgs} args - Arguments to create many TenantRoles.
-     * @example
-     * // Create many TenantRoles
-     * const tenantRole = await prisma.tenantRole.createManyAndReturn({
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Create many TenantRoles and only return the `id`
-     * const tenantRoleWithIdOnly = await prisma.tenantRole.createManyAndReturn({
-     *   select: { id: true },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    createManyAndReturn<T extends TenantRoleCreateManyAndReturnArgs>(args?: SelectSubset<T, TenantRoleCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Delete a TenantRole.
-     * @param {TenantRoleDeleteArgs} args - Arguments to delete one TenantRole.
-     * @example
-     * // Delete one TenantRole
-     * const TenantRole = await prisma.tenantRole.delete({
-     *   where: {
-     *     // ... filter to delete one TenantRole
-     *   }
-     * })
-     * 
-     */
-    delete<T extends TenantRoleDeleteArgs>(args: SelectSubset<T, TenantRoleDeleteArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Update one TenantRole.
-     * @param {TenantRoleUpdateArgs} args - Arguments to update one TenantRole.
-     * @example
-     * // Update one TenantRole
-     * const tenantRole = await prisma.tenantRole.update({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    update<T extends TenantRoleUpdateArgs>(args: SelectSubset<T, TenantRoleUpdateArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-    /**
-     * Delete zero or more TenantRoles.
-     * @param {TenantRoleDeleteManyArgs} args - Arguments to filter TenantRoles to delete.
-     * @example
-     * // Delete a few TenantRoles
-     * const { count } = await prisma.tenantRole.deleteMany({
-     *   where: {
-     *     // ... provide filter here
-     *   }
-     * })
-     * 
-     */
-    deleteMany<T extends TenantRoleDeleteManyArgs>(args?: SelectSubset<T, TenantRoleDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more TenantRoles.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleUpdateManyArgs} args - Arguments to update one or more rows.
-     * @example
-     * // Update many TenantRoles
-     * const tenantRole = await prisma.tenantRole.updateMany({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: {
-     *     // ... provide data here
-     *   }
-     * })
-     * 
-     */
-    updateMany<T extends TenantRoleUpdateManyArgs>(args: SelectSubset<T, TenantRoleUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
-
-    /**
-     * Update zero or more TenantRoles and returns the data updated in the database.
-     * @param {TenantRoleUpdateManyAndReturnArgs} args - Arguments to update many TenantRoles.
-     * @example
-     * // Update many TenantRoles
-     * const tenantRole = await prisma.tenantRole.updateManyAndReturn({
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * 
-     * // Update zero or more TenantRoles and only return the `id`
-     * const tenantRoleWithIdOnly = await prisma.tenantRole.updateManyAndReturn({
-     *   select: { id: true },
-     *   where: {
-     *     // ... provide filter here
-     *   },
-     *   data: [
-     *     // ... provide data here
-     *   ]
-     * })
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * 
-     */
-    updateManyAndReturn<T extends TenantRoleUpdateManyAndReturnArgs>(args: SelectSubset<T, TenantRoleUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
-
-    /**
-     * Create or update one TenantRole.
-     * @param {TenantRoleUpsertArgs} args - Arguments to update or create a TenantRole.
-     * @example
-     * // Update or create a TenantRole
-     * const tenantRole = await prisma.tenantRole.upsert({
-     *   create: {
-     *     // ... data to create a TenantRole
-     *   },
-     *   update: {
-     *     // ... in case it already exists, update
-     *   },
-     *   where: {
-     *     // ... the filter for the TenantRole we want to update
-     *   }
-     * })
-     */
-    upsert<T extends TenantRoleUpsertArgs>(args: SelectSubset<T, TenantRoleUpsertArgs<ExtArgs>>): Prisma__TenantRoleClient<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
-
-
-    /**
-     * Count the number of TenantRoles.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleCountArgs} args - Arguments to filter TenantRoles to count.
-     * @example
-     * // Count the number of TenantRoles
-     * const count = await prisma.tenantRole.count({
-     *   where: {
-     *     // ... the filter for the TenantRoles we want to count
-     *   }
-     * })
-    **/
-    count<T extends TenantRoleCountArgs>(
-      args?: Subset<T, TenantRoleCountArgs>,
-    ): Prisma.PrismaPromise<
-      T extends $Utils.Record<'select', any>
-        ? T['select'] extends true
-          ? number
-          : GetScalarType<T['select'], TenantRoleCountAggregateOutputType>
-        : number
-    >
-
-    /**
-     * Allows you to perform aggregations operations on a TenantRole.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
-     * @example
-     * // Ordered by age ascending
-     * // Where email contains prisma.io
-     * // Limited to the 10 users
-     * const aggregations = await prisma.user.aggregate({
-     *   _avg: {
-     *     age: true,
-     *   },
-     *   where: {
-     *     email: {
-     *       contains: "prisma.io",
-     *     },
-     *   },
-     *   orderBy: {
-     *     age: "asc",
-     *   },
-     *   take: 10,
-     * })
-    **/
-    aggregate<T extends TenantRoleAggregateArgs>(args: Subset<T, TenantRoleAggregateArgs>): Prisma.PrismaPromise<GetTenantRoleAggregateType<T>>
-
-    /**
-     * Group by TenantRole.
-     * Note, that providing `undefined` is treated as the value not being there.
-     * Read more here: https://pris.ly/d/null-undefined
-     * @param {TenantRoleGroupByArgs} args - Group by arguments.
-     * @example
-     * // Group by city, order by createdAt, get count
-     * const result = await prisma.user.groupBy({
-     *   by: ['city', 'createdAt'],
-     *   orderBy: {
-     *     createdAt: true
-     *   },
-     *   _count: {
-     *     _all: true
-     *   },
-     * })
-     * 
-    **/
-    groupBy<
-      T extends TenantRoleGroupByArgs,
-      HasSelectOrTake extends Or<
-        Extends<'skip', Keys<T>>,
-        Extends<'take', Keys<T>>
-      >,
-      OrderByArg extends True extends HasSelectOrTake
-        ? { orderBy: TenantRoleGroupByArgs['orderBy'] }
-        : { orderBy?: TenantRoleGroupByArgs['orderBy'] },
-      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
-      ByFields extends MaybeTupleToUnion<T['by']>,
-      ByValid extends Has<ByFields, OrderFields>,
-      HavingFields extends GetHavingFields<T['having']>,
-      HavingValid extends Has<ByFields, HavingFields>,
-      ByEmpty extends T['by'] extends never[] ? True : False,
-      InputErrors extends ByEmpty extends True
-      ? `Error: "by" must not be empty.`
-      : HavingValid extends False
-      ? {
-          [P in HavingFields]: P extends ByFields
-            ? never
-            : P extends string
-            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
-            : [
-                Error,
-                'Field ',
-                P,
-                ` in "having" needs to be provided in "by"`,
-              ]
-        }[HavingFields]
-      : 'take' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "take", you also need to provide "orderBy"'
-      : 'skip' extends Keys<T>
-      ? 'orderBy' extends Keys<T>
-        ? ByValid extends True
-          ? {}
-          : {
-              [P in OrderFields]: P extends ByFields
-                ? never
-                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-            }[OrderFields]
-        : 'Error: If you provide "skip", you also need to provide "orderBy"'
-      : ByValid extends True
-      ? {}
-      : {
-          [P in OrderFields]: P extends ByFields
-            ? never
-            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
-        }[OrderFields]
-    >(args: SubsetIntersection<T, TenantRoleGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetTenantRoleGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
-  /**
-   * Fields of the TenantRole model
-   */
-  readonly fields: TenantRoleFieldRefs;
-  }
-
-  /**
-   * The delegate class that acts as a "Promise-like" for TenantRole.
-   * Why is this prefixed with `Prisma__`?
-   * Because we want to prevent naming conflicts as mentioned in
-   * https://github.com/prisma/prisma-client-js/issues/707
-   */
-  export interface Prisma__TenantRoleClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
-    readonly [Symbol.toStringTag]: "PrismaPromise"
-    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
-    /**
-     * Attaches callbacks for the resolution and/or rejection of the Promise.
-     * @param onfulfilled The callback to execute when the Promise is resolved.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of which ever callback is executed.
-     */
-    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
-    /**
-     * Attaches a callback for only the rejection of the Promise.
-     * @param onrejected The callback to execute when the Promise is rejected.
-     * @returns A Promise for the completion of the callback.
-     */
-    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
-    /**
-     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
-     * resolved value cannot be modified from the callback.
-     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
-     * @returns A Promise for the completion of the callback.
-     */
-    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
-  }
-
-
-
-
-  /**
-   * Fields of the TenantRole model
-   */
-  interface TenantRoleFieldRefs {
-    readonly id: FieldRef<"TenantRole", 'String'>
-    readonly tenantId: FieldRef<"TenantRole", 'String'>
-    readonly name: FieldRef<"TenantRole", 'String'>
-    readonly slug: FieldRef<"TenantRole", 'String'>
-    readonly description: FieldRef<"TenantRole", 'String'>
-    readonly createdAt: FieldRef<"TenantRole", 'DateTime'>
-    readonly updatedAt: FieldRef<"TenantRole", 'DateTime'>
-  }
-    
-
-  // Custom InputTypes
-  /**
-   * TenantRole findUnique
-   */
-  export type TenantRoleFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter, which TenantRole to fetch.
-     */
-    where: TenantRoleWhereUniqueInput
-  }
-
-  /**
-   * TenantRole findUniqueOrThrow
-   */
-  export type TenantRoleFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter, which TenantRole to fetch.
-     */
-    where: TenantRoleWhereUniqueInput
-  }
-
-  /**
-   * TenantRole findFirst
-   */
-  export type TenantRoleFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter, which TenantRole to fetch.
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of TenantRoles to fetch.
-     */
-    orderBy?: TenantRoleOrderByWithRelationInput | TenantRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for TenantRoles.
-     */
-    cursor?: TenantRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` TenantRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` TenantRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of TenantRoles.
-     */
-    distinct?: TenantRoleScalarFieldEnum | TenantRoleScalarFieldEnum[]
-  }
-
-  /**
-   * TenantRole findFirstOrThrow
-   */
-  export type TenantRoleFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter, which TenantRole to fetch.
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of TenantRoles to fetch.
-     */
-    orderBy?: TenantRoleOrderByWithRelationInput | TenantRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for searching for TenantRoles.
-     */
-    cursor?: TenantRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` TenantRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` TenantRoles.
-     */
-    skip?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
-     * 
-     * Filter by unique combinations of TenantRoles.
-     */
-    distinct?: TenantRoleScalarFieldEnum | TenantRoleScalarFieldEnum[]
-  }
-
-  /**
-   * TenantRole findMany
-   */
-  export type TenantRoleFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter, which TenantRoles to fetch.
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
-     * 
-     * Determine the order of TenantRoles to fetch.
-     */
-    orderBy?: TenantRoleOrderByWithRelationInput | TenantRoleOrderByWithRelationInput[]
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
-     * 
-     * Sets the position for listing TenantRoles.
-     */
-    cursor?: TenantRoleWhereUniqueInput
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Take `±n` TenantRoles from the position of the cursor.
-     */
-    take?: number
-    /**
-     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
-     * 
-     * Skip the first `n` TenantRoles.
-     */
-    skip?: number
-    distinct?: TenantRoleScalarFieldEnum | TenantRoleScalarFieldEnum[]
-  }
-
-  /**
-   * TenantRole create
-   */
-  export type TenantRoleCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * The data needed to create a TenantRole.
-     */
-    data: XOR<TenantRoleCreateInput, TenantRoleUncheckedCreateInput>
-  }
-
-  /**
-   * TenantRole createMany
-   */
-  export type TenantRoleCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to create many TenantRoles.
-     */
-    data: TenantRoleCreateManyInput | TenantRoleCreateManyInput[]
-    skipDuplicates?: boolean
-  }
-
-  /**
-   * TenantRole createManyAndReturn
-   */
-  export type TenantRoleCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelectCreateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * The data used to create many TenantRoles.
-     */
-    data: TenantRoleCreateManyInput | TenantRoleCreateManyInput[]
-    skipDuplicates?: boolean
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleIncludeCreateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * TenantRole update
-   */
-  export type TenantRoleUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * The data needed to update a TenantRole.
-     */
-    data: XOR<TenantRoleUpdateInput, TenantRoleUncheckedUpdateInput>
-    /**
-     * Choose, which TenantRole to update.
-     */
-    where: TenantRoleWhereUniqueInput
-  }
-
-  /**
-   * TenantRole updateMany
-   */
-  export type TenantRoleUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * The data used to update TenantRoles.
-     */
-    data: XOR<TenantRoleUpdateManyMutationInput, TenantRoleUncheckedUpdateManyInput>
-    /**
-     * Filter which TenantRoles to update
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * Limit how many TenantRoles to update.
-     */
-    limit?: number
-  }
-
-  /**
-   * TenantRole updateManyAndReturn
-   */
-  export type TenantRoleUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelectUpdateManyAndReturn<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * The data used to update TenantRoles.
-     */
-    data: XOR<TenantRoleUpdateManyMutationInput, TenantRoleUncheckedUpdateManyInput>
-    /**
-     * Filter which TenantRoles to update
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * Limit how many TenantRoles to update.
-     */
-    limit?: number
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleIncludeUpdateManyAndReturn<ExtArgs> | null
-  }
-
-  /**
-   * TenantRole upsert
-   */
-  export type TenantRoleUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * The filter to search for the TenantRole to update in case it exists.
-     */
-    where: TenantRoleWhereUniqueInput
-    /**
-     * In case the TenantRole found by the `where` argument doesn't exist, create a new TenantRole with this data.
-     */
-    create: XOR<TenantRoleCreateInput, TenantRoleUncheckedCreateInput>
-    /**
-     * In case the TenantRole was found with the provided `where` argument, update it with this data.
-     */
-    update: XOR<TenantRoleUpdateInput, TenantRoleUncheckedUpdateInput>
-  }
-
-  /**
-   * TenantRole delete
-   */
-  export type TenantRoleDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-    /**
-     * Filter which TenantRole to delete.
-     */
-    where: TenantRoleWhereUniqueInput
-  }
-
-  /**
-   * TenantRole deleteMany
-   */
-  export type TenantRoleDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Filter which TenantRoles to delete
-     */
-    where?: TenantRoleWhereInput
-    /**
-     * Limit how many TenantRoles to delete.
-     */
-    limit?: number
-  }
-
-  /**
-   * TenantRole without action
-   */
-  export type TenantRoleDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
-    /**
-     * Select specific fields to fetch from the TenantRole
-     */
-    select?: TenantRoleSelect<ExtArgs> | null
-    /**
-     * Omit specific fields from the TenantRole
-     */
-    omit?: TenantRoleOmit<ExtArgs> | null
-    /**
-     * Choose, which related nodes to fetch as well
-     */
-    include?: TenantRoleInclude<ExtArgs> | null
-  }
-
-
-  /**
    * Model ApiToken
    */
 
@@ -54115,18 +49412,6 @@ export namespace Prisma {
   export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
-  export const SystemRoleScalarFieldEnum: {
-    id: 'id',
-    name: 'name',
-    slug: 'slug',
-    description: 'description',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type SystemRoleScalarFieldEnum = (typeof SystemRoleScalarFieldEnum)[keyof typeof SystemRoleScalarFieldEnum]
-
-
   export const UserScalarFieldEnum: {
     id: 'id',
     email: 'email',
@@ -54249,6 +49534,7 @@ export namespace Prisma {
     slug: 'slug',
     description: 'description',
     isPublished: 'isPublished',
+    showInCms: 'showInCms',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     tenantId: 'tenantId',
@@ -54363,6 +49649,7 @@ export namespace Prisma {
     createdAt: 'createdAt',
     updatedAt: 'updatedAt',
     isPublished: 'isPublished',
+    showInCms: 'showInCms',
     tenantId: 'tenantId'
   };
 
@@ -54603,42 +49890,6 @@ export namespace Prisma {
   export type MediaScalarFieldEnum = (typeof MediaScalarFieldEnum)[keyof typeof MediaScalarFieldEnum]
 
 
-  export const PermissionScalarFieldEnum: {
-    id: 'id',
-    name: 'name',
-    displayName: 'displayName',
-    description: 'description',
-    category: 'category',
-    createdAt: 'createdAt'
-  };
-
-  export type PermissionScalarFieldEnum = (typeof PermissionScalarFieldEnum)[keyof typeof PermissionScalarFieldEnum]
-
-
-  export const RolePermissionScalarFieldEnum: {
-    id: 'id',
-    roleId: 'roleId',
-    permissionId: 'permissionId',
-    granted: 'granted',
-    tenantId: 'tenantId'
-  };
-
-  export type RolePermissionScalarFieldEnum = (typeof RolePermissionScalarFieldEnum)[keyof typeof RolePermissionScalarFieldEnum]
-
-
-  export const TenantRoleScalarFieldEnum: {
-    id: 'id',
-    tenantId: 'tenantId',
-    name: 'name',
-    slug: 'slug',
-    description: 'description',
-    createdAt: 'createdAt',
-    updatedAt: 'updatedAt'
-  };
-
-  export type TenantRoleScalarFieldEnum = (typeof TenantRoleScalarFieldEnum)[keyof typeof TenantRoleScalarFieldEnum]
-
-
   export const ApiTokenScalarFieldEnum: {
     id: 'id',
     tenantId: 'tenantId',
@@ -54807,14 +50058,6 @@ export namespace Prisma {
   export type QueryMode = (typeof QueryMode)[keyof typeof QueryMode]
 
 
-  export const NullsOrder: {
-    first: 'first',
-    last: 'last'
-  };
-
-  export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
-
-
   export const JsonNullValueFilter: {
     DbNull: typeof DbNull,
     JsonNull: typeof JsonNull,
@@ -54822,6 +50065,14 @@ export namespace Prisma {
   };
 
   export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
+
+
+  export const NullsOrder: {
+    first: 'first',
+    last: 'last'
+  };
+
+  export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
 
 
   /**
@@ -54922,63 +50173,6 @@ export namespace Prisma {
    * Deep Input Types
    */
 
-
-  export type SystemRoleWhereInput = {
-    AND?: SystemRoleWhereInput | SystemRoleWhereInput[]
-    OR?: SystemRoleWhereInput[]
-    NOT?: SystemRoleWhereInput | SystemRoleWhereInput[]
-    id?: StringFilter<"SystemRole"> | string
-    name?: StringFilter<"SystemRole"> | string
-    slug?: StringFilter<"SystemRole"> | string
-    description?: StringNullableFilter<"SystemRole"> | string | null
-    createdAt?: DateTimeFilter<"SystemRole"> | Date | string
-    updatedAt?: DateTimeFilter<"SystemRole"> | Date | string
-  }
-
-  export type SystemRoleOrderByWithRelationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrderInput | SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type SystemRoleWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    slug?: string
-    AND?: SystemRoleWhereInput | SystemRoleWhereInput[]
-    OR?: SystemRoleWhereInput[]
-    NOT?: SystemRoleWhereInput | SystemRoleWhereInput[]
-    name?: StringFilter<"SystemRole"> | string
-    description?: StringNullableFilter<"SystemRole"> | string | null
-    createdAt?: DateTimeFilter<"SystemRole"> | Date | string
-    updatedAt?: DateTimeFilter<"SystemRole"> | Date | string
-  }, "id" | "slug">
-
-  export type SystemRoleOrderByWithAggregationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrderInput | SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: SystemRoleCountOrderByAggregateInput
-    _max?: SystemRoleMaxOrderByAggregateInput
-    _min?: SystemRoleMinOrderByAggregateInput
-  }
-
-  export type SystemRoleScalarWhereWithAggregatesInput = {
-    AND?: SystemRoleScalarWhereWithAggregatesInput | SystemRoleScalarWhereWithAggregatesInput[]
-    OR?: SystemRoleScalarWhereWithAggregatesInput[]
-    NOT?: SystemRoleScalarWhereWithAggregatesInput | SystemRoleScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"SystemRole"> | string
-    name?: StringWithAggregatesFilter<"SystemRole"> | string
-    slug?: StringWithAggregatesFilter<"SystemRole"> | string
-    description?: StringNullableWithAggregatesFilter<"SystemRole"> | string | null
-    createdAt?: DateTimeWithAggregatesFilter<"SystemRole"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"SystemRole"> | Date | string
-  }
 
   export type UserWhereInput = {
     AND?: UserWhereInput | UserWhereInput[]
@@ -55299,7 +50493,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeListRelationFilter
     media?: MediaListRelationFilter
     mediaFolders?: MediaFolderListRelationFilter
-    rolePermissions?: RolePermissionListRelationFilter
     settings?: SettingListRelationFilter
     singleTypes?: SingleTypeListRelationFilter
     subscriptions?: SubscriptionListRelationFilter
@@ -55307,7 +50500,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentListRelationFilter
     locales?: TenantLocaleListRelationFilter
     members?: TenantMemberListRelationFilter
-    tenantRoles?: TenantRoleListRelationFilter
     singleTypeAssignments?: TenantSingleTypeAssignmentListRelationFilter
     webhooks?: WebhookListRelationFilter
     aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
@@ -55345,7 +50537,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeOrderByRelationAggregateInput
     media?: MediaOrderByRelationAggregateInput
     mediaFolders?: MediaFolderOrderByRelationAggregateInput
-    rolePermissions?: RolePermissionOrderByRelationAggregateInput
     settings?: SettingOrderByRelationAggregateInput
     singleTypes?: SingleTypeOrderByRelationAggregateInput
     subscriptions?: SubscriptionOrderByRelationAggregateInput
@@ -55353,7 +50544,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentOrderByRelationAggregateInput
     locales?: TenantLocaleOrderByRelationAggregateInput
     members?: TenantMemberOrderByRelationAggregateInput
-    tenantRoles?: TenantRoleOrderByRelationAggregateInput
     singleTypeAssignments?: TenantSingleTypeAssignmentOrderByRelationAggregateInput
     webhooks?: WebhookOrderByRelationAggregateInput
     aiQuotaLedgers?: AiQuotaLedgerOrderByRelationAggregateInput
@@ -55394,7 +50584,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeListRelationFilter
     media?: MediaListRelationFilter
     mediaFolders?: MediaFolderListRelationFilter
-    rolePermissions?: RolePermissionListRelationFilter
     settings?: SettingListRelationFilter
     singleTypes?: SingleTypeListRelationFilter
     subscriptions?: SubscriptionListRelationFilter
@@ -55402,7 +50591,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentListRelationFilter
     locales?: TenantLocaleListRelationFilter
     members?: TenantMemberListRelationFilter
-    tenantRoles?: TenantRoleListRelationFilter
     singleTypeAssignments?: TenantSingleTypeAssignmentListRelationFilter
     webhooks?: WebhookListRelationFilter
     aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
@@ -55647,6 +50835,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    showInCms?: BoolFilter<"ContentType"> | boolean
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
     tenantId?: StringNullableFilter<"ContentType"> | string | null
@@ -55663,6 +50852,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrderInput | SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenantId?: SortOrderInput | SortOrder
@@ -55683,6 +50873,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    showInCms?: BoolFilter<"ContentType"> | boolean
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
     tenantId?: StringNullableFilter<"ContentType"> | string | null
@@ -55699,6 +50890,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrderInput | SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenantId?: SortOrderInput | SortOrder
@@ -55717,6 +50909,7 @@ export namespace Prisma {
     slug?: StringWithAggregatesFilter<"ContentType"> | string
     description?: StringNullableWithAggregatesFilter<"ContentType"> | string | null
     isPublished?: BoolWithAggregatesFilter<"ContentType"> | boolean
+    showInCms?: BoolWithAggregatesFilter<"ContentType"> | boolean
     createdAt?: DateTimeWithAggregatesFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"ContentType"> | Date | string
     tenantId?: StringNullableWithAggregatesFilter<"ContentType"> | string | null
@@ -56251,6 +51444,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"SingleType"> | Date | string
     updatedAt?: DateTimeFilter<"SingleType"> | Date | string
     isPublished?: BoolFilter<"SingleType"> | boolean
+    showInCms?: BoolFilter<"SingleType"> | boolean
     tenantId?: StringNullableFilter<"SingleType"> | string | null
     fields?: SingleTypeFieldListRelationFilter
     schemaFields?: SchemaFieldListRelationFilter
@@ -56266,6 +51460,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     tenantId?: SortOrderInput | SortOrder
     fields?: SingleTypeFieldOrderByRelationAggregateInput
     schemaFields?: SchemaFieldOrderByRelationAggregateInput
@@ -56285,6 +51480,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"SingleType"> | Date | string
     updatedAt?: DateTimeFilter<"SingleType"> | Date | string
     isPublished?: BoolFilter<"SingleType"> | boolean
+    showInCms?: BoolFilter<"SingleType"> | boolean
     tenantId?: StringNullableFilter<"SingleType"> | string | null
     fields?: SingleTypeFieldListRelationFilter
     schemaFields?: SchemaFieldListRelationFilter
@@ -56300,6 +51496,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     tenantId?: SortOrderInput | SortOrder
     _count?: SingleTypeCountOrderByAggregateInput
     _max?: SingleTypeMaxOrderByAggregateInput
@@ -56317,6 +51514,7 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"SingleType"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"SingleType"> | Date | string
     isPublished?: BoolWithAggregatesFilter<"SingleType"> | boolean
+    showInCms?: BoolWithAggregatesFilter<"SingleType"> | boolean
     tenantId?: StringNullableWithAggregatesFilter<"SingleType"> | string | null
   }
 
@@ -57543,191 +52741,6 @@ export namespace Prisma {
     isPrivate?: BoolWithAggregatesFilter<"Media"> | boolean
   }
 
-  export type PermissionWhereInput = {
-    AND?: PermissionWhereInput | PermissionWhereInput[]
-    OR?: PermissionWhereInput[]
-    NOT?: PermissionWhereInput | PermissionWhereInput[]
-    id?: StringFilter<"Permission"> | string
-    name?: StringFilter<"Permission"> | string
-    displayName?: StringFilter<"Permission"> | string
-    description?: StringNullableFilter<"Permission"> | string | null
-    category?: StringFilter<"Permission"> | string
-    createdAt?: DateTimeFilter<"Permission"> | Date | string
-    roles?: RolePermissionListRelationFilter
-  }
-
-  export type PermissionOrderByWithRelationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    displayName?: SortOrder
-    description?: SortOrderInput | SortOrder
-    category?: SortOrder
-    createdAt?: SortOrder
-    roles?: RolePermissionOrderByRelationAggregateInput
-  }
-
-  export type PermissionWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    name?: string
-    AND?: PermissionWhereInput | PermissionWhereInput[]
-    OR?: PermissionWhereInput[]
-    NOT?: PermissionWhereInput | PermissionWhereInput[]
-    displayName?: StringFilter<"Permission"> | string
-    description?: StringNullableFilter<"Permission"> | string | null
-    category?: StringFilter<"Permission"> | string
-    createdAt?: DateTimeFilter<"Permission"> | Date | string
-    roles?: RolePermissionListRelationFilter
-  }, "id" | "name">
-
-  export type PermissionOrderByWithAggregationInput = {
-    id?: SortOrder
-    name?: SortOrder
-    displayName?: SortOrder
-    description?: SortOrderInput | SortOrder
-    category?: SortOrder
-    createdAt?: SortOrder
-    _count?: PermissionCountOrderByAggregateInput
-    _max?: PermissionMaxOrderByAggregateInput
-    _min?: PermissionMinOrderByAggregateInput
-  }
-
-  export type PermissionScalarWhereWithAggregatesInput = {
-    AND?: PermissionScalarWhereWithAggregatesInput | PermissionScalarWhereWithAggregatesInput[]
-    OR?: PermissionScalarWhereWithAggregatesInput[]
-    NOT?: PermissionScalarWhereWithAggregatesInput | PermissionScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"Permission"> | string
-    name?: StringWithAggregatesFilter<"Permission"> | string
-    displayName?: StringWithAggregatesFilter<"Permission"> | string
-    description?: StringNullableWithAggregatesFilter<"Permission"> | string | null
-    category?: StringWithAggregatesFilter<"Permission"> | string
-    createdAt?: DateTimeWithAggregatesFilter<"Permission"> | Date | string
-  }
-
-  export type RolePermissionWhereInput = {
-    AND?: RolePermissionWhereInput | RolePermissionWhereInput[]
-    OR?: RolePermissionWhereInput[]
-    NOT?: RolePermissionWhereInput | RolePermissionWhereInput[]
-    id?: StringFilter<"RolePermission"> | string
-    roleId?: StringFilter<"RolePermission"> | string
-    permissionId?: StringFilter<"RolePermission"> | string
-    granted?: BoolFilter<"RolePermission"> | boolean
-    tenantId?: StringNullableFilter<"RolePermission"> | string | null
-    permission?: XOR<PermissionScalarRelationFilter, PermissionWhereInput>
-    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
-  }
-
-  export type RolePermissionOrderByWithRelationInput = {
-    id?: SortOrder
-    roleId?: SortOrder
-    permissionId?: SortOrder
-    granted?: SortOrder
-    tenantId?: SortOrderInput | SortOrder
-    permission?: PermissionOrderByWithRelationInput
-    tenant?: TenantOrderByWithRelationInput
-  }
-
-  export type RolePermissionWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    tenantId_roleId_permissionId?: RolePermissionTenantIdRoleIdPermissionIdCompoundUniqueInput
-    AND?: RolePermissionWhereInput | RolePermissionWhereInput[]
-    OR?: RolePermissionWhereInput[]
-    NOT?: RolePermissionWhereInput | RolePermissionWhereInput[]
-    roleId?: StringFilter<"RolePermission"> | string
-    permissionId?: StringFilter<"RolePermission"> | string
-    granted?: BoolFilter<"RolePermission"> | boolean
-    tenantId?: StringNullableFilter<"RolePermission"> | string | null
-    permission?: XOR<PermissionScalarRelationFilter, PermissionWhereInput>
-    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
-  }, "id" | "tenantId_roleId_permissionId">
-
-  export type RolePermissionOrderByWithAggregationInput = {
-    id?: SortOrder
-    roleId?: SortOrder
-    permissionId?: SortOrder
-    granted?: SortOrder
-    tenantId?: SortOrderInput | SortOrder
-    _count?: RolePermissionCountOrderByAggregateInput
-    _max?: RolePermissionMaxOrderByAggregateInput
-    _min?: RolePermissionMinOrderByAggregateInput
-  }
-
-  export type RolePermissionScalarWhereWithAggregatesInput = {
-    AND?: RolePermissionScalarWhereWithAggregatesInput | RolePermissionScalarWhereWithAggregatesInput[]
-    OR?: RolePermissionScalarWhereWithAggregatesInput[]
-    NOT?: RolePermissionScalarWhereWithAggregatesInput | RolePermissionScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"RolePermission"> | string
-    roleId?: StringWithAggregatesFilter<"RolePermission"> | string
-    permissionId?: StringWithAggregatesFilter<"RolePermission"> | string
-    granted?: BoolWithAggregatesFilter<"RolePermission"> | boolean
-    tenantId?: StringNullableWithAggregatesFilter<"RolePermission"> | string | null
-  }
-
-  export type TenantRoleWhereInput = {
-    AND?: TenantRoleWhereInput | TenantRoleWhereInput[]
-    OR?: TenantRoleWhereInput[]
-    NOT?: TenantRoleWhereInput | TenantRoleWhereInput[]
-    id?: StringFilter<"TenantRole"> | string
-    tenantId?: StringFilter<"TenantRole"> | string
-    name?: StringFilter<"TenantRole"> | string
-    slug?: StringFilter<"TenantRole"> | string
-    description?: StringNullableFilter<"TenantRole"> | string | null
-    createdAt?: DateTimeFilter<"TenantRole"> | Date | string
-    updatedAt?: DateTimeFilter<"TenantRole"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
-  }
-
-  export type TenantRoleOrderByWithRelationInput = {
-    id?: SortOrder
-    tenantId?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrderInput | SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    tenant?: TenantOrderByWithRelationInput
-  }
-
-  export type TenantRoleWhereUniqueInput = Prisma.AtLeast<{
-    id?: string
-    tenantId_slug?: TenantRoleTenantIdSlugCompoundUniqueInput
-    AND?: TenantRoleWhereInput | TenantRoleWhereInput[]
-    OR?: TenantRoleWhereInput[]
-    NOT?: TenantRoleWhereInput | TenantRoleWhereInput[]
-    tenantId?: StringFilter<"TenantRole"> | string
-    name?: StringFilter<"TenantRole"> | string
-    slug?: StringFilter<"TenantRole"> | string
-    description?: StringNullableFilter<"TenantRole"> | string | null
-    createdAt?: DateTimeFilter<"TenantRole"> | Date | string
-    updatedAt?: DateTimeFilter<"TenantRole"> | Date | string
-    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
-  }, "id" | "tenantId_slug">
-
-  export type TenantRoleOrderByWithAggregationInput = {
-    id?: SortOrder
-    tenantId?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrderInput | SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-    _count?: TenantRoleCountOrderByAggregateInput
-    _max?: TenantRoleMaxOrderByAggregateInput
-    _min?: TenantRoleMinOrderByAggregateInput
-  }
-
-  export type TenantRoleScalarWhereWithAggregatesInput = {
-    AND?: TenantRoleScalarWhereWithAggregatesInput | TenantRoleScalarWhereWithAggregatesInput[]
-    OR?: TenantRoleScalarWhereWithAggregatesInput[]
-    NOT?: TenantRoleScalarWhereWithAggregatesInput | TenantRoleScalarWhereWithAggregatesInput[]
-    id?: StringWithAggregatesFilter<"TenantRole"> | string
-    tenantId?: StringWithAggregatesFilter<"TenantRole"> | string
-    name?: StringWithAggregatesFilter<"TenantRole"> | string
-    slug?: StringWithAggregatesFilter<"TenantRole"> | string
-    description?: StringNullableWithAggregatesFilter<"TenantRole"> | string | null
-    createdAt?: DateTimeWithAggregatesFilter<"TenantRole"> | Date | string
-    updatedAt?: DateTimeWithAggregatesFilter<"TenantRole"> | Date | string
-  }
-
   export type ApiTokenWhereInput = {
     AND?: ApiTokenWhereInput | ApiTokenWhereInput[]
     OR?: ApiTokenWhereInput[]
@@ -58422,69 +53435,6 @@ export namespace Prisma {
     updatedAt?: DateTimeWithAggregatesFilter<"CustomDomain"> | Date | string
   }
 
-  export type SystemRoleCreateInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SystemRoleUncheckedCreateInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SystemRoleUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SystemRoleUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SystemRoleCreateManyInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type SystemRoleUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type SystemRoleUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
   export type UserCreateInput = {
     id?: string
     email: string
@@ -58831,7 +53781,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -58839,7 +53788,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -58877,7 +53825,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -58885,7 +53832,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -58923,7 +53869,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -58931,7 +53876,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -58969,7 +53913,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -58977,7 +53920,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -59256,6 +54198,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -59271,6 +54214,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     tenantId?: string | null
@@ -59286,6 +54230,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59301,6 +54246,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59316,6 +54262,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     tenantId?: string | null
@@ -59328,6 +54275,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59339,6 +54287,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -59904,6 +54853,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     fields?: SingleTypeFieldCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldCreateNestedManyWithoutSingleTypeInput
     tenant?: TenantCreateNestedOneWithoutSingleTypesInput
@@ -59918,6 +54868,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: string | null
     fields?: SingleTypeFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldUncheckedCreateNestedManyWithoutSingleTypeInput
@@ -59932,6 +54883,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     fields?: SingleTypeFieldUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUpdateManyWithoutSingleTypeNestedInput
     tenant?: TenantUpdateOneWithoutSingleTypesNestedInput
@@ -59946,6 +54898,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     fields?: SingleTypeFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
@@ -59960,6 +54913,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: string | null
   }
 
@@ -59971,6 +54925,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SingleTypeUncheckedUpdateManyInput = {
@@ -59981,6 +54936,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
@@ -61316,196 +56272,6 @@ export namespace Prisma {
     isPrivate?: BoolFieldUpdateOperationsInput | boolean
   }
 
-  export type PermissionCreateInput = {
-    id?: string
-    name: string
-    displayName: string
-    description?: string | null
-    category: string
-    createdAt?: Date | string
-    roles?: RolePermissionCreateNestedManyWithoutPermissionInput
-  }
-
-  export type PermissionUncheckedCreateInput = {
-    id?: string
-    name: string
-    displayName: string
-    description?: string | null
-    category: string
-    createdAt?: Date | string
-    roles?: RolePermissionUncheckedCreateNestedManyWithoutPermissionInput
-  }
-
-  export type PermissionUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    roles?: RolePermissionUpdateManyWithoutPermissionNestedInput
-  }
-
-  export type PermissionUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    roles?: RolePermissionUncheckedUpdateManyWithoutPermissionNestedInput
-  }
-
-  export type PermissionCreateManyInput = {
-    id?: string
-    name: string
-    displayName: string
-    description?: string | null
-    category: string
-    createdAt?: Date | string
-  }
-
-  export type PermissionUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type PermissionUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type RolePermissionCreateInput = {
-    id?: string
-    roleId: string
-    granted?: boolean
-    permission: PermissionCreateNestedOneWithoutRolesInput
-    tenant?: TenantCreateNestedOneWithoutRolePermissionsInput
-  }
-
-  export type RolePermissionUncheckedCreateInput = {
-    id?: string
-    roleId: string
-    permissionId: string
-    granted?: boolean
-    tenantId?: string | null
-  }
-
-  export type RolePermissionUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    permission?: PermissionUpdateOneRequiredWithoutRolesNestedInput
-    tenant?: TenantUpdateOneWithoutRolePermissionsNestedInput
-  }
-
-  export type RolePermissionUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    permissionId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type RolePermissionCreateManyInput = {
-    id?: string
-    roleId: string
-    permissionId: string
-    granted?: boolean
-    tenantId?: string | null
-  }
-
-  export type RolePermissionUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-  }
-
-  export type RolePermissionUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    permissionId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type TenantRoleCreateInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    tenant: TenantCreateNestedOneWithoutTenantRolesInput
-  }
-
-  export type TenantRoleUncheckedCreateInput = {
-    id?: string
-    tenantId: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type TenantRoleUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    tenant?: TenantUpdateOneRequiredWithoutTenantRolesNestedInput
-  }
-
-  export type TenantRoleUncheckedUpdateInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type TenantRoleCreateManyInput = {
-    id?: string
-    tenantId: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type TenantRoleUpdateManyMutationInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type TenantRoleUncheckedUpdateManyInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    tenantId?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
   export type ApiTokenCreateInput = {
     id?: string
     name: string
@@ -62329,99 +57095,6 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
-  export type DateTimeFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
-  }
-
-  export type SortOrderInput = {
-    sort: SortOrder
-    nulls?: NullsOrder
-  }
-
-  export type SystemRoleCountOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type SystemRoleMaxOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type SystemRoleMinOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type StringWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel>
-    in?: string[] | ListStringFieldRefInput<$PrismaModel>
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel>
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedStringWithAggregatesFilter<$PrismaModel> | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedStringFilter<$PrismaModel>
-    _max?: NestedStringFilter<$PrismaModel>
-  }
-
-  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: string | StringFieldRefInput<$PrismaModel> | null
-    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
-    lt?: string | StringFieldRefInput<$PrismaModel>
-    lte?: string | StringFieldRefInput<$PrismaModel>
-    gt?: string | StringFieldRefInput<$PrismaModel>
-    gte?: string | StringFieldRefInput<$PrismaModel>
-    contains?: string | StringFieldRefInput<$PrismaModel>
-    startsWith?: string | StringFieldRefInput<$PrismaModel>
-    endsWith?: string | StringFieldRefInput<$PrismaModel>
-    mode?: QueryMode
-    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
-    _count?: NestedIntNullableFilter<$PrismaModel>
-    _min?: NestedStringNullableFilter<$PrismaModel>
-    _max?: NestedStringNullableFilter<$PrismaModel>
-  }
-
-  export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
-  }
-
   export type DateTimeNullableFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -62431,6 +57104,17 @@ export namespace Prisma {
     gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
+  export type DateTimeFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeFilter<$PrismaModel> | Date | string
   }
   export type JsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -62478,6 +57162,11 @@ export namespace Prisma {
     every?: TenantMemberWhereInput
     some?: TenantMemberWhereInput
     none?: TenantMemberWhereInput
+  }
+
+  export type SortOrderInput = {
+    sort: SortOrder
+    nulls?: NullsOrder
   }
 
   export type AccountOrderByRelationAggregateInput = {
@@ -62539,6 +57228,42 @@ export namespace Prisma {
     masterDatabaseUrl?: SortOrder
   }
 
+  export type StringWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel>
+    in?: string[] | ListStringFieldRefInput<$PrismaModel>
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel>
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    mode?: QueryMode
+    not?: NestedStringWithAggregatesFilter<$PrismaModel> | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedStringFilter<$PrismaModel>
+    _max?: NestedStringFilter<$PrismaModel>
+  }
+
+  export type StringNullableWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: string | StringFieldRefInput<$PrismaModel> | null
+    in?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    notIn?: string[] | ListStringFieldRefInput<$PrismaModel> | null
+    lt?: string | StringFieldRefInput<$PrismaModel>
+    lte?: string | StringFieldRefInput<$PrismaModel>
+    gt?: string | StringFieldRefInput<$PrismaModel>
+    gte?: string | StringFieldRefInput<$PrismaModel>
+    contains?: string | StringFieldRefInput<$PrismaModel>
+    startsWith?: string | StringFieldRefInput<$PrismaModel>
+    endsWith?: string | StringFieldRefInput<$PrismaModel>
+    mode?: QueryMode
+    not?: NestedStringNullableWithAggregatesFilter<$PrismaModel> | string | null
+    _count?: NestedIntNullableFilter<$PrismaModel>
+    _min?: NestedStringNullableFilter<$PrismaModel>
+    _max?: NestedStringNullableFilter<$PrismaModel>
+  }
+
   export type DateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -62551,6 +57276,20 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type DateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
   }
   export type JsonNullableWithAggregatesFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -62778,12 +57517,6 @@ export namespace Prisma {
     none?: MediaFolderWhereInput
   }
 
-  export type RolePermissionListRelationFilter = {
-    every?: RolePermissionWhereInput
-    some?: RolePermissionWhereInput
-    none?: RolePermissionWhereInput
-  }
-
   export type SettingListRelationFilter = {
     every?: SettingWhereInput
     some?: SettingWhereInput
@@ -62812,12 +57545,6 @@ export namespace Prisma {
     every?: TenantLocaleWhereInput
     some?: TenantLocaleWhereInput
     none?: TenantLocaleWhereInput
-  }
-
-  export type TenantRoleListRelationFilter = {
-    every?: TenantRoleWhereInput
-    some?: TenantRoleWhereInput
-    none?: TenantRoleWhereInput
   }
 
   export type TenantSingleTypeAssignmentListRelationFilter = {
@@ -62880,10 +57607,6 @@ export namespace Prisma {
     _count?: SortOrder
   }
 
-  export type RolePermissionOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
   export type SettingOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -62901,10 +57624,6 @@ export namespace Prisma {
   }
 
   export type TenantLocaleOrderByRelationAggregateInput = {
-    _count?: SortOrder
-  }
-
-  export type TenantRoleOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -63165,6 +57884,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenantId?: SortOrder
@@ -63177,6 +57897,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenantId?: SortOrder
@@ -63189,6 +57910,7 @@ export namespace Prisma {
     slug?: SortOrder
     description?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenantId?: SortOrder
@@ -63632,6 +58354,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     tenantId?: SortOrder
   }
 
@@ -63643,6 +58366,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     tenantId?: SortOrder
   }
 
@@ -63654,6 +58378,7 @@ export namespace Prisma {
     createdAt?: SortOrder
     updatedAt?: SortOrder
     isPublished?: SortOrder
+    showInCms?: SortOrder
     tenantId?: SortOrder
   }
 
@@ -64383,103 +59108,6 @@ export namespace Prisma {
     height?: SortOrder
   }
 
-  export type PermissionCountOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    displayName?: SortOrder
-    description?: SortOrder
-    category?: SortOrder
-    createdAt?: SortOrder
-  }
-
-  export type PermissionMaxOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    displayName?: SortOrder
-    description?: SortOrder
-    category?: SortOrder
-    createdAt?: SortOrder
-  }
-
-  export type PermissionMinOrderByAggregateInput = {
-    id?: SortOrder
-    name?: SortOrder
-    displayName?: SortOrder
-    description?: SortOrder
-    category?: SortOrder
-    createdAt?: SortOrder
-  }
-
-  export type PermissionScalarRelationFilter = {
-    is?: PermissionWhereInput
-    isNot?: PermissionWhereInput
-  }
-
-  export type RolePermissionTenantIdRoleIdPermissionIdCompoundUniqueInput = {
-    tenantId: string
-    roleId: string
-    permissionId: string
-  }
-
-  export type RolePermissionCountOrderByAggregateInput = {
-    id?: SortOrder
-    roleId?: SortOrder
-    permissionId?: SortOrder
-    granted?: SortOrder
-    tenantId?: SortOrder
-  }
-
-  export type RolePermissionMaxOrderByAggregateInput = {
-    id?: SortOrder
-    roleId?: SortOrder
-    permissionId?: SortOrder
-    granted?: SortOrder
-    tenantId?: SortOrder
-  }
-
-  export type RolePermissionMinOrderByAggregateInput = {
-    id?: SortOrder
-    roleId?: SortOrder
-    permissionId?: SortOrder
-    granted?: SortOrder
-    tenantId?: SortOrder
-  }
-
-  export type TenantRoleTenantIdSlugCompoundUniqueInput = {
-    tenantId: string
-    slug: string
-  }
-
-  export type TenantRoleCountOrderByAggregateInput = {
-    id?: SortOrder
-    tenantId?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type TenantRoleMaxOrderByAggregateInput = {
-    id?: SortOrder
-    tenantId?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
-  export type TenantRoleMinOrderByAggregateInput = {
-    id?: SortOrder
-    tenantId?: SortOrder
-    name?: SortOrder
-    slug?: SortOrder
-    description?: SortOrder
-    createdAt?: SortOrder
-    updatedAt?: SortOrder
-  }
-
   export type ApiTokenCountOrderByAggregateInput = {
     id?: SortOrder
     tenantId?: SortOrder
@@ -64869,18 +59497,6 @@ export namespace Prisma {
     updatedAt?: SortOrder
   }
 
-  export type StringFieldUpdateOperationsInput = {
-    set?: string
-  }
-
-  export type NullableStringFieldUpdateOperationsInput = {
-    set?: string | null
-  }
-
-  export type DateTimeFieldUpdateOperationsInput = {
-    set?: Date | string
-  }
-
   export type AccountCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -64937,8 +59553,20 @@ export namespace Prisma {
     connect?: TenantMemberWhereUniqueInput | TenantMemberWhereUniqueInput[]
   }
 
+  export type StringFieldUpdateOperationsInput = {
+    set?: string
+  }
+
+  export type NullableStringFieldUpdateOperationsInput = {
+    set?: string | null
+  }
+
   export type NullableDateTimeFieldUpdateOperationsInput = {
     set?: Date | string | null
+  }
+
+  export type DateTimeFieldUpdateOperationsInput = {
+    set?: Date | string
   }
 
   export type AccountUpdateManyWithoutUserNestedInput = {
@@ -65152,13 +59780,6 @@ export namespace Prisma {
     connect?: MediaFolderWhereUniqueInput | MediaFolderWhereUniqueInput[]
   }
 
-  export type RolePermissionCreateNestedManyWithoutTenantInput = {
-    create?: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput> | RolePermissionCreateWithoutTenantInput[] | RolePermissionUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutTenantInput | RolePermissionCreateOrConnectWithoutTenantInput[]
-    createMany?: RolePermissionCreateManyTenantInputEnvelope
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-  }
-
   export type SettingCreateNestedManyWithoutTenantInput = {
     create?: XOR<SettingCreateWithoutTenantInput, SettingUncheckedCreateWithoutTenantInput> | SettingCreateWithoutTenantInput[] | SettingUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: SettingCreateOrConnectWithoutTenantInput | SettingCreateOrConnectWithoutTenantInput[]
@@ -65206,13 +59827,6 @@ export namespace Prisma {
     connectOrCreate?: TenantMemberCreateOrConnectWithoutTenantInput | TenantMemberCreateOrConnectWithoutTenantInput[]
     createMany?: TenantMemberCreateManyTenantInputEnvelope
     connect?: TenantMemberWhereUniqueInput | TenantMemberWhereUniqueInput[]
-  }
-
-  export type TenantRoleCreateNestedManyWithoutTenantInput = {
-    create?: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput> | TenantRoleCreateWithoutTenantInput[] | TenantRoleUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: TenantRoleCreateOrConnectWithoutTenantInput | TenantRoleCreateOrConnectWithoutTenantInput[]
-    createMany?: TenantRoleCreateManyTenantInputEnvelope
-    connect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
   }
 
   export type TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput = {
@@ -65306,13 +59920,6 @@ export namespace Prisma {
     connect?: MediaFolderWhereUniqueInput | MediaFolderWhereUniqueInput[]
   }
 
-  export type RolePermissionUncheckedCreateNestedManyWithoutTenantInput = {
-    create?: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput> | RolePermissionCreateWithoutTenantInput[] | RolePermissionUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutTenantInput | RolePermissionCreateOrConnectWithoutTenantInput[]
-    createMany?: RolePermissionCreateManyTenantInputEnvelope
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-  }
-
   export type SettingUncheckedCreateNestedManyWithoutTenantInput = {
     create?: XOR<SettingCreateWithoutTenantInput, SettingUncheckedCreateWithoutTenantInput> | SettingCreateWithoutTenantInput[] | SettingUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: SettingCreateOrConnectWithoutTenantInput | SettingCreateOrConnectWithoutTenantInput[]
@@ -65360,13 +59967,6 @@ export namespace Prisma {
     connectOrCreate?: TenantMemberCreateOrConnectWithoutTenantInput | TenantMemberCreateOrConnectWithoutTenantInput[]
     createMany?: TenantMemberCreateManyTenantInputEnvelope
     connect?: TenantMemberWhereUniqueInput | TenantMemberWhereUniqueInput[]
-  }
-
-  export type TenantRoleUncheckedCreateNestedManyWithoutTenantInput = {
-    create?: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput> | TenantRoleCreateWithoutTenantInput[] | TenantRoleUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: TenantRoleCreateOrConnectWithoutTenantInput | TenantRoleCreateOrConnectWithoutTenantInput[]
-    createMany?: TenantRoleCreateManyTenantInputEnvelope
-    connect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
   }
 
   export type TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput = {
@@ -65531,20 +60131,6 @@ export namespace Prisma {
     deleteMany?: MediaFolderScalarWhereInput | MediaFolderScalarWhereInput[]
   }
 
-  export type RolePermissionUpdateManyWithoutTenantNestedInput = {
-    create?: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput> | RolePermissionCreateWithoutTenantInput[] | RolePermissionUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutTenantInput | RolePermissionCreateOrConnectWithoutTenantInput[]
-    upsert?: RolePermissionUpsertWithWhereUniqueWithoutTenantInput | RolePermissionUpsertWithWhereUniqueWithoutTenantInput[]
-    createMany?: RolePermissionCreateManyTenantInputEnvelope
-    set?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    disconnect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    delete?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    update?: RolePermissionUpdateWithWhereUniqueWithoutTenantInput | RolePermissionUpdateWithWhereUniqueWithoutTenantInput[]
-    updateMany?: RolePermissionUpdateManyWithWhereWithoutTenantInput | RolePermissionUpdateManyWithWhereWithoutTenantInput[]
-    deleteMany?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-  }
-
   export type SettingUpdateManyWithoutTenantNestedInput = {
     create?: XOR<SettingCreateWithoutTenantInput, SettingUncheckedCreateWithoutTenantInput> | SettingCreateWithoutTenantInput[] | SettingUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: SettingCreateOrConnectWithoutTenantInput | SettingCreateOrConnectWithoutTenantInput[]
@@ -65641,20 +60227,6 @@ export namespace Prisma {
     update?: TenantMemberUpdateWithWhereUniqueWithoutTenantInput | TenantMemberUpdateWithWhereUniqueWithoutTenantInput[]
     updateMany?: TenantMemberUpdateManyWithWhereWithoutTenantInput | TenantMemberUpdateManyWithWhereWithoutTenantInput[]
     deleteMany?: TenantMemberScalarWhereInput | TenantMemberScalarWhereInput[]
-  }
-
-  export type TenantRoleUpdateManyWithoutTenantNestedInput = {
-    create?: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput> | TenantRoleCreateWithoutTenantInput[] | TenantRoleUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: TenantRoleCreateOrConnectWithoutTenantInput | TenantRoleCreateOrConnectWithoutTenantInput[]
-    upsert?: TenantRoleUpsertWithWhereUniqueWithoutTenantInput | TenantRoleUpsertWithWhereUniqueWithoutTenantInput[]
-    createMany?: TenantRoleCreateManyTenantInputEnvelope
-    set?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    disconnect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    delete?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    connect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    update?: TenantRoleUpdateWithWhereUniqueWithoutTenantInput | TenantRoleUpdateWithWhereUniqueWithoutTenantInput[]
-    updateMany?: TenantRoleUpdateManyWithWhereWithoutTenantInput | TenantRoleUpdateManyWithWhereWithoutTenantInput[]
-    deleteMany?: TenantRoleScalarWhereInput | TenantRoleScalarWhereInput[]
   }
 
   export type TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput = {
@@ -65839,20 +60411,6 @@ export namespace Prisma {
     deleteMany?: MediaFolderScalarWhereInput | MediaFolderScalarWhereInput[]
   }
 
-  export type RolePermissionUncheckedUpdateManyWithoutTenantNestedInput = {
-    create?: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput> | RolePermissionCreateWithoutTenantInput[] | RolePermissionUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutTenantInput | RolePermissionCreateOrConnectWithoutTenantInput[]
-    upsert?: RolePermissionUpsertWithWhereUniqueWithoutTenantInput | RolePermissionUpsertWithWhereUniqueWithoutTenantInput[]
-    createMany?: RolePermissionCreateManyTenantInputEnvelope
-    set?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    disconnect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    delete?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    update?: RolePermissionUpdateWithWhereUniqueWithoutTenantInput | RolePermissionUpdateWithWhereUniqueWithoutTenantInput[]
-    updateMany?: RolePermissionUpdateManyWithWhereWithoutTenantInput | RolePermissionUpdateManyWithWhereWithoutTenantInput[]
-    deleteMany?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-  }
-
   export type SettingUncheckedUpdateManyWithoutTenantNestedInput = {
     create?: XOR<SettingCreateWithoutTenantInput, SettingUncheckedCreateWithoutTenantInput> | SettingCreateWithoutTenantInput[] | SettingUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: SettingCreateOrConnectWithoutTenantInput | SettingCreateOrConnectWithoutTenantInput[]
@@ -65949,20 +60507,6 @@ export namespace Prisma {
     update?: TenantMemberUpdateWithWhereUniqueWithoutTenantInput | TenantMemberUpdateWithWhereUniqueWithoutTenantInput[]
     updateMany?: TenantMemberUpdateManyWithWhereWithoutTenantInput | TenantMemberUpdateManyWithWhereWithoutTenantInput[]
     deleteMany?: TenantMemberScalarWhereInput | TenantMemberScalarWhereInput[]
-  }
-
-  export type TenantRoleUncheckedUpdateManyWithoutTenantNestedInput = {
-    create?: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput> | TenantRoleCreateWithoutTenantInput[] | TenantRoleUncheckedCreateWithoutTenantInput[]
-    connectOrCreate?: TenantRoleCreateOrConnectWithoutTenantInput | TenantRoleCreateOrConnectWithoutTenantInput[]
-    upsert?: TenantRoleUpsertWithWhereUniqueWithoutTenantInput | TenantRoleUpsertWithWhereUniqueWithoutTenantInput[]
-    createMany?: TenantRoleCreateManyTenantInputEnvelope
-    set?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    disconnect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    delete?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    connect?: TenantRoleWhereUniqueInput | TenantRoleWhereUniqueInput[]
-    update?: TenantRoleUpdateWithWhereUniqueWithoutTenantInput | TenantRoleUpdateWithWhereUniqueWithoutTenantInput[]
-    updateMany?: TenantRoleUpdateManyWithWhereWithoutTenantInput | TenantRoleUpdateManyWithWhereWithoutTenantInput[]
-    deleteMany?: TenantRoleScalarWhereInput | TenantRoleScalarWhereInput[]
   }
 
   export type TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput = {
@@ -67163,92 +61707,6 @@ export namespace Prisma {
     update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutMediaInput, TenantUpdateWithoutMediaInput>, TenantUncheckedUpdateWithoutMediaInput>
   }
 
-  export type RolePermissionCreateNestedManyWithoutPermissionInput = {
-    create?: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput> | RolePermissionCreateWithoutPermissionInput[] | RolePermissionUncheckedCreateWithoutPermissionInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutPermissionInput | RolePermissionCreateOrConnectWithoutPermissionInput[]
-    createMany?: RolePermissionCreateManyPermissionInputEnvelope
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-  }
-
-  export type RolePermissionUncheckedCreateNestedManyWithoutPermissionInput = {
-    create?: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput> | RolePermissionCreateWithoutPermissionInput[] | RolePermissionUncheckedCreateWithoutPermissionInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutPermissionInput | RolePermissionCreateOrConnectWithoutPermissionInput[]
-    createMany?: RolePermissionCreateManyPermissionInputEnvelope
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-  }
-
-  export type RolePermissionUpdateManyWithoutPermissionNestedInput = {
-    create?: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput> | RolePermissionCreateWithoutPermissionInput[] | RolePermissionUncheckedCreateWithoutPermissionInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutPermissionInput | RolePermissionCreateOrConnectWithoutPermissionInput[]
-    upsert?: RolePermissionUpsertWithWhereUniqueWithoutPermissionInput | RolePermissionUpsertWithWhereUniqueWithoutPermissionInput[]
-    createMany?: RolePermissionCreateManyPermissionInputEnvelope
-    set?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    disconnect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    delete?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    update?: RolePermissionUpdateWithWhereUniqueWithoutPermissionInput | RolePermissionUpdateWithWhereUniqueWithoutPermissionInput[]
-    updateMany?: RolePermissionUpdateManyWithWhereWithoutPermissionInput | RolePermissionUpdateManyWithWhereWithoutPermissionInput[]
-    deleteMany?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-  }
-
-  export type RolePermissionUncheckedUpdateManyWithoutPermissionNestedInput = {
-    create?: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput> | RolePermissionCreateWithoutPermissionInput[] | RolePermissionUncheckedCreateWithoutPermissionInput[]
-    connectOrCreate?: RolePermissionCreateOrConnectWithoutPermissionInput | RolePermissionCreateOrConnectWithoutPermissionInput[]
-    upsert?: RolePermissionUpsertWithWhereUniqueWithoutPermissionInput | RolePermissionUpsertWithWhereUniqueWithoutPermissionInput[]
-    createMany?: RolePermissionCreateManyPermissionInputEnvelope
-    set?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    disconnect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    delete?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    connect?: RolePermissionWhereUniqueInput | RolePermissionWhereUniqueInput[]
-    update?: RolePermissionUpdateWithWhereUniqueWithoutPermissionInput | RolePermissionUpdateWithWhereUniqueWithoutPermissionInput[]
-    updateMany?: RolePermissionUpdateManyWithWhereWithoutPermissionInput | RolePermissionUpdateManyWithWhereWithoutPermissionInput[]
-    deleteMany?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-  }
-
-  export type PermissionCreateNestedOneWithoutRolesInput = {
-    create?: XOR<PermissionCreateWithoutRolesInput, PermissionUncheckedCreateWithoutRolesInput>
-    connectOrCreate?: PermissionCreateOrConnectWithoutRolesInput
-    connect?: PermissionWhereUniqueInput
-  }
-
-  export type TenantCreateNestedOneWithoutRolePermissionsInput = {
-    create?: XOR<TenantCreateWithoutRolePermissionsInput, TenantUncheckedCreateWithoutRolePermissionsInput>
-    connectOrCreate?: TenantCreateOrConnectWithoutRolePermissionsInput
-    connect?: TenantWhereUniqueInput
-  }
-
-  export type PermissionUpdateOneRequiredWithoutRolesNestedInput = {
-    create?: XOR<PermissionCreateWithoutRolesInput, PermissionUncheckedCreateWithoutRolesInput>
-    connectOrCreate?: PermissionCreateOrConnectWithoutRolesInput
-    upsert?: PermissionUpsertWithoutRolesInput
-    connect?: PermissionWhereUniqueInput
-    update?: XOR<XOR<PermissionUpdateToOneWithWhereWithoutRolesInput, PermissionUpdateWithoutRolesInput>, PermissionUncheckedUpdateWithoutRolesInput>
-  }
-
-  export type TenantUpdateOneWithoutRolePermissionsNestedInput = {
-    create?: XOR<TenantCreateWithoutRolePermissionsInput, TenantUncheckedCreateWithoutRolePermissionsInput>
-    connectOrCreate?: TenantCreateOrConnectWithoutRolePermissionsInput
-    upsert?: TenantUpsertWithoutRolePermissionsInput
-    disconnect?: TenantWhereInput | boolean
-    delete?: TenantWhereInput | boolean
-    connect?: TenantWhereUniqueInput
-    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutRolePermissionsInput, TenantUpdateWithoutRolePermissionsInput>, TenantUncheckedUpdateWithoutRolePermissionsInput>
-  }
-
-  export type TenantCreateNestedOneWithoutTenantRolesInput = {
-    create?: XOR<TenantCreateWithoutTenantRolesInput, TenantUncheckedCreateWithoutTenantRolesInput>
-    connectOrCreate?: TenantCreateOrConnectWithoutTenantRolesInput
-    connect?: TenantWhereUniqueInput
-  }
-
-  export type TenantUpdateOneRequiredWithoutTenantRolesNestedInput = {
-    create?: XOR<TenantCreateWithoutTenantRolesInput, TenantUncheckedCreateWithoutTenantRolesInput>
-    connectOrCreate?: TenantCreateOrConnectWithoutTenantRolesInput
-    upsert?: TenantUpsertWithoutTenantRolesInput
-    connect?: TenantWhereUniqueInput
-    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutTenantRolesInput, TenantUpdateWithoutTenantRolesInput>, TenantUncheckedUpdateWithoutTenantRolesInput>
-  }
-
   export type TenantCreateNestedOneWithoutApiTokensInput = {
     create?: XOR<TenantCreateWithoutApiTokensInput, TenantUncheckedCreateWithoutApiTokensInput>
     connectOrCreate?: TenantCreateOrConnectWithoutApiTokensInput
@@ -67447,6 +61905,17 @@ export namespace Prisma {
     not?: NestedStringNullableFilter<$PrismaModel> | string | null
   }
 
+  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
+  }
+
   export type NestedDateTimeFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
@@ -67514,31 +61983,6 @@ export namespace Prisma {
     not?: NestedIntNullableFilter<$PrismaModel> | number | null
   }
 
-  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
-    _count?: NestedIntFilter<$PrismaModel>
-    _min?: NestedDateTimeFilter<$PrismaModel>
-    _max?: NestedDateTimeFilter<$PrismaModel>
-  }
-
-  export type NestedDateTimeNullableFilter<$PrismaModel = never> = {
-    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
-    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
-    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
-    not?: NestedDateTimeNullableFilter<$PrismaModel> | Date | string | null
-  }
-
   export type NestedDateTimeNullableWithAggregatesFilter<$PrismaModel = never> = {
     equals?: Date | string | DateTimeFieldRefInput<$PrismaModel> | null
     in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel> | null
@@ -67551,6 +61995,20 @@ export namespace Prisma {
     _count?: NestedIntNullableFilter<$PrismaModel>
     _min?: NestedDateTimeNullableFilter<$PrismaModel>
     _max?: NestedDateTimeNullableFilter<$PrismaModel>
+  }
+
+  export type NestedDateTimeWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    in?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    notIn?: Date[] | string[] | ListDateTimeFieldRefInput<$PrismaModel>
+    lt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    lte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gt?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    gte?: Date | string | DateTimeFieldRefInput<$PrismaModel>
+    not?: NestedDateTimeWithAggregatesFilter<$PrismaModel> | Date | string
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedDateTimeFilter<$PrismaModel>
+    _max?: NestedDateTimeFilter<$PrismaModel>
   }
   export type NestedJsonNullableFilter<$PrismaModel = never> =
     | PatchUndefined<
@@ -68347,6 +62805,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -68361,6 +62820,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -68465,30 +62925,6 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
-  export type RolePermissionCreateWithoutTenantInput = {
-    id?: string
-    roleId: string
-    granted?: boolean
-    permission: PermissionCreateNestedOneWithoutRolesInput
-  }
-
-  export type RolePermissionUncheckedCreateWithoutTenantInput = {
-    id?: string
-    roleId: string
-    permissionId: string
-    granted?: boolean
-  }
-
-  export type RolePermissionCreateOrConnectWithoutTenantInput = {
-    where: RolePermissionWhereUniqueInput
-    create: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput>
-  }
-
-  export type RolePermissionCreateManyTenantInputEnvelope = {
-    data: RolePermissionCreateManyTenantInput | RolePermissionCreateManyTenantInput[]
-    skipDuplicates?: boolean
-  }
-
   export type SettingCreateWithoutTenantInput = {
     id?: string
     key: string
@@ -68523,6 +62959,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     fields?: SingleTypeFieldCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldCreateNestedManyWithoutSingleTypeInput
     tenants?: TenantSingleTypeAssignmentCreateNestedManyWithoutSingleTypeInput
@@ -68536,6 +62973,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     fields?: SingleTypeFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     tenants?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutSingleTypeInput
@@ -68690,34 +63128,6 @@ export namespace Prisma {
 
   export type TenantMemberCreateManyTenantInputEnvelope = {
     data: TenantMemberCreateManyTenantInput | TenantMemberCreateManyTenantInput[]
-    skipDuplicates?: boolean
-  }
-
-  export type TenantRoleCreateWithoutTenantInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type TenantRoleUncheckedCreateWithoutTenantInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
-  }
-
-  export type TenantRoleCreateOrConnectWithoutTenantInput = {
-    where: TenantRoleWhereUniqueInput
-    create: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput>
-  }
-
-  export type TenantRoleCreateManyTenantInputEnvelope = {
-    data: TenantRoleCreateManyTenantInput | TenantRoleCreateManyTenantInput[]
     skipDuplicates?: boolean
   }
 
@@ -69073,6 +63483,7 @@ export namespace Prisma {
     slug?: StringFilter<"ContentType"> | string
     description?: StringNullableFilter<"ContentType"> | string | null
     isPublished?: BoolFilter<"ContentType"> | boolean
+    showInCms?: BoolFilter<"ContentType"> | boolean
     createdAt?: DateTimeFilter<"ContentType"> | Date | string
     updatedAt?: DateTimeFilter<"ContentType"> | Date | string
     tenantId?: StringNullableFilter<"ContentType"> | string | null
@@ -69150,33 +63561,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"MediaFolder"> | Date | string
   }
 
-  export type RolePermissionUpsertWithWhereUniqueWithoutTenantInput = {
-    where: RolePermissionWhereUniqueInput
-    update: XOR<RolePermissionUpdateWithoutTenantInput, RolePermissionUncheckedUpdateWithoutTenantInput>
-    create: XOR<RolePermissionCreateWithoutTenantInput, RolePermissionUncheckedCreateWithoutTenantInput>
-  }
-
-  export type RolePermissionUpdateWithWhereUniqueWithoutTenantInput = {
-    where: RolePermissionWhereUniqueInput
-    data: XOR<RolePermissionUpdateWithoutTenantInput, RolePermissionUncheckedUpdateWithoutTenantInput>
-  }
-
-  export type RolePermissionUpdateManyWithWhereWithoutTenantInput = {
-    where: RolePermissionScalarWhereInput
-    data: XOR<RolePermissionUpdateManyMutationInput, RolePermissionUncheckedUpdateManyWithoutTenantInput>
-  }
-
-  export type RolePermissionScalarWhereInput = {
-    AND?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-    OR?: RolePermissionScalarWhereInput[]
-    NOT?: RolePermissionScalarWhereInput | RolePermissionScalarWhereInput[]
-    id?: StringFilter<"RolePermission"> | string
-    roleId?: StringFilter<"RolePermission"> | string
-    permissionId?: StringFilter<"RolePermission"> | string
-    granted?: BoolFilter<"RolePermission"> | boolean
-    tenantId?: StringNullableFilter<"RolePermission"> | string | null
-  }
-
   export type SettingUpsertWithWhereUniqueWithoutTenantInput = {
     where: SettingWhereUniqueInput
     update: XOR<SettingUpdateWithoutTenantInput, SettingUncheckedUpdateWithoutTenantInput>
@@ -69232,6 +63616,7 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"SingleType"> | Date | string
     updatedAt?: DateTimeFilter<"SingleType"> | Date | string
     isPublished?: BoolFilter<"SingleType"> | boolean
+    showInCms?: BoolFilter<"SingleType"> | boolean
     tenantId?: StringNullableFilter<"SingleType"> | string | null
   }
 
@@ -69347,35 +63732,6 @@ export namespace Prisma {
   export type TenantMemberUpdateManyWithWhereWithoutTenantInput = {
     where: TenantMemberScalarWhereInput
     data: XOR<TenantMemberUpdateManyMutationInput, TenantMemberUncheckedUpdateManyWithoutTenantInput>
-  }
-
-  export type TenantRoleUpsertWithWhereUniqueWithoutTenantInput = {
-    where: TenantRoleWhereUniqueInput
-    update: XOR<TenantRoleUpdateWithoutTenantInput, TenantRoleUncheckedUpdateWithoutTenantInput>
-    create: XOR<TenantRoleCreateWithoutTenantInput, TenantRoleUncheckedCreateWithoutTenantInput>
-  }
-
-  export type TenantRoleUpdateWithWhereUniqueWithoutTenantInput = {
-    where: TenantRoleWhereUniqueInput
-    data: XOR<TenantRoleUpdateWithoutTenantInput, TenantRoleUncheckedUpdateWithoutTenantInput>
-  }
-
-  export type TenantRoleUpdateManyWithWhereWithoutTenantInput = {
-    where: TenantRoleScalarWhereInput
-    data: XOR<TenantRoleUpdateManyMutationInput, TenantRoleUncheckedUpdateManyWithoutTenantInput>
-  }
-
-  export type TenantRoleScalarWhereInput = {
-    AND?: TenantRoleScalarWhereInput | TenantRoleScalarWhereInput[]
-    OR?: TenantRoleScalarWhereInput[]
-    NOT?: TenantRoleScalarWhereInput | TenantRoleScalarWhereInput[]
-    id?: StringFilter<"TenantRole"> | string
-    tenantId?: StringFilter<"TenantRole"> | string
-    name?: StringFilter<"TenantRole"> | string
-    slug?: StringFilter<"TenantRole"> | string
-    description?: StringNullableFilter<"TenantRole"> | string | null
-    createdAt?: DateTimeFilter<"TenantRole"> | Date | string
-    updatedAt?: DateTimeFilter<"TenantRole"> | Date | string
   }
 
   export type TenantSingleTypeAssignmentUpsertWithWhereUniqueWithoutTenantInput = {
@@ -69534,14 +63890,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -69579,14 +63933,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -69681,14 +64033,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -69726,14 +64076,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -69907,7 +64255,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -69915,7 +64262,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -69952,7 +64298,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -69960,7 +64305,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -70089,7 +64433,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -70097,7 +64440,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -70134,7 +64476,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -70142,7 +64483,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -70171,6 +64511,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -70185,6 +64526,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     tenantId?: string | null
@@ -70206,6 +64548,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     fields?: SingleTypeFieldCreateNestedManyWithoutSingleTypeInput
     tenant?: TenantCreateNestedOneWithoutSingleTypesInput
     tenants?: TenantSingleTypeAssignmentCreateNestedManyWithoutSingleTypeInput
@@ -70219,6 +64562,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: string | null
     fields?: SingleTypeFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     tenants?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutSingleTypeInput
@@ -70277,6 +64621,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70291,6 +64636,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70318,6 +64664,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     fields?: SingleTypeFieldUpdateManyWithoutSingleTypeNestedInput
     tenant?: TenantUpdateOneWithoutSingleTypesNestedInput
     tenants?: TenantSingleTypeAssignmentUpdateManyWithoutSingleTypeNestedInput
@@ -70331,6 +64678,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     fields?: SingleTypeFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     tenants?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutSingleTypeNestedInput
@@ -70404,7 +64752,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -70412,7 +64759,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
@@ -70449,7 +64795,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -70457,7 +64802,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
@@ -70510,7 +64854,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -70518,7 +64861,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
@@ -70555,7 +64897,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -70563,7 +64904,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
@@ -70575,6 +64915,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -70589,6 +64930,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     tenantId?: string | null
@@ -70633,14 +64975,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -70678,14 +65018,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -70714,6 +65052,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70728,6 +65067,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -70778,14 +65118,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -70823,14 +65161,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -70843,6 +65179,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -70857,6 +65194,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     tenantId?: string | null
@@ -70900,7 +65238,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -70908,7 +65245,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -70945,7 +65281,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -70953,7 +65288,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -71050,6 +65384,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -71064,6 +65399,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
@@ -71113,7 +65449,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -71121,7 +65456,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -71158,7 +65492,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -71166,7 +65499,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -71532,14 +65864,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -71577,14 +65907,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -71720,14 +66048,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -71765,14 +66091,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -71803,6 +66127,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     schemaFields?: SchemaFieldCreateNestedManyWithoutSingleTypeInput
     tenant?: TenantCreateNestedOneWithoutSingleTypesInput
     tenants?: TenantSingleTypeAssignmentCreateNestedManyWithoutSingleTypeInput
@@ -71816,6 +66141,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: string | null
     schemaFields?: SchemaFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     tenants?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutSingleTypeInput
@@ -71845,6 +66171,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     schemaFields?: SchemaFieldUpdateManyWithoutSingleTypeNestedInput
     tenant?: TenantUpdateOneWithoutSingleTypesNestedInput
     tenants?: TenantSingleTypeAssignmentUpdateManyWithoutSingleTypeNestedInput
@@ -71858,6 +66185,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     schemaFields?: SchemaFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     tenants?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutSingleTypeNestedInput
@@ -71871,6 +66199,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     fields?: SingleTypeFieldCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldCreateNestedManyWithoutSingleTypeInput
     tenant?: TenantCreateNestedOneWithoutSingleTypesInput
@@ -71884,6 +66213,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
     tenantId?: string | null
     fields?: SingleTypeFieldUncheckedCreateNestedManyWithoutSingleTypeInput
     schemaFields?: SchemaFieldUncheckedCreateNestedManyWithoutSingleTypeInput
@@ -71925,7 +66255,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -71933,7 +66262,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
@@ -71970,7 +66298,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -71978,7 +66305,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
@@ -72008,6 +66334,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     fields?: SingleTypeFieldUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUpdateManyWithoutSingleTypeNestedInput
     tenant?: TenantUpdateOneWithoutSingleTypesNestedInput
@@ -72021,6 +66348,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     tenantId?: NullableStringFieldUpdateOperationsInput | string | null
     fields?: SingleTypeFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
@@ -72068,7 +66396,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -72076,7 +66403,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
@@ -72113,7 +66439,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -72121,7 +66446,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
@@ -72237,7 +66561,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -72245,7 +66568,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -72282,7 +66604,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -72290,7 +66611,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -72417,7 +66737,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -72425,7 +66744,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -72462,7 +66780,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -72470,7 +66787,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -72623,14 +66939,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -72668,14 +66982,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -72766,14 +67078,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -72811,14 +67121,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -72855,7 +67163,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -72863,7 +67170,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -72900,7 +67206,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -72908,7 +67213,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -72961,7 +67265,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -72969,7 +67272,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -73006,7 +67308,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -73014,7 +67315,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -73124,14 +67424,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -73169,14 +67467,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -73337,14 +67633,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -73382,14 +67676,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -73633,7 +67925,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -73641,7 +67932,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -73678,7 +67968,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -73686,7 +67975,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -73739,7 +68027,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -73747,7 +68034,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -73784,7 +68070,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -73792,7 +68077,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -73830,14 +68114,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -73875,14 +68157,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -73936,14 +68216,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -73981,14 +68259,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -74025,7 +68301,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -74033,7 +68308,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -74070,7 +68344,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -74078,7 +68351,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -74131,7 +68403,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -74139,7 +68410,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -74176,7 +68446,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -74184,7 +68453,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -74334,7 +68602,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -74342,7 +68609,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -74379,7 +68645,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -74387,7 +68652,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -74505,7 +68769,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -74513,7 +68776,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -74550,7 +68812,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -74558,7 +68819,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -74622,7 +68882,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -74630,7 +68889,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -74667,7 +68925,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -74675,7 +68932,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -74761,7 +69017,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -74769,7 +69024,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -74806,492 +69060,6 @@ export namespace Prisma {
     contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
-    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
-    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
-    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
-    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
-    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
-    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
-    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
-  }
-
-  export type RolePermissionCreateWithoutPermissionInput = {
-    id?: string
-    roleId: string
-    granted?: boolean
-    tenant?: TenantCreateNestedOneWithoutRolePermissionsInput
-  }
-
-  export type RolePermissionUncheckedCreateWithoutPermissionInput = {
-    id?: string
-    roleId: string
-    granted?: boolean
-    tenantId?: string | null
-  }
-
-  export type RolePermissionCreateOrConnectWithoutPermissionInput = {
-    where: RolePermissionWhereUniqueInput
-    create: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput>
-  }
-
-  export type RolePermissionCreateManyPermissionInputEnvelope = {
-    data: RolePermissionCreateManyPermissionInput | RolePermissionCreateManyPermissionInput[]
-    skipDuplicates?: boolean
-  }
-
-  export type RolePermissionUpsertWithWhereUniqueWithoutPermissionInput = {
-    where: RolePermissionWhereUniqueInput
-    update: XOR<RolePermissionUpdateWithoutPermissionInput, RolePermissionUncheckedUpdateWithoutPermissionInput>
-    create: XOR<RolePermissionCreateWithoutPermissionInput, RolePermissionUncheckedCreateWithoutPermissionInput>
-  }
-
-  export type RolePermissionUpdateWithWhereUniqueWithoutPermissionInput = {
-    where: RolePermissionWhereUniqueInput
-    data: XOR<RolePermissionUpdateWithoutPermissionInput, RolePermissionUncheckedUpdateWithoutPermissionInput>
-  }
-
-  export type RolePermissionUpdateManyWithWhereWithoutPermissionInput = {
-    where: RolePermissionScalarWhereInput
-    data: XOR<RolePermissionUpdateManyMutationInput, RolePermissionUncheckedUpdateManyWithoutPermissionInput>
-  }
-
-  export type PermissionCreateWithoutRolesInput = {
-    id?: string
-    name: string
-    displayName: string
-    description?: string | null
-    category: string
-    createdAt?: Date | string
-  }
-
-  export type PermissionUncheckedCreateWithoutRolesInput = {
-    id?: string
-    name: string
-    displayName: string
-    description?: string | null
-    category: string
-    createdAt?: Date | string
-  }
-
-  export type PermissionCreateOrConnectWithoutRolesInput = {
-    where: PermissionWhereUniqueInput
-    create: XOR<PermissionCreateWithoutRolesInput, PermissionUncheckedCreateWithoutRolesInput>
-  }
-
-  export type TenantCreateWithoutRolePermissionsInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    logo?: string | null
-    plan?: string
-    status?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    brandLogo?: string | null
-    brandName?: string | null
-    customDomain?: string | null
-    customDomainStatus?: string | null
-    customDomainVerifiedAt?: Date | string | null
-    customEmailSender?: string | null
-    databaseUrl?: string | null
-    licenseKey?: string | null
-    faviconUrl?: string | null
-    primaryColor?: string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: number
-    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
-    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
-    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
-    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
-    components?: ComponentCreateNestedManyWithoutTenantInput
-    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
-    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
-    media?: MediaCreateNestedManyWithoutTenantInput
-    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    settings?: SettingCreateNestedManyWithoutTenantInput
-    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
-    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
-    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
-    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
-    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
-    members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
-    webhooks?: WebhookCreateNestedManyWithoutTenantInput
-    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
-    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
-  }
-
-  export type TenantUncheckedCreateWithoutRolePermissionsInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    logo?: string | null
-    plan?: string
-    status?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    brandLogo?: string | null
-    brandName?: string | null
-    customDomain?: string | null
-    customDomainStatus?: string | null
-    customDomainVerifiedAt?: Date | string | null
-    customEmailSender?: string | null
-    databaseUrl?: string | null
-    licenseKey?: string | null
-    faviconUrl?: string | null
-    primaryColor?: string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: number
-    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
-    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
-    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
-    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
-    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
-    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
-    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
-    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
-    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
-    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
-    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
-    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
-    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
-    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
-    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
-  }
-
-  export type TenantCreateOrConnectWithoutRolePermissionsInput = {
-    where: TenantWhereUniqueInput
-    create: XOR<TenantCreateWithoutRolePermissionsInput, TenantUncheckedCreateWithoutRolePermissionsInput>
-  }
-
-  export type PermissionUpsertWithoutRolesInput = {
-    update: XOR<PermissionUpdateWithoutRolesInput, PermissionUncheckedUpdateWithoutRolesInput>
-    create: XOR<PermissionCreateWithoutRolesInput, PermissionUncheckedCreateWithoutRolesInput>
-    where?: PermissionWhereInput
-  }
-
-  export type PermissionUpdateToOneWithWhereWithoutRolesInput = {
-    where?: PermissionWhereInput
-    data: XOR<PermissionUpdateWithoutRolesInput, PermissionUncheckedUpdateWithoutRolesInput>
-  }
-
-  export type PermissionUpdateWithoutRolesInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type PermissionUncheckedUpdateWithoutRolesInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    displayName?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    category?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type TenantUpsertWithoutRolePermissionsInput = {
-    update: XOR<TenantUpdateWithoutRolePermissionsInput, TenantUncheckedUpdateWithoutRolePermissionsInput>
-    create: XOR<TenantCreateWithoutRolePermissionsInput, TenantUncheckedCreateWithoutRolePermissionsInput>
-    where?: TenantWhereInput
-  }
-
-  export type TenantUpdateToOneWithWhereWithoutRolePermissionsInput = {
-    where?: TenantWhereInput
-    data: XOR<TenantUpdateWithoutRolePermissionsInput, TenantUncheckedUpdateWithoutRolePermissionsInput>
-  }
-
-  export type TenantUpdateWithoutRolePermissionsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    logo?: NullableStringFieldUpdateOperationsInput | string | null
-    plan?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
-    brandName?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
-    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
-    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: IntFieldUpdateOperationsInput | number
-    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
-    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
-    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
-    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
-    components?: ComponentUpdateManyWithoutTenantNestedInput
-    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
-    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
-    media?: MediaUpdateManyWithoutTenantNestedInput
-    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    settings?: SettingUpdateManyWithoutTenantNestedInput
-    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
-    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
-    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
-    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
-    members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
-    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
-    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
-    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
-  }
-
-  export type TenantUncheckedUpdateWithoutRolePermissionsInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    logo?: NullableStringFieldUpdateOperationsInput | string | null
-    plan?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
-    brandName?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
-    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
-    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: IntFieldUpdateOperationsInput | number
-    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
-    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
-    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
-    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
-    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
-    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
-    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
-    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
-    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
-    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
-    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
-    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
-    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
-    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
-    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
-    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
-  }
-
-  export type TenantCreateWithoutTenantRolesInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    logo?: string | null
-    plan?: string
-    status?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    brandLogo?: string | null
-    brandName?: string | null
-    customDomain?: string | null
-    customDomainStatus?: string | null
-    customDomainVerifiedAt?: Date | string | null
-    customEmailSender?: string | null
-    databaseUrl?: string | null
-    licenseKey?: string | null
-    faviconUrl?: string | null
-    primaryColor?: string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: number
-    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
-    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
-    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
-    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
-    components?: ComponentCreateNestedManyWithoutTenantInput
-    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
-    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
-    media?: MediaCreateNestedManyWithoutTenantInput
-    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
-    settings?: SettingCreateNestedManyWithoutTenantInput
-    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
-    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
-    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
-    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
-    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
-    members?: TenantMemberCreateNestedManyWithoutTenantInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
-    webhooks?: WebhookCreateNestedManyWithoutTenantInput
-    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
-    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
-  }
-
-  export type TenantUncheckedCreateWithoutTenantRolesInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    logo?: string | null
-    plan?: string
-    status?: string
-    createdAt?: Date | string
-    updatedAt?: Date | string
-    brandLogo?: string | null
-    brandName?: string | null
-    customDomain?: string | null
-    customDomainStatus?: string | null
-    customDomainVerifiedAt?: Date | string | null
-    customEmailSender?: string | null
-    databaseUrl?: string | null
-    licenseKey?: string | null
-    faviconUrl?: string | null
-    primaryColor?: string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: number
-    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
-    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
-    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
-    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
-    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
-    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
-    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
-    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
-    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
-    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
-    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
-    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
-    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
-    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
-    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
-    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
-    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
-  }
-
-  export type TenantCreateOrConnectWithoutTenantRolesInput = {
-    where: TenantWhereUniqueInput
-    create: XOR<TenantCreateWithoutTenantRolesInput, TenantUncheckedCreateWithoutTenantRolesInput>
-  }
-
-  export type TenantUpsertWithoutTenantRolesInput = {
-    update: XOR<TenantUpdateWithoutTenantRolesInput, TenantUncheckedUpdateWithoutTenantRolesInput>
-    create: XOR<TenantCreateWithoutTenantRolesInput, TenantUncheckedCreateWithoutTenantRolesInput>
-    where?: TenantWhereInput
-  }
-
-  export type TenantUpdateToOneWithWhereWithoutTenantRolesInput = {
-    where?: TenantWhereInput
-    data: XOR<TenantUpdateWithoutTenantRolesInput, TenantUncheckedUpdateWithoutTenantRolesInput>
-  }
-
-  export type TenantUpdateWithoutTenantRolesInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    logo?: NullableStringFieldUpdateOperationsInput | string | null
-    plan?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
-    brandName?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
-    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
-    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: IntFieldUpdateOperationsInput | number
-    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
-    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
-    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
-    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
-    components?: ComponentUpdateManyWithoutTenantNestedInput
-    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
-    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
-    media?: MediaUpdateManyWithoutTenantNestedInput
-    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
-    settings?: SettingUpdateManyWithoutTenantNestedInput
-    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
-    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
-    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
-    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
-    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
-    members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
-    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
-    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
-    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
-  }
-
-  export type TenantUncheckedUpdateWithoutTenantRolesInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    logo?: NullableStringFieldUpdateOperationsInput | string | null
-    plan?: StringFieldUpdateOperationsInput | string
-    status?: StringFieldUpdateOperationsInput | string
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
-    brandName?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
-    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
-    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
-    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
-    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
-    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
-    storageConfig?: NullableJsonNullValueInput | InputJsonValue
-    aiTokensUsed?: IntFieldUpdateOperationsInput | number
-    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
-    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
-    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
-    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
-    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
-    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
-    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
-    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
-    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -75335,7 +69103,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -75343,7 +69110,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -75380,7 +69146,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -75388,7 +69153,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -75441,7 +69205,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -75449,7 +69212,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -75486,7 +69248,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -75494,7 +69255,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -75602,7 +69362,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -75610,7 +69369,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
@@ -75647,7 +69405,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -75655,7 +69412,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
     customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
@@ -75773,7 +69529,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -75781,7 +69536,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
@@ -75818,7 +69572,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -75826,7 +69579,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
     customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
@@ -76031,14 +69783,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -76076,14 +69826,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
     componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -76137,14 +69885,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -76182,14 +69928,12 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
     componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -76227,7 +69971,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
     media?: MediaCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionCreateNestedManyWithoutTenantInput
     settings?: SettingCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
@@ -76235,7 +69978,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleCreateNestedManyWithoutTenantInput
     members?: TenantMemberCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
     webhooks?: WebhookCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
@@ -76272,7 +70014,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
     media?: MediaUncheckedCreateNestedManyWithoutTenantInput
     mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
-    rolePermissions?: RolePermissionUncheckedCreateNestedManyWithoutTenantInput
     settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
     singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
@@ -76280,7 +70021,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
     members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
-    tenantRoles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
     webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
@@ -76333,7 +70073,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
     media?: MediaUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUpdateManyWithoutTenantNestedInput
     settings?: SettingUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
@@ -76341,7 +70080,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
@@ -76378,7 +70116,6 @@ export namespace Prisma {
     contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
     media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
     mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
-    rolePermissions?: RolePermissionUncheckedUpdateManyWithoutTenantNestedInput
     settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
     singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
@@ -76386,7 +70123,6 @@ export namespace Prisma {
     contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
     members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
-    tenantRoles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
     webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
@@ -76643,6 +70379,7 @@ export namespace Prisma {
     slug: string
     description?: string | null
     isPublished?: boolean
+    showInCms?: boolean
     createdAt?: Date | string
     updatedAt?: Date | string
     docxTemplateUrl?: string | null
@@ -76679,13 +70416,6 @@ export namespace Prisma {
     updatedAt?: Date | string
   }
 
-  export type RolePermissionCreateManyTenantInput = {
-    id?: string
-    roleId: string
-    permissionId: string
-    granted?: boolean
-  }
-
   export type SettingCreateManyTenantInput = {
     id?: string
     key: string
@@ -76702,6 +70432,7 @@ export namespace Prisma {
     createdAt?: Date | string
     updatedAt?: Date | string
     isPublished?: boolean
+    showInCms?: boolean
   }
 
   export type SubscriptionCreateManyTenantInput = {
@@ -76746,15 +70477,6 @@ export namespace Prisma {
     role?: string
     joinedAt?: Date | string
     customPermissions?: NullableJsonNullValueInput | InputJsonValue
-  }
-
-  export type TenantRoleCreateManyTenantInput = {
-    id?: string
-    name: string
-    slug: string
-    description?: string | null
-    createdAt?: Date | string
-    updatedAt?: Date | string
   }
 
   export type TenantSingleTypeAssignmentCreateManyTenantInput = {
@@ -77037,6 +70759,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -77051,6 +70774,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -77065,6 +70789,7 @@ export namespace Prisma {
     slug?: StringFieldUpdateOperationsInput | string
     description?: NullableStringFieldUpdateOperationsInput | string | null
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     docxTemplateUrl?: NullableStringFieldUpdateOperationsInput | string | null
@@ -77167,27 +70892,6 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
-  export type RolePermissionUpdateWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    permission?: PermissionUpdateOneRequiredWithoutRolesNestedInput
-  }
-
-  export type RolePermissionUncheckedUpdateWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    permissionId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-  }
-
-  export type RolePermissionUncheckedUpdateManyWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    permissionId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-  }
-
   export type SettingUpdateWithoutTenantInput = {
     id?: StringFieldUpdateOperationsInput | string
     key?: StringFieldUpdateOperationsInput | string
@@ -77220,6 +70924,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     fields?: SingleTypeFieldUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUpdateManyWithoutSingleTypeNestedInput
     tenants?: TenantSingleTypeAssignmentUpdateManyWithoutSingleTypeNestedInput
@@ -77233,6 +70938,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
     fields?: SingleTypeFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     schemaFields?: SchemaFieldUncheckedUpdateManyWithoutSingleTypeNestedInput
     tenants?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutSingleTypeNestedInput
@@ -77246,6 +70952,7 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     isPublished?: BoolFieldUpdateOperationsInput | boolean
+    showInCms?: BoolFieldUpdateOperationsInput | boolean
   }
 
   export type SubscriptionUpdateWithoutTenantInput = {
@@ -77382,33 +71089,6 @@ export namespace Prisma {
     role?: StringFieldUpdateOperationsInput | string
     joinedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     customPermissions?: NullableJsonNullValueInput | InputJsonValue
-  }
-
-  export type TenantRoleUpdateWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type TenantRoleUncheckedUpdateWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type TenantRoleUncheckedUpdateManyWithoutTenantInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    name?: StringFieldUpdateOperationsInput | string
-    slug?: StringFieldUpdateOperationsInput | string
-    description?: NullableStringFieldUpdateOperationsInput | string | null
-    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
-    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type TenantSingleTypeAssignmentUpdateWithoutTenantInput = {
@@ -78352,34 +72032,6 @@ export namespace Prisma {
     path?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
-  }
-
-  export type RolePermissionCreateManyPermissionInput = {
-    id?: string
-    roleId: string
-    granted?: boolean
-    tenantId?: string | null
-  }
-
-  export type RolePermissionUpdateWithoutPermissionInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    tenant?: TenantUpdateOneWithoutRolePermissionsNestedInput
-  }
-
-  export type RolePermissionUncheckedUpdateWithoutPermissionInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
-  }
-
-  export type RolePermissionUncheckedUpdateManyWithoutPermissionInput = {
-    id?: StringFieldUpdateOperationsInput | string
-    roleId?: StringFieldUpdateOperationsInput | string
-    granted?: BoolFieldUpdateOperationsInput | boolean
-    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
   }
 
   export type WebhookDeadLetterCreateManyWebhookInput = {

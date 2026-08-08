@@ -217,6 +217,7 @@ export default function TenantAuditLogsPage() {
                       <SelectItem value="all">All Activities</SelectItem>
                       <SelectItem value="content.created">Entry Creation</SelectItem>
                       <SelectItem value="content.updated">Entry Updates</SelectItem>
+                      <SelectItem value="content.deleted">Entry Deletions</SelectItem>
                       <SelectItem value="content.published">Entry Publications</SelectItem>
                       <SelectItem value="media.uploaded">Media Assets</SelectItem>
                       <SelectItem value="webhook.created">Webhook Changes</SelectItem>

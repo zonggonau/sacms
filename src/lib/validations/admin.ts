@@ -18,6 +18,7 @@ export const createContentTypeSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/),
   description: z.string().max(500).optional(),
+  showInCms: z.boolean().optional().default(true),
   docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
 })
@@ -26,6 +27,7 @@ export const updateContentTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/).optional(),
   description: z.string().max(500).optional(),
+  showInCms: z.boolean().optional(),
   isPublished: z.boolean().optional(),
   docxTemplateUrl: z.string().url().optional().nullable(),
   fields: z.array(fieldDefinitionSchema).optional(),
@@ -53,6 +55,7 @@ export const createSingleTypeSchema = z.object({
   name: z.string().min(1).max(100),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/),
   description: z.string().max(500).optional(),
+  showInCms: z.boolean().optional().default(true),
   fields: z.array(fieldDefinitionSchema).optional(),
 })
 
@@ -60,6 +63,7 @@ export const updateSingleTypeSchema = z.object({
   name: z.string().min(1).max(100).optional(),
   slug: z.string().min(1).max(100).regex(/^[a-z0-9][a-z0-9-]*$/).optional(),
   description: z.string().max(500).optional(),
+  showInCms: z.boolean().optional(),
   fields: z.array(fieldDefinitionSchema).optional(),
 }).passthrough()
 

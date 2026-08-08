@@ -51,16 +51,23 @@ export async function GET(
 
     const fullUrl = request.url
 
-    // Validate API token
+    // Validate API token (supports Authorization: Bearer <key> OR x-api-key: <key>)
     const authHeader = request.headers.get("authorization")
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const xApiKey = request.headers.get("x-api-key") || request.headers.get("X-API-Key")
+    
+    let token = ""
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.replace("Bearer ", "").trim()
+    } else if (xApiKey) {
+      token = xApiKey.trim()
+    }
+
+    if (!token) {
       return logResponse(NextResponse.json(
-        { error: "Missing or invalid authorization header" },
+        { error: "Missing or invalid authorization or x-api-key header" },
         { status: 401 }
       ))
     }
-
-    const token = authHeader.replace("Bearer ", "")
 
     // First try to find in ApiKey (plain text)
     let tenantId: string | null = null

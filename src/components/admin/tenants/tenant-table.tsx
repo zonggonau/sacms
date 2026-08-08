@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Ban, CheckCircle, Database, Edit, FileText, ImageIcon, Key, MoreVertical, Shield, Sliders, Trash2, Users } from "lucide-react"
+import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
 
 interface TenantTableProps {
   tenants: Tenant[]
@@ -64,7 +65,9 @@ export function TenantTable({ tenants, loading, onEdit, onDelete, onOverride, on
           </TableRow>
         </TableHeader>
         <TableBody>
-          {tenants.map((tenant) => (
+          {tenants.map((tenant) => {
+            const isGlobal = tenant.slug === SYSTEM_TENANT_SLUG || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global"
+            return (
             <TableRow key={tenant.id}>
               <TableCell>
                 <div className="flex items-center gap-3">
@@ -148,14 +151,19 @@ export function TenantTable({ tenants, loading, onEdit, onDelete, onOverride, on
                       </DropdownMenuItem>
                     )}
                     
-                    <DropdownMenuItem onClick={() => onDelete(tenant)} className="text-red-600 focus:text-red-600 focus:bg-red-50">
+                    <DropdownMenuItem 
+                      onClick={() => !isGlobal && onDelete(tenant)} 
+                      disabled={isGlobal}
+                      title={isGlobal ? "Global tenant cannot be deleted" : undefined}
+                      className="text-red-600 focus:text-red-600 focus:bg-red-50 data-[disabled]:opacity-50 data-[disabled]:pointer-events-none"
+                    >
                       <Trash2 className="h-4 w-4 mr-2" /> Delete
                     </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </TableCell>
             </TableRow>
-          ))}
+          )})}
         </TableBody>
       </Table>
     </div>

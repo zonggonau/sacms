@@ -47,12 +47,59 @@ import {
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { createMemberAction, updateMemberAction, deleteMemberAction } from "@/actions/users"
+import { Checkbox } from "@/components/ui/checkbox"
 import Image from "next/image"
 import Link from "next/link"
+
+export const WORKFLOW_PERMISSION_OPTIONS = [
+  { key: "workflow.draft_to_review", label: "Submit for Review (DRAFT → IN_REVIEW)", desc: "Allows sending drafts for editorial review" },
+  { key: "workflow.draft_to_publish", label: "Direct Publish (DRAFT → PUBLISHED)", desc: "Allows publishing drafts immediately" },
+  { key: "workflow.draft_to_schedule", label: "Direct Schedule (DRAFT → SCHEDULED)", desc: "Allows scheduling drafts for publication" },
+  { key: "workflow.review_to_approve", label: "Approve Content (IN_REVIEW → APPROVED)", desc: "Allows approving submitted drafts" },
+  { key: "workflow.review_to_reject", label: "Reject Content (IN_REVIEW → REJECTED)", desc: "Allows requesting revisions on submitted drafts" },
+  { key: "workflow.approve_to_publish", label: "Publish Approved (APPROVED → PUBLISHED)", desc: "Allows publishing approved content" },
+  { key: "workflow.approve_to_schedule", label: "Schedule Approved (APPROVED → SCHEDULED)", desc: "Allows scheduling approved content" },
+  { key: "workflow.scheduled_to_draft", label: "Cancel Schedule (SCHEDULED → DRAFT)", desc: "Allows canceling scheduled publications" },
+  { key: "workflow.published_to_archived", label: "Archive Content (PUBLISHED → ARCHIVED)", desc: "Allows archiving published content" },
+  { key: "workflow.published_to_draft", label: "Unpublish Content (PUBLISHED → DRAFT)", desc: "Allows reverting published content to draft" },
+  { key: "workflow.archived_to_draft", label: "Restore Content (ARCHIVED → DRAFT)", desc: "Allows restoring archived content" },
+  { key: "workflow.rejected_to_draft", label: "Revise Content (REJECTED → DRAFT)", desc: "Allows editing rejected content back to draft" },
+]
+
+export const ROLE_DEFAULT_PERMISSIONS: Record<string, string[]> = {
+  admin: WORKFLOW_PERMISSION_OPTIONS.map(o => o.key),
+  owner: WORKFLOW_PERMISSION_OPTIONS.map(o => o.key),
+  editor: [
+    "workflow.draft_to_review",
+    "workflow.draft_to_publish",
+    "workflow.draft_to_schedule",
+    "workflow.review_to_approve",
+    "workflow.review_to_reject",
+    "workflow.approve_to_publish",
+    "workflow.approve_to_schedule",
+    "workflow.scheduled_to_draft",
+    "workflow.published_to_archived",
+    "workflow.published_to_draft",
+    "workflow.archived_to_draft",
+    "workflow.rejected_to_draft"
+  ],
+  author: [
+    "workflow.draft_to_review",
+    "workflow.draft_to_publish",
+    "workflow.draft_to_schedule",
+    "workflow.rejected_to_draft"
+  ],
+  contributor: [
+    "workflow.draft_to_review",
+    "workflow.rejected_to_draft"
+  ],
+  subscriber: []
+}
 
 interface Member {
   id: string
   role: string
+  customPermissions?: string[] | null
   joinedAt: Date | string
   user: {
     id: string
@@ -65,12 +112,12 @@ interface Member {
 interface UsersClientProps {
   initialMembers: Member[]
   tenantSlug: string
-  customRoles: { name: string, slug: string }[]
+
   limit: number
   current: number
 }
 
-export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, current }: UsersClientProps) {
+export function UsersClient({ initialMembers, tenantSlug, limit, current }: UsersClientProps) {
   const { data: session } = useSession()
   const { toast } = useToast()
   const [isPending, startTransition] = useTransition()
@@ -81,9 +128,10 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
   
   // Create Member State
   const [isCreateOpen, setIsCreateOpen] = useState(false)
+  const [createPermissions, setCreatePermissions] = useState<string[]>(ROLE_DEFAULT_PERMISSIONS["subscriber"] || [])
   const [newMember, setNewMember] = useState({
     email: "",
-    role: "viewer",
+    role: "subscriber",
     name: "",
     password: "",
   })
@@ -92,21 +140,43 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
   const [isRoleOpen, setIsRoleOpen] = useState(false)
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [newRole, setNewRole] = useState<string>("")
+  const [editPermissions, setEditPermissions] = useState<string[]>([])
 
   // Password Management State
   const [isPasswordOpen, setIsPasswordOpen] = useState(false)
   const [newPassword, setNewPassword] = useState("")
 
+  const handleCreateRoleChange = (role: string) => {
+    setNewMember(prev => ({ ...prev, role }))
+    setCreatePermissions(ROLE_DEFAULT_PERMISSIONS[role] || [])
+  }
+
+  const handleEditRoleChange = (role: string) => {
+    setNewRole(role)
+    setEditPermissions(ROLE_DEFAULT_PERMISSIONS[role] || [])
+  }
+
+  const openEditRoleModal = (member: Member) => {
+    setSelectedMember(member)
+    setNewRole(member.role)
+    setEditPermissions(member.customPermissions || ROLE_DEFAULT_PERMISSIONS[member.role] || [])
+    setIsRoleOpen(true)
+  }
+
   const handleCreateMember = (e: React.FormEvent) => {
     e.preventDefault()
     startTransition(async () => {
-      const res = await createMemberAction(tenantSlug, newMember)
+      const res = await createMemberAction(tenantSlug, {
+        ...newMember,
+        customPermissions: createPermissions
+      })
       if (res.error) {
         toast({ variant: "destructive", title: "Error", description: res.error })
       } else {
         toast({ title: "Member Added", description: "Successfully added new team member." })
         setIsCreateOpen(false)
-        setNewMember({ email: "", role: "viewer", name: "", password: "" })
+        setNewMember({ email: "", role: "subscriber", name: "", password: "" })
+        setCreatePermissions(ROLE_DEFAULT_PERMISSIONS["subscriber"] || [])
       }
     })
   }
@@ -114,7 +184,10 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
   const handleUpdateMemberRole = () => {
     if (!selectedMember) return
     startTransition(async () => {
-      const res = await updateMemberAction(tenantSlug, selectedMember.id, { role: newRole })
+      const res = await updateMemberAction(tenantSlug, selectedMember.id, { 
+        role: newRole,
+        customPermissions: editPermissions
+      })
       if (res.error) {
         toast({ variant: "destructive", title: "Error", description: res.error })
       } else {
@@ -122,6 +195,65 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
         setIsRoleOpen(false)
       }
     })
+  }
+
+  const renderPermissionsMatrix = (
+    permissions: string[],
+    setPermissions: React.Dispatch<React.SetStateAction<string[]>>
+  ) => {
+    const togglePermission = (key: string) => {
+      setPermissions(prev =>
+        prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+      )
+    }
+
+    const toggleAll = () => {
+      if (permissions.length === WORKFLOW_PERMISSION_OPTIONS.length) {
+        setPermissions([])
+      } else {
+        setPermissions(WORKFLOW_PERMISSION_OPTIONS.map(o => o.key))
+      }
+    }
+
+    return (
+      <div className="space-y-3 pt-2">
+        <div className="flex items-center justify-between">
+          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">
+            Workflow Transition Permissions ({permissions.length}/{WORKFLOW_PERMISSION_OPTIONS.length})
+          </Label>
+          <button
+            type="button"
+            onClick={toggleAll}
+            className="text-xs text-primary font-bold hover:underline"
+          >
+            {permissions.length === WORKFLOW_PERMISSION_OPTIONS.length ? "Clear All" : "Select All"}
+          </button>
+        </div>
+
+        <div className="border border-border rounded-xl p-3 max-h-56 overflow-y-auto space-y-2.5 bg-muted/20">
+          {WORKFLOW_PERMISSION_OPTIONS.map((opt) => {
+            const checked = permissions.includes(opt.key)
+            return (
+              <div 
+                key={opt.key} 
+                className="flex items-start space-x-3 hover:bg-muted/40 p-1.5 rounded-lg transition-colors cursor-pointer" 
+                onClick={() => togglePermission(opt.key)}
+              >
+                <Checkbox
+                  checked={checked}
+                  onCheckedChange={() => togglePermission(opt.key)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-0.5 min-w-0 flex-1">
+                  <p className="text-xs font-bold text-foreground leading-none">{opt.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    )
   }
 
   const handleUpdateMemberPassword = () => {
@@ -226,20 +358,20 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Workspace Role</Label>
-                    <Select value={newMember.role} onValueChange={(v) => setNewMember({ ...newMember, role: v })}>
+                    <Select value={newMember.role} onValueChange={handleCreateRoleChange}>
                       <SelectTrigger className="bg-muted/30 border-none h-10">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="admin">Admin (Full Access)</SelectItem>
-                        <SelectItem value="editor">Editor (Can edit content)</SelectItem>
-                        <SelectItem value="viewer">Viewer (Read-only)</SelectItem>
-                        {customRoles.map(r => (
-                          <SelectItem key={r.slug} value={r.slug}>{r.name} (Custom Role)</SelectItem>
-                        ))}
+                        <SelectItem value="admin">Administrator</SelectItem>
+                        <SelectItem value="editor">Editor</SelectItem>
+                        <SelectItem value="author">Author</SelectItem>
+                        <SelectItem value="contributor">Contributor</SelectItem>
+                        <SelectItem value="subscriber">Subscriber</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+                  {renderPermissionsMatrix(createPermissions, setCreatePermissions)}
                   <DialogFooter className="pt-4">
                     <Button type="button" variant="ghost" onClick={() => setIsCreateOpen(false)} disabled={isPending}>Cancel</Button>
                     <Button type="submit" className="bg-primary font-bold rounded-xl" disabled={isPending}>
@@ -279,7 +411,7 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
                 </div>
               </div>
               <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/5 text-destructive text-xs h-8 shrink-0" asChild>
-                <Link href={`/dashboard/${tenantSlug}/settings`}>Upgrade Plan</Link>
+                <Link href={`/dashboard/${tenantSlug}/subscriptions`}>Upgrade Plan</Link>
               </Button>
             </div>
           )}
@@ -317,6 +449,9 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
                           "text-[10px] font-black uppercase tracking-widest px-2 py-0.5",
                           member.role === 'owner' ? 'bg-indigo-100 text-indigo-700' :
                           member.role === 'admin' ? 'bg-emerald-100 text-emerald-700' :
+                          member.role === 'editor' ? 'bg-blue-100 text-blue-700' :
+                          member.role === 'author' ? 'bg-purple-100 text-purple-700' :
+                          member.role === 'contributor' ? 'bg-orange-100 text-orange-700' :
                           'bg-muted text-muted-foreground'
                         )}>
                           {member.role}
@@ -330,8 +465,8 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-56">
                             <DropdownMenuLabel>Member Access</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => { setSelectedMember(member); setNewRole(member.role); setIsRoleOpen(true); }}>
-                              <Shield className="mr-2 h-4 w-4" /> Change Role
+                            <DropdownMenuItem onClick={() => openEditRoleModal(member)}>
+                              <Shield className="mr-2 h-4 w-4" /> Change Role & Permissions
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => { setSelectedMember(member); setIsPasswordOpen(true); }}>
                               <Lock className="mr-2 h-4 w-4" /> Reset Password
@@ -357,36 +492,39 @@ export function UsersClient({ initialMembers, tenantSlug, customRoles, limit, cu
 
         {/* Change Role Dialog */}
         <Dialog open={isRoleOpen} onOpenChange={setIsRoleOpen}>
-          <DialogContent className="rounded-2xl border-none shadow-2xl">
+          <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl">
             <DialogHeader>
               <DialogTitle className="text-xl font-black uppercase tracking-tight">Modify Permissions</DialogTitle>
-              <DialogDescription>Update role for {selectedMember?.user.email}</DialogDescription>
+              <DialogDescription>Update role and transition permissions for {selectedMember?.user.email}</DialogDescription>
             </DialogHeader>
-            <div className="py-6 space-y-4">
-              <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Selected Role</Label>
-              <Select value={newRole} onValueChange={setNewRole}>
-                <SelectTrigger className="h-11 bg-muted/30 border-none rounded-xl">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="admin">Admin (Full Control)</SelectItem>
-                  <SelectItem value="editor">Editor (Content only)</SelectItem>
-                  <SelectItem value="viewer">Viewer (Read-only)</SelectItem>
-                  {customRoles.map(r => (
-                    <SelectItem key={r.slug} value={r.slug}>{r.name} (Custom Role)</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+            <div className="py-4 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Selected Role Preset</Label>
+                <Select value={newRole} onValueChange={handleEditRoleChange}>
+                  <SelectTrigger className="h-11 bg-muted/30 border-none rounded-xl">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="admin">Administrator (Full Access)</SelectItem>
+                    <SelectItem value="editor">Editor (Review, Approve & Publish)</SelectItem>
+                    <SelectItem value="author">Author (Publish Own)</SelectItem>
+                    <SelectItem value="contributor">Contributor (Submit Review Only)</SelectItem>
+                    <SelectItem value="subscriber">Subscriber (Read Only)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {renderPermissionsMatrix(editPermissions, setEditPermissions)}
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setIsRoleOpen(false)} disabled={isPending}>Cancel</Button>
               <Button 
                 className="bg-primary font-bold rounded-xl"
-                disabled={isPending || newRole === selectedMember?.role}
+                disabled={isPending}
                 onClick={handleUpdateMemberRole}
               >
                 {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Role
+                Save Role & Permissions
               </Button>
             </DialogFooter>
           </DialogContent>

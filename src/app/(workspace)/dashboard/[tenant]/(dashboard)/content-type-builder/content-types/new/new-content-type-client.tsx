@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Select, 
@@ -58,6 +59,7 @@ export default function NewContentTypeClient({
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
+  const [showInCms, setShowInCms] = useState(true)
   const [docxTemplateUrl, setDocxTemplateUrl] = useState("")
   const [fields, setFields] = useState<Field[]>([])
 
@@ -180,6 +182,7 @@ export default function NewContentTypeClient({
         name,
         slug,
         description,
+        showInCms,
         docxTemplateUrl: docxTemplateUrl || null,
         fields: fields.map((f, index) => ({
           name: f.name,
@@ -265,6 +268,17 @@ export default function NewContentTypeClient({
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this collection for?" rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  </div>
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsNew">Tampilkan di Menu CMS</Label>
+                      <p className="text-[10px] text-muted-foreground">Tampilkan koleksi ini di menu navigasi /cms</p>
+                    </div>
+                    <Switch 
+                      id="showInCmsNew"
+                      checked={showInCms} 
+                      onCheckedChange={setShowInCms} 
+                    />
                   </div>
                 </CardContent>
               </Card>

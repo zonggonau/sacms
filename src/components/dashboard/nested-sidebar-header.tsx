@@ -7,26 +7,30 @@ interface NestedSidebarHeaderProps {
   backHref?: string
   backTooltip?: string
   logoHref?: string
+  showBackBtn?: boolean
 }
 
 export function NestedSidebarHeader({ 
   tenantId, 
   backHref, 
   backTooltip = "Back to Workspace Dashboard",
-  logoHref
+  logoHref,
+  showBackBtn = true
 }: NestedSidebarHeaderProps) {
   const actualBackHref = backHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
   const actualLogoHref = logoHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
 
   return (
     <div className="border-b border-border px-4 py-5 bg-card flex items-center gap-2">
-      <Link 
-        href={actualBackHref} 
-        title={backTooltip}
-        className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-none border border-transparent hover:border-border flex items-center justify-center shrink-0"
-      >
-        <ArrowLeft className="h-4.5 w-4.5" />
-      </Link>
+      {showBackBtn && (
+        <Link 
+          href={actualBackHref} 
+          title={backTooltip}
+          className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-none border border-transparent hover:border-border flex items-center justify-center shrink-0"
+        >
+          <ArrowLeft className="h-4.5 w-4.5" />
+        </Link>
+      )}
       <Link href={actualLogoHref} className="flex items-center gap-3 min-w-0">
         <Logo iconSize="sm" showText={true} />
       </Link>

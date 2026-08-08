@@ -34,15 +34,17 @@ interface CMSSidebarProps {
   contentTypes?: { id: string; name: string; slug: string }[]
   singleTypes?: { id: string; name: string; slug: string }[]
   user?: { name?: string | null; email?: string | null; image?: string | null }
+  userRole?: string
 }
 
-export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user }: CMSSidebarProps) {
+export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user, userRole }: CMSSidebarProps) {
   const pathname = usePathname()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
   const [mobileOpen, setMobileOpen] = useState(false)
 
   const href = (path: string) => `/dashboard/${tenantId}/cms${path}`
+  const canGoBack = userRole === "owner" || userRole === "admin" || userRole === "super_admin"
 
   useEffect(() => {
     setMounted(true)
@@ -55,7 +57,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border shadow-none">
       {/* CMS Header */}
-      <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} showBackBtn={canGoBack} />
 
       <ScrollArea className="flex-1 py-6">
         <div className="px-3 space-y-8">

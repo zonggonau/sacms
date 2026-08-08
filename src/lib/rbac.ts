@@ -4,23 +4,23 @@ import { authOptions } from "./auth"
 
 /**
  * RBAC Helper
- * Centralizes permission checking for tenants.
- * This maps to the Permission and RolePermission models in Prisma.
+ * Centralizes permission checking using static WordPress-style roles.
  */
 
-/**
- * Standard Permissions in SaCMS
- */
 export const PERMISSIONS = {
   CONTENT_READ: "content.read",
   CONTENT_CREATE: "content.create",
   CONTENT_UPDATE: "content.update",
+  CONTENT_UPDATE_OWN: "content.update.own",
   CONTENT_DELETE: "content.delete",
+  CONTENT_DELETE_OWN: "content.delete.own",
+  CONTENT_PUBLISH: "content.publish",
   MEDIA_READ: "media.read",
   MEDIA_UPLOAD: "media.upload",
   MEDIA_DELETE: "media.delete",
   USER_INVITE: "user.invite",
   USER_REMOVE: "user.remove",
+  USER_UPDATE: "user.update",
   SETTING_UPDATE: "settings.update",
   API_TOKEN_MANAGE: "api-token.manage",
   CONTENT_TYPE_READ: "content-type.read",
@@ -29,67 +29,103 @@ export const PERMISSIONS = {
   CONTENT_TYPE_DELETE: "content-type.delete",
 } as const
 
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
+  admin: Object.values(PERMISSIONS),
+  editor: [
+    PERMISSIONS.CONTENT_READ,
+    PERMISSIONS.CONTENT_CREATE,
+    PERMISSIONS.CONTENT_UPDATE,
+    PERMISSIONS.CONTENT_DELETE,
+    PERMISSIONS.CONTENT_PUBLISH,
+    PERMISSIONS.MEDIA_READ,
+    PERMISSIONS.MEDIA_UPLOAD,
+    PERMISSIONS.MEDIA_DELETE,
+  ],
+  author: [
+    PERMISSIONS.CONTENT_READ,
+    PERMISSIONS.CONTENT_CREATE,
+    PERMISSIONS.CONTENT_UPDATE_OWN,
+    PERMISSIONS.CONTENT_DELETE_OWN,
+    PERMISSIONS.CONTENT_PUBLISH,
+    PERMISSIONS.MEDIA_READ,
+    PERMISSIONS.MEDIA_UPLOAD,
+  ],
+  contributor: [
+    PERMISSIONS.CONTENT_READ,
+    PERMISSIONS.CONTENT_CREATE,
+    PERMISSIONS.CONTENT_UPDATE_OWN,
+    PERMISSIONS.CONTENT_DELETE_OWN,
+  ],
+  subscriber: [
+    PERMISSIONS.CONTENT_READ,
+  ]
+}
+
 /**
  * Check if a user has a specific permission in a tenant.
- * Super Admins bypass all checks.
+ * Super Admins and Tenant Admins bypass all checks.
  */
 export async function hasPermission(
   userId: string,
   tenantId: string,
-  permissionName: string
+  permissionName: string,
+  resourceOwnerId?: string
 ): Promise<boolean> {
-  // 1. Check if user is super_admin first (no membership required)
   const user = await db.user.findUnique({
     where: { id: userId },
     select: { role: true }
   })
   
+  // Super Admin has global full access
   if (user?.role === "super_admin") return true
 
-  // 2. Get user role in the tenant
   const member = await db.tenantMember.findUnique({
     where: {
       tenantId_userId: { tenantId, userId },
-    },
-    include: {
-      user: {
-        select: { role: true }
-      }
     }
   })
 
   if (!member) return false
 
+  const role = member.role
   
-  // 3. Owners bypass most checks
-  if (member.role === "owner") return true
+  // Workspace Admins (Owners) have full access within the workspace
+  if (role === "admin" || role === "owner") return true
 
-  // 3.5 Check Custom Permissions override
-  if (member.customPermissions && Array.isArray(member.customPermissions)) {
-    if (member.customPermissions.includes(permissionName)) {
-      return true
-    }
+  const grantedPermissions = ROLE_PERMISSIONS[role] || []
+
+  // Check direct permission
+  if (grantedPermissions.includes(permissionName)) {
+    return true
   }
 
-  // 4. Check granular permission
-  const permission = await db.permission.findUnique({
-    where: { name: permissionName }
+  // Handle ownership overrides for author/contributor
+  if (resourceOwnerId && resourceOwnerId === userId) {
+    if (permissionName === PERMISSIONS.CONTENT_UPDATE && grantedPermissions.includes(PERMISSIONS.CONTENT_UPDATE_OWN)) return true
+    if (permissionName === PERMISSIONS.CONTENT_DELETE && grantedPermissions.includes(PERMISSIONS.CONTENT_DELETE_OWN)) return true
+  }
+
+  return false
+}
+
+export async function getUserRole(
+  userId: string,
+  tenantId: string
+): Promise<string | null> {
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true }
   })
-
-  if (!permission) return false
-
-  // 5. Check if role is standard (global) or custom (tenant-specific)
-  const isStandardRole = ["admin", "editor", "viewer", "member"].includes(member.role)
   
-  const granted = await db.rolePermission.findFirst({
+  if (user?.role === "super_admin") return "super_admin"
+
+  const member = await db.tenantMember.findUnique({
     where: {
-      tenantId: isStandardRole ? null : tenantId,
-      roleId: member.role,
-      permissionId: permission.id
+      tenantId_userId: { tenantId, userId },
     }
   })
 
-  return granted?.granted ?? false
+  return member?.role || null
 }
 
 /**
@@ -97,7 +133,8 @@ export async function hasPermission(
  */
 export async function checkPermission(
   tenantSlug: string,
-  permissionName: string
+  permissionName: string,
+  resourceOwnerId?: string
 ): Promise<{ allowed: boolean; userId?: string; tenantId?: string }> {
   const session = await getServerSession(authOptions)
   if (!session?.user?.id) return { allowed: false }
@@ -113,7 +150,7 @@ export async function checkPermission(
 
   if (!tenant) return { allowed: false }
 
-  const allowed = await hasPermission(session.user.id, tenant.id, permissionName)
+  const allowed = await hasPermission(session.user.id, tenant.id, permissionName, resourceOwnerId)
   
   return { 
     allowed, 

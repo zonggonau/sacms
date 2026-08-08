@@ -112,6 +112,10 @@ export default function AdminTenantsPage() {
 
   const confirmDelete = async () => {
     if (!tenantToDelete) return
+    if (tenantToDelete.slug === "sacms-global" || tenantToDelete.slug === "sacms" || tenantToDelete.id === "sacms-global" || tenantToDelete.name.toLowerCase() === "sacms global") {
+      toast({ variant: "destructive", title: "Action Forbidden", description: "Global tenant cannot be deleted." })
+      return
+    }
     if (deleteConfirmation !== tenantToDelete.id) {
       toast({ variant: "destructive", title: "Validation Error", description: "Tenant ID does not match" })
       return
@@ -237,6 +241,10 @@ export default function AdminTenantsPage() {
   }
 
   const openDelete = (tenant: Tenant) => {
+    if (tenant.slug === "sacms-global" || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global") {
+      toast({ variant: "destructive", title: "Action Forbidden", description: "Global tenant cannot be deleted." })
+      return
+    }
     setTenantToDelete(tenant)
     setDeleteConfirmation("")
     setIsDeleteOpen(true)

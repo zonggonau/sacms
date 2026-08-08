@@ -329,7 +329,7 @@ White-Label dan Custom Domain memerlukan plan Pro, Enterprise, atau Custom. Mode
 | Method | Path | Deskripsi |
 |--------|------|-----------|
 | `GET` | `/api/tenant/[tenant]/developer/openapi` | Generate spesifikasi OpenAPI untuk content types tenant |
-| `GET` | `/api/tenant/[tenant]/developer/ai-prompt` | Download prompt Markdown untuk generator frontend |
+| `GET` | `/api/tenant/[tenant]/developer/ai-prompt` | Download prompt Markdown untuk CMS schemas |
 
 Developer prompt tidak memanggil provider AI. Dokumen hasil memakai placeholder `<YOUR_API_TOKEN>`; hash token yang tersimpan tidak pernah diekspor sebagai credential.
 

@@ -9,17 +9,6 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-model SystemRole {
-  id          String   @id @default(cuid())
-  name        String
-  slug        String   @unique
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  @@map("system_roles")
-}
-
 model User {
   id                  String         @id @default(cuid())
   email               String         @unique
@@ -110,7 +99,6 @@ model Tenant {
   contentTypes           ContentType[]
   media                  Media[]
   mediaFolders           MediaFolder[]
-  rolePermissions        RolePermission[]
   settings               Setting[]
   singleTypes            SingleType[]
   subscriptions          Subscription[]
@@ -118,7 +106,6 @@ model Tenant {
   contentTypeAssignments TenantContentTypeAssignment[]
   locales                TenantLocale[]
   members                TenantMember[]
-  tenantRoles            TenantRole[]
   singleTypeAssignments  TenantSingleTypeAssignment[]
   webhooks               Webhook[]
   aiQuotaLedgers         AiQuotaLedger[]
@@ -131,7 +118,7 @@ model TenantMember {
   id                String   @id @default(cuid())
   tenantId          String
   userId            String
-  role              String   @default("member")
+  role              String   @default("subscriber")
   joinedAt          DateTime @default(now())
   customPermissions Json?
   tenant            Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -168,6 +155,7 @@ model ContentType {
   slug            String
   description     String?
   isPublished     Boolean                       @default(false)
+  showInCms       Boolean                       @default(true)
   createdAt       DateTime                      @default(now())
   updatedAt       DateTime                      @updatedAt
   tenantId        String?
@@ -312,6 +300,7 @@ model SingleType {
   createdAt    DateTime                     @default(now())
   updatedAt    DateTime                     @updatedAt
   isPublished  Boolean                      @default(false)
+  showInCms    Boolean                      @default(true)
   tenantId     String?
   fields       SingleTypeField[]
   schemaFields SchemaField[]
@@ -572,45 +561,6 @@ model Media {
 
   @@index([tenantId, mimeType])
   @@map("media")
-}
-
-model Permission {
-  id          String           @id @default(cuid())
-  name        String           @unique
-  displayName String
-  description String?
-  category    String
-  createdAt   DateTime         @default(now())
-  roles       RolePermission[]
-
-  @@map("permissions")
-}
-
-model RolePermission {
-  id           String     @id @default(cuid())
-  roleId       String
-  permissionId String
-  granted      Boolean    @default(true)
-  tenantId     String?
-  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
-  tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, roleId, permissionId])
-  @@map("role_permissions")
-}
-
-model TenantRole {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  slug        String
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, slug])
-  @@map("tenant_roles")
 }
 
 model ApiToken {

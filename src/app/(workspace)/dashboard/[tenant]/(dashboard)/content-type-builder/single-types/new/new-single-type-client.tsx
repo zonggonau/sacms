@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { 
   Select, 
@@ -55,6 +56,7 @@ export default function NewSingleTypeClient({
   const [name, setName] = useState("")
   const [slug, setSlug] = useState("")
   const [description, setDescription] = useState("")
+  const [showInCms, setShowInCms] = useState(true)
   const [fields, setFields] = useState<Field[]>([])
 
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
@@ -160,7 +162,7 @@ export default function NewSingleTypeClient({
     setSaving(true)
     try {
       const res = await createSingleTypeAction(tenantSlug, {
-        name, slug, description,
+        name, slug, description, showInCms,
         fields: fields.map((f, index) => ({
           name: f.name, slug: f.slug, type: f.type,
           required: f.required, unique: f.unique,
@@ -229,6 +231,17 @@ export default function NewSingleTypeClient({
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
                     <Textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  </div>
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsStNew">Tampilkan di Menu CMS</Label>
+                      <p className="text-[10px] text-muted-foreground">Tampilkan single type ini di menu navigasi /cms</p>
+                    </div>
+                    <Switch 
+                      id="showInCmsStNew"
+                      checked={showInCms} 
+                      onCheckedChange={setShowInCms} 
+                    />
                   </div>
                 </CardContent>
               </Card>

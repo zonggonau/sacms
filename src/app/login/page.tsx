@@ -31,8 +31,6 @@ export default function LoginPage() {
       const redirectTo = searchParams.get("redirect_to") || ""
       if (redirectTo) {
         router.push(redirectTo)
-      } else if (user?.role && user.role !== "user") {
-        router.push("/admin")
       } else {
         const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
         
@@ -119,25 +117,23 @@ export default function LoginPage() {
       const user = sessionData?.user
 
       const redirectTo = searchParams.get("redirect_to") || ""
+      let destination = "/dashboard"
+
       if (redirectTo) {
-        router.push(redirectTo)
-      } else if (user?.role === "super_admin") {
-        router.push("/admin")
-      } else if (user?.role === "admin") {
-        router.push("/dashboard")
+        destination = redirectTo
       } else {
         const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
         
         if (isOwnerOrAdmin) {
-          router.push("/dashboard")
+          destination = "/dashboard"
         } else if (user?.tenants && user.tenants.length > 0) {
-          router.push(`/dashboard/${user.tenants[0].slug}/cms`)
+          destination = `/dashboard/${user.tenants[0].slug}/cms`
         } else {
-          router.push("/dashboard")
+          destination = "/dashboard"
         }
       }
       
-      router.refresh()
+      window.location.href = destination
     } catch (error: any) {
       toast({
         title: "Terjadi Kesalahan",

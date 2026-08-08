@@ -57,6 +57,7 @@ import { MarkdownField } from "@/components/content/field-renderers/markdown-fie
 import { CurrencyField } from "@/components/content/field-renderers/currency-field"
 import { DateRangeField } from "@/components/content/field-renderers/date-range-field"
 import { DynamicZoneField } from "@/components/content/field-renderers/dynamic-zone-field"
+import { PasswordField } from "@/components/content/field-renderers/password-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { ReviewerAssignment } from "@/components/cms/reviewer-assignment"
@@ -109,7 +110,7 @@ export default function CMSEditEntryPage() {
   const [scheduledAt, setScheduledAt] = useState<Date | undefined>(undefined)
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
 
-  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug)
+  const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
   const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
   const customPermissions = Array.isArray(tenantMembership?.customPermissions)
     ? tenantMembership.customPermissions as string[]
@@ -134,36 +135,30 @@ export default function CMSEditEntryPage() {
         fetch(`/api/tenant/${tenantSlug}/locales`)
       ])
       
-      if (ctData && !ctData.error && ctData.contentType) {
+      if (ctData?.error) {
+        toast({ variant: "destructive", title: "Error Loading Schema", description: ctData.error })
+      } else if (ctData?.contentType) {
         setContentType(ctData.contentType as any)
       }
-      if (entData && !entData.error && entData.entry) {
-        const data = entData
-        const entry = data.entry
-        setEntryStatus(entry!.status)
-        setPersistedStatus(entry!.status)
-        setScheduledAt(entry!.scheduledAt ? new Date(entry!.scheduledAt) : undefined)
-        // Only update locale if it's explicitly returned from server
-        // to avoid infinite loops if the state differs
-        if (data.isNewTranslation) {
-          toast({
-            title: `Translating to ${locale.toUpperCase()}`,
-            description: "Showing base content as a template.",
-          })
+
+      if (entData?.error) {
+        toast({ variant: "destructive", title: "Error Loading Entry", description: entData.error })
+      } else if (entData?.entry) {
+        const data = entData.entry.data as Record<string, unknown>
+        setFormData(data || {})
+        const currentStatus = entData.entry.status || "DRAFT"
+        setEntryStatus(currentStatus)
+        setPersistedStatus(currentStatus)
+        if (entData.entry.scheduledAt) {
+          setScheduledAt(new Date(entData.entry.scheduledAt))
         }
-        
-        let parsedData = entry!.data
-        if (typeof entry!.data === 'string') {
-          try { parsedData = JSON.parse(entry!.data) } catch { parsedData = {} }
-        }
-        setFormData((parsedData || {}) as Record<string, unknown>)
       }
       if (locRes.ok) {
         const data = await locRes.json()
         if (data.locales?.length > 0) setAvailableLocales(data.locales)
       }
     } catch (err) {
-      console.error(err)
+      toast({ variant: "destructive", title: "Error Loading Data" })
     } finally {
       setLoading(false)
     }
@@ -191,10 +186,10 @@ export default function CMSEditEntryPage() {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [])
 
-  const handleSave = async (publishNow: boolean = false) => {
+  const handleSave = async (publishNow: boolean = false, targetOverride?: string) => {
     setSaving(true)
     
-    let targetStatus = publishNow ? "PUBLISHED" : entryStatus
+    let targetStatus = publishNow ? "PUBLISHED" : (targetOverride || entryStatus)
     if (!publishNow && scheduledAt && targetStatus !== "ARCHIVED") {
       targetStatus = "SCHEDULED"
     }
@@ -243,7 +238,7 @@ export default function CMSEditEntryPage() {
 
     const renderLabelWithAI = () => (
       <div className="flex items-center justify-between mb-2">
-        <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+        <Label className="text-sm font-bold text-foreground">{field.name} {field.required && "*"}</Label>
         {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
           <AIAssistantDialog
             tenantSlug={tenantSlug}
@@ -352,13 +347,16 @@ export default function CMSEditEntryPage() {
       case "location":
         return <div className="space-y-2">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
 
+      case "password":
+        return <div className="space-y-2">{renderLabelWithAI()}<PasswordField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
 
       case "repeater":
-        return <div className="space-y-2">{renderLabelWithAI()}<DynamicZoneField label={field.name} tenantSlug={tenantSlug} value={value as any[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<DynamicZoneField label={null} tenantSlug={tenantSlug} value={value as any[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "url":
         return <div className="space-y-2">{renderLabelWithAI()}<UrlField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
@@ -424,26 +422,39 @@ export default function CMSEditEntryPage() {
               tenantSlug={tenantSlug}
               contentTypeSlug={contentTypeSlug}
               entryId={entryId}
+              currentData={formData}
               onRestoreSuccess={(newData) => setFormData(newData)}
             />
 
-            <Button
-              variant="outline" 
-              onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}
-              className="h-11 rounded-none font-bold border border-border bg-card shadow-none hover:bg-muted hover:border-orange-500 transition-colors"
-            >
-              <Eye className="mr-2 h-4 w-4" /> Preview
-            </Button>
-
-            {canPublish && <Button
-              onClick={() => handleSave(true)} 
-              disabled={saving} 
-              className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
-            >
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-              Save & Publish
-              <kbd className="ml-2 text-[10px] bg-zinc-800/50 dark:bg-zinc-200/50 px-1.5 py-0.5 rounded font-mono">⌘⇧P</kbd>
-            </Button>}
+            {canPublish ? (
+              <Button
+                onClick={() => handleSave(true)} 
+                disabled={saving} 
+                className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
+                Save & Publish
+                <kbd className="ml-2 text-[10px] bg-zinc-800/50 dark:bg-zinc-200/50 px-1.5 py-0.5 rounded font-mono">⌘⇧P</kbd>
+              </Button>
+            ) : availableStatuses.includes("IN_REVIEW") ? (
+              <Button
+                onClick={() => handleSave(false, "IN_REVIEW")} 
+                disabled={saving} 
+                className="bg-amber-600 hover:bg-amber-700 text-white rounded-none h-11 px-6 font-bold transition-colors"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Submit for Review
+              </Button>
+            ) : (
+              <Button
+                onClick={() => handleSave(false)} 
+                disabled={saving} 
+                className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
+                Save Changes
+              </Button>
+            )}
           </div>
         </div>
 

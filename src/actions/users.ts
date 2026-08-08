@@ -18,6 +18,7 @@ const createMemberSchema = z.object({
 const updateMemberSchema = z.object({
   role: z.string().optional(),
   password: z.string().min(8).optional(),
+  customPermissions: z.array(z.string()).optional(),
 })
 
 export async function getTenantUsersAction(tenantSlug: string) {
@@ -179,7 +180,7 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
 
     const parsed = updateMemberSchema.safeParse(data)
     if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
-    const { role, password } = parsed.data
+    const { role, password, customPermissions } = parsed.data
 
     const member = await tenantDb.tenantMember.findUnique({
       where: { id: memberId },
@@ -190,6 +191,7 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
       return { error: "Member not found" }
     }
 
+    const updateData: any = {}
     if (role) {
       if (member.role === "owner" && role !== "owner") {
         const ownerCount = await tenantDb.tenantMember.count({
@@ -199,16 +201,23 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
           return { error: "Cannot change the only owner's role" }
         }
       }
-      
+      updateData.role = role
+    }
+
+    if (customPermissions !== undefined) {
+      updateData.customPermissions = customPermissions
+    }
+
+    if (Object.keys(updateData).length > 0) {
       await db.tenantMember.update({
         where: { id: memberId },
-        data: { role }
+        data: updateData
       })
 
       if (tenantDb !== db) {
         await tenantDb.tenantMember.update({
           where: { id: memberId },
-          data: { role }
+          data: updateData
         })
       }
     }

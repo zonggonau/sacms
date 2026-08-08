@@ -8,7 +8,7 @@ WORKDIR /app
 COPY package.json bun.lock ./
 COPY prisma ./prisma/
 RUN bun install --frozen-lockfile
-RUN bun add prisma@6.11.1 @prisma/client@6.11.1
+RUN bun add prisma@6.19.3 @prisma/client@6.19.3
 RUN bun x prisma generate
 
 # Build the application

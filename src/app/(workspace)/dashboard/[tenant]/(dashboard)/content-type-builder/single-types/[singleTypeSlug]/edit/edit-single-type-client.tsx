@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Checkbox } from "@/components/ui/checkbox"
+import { Switch } from "@/components/ui/switch"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -161,6 +162,7 @@ export default function EditSingleTypeClient({
   const [name, setName] = useState(initialSingleType?.name || "")
   const [slug, setSlug] = useState(initialSingleType?.slug || "")
   const [description, setDescription] = useState(initialSingleType?.description || "")
+  const [showInCms, setShowInCms] = useState((initialSingleType as any)?.showInCms ?? true)
   const [fields, setFields] = useState<Field[]>(initialFields)
 
   // Modal States
@@ -282,6 +284,7 @@ export default function EditSingleTypeClient({
         name,
         slug,
         description,
+        showInCms,
         fields: fields.map((f, index) => ({
           name: f.name,
           slug: f.slug,
@@ -360,6 +363,17 @@ export default function EditSingleTypeClient({
                   <div className="space-y-2">
                     <Label className="text-xs font-bold">Description</Label>
                     <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  </div>
+                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsStEdit">Tampilkan di Menu CMS</Label>
+                      <p className="text-[10px] text-muted-foreground">Tampilkan single type ini di menu navigasi /cms</p>
+                    </div>
+                    <Switch 
+                      id="showInCmsStEdit"
+                      checked={showInCms} 
+                      onCheckedChange={setShowInCms} 
+                    />
                   </div>
                 </CardContent>
               </Card>

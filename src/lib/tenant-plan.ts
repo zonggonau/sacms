@@ -137,7 +137,10 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     return ["pro", "enterprise", "custom"].includes(tenant?.plan || "free")
   }
 
-  if (tenant?.plan === "enterprise" || tenant?.plan === "custom") return true
+  if (tenant?.plan === "enterprise" || tenant?.plan === "custom" || tenant?.plan === "pro") return true
+
+  // Allow in development environment for testing
+  if (process.env.NODE_ENV === "development") return true
 
   return false
 }

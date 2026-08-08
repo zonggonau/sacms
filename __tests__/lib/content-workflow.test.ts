@@ -20,6 +20,7 @@ vi.mock("../../src/lib/database", () => ({
       findFirst: vi.fn(),
       findUnique: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
       count: vi.fn(),
       findMany: vi.fn(),
     },
@@ -32,7 +33,7 @@ describe("Content Workflow", () => {
       const allowed = allowedTransitions("DRAFT")
       expect(allowed).toContain("IN_REVIEW")
       expect(allowed).toContain("PUBLISHED")
-      expect(allowed).not.toContain("SCHEDULED")
+      expect(allowed).toContain("SCHEDULED")
     })
 
     it("evaluates valid transitions correctly", () => {
@@ -201,12 +202,13 @@ describe("Content Workflow", () => {
         updatedAt: new Date()
       })
 
+      vi.mocked(db.contentReviewAssignment.updateMany).mockResolvedValueOnce({ count: 1 })
       vi.mocked(db.contentReviewAssignment.count).mockResolvedValueOnce(0) // No remaining pending
 
       const result = await submitReview("entry-1", "u1", "approved", "Looks good")
       
-      expect(db.contentReviewAssignment.update).toHaveBeenCalledWith({
-        where: { id: "a1" },
+      expect(db.contentReviewAssignment.updateMany).toHaveBeenCalledWith({
+        where: { id: "a1", status: "pending" },
         data: expect.objectContaining({
           status: "approved",
           comment: "Looks good",
@@ -246,6 +248,7 @@ describe("Content Workflow", () => {
         updatedAt: new Date()
       })
 
+      vi.mocked(db.contentReviewAssignment.updateMany).mockResolvedValueOnce({ count: 1 })
       const result = await submitReview("entry-1", "u1", "rejected")
       
       expect(result).toEqual({ allApproved: false, rejected: true })

@@ -87,6 +87,8 @@ export default async function CMSContentTypeEntriesPage({
       isLimitReached={isLimitReached}
       limit={limit}
       currentCount={currentCount}
+      userRole={access.role}
+      customPermissions={access.customPermissions}
     />
   )
 }

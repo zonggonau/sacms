@@ -108,13 +108,13 @@ export default function ApiExplorerPage() {
     setExportingPrompt(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/developer/ai-prompt`)
-      if (!res.ok) throw new Error("Failed to generate AI prompt")
+      if (!res.ok) throw new Error("Failed to generate AI Skill")
       const blob = await res.blob()
       const url = window.URL.createObjectURL(blob)
       const a = document.createElement("a")
-      a.href = url; a.download = `${tenantSlug}-ai-prompt.md`; document.body.appendChild(a); a.click()
+      a.href = url; a.download = `${tenantSlug}-ai-skill.md`; document.body.appendChild(a); a.click()
       window.URL.revokeObjectURL(url); document.body.removeChild(a)
-      toast({ title: "AI Prompt Downloaded" })
+      toast({ title: "AI Skill Downloaded" })
     } catch (err: any) {
       toast({ variant: "destructive", title: "Download Failed", description: err.message })
     } finally { setExportingPrompt(false) }
@@ -126,20 +126,48 @@ export default function ApiExplorerPage() {
       ? contentTypes.find((c: any) => c.slug === cleanSlug)?.fields 
       : singleTypes.find((s: any) => s.slug === cleanSlug)?.fields
       
-    if (targetFields) {
+    if (targetFields && Array.isArray(targetFields)) {
       targetFields.forEach((f: any) => {
-        if (f.type === 'string' || f.type === 'text' || f.type === 'richtext') dummyData[f.slug] = "string value"
-        else if (f.type === 'number') dummyData[f.slug] = 123
-        else if (f.type === 'boolean') dummyData[f.slug] = true
-        else if (f.type === 'date') dummyData[f.slug] = new Date().toISOString()
-        else if (f.type === 'relation') dummyData[f.slug] = "relation_id"
-        else if (f.type === 'media') dummyData[f.slug] = "media_id"
-        else if (f.type === 'json') dummyData[f.slug] = {}
-        else dummyData[f.slug] = null
+        const fieldType = (f.type || '').toLowerCase()
+        if (['text', 'textarea', 'richtext', 'string', 'markdown'].includes(fieldType)) {
+          dummyData[f.slug] = `Sample ${f.name || f.slug}`
+        } else if (['slug', 'uid'].includes(fieldType)) {
+          dummyData[f.slug] = `sample-${f.slug}`
+        } else if (fieldType === 'email') {
+          dummyData[f.slug] = "user@example.com"
+        } else if (fieldType === 'url') {
+          dummyData[f.slug] = "https://example.com"
+        } else if (fieldType === 'phone') {
+          dummyData[f.slug] = "+1234567890"
+        } else if (['number', 'integer', 'currency', 'rating'].includes(fieldType)) {
+          dummyData[f.slug] = 100
+        } else if (fieldType === 'boolean') {
+          dummyData[f.slug] = true
+        } else if (['date', 'datetime', 'daterange'].includes(fieldType)) {
+          dummyData[f.slug] = new Date().toISOString()
+        } else if (['relation', 'media', 'file'].includes(fieldType)) {
+          dummyData[f.slug] = `sample_${f.slug}_id`
+        } else if (fieldType === 'json') {
+          dummyData[f.slug] = { key: "value" }
+        } else if (['tags', 'hashtags', 'multiselect', 'mediamultiple'].includes(fieldType)) {
+          dummyData[f.slug] = ["item_1", "item_2"]
+        } else {
+          dummyData[f.slug] = "sample value"
+        }
       })
       return dummyData
     }
     return null
+  }
+
+  const handleFormatJson = () => {
+    try {
+      const parsed = JSON.parse(requestBody)
+      setRequestBody(JSON.stringify(parsed, null, 2))
+      toast({ title: "JSON Formatted" })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Invalid JSON", description: "Cannot format invalid JSON syntax." })
+    }
   }
 
   const handleQuickSelect = (value: string) => {
@@ -203,7 +231,17 @@ export default function ApiExplorerPage() {
       if (selectedKey) headers["Authorization"] = `Bearer ${selectedKey}`
       const options: RequestInit = { method, headers }
       
-      if (method !== "GET" && method !== "DELETE") options.body = requestBody
+      if (method !== "GET" && method !== "DELETE") {
+        try {
+          const parsed = JSON.parse(requestBody)
+          options.body = JSON.stringify(parsed)
+          setRequestBody(JSON.stringify(parsed, null, 2))
+        } catch (e: any) {
+          toast({ variant: "destructive", title: "Invalid JSON Payload", description: "Please check your JSON syntax in the request body." })
+          setLoading(false)
+          return
+        }
+      }
 
       const res = await fetch(url, options)
       const data = await res.json()
@@ -279,7 +317,7 @@ export default function ApiExplorerPage() {
                 disabled={exportingPrompt}
               >
                 {exportingPrompt ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <FileDown className="w-4 h-4 mr-2" />}
-                AI Prompt
+                AI Skill
               </Button>
               <Button 
                 variant="outline" 
@@ -293,7 +331,7 @@ export default function ApiExplorerPage() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
+          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
             {/* Left Panel: Request Builder */}
             <div className="xl:col-span-6 flex flex-col gap-6">
               
@@ -393,7 +431,18 @@ export default function ApiExplorerPage() {
 
                   {(method === "POST" || method === "PATCH") && (
                     <div className="space-y-2 animate-in fade-in slide-in-from-top-2 duration-300">
-                      <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">JSON Payload</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">JSON Payload</Label>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          className="h-6 text-[10px] font-mono text-orange-500 hover:text-orange-600 hover:bg-orange-500/10 px-2"
+                          onClick={handleFormatJson}
+                        >
+                          <Code2 className="w-3 h-3 mr-1" /> Format JSON
+                        </Button>
+                      </div>
                       <Textarea 
                         value={requestBody} 
                         onChange={e => setRequestBody(e.target.value)}
@@ -432,62 +481,138 @@ export default function ApiExplorerPage() {
               </div>
 
               {/* Query Parameters Documentation */}
-              <div className="bg-card/40 border border-border/50 rounded-none p-6 backdrop-blur-xl shadow-lg flex-1 overflow-hidden">
-                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50">
+              <div className="bg-card/40 border border-border/50 rounded-none p-6 backdrop-blur-xl shadow-lg flex-1 flex flex-col">
+                <div className="flex items-center gap-2 mb-4 pb-3 border-b border-border/50 shrink-0">
                   <Database className="h-4 w-4 text-orange-500" />
                   <h3 className="text-sm font-semibold uppercase tracking-wider text-foreground">Query Parameters Reference</h3>
                 </div>
                 
-                <ScrollArea className="h-[250px] pr-4">
-                  <div className="space-y-6">
-                    {/* Filtering */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Filters</h4>
-                      <p className="text-xs text-muted-foreground">Filter your results using Strapi-like syntax. Format: <code className="text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded">?filters[field][$operator]=value</code></p>
-                      <div className="grid grid-cols-2 gap-2 text-xs font-mono mt-2">
-                        <div className="bg-background/50 p-2 border border-border/30">$eq, $ne</div>
-                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Equal, Not equal</div>
-                        
-                        <div className="bg-background/50 p-2 border border-border/30">$gt, $gte, $lt, $lte</div>
-                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Greater/Less than</div>
-                        
-                        <div className="bg-background/50 p-2 border border-border/30">$contains, $startsWith</div>
-                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Text matching (ILIKE)</div>
-                        
-                        <div className="bg-background/50 p-2 border border-border/30">$in, $notIn</div>
-                        <div className="bg-background/50 p-2 border border-border/30 text-muted-foreground">Array inclusion (comma separated)</div>
+                <div className="flex-1">
+                  <div className="space-y-8 pb-4">
+                    
+                    {/* Pagination & Search */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-orange-500 pl-2">Pagination & Search</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Control result counts and search across all text fields via PostgreSQL tsvector.</p>
+                      
+                      <div className="grid gap-2">
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?pagination[page]=1&pagination[pageSize]=25</code>
+                          <span className="text-[11px] text-muted-foreground">Shorthand: <code className="text-orange-600 dark:text-orange-400 font-mono">?page=1&pageSize=25</code>. Max pageSize is 100.</span>
+                        </div>
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?search=your+keyword</code>
+                          <span className="text-[11px] text-muted-foreground">High-performance full-text search.</span>
+                        </div>
                       </div>
-                      <p className="text-xs text-muted-foreground mt-1 italic">Example: ?filters[title][$contains]=hello&filters[price][$gte]=100</p>
                     </div>
 
-                    {/* Sorting */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Sort</h4>
-                      <p className="text-xs text-muted-foreground">Sort the response by a specific field.</p>
-                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?sort=createdAt:desc</code>
+                    {/* Filtering */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-orange-500 pl-2">Advanced Filtering</h4>
+                      <p className="text-xs text-muted-foreground leading-relaxed">Filter results using Strapi-like syntax. <br/>Format: <code className="text-orange-600 dark:text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded font-mono">?filters[field][$operator]=value</code></p>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-xs font-mono">
+                        <div className="bg-background/50 p-2.5 border border-border/30 flex justify-between items-center group hover:border-orange-500/30 transition-colors">
+                          <span className="text-orange-600 dark:text-orange-400 group-hover:text-orange-500 font-bold">$eq, $ne</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Equal / Not Equal</span>
+                        </div>
+                        <div className="bg-background/50 p-2.5 border border-border/30 flex justify-between items-center group hover:border-orange-500/30 transition-colors">
+                          <span className="text-orange-600 dark:text-orange-400 group-hover:text-orange-500 font-bold">$gt, $gte, $lt, $lte</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Comparisons</span>
+                        </div>
+                        <div className="bg-background/50 p-2.5 border border-border/30 flex justify-between items-center group hover:border-orange-500/30 transition-colors">
+                          <span className="text-orange-600 dark:text-orange-400 group-hover:text-orange-500 font-bold">$contains, $startsWith, $endsWith</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Text Match (ILIKE)</span>
+                        </div>
+                        <div className="bg-background/50 p-2.5 border border-border/30 flex justify-between items-center group hover:border-orange-500/30 transition-colors">
+                          <span className="text-orange-600 dark:text-orange-400 group-hover:text-orange-500 font-bold">$in, $notIn</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Array (comma sep)</span>
+                        </div>
+                        <div className="bg-background/50 p-2.5 border border-border/30 flex justify-between items-center group hover:border-orange-500/30 transition-colors">
+                          <span className="text-orange-600 dark:text-orange-400 group-hover:text-orange-500 font-bold">$null, $notNull</span>
+                          <span className="text-[10px] text-muted-foreground uppercase">Nullability (IS NULL)</span>
+                        </div>
+                      </div>
+
+                      <div className="bg-orange-500/10 border border-orange-500/20 p-3 mt-2 rounded">
+                        <span className="text-[10px] font-bold uppercase text-orange-500 block mb-1 tracking-widest flex items-center gap-1">⚠️ Important Limitation:</span>
+                        <p className="text-xs text-muted-foreground">Deep relation filtering (e.g. <code className="text-orange-400 bg-orange-500/10 px-1 py-0.5 rounded font-mono">?filters[author][name][$eq]=John</code>) is <strong className="text-orange-500">NOT supported</strong>. Filters only apply directly to the Content Type's own JSON fields.</p>
+                      </div>
+
+                      <div className="bg-muted/30 border border-border/50 p-3 mt-2">
+                        <span className="text-[10px] font-bold uppercase text-muted-foreground block mb-2 tracking-widest">Examples:</span>
+                        <ul className="space-y-3">
+                          <li className="flex flex-col gap-1">
+                            <code className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold break-all">?filters[title][$contains]=hello&filters[price][$gte]=100</code>
+                            <span className="text-[11px] text-muted-foreground italic">Title contains "hello" AND price &gt;= 100</span>
+                          </li>
+                          <li className="flex flex-col gap-1">
+                            <code className="text-xs text-emerald-600 dark:text-emerald-400 font-mono font-bold break-all">?filters[$or][0][status][$eq]=DRAFT&filters[$or][1][price][$lt]=50</code>
+                            <span className="text-[11px] text-muted-foreground italic">Logical OR operations (status is DRAFT OR price &lt; 50)</span>
+                          </li>
+                        </ul>
+                      </div>
                     </div>
 
-                    {/* Populate */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Populate</h4>
-                      <p className="text-xs text-muted-foreground">Expand relational fields in the response.</p>
-                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?populate=* (All) or ?populate=author,category</code>
+                    {/* Sorting & Populating */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-orange-500 pl-2">Sorting, Selecting & Populating</h4>
+                      
+                      <div className="space-y-2">
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-foreground uppercase tracking-wide">Sorting</span>
+                            <code className="text-[10px] text-muted-foreground font-mono">?sort=field:order</code>
+                          </div>
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?sort=createdAt:desc</code>
+                          <span className="text-[11px] text-muted-foreground">Orders the response. Supported orders: <code className="text-orange-600 dark:text-orange-400 font-mono">asc</code>, <code className="text-orange-600 dark:text-orange-400 font-mono">desc</code>.</span>
+                        </div>
+
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-foreground uppercase tracking-wide">Field Selection</span>
+                            <code className="text-[10px] text-muted-foreground font-mono">?fields=field1,field2</code>
+                          </div>
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?fields=title,slug,price</code>
+                          <span className="text-[11px] text-muted-foreground">Returns only the specified fields, reducing payload size.</span>
+                        </div>
+
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <div className="flex justify-between items-center">
+                            <span className="text-[11px] font-bold text-foreground uppercase tracking-wide">Populating Relations</span>
+                            <code className="text-[10px] text-muted-foreground font-mono">?populate=relation1,relation2</code>
+                          </div>
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?populate=author,category</code>
+                          <span className="text-[11px] text-muted-foreground">Expands relational fields. Use <code className="text-orange-600 dark:text-orange-400 font-mono">?populate=*</code> to expand all relations.</span>
+                        </div>
+                      </div>
                     </div>
 
-                    {/* Field Selection */}
-                    <div className="space-y-2">
-                      <h4 className="text-xs font-semibold text-orange-500 uppercase tracking-widest">Fields</h4>
-                      <p className="text-xs text-muted-foreground">Select only specific fields to return.</p>
-                      <code className="block text-xs text-orange-400 bg-orange-500/10 p-2 border border-border/30 mt-1">?fields=title,slug</code>
+                    {/* Content Workflow & Localization */}
+                    <div className="space-y-3">
+                      <h4 className="text-[11px] font-bold text-orange-500 uppercase tracking-widest flex items-center gap-2 border-l-2 border-orange-500 pl-2">Localization & Status</h4>
+                      
+                      <div className="grid gap-2">
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?locale=id</code>
+                          <span className="text-[11px] text-muted-foreground">Fetches content for a specific locale (defaults to tenant default).</span>
+                        </div>
+                        <div className="bg-background/50 p-3 border border-border/30 flex flex-col gap-1.5 transition-colors hover:border-orange-500/30">
+                          <code className="text-xs font-mono text-emerald-600 dark:text-emerald-400 font-bold">?status=DRAFT</code>
+                          <span className="text-[11px] text-muted-foreground">Filters by workflow status. <span className="font-semibold text-orange-500">Requires a full-access API Key.</span></span>
+                        </div>
+                      </div>
                     </div>
+
                   </div>
-                </ScrollArea>
+                </div>
               </div>
             </div>
 
             {/* Right Panel: Response */}
-            <div className="xl:col-span-6 flex flex-col gap-6">
-              <div className="bg-card/40 border border-border/50 rounded-none flex-1 min-h-[500px] flex flex-col overflow-hidden backdrop-blur-xl shadow-lg relative group transition-all duration-500 hover:border-border">
+            <div className="xl:col-span-6 flex flex-col gap-6 xl:sticky xl:top-8 xl:h-[calc(100vh-4rem)]">
+              <div className="bg-card/40 border border-border/50 rounded-none flex-1 min-h-[500px] flex flex-col overflow-hidden backdrop-blur-xl shadow-lg relative group transition-all duration-500 hover:border-border h-full">
                 <div className="absolute inset-0 bg-gradient-to-t from-orange-500/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none" />
                 
                 <div className="bg-muted/30 border-b border-border/50 py-3 px-5 flex items-center justify-between z-10">

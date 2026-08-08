@@ -3,7 +3,49 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { randomBytes } from "crypto"
+import { getTenantAccess } from "@/lib/tenant-access"
 
+// GET /api/tenant/[tenant]/api-keys — List all workspace API keys
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
+    }
+
+    const keys = await db.apiKey.findMany({
+      where: { tenantId: access.tenantId },
+      orderBy: { createdAt: "desc" },
+    })
+
+    return NextResponse.json({
+      apiKeys: keys.map((k) => ({
+        id: k.id,
+        name: k.name,
+        key: k.key,
+        createdAt: k.createdAt,
+      })),
+    })
+  } catch (error: any) {
+    console.error("Error fetching API keys:", error)
+    return NextResponse.json(
+      { error: error.message || "Internal server error" },
+      { status: 500 }
+    )
+  }
+}
+
+// POST /api/tenant/[tenant]/api-keys — Create a new workspace API key
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
@@ -15,47 +57,58 @@ export async function POST(
     }
 
     const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
-      },
-    })
+    const access = await getTenantAccess(session, tenantSlug)
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
     }
 
-    // Check admin access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-        role: { in: ["owner", "admin"] },
-      },
-    })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
+    if (access.role !== "owner" && access.role !== "admin" && session.user.role !== "super_admin") {
       return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
     }
 
-    // Delete existing API keys to keep only one active (optional, based on requirement)
-    // await db.apiKey.deleteMany({ where: { tenantId: tenant.id } })
-
     const newApiKey = `sacms_${randomBytes(24).toString("hex")}`
-    const apiKeyRecord = await db.apiKey.create({
-      data: {
-        tenantId: tenant.id,
-        name: "Default API Key",
-        key: newApiKey,
-        permissions: { fullAccess: true },
-      },
+    
+    const existingKeys = await db.apiKey.findMany({
+      where: { tenantId: access.tenantId }
     })
 
+    let apiKeyRecord;
+
+    if (existingKeys.length > 0) {
+      const [firstKey, ...restKeys] = existingKeys;
+      
+      apiKeyRecord = await db.apiKey.update({
+        where: { id: firstKey.id },
+        data: {
+          key: newApiKey,
+          name: `API Key (${new Date().toLocaleDateString()})`,
+        }
+      })
+
+      if (restKeys.length > 0) {
+        await db.apiKey.deleteMany({
+          where: {
+            id: { in: restKeys.map(k => k.id) }
+          }
+        })
+      }
+    } else {
+      apiKeyRecord = await db.apiKey.create({
+        data: {
+          tenantId: access.tenantId,
+          name: `API Key (${new Date().toLocaleDateString()})`,
+          key: newApiKey,
+          permissions: { fullAccess: true },
+        },
+      })
+    }
+
     return NextResponse.json({ apiKey: apiKeyRecord.key }, { status: 201 })
-  } catch (error) {
+  } catch (error: any) {
     console.error("Error generating API key:", error)
     return NextResponse.json(
-      { error: "Internal server error" },
+      { error: error.message || "Internal server error" },
       { status: 500 }
     )
   }

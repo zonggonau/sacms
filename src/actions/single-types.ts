@@ -1,4 +1,5 @@
 "use server"
+// Trigger Next.js rebuild for SingleType showInCms patch v4
 
 import { Prisma } from "@prisma/client"
 import { getServerSession } from "next-auth/next"
@@ -170,7 +171,7 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
 
     const result = createSingleTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
-    const { name, slug, description, fields } = result.data
+    const { name, slug, description, showInCms, fields } = result.data
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
     const enforcement = await enforcePlanLimit(tenantId, "content_types", session.user.id)
@@ -188,6 +189,7 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
         name,
         slug,
         description,
+        showInCms: showInCms ?? true,
         isPublished: true,
         schemaFields: {
           create: fields?.map((field: any, index: number) => ({
@@ -235,7 +237,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     const result = updateSingleTypeSchema.safeParse(data)
     if (!result.success) return { error: result.error.issues[0]?.message ?? "Validation failed" }
-    const { name, slug, description, fields } = result.data
+    const { name, slug, description, showInCms, fields } = result.data
 
     const existingSingleType = await tenantDb.singleType.findUnique({
       where: { id },
@@ -268,6 +270,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
           name,
           slug,
           description,
+          showInCms: showInCms !== undefined ? showInCms : (existingSingleType as any).showInCms ?? true,
           schemaFields: fields
             ? {
                 create: fields.map((field: any, index: number) => ({

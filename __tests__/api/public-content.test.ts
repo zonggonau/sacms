@@ -5,6 +5,25 @@ import { getCache, setCache } from "@/lib/cache"
 import { GET } from "../../src/app/api/public/[tenant]/content/[contentType]/route"
 import { NextRequest } from "next/server"
 
+vi.mock("@/lib/monitoring", () => ({
+  logApiRequest: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock("@/lib/database", () => {
+  const mockDb = {
+    apiKey: { findUnique: vi.fn(), update: vi.fn() },
+    apiToken: { findUnique: vi.fn(), update: vi.fn() },
+    contentType: { findFirst: vi.fn() },
+    contentEntry: { findMany: vi.fn(), count: vi.fn() },
+    tenantLocale: { findFirst: vi.fn(), findMany: vi.fn() },
+    $queryRawUnsafe: vi.fn(),
+  }
+  return {
+    db: mockDb,
+    getTenantDb: vi.fn().mockResolvedValue(mockDb),
+  }
+})
+
 // Helper to create mock NextRequest
 function createRequest(
   url: string,
@@ -21,6 +40,7 @@ describe("Public Content API GET Endpoint", () => {
     vi.clearAllMocks()
     
     // Set default mocks
+    vi.mocked(db.apiKey.findUnique).mockResolvedValue(null)
     vi.mocked(rateLimit).mockResolvedValue({ success: true, remaining: 99, limit: 100, resetAt: Date.now() + 60000 })
     vi.mocked(getCache).mockResolvedValue(null)
   })
@@ -96,6 +116,18 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return 429 if rate limit is exceeded", async () => {
+    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+      id: "token-1",
+      token: "cf_test_token",
+      tenantId: "tenant-1",
+      expiresAt: null,
+      type: "read-only",
+      tenant: {
+        id: "tenant-1",
+        slug: "tenant-1",
+      },
+    } as any)
+
     vi.mocked(rateLimit).mockResolvedValue({
       success: false,
       remaining: 0,
@@ -119,10 +151,19 @@ describe("Public Content API GET Endpoint", () => {
       token: "cf_test_token",
       tenantId: "tenant-1",
       expiresAt: null,
+      type: "read-only",
       tenant: {
         id: "tenant-1",
         slug: "tenant-1",
       },
+    } as any)
+
+    vi.mocked(db.contentType.findFirst).mockResolvedValue({
+      id: "type-articles",
+      name: "Articles",
+      slug: "articles",
+      schemaFields: [],
+      tenants: [],
     } as any)
 
     const mockCachedPayload = {
@@ -172,11 +213,13 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should retrieve and shape entries correctly (cache MISS)", async () => {
+    vi.mocked(db.apiToken.update).mockResolvedValue({} as any)
     vi.mocked(db.apiToken.findUnique).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",
       expiresAt: null,
+      type: "read-only",
       tenant: {
         id: "tenant-1",
         slug: "tenant-1",
@@ -188,7 +231,7 @@ describe("Public Content API GET Endpoint", () => {
       id: "type-articles",
       name: "Articles",
       slug: "articles",
-      fields: [
+      schemaFields: [
         { slug: "title", type: "string" },
         { slug: "body", type: "text" },
       ],

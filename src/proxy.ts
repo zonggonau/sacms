@@ -157,7 +157,7 @@ export async function proxy(request: NextRequest) {
     rewriteUrl.pathname = `/api/public/${rest}`
 
     const response = NextResponse.rewrite(rewriteUrl)
-    applySecurityHeaders(response)
+    applySecurityHeaders(response, pathname)
     applyCorsHeaders(response)
     response.headers.set("X-API-Version", version)
 
@@ -168,7 +168,7 @@ export async function proxy(request: NextRequest) {
   }
 
   const response = NextResponse.next()
-  applySecurityHeaders(response)
+  applySecurityHeaders(response, pathname)
 
   // CORS for public API routes
   if (pathname.startsWith("/api/public/")) {
@@ -182,9 +182,17 @@ export async function proxy(request: NextRequest) {
   return response
 }
 
-function applySecurityHeaders(response: NextResponse) {
+function applySecurityHeaders(response: NextResponse, pathname?: string) {
   response.headers.set("X-Content-Type-Options", "nosniff")
-  response.headers.set("X-Frame-Options", "DENY")
+
+  const isPreview = pathname && (pathname.includes("/preview") || pathname.includes("/frontend"))
+
+  if (isPreview) {
+    response.headers.delete("X-Frame-Options")
+  } else {
+    response.headers.set("X-Frame-Options", "SAMEORIGIN")
+  }
+
   response.headers.set("X-XSS-Protection", "1; mode=block")
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin")
   response.headers.set(
@@ -192,24 +200,21 @@ function applySecurityHeaders(response: NextResponse) {
     "max-age=63072000; includeSubDomains; preload"
   )
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
-  // Content-Security-Policy: allow same-origin + trusted CDNs only
-  // 'unsafe-inline' is kept for Next.js SSR styles; script-src relies on nonces
+
   response.headers.set(
     "Content-Security-Policy",
     [
-      "default-src 'self'",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com https://embeddable-sandbox.cdn.apollographql.com",
-      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://embeddable-sandbox.cdn.apollographql.com",
-      "font-src 'self' https://fonts.gstatic.com",
+      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
+      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://esm.sh https://embeddable-sandbox.cdn.apollographql.com",
+      "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://embeddable-sandbox.cdn.apollographql.com",
+      "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",
       "media-src 'self' https:",
-      "connect-src 'self' https:",
-      "frame-src 'self' data: blob: https://app.midtrans.com https://app.sandbox.midtrans.com https://sandbox.embed.apollographql.com https://embeddable-sandbox.cdn.apollographql.com",
-      "frame-ancestors 'none'",
+      "connect-src 'self' https: wss:",
+      "frame-src 'self' data: blob: https:",
+      isPreview ? "frame-ancestors *" : "frame-ancestors 'self' https:",
       "object-src 'none'",
       "base-uri 'self'",
-      "form-action 'self'",
-      "upgrade-insecure-requests",
     ].join("; ")
   )
 }
@@ -217,7 +222,7 @@ function applySecurityHeaders(response: NextResponse) {
 function applyCorsHeaders(response: NextResponse) {
   response.headers.set("Access-Control-Allow-Origin", "*")
   response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-  response.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type")
+  response.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, x-api-key, X-API-Key")
 }
 
 export const config = {

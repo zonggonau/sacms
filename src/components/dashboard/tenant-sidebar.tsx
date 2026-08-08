@@ -1,7 +1,9 @@
 "use client"
 
 import Link from "next/link"
-import { usePathname } from "next/navigation"
+import { usePathname, useRouter } from "next/navigation"
+import { useToast } from "@/hooks/use-toast"
+import { checkWorkspaceAccessAction } from "@/actions/tenant"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -21,7 +23,6 @@ import {
   Key,
   Layers,
   CreditCard,
-  Languages,
   ChevronDown,
   Play,
   BookOpen,
@@ -32,7 +33,8 @@ import {
   DatabaseIcon,
   Puzzle,
   Shield,
-  Code
+  Code,
+  Globe
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -70,12 +72,31 @@ interface NavSection {
 export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, session }: TenantSidebarProps) {
   const tenantId = propId || tenantSlug
   const pathname = usePathname()
+  const router = useRouter()
+  const { toast } = useToast()
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const [liveTenants, setLiveTenants] = useState<any[]>([])
+
+  const handleSwitchWorkspace = async (targetTenantId?: string) => {
+    if (targetTenantId && targetTenantId === tenantId) {
+      setWorkspaceSwitcherOpen(false)
+      setMobileOpen(false)
+      return
+    }
+
+    const res = await checkWorkspaceAccessAction(targetTenantId)
+    if (res.allowed && res.redirectUrl) {
+      setWorkspaceSwitcherOpen(false)
+      setMobileOpen(false)
+      router.push(res.redirectUrl)
+    } else if (res.error) {
+      toast({ variant: "destructive", title: "Access Denied", description: res.error })
+    }
+  }
 
   useEffect(() => {
     setMounted(true)
@@ -117,6 +138,11 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     if (session?.user) fetchTenants()
   }, [session])
 
+  const userRole = currentTenant?.role || "subscriber"
+  const isSuperAdmin = session?.user?.role === "super_admin"
+  const isAdmin = userRole === "admin" || userRole === "owner" || isSuperAdmin
+  const isEditor = userRole === "editor" || isAdmin
+
   const navSections: NavSection[] = [
     {
       label: "",
@@ -128,28 +154,28 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       label: "CONTENT",
       items: [
         { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        { title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true },
-        { title: "Media Library", href: "/media", icon: ImageIcon },
+        ...(isAdmin ? [{ title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true }] : []),
+        ...(isEditor || userRole === "author" ? [{ title: "Media Library", href: "/media", icon: ImageIcon }] : []),
       ],
     },
     {
       label: "MANAGEMENT",
       items: [
-        { title: "Team Members", href: "/users", icon: Users },
-        { title: "Roles & Permissions", href: "/roles", icon: Shield },
-        { title: "Localization", href: "/localization", icon: Languages },
-        ...(isEnterpriseMode ? [] : [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }]),
+        ...(isAdmin ? [{ title: "Team Members", href: "/users", icon: Users }] : []),
+        ...(isAdmin || isEditor ? [{ title: "Activity Logs", href: "/system/audit", icon: ClipboardList }] : []),
+        ...(isAdmin && !isEnterpriseMode ? [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }] : []),
       ],
     },
     {
       label: "SETTINGS",
       items: [
-        { title: "Developer", href: "/developer", icon: Code, matchPrefix: true },
-        { title: "Audit Trail", href: "/system/audit", icon: ClipboardList },
-        { title: "Workspace Settings", href: "/settings", icon: Settings, matchPrefix: true },
+        ...(isAdmin ? [
+          { title: "Developer", href: "/developer", icon: Code, matchPrefix: true },
+          { title: "Workspace Settings", href: "/settings", icon: Settings, matchPrefix: true },
+        ] : []),
       ],
     },
-  ]
+  ].filter(section => section.items.length > 0)
 
   useEffect(() => {
     if (!mounted) return;
@@ -200,12 +226,11 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         {workspaceSwitcherOpen && (
           <div className="border-t px-2 py-2 space-y-0.5 max-h-64 overflow-y-auto bg-muted/20">
             {liveTenants.map((t) => (
-              <Link
+              <button
                 key={t.id}
-                href={`/dashboard/${t.id}`}
-                onClick={() => { setMobileOpen(false); setWorkspaceSwitcherOpen(false) }}
+                onClick={() => handleSwitchWorkspace(t.id)}
                 className={cn(
-                  "flex items-center gap-2 rounded-none px-3 py-2 text-xs transition-colors",
+                  "flex w-full items-center gap-2 rounded-none px-3 py-2 text-xs transition-colors text-left cursor-pointer",
                   t.id === tenantId
                     ? "bg-primary/10 text-primary font-bold"
                     : "hover:bg-muted text-muted-foreground hover:text-foreground"
@@ -216,18 +241,17 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                 </div>
                 <span className="truncate">{t.name}</span>
                 {t.id === tenantId && <ChevronRight className="ml-auto h-3 w-3 text-primary" />}
-              </Link>
+              </button>
             ))}
             
             <div className="pt-2 mt-2 border-t">
-              <Link
-                href="/dashboard"
-                onClick={() => { setMobileOpen(false); setWorkspaceSwitcherOpen(false) }}
-                className="flex items-center gap-2 rounded-none px-3 py-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors"
+              <button
+                onClick={() => handleSwitchWorkspace()}
+                className="flex w-full items-center gap-2 rounded-none px-3 py-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors text-left cursor-pointer"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
                 <span>Change Workspace</span>
-              </Link>
+              </button>
             </div>
           </div>
         )}

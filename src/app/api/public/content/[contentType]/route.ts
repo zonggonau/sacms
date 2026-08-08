@@ -4,6 +4,7 @@ import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
 import { createHash } from "crypto"
 import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
+import { getGlobalWorkspaceId } from "@/lib/settings"
 import {
   parseFilters,
   buildFilterSQL,

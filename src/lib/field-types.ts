@@ -11,7 +11,6 @@ import {
   Code,
   Clock,
   Palette,
-  MapPin,
   Fingerprint,
   Mail,
   FileUp,
@@ -25,6 +24,7 @@ import {
   Banknote,
   CalendarRange,
   Layers,
+  KeyRound,
 } from "lucide-react"
 
 // ==================== REFACTORED FIELD TYPES ====================
@@ -59,6 +59,7 @@ export const FIELD_TYPES = [
 
   // Validation
   { type: "email", label: "Email", icon: Mail, description: "Validated email address", category: "Validation" },
+  { type: "password", label: "Password", icon: KeyRound, description: "Teks rahasia tersandi (hashed)", category: "Validation" },
   { type: "url", label: "URL", icon: Globe, description: "Validated URL with preview", category: "Validation" },
   { type: "phone", label: "Phone", icon: Phone, description: "Nomor telepon internasional", category: "Validation" },
   { type: "uid", label: "UID", icon: Fingerprint, description: "Unique identifier", category: "Validation" },
@@ -76,7 +77,6 @@ export const FIELD_TYPES = [
   // Advanced
   { type: "json", label: "JSON", icon: Code, description: "Custom JSON structure", category: "Advanced" },
   { type: "color", label: "Color", icon: Palette, description: "Color hex picker", category: "Advanced" },
-  { type: "location", label: "Location", icon: MapPin, description: "Geographical coordinates", category: "Advanced" },
   { type: "rating", label: "Rating", icon: Star, description: "Bintang 1-5 untuk review & penilaian", category: "Advanced" },
   { type: "button", label: "Button / CTA", icon: MousePointer2, description: "Tombol dengan label dan URL", category: "Advanced" },
   { type: "document_template", label: "Format Surat Plugin", icon: FileText, description: "Template DOCX untuk export surat", category: "Advanced" },

@@ -234,3 +234,49 @@ export async function getGlobalWorkspaceIdAction() {
   const { getGlobalWorkspaceId } = await import("@/lib/settings");
   return await getGlobalWorkspaceId();
 }
+
+export async function checkWorkspaceAccessAction(targetTenantId?: string) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return { allowed: false, redirectUrl: "/login" }
+    }
+
+    const { getTenantAccess } = await import("@/lib/tenant-access")
+
+    // Case 1: Checking access to /dashboard (workspace manager selection page)
+    if (!targetTenantId) {
+      if (session.user.role === "admin" || session.user.role === "super_admin") {
+        return { allowed: true, redirectUrl: "/dashboard" }
+      }
+      
+      const { getGlobalWorkspaceId } = await import("@/lib/settings")
+      const globalId = await getGlobalWorkspaceId()
+      
+      // Count non-global workspaces where user is a member
+      const userTenantsCount = await db.tenantMember.count({
+        where: { 
+          userId: session.user.id,
+          tenant: { slug: { notIn: [globalId, "sacms-global", "sacms"] }, id: { not: globalId } }
+        }
+      })
+
+      if (userTenantsCount <= 1) {
+        return { allowed: false, error: "You only have 1 workspace and cannot switch to the workspace manager." }
+      }
+      
+      return { allowed: true, redirectUrl: "/dashboard" }
+    }
+
+    // Case 2: Checking access to a specific target tenant workspace
+    const access = await getTenantAccess(session, targetTenantId)
+    if (!access) {
+      return { allowed: false, error: "Access denied. You do not have permission for this workspace." }
+    }
+
+    return { allowed: true, redirectUrl: `/dashboard/${access.tenantId}` }
+  } catch (error) {
+    console.error("Error checking workspace access:", error)
+    return { allowed: false, error: "Failed to check workspace access." }
+  }
+}

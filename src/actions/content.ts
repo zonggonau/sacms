@@ -27,24 +27,6 @@ async function getWorkflowContext(
     return { role: fallbackRole, customPermissions: null }
   }
 
-  if (Array.isArray(member.customPermissions)) {
-    return {
-      role: member.role,
-      customPermissions: member.customPermissions as string[],
-    }
-  }
-
-  if (!["owner", "admin", "editor", "viewer", "member"].includes(member.role)) {
-    const permissions = await db.rolePermission.findMany({
-      where: { tenantId, roleId: member.role, granted: true },
-      include: { permission: true },
-    })
-    return {
-      role: member.role,
-      customPermissions: permissions.map((item) => item.permission.name),
-    }
-  }
-
   return { role: member.role, customPermissions: null }
 }
 
@@ -224,13 +206,27 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
     // If no entryId provided (like for single types where we might search by content type)
     if (!entryId) {
       const entry = await tenantDb.contentEntry.findFirst({
-        where: { contentTypeId: contentType.id, tenantId: access.tenantId, locale },
+        where: { 
+          contentTypeId: contentType.id, 
+          locale,
+          OR: [
+            { tenantId: access.tenantId },
+            { tenantId: null }
+          ]
+        },
       })
       return { entry, contentType }
     }
 
     const baseEntry = await tenantDb.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId: access.tenantId },
+      where: { 
+        id: entryId, 
+        contentTypeId: contentType.id, 
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null }
+        ]
+      },
       include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
     })
 
@@ -239,7 +235,14 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
     const documentId = baseEntry.documentId || baseEntry.id
 
     let entry = await tenantDb.contentEntry.findFirst({
-      where: { documentId, locale, tenantId: access.tenantId },
+      where: { 
+        documentId, 
+        locale, 
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null }
+        ]
+      },
       include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
     })
 
@@ -276,15 +279,17 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
       const targetLocale = locale || "en"
 
       const contentType = await db.contentType.findFirst({
-        where: { slug: contentTypeSlug, tenantId: null }
+        where: { slug: contentTypeSlug, tenantId: null },
+        include: { schemaFields: true },
       })
       if (!contentType) return { error: "Content Type not found" }
       
-      const validation = await validateContentEntry(contentType.id, data, db)
-      if (!validation.valid) {
-        return { error: `Validation failed: ${validation.errors.map((e) => `${e.field}: ${e.message}`).join(", ")}` }
+      const validation = await validateContentEntry(contentType.schemaFields as any, data)
+      if (!validation.success) {
+        const errorMsg = validation.errors ? Object.entries(validation.errors).map(([k, v]) => `${k}: ${v}`).join(", ") : "Validation failed"
+        return { error: `Validation failed: ${errorMsg}` }
       }
-      const processedData = await processAutoSlugs(data, contentType.id, null)
+      const processedData = await processAutoSlugs(null, contentType.id, contentType.schemaFields, data, undefined)
       const documentId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15)
 
       const entry = await db.contentEntry.create({
@@ -483,15 +488,16 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
       
       const entry = await db.contentEntry.findUnique({
         where: { id: entryId, tenantId: null },
-        include: { contentType: true }
+        include: { contentType: { include: { schemaFields: true } } }
       })
       if (!entry) return { error: "Entry not found" }
       
-      const validation = await validateContentEntry(entry.contentTypeId, data, db)
-      if (!validation.valid) {
-        return { error: `Validation failed: ${validation.errors.map((e) => `${e.field}: ${e.message}`).join(", ")}` }
+      const validation = await validateContentEntry(entry.contentType.schemaFields as any, data)
+      if (!validation.success) {
+        const errorMsg = validation.errors ? Object.entries(validation.errors).map(([k, v]) => `${k}: ${v}`).join(", ") : "Validation failed"
+        return { error: `Validation failed: ${errorMsg}` }
       }
-      const processedData = await processAutoSlugs(data, entry.contentTypeId, entryId)
+      const processedData = await processAutoSlugs(null, entry.contentTypeId, entry.contentType.schemaFields, data, entryId)
       
       const updateData: any = { data: processedData }
       if (status && isWorkflowStatus(status)) {
@@ -565,17 +571,43 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
     }
 
     const baseEntry = await tenantDb.contentEntry.findFirst({
-      where: { id: entryId, contentTypeId: contentType.id, tenantId },
+      where: { 
+        id: entryId, 
+        contentTypeId: contentType.id, 
+        OR: [
+          { tenantId },
+          { tenantId: null }
+        ]
+      },
     })
     if (!baseEntry) return { error: "Entry not found" }
 
     const documentId = baseEntry.documentId || baseEntry.id
-    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId } })
+    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({ 
+      where: { 
+        documentId, 
+        locale: targetLocale, 
+        OR: [
+          { tenantId },
+          { tenantId: null }
+        ]
+      } 
+    })
 
     const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
     if (!isWorkflowStatus(targetStatus)) return { error: "Invalid content status" }
 
     const workflow = await getWorkflowContext(tenantId, session.user.id, access.role)
+
+    const isRestrictedRole = workflow.role === "author" || workflow.role === "contributor"
+    if (isRestrictedRole) {
+      if (existingLocaleEntry && existingLocaleEntry.createdBy !== session.user.id) {
+        return { error: "You do not have permission to edit content you do not own" }
+      }
+      if (!existingLocaleEntry && baseEntry.createdBy !== session.user.id) {
+        return { error: "You do not have permission to add translations to content you do not own" }
+      }
+    }
     if (
       !existingLocaleEntry &&
       targetStatus !== "DRAFT" &&
@@ -598,24 +630,30 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         ? (existingLocaleEntry.data as Record<string, unknown>)
         : {}
       const candidateData = { ...existingData, ...data }
+      const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, mappedContentType.fields, candidateData, existingLocaleEntry?.id, 'content', tenantDb)
+
       const validation = await validateContentEntry(
         mappedContentType.fields as any,
-        candidateData,
+        dataWithSlugs,
         { enforceRequired: targetStatus !== "DRAFT" }
       )
-      if (!validation.success) return { error: "Validation failed", details: validation.errors }
+      if (!validation.success) {
+        const errorMsg = validation.errors ? Object.entries(validation.errors).map(([k, v]) => `${k}: ${v}`).join(", ") : "Validation failed"
+        return { error: `Validation failed: ${errorMsg}`, details: validation.errors }
+      }
       Object.assign(data, validation.data || {})
 
       const { validateDynamicContent } = await import("@/lib/validations/dynamic-validator")
       const dynamicValidation = await validateDynamicContent(
         contentType.id,
         tenantId,
-        candidateData,
+        dataWithSlugs,
         existingLocaleEntry?.id,
         { enforceRequired: targetStatus !== "DRAFT", client: tenantDb }
       )
       if (!dynamicValidation.success) {
-        return { error: "Validation failed", details: dynamicValidation.errors }
+        const errorMsg = dynamicValidation.errors ? Object.entries(dynamicValidation.errors).map(([k, v]) => `${k}: ${v}`).join(", ") : "Validation failed"
+        return { error: `Validation failed: ${errorMsg}`, details: dynamicValidation.errors }
       }
     }
 
@@ -785,8 +823,6 @@ export async function deleteEntryAction(tenantSlug: string, contentTypeSlug: str
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    if (access.role !== "admin" && access.role !== "owner") return { error: "Only admins and owners can delete entries" }
-
     const tenantDb = await getTenantDb(tenantSlug)
     const contentType = await tenantDb.contentType.findFirst({
       where: { 
@@ -799,6 +835,14 @@ export async function deleteEntryAction(tenantSlug: string, contentTypeSlug: str
 
     const entry = await tenantDb.contentEntry.findFirst({ where: { id: entryId, contentTypeId: contentType.id, tenantId: access.tenantId } })
     if (!entry) return { error: "Entry not found" }
+
+    if (access.role === "author" || access.role === "contributor") {
+      if (entry.createdBy !== session.user.id) {
+        return { error: "You do not have permission to delete content you do not own" }
+      }
+    } else if (access.role !== "admin" && access.role !== "owner" && access.role !== "editor") {
+      return { error: "You do not have permission to delete entries" }
+    }
 
     const hookResult = await executeSyncHooks(access.tenantId, WebhookEvents.BEFORE_DELETE, { id: entry.id, contentType: contentTypeSlug })
     if (!hookResult.allowed) return { error: hookResult.rejectMessage || "Rejected by hook" }

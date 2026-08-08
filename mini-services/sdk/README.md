@@ -17,7 +17,7 @@ const cf = new SaCMS({
   baseUrl: "https://your-domain.com",
   tenant: "my-workspace",
   token: "cf_xxxxx",
-  locale: "en", // optional default locale
+  locale: "id", // default locale set to Indonesia
 });
 
 // Query a collection
@@ -35,7 +35,7 @@ const article = await cf.collection("articles").findOne("entry-id");
 // Create entry (requires full-access token)
 const created = await cf.collection("articles").create({
   data: { title: "New Article", body: "..." },
-  locale: "en",
+  locale: "id",
 });
 
 // Update entry
@@ -52,7 +52,7 @@ const homepage = await cf.single("homepage").find({ locale: "id" });
 // GraphQL
 const result = await cf.graphql(`
   query {
-    articles(locale: "en") {
+    articles(locale: "id") {
       data { id title }
       meta { pagination { total } }
     }

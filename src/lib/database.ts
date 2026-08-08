@@ -14,10 +14,13 @@ const globalForPrisma = globalThis as unknown as {
 // Reset logic to pick up schema changes in dev
 if (globalForPrisma.prisma) {
   try {
-    if (!(globalThis as any).__prisma_reset_v2) {
-       console.log('[Prisma] Forcing client refresh for new schema fields...')
+    if (!(globalThis as any).__prisma_reset_v4) {
+       console.log('[Prisma] Forcing client refresh for SingleType showInCms field...')
        globalForPrisma.prisma = undefined
-       ;(globalThis as any).__prisma_reset_v2 = true
+       if (globalForPrisma.tenantClients) {
+         globalForPrisma.tenantClients.clear()
+       }
+       ;(globalThis as any).__prisma_reset_v4 = true
     }
   } catch (e) {
     globalForPrisma.prisma = undefined

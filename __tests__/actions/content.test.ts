@@ -7,6 +7,24 @@ import { validateDynamicContent } from "@/lib/validations/dynamic-validator"
 import { getEntriesAction, createEntryAction } from "@/actions/content"
 import { checkPermission } from "@/lib/rbac"
 
+// Mock Database
+vi.mock("@/lib/database", () => {
+  const mockDb = {
+    contentType: { findFirst: vi.fn(), findMany: vi.fn() },
+    contentEntry: { findFirst: vi.fn(), findMany: vi.fn(), count: vi.fn(), create: vi.fn() },
+    tenantMember: { findUnique: vi.fn() },
+    tenantLocale: { findFirst: vi.fn().mockResolvedValue({ locale: "en" }), findMany: vi.fn().mockResolvedValue([]) },
+    webhook: { findMany: vi.fn().mockResolvedValue([]) },
+    media: { aggregate: vi.fn().mockResolvedValue({ _sum: { size: 0 } }) },
+    rolePermission: { findMany: vi.fn().mockResolvedValue([]) },
+    $transaction: vi.fn(),
+  }
+  return {
+    db: mockDb,
+    getTenantDb: vi.fn().mockResolvedValue(mockDb),
+  }
+})
+
 // Mock RBAC
 vi.mock("@/lib/rbac", () => ({
   checkPermission: vi.fn(),
@@ -72,6 +90,7 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
+        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue(null)
@@ -89,6 +108,7 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
+        isGlobal: false,
       })
 
 
@@ -125,6 +145,7 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
+        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
@@ -162,6 +183,7 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
+        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({
@@ -205,6 +227,7 @@ describe("Tenant Content Actions", () => {
         userId: "user-1",
         role: "admin",
         tenant: { id: "tenant-1", name: "Tenant 1", slug: "tenant-1", plan: "free" },
+        isGlobal: false,
       })
 
       vi.mocked(db.contentType.findFirst).mockResolvedValue({

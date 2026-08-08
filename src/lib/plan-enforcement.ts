@@ -117,6 +117,9 @@ export async function enforcePlanLimit(
   // 6. Check
   const allowed = currentUsage < effectiveMax
 
+  const displayCurrent = resource === "storage" ? `${(currentUsage / (1024 * 1024)).toFixed(1)}MB` : currentUsage
+  const displayMax = resource === "storage" ? `${(effectiveMax / (1024 * 1024)).toFixed(0)}MB` : effectiveMax
+
   return {
     allowed,
     current: currentUsage,
@@ -124,7 +127,7 @@ export async function enforcePlanLimit(
     planSlug: planConfig.plan_slug,
     message: allowed
       ? "OK"
-      : `Limit reached: ${resource} (${currentUsage}/${effectiveMax}). Upgrade your plan or contact support.`,
+      : `Limit reached: ${resource} (${displayCurrent}/${displayMax}). Upgrade your plan or contact support.`,
   }
 }
 
@@ -144,8 +147,10 @@ function getEffectiveWorkspaceMax(
       return override?.maxContentEntries ?? planConfig.max_content_entries
     case "team_members":
       return override?.maxTeamMembers ?? planConfig.max_team_members
-    case "storage":
-      return override?.maxStorage ?? planConfig.max_storage
+    case "storage": {
+      const mbMax = override?.maxStorage ?? planConfig.max_storage
+      return mbMax * 1024 * 1024 // convert MB to bytes for comparison with db.media size
+    }
     case "locales":
       return override?.maxLocales ?? planConfig.max_locales
     case "api_calls":

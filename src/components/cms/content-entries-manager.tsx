@@ -31,11 +31,17 @@ import {
   updateContentEntryStatusAction 
 } from "@/actions/content"
 
+import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
+import { ChevronDown } from "lucide-react"
+
 const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; icon: any }> = {
   DRAFT:     { label: "Draft",      dot: "bg-zinc-400",    bg: "bg-muted/30 text-foreground border-border rounded-none", icon: FileText },
-  PUBLISHED: { label: "Published",  dot: "bg-zinc-900 dark:bg-zinc-100", bg: "bg-zinc-900/10 dark:bg-zinc-100/10 text-foreground border-zinc-900/20 dark:border-zinc-100/20 rounded-none", icon: CheckCircle2 },
-  ARCHIVED:  { label: "Archived",   dot: "bg-orange-500",  bg: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 rounded-none", icon: Archive },
-  IN_REVIEW: { label: "In Review",  dot: "bg-zinc-500",    bg: "bg-muted text-muted-foreground border-border rounded-none", icon: Clock },
+  IN_REVIEW: { label: "In Review",  dot: "bg-amber-500",   bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 rounded-none", icon: Clock },
+  APPROVED:  { label: "Approved",   dot: "bg-blue-500",    bg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 rounded-none", icon: CheckCircle2 },
+  SCHEDULED: { label: "Scheduled",  dot: "bg-purple-500",  bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 rounded-none", icon: Clock },
+  PUBLISHED: { label: "Published",  dot: "bg-emerald-500", bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 rounded-none", icon: CheckCircle2 },
+  ARCHIVED:  { label: "Archived",   dot: "bg-zinc-500",    bg: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20 rounded-none", icon: Archive },
+  REJECTED:  { label: "Rejected",   dot: "bg-red-500",     bg: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20 rounded-none", icon: AlertCircle },
 }
 
 function stripHtml(html: string) {
@@ -51,7 +57,9 @@ export function ContentEntriesManager({
   isLimitReached = false,
   limit = 0,
   currentCount = 0,
-  basePath
+  basePath,
+  userRole = "owner",
+  customPermissions = null,
 }: { 
   contentType: any, 
   initialEntries: any[],
@@ -60,7 +68,9 @@ export function ContentEntriesManager({
   isLimitReached?: boolean,
   limit?: number,
   currentCount?: number,
-  basePath?: string
+  basePath?: string,
+  userRole?: string,
+  customPermissions?: string[] | null,
 }) {
   const router = useRouter()
   const navBasePath = basePath || `/dashboard/${tenantSlug}/cms`
@@ -128,15 +138,19 @@ export function ContentEntriesManager({
       if (res.success) {
         toast({ title: "Status Updated" })
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Error", description: "error" in res ? (res as any).error : "Failed to update status" })
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Error" })
     }
   }
 
+  const canCreateEntry = userRole !== "subscriber" && userRole !== "viewer"
+  const canDeleteEntry = userRole !== "subscriber" && userRole !== "viewer"
+
   return (
-    <div className="p-6 lg:p-10 space-y-6 animate-in fade-in duration-300">
+    <div className="p-6 lg:p-10 w-full space-y-6">
+      {/* Header */}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">
@@ -148,13 +162,15 @@ export function ContentEntriesManager({
               <p className="text-muted-foreground text-sm">Review and publish your content entries</p>
             </div>
           </div>
-          <Button 
-            className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white shadow-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 rounded-none font-bold transition-colors" 
-            onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
-            disabled={isLimitReached}
-          >
-            <Plus className="mr-2 h-5 w-5" /> New Entry
-          </Button>
+          {canCreateEntry && (
+            <Button 
+              className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white shadow-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 rounded-none font-bold transition-colors" 
+              onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
+              disabled={isLimitReached}
+            >
+              <Plus className="mr-2 h-5 w-5" /> New Entry
+            </Button>
+          )}
         </div>
       </div>
 
@@ -319,26 +335,48 @@ export function ContentEntriesManager({
                       })}
 
                       <TableCell className="text-center">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-black border transition-all cursor-pointer", statusCfg.bg)}>
-                              <span className={cn("h-1.5 w-1.5 rounded-none", statusCfg.dot)} />
-                              {statusCfg.label.toUpperCase()}
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="center" className="w-40 rounded-none shadow-none border border-border bg-card">
-                            <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Set Status</DropdownMenuLabel>
-                            <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "DRAFT")} className="text-xs font-bold py-2 rounded-none hover:bg-muted hover:text-orange-500">
-                              <FileText className="mr-2 h-3.5 w-3.5 text-gray-400" /> Draft
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "PUBLISHED")} className="text-xs font-bold text-foreground py-2 rounded-none hover:bg-muted hover:text-orange-500">
-                              <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-foreground" /> Published
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "ARCHIVED")} className="text-xs font-bold text-orange-500 py-2 rounded-none hover:bg-muted">
-                              <Archive className="mr-2 h-3.5 w-3.5 text-orange-500" /> Archived
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        {(() => {
+                          const nextStatuses = isWorkflowStatus(entry.status) 
+                            ? allowedUserTransitions(entry.status as WorkflowStatus, userRole, customPermissions)
+                            : []
+
+                          if (nextStatuses.length === 0) {
+                            return (
+                              <span className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-black border opacity-90", statusCfg.bg)}>
+                                <span className={cn("h-1.5 w-1.5 rounded-none", statusCfg.dot)} />
+                                {statusCfg.label.toUpperCase()}
+                              </span>
+                            )
+                          }
+
+                          return (
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <button className={cn("inline-flex items-center gap-1.5 px-2.5 py-1 text-[9px] font-black border transition-all cursor-pointer hover:opacity-80", statusCfg.bg)}>
+                                  <span className={cn("h-1.5 w-1.5 rounded-none", statusCfg.dot)} />
+                                  {statusCfg.label.toUpperCase()}
+                                  <ChevronDown className="h-3 w-3 ml-0.5 opacity-50" />
+                                </button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="center" className="w-44 rounded-none shadow-lg border border-border bg-card">
+                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Change Status To</DropdownMenuLabel>
+                                {nextStatuses.map((st) => {
+                                  const cfg = STATUS_CONFIG[st] || STATUS_CONFIG.DRAFT
+                                  return (
+                                    <DropdownMenuItem 
+                                      key={st} 
+                                      onClick={() => handleStatusChange(entry.id, st)} 
+                                      className="text-xs font-bold py-2 rounded-none hover:bg-muted cursor-pointer"
+                                    >
+                                      <cfg.icon className="mr-2 h-3.5 w-3.5" />
+                                      {cfg.label}
+                                    </DropdownMenuItem>
+                                  )
+                                })}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          )
+                        })()}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-col">
@@ -381,10 +419,14 @@ export function ContentEntriesManager({
                                   <FileText className="mr-2 h-3.5 w-3.5" /> Export DOCX
                                 </DropdownMenuItem>
                               )}
-                              <DropdownMenuSeparator className="border-t border-border" />
-                              <DropdownMenuItem className="text-red-600 focus:text-red-700 font-bold text-xs rounded-none hover:bg-red-50/10" onClick={() => handleDeleteEntry(entry.id)}>
-                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Entry
-                              </DropdownMenuItem>
+                              {canDeleteEntry && (
+                                <>
+                                  <DropdownMenuSeparator className="border-t border-border" />
+                                  <DropdownMenuItem className="text-red-600 focus:text-red-700 font-bold text-xs rounded-none hover:bg-red-50/10 cursor-pointer" onClick={() => handleDeleteEntry(entry.id)}>
+                                    <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete Entry
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>

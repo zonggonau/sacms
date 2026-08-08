@@ -22,13 +22,17 @@ export function generateContentSchema(
     let fieldSchema: z.ZodTypeAny
     const isRequired = enforceRequired && field.required
 
-    const requiredParams = isRequired ? { required_error: `${field.name} is required` } : {}
+    const requiredParams: any = isRequired ? { required_error: `${field.name} is required` } : {}
 
     switch (field.type) {
       case "text":
       case "textarea":
       case "richText":
       case "select":
+      case "slug":
+      case "uid":
+      case "url":
+      case "phone":
         fieldSchema = z.string(requiredParams)
         if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
         if (isRequired) {
@@ -45,10 +49,14 @@ export function generateContentSchema(
 
       case "number":
       case "integer":
-        fieldSchema = z.number({ 
-          ...requiredParams,
-          invalid_type_error: `${field.name} must be a number` 
-        })
+      case "currency":
+      case "rating":
+        fieldSchema = z.preprocess(
+          (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
+          isRequired
+            ? z.number({ required_error: `${field.name} is required`, invalid_type_error: `${field.name} must be a number` })
+            : z.number({ invalid_type_error: `${field.name} must be a number` }).optional().nullable()
+        )
         break
 
       case "boolean":
@@ -57,7 +65,13 @@ export function generateContentSchema(
 
       case "date":
       case "datetime":
-        fieldSchema = z.string(requiredParams).or(z.date(requiredParams)) // Accepts string ISO or Date object
+      case "dateRange":
+        fieldSchema = z.preprocess(
+          (val) => (val === "" ? undefined : val),
+          isRequired
+            ? z.string({ required_error: `${field.name} is required` }).or(z.date())
+            : z.string().or(z.date()).optional().nullable()
+        )
         break
 
       case "json":
@@ -67,6 +81,9 @@ export function generateContentSchema(
       case "mediaMultiple":
       case "tags":
       case "file":
+      case "repeater":
+      case "multiselect":
+      case "button":
         fieldSchema = z.any()
         break
 
@@ -76,8 +93,7 @@ export function generateContentSchema(
 
     // Post-processing for requirement
     if (isRequired) {
-      const basicTypes = ["text", "textarea", "richText", "select", "email", "number", "integer", "boolean"]
-      const jsonTypes = ["json", "relation", "component", "media", "mediaMultiple", "tags", "file"]
+      const basicTypes = ["text", "textarea", "richText", "select", "slug", "uid", "url", "phone", "email", "number", "integer", "currency", "rating", "boolean", "date", "datetime"]
 
       if (!basicTypes.includes(field.type)) {
         // For non-basic types (JSON, relations, etc.), check for null/undefined/empty
@@ -92,7 +108,9 @@ export function generateContentSchema(
         })
       }
     } else {
-      fieldSchema = fieldSchema.optional().nullable()
+      if (!["number", "integer", "currency", "rating", "date", "datetime"].includes(field.type)) {
+        fieldSchema = fieldSchema.optional().nullable()
+      }
     }
 
     schemaShape[field.slug] = fieldSchema

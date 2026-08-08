@@ -178,6 +178,126 @@ export default function DocsPage() {
                   </code>
                 </pre>
               </div>
+
+              {/* Query Parameters Reference */}
+              <div className="mt-12 space-y-8">
+                <h3 className="text-xl font-bold text-zinc-900 dark:text-zinc-50 border-b border-zinc-200 dark:border-zinc-800 pb-2">Query Parameters Reference</h3>
+                
+                {/* Pagination & Search */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 border-l-2 border-blue-500 pl-3">Pagination & Search</h4>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Control result counts and search across all text fields via PostgreSQL tsvector.</p>
+                  
+                  <div className="grid gap-3">
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?pagination[page]=1&pagination[pageSize]=25</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Shorthand: <code className="text-orange-600 dark:text-orange-400 font-mono">?page=1&pageSize=25</code>. Max pageSize is 100.</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?search=your+keyword</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">High-performance full-text search.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Filtering */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 border-l-2 border-blue-500 pl-3">Advanced Filtering</h4>
+                  <p className="text-zinc-600 dark:text-zinc-400 text-sm leading-relaxed">Filter results using Strapi-like syntax. <br/>Format: <code className="text-orange-600 dark:text-orange-400 bg-orange-500/10 px-1.5 py-0.5 rounded font-mono">?filters[field][$operator]=value</code></p>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm font-mono">
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <span className="text-pink-600 dark:text-pink-400 font-bold">$eq, $ne</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Equal / Not Equal</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <span className="text-pink-600 dark:text-pink-400 font-bold">$gt, $gte, $lt, $lte</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Comparisons</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <span className="text-pink-600 dark:text-pink-400 font-bold">$contains, $startsWith, $endsWith</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Text Match (ILIKE)</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <span className="text-pink-600 dark:text-pink-400 font-bold">$in, $notIn</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Array (comma sep)</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 flex justify-between items-center">
+                      <span className="text-pink-600 dark:text-pink-400 font-bold">$null, $notNull</span>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Nullability (IS NULL)</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-orange-50 dark:bg-orange-950/30 border border-orange-200 dark:border-orange-900/50 p-4 rounded-lg mt-3">
+                    <span className="text-xs font-bold uppercase text-orange-600 dark:text-orange-400 block mb-2 tracking-widest flex items-center gap-2">⚠️ Important Limitation:</span>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-400">Deep relation filtering (e.g. <code className="text-orange-600 dark:text-orange-400 bg-orange-100 dark:bg-orange-900/40 px-1 py-0.5 rounded font-mono">?filters[author][name][$eq]=John</code>) is <strong className="text-orange-600 dark:text-orange-400">NOT supported</strong>. Filters only apply directly to the Content Type's own fields.</p>
+                  </div>
+
+                  <div className="bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-200 dark:border-zinc-800 p-4 rounded-lg mt-3">
+                    <span className="text-xs font-bold uppercase text-zinc-500 dark:text-zinc-400 block mb-3 tracking-widest">Examples:</span>
+                    <ul className="space-y-4">
+                      <li className="flex flex-col gap-1.5">
+                        <code className="text-sm text-green-600 dark:text-green-400 font-mono font-bold break-all">?filters[title][$contains]=hello&filters[price][$gte]=100</code>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 italic">Title contains "hello" AND price &gt;= 100</span>
+                      </li>
+                      <li className="flex flex-col gap-1.5">
+                        <code className="text-sm text-green-600 dark:text-green-400 font-mono font-bold break-all">?filters[$or][0][status][$eq]=DRAFT&filters[$or][1][price][$lt]=50</code>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 italic">Logical OR operations (status is DRAFT OR price &lt; 50)</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+
+                {/* Sorting & Populating */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 border-l-2 border-blue-500 pl-3">Sorting, Selecting & Populating</h4>
+                  
+                  <div className="space-y-3">
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">Sorting</span>
+                        <code className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">?sort=field:order</code>
+                      </div>
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?sort=createdAt:desc</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Orders the response. Supported orders: <code className="text-orange-600 dark:text-orange-400 font-mono">asc</code>, <code className="text-orange-600 dark:text-orange-400 font-mono">desc</code>.</span>
+                    </div>
+
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">Field Selection</span>
+                        <code className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">?fields=field1,field2</code>
+                      </div>
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?fields=title,slug,price</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Returns only the specified fields, reducing payload size.</span>
+                    </div>
+
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <div className="flex justify-between items-center">
+                        <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 uppercase tracking-wide">Populating Relations</span>
+                        <code className="text-xs text-zinc-500 dark:text-zinc-400 font-mono">?populate=relation1,relation2</code>
+                      </div>
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?populate=author,category</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Expands relational fields. Use <code className="text-orange-600 dark:text-orange-400 font-mono">?populate=*</code> to expand all relations.</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Content Workflow & Localization */}
+                <div className="space-y-3">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 border-l-2 border-blue-500 pl-3">Localization & Status</h4>
+                  
+                  <div className="grid gap-3">
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?locale=id</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Fetches content for a specific locale (defaults to tenant default).</span>
+                    </div>
+                    <div className="bg-zinc-100 dark:bg-zinc-900 p-4 rounded-lg border border-zinc-200 dark:border-zinc-800 flex flex-col gap-2">
+                      <code className="text-sm font-mono text-pink-600 dark:text-pink-400 font-bold">?status=DRAFT</code>
+                      <span className="text-xs text-zinc-500 dark:text-zinc-400">Filters by workflow status. <span className="font-semibold text-orange-500">Requires a full-access API Key.</span></span>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -189,6 +309,11 @@ export default function DocsPage() {
             <p className="text-zinc-600 dark:text-zinc-400 mb-6">
               Fetch data for Single Types (e.g., Global Settings, Homepage configuration).
             </p>
+
+            <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/50 p-4 rounded-lg mb-6">
+              <span className="text-xs font-bold uppercase text-blue-600 dark:text-blue-400 block mb-2 tracking-widest flex items-center gap-2">ℹ️ Note on Query Parameters:</span>
+              <p className="text-sm text-zinc-600 dark:text-zinc-400">Single Types API <strong>does not</strong> support <code className="font-mono">filters</code>, <code className="font-mono">sort</code>, <code className="font-mono">search</code>, or <code className="font-mono">pagination</code>. It only supports <code className="font-mono">locale</code>, <code className="font-mono">fields</code>, and <code className="font-mono">populate</code>.</p>
+            </div>
 
             <div className="mb-8">
               <div className="flex items-center gap-3 mb-3">

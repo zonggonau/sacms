@@ -2,6 +2,8 @@ import type { NextConfig } from "next";
 import { withSentryConfig } from "@sentry/nextjs";
 import { execSync } from "child_process";
 
+// Config reload trigger
+
 // Dynamically detect any active local Cloudflare Tunnel or local tunneling tools
 function getTunnelOrigins(): string[] {
   const origins: string[] = [];

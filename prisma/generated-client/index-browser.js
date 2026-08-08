@@ -121,15 +121,6 @@ exports.Prisma.TransactionIsolationLevel = makeStrictEnum({
   Serializable: 'Serializable'
 });
 
-exports.Prisma.SystemRoleScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  slug: 'slug',
-  description: 'description',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.UserScalarFieldEnum = {
   id: 'id',
   email: 'email',
@@ -231,6 +222,7 @@ exports.Prisma.ContentTypeScalarFieldEnum = {
   slug: 'slug',
   description: 'description',
   isPublished: 'isPublished',
+  showInCms: 'showInCms',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   tenantId: 'tenantId',
@@ -324,6 +316,7 @@ exports.Prisma.SingleTypeScalarFieldEnum = {
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',
   isPublished: 'isPublished',
+  showInCms: 'showInCms',
   tenantId: 'tenantId'
 };
 
@@ -516,33 +509,6 @@ exports.Prisma.MediaScalarFieldEnum = {
   isPrivate: 'isPrivate'
 };
 
-exports.Prisma.PermissionScalarFieldEnum = {
-  id: 'id',
-  name: 'name',
-  displayName: 'displayName',
-  description: 'description',
-  category: 'category',
-  createdAt: 'createdAt'
-};
-
-exports.Prisma.RolePermissionScalarFieldEnum = {
-  id: 'id',
-  roleId: 'roleId',
-  permissionId: 'permissionId',
-  granted: 'granted',
-  tenantId: 'tenantId'
-};
-
-exports.Prisma.TenantRoleScalarFieldEnum = {
-  id: 'id',
-  tenantId: 'tenantId',
-  name: 'name',
-  slug: 'slug',
-  description: 'description',
-  createdAt: 'createdAt',
-  updatedAt: 'updatedAt'
-};
-
 exports.Prisma.ApiTokenScalarFieldEnum = {
   id: 'id',
   tenantId: 'tenantId',
@@ -675,15 +641,15 @@ exports.Prisma.QueryMode = {
   insensitive: 'insensitive'
 };
 
-exports.Prisma.NullsOrder = {
-  first: 'first',
-  last: 'last'
-};
-
 exports.Prisma.JsonNullValueFilter = {
   DbNull: Prisma.DbNull,
   JsonNull: Prisma.JsonNull,
   AnyNull: Prisma.AnyNull
+};
+
+exports.Prisma.NullsOrder = {
+  first: 'first',
+  last: 'last'
 };
 exports.ContentStatus = exports.$Enums.ContentStatus = {
   DRAFT: 'DRAFT',
@@ -696,7 +662,6 @@ exports.ContentStatus = exports.$Enums.ContentStatus = {
 };
 
 exports.Prisma.ModelName = {
-  SystemRole: 'SystemRole',
   User: 'User',
   Account: 'Account',
   Session: 'Session',
@@ -727,9 +692,6 @@ exports.Prisma.ModelName = {
   ApiRequest: 'ApiRequest',
   MediaFolder: 'MediaFolder',
   Media: 'Media',
-  Permission: 'Permission',
-  RolePermission: 'RolePermission',
-  TenantRole: 'TenantRole',
   ApiToken: 'ApiToken',
   Webhook: 'Webhook',
   WebhookLog: 'WebhookLog',

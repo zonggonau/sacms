@@ -74,4 +74,11 @@ export const AuditAction = {
 
   // Settings
   SETTINGS_UPDATED: "settings.updated",
+
+  // Frontend Builder
+  FRONTEND_BUILD_GENERATED: "frontend_build.generated",
+  FRONTEND_BUILD_DEPLOYED: "frontend_build.deployed",
+  FRONTEND_BUILD_ITERATED: "frontend_build.iterated",
+  FRONTEND_BUILD_UPDATED: "frontend_build.updated",
+  FRONTEND_BUILD_DELETED: "frontend_build.deleted",
 } as const

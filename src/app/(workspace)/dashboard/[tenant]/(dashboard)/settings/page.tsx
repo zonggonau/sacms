@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect, useMemo } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -44,14 +44,29 @@ import {
   ShieldAlert,
   Mail,
   Copy,
+  Key,
+  Check,
+  ArrowLeft,
+  Wand2,
 } from "lucide-react"
+import { toast } from "sonner"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
 export default function TenantSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
+
+
+  const defaultTabParam = searchParams?.get("tab") || "general"
+  const [activeTab, setActiveTab] = useState(defaultTabParam)
+
+  useEffect(() => {
+    const tab = searchParams?.get("tab")
+    if (tab) setActiveTab(tab)
+  }, [searchParams])
 
   const [contentTypes, setContentTypes] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [loading, setLoading] = useState(true)
@@ -71,6 +86,9 @@ export default function TenantSettingsPage() {
   // API settings
   const [apiKey, setApiKey] = useState("")
   const [generatingApiKey, setGeneratingApiKey] = useState(false)
+  const [showConfirmGenerateKey, setShowConfirmGenerateKey] = useState(false)
+  const [newGeneratedKeyModal, setNewGeneratedKeyModal] = useState<string | null>(null)
+  const [copiedModalKey, setCopiedModalKey] = useState(false)
   const [apiVersion, setApiVersion] = useState("v1")
   const [rateLimiting, setRateLimiting] = useState(true)
   const [requestsPerMinute, setRequestsPerMinute] = useState("60")
@@ -221,9 +239,11 @@ export default function TenantSettingsPage() {
     }
   }
 
-  const handleGenerateApiKey = async () => {
-    if (!confirm("Are you sure you want to generate a new API key? The old key will no longer work for new integrations if you rely on it.")) return
-    
+  const handleGenerateApiKey = () => {
+    setShowConfirmGenerateKey(true)
+  }
+
+  const executeGenerateApiKey = async () => {
     setGeneratingApiKey(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/api-keys`, {
@@ -233,14 +253,16 @@ export default function TenantSettingsPage() {
       if (res.ok) {
         const data = await res.json()
         setApiKey(data.apiKey)
-        alert("New API key generated successfully!")
+        setNewGeneratedKeyModal(data.apiKey)
+        setShowConfirmGenerateKey(false)
+        toast.success("New API key generated successfully!")
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to generate API key")
+        toast.error(data.error || "Failed to generate API key")
       }
     } catch (error) {
       console.error("Failed to generate API key:", error)
-      alert("Failed to generate API key")
+      toast.error("Failed to generate API key")
     } finally {
       setGeneratingApiKey(false)
     }
@@ -249,7 +271,7 @@ export default function TenantSettingsPage() {
   const handleCopyApiKey = () => {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey)
-      alert("API Key copied to clipboard")
+      toast.success("API Key copied to clipboard")
     }
   }
 
@@ -438,7 +460,7 @@ export default function TenantSettingsPage() {
           </div>
 
           {/* Settings Tabs */}
-          <Tabs defaultValue="general" className="space-y-6">
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList>
               <TabsTrigger value="general">
                 <Building2 className="h-4 w-4 mr-2" />
@@ -569,7 +591,8 @@ export default function TenantSettingsPage() {
               </Card>
             </TabsContent>
 
-            <TabsContent value="api">
+            <TabsContent value="api" className="space-y-6">
+
               <Card>
                 <CardHeader>
                   <CardTitle>API Configuration</CardTitle>
@@ -1049,6 +1072,82 @@ export default function TenantSettingsPage() {
                   disabled={deleteConfirm !== tenantSlug}
                 >
                   Delete Workspace
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Confirm Generate API Key Dialog */}
+          <Dialog open={showConfirmGenerateKey} onOpenChange={setShowConfirmGenerateKey}>
+            <DialogContent className="sm:max-w-[420px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Key className="h-5 w-5 text-orange-500" />
+                  Generate New API Key?
+                </DialogTitle>
+                <DialogDescription>
+                  Are you sure you want to generate a new API key for this workspace?
+                  The old key will no longer work for new integrations if you rely on it.
+                </DialogDescription>
+              </DialogHeader>
+              <DialogFooter className="gap-2 sm:gap-0 mt-4">
+                <Button variant="outline" onClick={() => setShowConfirmGenerateKey(false)} disabled={generatingApiKey}>
+                  Cancel
+                </Button>
+                <Button onClick={executeGenerateApiKey} disabled={generatingApiKey} className="bg-orange-500 hover:bg-orange-600 text-white font-medium">
+                  {generatingApiKey ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
+                  Generate Key
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* API Key Generated Success Modal */}
+          <Dialog open={!!newGeneratedKeyModal} onOpenChange={(open) => !open && setNewGeneratedKeyModal(null)}>
+            <DialogContent className="sm:max-w-[520px]">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
+                  <Check className="h-5 w-5 rounded-full bg-emerald-500/10 p-0.5" />
+                  API Key Generated Successfully
+                </DialogTitle>
+                <DialogDescription>
+                  Your new workspace API key has been created. Use this key for API authentication and environment variables.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <div className="space-y-2">
+                  <Label>New Workspace API Key</Label>
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      value={newGeneratedKeyModal || ""}
+                      readOnly
+                      className="font-mono text-sm bg-muted pr-10 border-orange-500/30"
+                    />
+                    <Button
+                      variant="secondary"
+                      onClick={() => {
+                        if (newGeneratedKeyModal) {
+                          navigator.clipboard.writeText(newGeneratedKeyModal)
+                          setCopiedModalKey(true)
+                          toast.success("API Key copied to clipboard!")
+                          setTimeout(() => setCopiedModalKey(false), 2000)
+                        }
+                      }}
+                      className="gap-1.5 whitespace-nowrap"
+                    >
+                      {copiedModalKey ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
+                      {copiedModalKey ? "Copied!" : "Copy Key"}
+                    </Button>
+                  </div>
+                </div>
+                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-700 dark:text-amber-300">
+                  ⚠️ Make sure to copy your new API Key. Integrations using older keys will need to be updated.
+                </div>
+              </div>
+              <DialogFooter>
+                <Button onClick={() => setNewGeneratedKeyModal(null)} className="w-full sm:w-auto">
+                  Done & Close
                 </Button>
               </DialogFooter>
             </DialogContent>

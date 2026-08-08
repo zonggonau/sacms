@@ -114,6 +114,15 @@ export function RichTextEditor({
     const ytext = ydoc.getText("quill")
     const binding = new QuillBinding(ytext, editor, provider.awareness)
     
+    // Populate editor with initial value if Yjs text is empty on mount
+    if (ytext.toString().length === 0 && value) {
+      setTimeout(() => {
+        if (ytext.toString().length === 0 && value) {
+          editor.clipboard.dangerouslyPasteHTML(0, value)
+        }
+      }, 50)
+    }
+
     // Set user info for awareness
     if (session?.user) {
       provider.awareness.setLocalStateField("user", {

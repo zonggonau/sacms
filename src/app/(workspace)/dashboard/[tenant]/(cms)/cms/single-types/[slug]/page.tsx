@@ -159,7 +159,7 @@ export default function CMSSingleTypeDetailPage() {
 
     const renderLabelWithAI = () => (
       <div className="flex items-center justify-between mb-2">
-        <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
+        <Label className="text-sm font-bold text-foreground">{field.name} {field.required && "*"}</Label>
         {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
           <AIAssistantDialog
             tenantSlug={tenantSlug}
@@ -257,7 +257,7 @@ export default function CMSSingleTypeDetailPage() {
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={field.name} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
       
       default:
         return <div className="space-y-2"><Label className="text-sm font-bold text-slate-700">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>
@@ -271,6 +271,15 @@ export default function CMSSingleTypeDetailPage() {
   )
 
   if (!singleType) return null
+
+  const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
+  const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
+  const customPermissions = Array.isArray(tenantMembership?.customPermissions)
+    ? tenantMembership.customPermissions as string[]
+    : null
+
+  const canPublish = effectiveRole === "owner" || effectiveRole === "admin" || effectiveRole === "editor" || Boolean(customPermissions?.includes("workflow.draft_to_publish"))
+  const canEdit = effectiveRole !== "subscriber" && effectiveRole !== "viewer"
 
   return (
     <div className="min-h-screen bg-muted/10">
@@ -292,13 +301,22 @@ export default function CMSSingleTypeDetailPage() {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500">
-              Save Draft
-            </Button>
-            <Button onClick={() => handleSave(true)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
-              {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-              Publish Now
-            </Button>
+            {canEdit && (
+              <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500">
+                Save Draft
+              </Button>
+            )}
+            {canPublish ? (
+              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Publish Now
+              </Button>
+            ) : canEdit && (
+              <Button onClick={() => handleSave(false)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
+                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Save Changes
+              </Button>
+            )}
           </div>
         </div>
 

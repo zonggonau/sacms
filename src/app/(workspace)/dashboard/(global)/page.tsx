@@ -6,24 +6,18 @@ import { WorkspaceManager } from "@/components/dashboard/workspace-manager"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
 import { isEnterpriseTenant } from "@/lib/license"
 const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
-  const SYSTEM_SLUGS = [globalId]
+const SYSTEM_SLUGS = [globalId, "sacms-global", "sacms"]
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
 
   const tenants = await db.tenant.findMany({
-    where: session.user.role === "super_admin" 
-      ? {
-          OR: [
-            { members: { some: { userId: session.user.id } } },
-            { id: globalId }
-          ]
-        }
-      : {
-          members: { some: { userId: session.user.id } },
-          slug: { notIn: SYSTEM_SLUGS },
-        },
+    where: {
+      members: { some: { userId: session.user.id } },
+      slug: { notIn: SYSTEM_SLUGS },
+      id: { not: globalId }
+    },
     include: {
       members: {
         where: { userId: session.user.id },
