@@ -38,6 +38,7 @@ const SECTION_LABELS: Record<string, string> = {
   "sacms-features":          "Features",
   "sacms-account-pricing":   "Account Plans",
   "sacms-workspace-pricing": "Workspace Plans",
+  "sacms-ai-pricing":        "AI Credit Packs",
   "sacms-addons":            "Add-ons",
   "sacms-workflow":          "Workflow Steps",
   "sacms-faq":               "FAQ",
@@ -75,7 +76,7 @@ export default function GlobalContentPage() {
 
   useEffect(() => {
     if (session?.user?.role === "super_admin") fetchStatus()
-  }, [session])
+  }, [session?.user?.id, session?.user?.role])
 
   const handleSetup = async () => {
     setSeeding(true)

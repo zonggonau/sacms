@@ -31,7 +31,7 @@ export function Providers({
       enableSystem
       disableTransitionOnChange
     >
-      <NextAuthSessionProvider session={session}>
+      <NextAuthSessionProvider session={session ?? null} refetchOnWindowFocus={false}>
         {children}
       </NextAuthSessionProvider>
     </ThemeProvider>

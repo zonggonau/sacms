@@ -16,8 +16,8 @@ import { isEnterpriseTenant } from "./license"
  *   if (!result.allowed) return NextResponse.json({ error: result.message }, { status: 403 })
  */
 
-// Workspace plan hierarchy (lowest → highest)
-export const PLAN_HIERARCHY = ["free", "starter", "pro", "enterprise", "custom"] as const
+// Workspace & User plan hierarchy (lowest → highest)
+export const PLAN_HIERARCHY = ["free", "starter", "pro", "business", "agency", "enterprise", "custom"] as const
 export type PlanSlug = (typeof PLAN_HIERARCHY)[number]
 
 export type WorkspaceResource =
@@ -28,7 +28,7 @@ export type WorkspaceResource =
   | "locales"
   | "api_calls"
 
-export type UserResource = "workspaces"
+export type UserResource = "workspaces" | "ai_credits"
 
 export interface EnforcementResult {
   allowed: boolean
@@ -108,8 +108,23 @@ export async function enforcePlanLimit(
   // 3. Get custom overrides (if any)
   const override = await getWorkspaceOverride(tenantId)
 
+  // 3b. Fetch tenant top-up extras
+  let topupExtras: { storageExtraBytes?: bigint | number; apiCallsExtra?: number } | null = null
+  try {
+    const tData = await db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { storageExtraBytes: true, apiCallsExtra: true } as any
+    })
+    if (tData) {
+      topupExtras = {
+        storageExtraBytes: (tData as any).storageExtraBytes,
+        apiCallsExtra: (tData as any).apiCallsExtra
+      }
+    }
+  } catch {}
+
   // 4. Calculate effective max
-  const effectiveMax = getEffectiveWorkspaceMax(planConfig, override, resource)
+  const effectiveMax = getEffectiveWorkspaceMax(planConfig, override, resource, topupExtras)
 
   // 5. Get current usage
   const currentUsage = await getWorkspaceUsage(tenantId, resource)
@@ -133,28 +148,34 @@ export async function enforcePlanLimit(
 
 /**
  * Get the effective maximum for a workspace resource,
- * considering base plan limits and custom overrides.
+ * considering base plan limits, custom overrides, and one-time top-ups.
  */
 function getEffectiveWorkspaceMax(
   planConfig: PlanConfig,
   override: WorkspaceOverride | null,
-  resource: WorkspaceResource
+  resource: WorkspaceResource,
+  topupExtras?: { storageExtraBytes?: bigint | number; apiCallsExtra?: number } | null
 ): number {
   switch (resource) {
     case "content_types":
-      return override?.maxContentTypes ?? planConfig.max_content_types
+      return 999999999 // Unlimited schemas for all plans
     case "content_entries":
       return override?.maxContentEntries ?? planConfig.max_content_entries
     case "team_members":
       return override?.maxTeamMembers ?? planConfig.max_team_members
     case "storage": {
       const mbMax = override?.maxStorage ?? planConfig.max_storage
-      return mbMax * 1024 * 1024 // convert MB to bytes for comparison with db.media size
+      const baseBytes = mbMax * 1024 * 1024 // convert MB to bytes for comparison with db.media size
+      const extraBytes = Number(topupExtras?.storageExtraBytes || 0)
+      return baseBytes + extraBytes
     }
     case "locales":
       return override?.maxLocales ?? planConfig.max_locales
-    case "api_calls":
-      return override?.maxApiCalls ?? planConfig.max_api_calls
+    case "api_calls": {
+      const baseCalls = override?.maxApiCalls ?? planConfig.max_api_calls
+      const extraCalls = Number(topupExtras?.apiCallsExtra || 0)
+      return baseCalls + extraCalls
+    }
     default:
       return 0
   }
@@ -163,7 +184,7 @@ function getEffectiveWorkspaceMax(
 // ==================== USER PLAN ENFORCEMENT ====================
 
 /**
- * Check if a user has capacity for a specific resource (currently just workspaces).
+ * Check if a user has capacity for a specific resource (workspaces or ai_credits).
  */
 export async function enforceUserPlanLimit(
   userId: string,
@@ -173,7 +194,6 @@ export async function enforceUserPlanLimit(
   try {
     const { getGlobalWorkspaceId } = await import('@/lib/settings')
     const globalTenantId = await getGlobalWorkspaceId()
-    // Check Global License explicitly for SaaS mode wide bypassing (Enterprise Plan bypass)
     let isEnterprise = await isEnterpriseTenant(globalTenantId)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(userId)
@@ -195,14 +215,14 @@ export async function enforceUserPlanLimit(
   // 1. Super Admin Bypass
   const user = await db.user.findUnique({
     where: { id: userId },
-    select: { role: true },
+    select: { role: true, aiCreditsUsed: true, aiCreditsExtra: true },
   })
 
   if (user?.role === "super_admin") {
     return {
       allowed: true,
-      current: 0,
-      max: 9999,
+      current: user.aiCreditsUsed || 0,
+      max: 999999,
       planSlug: "custom",
       message: "Super Admin Bypass",
     }
@@ -211,7 +231,7 @@ export async function enforceUserPlanLimit(
   const planConfig = await getUserPlanConfig(userId)
   const override = await getUserOverride(userId)
 
-  const effectiveMax = getUserEffectiveMax(planConfig, override, resource)
+  const effectiveMax = getUserEffectiveMax(planConfig, override, resource, user?.aiCreditsExtra || 0)
   const currentUsage = await getUserUsage(userId, resource)
 
   const allowed = currentUsage < effectiveMax
@@ -227,6 +247,84 @@ export async function enforceUserPlanLimit(
   }
 }
 
+/**
+ * Enforce and verify user has enough AI credits for a specific action cost.
+ */
+export async function enforceUserAiCredits(
+  userId: string,
+  cost: number = 1
+): Promise<{ allowed: boolean; remaining: number; max: number; current: number; planSlug: string; message: string }> {
+  // Check enterprise & super admin bypass
+  try {
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    const globalTenantId = await getGlobalWorkspaceId()
+    let isEnterprise = await isEnterpriseTenant(globalTenantId) || await isEnterpriseTenant(userId)
+    if (isEnterprise) {
+      return { allowed: true, remaining: 999999, max: 999999, current: 0, planSlug: "enterprise", message: "Enterprise Unlimited" }
+    }
+  } catch {}
+
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, plan: true, aiCreditsUsed: true, aiCreditsExtra: true }
+  })
+
+  if (user?.role === "super_admin") {
+    return { allowed: true, remaining: 999999, max: 999999, current: user.aiCreditsUsed || 0, planSlug: "custom", message: "Super Admin Bypass" }
+  }
+
+  const planConfig = await getUserPlanConfig(userId)
+  const override = await getUserOverride(userId)
+  const effectiveMax = getUserEffectiveMax(planConfig, override, "ai_credits", user?.aiCreditsExtra || 0)
+  const currentUsage = user?.aiCreditsUsed || 0
+  const remaining = Math.max(0, effectiveMax - currentUsage)
+
+  const allowed = remaining >= cost
+
+  return {
+    allowed,
+    remaining,
+    max: effectiveMax,
+    current: currentUsage,
+    planSlug: planConfig.plan_slug,
+    message: allowed
+      ? `OK (${remaining} credits remaining)`
+      : `AI credits depleted. This action requires ${cost} credits, but you only have ${remaining} credits remaining. Please top up your credits to continue.`
+  }
+}
+
+/**
+ * Atomically deduct AI credits from a user's account pool and record in ledger.
+ */
+export async function deductUserAiCredits(
+  userId: string,
+  cost: number,
+  action: string,
+  tenantId?: string,
+  model?: string
+): Promise<void> {
+  try {
+    await db.$transaction([
+      db.user.update({
+        where: { id: userId },
+        data: { aiCreditsUsed: { increment: cost } }
+      }),
+      db.aiQuotaLedger.create({
+        data: {
+          userId,
+          tenantId: tenantId || null,
+          action,
+          credits: cost,
+          tokens: cost * 1000,
+          model: model || "deepseek-chat"
+        }
+      })
+    ])
+  } catch (error) {
+    console.error("[AI Credit Deduction Error]", error)
+  }
+}
+
 async function getUserUsage(userId: string, resource: UserResource): Promise<number> {
   switch (resource) {
     case "workspaces": {
@@ -237,9 +335,19 @@ async function getUserUsage(userId: string, resource: UserResource): Promise<num
         where: {
           userId,
           role: "owner",
-          tenant: { slug: { notIn: [globalTenantId] } },
+          tenant: { 
+            slug: { notIn: [globalTenantId, "sacms-global", "sacms"] },
+            id: { not: globalTenantId }
+          },
         },
       })
+    }
+    case "ai_credits": {
+      const user = await db.user.findUnique({
+        where: { id: userId },
+        select: { aiCreditsUsed: true }
+      })
+      return user?.aiCreditsUsed || 0
     }
     default:
       return 0
@@ -249,11 +357,17 @@ async function getUserUsage(userId: string, resource: UserResource): Promise<num
 function getUserEffectiveMax(
   planConfig: UserPlanConfig,
   override: UserOverride | null,
-  resource: UserResource
+  resource: UserResource,
+  extraCredits: number = 0
 ): number {
   switch (resource) {
     case "workspaces":
       return override?.maxWorkspaces ?? planConfig.max_workspaces
+    case "ai_credits": {
+      // Base initial free credits for every user account is 50, plus any top-up packs
+      const base = override?.maxAiCredits ?? 50
+      return base + extraCredits
+    }
     default:
       return 0
   }
@@ -262,33 +376,15 @@ function getUserEffectiveMax(
 // ==================== WORKSPACE PLAN BINDING ====================
 
 /**
- * Validate that a workspace plan does not exceed the user's account plan.
- * User Free cannot create workspace Pro, etc.
+ * Validate that a workspace plan can be created by a user's account plan.
+ * All account plans (including Free) can create any workspace tier.
+ * Restrictions are enforced on the total workspace count of the account.
  */
 export function validateWorkspacePlanBinding(
   userPlanSlug: string,
   workspacePlanSlug: string
 ): { allowed: boolean; message: string } {
-  const userIdx = PLAN_HIERARCHY.indexOf(userPlanSlug as any)
-  const wsIdx = PLAN_HIERARCHY.indexOf(workspacePlanSlug as any)
-
-  // Fallback for unknown plans
-  if (userIdx === -1 || wsIdx === -1) {
-    return {
-      allowed: userPlanSlug === "enterprise" || userPlanSlug === "custom",
-      message: "Invalid plan combination."
-    }
-  }
-
-  const allowed = userIdx >= wsIdx
-
-  if (!allowed) {
-    return {
-      allowed: false,
-      message: `Your account plan (${userPlanSlug}) is too low for a ${workspacePlanSlug} workspace. Please upgrade your account first.`
-    }
-  }
-
+  // All account plans are permitted to launch any workspace plan
   return { allowed: true, message: "OK" }
 }
 
@@ -341,6 +437,7 @@ interface WorkspaceOverride {
 
 interface UserOverride {
   maxWorkspaces: number | null
+  maxAiCredits: number | null
 }
 
 async function getWorkspaceOverride(tenantId: string): Promise<WorkspaceOverride | null> {
@@ -371,6 +468,7 @@ async function getUserOverride(userId: string): Promise<UserOverride | null> {
     if (!override) return null
     return {
       maxWorkspaces: override.maxWorkspaces,
+      maxAiCredits: override.maxAiCredits,
     }
   } catch {
     // Table may not exist yet (before migration)
@@ -389,6 +487,8 @@ function formatResourceName(resource: string): string {
     locales: "locales",
     api_calls: "API calls/month",
     workspaces: "workspaces",
+    ai_credits: "AI credits/month",
   }
   return names[resource] || resource
 }
+

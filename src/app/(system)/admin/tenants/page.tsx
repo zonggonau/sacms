@@ -1,9 +1,10 @@
 "use client"
 
 import { useState } from "react"
-import { Building2, Plus, Search, ChevronLeft, ChevronRight, Loader2, Globe } from "lucide-react"
+import { Building2, Search, ChevronLeft, ChevronRight, Loader2, Globe } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
 import { useToast } from "@/hooks/use-toast"
 import { useAdminTenants, Tenant } from "@/hooks/admin/use-admin-tenants"
 import { TenantTable } from "@/components/admin/tenants/tenant-table"
@@ -70,16 +71,16 @@ export default function AdminTenantsPage() {
         body: JSON.stringify(formData),
       })
       if (res.ok) {
-        toast({ title: "Success", description: "Tenant created successfully" })
+        toast({ title: "Berhasil", description: "Workspace berhasil dibuat" })
         setIsCreateOpen(false)
         refetch()
         setFormData({ name: "", slug: "", description: "", plan: "free", status: "active", databaseUrl: "" })
       } else {
         const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to create tenant" })
+        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal membuat workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -96,44 +97,41 @@ export default function AdminTenantsPage() {
         body: JSON.stringify(formData),
       })
       if (res.ok) {
-        toast({ title: "Success", description: "Tenant updated successfully" })
+        toast({ title: "Berhasil", description: "Workspace berhasil diperbarui" })
         setIsEditOpen(false)
         refetch()
       } else {
         const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to update tenant" })
+        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
   }
 
-  const confirmDelete = async () => {
+  const handleDelete = async () => {
     if (!tenantToDelete) return
-    if (tenantToDelete.slug === "sacms-global" || tenantToDelete.slug === "sacms" || tenantToDelete.id === "sacms-global" || tenantToDelete.name.toLowerCase() === "sacms global") {
-      toast({ variant: "destructive", title: "Action Forbidden", description: "Global tenant cannot be deleted." })
+    if (deleteConfirmation !== tenantToDelete.name) {
+      toast({ variant: "destructive", title: "Gagal", description: "Nama konfirmasi tidak cocok" })
       return
     }
-    if (deleteConfirmation !== tenantToDelete.id) {
-      toast({ variant: "destructive", title: "Validation Error", description: "Tenant ID does not match" })
-      return
-    }
-
     setIsSubmitting(true)
     try {
-      const res = await fetch(`/api/admin/tenants/${tenantToDelete.id}`, { method: "DELETE" })
+      const res = await fetch(`/api/admin/tenants/${tenantToDelete.id}`, {
+        method: "DELETE",
+      })
       if (res.ok) {
-        toast({ title: "Deleted", description: "Tenant deleted successfully" })
+        toast({ title: "Berhasil", description: "Workspace berhasil dihapus" })
         setIsDeleteOpen(false)
         refetch()
       } else {
         const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to delete tenant" })
+        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menghapus workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to delete tenant" })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menghapus workspace" })
     } finally {
       setIsSubmitting(false)
     }
@@ -141,64 +139,42 @@ export default function AdminTenantsPage() {
 
   const handleStatusChange = async (id: string, status: string) => {
     try {
-      const res = await fetch(`/api/admin/tenants/${id}`, {
+      const res = await fetch(`/api/admin/tenants/${id}/status`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ status }),
       })
       if (res.ok) {
-        toast({ title: "Success", description: `Tenant status updated to ${status}` })
+        toast({ title: "Status Diperbarui", description: `Workspace sekarang dalam status ${status}` })
         refetch()
       } else {
-        toast({ variant: "destructive", title: "Error", description: "Failed to update status" })
+        const err = await res.json()
+        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal mengubah status" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to update status" })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat mengubah status" })
     }
   }
 
   const handleSaveOverrides = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!overrideTenant) return
-
     setOverrideLoading(true)
     try {
       const res = await fetch(`/api/admin/tenants/${overrideTenant.id}/overrides`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(overrideFormData)
+        body: JSON.stringify(overrideFormData),
       })
-
       if (res.ok) {
-        toast({ title: "Success", description: "Tenant limits overridden successfully" })
+        toast({ title: "Berhasil", description: "Batas limit khusus workspace berhasil disimpan" })
         setIsOverrideOpen(false)
-        refetch()
       } else {
         const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to save overrides" })
+        toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menyimpan limit" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
-    } finally {
-      setOverrideLoading(false)
-    }
-  }
-
-  const handleResetOverrides = async () => {
-    if (!overrideTenant) return
-    setOverrideLoading(true)
-    try {
-      const res = await fetch(`/api/admin/tenants/${overrideTenant.id}/overrides`, { method: "DELETE" })
-      if (res.ok) {
-        toast({ title: "Success", description: "Tenant overrides removed. Back to plan defaults." })
-        setIsOverrideOpen(false)
-        refetch()
-      } else {
-        const err = await res.json()
-        toast({ variant: "destructive", title: "Error", description: err.error || "Failed to remove overrides" })
-      }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "An unexpected error occurred" })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menyimpan limit" })
     } finally {
       setOverrideLoading(false)
     }
@@ -209,22 +185,17 @@ export default function AdminTenantsPage() {
     try {
       const res = await fetch("/api/admin/tenants/setup-global", { method: "POST" })
       if (res.ok) {
-        toast({ title: "Setup Successful", description: "Global Tenant & Seed Data provisioned successfully." })
+        toast({ title: "Setup Berhasil", description: "Global Tenant & Seed Data berhasil disiapkan." })
         refetch()
       } else {
         const err = await res.json()
-        toast({ variant: "destructive", title: "Setup Failed", description: err.error || "Failed to setup global tenant" })
+        toast({ variant: "destructive", title: "Setup Gagal", description: err.error || "Gagal menyiapkan global tenant" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Setup Error", description: "An unexpected error occurred during setup." })
+      toast({ variant: "destructive", title: "Setup Error", description: "Terjadi kesalahan saat penyiapan." })
     } finally {
       setIsSettingUpGlobal(false)
     }
-  }
-
-  const openCreate = () => {
-    setFormData({ name: "", slug: "", description: "", plan: "free", status: "active", databaseUrl: "" })
-    setIsCreateOpen(true)
   }
 
   const openEdit = (tenant: Tenant) => {
@@ -242,7 +213,7 @@ export default function AdminTenantsPage() {
 
   const openDelete = (tenant: Tenant) => {
     if (tenant.slug === "sacms-global" || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global") {
-      toast({ variant: "destructive", title: "Action Forbidden", description: "Global tenant cannot be deleted." })
+      toast({ variant: "destructive", title: "Dilarang", description: "Workspace global sistem tidak boleh dihapus." })
       return
     }
     setTenantToDelete(tenant)
@@ -289,38 +260,43 @@ export default function AdminTenantsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 min-h-screen bg-muted/10 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+          
           {/* Header */}
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Tenant Management</h1>
-              <p className="text-muted-foreground">
-                Manage {totalTenants} workspaces across the platform
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Manajemen Workspace</h1>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
+                  {totalTenants} Workspace
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Kelola seluruh instance tenant, perizinan, batas kuota, dan status akun platform.
               </p>
             </div>
             
-            
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <Button 
                 variant="outline"
                 onClick={handleSetupGlobalTenant} 
                 disabled={isSettingUpGlobal}
-                className="gap-2"
+                className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80"
               >
-                {isSettingUpGlobal ? <Loader2 className="h-4 w-4 animate-spin" /> : <Globe className="h-4 w-4" />}
+                {isSettingUpGlobal ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Globe className="h-3.5 w-3.5 mr-1.5" />}
                 Setup Global Tenant SaCMS
               </Button>
             </div>
           </div>
 
           {/* Search & Filters */}
-          <div className="flex flex-col md:flex-row md:items-center gap-4 mb-6">
+          <div className="flex flex-col md:flex-row md:items-center gap-3">
             <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
-                placeholder="Search workspaces by name or slug..." 
-                className="pl-9"
+                placeholder="Cari workspace berdasarkan nama atau slug..." 
+                className="pl-9 h-9 rounded-xl text-xs bg-card border-border/80"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
@@ -338,14 +314,15 @@ export default function AdminTenantsPage() {
 
           {/* Pagination */}
           {!loading && totalPages > 1 && (
-            <div className="flex items-center justify-between mt-4">
-              <div className="text-sm text-muted-foreground">
-                Showing page {page} of {totalPages}
+            <div className="flex items-center justify-between pt-2">
+              <div className="text-xs text-muted-foreground">
+                Menampilkan halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span>
               </div>
               <div className="flex items-center gap-2">
                 <Button 
                   variant="outline" 
                   size="icon"
+                  className="h-8 w-8 rounded-lg"
                   disabled={page <= 1}
                   onClick={() => setPage(p => Math.max(1, p - 1))}
                 >
@@ -354,6 +331,7 @@ export default function AdminTenantsPage() {
                 <Button 
                   variant="outline" 
                   size="icon"
+                  className="h-8 w-8 rounded-lg"
                   disabled={page >= totalPages}
                   onClick={() => setPage(p => Math.min(totalPages, p + 1))}
                 >
@@ -362,49 +340,49 @@ export default function AdminTenantsPage() {
               </div>
             </div>
           )}
+
+          {/* Modals */}
+          <TenantFormModal 
+            isOpen={isCreateOpen}
+            onClose={() => setIsCreateOpen(false)}
+            onSubmit={handleCreate}
+            formData={formData}
+            setFormData={setFormData}
+            isSubmitting={isSubmitting}
+            mode="create"
+          />
+
+          <TenantFormModal 
+            isOpen={isEditOpen}
+            onClose={() => setIsEditOpen(false)}
+            onSubmit={handleUpdate}
+            formData={formData}
+            setFormData={setFormData}
+            isSubmitting={isSubmitting}
+            mode="edit"
+          />
+
+          <TenantDeleteModal 
+            isOpen={isDeleteOpen}
+            onClose={() => setIsDeleteOpen(false)}
+            onConfirm={handleDelete}
+            tenant={tenantToDelete}
+            confirmation={deleteConfirmation}
+            setConfirmation={setDeleteConfirmation}
+            isSubmitting={isSubmitting}
+          />
+
+          <TenantOverrideModal 
+            isOpen={isOverrideOpen}
+            onClose={() => setIsOverrideOpen(false)}
+            onSubmit={handleSaveOverrides}
+            tenant={overrideTenant}
+            formData={overrideFormData}
+            setFormData={setOverrideFormData}
+            loading={overrideLoading}
+          />
         </div>
       </div>
-
-      <TenantFormModal 
-        isOpen={isCreateOpen}
-        onOpenChange={setIsCreateOpen}
-        isEditing={false}
-        formData={formData}
-        setFormData={setFormData}
-        onSubmit={handleCreate}
-        isSubmitting={isSubmitting}
-      />
-
-      <TenantFormModal 
-        isOpen={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        isEditing={true}
-        formData={formData}
-        setFormData={setFormData}
-        onSubmit={handleUpdate}
-        isSubmitting={isSubmitting}
-      />
-
-      <TenantDeleteModal 
-        isOpen={isDeleteOpen}
-        onOpenChange={setIsDeleteOpen}
-        tenant={tenantToDelete}
-        confirmationText={deleteConfirmation}
-        setConfirmationText={setDeleteConfirmation}
-        onConfirm={confirmDelete}
-        isSubmitting={isSubmitting}
-      />
-
-      <TenantOverrideModal 
-        isOpen={isOverrideOpen}
-        onOpenChange={setIsOverrideOpen}
-        tenant={overrideTenant}
-        formData={overrideFormData}
-        setFormData={setOverrideFormData}
-        onSubmit={handleSaveOverrides}
-        isSubmitting={overrideLoading}
-        onReset={handleResetOverrides}
-      />
     </div>
   )
 }

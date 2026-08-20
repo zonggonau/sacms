@@ -34,6 +34,21 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  // ==================== V0 PREVIEW IFRAME INTERCEPT ====================
+  // If the request originates from the V0 preview iframe (via Referer) and is not already a proxy route,
+  // rewrite it so that API calls from the V0 frontend (e.g. /chat/api/...) go through our proxy.
+  const referer = request.headers.get("referer") || ""
+  const v0ProxyMatch = referer.match(/\/api\/tenant\/([^\/]+)\/ai-builder\/preview\/([^\/?#]+)/)
+  if (v0ProxyMatch && !pathname.startsWith("/api/tenant/") && !pathname.startsWith("/_next/")) {
+    const tenantSlug = v0ProxyMatch[1]
+    const chatId = v0ProxyMatch[2]
+    const rewriteUrl = request.nextUrl.clone()
+    rewriteUrl.pathname = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}${pathname}`
+    
+    // We rewrite the request to the proxy route
+    return NextResponse.rewrite(rewriteUrl)
+  }
+
   // ==================== RATE LIMITING ====================
   // Apply rate limiting to all API routes with appropriate configs
   if (pathname.startsWith("/api/public/")) {

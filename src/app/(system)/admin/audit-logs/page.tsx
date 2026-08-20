@@ -12,9 +12,9 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
 import {
-  Loader2, ClipboardList, Search, Filter, RefreshCw, Calendar, 
-  User, Building2, Eye, ShieldCheck, ChevronLeft, ChevronRight,
-  Terminal, Copy, Check
+  Loader2, ClipboardList, Search, Filter, RefreshCw, 
+  Eye, ShieldCheck, ChevronLeft, ChevronRight,
+  Terminal, Copy, Check, Info
 } from "lucide-react"
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dialog"
 import { JsonViewer } from "@/components/ui/json-viewer"
 import { useToast } from "@/hooks/use-toast"
-import { Info } from "lucide-react"
+import { IpBadge } from "@/components/dashboard/ip-badge"
+import { cn } from "@/lib/utils"
 
 interface AuditLog {
   id: string
@@ -69,8 +70,8 @@ export default function AdminAuditLogsPage() {
       if (res.ok) {
         const data = await res.json()
         setLogs(data.logs || [])
-        setTotalPages(data.pagination.totalPages)
-        setPage(data.pagination.page)
+        setTotalPages(data.pagination?.totalPages || 1)
+        setPage(data.pagination?.page || 1)
       }
     } catch (error) {
       console.error("Failed to fetch logs:", error)
@@ -98,24 +99,30 @@ export default function AdminAuditLogsPage() {
 
   const handleCopyJson = () => {
     if (!selectedLog?.data) return
-    navigator.clipboard.writeText(JSON.stringify(JSON.parse(selectedLog.data), null, 2))
-    setCopied(true)
-    setTimeout(() => setCopied(false), 2000)
+    try {
+      navigator.clipboard.writeText(JSON.stringify(JSON.parse(selectedLog.data), null, 2))
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    } catch {
+      navigator.clipboard.writeText(selectedLog.data)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    }
   }
 
   const getActionBadge = (action: string) => {
-    if (action.startsWith("auth.")) return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 border-none font-bold text-[10px]">{action.toUpperCase()}</Badge>
-    if (action.startsWith("content.")) return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-none font-bold text-[10px]">{action.toUpperCase()}</Badge>
-    if (action.startsWith("tenant.")) return <Badge className="bg-purple-100 text-purple-700 hover:bg-purple-100 border-none font-bold text-[10px]">{action.toUpperCase()}</Badge>
-    if (action.startsWith("media.")) return <Badge className="bg-pink-100 text-pink-700 hover:bg-pink-100 border-none font-bold text-[10px]">{action.toUpperCase()}</Badge>
-    return <Badge variant="secondary" className="text-[10px] font-bold">{action.toUpperCase()}</Badge>
+    if (action.startsWith("auth.")) return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-none font-bold text-[9px] px-2 py-0.5 rounded-full border">{action.toUpperCase()}</Badge>
+    if (action.startsWith("content.")) return <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-none font-bold text-[9px] px-2 py-0.5 rounded-full border">{action.toUpperCase()}</Badge>
+    if (action.startsWith("tenant.")) return <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 shadow-none font-bold text-[9px] px-2 py-0.5 rounded-full border">{action.toUpperCase()}</Badge>
+    if (action.startsWith("media.")) return <Badge className="bg-pink-500/10 text-pink-600 dark:text-pink-400 border-pink-500/20 shadow-none font-bold text-[9px] px-2 py-0.5 rounded-full border">{action.toUpperCase()}</Badge>
+    return <Badge variant="outline" className="text-[9px] font-bold px-2 py-0.5 rounded-full border-border/60 text-muted-foreground">{action.toUpperCase()}</Badge>
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex">
-        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     )
@@ -123,79 +130,84 @@ export default function AdminAuditLogsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-extrabold tracking-tight">Audit Trail</h1>
-              <p className="text-muted-foreground">Historical record of all platform activities and administrative changes.</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Audit Log & Jejak Aktivitas</h1>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
+                  Immutable Log
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">Rekaman riwayat seluruh aktivitas platform, perubahan data, dan akses administratif.</p>
             </div>
-            <Button variant="outline" onClick={() => fetchLogs(page)} disabled={refreshing} className="bg-card">
-              <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? "animate-spin" : ""}`} /> Refresh Logs
+            <Button variant="outline" onClick={() => fetchLogs(page)} disabled={refreshing} className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80">
+              <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} /> Segarkan Log
             </Button>
           </div>
 
           {/* Filter Bar */}
-          <Card className="border-none shadow-sm bg-card">
-            <CardContent className="p-4 flex flex-wrap items-center gap-4">
-              <div className="relative flex-1 min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+            <CardContent className="p-3 flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input 
-                  placeholder="Search by Resource ID or User..." 
+                  placeholder="Cari berdasarkan Resource ID, User ID, atau kata kunci..." 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
-                  className="pl-10 h-10 bg-muted/30 border-none focus-visible:ring-primary" 
+                  className="pl-9 h-9 rounded-xl text-xs bg-background border-border/80" 
                 />
               </div>
               <Select value={actionFilter} onValueChange={setActionFilter}>
-                <SelectTrigger className="w-[200px] h-10 bg-muted/30 border-none">
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  <SelectValue placeholder="Action Category" />
+                <SelectTrigger className="w-full sm:w-[200px] h-9 rounded-xl text-xs bg-background border-border/80">
+                  <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue placeholder="Kategori Aksi" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Actions</SelectItem>
-                  <SelectItem value="auth.login">Login Events</SelectItem>
-                  <SelectItem value="content.created">Content Creation</SelectItem>
-                  <SelectItem value="content.published">Publications</SelectItem>
-                  <SelectItem value="tenant.created">New Workspaces</SelectItem>
-                  <SelectItem value="settings.updated">System Config</SelectItem>
+                <SelectContent className="rounded-xl border-border bg-card">
+                  <SelectItem value="all" className="text-xs rounded-lg">Semua Aksi</SelectItem>
+                  <SelectItem value="auth.login" className="text-xs rounded-lg">Otentikasi / Login</SelectItem>
+                  <SelectItem value="content.created" className="text-xs rounded-lg">Pembuatan Konten</SelectItem>
+                  <SelectItem value="content.published" className="text-xs rounded-lg">Publikasi Konten</SelectItem>
+                  <SelectItem value="tenant.created" className="text-xs rounded-lg">Workspace Baru</SelectItem>
+                  <SelectItem value="settings.updated" className="text-xs rounded-lg">Konfigurasi Sistem</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
           </Card>
 
           {/* Table Area */}
-          <Card className="border-none shadow-sm overflow-hidden bg-card">
+          <Card className="border border-border/80 shadow-xs overflow-hidden bg-card rounded-2xl">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-widest pl-6">Timestamp</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-widest">Event Action</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-widest">Actor</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-widest">Resource</TableHead>
-                    <TableHead className="font-bold text-[11px] uppercase tracking-widest">IP Source</TableHead>
-                    <TableHead className="text-right font-bold text-[11px] uppercase tracking-widest pr-6">Inspector</TableHead>
+                  <TableRow className="border-b border-border/60">
+                    <TableHead className="font-bold text-xs uppercase pl-5">Waktu</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Aksi Event</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Aktor</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Sumber Daya</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Sumber IP</TableHead>
+                    <TableHead className="text-right font-bold text-xs uppercase pr-5">Detail</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {logs.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-24 text-muted-foreground">
-                        <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                        <p className="font-bold">No audit records found</p>
-                        <p className="text-xs">System activity will appear here as it occurs.</p>
+                      <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
+                        <ClipboardList className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                        <p className="font-bold text-xs text-foreground">Tidak ada catatan audit</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Aktivitas sistem akan muncul di sini secara otomatis.</p>
                       </TableCell>
                     </TableRow>
                   ) : (
                     logs.map((log) => (
-                      <TableRow key={log.id} className="hover:bg-muted/5 transition-colors group">
-                        <TableCell className="pl-6">
-                          <div className="flex flex-col">
-                            <span className="text-[11px] font-bold text-foreground">{new Date(log.createdAt).toLocaleDateString()}</span>
-                            <span className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleTimeString()}</span>
+                      <TableRow key={log.id} className="hover:bg-muted/20 transition-colors border-b border-border/40 last:border-0 group">
+                        <TableCell className="pl-5 py-3">
+                          <div className="flex flex-col font-mono text-xs">
+                            <span className="font-bold text-foreground">{new Date(log.createdAt).toLocaleDateString('id-ID')}</span>
+                            <span className="text-[10px] text-muted-foreground">{new Date(log.createdAt).toLocaleTimeString('id-ID')}</span>
                           </div>
                         </TableCell>
                         <TableCell>
@@ -203,11 +215,11 @@ export default function AdminAuditLogsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
-                            <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center text-[10px] font-black border">
+                            <div className="w-7 h-7 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-[10px] font-bold text-primary">
                               {log.userId ? "U" : "S"}
                             </div>
                             <div className="flex flex-col">
-                              <span className="text-xs font-bold truncate max-w-[100px]">
+                              <span className="text-xs font-bold truncate max-w-[100px] text-foreground">
                                 {log.userId ? log.userId.substring(0, 8) : "SYSTEM"}
                               </span>
                               {log.tenantId && (
@@ -220,20 +232,18 @@ export default function AdminAuditLogsPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-col">
-                            <span className="text-[10px] font-black uppercase text-primary/70 tracking-tighter">{log.entity}</span>
+                            <span className="text-[10px] font-bold uppercase text-primary tracking-wider">{log.entity}</span>
                             <span className="text-[10px] font-mono text-muted-foreground mt-0.5">{log.entityId ? log.entityId.substring(0, 12) : "-"}</span>
                           </div>
                         </TableCell>
                         <TableCell>
-                          <code className="text-[10px] font-mono bg-muted/50 px-1.5 py-0.5 rounded text-muted-foreground border">
-                            {log.ipAddress || "::1"}
-                          </code>
+                          <IpBadge ipAddress={log.ipAddress} showCountryName={false} />
                         </TableCell>
-                        <TableCell className="text-right pr-6">
+                        <TableCell className="text-right pr-5">
                           <Button 
                             variant="ghost" 
-                            size="sm" 
-                            className="h-8 w-8 rounded-full hover:bg-primary/10 hover:text-primary opacity-0 group-hover:opacity-100 transition-all" 
+                            size="icon" 
+                            className="h-8 w-8 rounded-lg hover:bg-muted opacity-80 group-hover:opacity-100 transition-opacity" 
                             onClick={() => setSelectedLog(log)}
                           >
                             <Eye className="h-4 w-4" />
@@ -247,42 +257,44 @@ export default function AdminAuditLogsPage() {
             </div>
             
             {/* Pagination */}
-            <div className="p-4 bg-muted/10 border-t flex items-center justify-between">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                Showing Page {page} of {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => fetchLogs(page - 1)} 
-                  disabled={page === 1 || refreshing}
-                  className="h-8 rounded-none border border-border"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => fetchLogs(page + 1)} 
-                  disabled={page === totalPages || refreshing}
-                  className="h-8 rounded-none border border-border"
-                >
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+            {!loading && totalPages > 1 && (
+              <div className="p-3 bg-muted/20 border-t border-border/60 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span>
+                </p>
+                <div className="flex gap-1.5">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fetchLogs(page - 1)} 
+                    disabled={page <= 1 || refreshing}
+                    className="h-8 rounded-lg text-xs font-bold"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Sebelumnya
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fetchLogs(page + 1)} 
+                    disabled={page >= totalPages || refreshing}
+                    className="h-8 rounded-lg text-xs font-bold"
+                  >
+                    Berikutnya <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
 
           {/* Security Banner */}
-          <div className="p-5 bg-emerald-50 border border-emerald-100 rounded-none flex gap-4 text-emerald-800 shadow-sm">
-            <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-200">
-              <ShieldCheck className="h-6 w-6 text-emerald-600" />
+          <div className="p-4 bg-emerald-500/10 border border-emerald-500/20 rounded-2xl flex gap-3.5 text-foreground shadow-xs">
+            <div className="w-9 h-9 rounded-xl bg-emerald-500/20 flex items-center justify-center shrink-0 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400">
+              <ShieldCheck className="h-5 w-5" />
             </div>
             <div>
-              <p className="text-sm font-black uppercase tracking-widest">Immutable Compliance Log</p>
-              <p className="text-[11px] leading-relaxed mt-1 font-medium opacity-80 max-w-2xl">
-                The audit trail provides a non-repudiable record of all administrative actions. To maintain platform integrity, logs are protected from deletion or modification by any user role.
+              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Log Kepatuhan Tidak Dapat Diubah (Immutable)</p>
+              <p className="text-xs leading-relaxed mt-0.5 text-muted-foreground">
+                Rekaman audit trail bersifat non-repudiable. Seluruh aktivitas administratif dilindungi dari modifikasi maupun penghapusan untuk menjamin integritas dan keamanan sistem.
               </p>
             </div>
           </div>
@@ -290,46 +302,48 @@ export default function AdminAuditLogsPage() {
 
         {/* JSON Inspector Dialog */}
         <Dialog open={!!selectedLog} onOpenChange={() => setSelectedLog(null)}>
-          <DialogContent className="sm:max-w-[600px] rounded-none border border-border shadow-none p-0 overflow-hidden bg-card">
-            <DialogHeader className="p-6 bg-muted/30 border-b">
+          <DialogContent className="sm:max-w-[600px] rounded-2xl border-border/80 shadow-xl p-0 overflow-hidden bg-card">
+            <DialogHeader className="p-5 bg-muted/20 border-b border-border/60">
               <div className="flex items-center justify-between mr-6">
                 <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-none border border-border bg-primary/10 flex items-center justify-center text-primary">
-                    <Terminal className="h-5 w-5" />
+                  <div className="w-9 h-9 rounded-xl border border-primary/20 bg-primary/10 flex items-center justify-center text-primary">
+                    <Terminal className="h-4 w-4" />
                   </div>
                   <div>
-                    <DialogTitle className="text-lg font-black tracking-tight uppercase">{selectedLog?.action.replace('.', ' ')}</DialogTitle>
-                    <DialogDescription className="text-xs">Detailed data payload for log ID: {selectedLog?.id}</DialogDescription>
+                    <DialogTitle className="text-sm font-bold uppercase tracking-tight">{selectedLog?.action.replace('.', ' ')}</DialogTitle>
+                    <DialogDescription className="text-[11px] font-mono mt-0.5">ID Log: {selectedLog?.id}</DialogDescription>
                   </div>
                 </div>
-                <Button variant="outline" size="sm" className="h-8 rounded-none border border-border" onClick={handleCopyJson}>
-                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-                  {copied ? "Copied" : "Copy JSON"}
+                <Button variant="outline" size="sm" className="h-8 rounded-xl text-xs font-bold border-border/80" onClick={handleCopyJson}>
+                  {copied ? <Check className="h-3.5 w-3.5 text-emerald-500 mr-1" /> : <Copy className="h-3.5 w-3.5 mr-1" />}
+                  {copied ? "Tersalin" : "Salin JSON"}
                 </Button>
               </div>
             </DialogHeader>
-            <div className="p-6">
+            <div className="p-5">
               {selectedLog?.data ? (
                 <div className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="p-3 rounded-none bg-muted/20 border border-border">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Actor Identity</p>
-                      <p className="text-xs font-bold">{selectedLog.userId || "SYSTEM"}</p>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-xl bg-muted/20 border border-border/60">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-0.5">Identitas Aktor</p>
+                      <p className="text-xs font-mono font-bold text-foreground">{selectedLog.userId || "SYSTEM"}</p>
                     </div>
-                    <div className="p-3 rounded-none bg-muted/20 border border-border">
-                      <p className="text-[10px] font-black text-muted-foreground uppercase mb-1">Source IP</p>
-                      <p className="text-xs font-mono font-bold">{selectedLog.ipAddress || "::1"}</p>
+                    <div className="p-3 rounded-xl bg-muted/20 border border-border/60">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase mb-0.5">Alamat IP & Lokasi</p>
+                      <div className="mt-0.5">
+                        <IpBadge ipAddress={selectedLog.ipAddress} showCountryName={true} showCopy={true} />
+                      </div>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">Payload Data</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payload Data</Label>
                     <JsonViewer data={JSON.parse(selectedLog.data)} />
                   </div>
                 </div>
               ) : (
                 <div className="py-12 text-center text-muted-foreground">
-                  <Info className="h-10 w-10 mx-auto mb-2 opacity-20" />
-                  <p className="text-sm font-medium">No extended data available for this log entry.</p>
+                  <Info className="h-8 w-8 mx-auto mb-2 opacity-20" />
+                  <p className="text-xs font-medium">Tidak ada data tambahan untuk rekaman audit ini.</p>
                 </div>
               )}
             </div>

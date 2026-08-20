@@ -1,0 +1,57 @@
+﻿src/actions/roles.ts(25,28): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(45,27): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(51,34): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/actions/roles.ts(103,39): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(108,32): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(114,39): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(119,32): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(128,34): error TS2339: Property 'permission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/actions/roles.ts(138,24): error TS2339: Property 'rolePermission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/actions/roles.ts(170,22): error TS2339: Property 'rolePermission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/actions/roles.ts(210,14): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/actions/roles.ts(214,14): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/(system)/admin/layout.tsx(24,33): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/(workspace)/dashboard/[tenant]/(cms)/cms/content/[slug]/page.tsx(91,33): error TS2339: Property 'customPermissions' does not exist on type 'TenantAccess'.
+src/app/api/admin/rbac/permissions/[id]/route.ts(28,33): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/[id]/route.ts(34,33): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/[id]/route.ts(62,34): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/[id]/route.ts(68,16): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/[id]/route.ts(73,14): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/route.ts(19,34): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/route.ts(48,16): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/route.ts(49,31): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/route.ts(77,31): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/permissions/route.ts(82,33): error TS2339: Property 'permission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/roles/route.ts(48,38): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/roles/route.ts(94,31): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/roles/route.ts(100,21): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/rbac/roles/route.ts(105,21): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/system-roles/[id]/route.ts(23,27): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/system-roles/[id]/route.ts(49,14): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/system-roles/route.ts(13,28): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/system-roles/route.ts(41,31): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/admin/system-roles/route.ts(46,27): error TS2339: Property 'systemRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(26,27): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(33,34): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(72,35): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(82,36): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(93,34): error TS2339: Property 'permission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(102,22): error TS2339: Property 'rolePermission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(163,16): error TS2339: Property 'rolePermission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/app/api/tenant/[tenant]/roles/[roleSlug]/route.ts(166,16): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/route.ts(27,28): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/route.ts(62,35): error TS2551: Property 'tenantRole' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/route.ts(77,32): error TS2551: Property 'tenantRole' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'. Did you mean 'tenantLocale'?
+src/app/api/tenant/[tenant]/roles/route.ts(89,34): error TS2339: Property 'permission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/app/api/tenant/[tenant]/roles/route.ts(109,20): error TS2339: Property 'rolePermission' does not exist on type 'Omit<PrismaClient<PrismaClientOptions, never, DefaultArgs>, "$connect" | "$disconnect" | "$on" | "$transaction" | "$extends">'.
+src/app/api/user/permissions/route.ts(21,38): error TS2339: Property 'rolePermission' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/webhooks/vercel/route.ts(27,30): error TS2339: Property 'frontendBuild' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/app/api/webhooks/vercel/route.ts(36,66): error TS2307: Cannot find module '@/lib/ai-engine' or its corresponding type declarations.
+src/app/api/webhooks/vercel/route.ts(44,18): error TS2339: Property 'frontendBuild' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'.
+src/lib/content-validations.ts(57,26): error TS2353: Object literal may only specify known properties, and 'required_error' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/lib/content-validations.ts(58,26): error TS2353: Object literal may only specify known properties, and 'invalid_type_error' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+src/lib/content-validations.ts(72,26): error TS2769: No overload matches this call.
+  Overload 1 of 2, '(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): ZodString', gave the following error.
+    Object literal may only specify known properties, and 'required_error' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.
+  Overload 2 of 2, '(params?: string | { error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; } | undefined): $ZodType<...>', gave the following error.
+    Object literal may only specify known properties, and 'required_error' does not exist in type '{ error?: string | $ZodErrorMap<$ZodIssueInvalidType<unknown>> | undefined; message?: string | undefined; }'.

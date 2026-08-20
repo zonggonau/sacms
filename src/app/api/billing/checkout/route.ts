@@ -24,15 +24,28 @@ export async function POST(request: NextRequest) {
     if ("error" in result) return result.error
     const { planId, tenantId, interval, type } = result.data
 
-    const isAccountPlan = type === "account" || !tenantId
+    const isAiCreditPack = type === "ai_credits" || planId.startsWith("ai_pack_")
+    const isAccountPlan = !isAiCreditPack && (type === "account" || !tenantId)
 
     let amount = 0
     let planName = planId
     let isAddon = false
+    let creditAmount = 0
     let targetId = tenantId || session.user.id
 
     let dbTenant: any = null;
-    if (isAccountPlan) {
+
+    if (isAiCreditPack) {
+      const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+      const pack = AI_CREDIT_PACKS.find(p => p.id === planId)
+      if (!pack) {
+        return NextResponse.json({ error: "Invalid AI credit pack" }, { status: 400 })
+      }
+      amount = pack.price_idr
+      planName = pack.name
+      creditAmount = pack.credits
+      isAddon = true
+    } else if (isAccountPlan) {
       // Logic for account plan pricing
       const dynamicPrices = await getDynamicAccountPrices()
       const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
@@ -68,51 +81,75 @@ export async function POST(request: NextRequest) {
         )
       }
 
-      const pricingContentTypes = await db.contentType.findMany({
-        where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing", "sacms-addons"] } }
-      })
+      const BUILTIN_TOPUPS: Record<string, { name: string; price: number; quotaType: string; amountUnits: number }> = {
+        topup_ai_500k: { name: "AI Booster (500K Tokens)", price: 25000, quotaType: "ai_tokens", amountUnits: 500000 },
+        topup_ai_2m: { name: "AI Power Pack (2M Tokens)", price: 75000, quotaType: "ai_tokens", amountUnits: 2000000 },
+        topup_storage_10gb: { name: "Extra Storage (10 GB)", price: 35000, quotaType: "storage", amountUnits: 10 * 1024 * 1024 * 1024 },
+        topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
+      }
 
-      if (pricingContentTypes.length > 0) {
-        const contentTypeIds = pricingContentTypes.map(ct => ct.id)
-        const planEntries = await db.contentEntry.findMany({
-          where: { contentTypeId: { in: contentTypeIds }, status: "PUBLISHED" }
-        })
-        
-        const planEntry = planEntries.find(e => {
-          let d = e.data
-          if (typeof d === 'string') {
-            try { d = JSON.parse(d) } catch (e) { d = {} }
-          }
-          const data = d as any
-          return data.plan_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
+      if (BUILTIN_TOPUPS[planId]) {
+        const topup = BUILTIN_TOPUPS[planId]
+        amount = topup.price
+        planName = topup.name
+        isAddon = true
+      } else {
+        const pricingContentTypes = await db.contentType.findMany({
+          where: { slug: { in: ["sacms-workspace-pricing", "platform-pricing", "sacms-addons"] } }
         })
 
-        if (planEntry) {
-          let d = planEntry.data
-          if (typeof d === 'string') {
-            try { d = JSON.parse(d) } catch (e) { d = {} }
-          }
-          const data = d as any
+        if (pricingContentTypes.length > 0) {
+          const contentTypeIds = pricingContentTypes.map(ct => ct.id)
+          const planEntries = await db.contentEntry.findMany({
+            where: { contentTypeId: { in: contentTypeIds }, status: "PUBLISHED" }
+          })
           
-          let rawPrice = data.price || "0"
-          let monthlyPrice = 0
-          let yearlyPrice = 0
-          if (typeof rawPrice === 'string') {
-            monthlyPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
-          } else {
-            monthlyPrice = Number(rawPrice) || 0
-          }
-          
-          if (data.yearly_price !== undefined) {
-            yearlyPrice = Number(data.yearly_price)
-          } else {
-            yearlyPrice = monthlyPrice * 10
-          }
+          const planEntry = planEntries.find(e => {
+            let d = e.data
+            if (typeof d === 'string') {
+              try { d = JSON.parse(d) } catch (e) { d = {} }
+            }
+            const data = d as any
+            return data.plan_slug === planId || data.id === planId || e.id === planId || data.name?.toLowerCase() === planId.toLowerCase()
+          })
 
-          amount = interval === 'year' ? yearlyPrice : monthlyPrice
-          planName = data.name || planId
-          const addonContentType = pricingContentTypes.find(ct => ct.slug === "sacms-addons")
-          isAddon = addonContentType?.id === planEntry.contentTypeId
+          if (planEntry) {
+            let d = planEntry.data
+            if (typeof d === 'string') {
+              try { d = JSON.parse(d) } catch (e) { d = {} }
+            }
+            const data = d as any
+            
+            let rawPrice = data.price || "0"
+            let monthlyPrice = 0
+            let yearlyPrice = 0
+            if (typeof rawPrice === 'string') {
+              monthlyPrice = parseInt(rawPrice.replace(/[^\d]/g, ''), 10) || 0
+            } else {
+              monthlyPrice = Number(rawPrice) || 0
+            }
+            
+            if (data.yearly_price !== undefined) {
+              yearlyPrice = Number(data.yearly_price)
+            } else {
+              yearlyPrice = monthlyPrice * 10
+            }
+
+            amount = interval === 'year' ? yearlyPrice : monthlyPrice
+            planName = data.name || planId
+            const addonContentType = pricingContentTypes.find(ct => ct.slug === "sacms-addons")
+            isAddon = addonContentType?.id === planEntry.contentTypeId
+          } else {
+            const dynamicPrices = await getDynamicWorkspacePrices()
+            const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
+            amount = interval === 'year' ? prices.yearly : prices.monthly
+            // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
+            if (!amount) {
+              const { PLAN_PRICES } = await import('@/lib/midtrans')
+              const base = PLAN_PRICES[planId] ?? 0
+              amount = interval === 'year' ? base * 10 : base
+            }
+          }
         } else {
           const dynamicPrices = await getDynamicWorkspacePrices()
           const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
@@ -123,16 +160,6 @@ export async function POST(request: NextRequest) {
             const base = PLAN_PRICES[planId] ?? 0
             amount = interval === 'year' ? base * 10 : base
           }
-        }
-      } else {
-        const dynamicPrices = await getDynamicWorkspacePrices()
-        const prices = dynamicPrices[planId] || { monthly: 0, yearly: 0 }
-        amount = interval === 'year' ? prices.yearly : prices.monthly
-        // Fallback to hardcoded PLAN_PRICES if dynamic returns 0
-        if (!amount) {
-          const { PLAN_PRICES } = await import('@/lib/midtrans')
-          const base = PLAN_PRICES[planId] ?? 0
-          amount = interval === 'year' ? base * 10 : base
         }
       }
     }
@@ -149,12 +176,12 @@ export async function POST(request: NextRequest) {
     });
     
     const sequenceNumber = 1001 + countToday;
-    const prefix = isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB');
+    const prefix = isAiCreditPack ? 'AIC' : (isAccountPlan ? 'ACC' : (isAddon ? 'ADD' : 'SUB'));
     const orderId = `${prefix}-${formattedDate}${sequenceNumber}`;
 
     // Get or create subscription
     let subscription = await db.subscription.findFirst({
-      where: isAccountPlan 
+      where: isAccountPlan || isAiCreditPack
         ? { userId: session.user.id, tenantId: { equals: null } as any } 
         : { tenantId: dbTenant.id },
     })
@@ -198,7 +225,7 @@ export async function POST(request: NextRequest) {
       subscription = await db.subscription.create({
         data: {
           userId: session.user.id,
-          tenantId: isAccountPlan ? null : dbTenant.id,
+          tenantId: (isAccountPlan || isAiCreditPack) ? null : dbTenant.id,
           plan: isAddon ? "free" : planId,
           status: 'pending',
           currentPeriodStart: new Date(),
@@ -226,8 +253,10 @@ export async function POST(request: NextRequest) {
         amount: totalAmount,
         status: 'pending',
         subscriptionId: subscription.id,
-        // Store addon info in rawResponse for later processing in webhook
-        rawResponse: isAddon ? { isAddon, addonId: planId } as any : null
+        // Store addon/AI credit info in rawResponse for later processing in webhook
+        rawResponse: isAiCreditPack 
+          ? ({ isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" } as any)
+          : (isAddon ? ({ isAddon, addonId: planId } as any) : null)
       },
     })
 

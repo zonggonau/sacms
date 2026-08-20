@@ -39,6 +39,8 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
+import { WorkspaceSelector } from "./workspace-selector"
+import { ProfileModal } from "@/components/dashboard/profile-modal"
 
 interface TenantSidebarProps {
   tenantId?: string
@@ -80,6 +82,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const [mounted, setMounted] = useState(false)
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const [liveTenants, setLiveTenants] = useState<any[]>([])
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   const handleSwitchWorkspace = async (targetTenantId?: string) => {
     if (targetTenantId && targetTenantId === tenantId) {
@@ -103,8 +106,19 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   }, [])
 
   const currentTenant = liveTenants.length > 0 
-    ? liveTenants.find((t) => t.id === tenantId) 
-    : (session?.user?.tenants || []).find((t: any) => t.id === tenantId)
+    ? liveTenants.find((t) => t.id === tenantId || t.slug === tenantId) 
+    : (session?.user?.tenants || []).find((t: any) => 
+        t.id === tenantId || 
+        t.slug === tenantId || 
+        t.tenantId === tenantId || 
+        t.tenant?.id === tenantId ||
+        t.tenant?.slug === tenantId
+      )
+
+  // Map role securely from raw Prisma session format if needed
+  if (currentTenant && !currentTenant.role && currentTenant.tenant?.id) {
+    currentTenant.role = currentTenant.role || 'subscriber'
+  }
 
   const href = (path: string) => {
     if (path === "/cms-redirect") return `/dashboard/${tenantId}/cms`
@@ -123,6 +137,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   }
 
   // Fetch live list of user's tenants
+  const userId = session?.user?.id
   useEffect(() => {
     async function fetchTenants() {
       try {
@@ -135,8 +150,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         console.error("Failed to fetch tenants:", error)
       }
     }
-    if (session?.user) fetchTenants()
-  }, [session])
+    if (userId) fetchTenants()
+  }, [userId])
 
   const userRole = currentTenant?.role || "subscriber"
   const isSuperAdmin = session?.user?.role === "super_admin"
@@ -184,7 +199,10 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         if (item.children) {
           const isAnyChildActive = item.children.some(child => isActive(child));
           if (isAnyChildActive) {
-            setOpenMenus(prev => ({ ...prev, [item.title]: true }));
+            setOpenMenus(prev => {
+              if (prev[item.title]) return prev;
+              return { ...prev, [item.title]: true };
+            });
           }
         }
       })
@@ -230,13 +248,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                 key={t.id}
                 onClick={() => handleSwitchWorkspace(t.id)}
                 className={cn(
-                  "flex w-full items-center gap-2 rounded-none px-3 py-2 text-xs transition-colors text-left cursor-pointer",
+                  "flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-xs transition-colors text-left cursor-pointer",
                   t.id === tenantId
                     ? "bg-primary/10 text-primary font-bold"
-                    : "hover:bg-muted text-muted-foreground hover:text-foreground"
+                    : "hover:bg-muted/60 text-muted-foreground hover:text-foreground"
                 )}
               >
-                <div className="w-5 h-5 rounded bg-muted flex items-center justify-center text-[10px] font-bold shrink-0">
+                <div className="w-5 h-5 rounded-lg bg-primary/10 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                   {t.name[0].toUpperCase()}
                 </div>
                 <span className="truncate">{t.name}</span>
@@ -244,13 +262,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               </button>
             ))}
             
-            <div className="pt-2 mt-2 border-t">
+            <div className="pt-1.5 mt-1.5 border-t">
               <button
                 onClick={() => handleSwitchWorkspace()}
-                className="flex w-full items-center gap-2 rounded-none px-3 py-2 text-xs text-primary font-bold hover:bg-primary/5 transition-colors text-left cursor-pointer"
+                className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-primary font-bold hover:bg-primary/10 transition-colors text-left cursor-pointer"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Change Workspace</span>
+                <span>Ganti Workspace</span>
               </button>
             </div>
           </div>
@@ -259,11 +277,11 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
 
       {/* Navigation */}
       <ScrollArea className="flex-1 py-4">
-        <nav className="px-3 space-y-6">
+        <nav className="px-3 space-y-5">
           {navSections.map((section, idx) => (
             <div key={section.label || `section-${idx}`}>
               {section.label && (
-                <p className="px-3 mb-2 text-[10px] font-black tracking-widest text-muted-foreground/50 uppercase">
+                <p className="px-3 mb-1.5 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">
                   {section.label}
                 </p>
               )}
@@ -278,20 +296,20 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                         <button
                           onClick={() => toggleMenu(item.title)}
                           className={cn(
-                            "w-full flex items-center justify-between gap-3 rounded-none px-3 py-2 text-sm transition-colors group",
+                            "w-full flex items-center justify-between gap-3 rounded-xl px-3 py-2 text-xs font-semibold transition-all group",
                             isAnyChildActive && !isExpanded
-                              ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
-                              : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                              ? "bg-primary/10 text-primary font-bold"
+                              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                           )}
                         >
-                          <div className="flex items-center gap-3">
-                            <item.icon className={cn("h-4 w-4 shrink-0", (isAnyChildActive && !isExpanded) ? "text-orange-500" : "text-muted-foreground")} />
+                          <div className="flex items-center gap-2.5">
+                            <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", (isAnyChildActive && !isExpanded) ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
                             <span className="truncate">{item.title}</span>
                           </div>
-                          <ChevronDown className={cn("h-4 w-4 shrink-0 transition-transform", isExpanded && "rotate-180")} />
+                          <ChevronDown className={cn("h-3.5 w-3.5 shrink-0 transition-transform", isExpanded && "rotate-180")} />
                         </button>
                         {isExpanded && (
-                          <div className="mt-1 space-y-1">
+                          <div className="mt-1 space-y-0.5 pl-3 border-l ml-4">
                             {item.children.map(child => {
                               const childActive = isActive(child);
                               return (
@@ -302,13 +320,13 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                                 >
                                   <div
                                     className={cn(
-                                      "flex items-center gap-3 rounded-none pl-10 pr-3 py-2 text-sm transition-colors group",
+                                      "flex items-center gap-2.5 rounded-lg px-2.5 py-1.5 text-xs transition-all group",
                                       childActive
-                                        ? "bg-muted/50 text-foreground font-semibold border-l-2 border-orange-500"
-                                        : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                                        ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                                     )}
                                   >
-                                    <child.icon className={cn("h-3.5 w-3.5 shrink-0", childActive ? "text-orange-500" : "text-muted-foreground")} />
+                                    <child.icon className={cn("h-3.5 w-3.5 shrink-0", childActive ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                                     <span className="truncate">{child.title}</span>
                                   </div>
                                 </Link>
@@ -330,16 +348,16 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                     >
                       <div
                         className={cn(
-                          "flex items-center gap-3 rounded-none px-3 py-2 text-sm transition-colors group",
+                          "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all group",
                           active
-                            ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
-                            : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         )}
                       >
-                        <item.icon className={cn("h-4 w-4 shrink-0", active ? "text-orange-500" : "text-muted-foreground")} />
+                        <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                         <span className="truncate">{item.title}</span>
                         {item.badge && (
-                          <Badge variant="secondary" className="ml-auto text-[10px] h-4 px-1.5 bg-emerald-100 text-emerald-700">{item.badge}</Badge>
+                          <Badge variant="secondary" className="ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold bg-primary/20 text-primary">{item.badge}</Badge>
                         )}
                       </div>
                     </Link>
@@ -353,32 +371,40 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
 
       {/* Footer */}
       <div className="border-t p-3 space-y-2">
-        <div className="flex items-center gap-3 px-3 py-2 rounded-none bg-muted/30">
-          <Link href={`/dashboard/${tenantId}/profile`} className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 rounded-none bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-xs font-bold shadow-none shrink-0">
-              {session?.user?.name?.[0]?.toUpperCase() ?? "U"}
+        <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-muted/40 border border-border/60">
+          <button 
+            type="button"
+            onClick={() => setIsProfileOpen(true)}
+            className="flex items-center gap-2.5 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-xs font-black shadow-xs shrink-0">
+              {session?.user?.image ? (
+                <img src={session.user.image} alt={session.user.name || "Avatar"} className="w-full h-full object-cover" />
+              ) : (
+                session?.user?.name?.[0]?.toUpperCase() ?? "U"
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-xs font-bold truncate leading-none mb-1">{session?.user?.name}</p>
+              <p className="text-xs font-bold truncate text-foreground leading-none mb-1">{session?.user?.name || "User Profile"}</p>
               <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
             </div>
-          </Link>
-          <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
+          </button>
+          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
-              theme === "dark" ? <Sun className="h-4 w-4 text-amber-500" /> : <Moon className="h-4 w-4 text-indigo-500" />
+              theme === "dark" ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-primary" />
             ) : (
-              <div className="h-4 w-4" />
+              <div className="h-3.5 w-3.5" />
             )}
           </Button>
         </div>
         <Button
           variant="ghost"
           size="sm"
-          className="w-full justify-start gap-3 text-muted-foreground hover:text-destructive hover:bg-destructive/5 rounded-none h-9 text-xs"
+          className="w-full justify-start gap-2.5 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-xl h-8 text-xs font-semibold transition-all"
           onClick={handleSignOut}
         >
-          <LogOut className="h-4 w-4 text-red-500" />
-          <span className="font-medium">Sign Out</span>
+          <LogOut className="h-3.5 w-3.5 text-destructive" />
+          <span>Keluar</span>
         </Button>
       </div>
     </div>
@@ -406,6 +432,12 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       <aside className="hidden md:block w-64 border-r shrink-0 h-screen sticky top-0 bg-card">
         {renderSidebarContent()}
       </aside>
+
+      <ProfileModal 
+        open={isProfileOpen} 
+        onOpenChange={setIsProfileOpen} 
+        userRole={currentTenant?.role}
+      />
     </>
   )
 }

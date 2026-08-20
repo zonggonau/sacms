@@ -33,6 +33,7 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
+import { ProfileModal } from "@/components/dashboard/profile-modal"
 
 interface NavItem {
   title: string
@@ -69,7 +70,6 @@ const adminNavSections: NavSection[] = [
     items: [
       { title: "Monitoring", href: "/admin/monitoring", icon: Activity },
       { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList },
-      { title: "Media Library", href: "/admin/media", icon: ImageIcon },
       { title: "Settings", href: "/admin/settings", icon: Settings },
     ],
   },
@@ -88,13 +88,15 @@ export function GlobalAdminSidebar() {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
   const [permittedPaths, setPermittedPaths] = useState<string[] | null>(null)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
+  const userId = session?.user?.id
   useEffect(() => {
     setMounted(true)
     
     // Fetch dynamic permissions
     const fetchPerms = async () => {
-      if (session?.user) {
+      if (userId) {
         try {
           const res = await fetch('/api/user/permissions')
           if (res.ok) {
@@ -109,7 +111,7 @@ export function GlobalAdminSidebar() {
       }
     }
     fetchPerms()
-  }, [session])
+  }, [userId])
 
   // Hide the global admin sidebar when inside a specific schema builder template editor 
   // (but show it on the general /admin/schema-builder listing)
@@ -196,15 +198,23 @@ export function GlobalAdminSidebar() {
       {/* Footer */}
       <div className="border-t border-border p-4 space-y-2">
         <div className="flex items-center gap-3">
-          <Link href="/dashboard/profile" className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity">
-            <div className="w-8 h-8 bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 rounded-none">
-              {session?.user?.name?.[0]?.toUpperCase() ?? "A"}
+          <button 
+            type="button"
+            onClick={() => setIsProfileOpen(true)}
+            className="flex items-center gap-3 flex-1 min-w-0 hover:opacity-80 transition-opacity text-left cursor-pointer"
+          >
+            <div className="w-8 h-8 rounded-lg overflow-hidden bg-muted/50 flex items-center justify-center text-foreground text-xs font-bold shrink-0 border border-border">
+              {session?.user?.image ? (
+                <img src={session.user.image} alt={session.user.name || "Avatar"} className="w-full h-full object-cover" />
+              ) : (
+                session?.user?.name?.[0]?.toUpperCase() ?? "A"
+              )}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-foreground truncate">{session?.user?.name}</p>
+              <p className="text-sm font-medium text-foreground truncate">{session?.user?.name || "Admin Profile"}</p>
               <p className="text-xs text-muted-foreground truncate">Super Admin</p>
             </div>
-          </Link>
+          </button>
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0 rounded-none text-muted-foreground hover:text-foreground hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />
@@ -252,6 +262,8 @@ export function GlobalAdminSidebar() {
       <aside className="hidden md:block w-64 shrink-0 sticky top-0 h-screen">
         {renderSidebarContent()}
       </aside>
+
+      <ProfileModal open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </>
   )
 }

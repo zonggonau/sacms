@@ -184,6 +184,13 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
         where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
       })
       
+      const parseNum = (val: any) => {
+        if (val === undefined || val === null) return 0
+        if (typeof val === 'number') return val
+        if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
+        return Number(val) || 0
+      }
+
       const prices: Record<string, { monthly: number, yearly: number }> = {}
       for (const entry of planEntries) {
         let data = entry.data
@@ -191,11 +198,10 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
           try { data = JSON.parse(data) } catch (e) { data = {} }
         }
         const d = data as any
-        if (d.plan_slug && d.price !== undefined) {
-          prices[d.plan_slug] = {
-            monthly: Number(d.price),
-            yearly: d.yearly_price !== undefined ? Number(d.yearly_price) : Number(d.price) * 10
-          }
+        if (d.plan_slug && (d.price !== undefined || d.yearly_price !== undefined)) {
+          const monthly = parseNum(d.price)
+          const yearly = d.yearly_price !== undefined ? parseNum(d.yearly_price) : (monthly > 0 ? monthly * 10 : 0)
+          prices[d.plan_slug] = { monthly, yearly }
         }
       }
       if (Object.keys(prices).length > 0) return prices
@@ -204,9 +210,11 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
     console.error("Error fetching dynamic account prices:", e)
   }
   
-  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {}
-  for (const [k, v] of Object.entries(PLAN_PRICES)) {
-    fallbackPrices[k] = { monthly: v, yearly: v * 10 }
+  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
+    free: { monthly: 0, yearly: 0 },
+    starter: { monthly: 99000, yearly: 990000 },
+    pro: { monthly: 299000, yearly: 2990000 },
+    enterprise: { monthly: 999000, yearly: 9990000 },
   }
   return fallbackPrices
 }
@@ -223,6 +231,13 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
         where: { contentTypeId: pricingContentType.id, status: "PUBLISHED" }
       })
       
+      const parseNum = (val: any) => {
+        if (val === undefined || val === null) return 0
+        if (typeof val === 'number') return val
+        if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
+        return Number(val) || 0
+      }
+
       const prices: Record<string, { monthly: number, yearly: number }> = {}
       for (const entry of planEntries) {
         let data = entry.data
@@ -230,11 +245,10 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
           try { data = JSON.parse(data) } catch (e) { data = {} }
         }
         const d = data as any
-        if (d.plan_slug && d.price !== undefined) {
-          prices[d.plan_slug] = {
-            monthly: Number(d.price),
-            yearly: d.yearly_price !== undefined ? Number(d.yearly_price) : Number(d.price) * 10
-          }
+        if (d.plan_slug && (d.price !== undefined || d.yearly_price !== undefined)) {
+          const monthly = parseNum(d.price)
+          const yearly = d.yearly_price !== undefined ? parseNum(d.yearly_price) : (monthly > 0 ? monthly * 10 : 0)
+          prices[d.plan_slug] = { monthly, yearly }
         }
       }
       if (Object.keys(prices).length > 0) return prices
@@ -243,9 +257,11 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
     console.error("Error fetching dynamic workspace prices:", e)
   }
   
-  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {}
-  for (const [k, v] of Object.entries(PLAN_PRICES)) {
-    fallbackPrices[k] = { monthly: v, yearly: v * 10 }
+  const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
+    free: { monthly: 0, yearly: 0 },
+    starter: { monthly: 99000, yearly: 990000 },
+    pro: { monthly: 299000, yearly: 2990000 },
+    enterprise: { monthly: 999000, yearly: 9990000 },
   }
   return fallbackPrices
 }

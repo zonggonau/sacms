@@ -73,9 +73,10 @@ export default async function TenantDashboardLayout({
     redirect("/dashboard")
   }
 
-  // Only owners and admins can access the dashboard.
-  // Editors, contributors, and viewers must go to the CMS content studio.
-  if (access.role === "editor" || access.role === "contributor" || access.role === "viewer") {
+  // Only owners, admins, and super_admins can access the management dashboard.
+  // Editors, authors, contributors, viewers, and subscribers must go to the CMS content studio.
+  const isManagementAdmin = access.role === "owner" || access.role === "admin" || session.user.role === "super_admin"
+  if (!isManagementAdmin) {
     redirect(`/dashboard/${access.tenant.slug || access.tenant.id}/cms`)
   }
 

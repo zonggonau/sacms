@@ -354,172 +354,170 @@ export default function CreateEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
-      <div className="flex-1 bg-[#f6f6f9] text-foreground flex w-full min-h-0 flex-col">
+    <div className="flex flex-1 flex-col w-full min-h-screen">
+      <div className="flex-1 bg-background text-foreground flex w-full flex-col">
         
-        {/* Editor Pane */}
-        <div className="flex flex-col overflow-auto flex-1 min-h-0 w-full">
-          {/* Sticky Header */}
-          <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-            <div className="w-full">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div className="flex items-center gap-4">
-                  <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h1 className="text-3xl font-extrabold tracking-tight">New {contentType?.name}</h1>
-                      <Badge className={cn("text-[10px] font-black uppercase text-white", statusCfg.color)}>
-                        {statusCfg.label}
-                      </Badge>
-                    </div>
-                    <p className="text-muted-foreground">Fill in the fields to create a new entry.</p>
-                  </div>
+        {/* Sticky Header */}
+        <div className="bg-card/80 backdrop-blur-md border-b border-border/60 px-4 md:px-6 py-3.5 sticky top-0 z-10 shrink-0">
+          <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60" onClick={() => router.back()}>
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-base font-black text-foreground">Entri Baru: {contentType?.name}</h1>
+                  <Badge className={cn("text-[9px] font-bold uppercase rounded-full px-2 py-0.5", statusCfg.color)}>
+                    {statusCfg.label}
+                  </Badge>
                 </div>
-                <div className="flex items-center gap-2">
-                  <AISmartFill 
-                    tenantSlug={tenantSlug} 
-                    contentTypeName={contentType?.name || ""} 
-                    schema={contentType?.fields || []}
-                    onApply={handleAISmartFill}
-                  />
-                  <Select value={entryStatus} onValueChange={setEntryStatus}>
-                    <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none h-10">
+                <p className="text-xs text-muted-foreground">Isi kolom field di bawah untuk membuat entri konten baru.</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <AISmartFill 
+                tenantSlug={tenantSlug} 
+                contentTypeName={contentType?.name || ""} 
+                schema={contentType?.fields || []}
+                onApply={handleAISmartFill}
+              />
+              <Select value={entryStatus} onValueChange={setEntryStatus}>
+                <SelectTrigger className="w-36 bg-card font-bold text-xs rounded-xl border-border/80 h-8">
+                  <div className="flex items-center gap-2">
+                    <statusCfg.icon className="h-3.5 w-3.5" />
+                    <SelectValue />
+                  </div>
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-card">
+                  {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
+                    <SelectItem key={val} value={val} className="text-xs font-semibold rounded-lg cursor-pointer">
                       <div className="flex items-center gap-2">
-                        <statusCfg.icon className="h-3.5 w-3.5" />
-                        <SelectValue />
+                        <cfg.icon className="h-3.5 w-3.5" />
+                        {cfg.label}
                       </div>
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border-none shadow-none">
-                      {Object.entries(STATUS_CONFIG).map(([val, cfg]) => (
-                        <SelectItem key={val} value={val} className="text-xs font-bold uppercase p-3">
-                          <div className="flex items-center gap-2">
-                            <cfg.icon className="h-3.5 w-3.5" />
-                            {cfg.label}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
 
-                   <Button onClick={() => handleSave(true)} disabled={saving || isLimitReached} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    Create & Publish
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Limit Alert */}
-          {isLimitReached && (
-            <div className="mx-6 lg:mx-8 mt-6 bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
-              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
-              <div className="text-xs text-red-800 dark:text-red-300 font-medium">
-                You have reached your content entries limit of {entriesLimit} entries. Delete an existing entry or upgrade your plan to create more.
-              </div>
-            </div>
-          )}
-
-          {/* Main Content */}
-          <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/30 p-6">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-500" /> Content Editor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-10">
-                {contentType?.fields.map(field => (
-                  <div key={field.id} className="relative group">
-                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {renderField(field)}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
-              <CardContent className="p-6 pt-2 space-y-6">
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                           "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
-                          !scheduledAt && "text-muted-foreground font-normal"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border border-border bg-card" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledAt}
-                        onSelect={setScheduledAt}
-                        initialFocus
-                        disabled={(date) => date < new Date()}
-                      />
-                      {scheduledAt && (
-                        <div className="p-3 border-t bg-muted/10 flex justify-between">
-                          <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black rounded-none hover:bg-muted">Clear</Button>
-                          <span className="text-[10px] text-muted-foreground italic pt-2">Will set to SCHEDULED</span>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                </div>
-
-                <Separator className="opacity-50" />
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
-                  <Select value={locale} onValueChange={setLocale}>
-                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                      {availableLocales.map(l => (
-                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator className="opacity-50" />
-
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleSave(false)} 
-                  disabled={saving || isLimitReached} 
-                  className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Draft
-                </Button>
-              </CardContent>
-            </Card>
-
-            <div className="p-6 bg-card border border-border rounded-none text-foreground shadow-none relative">
-              <div className="absolute top-0 right-0 w-8 h-8 bg-orange-500 flex items-center justify-center text-white">
-                <Zap className="h-4 w-4" />
-              </div>
-              <div className="flex items-center gap-2 mb-3">
-                <h4 className="font-black uppercase text-xs tracking-widest text-foreground">AI Power</h4>
-              </div>
-              <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
-                Use <strong>AI Smart Fill</strong> at the top to populate the entire form from a single prompt or draft.
-              </p>
+              <Button onClick={() => handleSave(true)} disabled={saving || isLimitReached} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-4 h-8 text-xs rounded-xl shadow-xs">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
+                Buat & Publikasikan
+              </Button>
             </div>
           </div>
         </div>
 
+        {/* Limit Alert */}
+        {isLimitReached && (
+          <div className="max-w-7xl mx-auto w-full px-4 md:px-6 mt-4">
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-xs">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                Anda telah mencapai kuota maksimum {entriesLimit} entri. Hapus entri lama atau upgrade paket untuk menambah entri.
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Main Content */}
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto flex-1">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-6">
+              <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                <CardHeader className="border-b border-border/60 p-5 pb-3">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" /> Editor Konten
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 space-y-6">
+                  {contentType?.fields.map(field => (
+                    <div key={field.id} className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs font-semibold text-foreground">{field.name} {field.required && <span className="text-rose-500">*</span>}</Label>
+                        <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 rounded-full border-border/60 text-muted-foreground">{field.type}</Badge>
+                      </div>
+                      {renderField(field)}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+            
+            <div className="space-y-4">
+              <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                <CardHeader className="p-4 pb-2 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    Opsi Publikasi
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Jadwal Publikasi</Label>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant={"outline"}
+                          className={cn(
+                            "w-full justify-start text-left font-medium rounded-xl border border-border/80 bg-background h-9 text-xs",
+                            !scheduledAt && "text-muted-foreground"
+                          )}
+                        >
+                          <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                          {scheduledAt ? format(scheduledAt, "PPP") : <span>Tentukan tanggal...</span>}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-lg border border-border bg-card" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={scheduledAt}
+                          onSelect={setScheduledAt}
+                          initialFocus
+                          disabled={(date) => date < new Date()}
+                        />
+                        {scheduledAt && (
+                          <div className="p-2.5 border-t bg-muted/10 flex justify-between items-center text-xs">
+                            <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] font-bold rounded-lg h-7">Batal</Button>
+                            <span className="text-[10px] text-muted-foreground italic">Otomatis dijadwalkan</span>
+                          </div>
+                        )}
+                      </PopoverContent>
+                    </Popover>
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Bahasa (Locale)</Label>
+                    <Select value={locale} onValueChange={setLocale}>
+                      <SelectTrigger className="bg-background border border-border/80 h-9 rounded-xl text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border border-border bg-card">
+                        {availableLocales.map(l => (
+                          <SelectItem key={l.locale} value={l.locale} className="rounded-lg text-xs cursor-pointer">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <Button 
+                    variant="outline" 
+                    onClick={() => handleSave(false)} 
+                    disabled={saving || isLimitReached} 
+                    className="w-full bg-background hover:bg-muted/60 border border-border/80 h-9 rounded-xl font-bold text-xs"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                    Simpan sebagai Draft
+                  </Button>
+                </CardContent>
+              </Card>
+
+              <div className="p-4 bg-primary/5 border border-primary/15 rounded-2xl text-foreground shadow-xs">
+                <div className="flex items-center gap-2 mb-1.5 text-primary font-bold text-xs">
+                  <Zap className="h-4 w-4" /> AI Smart Fill
+                </div>
+                <p className="text-[11px] leading-relaxed text-muted-foreground">
+                  Gunakan fitur AI Smart Fill di bagian atas untuk mengisi seluruh kolom formulir secara otomatis dari prompt deskripsi Anda.
+                </p>
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -330,249 +330,227 @@ export default function EditEntryPage() {
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
 
   return (
-    <div className="flex flex-1 flex-col w-full h-[calc(100vh-64px)] overflow-hidden">
-      <div className={cn("flex-1 bg-[#f6f6f9] text-foreground flex w-full min-h-0", showPreview ? "flex-row" : "flex-col")}>
+    <div className="flex flex-1 flex-col w-full min-h-screen">
+      <div className="flex-1 bg-background text-foreground flex w-full flex-col">
         
         {/* Editor Pane */}
-        <div className={cn("flex flex-col overflow-auto flex-1 min-h-0", showPreview ? "w-1/2 border-r border-border" : "w-full")}>
+        <div className="flex flex-col flex-1 w-full">
           {/* Sticky Header */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-          <div className="w-full">
-            
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.back()}><ArrowLeft className="h-5 w-5" /></Button>
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-extrabold tracking-tight">Edit Entry</h1>
-                  <Badge className={cn("text-[10px] font-black uppercase text-white", statusCfg.color)}>
-                    {statusCfg.label}
-                  </Badge>
+          <div className="bg-card/80 backdrop-blur-md border-b border-border/60 px-4 md:px-6 py-3.5 sticky top-0 z-10 shrink-0">
+            <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+              <div className="flex items-center gap-3">
+                <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60" onClick={() => router.back()}>
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+                <div>
+                  <div className="flex items-center gap-2.5">
+                    <h1 className="text-base font-black text-foreground">Edit Entri: {contentType?.name}</h1>
+                    <Badge className={cn("text-[9px] font-bold uppercase rounded-full px-2 py-0.5", statusCfg.color)}>
+                      {statusCfg.label}
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground font-mono">ID: {entryId.slice(0, 12)}...</p>
                 </div>
-                <p className="text-muted-foreground">{contentType?.name} &middot; {entryId}</p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Select 
+                  value={entryStatus} 
+                  onValueChange={(val) => setEntryStatus(val as any)}
+                >
+                  <SelectTrigger className="w-36 bg-card font-bold text-xs rounded-xl border-border/80 h-8">
+                    <div className="flex items-center gap-2">
+                      <statusCfg.icon className="h-3.5 w-3.5" />
+                      <SelectValue />
+                    </div>
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border bg-card">
+                    {Object.entries(STATUS_CONFIG).map(([val, cfg]) => {
+                      return (
+                        <SelectItem 
+                          key={val} 
+                          value={val} 
+                          className="text-xs font-semibold rounded-lg cursor-pointer"
+                        >
+                          <div className="flex items-center gap-2">
+                            <cfg.icon className="h-3.5 w-3.5" />
+                            {cfg.label}
+                          </div>
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+
+                <ContentHistorySidebar 
+                  tenantSlug={tenantSlug}
+                  contentTypeSlug={contentTypeSlug}
+                  entryId={entryId}
+                  currentData={formData}
+                  onRestoreSuccess={(newData) => setFormData(newData)}
+                />
+
+                <Button 
+                  variant="outline" 
+                  onClick={() => setShowPreview(!showPreview)}
+                  className={cn("h-8 px-3 rounded-xl text-xs font-bold border-border/80 shadow-xs", showPreview ? "bg-primary/10 text-primary border-primary/30" : "bg-card")}
+                >
+                  <Eye className="mr-1.5 h-3.5 w-3.5" /> {showPreview ? "Tutup Preview" : "Live Preview"}
+                </Button>
+
+                <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-4 h-8 text-xs rounded-xl shadow-xs">
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                  Publikasikan
+                </Button>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <AISmartFill 
-                tenantSlug={tenantSlug} 
-                contentTypeName={contentType?.name || ""} 
-                schema={contentType?.fields || []}
-                onApply={handleAISmartFill}
-              />
-              <Select value={entryStatus} onValueChange={setEntryStatus}>
-                <SelectTrigger className="w-44 bg-card font-bold text-xs uppercase rounded-none border-none shadow-none h-10">
-                  <div className="flex items-center gap-2">
-                    <statusCfg.icon className="h-3.5 w-3.5" />
-                    <SelectValue />
-                  </div>
-                </SelectTrigger>
-                <SelectContent className="rounded-none border-none shadow-none">
-                  {allowedNextStatuses.map(val => {
-                    const cfg = STATUS_CONFIG[val]
-                    if (!cfg) return null
-                    return (
-                      <SelectItem key={val} value={val} className="text-xs font-bold uppercase p-3">
-                        <div className="flex items-center gap-2">
-                          <cfg.icon className="h-3.5 w-3.5" />
-                          {cfg.label}
-                        </div>
-                      </SelectItem>
-                    )
-                  })}
-                </SelectContent>
-              </Select>
-
-              <ContentHistorySidebar 
-                tenantSlug={tenantSlug}
-                contentTypeSlug={contentTypeSlug}
-                entryId={entryId}
-                currentData={formData}
-                onRestoreSuccess={(newData) => setFormData(newData)}
-              />
-
-              <Button 
-                variant="outline" 
-                onClick={() => setShowPreview(!showPreview)}
-                className={cn("h-10 rounded-none font-bold shadow-none hover:bg-muted/50", showPreview ? "bg-orange-100 text-orange-600 border-orange-500" : "border-none bg-card")}
-              >
-                <Eye className="mr-2 h-4 w-4" /> {showPreview ? "Close Preview" : "Live Preview"}
-              </Button>
-
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold px-6">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                Publish Now
-              </Button>
-            </div>
           </div>
 
-          
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="p-6 lg:p-8 w-full flex-1 shrink-0">
-          <div className={cn("grid gap-6", showPreview ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3")}>
-            <div className={cn("space-y-6", showPreview ? "col-span-1" : "lg:col-span-2")}>
-              {entryStatus === "REJECTED" && reviewComment && (
-                <div className="bg-red-50 border border-red-100 rounded-none p-6 flex gap-4">
-                  <div className="h-10 w-10 rounded-none bg-red-100 flex items-center justify-center text-red-600 shrink-0">
-                    <AlertCircle className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-black uppercase text-red-600 tracking-wider">Reviewer Comment</h4>
-                    <p className="text-red-800 text-sm mt-1 font-medium italic">"{reviewComment}"</p>
-                  </div>
-                </div>
-              )}
-
-              <Card className="border-none shadow-none bg-card overflow-hidden rounded-none">
-                <CardHeader className="border-b bg-muted/5 p-6">
-                  <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
-                </CardHeader>
-                <CardContent className="p-8 space-y-10">
-                  {contentType?.fields.map(field => (
-                    <div key={field.id} className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <Label className="text-sm font-bold text-slate-700">{field.name} {field.required && "*"}</Label>
-                          {field.localizable && (
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <Globe className="h-3.5 w-3.5 text-primary/60 cursor-help" />
-                              </PopoverTrigger>
-                              <PopoverContent className="w-60 p-3 rounded-none shadow-none border-none text-[10px] font-bold uppercase tracking-tight text-primary">
-                                This field is localizable. Changes only affect the current locale ({locale.toUpperCase()}).
-                              </PopoverContent>
-                            </Popover>
-                          )}
-                        </div>
-                        <Badge variant="outline" className="text-[9px] opacity-50 uppercase tracking-widest font-black">{field.type}</Badge>
-                      </div>
-                      {renderField(field)}
+          {/* Main Content */}
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto flex-1">
+            <div className={cn("grid gap-6", showPreview ? "grid-cols-1" : "grid-cols-1 lg:grid-cols-3")}>
+              <div className={cn("space-y-6", showPreview ? "col-span-1" : "lg:col-span-2")}>
+                {entryStatus === "REJECTED" && reviewComment && (
+                  <div className="bg-rose-500/10 border border-rose-500/20 rounded-2xl p-4 flex gap-3 text-rose-700 dark:text-rose-400 shadow-xs">
+                    <AlertCircle className="h-5 w-5 shrink-0 text-rose-600" />
+                    <div>
+                      <h4 className="text-xs font-bold uppercase tracking-wider">Catatan Reviewer</h4>
+                      <p className="text-xs mt-0.5 italic">"{reviewComment}"</p>
                     </div>
-                  ))}
-                </CardContent>
-              </Card>
-            </div>
-            
-            <div className="space-y-6">
-              <Card className="border-none shadow-none bg-card rounded-none">
-                <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold">Status & Publishing</CardTitle></CardHeader>
-                <CardContent className="p-6 pt-2 space-y-6">
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Scheduled Publication</Label>
-                    <Popover>
-                      <PopoverTrigger asChild>
-                        <Button
-                          variant={"outline"}
-                          className={cn(
-                            "w-full justify-start text-left font-bold rounded-none border-none bg-muted/30 h-11",
-                            !scheduledAt && "text-muted-foreground font-normal"
-                          )}
-                        >
-                          <CalendarIcon className="mr-2 h-4 w-4" />
-                          {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
-                        </Button>
-                      </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border-none" align="start">
-                        <Calendar
-                          mode="single"
-                          selected={scheduledAt}
-                          onSelect={setScheduledAt}
-                          initialFocus
-                          disabled={(date) => date < new Date()}
-                        />
-                        {scheduledAt && (
-                          <div className="p-3 border-t bg-muted/10 flex justify-between">
-                            <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black">Clear</Button>
-                            <span className="text-[10px] text-muted-foreground italic pt-2">Will set status to SCHEDULED</span>
+                  </div>
+                )}
+
+                <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                  <CardHeader className="border-b border-border/60 p-5 pb-3">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                      <FileText className="h-4 w-4 text-primary" /> Editor Konten
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-6">
+                    {contentType?.fields.map(field => (
+                      <div key={field.id} className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <Label className="text-xs font-semibold text-foreground">{field.name} {field.required && <span className="text-rose-500">*</span>}</Label>
+                            {field.localizable && (
+                              <Popover>
+                                <PopoverTrigger asChild>
+                                  <Globe className="h-3.5 w-3.5 text-primary/60 cursor-help" />
+                                </PopoverTrigger>
+                                <PopoverContent className="w-60 p-3 rounded-xl shadow-lg border border-border bg-card text-xs text-muted-foreground">
+                                  Field ini mendukung multibahasa (locale: {locale.toUpperCase()}).
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </div>
-                        )}
-                      </PopoverContent>
-                    </Popover>
-                    {scheduledAt && (
-                      <p className="text-[11px] text-purple-600 font-bold bg-purple-50 p-2.5 rounded-none flex items-center gap-2">
-                        <CalendarIcon className="h-3 w-3" />
-                        This entry will be published on {format(scheduledAt, "PPP")}
-                      </p>
-                    )}
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-3">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-wider">Localization</Label>
-                    <Select value={locale} onValueChange={setLocale}>
-                      <SelectTrigger className="bg-muted/30 border-none h-11 rounded-none font-bold"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-none">
-                        {availableLocales.map(l => (
-                          <SelectItem key={l.locale} value={l.locale} className="font-bold">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <Separator />
-
-                  <Button 
-                    variant="outline" 
-                    onClick={() => handleSave(false)} 
-                    disabled={saving} 
-                    className="w-full bg-slate-900 text-white hover:bg-slate-800 hover:text-white border-none h-11 rounded-none font-bold shadow-none shadow-none"
-                  >
-                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                    Update Entry
-                  </Button>
-                </CardContent>
-              </Card>
-
-              <Card className="border-none shadow-none bg-card rounded-none bg-gradient-to-br from-primary/5 to-transparent">
-                <CardHeader className="p-6 pb-2">
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <CardTitle className="text-base font-bold">Timeline</CardTitle>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-6 pt-2 space-y-4">
-                   <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="h-2 w-2 rounded-none bg-primary mt-1.5" />
-                        <div className="w-0.5 flex-1 bg-muted my-1" />
+                          <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 rounded-full border-border/60 text-muted-foreground">{field.type}</Badge>
+                        </div>
+                        {renderField(field)}
                       </div>
-                      <div className="pb-4">
-                        <p className="text-[11px] font-black uppercase text-muted-foreground">Created</p>
-                        <p className="text-xs font-bold">By System</p>
-                      </div>
-                   </div>
-                   <div className="flex gap-3">
-                      <div className="flex flex-col items-center">
-                        <div className="h-2 w-2 rounded-none bg-slate-300 mt-1.5" />
-                      </div>
-                      <div>
-                        <p className="text-[11px] font-black uppercase text-muted-foreground">Current Status</p>
-                        <p className="text-xs font-bold text-primary">{statusCfg.label}</p>
-                      </div>
-                   </div>
-                </CardContent>
-              </Card>
+                    ))}
+                  </CardContent>
+                </Card>
+              </div>
+              
+              <div className="space-y-4">
+                <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                  <CardHeader className="p-4 pb-2 border-b border-border/60">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status & Publikasi</CardTitle>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Jadwal Publikasi</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant={"outline"}
+                            className={cn(
+                              "w-full justify-start text-left font-medium rounded-xl border border-border/80 bg-background h-9 text-xs",
+                              !scheduledAt && "text-muted-foreground"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+                            {scheduledAt ? format(scheduledAt, "PPP") : <span>Tentukan tanggal...</span>}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-lg border border-border bg-card" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={scheduledAt}
+                            onSelect={setScheduledAt}
+                            initialFocus
+                            disabled={(date) => date < new Date()}
+                          />
+                          {scheduledAt && (
+                            <div className="p-2.5 border-t bg-muted/10 flex justify-between items-center text-xs">
+                              <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] font-bold rounded-lg h-7">Batal</Button>
+                              <span className="text-[10px] text-muted-foreground italic">Otomatis dijadwalkan</span>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Bahasa (Locale)</Label>
+                      <Select value={locale} onValueChange={setLocale}>
+                        <SelectTrigger className="bg-background border border-border/80 h-9 rounded-xl text-xs"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border border-border bg-card">
+                          {availableLocales.map(l => (
+                            <SelectItem key={l.locale} value={l.locale} className="rounded-lg text-xs cursor-pointer">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <Button 
+                      variant="outline" 
+                      onClick={() => handleSave(false)} 
+                      disabled={saving} 
+                      className="w-full bg-background hover:bg-muted/60 border border-border/80 h-9 rounded-xl font-bold text-xs"
+                    >
+                      {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                      Simpan Perubahan
+                    </Button>
+                  </CardContent>
+                </Card>
+
+                <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+                  <CardHeader className="p-4 pb-2 border-b border-border/60">
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Riwayat Entri</CardTitle>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="p-4 space-y-2 text-xs">
+                    <div className="flex justify-between items-center py-1 border-b border-border/60">
+                      <span className="text-muted-foreground text-xs">Status Saat Ini</span>
+                      <span className="font-bold text-primary">{statusCfg.label}</span>
+                    </div>
+                    <div className="flex justify-between items-center py-1">
+                      <span className="text-muted-foreground text-xs">Pembuat</span>
+                      <span className="font-medium text-foreground">Sistem CMS</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </div>
           </div>
-        </div>
         </div>
 
         {/* Live Preview Pane */}
         {showPreview && (
-          <div className="w-1/2 bg-white flex flex-col overflow-hidden relative">
-            <div className="bg-slate-900 text-white p-3 flex justify-between items-center text-xs font-bold uppercase tracking-widest shrink-0">
-              <div className="flex items-center gap-2">
-                <Globe className="h-4 w-4 text-orange-500" />
+          <div className="w-1/2 bg-card border-l border-border flex flex-col overflow-hidden relative">
+            <div className="bg-muted/50 border-b border-border p-3 flex justify-between items-center text-xs font-bold shrink-0">
+              <div className="flex items-center gap-2 text-foreground">
+                <Globe className="h-4 w-4 text-primary" />
                 Live Preview
               </div>
-              <Button size="sm" variant="ghost" className="h-6 hover:bg-slate-800 rounded-none text-slate-300 hover:text-white" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}>
-                Open in new tab <ChevronRight className="h-3 w-3 ml-1" />
+              <Button size="sm" variant="ghost" className="h-7 text-xs rounded-lg hover:bg-muted" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`, '_blank')}>
+                Buka tab baru <ChevronRight className="h-3 w-3 ml-1" />
               </Button>
             </div>
-            <div className="flex-1 w-full bg-slate-50 relative">
+            <div className="flex-1 w-full bg-background relative">
               <iframe 
                 id="preview-iframe"
                 src={`/preview/${tenantSlug}/${contentTypeSlug}/${entryId}`}
@@ -585,8 +563,3 @@ export default function EditEntryPage() {
     </div>
   )
 }
-
-
-
-
-

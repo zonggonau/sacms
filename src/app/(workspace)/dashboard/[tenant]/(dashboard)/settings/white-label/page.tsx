@@ -127,8 +127,10 @@ export default function WhiteLabelPage() {
       }
     }
 
-    fetchData()
-  }, [tenantSlug, session])
+    if (session?.user?.id) {
+      fetchData()
+    }
+  }, [tenantSlug, session?.user?.id])
 
   async function handleSaveBrand() {
     setSavingBrand(true)
@@ -286,20 +288,20 @@ export default function WhiteLabelPage() {
           </div>
 
           {/* ── Branding ─────────────────────────────────────────────── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Palette className="h-5 w-5" />
-                Branding
+          <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Palette className="h-4 w-4 text-primary" />
+                Kustomisasi Branding & Identitas
               </CardTitle>
-              <CardDescription>
-                Override the default SaCMS branding for your tenant.
+              <CardDescription className="text-xs text-muted-foreground">
+                Ganti logo, warna tema, dan identitas SaCMS dengan brand perusahaan Anda.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="p-5 space-y-4">
               <div className="grid gap-4 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="brandName">Brand Name</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="brandName" className="text-xs font-semibold text-foreground">Nama Brand</Label>
                   <Input
                     id="brandName"
                     placeholder="Acme CMS"
@@ -307,11 +309,12 @@ export default function WhiteLabelPage() {
                     onChange={(e) =>
                       setBrand((b) => ({ ...b, brandName: e.target.value }))
                     }
+                    className="rounded-xl h-9 text-xs bg-background border-border/80"
                   />
                 </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="primaryColor">Primary Color</Label>
+                <div className="space-y-1.5">
+                  <Label htmlFor="primaryColor" className="text-xs font-semibold text-foreground">Warna Primer Tema</Label>
                   <div className="flex gap-2">
                     <Input
                       id="primaryColor"
@@ -323,6 +326,7 @@ export default function WhiteLabelPage() {
                           primaryColor: e.target.value,
                         }))
                       }
+                      className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
                     />
                     <input
                       type="color"
@@ -333,14 +337,14 @@ export default function WhiteLabelPage() {
                           primaryColor: e.target.value,
                         }))
                       }
-                      className="h-10 w-10 cursor-pointer rounded border p-1"
+                      className="h-9 w-9 cursor-pointer rounded-xl border border-border/80 p-0.5 bg-background shrink-0"
                     />
                   </div>
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="brandLogo">Logo URL</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="brandLogo" className="text-xs font-semibold text-foreground">URL Logo Perusahaan</Label>
                 <Input
                   id="brandLogo"
                   type="url"
@@ -349,11 +353,12 @@ export default function WhiteLabelPage() {
                   onChange={(e) =>
                     setBrand((b) => ({ ...b, brandLogo: e.target.value }))
                   }
+                  className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="faviconUrl">Favicon URL</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="faviconUrl" className="text-xs font-semibold text-foreground">URL Favicon</Label>
                 <Input
                   id="faviconUrl"
                   type="url"
@@ -362,14 +367,15 @@ export default function WhiteLabelPage() {
                   onChange={(e) =>
                     setBrand((b) => ({ ...b, faviconUrl: e.target.value }))
                   }
+                  className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="customEmailSender">
-                  Custom Email Sender{" "}
+              <div className="space-y-1.5">
+                <Label htmlFor="customEmailSender" className="text-xs font-semibold text-foreground">
+                  Alamat Email Pengirim Kustom{" "}
                   <span className="text-muted-foreground font-normal">
-                    (optional)
+                    (opsional)
                   </span>
                 </Label>
                 <Input
@@ -383,84 +389,85 @@ export default function WhiteLabelPage() {
                       customEmailSender: e.target.value,
                     }))
                   }
+                  className="rounded-xl h-9 text-xs bg-background border-border/80"
                 />
               </div>
 
-              <div className="flex justify-end">
-                <Button onClick={handleSaveBrand} disabled={savingBrand}>
+              <div className="flex justify-end pt-2">
+                <Button onClick={handleSaveBrand} disabled={savingBrand} className="rounded-xl h-9 text-xs font-bold bg-primary text-primary-foreground shadow-xs">
                   {savingBrand ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="mr-1.5 h-3.5 w-3.5" />
                   )}
-                  Save Branding
+                  Simpan Branding
                 </Button>
               </div>
             </CardContent>
           </Card>
 
           {/* ── Custom Domains ─────────────────────────────────────────── */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                Custom Domains
+          <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+            <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+              <CardTitle className="flex items-center gap-2 text-sm font-bold text-foreground">
+                <Globe className="h-4 w-4 text-primary" />
+                Domain Publik Kustom
               </CardTitle>
-              <CardDescription>
-                Serve your public API on your own domains (e.g.{" "}
-                <code className="bg-muted px-1 rounded text-xs">
-                  api.yourcompany.com
+              <CardDescription className="text-xs text-muted-foreground">
+                Akses REST dan GraphQL API menggunakan domain Anda sendiri (misal:{" "}
+                <code className="bg-muted px-1.5 py-0.5 rounded font-mono text-[11px]">
+                  api.perusahaananda.com
                 </code>
                 ).
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="p-5 space-y-5">
               
               {domains.length > 0 && (
-                <div className="space-y-6">
+                <div className="space-y-4">
                   {domains.map((dom) => (
-                    <div key={dom.id} className="rounded-md border p-4 space-y-4">
+                    <div key={dom.id} className="rounded-xl border border-border/80 p-4 space-y-4 bg-muted/10">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <h3 className="font-semibold">{dom.domain}</h3>
+                        <div className="flex items-center gap-2.5">
+                          <h3 className="font-bold text-xs text-foreground font-mono">{dom.domain}</h3>
                           <StatusBadge status={dom.status} />
-                          {dom.isPrimary && <Badge variant="outline">Primary</Badge>}
+                          {dom.isPrimary && <Badge variant="outline" className="text-[10px] rounded-full">Primary</Badge>}
                         </div>
                         <Button
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDeleteDomain(dom.domain)}
                           disabled={deletingDomain === dom.domain}
-                          className="text-destructive hover:text-destructive"
+                          className="h-8 w-8 text-rose-500 hover:text-rose-600 rounded-lg hover:bg-rose-500/10"
                         >
-                          {deletingDomain === dom.domain ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          {deletingDomain === dom.domain ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                         </Button>
                       </div>
 
                       {dom.status !== "verified" && dom.dnsVerification && (
-                        <div className="space-y-3">
-                          <Separator />
-                          <p className="text-sm font-medium">
-                            DNS Verification Required
+                        <div className="space-y-3 pt-2">
+                          <Separator className="bg-border/60" />
+                          <p className="text-xs font-bold text-foreground">
+                            Verifikasi DNS Diperlukan
                           </p>
-                          <p className="text-sm text-muted-foreground">
-                            Add the following TXT record to your DNS provider, then click Verify.
+                          <p className="text-[11px] text-muted-foreground">
+                            Tambahkan TXT record berikut pada DNS manager domain Anda, kemudian klik tombol Verifikasi.
                           </p>
 
-                          <div className="rounded-md border bg-muted/40 p-4 space-y-3 text-sm">
+                          <div className="rounded-xl border border-border/80 bg-card p-3.5 space-y-2.5 text-xs">
                             <div className="flex items-start justify-between gap-4">
                               <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Name / Host
+                                <p className="text-[10px] text-muted-foreground mb-0.5">
+                                  Host / Name
                                 </p>
-                                <code className="break-all">
+                                <code className="break-all font-mono font-bold text-primary">
                                   {dom.dnsVerification.name}
                                 </code>
                               </div>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-7 w-7 shrink-0"
+                                className="h-7 w-7 shrink-0 rounded-lg"
                                 onClick={() =>
                                   copyToClipboard(
                                     dom.dnsVerification.name,
@@ -469,35 +476,35 @@ export default function WhiteLabelPage() {
                                 }
                               >
                                 {copiedRecord === `name-${dom.id}` ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                                 ) : (
-                                  <Copy className="h-4 w-4" />
+                                  <Copy className="h-3.5 w-3.5" />
                                 )}
                               </Button>
                             </div>
 
                             <div className="flex items-start justify-between gap-4">
                               <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Type
+                                <p className="text-[10px] text-muted-foreground mb-0.5">
+                                  Tipe Record
                                 </p>
-                                <code>TXT</code>
+                                <code className="font-mono font-bold">TXT</code>
                               </div>
                             </div>
 
                             <div className="flex items-start justify-between gap-4">
                               <div>
-                                <p className="text-xs text-muted-foreground mb-1">
-                                  Value
+                                <p className="text-[10px] text-muted-foreground mb-0.5">
+                                  Value / Isi
                                 </p>
-                                <code className="break-all">
+                                <code className="break-all font-mono text-[11px]">
                                   {dom.dnsVerification.value}
                                 </code>
                               </div>
                               <Button
                                 size="icon"
                                 variant="ghost"
-                                className="h-7 w-7 shrink-0"
+                                className="h-7 w-7 shrink-0 rounded-lg"
                                 onClick={() =>
                                   copyToClipboard(
                                     dom.dnsVerification.value,
@@ -506,42 +513,43 @@ export default function WhiteLabelPage() {
                                 }
                               >
                                 {copiedRecord === `value-${dom.id}` ? (
-                                  <CheckCircle className="h-4 w-4 text-green-500" />
+                                  <CheckCircle className="h-3.5 w-3.5 text-emerald-500" />
                                 ) : (
-                                  <Copy className="h-4 w-4" />
+                                  <Copy className="h-3.5 w-3.5" />
                                 )}
                               </Button>
                             </div>
                           </div>
 
-                          <div className="flex justify-between items-center mt-2">
-                            <p className="text-xs text-muted-foreground">
-                              DNS changes can take up to 48 hours to propagate.
+                          <div className="flex justify-between items-center pt-1">
+                            <p className="text-[10px] text-muted-foreground">
+                              Perubahan DNS memerlukan propagasi beberapa menit hingga jam.
                             </p>
                             <Button
                               size="sm"
                               onClick={() => handleVerifyDomain(dom.domain)}
                               disabled={verifyingDomain === dom.domain}
+                              className="h-8 rounded-xl text-xs font-bold"
                             >
                               {verifyingDomain === dom.domain ? (
-                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
                               ) : (
-                                <RefreshCw className="mr-2 h-4 w-4" />
+                                <RefreshCw className="mr-1.5 h-3.5 w-3.5" />
                               )}
-                              Verify Record
+                              Verifikasi Record
                             </Button>
                           </div>
                         </div>
                       )}
 
                       {dom.status === "verified" && (
-                        <div className="space-y-2 text-sm text-muted-foreground pt-2">
+                        <div className="space-y-1 text-xs text-muted-foreground pt-1">
                           <p>
-                            Point your DNS (A record or CNAME) for{" "}
-                            <code className="bg-muted px-1 rounded">
+                            Arahkan DNS CNAME atau A record untuk{" "}
+                            <code className="bg-muted px-1.5 py-0.5 rounded font-mono font-bold text-foreground">
                               {dom.domain}
                             </code>{" "}
-                            to this server&apos;s IP address.
+                            ke IP / host server SaCMS Anda.
                           </p>
                         </div>
                       )}
@@ -551,25 +559,25 @@ export default function WhiteLabelPage() {
               )}
 
               {/* Add Domain input */}
-              <div className="space-y-2 pt-2">
-                <Label htmlFor="customDomain">Add New Domain</Label>
+              <div className="space-y-1.5 pt-2">
+                <Label htmlFor="customDomain" className="text-xs font-semibold text-foreground">Tambah Domain Baru</Label>
                 <div className="flex gap-2">
                   <Input
                     id="customDomain"
-                    placeholder="api.yourcompany.com"
+                    placeholder="api.domainanda.com"
                     value={domainInput}
                     onChange={(e) => setDomainInput(e.target.value)}
+                    className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
                   />
                   <Button
                     onClick={handleAddDomain}
                     disabled={savingDomain || !domainInput}
-                    variant="default"
+                    className="rounded-xl h-9 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0"
                   >
                     {savingDomain ? (
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                    ) : (
-                      "Add Domain"
-                    )}
+                      <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" />
+                    ) : null}
+                    Tambah Domain
                   </Button>
                 </div>
               </div>

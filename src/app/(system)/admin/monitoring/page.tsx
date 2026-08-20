@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import {
   Loader2, Activity, Cpu, HardDrive, Globe, RefreshCw, 
-  AlertTriangle, Search, Filter, CheckCircle2, Clock, Play, Pause,
+  AlertTriangle, Search, Filter, CheckCircle2, Clock,
   ChevronLeft, ChevronRight
 } from "lucide-react"
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
+import { cn } from "@/lib/utils"
 
 interface SystemMetric {
   type: string
@@ -65,7 +66,7 @@ export default function AdminMonitoringPage() {
   useEffect(() => {
     const handler = setTimeout(() => {
       setDebouncedSearch(searchQuery)
-      setPage(1) // Reset to page 1 on new search
+      setPage(1)
     }, 500)
     return () => clearTimeout(handler)
   }, [searchQuery])
@@ -119,23 +120,23 @@ export default function AdminMonitoringPage() {
     if (autoRefresh) {
       interval = setInterval(() => {
         fetchData()
-      }, 30000) // 30 seconds
+      }, 30000)
     }
     return () => clearInterval(interval)
   }, [autoRefresh, fetchData])
 
   const getStatusBadge = (code: number) => {
-    if (code < 300) return <Badge className="rounded-none bg-transparent text-emerald-600 border border-emerald-600 shadow-none font-mono text-[10px] px-1.5 py-0.5">{code}</Badge>
-    if (code < 400) return <Badge className="rounded-none bg-transparent text-blue-600 border border-blue-600 shadow-none font-mono text-[10px] px-1.5 py-0.5">{code}</Badge>
-    if (code < 500) return <Badge className="rounded-none bg-transparent text-orange-600 border border-orange-600 shadow-none font-mono text-[10px] px-1.5 py-0.5">{code}</Badge>
-    return <Badge className="rounded-none bg-transparent text-red-600 border border-red-600 shadow-none font-mono text-[10px] px-1.5 py-0.5" variant="outline">{code}</Badge>
+    if (code < 300) return <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border">{code}</Badge>
+    if (code < 400) return <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border">{code}</Badge>
+    if (code < 500) return <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border">{code}</Badge>
+    return <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 shadow-none font-mono text-[10px] px-2 py-0.5 rounded-full border" variant="outline">{code}</Badge>
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex">
-        <div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     )
@@ -143,34 +144,38 @@ export default function AdminMonitoringPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">System Monitoring</h1>
-              <p className="text-xs text-muted-foreground font-mono">Real-time infrastructure performance and API traffic analytics.</p>
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Pemantauan Sistem & API</h1>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
+                  Real-time
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">Metrik performa infrastruktur server dan pemantauan lalu lintas API gateway.</p>
             </div>
             
-            <div className="flex items-center gap-4 bg-card p-2 px-4 rounded-none border border-border shadow-none">
-              <div className="flex items-center gap-2 border-r border-border pr-4 mr-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 bg-card p-1.5 px-3 rounded-xl border border-border/80 shadow-xs">
                 <Switch 
                   id="auto-refresh" 
                   checked={autoRefresh} 
                   onCheckedChange={setAutoRefresh} 
-                  className="data-[state=checked]:bg-orange-500"
                 />
-                <Label htmlFor="auto-refresh" className="text-xs font-black tracking-wider flex items-center gap-1.5 cursor-pointer">
+                <Label htmlFor="auto-refresh" className="text-xs font-bold flex items-center gap-1.5 cursor-pointer">
                   {autoRefresh ? (
                     <>
-                      <span className="h-2 w-2 bg-orange-500 animate-pulse" />
-                      AUTO-REFRESH
+                      <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                      Auto-Refresh
                     </>
                   ) : (
                     <>
-                      <span className="h-2 w-2 bg-muted-foreground" />
-                      PAUSED
+                      <span className="h-2 w-2 rounded-full bg-muted-foreground" />
+                      Jeda
                     </>
                   )}
                 </Label>
@@ -178,21 +183,12 @@ export default function AdminMonitoringPage() {
               <Button 
                 variant="outline" 
                 size="sm" 
-                onClick={() => window.open('https://sentry.io/', '_blank')}
-                className="rounded-none border-border shadow-none h-8 font-mono text-xs hidden md:flex items-center"
-              >
-                <AlertTriangle className="h-3 w-3 mr-2" />
-                SENTRY DASHBOARD
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm" 
                 onClick={fetchData} 
                 disabled={refreshing} 
-                className="h-8 rounded-none border-border font-black text-xs hover:bg-muted/20"
+                className="h-9 rounded-xl border-border/80 font-bold text-xs shadow-xs"
               >
-                <RefreshCw className={`h-3 w-3 mr-2 ${refreshing ? "animate-spin" : ""}`} />
-                {refreshing ? "REFRESHING..." : "REFRESH NOW"}
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} />
+                {refreshing ? "Memuat..." : "Segarkan"}
               </Button>
             </div>
           </div>
@@ -200,19 +196,19 @@ export default function AdminMonitoringPage() {
           {/* Metrics Row */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "CPU Usage", value: `${metrics.find(m => m.type === 'cpu')?.value || 0}%`, icon: Cpu, color: "text-orange-500" },
-              { label: "Memory RAM", value: `${metrics.find(m => m.type === 'memory')?.value || 0}%`, icon: HardDrive, color: "text-orange-500" },
-              { label: "Requests/Min", value: metrics.find(m => m.type === 'requests')?.value || 0, icon: Globe, color: "text-orange-500" },
-              { label: "Errors (1h)", value: metrics.find(m => m.type === 'errors')?.value || 0, icon: AlertTriangle, color: "text-orange-500" },
+              { label: "Penggunaan CPU", value: `${metrics.find(m => m.type === 'cpu')?.value || 0}%`, icon: Cpu, color: "text-blue-500", bg: "bg-blue-500/10" },
+              { label: "Memori RAM", value: `${metrics.find(m => m.type === 'memory')?.value || 0}%`, icon: HardDrive, color: "text-purple-500", bg: "bg-purple-500/10" },
+              { label: "Permintaan/Menit", value: metrics.find(m => m.type === 'requests')?.value || 0, icon: Globe, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+              { label: "Galat (1 Jam)", value: metrics.find(m => m.type === 'errors')?.value || 0, icon: AlertTriangle, color: "text-rose-500", bg: "bg-rose-500/10" },
             ].map((m) => (
-              <Card key={m.label} className="border border-border rounded-none shadow-none bg-card">
+              <Card key={m.label} className="border border-border/80 rounded-2xl shadow-xs bg-card">
                 <CardContent className="p-5 flex items-center gap-4">
-                  <div className="w-12 h-12 rounded-none border border-border bg-muted/20 flex items-center justify-center">
-                    <m.icon className={`h-5 w-5 ${m.color}`} />
+                  <div className={cn("w-11 h-11 rounded-xl flex items-center justify-center shrink-0 border border-border/60", m.bg)}>
+                    <m.icon className={cn("h-5 w-5", m.color)} />
                   </div>
                   <div>
-                    <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">{m.label}</p>
-                    <p className="text-2xl font-black tracking-tight">{m.value}</p>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">{m.label}</p>
+                    <p className="text-2xl font-black tracking-tight text-foreground font-mono">{m.value}</p>
                   </div>
                 </CardContent>
               </Card>
@@ -220,48 +216,48 @@ export default function AdminMonitoringPage() {
           </div>
 
           {/* API Traffic Area */}
-          <Card className="border border-border rounded-none shadow-none bg-card overflow-hidden">
-            <CardHeader className="bg-card border-b border-border p-5">
+          <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+            <CardHeader className="bg-muted/20 border-b border-border/60 p-5">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
-                  <CardTitle className="text-sm font-black uppercase tracking-widest text-orange-500">API Traffic Logs</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground">Live monitoring of endpoint consumption</CardDescription>
+                  <CardTitle className="text-sm font-bold text-foreground">Log Lalu Lintas API</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">Pemantauan riwayat pemanggilan endpoint secara real-time</CardDescription>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2">
                   <div className="relative">
                     <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input 
-                      placeholder="Filter endpoint or tenant..." 
+                      placeholder="Cari endpoint atau tenant..." 
                       value={searchQuery}
                       onChange={e => setSearchQuery(e.target.value)}
-                      className="pl-8 h-8 w-[200px] text-xs bg-muted/20 border border-border rounded-none focus-visible:ring-0 focus-visible:border-orange-500 font-mono"
+                      className="pl-8 h-9 w-[200px] text-xs bg-background border-border/80 rounded-xl"
                     />
                   </div>
                   
                   <Select value={statusFilter} onValueChange={setStatusFilter}>
-                    <SelectTrigger className="h-8 w-[130px] text-xs bg-muted/20 border border-border rounded-none focus:ring-0 focus:border-orange-500 font-mono">
-                      <Filter className="h-3 w-3 mr-2 text-muted-foreground" />
+                    <SelectTrigger className="h-9 w-[130px] text-xs bg-background border-border/80 rounded-xl">
+                      <Filter className="h-3 w-3 mr-1.5 text-muted-foreground" />
                       <SelectValue placeholder="Status" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border border-border bg-card">
-                      <SelectItem value="all" className="rounded-none focus:bg-orange-500 focus:text-white">All Status</SelectItem>
-                      <SelectItem value="success" className="rounded-none focus:bg-orange-500 focus:text-white">Success (2xx)</SelectItem>
-                      <SelectItem value="client_error" className="rounded-none focus:bg-orange-500 focus:text-white">Client Error (4xx)</SelectItem>
-                      <SelectItem value="server_error" className="rounded-none focus:bg-orange-500 focus:text-white">Server Error (5xx)</SelectItem>
+                    <SelectContent className="rounded-xl border-border bg-card">
+                      <SelectItem value="all" className="text-xs rounded-lg">Semua Status</SelectItem>
+                      <SelectItem value="success" className="text-xs rounded-lg">Sukses (2xx)</SelectItem>
+                      <SelectItem value="client_error" className="text-xs rounded-lg">Client Error (4xx)</SelectItem>
+                      <SelectItem value="server_error" className="text-xs rounded-lg">Server Error (5xx)</SelectItem>
                     </SelectContent>
                   </Select>
 
                   <Select value={methodFilter} onValueChange={setMethodFilter}>
-                    <SelectTrigger className="h-8 w-[110px] text-xs bg-muted/20 border border-border rounded-none focus:ring-0 focus:border-orange-500 font-mono">
-                      <SelectValue placeholder="Method" />
+                    <SelectTrigger className="h-9 w-[110px] text-xs bg-background border-border/80 rounded-xl">
+                      <SelectValue placeholder="Metode" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-none border border-border bg-card">
-                      <SelectItem value="all" className="rounded-none focus:bg-orange-500 focus:text-white">All Methods</SelectItem>
-                      <SelectItem value="GET" className="rounded-none focus:bg-orange-500 focus:text-white">GET</SelectItem>
-                      <SelectItem value="POST" className="rounded-none focus:bg-orange-500 focus:text-white">POST</SelectItem>
-                      <SelectItem value="PATCH" className="rounded-none focus:bg-orange-500 focus:text-white">PATCH</SelectItem>
-                      <SelectItem value="DELETE" className="rounded-none focus:bg-orange-500 focus:text-white">DELETE</SelectItem>
+                    <SelectContent className="rounded-xl border-border bg-card">
+                      <SelectItem value="all" className="text-xs rounded-lg">Semua</SelectItem>
+                      <SelectItem value="GET" className="text-xs rounded-lg">GET</SelectItem>
+                      <SelectItem value="POST" className="text-xs rounded-lg">POST</SelectItem>
+                      <SelectItem value="PATCH" className="text-xs rounded-lg">PATCH</SelectItem>
+                      <SelectItem value="DELETE" className="text-xs rounded-lg">DELETE</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -270,55 +266,55 @@ export default function AdminMonitoringPage() {
             <CardContent className="p-0">
               <div className="overflow-x-auto">
                 <table className="w-full text-sm text-left">
-                  <thead className="text-[10px] font-black uppercase tracking-widest text-muted-foreground bg-muted/10 border-b border-border">
+                  <thead className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground bg-muted/30 border-b border-border/60">
                     <tr>
-                      <th className="px-6 py-3">Method & Status</th>
-                      <th className="px-6 py-3">Endpoint</th>
-                      <th className="px-6 py-3">Tenant ID</th>
-                      <th className="px-6 py-3">Latency</th>
-                      <th className="px-6 py-3 text-right">Timestamp</th>
+                      <th className="px-5 py-3">Metode & Status</th>
+                      <th className="px-5 py-3">Endpoint</th>
+                      <th className="px-5 py-3">Tenant ID</th>
+                      <th className="px-5 py-3">Latensi</th>
+                      <th className="px-5 py-3 text-right">Waktu</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-border bg-card">
+                  <tbody className="divide-y divide-border/40 bg-card">
                     {apiRequests.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground font-mono text-xs">
-                          {searchQuery ? "No requests match your filters" : "Waiting for API traffic..."}
+                        <td colSpan={5} className="px-5 py-12 text-center text-muted-foreground text-xs">
+                          {searchQuery ? "Tidak ada permintaan yang cocok dengan filter" : "Menunggu lalu lintas API..."}
                         </td>
                       </tr>
                     ) : (
                       apiRequests.map((req) => (
-                        <tr key={req.id} className="hover:bg-muted/10 transition-colors">
-                          <td className="px-6 py-4">
+                        <tr key={req.id} className="hover:bg-muted/20 transition-colors">
+                          <td className="px-5 py-3.5">
                             <div className="flex items-center gap-2">
-                              <span className="font-black text-xs w-10 text-foreground">{req.method}</span>
+                              <span className="font-bold text-xs w-12 text-foreground font-mono">{req.method}</span>
                               {getStatusBadge(req.statusCode)}
                             </div>
                           </td>
-                          <td className="px-6 py-4">
-                            <code className="text-[11px] bg-muted/40 border border-border px-2 py-1 rounded-none font-mono text-muted-foreground max-w-[320px] truncate block">
+                          <td className="px-5 py-3.5">
+                            <code className="text-[11px] bg-muted/30 border border-border/60 px-2 py-0.5 rounded-lg font-mono text-foreground max-w-[320px] truncate block">
                               {req.endpoint}
                             </code>
                           </td>
-                          <td className="px-6 py-4">
-                            <span className="text-xs font-mono font-medium text-foreground">
+                          <td className="px-5 py-3.5">
+                            <span className="text-xs font-mono text-muted-foreground">
                               {req.tenantId ? (
-                                <span className="border border-border px-1.5 py-0.5 bg-muted/20 rounded-none text-[10px]">{req.tenantId}</span>
+                                <span className="border border-border/60 px-1.5 py-0.5 bg-muted/20 rounded-md text-[10px]">{req.tenantId}</span>
                               ) : (
-                                <span className="text-orange-500 font-black text-[10px] tracking-widest uppercase bg-orange-500/10 px-1.5 py-0.5 border border-orange-500/20">global</span>
+                                <span className="text-primary font-bold text-[10px] uppercase bg-primary/10 px-1.5 py-0.5 rounded-md border border-primary/20">global</span>
                               )}
                             </span>
                           </td>
-                          <td className="px-6 py-4">
+                          <td className="px-5 py-3.5">
                             <div className="flex items-center gap-1.5 font-mono text-xs">
                               <Clock className="h-3 w-3 text-muted-foreground" />
-                              <span className={`font-bold ${req.duration > 500 ? 'text-orange-500' : 'text-foreground'}`}>
+                              <span className={`font-bold ${req.duration > 500 ? 'text-amber-500' : 'text-foreground'}`}>
                                 {req.duration}ms
                               </span>
                             </div>
                           </td>
-                          <td className="px-6 py-4 text-right font-mono text-[10px] text-muted-foreground">
-                            {new Date(req.createdAt).toLocaleString()}
+                          <td className="px-5 py-3.5 text-right font-mono text-xs text-muted-foreground">
+                            {new Date(req.createdAt).toLocaleString('id-ID')}
                           </td>
                         </tr>
                       ))
@@ -328,65 +324,67 @@ export default function AdminMonitoringPage() {
               </div>
               
               {/* Pagination Controls */}
-              <div className="flex items-center justify-between p-4 border-t border-border bg-muted/5">
-                <div className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                  Showing page {page} of {totalPages || 1} ({totalRequests} Total)
+              {!loading && totalPages > 1 && (
+                <div className="flex items-center justify-between p-3 border-t border-border/60 bg-muted/20">
+                  <div className="text-xs text-muted-foreground">
+                    Halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages || 1}</span> ({totalRequests} Total)
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setPage(p => Math.max(1, p - 1))}
+                      disabled={page <= 1}
+                      className="rounded-lg h-8 text-xs font-bold"
+                    >
+                      <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Sebelumnya
+                    </Button>
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                      disabled={page >= totalPages || totalPages === 0}
+                      className="rounded-lg h-8 text-xs font-bold"
+                    >
+                      Berikutnya <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                    </Button>
+                  </div>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page <= 1}
-                    className="rounded-none border-border hover:bg-background"
-                  >
-                    <ChevronLeft className="h-4 w-4 mr-1" /> Prev
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
-                    disabled={page >= totalPages || totalPages === 0}
-                    className="rounded-none border-border hover:bg-background"
-                  >
-                    Next <ChevronRight className="h-4 w-4 ml-1" />
-                  </Button>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
           {/* Bottom Health Checks */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="border border-border rounded-none shadow-none bg-card">
-              <CardHeader className="p-5 border-b border-border">
-                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Component Status</CardTitle>
+            <Card className="border border-border/80 rounded-2xl shadow-xs bg-card">
+              <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Komponen Platform</CardTitle>
               </CardHeader>
-              <CardContent className="space-y-3 p-5">
+              <CardContent className="space-y-2.5 p-4">
                 {[
                   { name: "API Gateway", status: "HEALTHY", icon: CheckCircle2, color: "text-emerald-500" },
                   { name: "Database Cluster", status: "HEALTHY", icon: CheckCircle2, color: "text-emerald-500" },
-                  { name: "Payment Service", status: "CONNECTED", icon: CheckCircle2, color: "text-emerald-500" },
+                  { name: "Payment Gateway Midtrans", status: "CONNECTED", icon: CheckCircle2, color: "text-emerald-500" },
                   { name: "Webhook Worker", status: "RUNNING", icon: CheckCircle2, color: "text-emerald-500" },
                 ].map(s => (
-                  <div key={s.name} className="flex items-center justify-between p-3 rounded-none border border-border bg-muted/10 font-mono">
+                  <div key={s.name} className="flex items-center justify-between p-3 rounded-xl border border-border/60 bg-muted/10 font-mono">
                     <span className="text-xs font-bold text-foreground">{s.name}</span>
                     <div className="flex items-center gap-2">
-                      <span className="text-[10px] font-black tracking-wider text-emerald-600 bg-emerald-500/10 px-2 py-0.5 border border-emerald-500/20">{s.status}</span>
-                      <s.icon className={`h-4 w-4 ${s.color}`} />
+                      <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">{s.status}</span>
+                      <s.icon className={cn("h-4 w-4", s.color)} />
                     </div>
                   </div>
                 ))}
               </CardContent>
             </Card>
 
-            <Card className="border border-border rounded-none shadow-none bg-card flex flex-col justify-center p-6 text-center">
-              <div className="w-16 h-16 rounded-none border border-border bg-orange-500/10 flex items-center justify-center mx-auto mb-4">
-                <Activity className="h-8 w-8 text-orange-500 animate-pulse" />
+            <Card className="border border-border/80 rounded-2xl shadow-xs bg-card flex flex-col justify-center p-6 text-center">
+              <div className="w-12 h-12 rounded-2xl border border-primary/20 bg-primary/10 flex items-center justify-center mx-auto mb-3 text-primary">
+                <Activity className="h-6 w-6" />
               </div>
-              <h3 className="text-sm font-black uppercase tracking-widest text-foreground">Intelligent Infrastructure</h3>
-              <p className="text-xs text-muted-foreground max-w-xs mx-auto mt-2 font-mono">
-                All metrics are aggregated from distributed clusters. Use these logs to debug performance bottlenecks or detect unauthorized access attempts.
+              <h3 className="text-sm font-bold text-foreground">Infrastruktur Terintegrasi</h3>
+              <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
+                Seluruh metrik performa dipantau otomatis. Gunakan log ini untuk mengidentifikasi bottleneck latensi atau anomali akses API.
               </p>
             </Card>
           </div>

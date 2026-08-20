@@ -185,6 +185,21 @@ const COLLECTION_TYPES = [
     ],
   },
   {
+    name: "SaCMS AI Credit Packs",
+    slug: "sacms-ai-pricing",
+    description: "Credit packs for AI Frontend and Schema generation",
+    fields: [
+      { slug: "name",        name: "Pack Name",    type: "text",    required: true,  order: 0 },
+      { slug: "pack_slug",   name: "Pack Slug",    type: "text",    required: true,  order: 1 },
+      { slug: "credits",     name: "Credits",      type: "number",  required: true,  order: 2 },
+      { slug: "price_usd",   name: "Price (USD)",  type: "number",  required: true,  order: 3 },
+      { slug: "price",       name: "Price (IDR)",  type: "number",  required: true,  order: 4 },
+      { slug: "badge",       name: "Badge",        type: "text",    required: false, order: 5 },
+      { slug: "description", name: "Description",  type: "text",    required: false, order: 6 },
+      { slug: "features",    name: "Features",     type: "json",    required: false, order: 7 },
+    ],
+  },
+  {
     name: "SaCMS Addons",
     slug: "sacms-addons",
     description: "Layanan tambahan opsional",
@@ -198,18 +213,6 @@ const COLLECTION_TYPES = [
       { slug: "unit",        name: "Unit",        type: "text",   required: false, order: 6 },
       { slug: "feature_key", name: "Feature Key", type: "text",   required: false, order: 7 },
     ],
-  },
-  {
-    name: "Templates",
-    slug: "templates",
-    description: "System workspace templates",
-    fields: [
-      { name: "Name", slug: "name", type: "text", order: 0, required: true },
-      { name: "Description", slug: "description", type: "text", order: 1 },
-      { name: "Icon", slug: "icon", type: "text", order: 2 },
-      { name: "Template ID", slug: "template_id", type: "text", order: 3, required: true },
-      { name: "Schema Template", slug: "schema_template", type: "json", order: 4 },
-    ]
   },
   {
     name: "Posts",
@@ -316,24 +319,24 @@ const SEED_DATA: Record<string, any> = {
   // ───── ACCOUNT PRICING (Collection) ─────
   "sacms-account-pricing": [
     { 
-      name: "Akun Gratis", plan_slug: "free", price: 0, yearly_price: 0, period: "selamanya", description: "Mulai tanpa biaya.", 
+      name: "Akun Gratis", plan_slug: "free", price: 0, price_usd: 0, yearly_price: 0, period: "selamanya", description: "Mulai tanpa biaya.", 
       max_workspaces: 1,
       features: ["1 Workspace", "Dukungan Komunitas"], is_popular: false, cta_text: "Mulai Gratis", cta_href: "/register" 
     },
     { 
-      name: "Akun Pemula", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "bulan", description: "Untuk tim kecil dan UMKM.", 
+      name: "Akun Pemula", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "bulan", description: "Untuk pengembang mandiri dan UMKM.", 
       max_workspaces: 3,
-      features: ["3 Workspace", "Dukungan Email"], is_popular: false, cta_text: "Pilih Pemula", cta_href: "/register" 
+      features: ["3 Workspace", "Dukungan Email"], is_popular: false, cta_text: "Pilih Starter", cta_href: "/register" 
     },
     { 
-      name: "Akun Profesional", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "bulan", description: "Untuk instansi dan perusahaan.", 
+      name: "Akun Profesional", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "bulan", description: "Untuk tim bertumbuh dan produk digital.", 
       max_workspaces: 10,
-      features: ["10 Workspace", "Dukungan Prioritas"], is_popular: true, cta_text: "Pilih Profesional", cta_href: "/register" 
+      features: ["10 Workspace", "Dukungan Prioritas"], is_popular: true, cta_text: "Pilih Pro", cta_href: "/register" 
     },
     { 
-      name: "Akun Pemerintah", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "bulan", description: "Untuk instansi pemerintah.", 
+      name: "Akun Pemerintah", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "bulan", description: "Untuk instansi dan kapasitas skala besar.", 
       max_workspaces: 20,
-      features: ["20 Workspace", "Dukungan Dedikasi", "SLA Khusus"], is_popular: false, cta_text: "Hubungi Kami", cta_href: "https://wa.me/6281234567890" 
+      features: ["20 Workspace", "Dukungan Dedikasi", "SLA Khusus"], is_popular: false, cta_text: "Hubungi Kami", cta_href: "/register" 
     },
   ],
 
@@ -345,81 +348,93 @@ const SEED_DATA: Record<string, any> = {
       features: ["3 Tipe Konten", "1.000 Request API/bulan", "100MB Penyimpanan", "1 Anggota Tim"]
     },
     { 
-      name: "Workspace Pemula", plan_slug: "starter", price: 49000, yearly_price: 490000, period: "bulan", description: "Kapasitas lebih untuk satu workspace.", 
+      name: "Workspace Pemula", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "bulan", description: "Kapasitas lebih untuk satu workspace.", 
       max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_storage: 1024, max_locales: 2, max_api_calls: 10000,
       features: ["5 Tipe Konten", "10.000 Request API/bulan", "1GB Penyimpanan", "3 Anggota Tim", "2 Bahasa"]
     },
     { 
-      name: "Workspace Profesional", plan_slug: "pro", price: 149000, yearly_price: 1490000, period: "bulan", description: "Performa tinggi untuk instansi.", 
+      name: "Workspace Profesional", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "bulan", description: "Performa tinggi untuk instansi.", 
       max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_storage: 5120, max_locales: 5, max_api_calls: 100000,
       features: ["10 Tipe Konten", "100.000 Request API/bulan", "5GB Penyimpanan", "10 Anggota Tim", "5 Bahasa"]
     },
     { 
-      name: "Workspace Pemerintah", plan_slug: "enterprise", price: 499000, yearly_price: 4990000, period: "bulan", description: "Workspace dedikasi untuk pemerintah.", 
+      name: "Workspace Pemerintah", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "bulan", description: "Workspace dedikasi untuk pemerintah.", 
       max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_storage: 10240, max_locales: 20, max_api_calls: 1000000,
       features: ["20 Tipe Konten", "1.000.000 Request API/bulan", "10GB Penyimpanan", "Tim Unlimited", "Bahasa Unlimited"]
     },
+  ],
+
+  // ───── AI PRICING (Collection) ─────
+  "sacms-ai-pricing": [
+    {
+      name: "Starter Credits",
+      pack_slug: "ai_pack_starter",
+      credits: 300,
+      price_usd: 9,
+      price: 149000,
+      badge: "",
+      description: "Top-up 300 AI credits for Next.js frontend builds.",
+      features: [
+        "300 AI Credits",
+        "Sekali Beli (Never Expire)",
+        "Full Next.js Frontend Gen",
+        "Digunakan di Semua Workspace"
+      ]
+    },
+    {
+      name: "Pro Credits",
+      pack_slug: "ai_pack_pro",
+      credits: 1500,
+      price_usd: 29,
+      price: 449000,
+      badge: "Most Popular",
+      description: "Top-up 1,500 AI credits dengan antrean prioritas.",
+      features: [
+        "1.500 AI Credits",
+        "Sekali Beli (Never Expire)",
+        "Iterasi Desain AI Cepat",
+        "Deploy 1-Klik Vercel",
+        "Digunakan di Semua Workspace"
+      ]
+    },
+    {
+      name: "Business Credits",
+      pack_slug: "ai_pack_business",
+      credits: 5000,
+      price_usd: 79,
+      price: 1199000,
+      badge: "",
+      description: "Top-up 5,000 AI credits untuk tim produksi.",
+      features: [
+        "5.000 AI Credits",
+        "Sekali Beli (Never Expire)",
+        "Kapasitas Bebas Hambatan",
+        "Export Schema & Kode Lengkap",
+        "Digunakan di Semua Workspace"
+      ]
+    },
+    {
+      name: "Agency Credits",
+      pack_slug: "ai_pack_agency",
+      credits: 15000,
+      price_usd: 149,
+      price: 2299000,
+      badge: "Best Value",
+      description: "Top-up 15,000 AI credits untuk agensi dengan volume tinggi.",
+      features: [
+        "15.000 AI Credits",
+        "Sekali Beli (Never Expire)",
+        "Kecepatan AI Maksimal",
+        "Dukungan Model Lanjutan",
+        "Digunakan di Semua Workspace"
+      ]
+    }
   ],
 
   // ───── ADDONS (Collection) ─────
   "sacms-addons": [
     { name: "AI Writer", addon_slug: "ai_writer", feature_key: "ai", price_label: "Included in Pro", description: "Generate content effortlessly.", icon: "Sparkles" },
     { name: "Advanced Audit", addon_slug: "adv_audit", feature_key: "audit", price_label: "Enterprise Only", description: "Keep track of every action.", icon: "ShieldCheck" }
-  ],
-
-  // ───── TEMPLATES (Collection) ─────
-  "templates": [
-    { 
-        name: "Blog & News", 
-        description: "Posts, Categories, Authors", 
-        icon: "LayoutDashboard", 
-        template_id: "blog",
-        schema_template: {
-          contentTypes: [
-            {
-              name: "Berita",
-              slug: "berita",
-              description: "Koleksi berita dan artikel",
-              fields: [
-                { name: "Judul", slug: "title", type: "text", required: true, order: 0 },
-                { name: "Konten", slug: "content", type: "richText", required: true, order: 1 },
-                { name: "Gambar Utama", slug: "featured_image", type: "media", order: 2 }
-              ]
-            }
-          ],
-          singleTypes: [
-            {
-              name: "Pengaturan Umum",
-              slug: "general-settings",
-              fields: [
-                { name: "Nama Situs", slug: "site_name", type: "text", required: true, order: 0 },
-                { name: "Logo", slug: "logo", type: "media", order: 1 }
-              ]
-            }
-          ]
-        }
-    },
-    { 
-        name: "E-commerce", 
-        description: "Products, Stock, Orders", 
-        icon: "Search", 
-        template_id: "ecommerce",
-        schema_template: { contentTypes: [], singleTypes: [], components: [] }
-    },
-    { 
-        name: "Portfolio", 
-        description: "Projects, Services, Reviews", 
-        icon: "Settings", 
-        template_id: "portfolio",
-        schema_template: { contentTypes: [], singleTypes: [], components: [] }
-    },
-    { 
-        name: "Corporate", 
-        description: "Team, Case Studies, Company", 
-        icon: "Building2", 
-        template_id: "corporate",
-        schema_template: { contentTypes: [], singleTypes: [], components: [] }
-    },
   ],
 
   // ───── POSTS (Collection) ─────
@@ -580,7 +595,7 @@ async function main() {
   const oldSlugsToDelete = [
     "sacms-hero", "sacms-features", "sacms-workflow", "sacms-faq", 
     "sacms-testimonials", "sacms-owners", "sacms-sectors", "sacms-local-pride", 
-    "sacms-cta", "sacms-footer", "sacms-about", "sacms-whatsapp"
+    "sacms-cta", "sacms-footer", "sacms-about", "sacms-whatsapp", "templates"
   ]
   await prisma.contentType.deleteMany({ where: { slug: { in: oldSlugsToDelete } } })
   await prisma.singleType.deleteMany({ where: { slug: { in: oldSlugsToDelete } } })
@@ -644,14 +659,19 @@ async function main() {
     })
 
     for (const entry of entries) {
-      await prisma.contentEntry.create({
+      const created = await prisma.contentEntry.create({
         data: {
           contentTypeId: contentType.id,
           tenantId: globalTenant.id,
+          locale: "en",
           status: "PUBLISHED",
           publishedAt: new Date(),
           data: entry,
         },
+      })
+      await prisma.contentEntry.update({
+        where: { id: created.id },
+        data: { documentId: created.id }
       })
     }
     console.log(`  ✅ Data ContentType ${ct.slug} berhasil di-seed (${entries.length} entries).`)

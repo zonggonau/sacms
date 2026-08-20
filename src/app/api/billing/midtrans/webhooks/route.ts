@@ -90,10 +90,63 @@ export async function POST(request: NextRequest) {
           where: { id: transaction.subscription!.userId },
           data: { plan: transaction.subscription!.plan },
         })
+      } else if (orderId.startsWith("AIC")) {
+        const raw = (transaction.rawResponse as any) || {}
+        let creditsToAdd = Number(raw.credits || 0)
+        const addonId = raw.addonId || ""
+
+        if (!creditsToAdd) {
+          const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+          const pack = AI_CREDIT_PACKS.find(p => p.id === addonId)
+          if (pack) creditsToAdd = pack.credits
+        }
+
+        if (creditsToAdd > 0 && transaction.subscription?.userId) {
+          await db.user.update({
+            where: { id: transaction.subscription.userId },
+            data: { aiCreditsExtra: { increment: creditsToAdd } },
+          })
+          await db.aiQuotaLedger.create({
+            data: {
+              userId: transaction.subscription.userId,
+              action: "topup_credits",
+              credits: creditsToAdd,
+              tokens: creditsToAdd * 1000,
+              model: "topup_pack"
+            }
+          })
+          console.log(`✅ AI Credit Top-Up applied successfully for user ${transaction.subscription.userId}: +${creditsToAdd} credits (${transaction.orderId})`)
+        }
       } else if (orderId.startsWith("ADD")) {
-        // Logic for activating addon could go here
-        // For now we just log it as a successful transaction
-        console.log(`✅ Addon purchase successful for tenant ${transaction.subscription!.tenantId}: ${transaction.orderId}`)
+        const tenantId = transaction.subscription?.tenantId
+        if (tenantId) {
+          const raw = (transaction.rawResponse as any) || {}
+          const addonId = raw.addonId || ""
+
+          // Check built-in top-up packs
+          if (addonId === "topup_ai_500k") {
+            await db.tenant.update({
+              where: { id: tenantId },
+              data: { aiCreditsExtra: { increment: 500000 } } as any
+            })
+          } else if (addonId === "topup_ai_2m") {
+            await db.tenant.update({
+              where: { id: tenantId },
+              data: { aiCreditsExtra: { increment: 2000000 } } as any
+            })
+          } else if (addonId === "topup_storage_10gb") {
+            await db.tenant.update({
+              where: { id: tenantId },
+              data: { storageExtraBytes: { increment: BigInt(10 * 1024 * 1024 * 1024) } } as any
+            })
+          } else if (addonId === "topup_api_500k") {
+            await db.tenant.update({
+              where: { id: tenantId },
+              data: { apiCallsExtra: { increment: 500000 } } as any
+            })
+          }
+          console.log(`✅ Addon top-up applied successfully for tenant ${tenantId}: ${addonId} (${transaction.orderId})`)
+        }
       }
 
       if (transaction.subscription?.tenant) {

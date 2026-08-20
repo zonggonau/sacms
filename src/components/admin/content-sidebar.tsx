@@ -11,17 +11,18 @@ import {
   Puzzle,
   LayoutTemplate,
   ArrowLeft,
-  Code
+  Code,
+  Sparkles
 } from "lucide-react"
 
 const contentNavItems = [
   { title: "Overview", href: "/admin/content", icon: LayoutDashboard, exact: true },
   { title: "Akun Plan", href: "/admin/content/sacms-account-pricing", icon: UserCheck },
   { title: "Workspace Plan", href: "/admin/content/sacms-workspace-pricing", icon: Building },
+  { title: "AI Plan", href: "/admin/content/sacms-ai-pricing", icon: Sparkles },
   { title: "Addons", href: "/admin/content/sacms-addons", icon: Puzzle },
   { title: "Posts", href: "/admin/content/posts", icon: FileText },
   { title: "Landing Page", href: "/admin/content/landingpage", icon: LayoutTemplate },
-  { title: "Template", href: "/admin/content/template", icon: Code },
 ]
 
 export function ContentSidebar() {

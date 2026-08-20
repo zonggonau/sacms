@@ -180,6 +180,7 @@ export default async function TenantDashboardPage({
       contentTypes={serializedContentTypes as any}
       stats={stats}
       usage={usage}
+      session={session}
     />
   )
 }

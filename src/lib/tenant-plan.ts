@@ -18,9 +18,10 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   if (!tenant) return DEFAULT_LIMITS.free
 
   try {
+    if (!db.tenant) return DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
     const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
     const globalTenant = await db.tenant.findUnique({ where: { id: globalId } })
-    if (!globalTenant) return DEFAULT_LIMITS.free
+    if (!globalTenant) return DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
         tenantId: globalTenant.id,
@@ -103,7 +104,6 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     const planIds = activeSubs.map(s => s.plan)
     const dynamicAddons = await db.contentEntry.findMany({
       where: {
-        id: { in: planIds },
         contentType: { slug: "sacms-addons" },
         status: "PUBLISHED"
       }
@@ -111,11 +111,13 @@ export async function isFeatureEnabled(tenantId: string, featureKey: string): Pr
     
     for (const addon of dynamicAddons) {
       const data: any = typeof addon.data === "string" ? JSON.parse(addon.data) : addon.data
-      const name = (data.name || "").toLowerCase()
-      
-      if (featureKey === "ENABLE_AI" && name.includes("ai")) return true
-      if (featureKey === "EXTRA_STORAGE" && (name.includes("penyimpanan") || name.includes("storage"))) return true
-      if (featureKey === "ENABLE_BACKUP" && name.includes("backup")) return true
+      const slug = data.addon_slug || addon.id
+      if (planIds.includes(addon.id) || planIds.includes(slug)) {
+        const name = (data.name || "").toLowerCase()
+        if (featureKey === "ENABLE_AI" && (name.includes("ai") || slug.includes("ai"))) return true
+        if (featureKey === "EXTRA_STORAGE" && (name.includes("penyimpanan") || name.includes("storage") || slug.includes("storage"))) return true
+        if (featureKey === "ENABLE_BACKUP" && (name.includes("backup") || slug.includes("backup"))) return true
+      }
     }
   }
 
@@ -158,9 +160,10 @@ export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig>
   if (!user) return USER_PLAN_LIMITS.free
 
   try {
+    if (!db.tenant) return USER_PLAN_LIMITS[user.plan] || USER_PLAN_LIMITS.free
     const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
     const globalTenant = await db.tenant.findUnique({ where: { id: globalId } })
-    if (!globalTenant) return USER_PLAN_LIMITS.free
+    if (!globalTenant) return USER_PLAN_LIMITS[user.plan] || USER_PLAN_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
         tenantId: globalTenant.id,
@@ -180,6 +183,8 @@ export async function getUserPlanConfig(userId: string): Promise<UserPlanConfig>
       return {
         plan_slug: data.plan_slug || base.plan_slug,
         max_workspaces: Number(data.max_workspaces) || base.max_workspaces,
+        max_ai_credits: Number(data.max_ai_credits) || base.max_ai_credits,
+        price_usd: Number(data.price_usd) || base.price_usd,
       }
     }
   } catch (error) {

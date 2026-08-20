@@ -1,0 +1,73 @@
+openapi: 3.0.3
+info:
+  title: SaCMS Public API
+  version: 1.0.0
+  description: Public Content API for SaCMS (Headless CMS)
+servers:
+  - url: https://cases-lawyers-tolerance-sept.trycloudflare.com
+    description: Current Environment
+paths:
+  /api/public/{tenant}/content/{contentType}:
+    get:
+      summary: Retrieve Content Entries
+      description: Get a list of published content entries for a specific Content Type.
+      parameters:
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+          description: Tenant slug
+        - in: path
+          name: contentType
+          required: true
+          schema:
+            type: string
+          description: Content Type slug (e.g., articles, products)
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: array
+                    items:
+                      type: object
+  /api/public/{tenant}/single/{singleType}:
+    get:
+      summary: Retrieve Single Type
+      description: Get the data for a specific Single Type.
+      parameters:
+        - in: path
+          name: tenant
+          required: true
+          schema:
+            type: string
+          description: Tenant slug
+        - in: path
+          name: singleType
+          required: true
+          schema:
+            type: string
+          description: Single Type slug (e.g., global-settings, homepage)
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data:
+                    type: object
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+security:
+  - bearerAuth: []

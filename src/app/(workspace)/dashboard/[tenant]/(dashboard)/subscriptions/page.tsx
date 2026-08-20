@@ -11,7 +11,7 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud
+  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -81,7 +81,7 @@ export default function TenantSubscriptionsPage() {
   })
   const [savingInfra, setSavingInfra] = useState(false)
 
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
   const [liveTenants, setLiveTenants] = useState<any[]>([])
 
   useEffect(() => {
@@ -240,8 +240,8 @@ export default function TenantSubscriptionsPage() {
   }
 
   useEffect(() => {
-    if (session?.user) fetchBillingData()
-  }, [tenantSlug, session])
+    if (session?.user?.id) fetchBillingData()
+  }, [tenantSlug, session?.user?.id])
 
   const formatPrice = (amount: number) => {
     return new Intl.NumberFormat("id-ID", {
@@ -254,7 +254,7 @@ export default function TenantSubscriptionsPage() {
   if (status === "loading" || loading || loadingTenants) {
     return (
       <div className="flex items-center justify-center flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -267,60 +267,62 @@ export default function TenantSubscriptionsPage() {
   const addonPlans = plans.filter(p => p.type === "addons")
 
   return (
-    <div className="flex relative flex-1 flex-col w-full">
-<div className="flex-1 min-w-0 h-full overflow-x-hidden bg-background text-foreground flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-8">
+    <div className="flex flex-1 flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-8">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">Billing & Plans</h1>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Manage your workspace subscription and view payment history.</p>
+              <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Langganan & Tagihan</h1>
+              <p className="text-xs text-muted-foreground mt-1">Kelola paket langganan workspace dan pantau riwayat pembayaran.</p>
             </div>
-            <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-none border border-border shadow-none">
-              <Package className="h-5 w-5 text-orange-500" />
+            <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-xl border border-border/80 shadow-xs">
+              <Package className="h-5 w-5 text-primary" />
               <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase text-muted-foreground leading-none mb-1">Active Plan</span>
+                <span className="text-[10px] font-bold uppercase text-muted-foreground leading-none mb-1">Paket Aktif</span>
                 <span className="text-sm font-bold uppercase tracking-tight text-foreground">{subscription?.plan || "Free"}</span>
               </div>
             </div>
           </div>
 
           {tenantSlug === globalTenantId ? (
-            <Card className="border border-border shadow-none bg-card text-card-foreground overflow-hidden rounded-none relative">
+            <Card className="border border-border/80 shadow-xs bg-card text-card-foreground overflow-hidden rounded-2xl relative">
               <CardContent className="p-16 relative flex flex-col items-center justify-center text-center">
-                <ShieldCheck className="h-20 w-20 text-orange-500 mb-6 opacity-30" />
-                <h2 className="text-3xl font-black uppercase tracking-tight">System Account</h2>
-                <p className="text-muted-foreground mt-4 max-w-lg mx-auto font-medium">Billing, plans, and resource limits are not applicable for the global system workspace. This workspace has unlimited platform access.</p>
+                <ShieldCheck className="h-16 w-16 text-primary mb-4 opacity-40" />
+                <h2 className="text-2xl font-black tracking-tight text-foreground">Akun Sistem Global</h2>
+                <p className="text-muted-foreground mt-2 max-w-lg mx-auto text-xs leading-relaxed">Tagihan, paket, dan batas sumber daya tidak berlaku untuk workspace sistem global. Workspace ini memiliki akses platform tak terbatas.</p>
               </CardContent>
             </Card>
           ) : (
             <>
           {/* Current Status Card */}
-          <Card className="border border-border shadow-none bg-card text-card-foreground overflow-hidden rounded-none relative">
-            <CardContent className="p-8 relative">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-                <div className="space-y-4">
-                  <Badge className="bg-orange-500 text-white hover:bg-orange-600 border-none font-black px-3 py-1 uppercase tracking-widest text-[10px] rounded-none">
-                    Current Subscription
-                  </Badge>
-                  <h2 className="text-4xl font-black uppercase tracking-tight">
-                    {currentPlan?.name || (currentPlanSlug === 'free' ? 'Free Forever' : currentPlanSlug)}
+          <Card className="border border-border/80 shadow-xs bg-card/60 backdrop-blur-xs text-card-foreground overflow-hidden rounded-2xl relative">
+            <CardContent className="p-6 relative">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Badge className="bg-primary/10 text-primary border border-primary/20 font-bold px-2.5 py-0.5 uppercase tracking-wider text-[10px] rounded-full">
+                      Langganan Saat Ini
+                    </Badge>
+                  </div>
+                  <h2 className="text-2xl lg:text-3xl font-black tracking-tight">
+                    {currentPlan?.name || (currentPlanSlug === 'free' ? 'Workspace Gratis' : currentPlanSlug)}
                   </h2>
-                  <div className="flex flex-wrap gap-6 text-sm font-medium text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-orange-500" />
-                      Status: <span className="font-black uppercase tracking-widest text-xs text-orange-500">{subscription?.status || 'Active'}</span>
+                  <div className="flex flex-wrap gap-5 text-xs font-medium text-muted-foreground">
+                    <div className="flex items-center gap-1.5">
+                      <Clock className="h-3.5 w-3.5 text-primary" />
+                      Status: <span className="font-bold uppercase tracking-wider text-primary">{subscription?.status || 'Active'}</span>
                     </div>
                     {subscription?.currentPeriodEnd && (
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-orange-500" />
-                        Next Billing: <span className="font-bold text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString('id-ID')}</span>
+                      <div className="flex items-center gap-1.5">
+                        <Calendar className="h-3.5 w-3.5 text-primary" />
+                        Periode Tagihan: <span className="font-bold text-foreground">{new Date(subscription.currentPeriodEnd).toLocaleDateString('id-ID')}</span>
                       </div>
                     )}
                     {(subscription as any)?.cancelAtPeriodEnd && (
-                      <div className="flex items-center gap-2 text-red-500">
-                        <AlertCircle className="h-4 w-4" />
+                      <div className="flex items-center gap-1.5 text-destructive">
+                        <AlertCircle className="h-3.5 w-3.5" />
                         <span className="font-bold text-xs">Dibatalkan – aktif hingga akhir periode</span>
                       </div>
                     )}
@@ -328,52 +330,52 @@ export default function TenantSubscriptionsPage() {
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="text-right hidden md:block">
-                    <p className="text-xs font-bold uppercase text-muted-foreground">Yearly cost</p>
-                    <p className="text-2xl font-black text-foreground">{formatPrice((currentPlan?.yearlyPrice !== undefined ? currentPlan?.yearlyPrice : (currentPlan?.price || 0) * 12) * (subscription?.plan === 'free' ? 0 : 1))}</p>
+                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Biaya Tahunan</p>
+                    <p className="text-xl font-black text-foreground">{formatPrice((currentPlan?.yearlyPrice !== undefined ? currentPlan?.yearlyPrice : (currentPlan?.price || 0) * 12) * (subscription?.plan === 'free' ? 0 : 1))}</p>
                   </div>
                   {subscription?.status === 'trialing' ? (
                     <Button 
                       variant="default" 
-                      className="h-12 px-8 font-black uppercase tracking-widest text-[10px] rounded-none bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none"
+                      className="h-10 px-6 font-bold text-xs rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm"
                       onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${subscription?.plan || 'starter'}&interval=year`)}
                     >
-                      Pay Now
+                      Bayar Sekarang
                     </Button>
                   ) : currentPlanSlug !== 'free' && subscription?.status === 'active' && !(subscription as any)?.cancelAtPeriodEnd ? (
-                    <div className="flex gap-3">
+                    <div className="flex gap-2.5">
                       <Button 
                         variant="outline" 
-                        className="h-12 px-6 font-bold rounded-none border-border shadow-none"
+                        className="h-10 px-5 font-bold rounded-xl text-xs border-border shadow-xs"
                         onClick={() => {
                           const el = document.getElementById('billing-history')
                           if (el) el.scrollIntoView({ behavior: 'smooth' })
                         }}
                       >
-                        View Invoices
+                        Riwayat Tagihan
                       </Button>
                       {!showCancelConfirm ? (
                         <Button
                           variant="outline"
-                          className="h-12 px-6 font-bold rounded-none border-red-300 text-red-600 hover:bg-red-50 hover:border-red-400 shadow-none"
+                          className="h-10 px-5 font-bold rounded-xl text-xs border-destructive/30 text-destructive hover:bg-destructive/10 hover:border-destructive shadow-xs"
                           onClick={() => setShowCancelConfirm(true)}
                         >
-                          Cancel Plan
+                          Batalkan
                         </Button>
                       ) : (
-                        <div className="flex items-center gap-2 border border-red-300 rounded-none px-4 py-2 bg-red-50">
-                          <span className="text-xs font-bold text-red-700">Batalkan di akhir periode?</span>
+                        <div className="flex items-center gap-2 border border-destructive/30 rounded-xl px-3 py-1.5 bg-destructive/10">
+                          <span className="text-xs font-bold text-destructive">Batalkan paket?</span>
                           <Button
                             size="sm"
-                            className="rounded-none bg-red-600 hover:bg-red-700 text-white h-8 px-4 font-bold shadow-none border-none"
+                            className="rounded-lg bg-destructive hover:bg-destructive/90 text-white h-7 px-3 font-bold text-xs shadow-none border-none"
                             disabled={cancellingSubscription}
                             onClick={handleCancelSubscription}
                           >
-                            {cancellingSubscription ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ya, Batalkan'}
+                            {cancellingSubscription ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Ya'}
                           </Button>
                           <Button
                             size="sm"
                             variant="ghost"
-                            className="rounded-none h-8 px-3 font-bold"
+                            className="rounded-lg h-7 px-2.5 font-bold text-xs"
                             onClick={() => setShowCancelConfirm(false)}
                           >
                             Batal
@@ -384,13 +386,13 @@ export default function TenantSubscriptionsPage() {
                   ) : (
                     <Button 
                       variant="outline" 
-                      className="h-12 px-8 font-bold rounded-none border-border shadow-none"
+                      className="h-10 px-6 font-bold rounded-xl text-xs border-border shadow-xs"
                       onClick={() => {
                         const el = document.getElementById('billing-history')
                         if (el) el.scrollIntoView({ behavior: 'smooth' })
                       }}
                     >
-                      View Invoices
+                      Riwayat Tagihan
                     </Button>
                   )}
                 </div>
@@ -399,11 +401,11 @@ export default function TenantSubscriptionsPage() {
           </Card>
 
           {/* Usage Limits Section */}
-          <div className="space-y-4">
-            <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-              <BarChart3 className="h-4 w-4 text-orange-500" /> Resource Usage
+          <div className="space-y-3">
+            <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-primary" /> Penggunaan Sumber Daya Workspace
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               {usage.map((item) => {
                 const percentage = Math.min(100, (item.current / item.limit) * 100)
                 const isNearingLimit = percentage > 80
@@ -417,31 +419,25 @@ export default function TenantSubscriptionsPage() {
                 }
 
                 return (
-                  <Card key={item.label} className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-                    <CardContent className="p-6 space-y-4">
+                  <Card key={item.label} className="border border-border/70 shadow-xs bg-card rounded-2xl overflow-hidden">
+                    <CardContent className="p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2 text-muted-foreground">
-                          {item.unit === "entries" ? <Database className="h-4 w-4 text-orange-500" /> : 
-                           item.unit === "bytes" ? <HardDrive className="h-4 w-4 text-orange-500" /> : <Users className="h-4 w-4 text-orange-500" />}
-                          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">{item.label}</span>
+                          {item.unit === "entries" ? <Database className="h-4 w-4 text-primary" /> : 
+                           item.unit === "bytes" ? <HardDrive className="h-4 w-4 text-primary" /> : 
+                           item.unit === "tokens" ? <Bot className="h-4 w-4 text-primary" /> :
+                           <Users className="h-4 w-4 text-primary" />}
+                          <span className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{item.label}</span>
                         </div>
-                        {isNearingLimit && <AlertCircle className="h-4 w-4 text-orange-500 animate-pulse" />}
+                        {isNearingLimit && <AlertCircle className="h-3.5 w-3.5 text-amber-500 animate-pulse" />}
                       </div>
                       
-                      <div className="space-y-2">
-                        <div className="flex items-end justify-between">
-                          <p className="text-2xl font-black">{formatValue(item.current, item.unit)}</p>
-                          <p className="text-[10px] font-bold text-muted-foreground uppercase">Limit: {formatValue(item.limit, item.unit)}</p>
+                      <div className="space-y-1.5">
+                        <div className="flex items-baseline justify-between">
+                          <p className="text-xl font-black text-foreground">{formatValue(item.current, item.unit)}</p>
+                          <p className="text-[10px] font-semibold text-muted-foreground">Limit: {formatValue(item.limit, item.unit)}</p>
                         </div>
-                        <Progress value={percentage} className="h-1.5 bg-muted rounded-none">
-                          <div 
-                            className={cn(
-                              "h-full transition-all rounded-none",
-                              percentage > 90 ? "bg-red-500" : percentage > 70 ? "bg-orange-500" : "bg-orange-500"
-                            )}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </Progress>
+                        <Progress value={percentage} className="h-1.5 bg-muted rounded-full" />
                       </div>
                     </CardContent>
                   </Card>
@@ -452,125 +448,155 @@ export default function TenantSubscriptionsPage() {
 
           {/* Main Plans Grid */}
           {!isEnterpriseMode && (
-            <div className="space-y-6">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground">Workspace Plans</h2>
+            <div className="space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="text-base font-bold tracking-tight text-foreground">Paket Langganan Workspace</h2>
+                  <p className="text-xs text-muted-foreground">Pilih paket yang sesuai dengan skala konten dan traffic workspace Anda.</p>
+                </div>
                 
-                <div className="flex items-center p-1 bg-muted/30 rounded-none border border-border w-fit">
+                <div className="flex items-center p-1 bg-muted/40 rounded-xl border border-border/80 w-fit">
                   <Button 
                     variant="ghost"
                     size="sm" 
                     className={cn(
-                      "rounded-none px-6 font-bold h-8 text-xs border-none", 
-                      billingInterval === 'month' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
+                      "rounded-lg px-4 font-bold h-7 text-xs border-none transition-all", 
+                      billingInterval === 'month' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                     )}
                     onClick={() => setBillingInterval('month')}
                   >
-                    Monthly
+                    Bulanan
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm" 
                     className={cn(
-                      "rounded-none px-6 font-bold h-8 text-xs border-none", 
-                      billingInterval === 'year' ? "bg-orange-500 hover:bg-orange-600 text-white" : "text-muted-foreground hover:text-foreground"
+                      "rounded-lg px-4 font-bold h-7 text-xs border-none transition-all", 
+                      billingInterval === 'year' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                     )}
                     onClick={() => setBillingInterval('year')}
                   >
-                    Yearly <Badge className="ml-2 bg-orange-600 text-white border-none text-[8px] h-4 rounded-none font-black">-15%</Badge>
+                    Tahunan <Badge className="ml-1.5 bg-emerald-600 text-white border-none text-[8px] h-3.5 px-1 rounded font-black">-15%</Badge>
                   </Button>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
                 {mainPlans.map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
-                  const label = billingInterval === 'year' ? '/yr' : '/mo'
+                  const label = billingInterval === 'year' ? '/tahun' : '/bulan'
+
+                  const formatStorage = (mb?: number) => {
+                    if (!mb) return "100 MB"
+                    if (mb >= 1024) return `${(mb / 1024).toFixed(0)} GB`
+                    return `${mb} MB`
+                  }
+
+                  const formatApiCalls = (calls?: number) => {
+                    if (!calls) return "1.000"
+                    if (calls >= 1000000) return `${(calls / 1000000).toLocaleString()}M`
+                    if (calls >= 1000) return `${(calls / 1000).toLocaleString()}K`
+                    return calls.toLocaleString()
+                  }
 
                   return (
                     <Card key={plan.id} className={cn(
-                      "border-2 bg-card shadow-none rounded-none overflow-hidden relative group flex flex-col transition-all duration-300",
+                      "border rounded-2xl bg-card shadow-xs relative flex flex-col transition-all duration-200 hover:shadow-md",
                       isCurrent
-                        ? "border-orange-500 ring-2 ring-orange-500/20"
-                        : "border-border hover:border-orange-400"
+                        ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
+                        : plan.popular
+                        ? "border-primary/50 hover:border-primary"
+                        : "border-border hover:border-muted-foreground/40"
                     )}>
-                      {/* Status badge top-right */}
+                      {/* Status / Popular Badge */}
                       {isCurrent ? (
-                        <div className="absolute top-0 right-0 bg-orange-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-orange-600 z-10 flex items-center gap-1">
-                          <Check className="h-2.5 w-2.5" strokeWidth={4} /> Active
+                        <div className="absolute top-3.5 right-3.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                          <Check className="h-3 w-3 stroke-[3]" /> Aktif
                         </div>
                       ) : plan.popular ? (
-                        <div className="absolute top-0 right-0 bg-slate-800 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-none border-b border-l border-slate-700">
-                          Most Popular
+                        <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Populer
                         </div>
                       ) : null}
-                      <CardHeader className="p-8 pt-6 space-y-4">
-                        <div className="flex justify-between items-start">
-                          <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{plan.name}</p>
-                          {billingInterval === 'year' && <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest h-5 rounded-none border border-border">Annual</Badge>}
+
+                      <CardHeader className="p-4 pb-2 space-y-2">
+                        <div>
+                          <h3 className="text-base font-bold tracking-tight text-foreground">{plan.name}</h3>
+                          {plan.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</p>
+                          )}
                         </div>
-                        <div className="flex items-baseline gap-1 mt-4">
-                          <span className="text-3xl font-black">{formatPrice(displayPrice)}</span>
-                          <span className="text-xs text-muted-foreground">{label}</span>
+
+                        <div className="pt-1">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-foreground">{formatPrice(displayPrice)}</span>
+                            <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                          </div>
+                          {billingInterval === 'year' && plan.price > 0 && (
+                            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                              Setara {formatPrice(plan.price)}/bln
+                            </p>
+                          )}
                         </div>
-                        {billingInterval === 'year' && <p className="text-[10px] text-muted-foreground font-medium italic">Equivalent to {formatPrice(plan.price)}/mo</p>}
                       </CardHeader>
-                      <CardContent className="p-8 pt-0 space-y-8 flex-1 flex flex-col">
-                        <Separator className="bg-border" />
-                        
-                        {/* Plan Details / Limits */}
-                        <div className="grid grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Schemas</p>
-                            <p className="text-sm font-bold">{plan.maxContentTypes > 100 ? "Unlimited" : plan.maxContentTypes}</p>
+
+                      <CardContent className="p-4 pt-0 space-y-3.5 flex-1 flex flex-col justify-between">
+                        {/* Compact Resource Limit Badges Grid */}
+                        <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-muted/40 border border-border/60 text-[11px]">
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">Tipe Konten</span>
+                            <p className="font-bold text-foreground">{plan.maxContentTypes || "Unlimited"}</p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Entries</p>
-                            <p className="text-sm font-bold">{plan.maxContentEntries?.toLocaleString() || "Basic"}</p>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">Entri Konten</span>
+                            <p className="font-bold text-foreground">{plan.maxContentEntries?.toLocaleString() || "500"}</p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">Team</p>
-                            <p className="text-sm font-bold">{plan.maxTeamMembers > 100 ? "Unlimited" : plan.maxTeamMembers}</p>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">Storage</span>
+                            <p className="font-bold text-foreground">{formatStorage(plan.maxStorage)}</p>
                           </div>
-                          <div className="space-y-1">
-                            <p className="text-[10px] font-black uppercase text-muted-foreground opacity-70">API Calls</p>
-                            <p className="text-sm font-bold">{plan.maxApiCalls > 1000000 ? "Unlimited" : (plan.maxApiCalls?.toLocaleString() || "Standard")}</p>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">Anggota Tim</span>
+                            <p className="font-bold text-foreground">{plan.maxTeamMembers > 50 ? "Unlimited" : plan.maxTeamMembers}</p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">API Request</span>
+                            <p className="font-bold text-foreground">{formatApiCalls(plan.maxApiCalls)}/bln</p>
+                          </div>
+                          <div className="space-y-0.5">
+                            <span className="text-[10px] text-muted-foreground">Bahasa</span>
+                            <p className="font-bold text-foreground">{plan.maxLocales || 1} Bahasa</p>
                           </div>
                         </div>
 
-                        <Separator className="bg-border" />
-
-                        <ul className="space-y-4 flex-1">
-                          {plan.features.map((feature: string) => (
-                            <li key={feature} className="flex items-start gap-3 text-xs font-bold text-muted-foreground">
-                              <div className={cn(
-                                "mt-0.5 w-4 h-4 rounded-none flex items-center justify-center shrink-0",
-                                isCurrent
-                                  ? "bg-orange-500/20 border border-orange-500/40"
-                                  : "bg-orange-500/10 border border-orange-500/20"
-                              )}>
-                                <Check className="h-2.5 w-2.5 text-orange-500" strokeWidth={4} />
-                              </div>
-                              {feature}
+                        {/* Features List */}
+                        <ul className="space-y-1.5 flex-1 pt-0.5">
+                          {plan.features && plan.features.map((feature: string) => (
+                            <li key={feature} className="flex items-start gap-2 text-xs text-foreground/80 leading-snug">
+                              <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />
+                              <span>{feature}</span>
                             </li>
                           ))}
                         </ul>
-                        <Button 
-                          className={cn(
-                            "w-full h-12 font-bold rounded-none shadow-none uppercase tracking-widest text-[11px]",
-                            isCurrent 
-                              ? "bg-orange-500/10 text-orange-600 cursor-default border border-orange-500/40 hover:bg-orange-500/10" 
-                              : "bg-orange-500 hover:bg-orange-600 text-white border-none"
-                          )}
-                          onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
-                          disabled={isCurrent}
-                        >
-                          {isCurrent
-                            ? <span className="flex items-center gap-2"><Check className="h-4 w-4" strokeWidth={3} /> Current Plan — Active</span>
-                            : `Upgrade to ${plan.name}`
-                          }
-                        </Button>
+
+                        <div className="pt-2">
+                          <Button 
+                            className={cn(
+                              "w-full h-9 font-bold rounded-xl text-xs transition-all shadow-xs",
+                              isCurrent 
+                                ? "bg-primary/10 text-primary cursor-default border border-primary/30 hover:bg-primary/10" 
+                                : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                            )}
+                            onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
+                            disabled={isCurrent}
+                          >
+                            {isCurrent
+                              ? <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" strokeWidth={3} /> Paket Aktif</span>
+                              : `Pilih ${plan.name}`
+                            }
+                          </Button>
+                        </div>
                       </CardContent>
                     </Card>
                   )
@@ -581,57 +607,81 @@ export default function TenantSubscriptionsPage() {
 
           {/* Add-ons Section */}
           {!isEnterpriseMode && addonPlans.length > 0 && (
-            <div className="space-y-4">
-              <h2 className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                <ShieldCheck className="h-4 w-4 text-orange-500" /> Powerful Add-ons
+            <div className="space-y-3">
+              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                <Sparkles className="h-4 w-4 text-primary" /> Add-on & Ekstra Kuota
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {addonPlans.map((addon) => (
-                  <Card key={addon.id} className="border border-border bg-card shadow-none rounded-none overflow-hidden hover:border-orange-500 transition-colors duration-300">
-                    <CardContent className="p-6">
-                      <div className="flex flex-col sm:flex-row justify-between gap-6">
-                        <div className="space-y-4 flex-1">
+                  <Card key={addon.id} className="border border-border/80 bg-card/60 shadow-xs rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-200">
+                    <CardContent className="p-4">
+                      <div className="flex flex-col sm:flex-row justify-between gap-4">
+                        <div className="space-y-3 flex-1">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-none border border-border bg-orange-500/10 flex items-center justify-center text-orange-500">
-                              {addon.icon === 'Shield' && <Shield className="h-5 w-5" />}
-                              {addon.icon === 'Zap' && <Zap className="h-5 w-5" />}
-                              {addon.icon === 'Database' && <Database className="h-5 w-5" />}
-                              {addon.icon === 'Bot' && <Bot className="h-5 w-5" />}
-                              {addon.icon === 'FileText' && <FileText className="h-5 w-5" />}
-                              {!['Shield', 'Zap', 'Database', 'Bot', 'FileText'].includes(addon.icon) && (
-                                addon.name.toLowerCase().includes('backup') ? <History className="h-5 w-5" /> : <Package className="h-5 w-5" />
+                            <div className="w-9 h-9 rounded-xl border border-primary/20 bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                              {addon.icon === 'Shield' && <Shield className="h-4 w-4" />}
+                              {addon.icon === 'ShieldCheck' && <ShieldCheck className="h-4 w-4" />}
+                              {addon.icon === 'Sparkles' && <Sparkles className="h-4 w-4" />}
+                              {addon.icon === 'Zap' && <Zap className="h-4 w-4" />}
+                              {addon.icon === 'Database' && <Database className="h-4 w-4" />}
+                              {addon.icon === 'Bot' && <Bot className="h-4 w-4" />}
+                              {addon.icon === 'HardDrive' && <HardDrive className="h-4 w-4" />}
+                              {addon.icon === 'FileText' && <FileText className="h-4 w-4" />}
+                              {!['Shield', 'ShieldCheck', 'Sparkles', 'Zap', 'Database', 'Bot', 'HardDrive', 'FileText'].includes(addon.icon) && (
+                                addon.name.toLowerCase().includes('backup') ? <History className="h-4 w-4" /> : <Package className="h-4 w-4" />
                               )}
                             </div>
                             <div>
-                              <p className="text-lg font-black uppercase tracking-tight">{addon.name}</p>
-                              <p className="text-sm font-black text-orange-500">{formatPrice(addon.price)}<span className="text-[10px] text-muted-foreground font-medium">/month</span></p>
+                              <p className="text-sm font-bold tracking-tight text-foreground">{addon.name}</p>
+                              <p className="text-xs font-black text-primary">
+                                {addon.priceLabel ? (
+                                  <span>{addon.priceLabel}</span>
+                                ) : (
+                                  <>
+                                    {formatPrice(addon.price)}
+                                    <span className="text-[10px] text-muted-foreground font-normal ml-1">
+                                      {addon.isTopup ? "(Sekali Bayar)" : "/bulan"}
+                                    </span>
+                                  </>
+                                )}
+                              </p>
                             </div>
                           </div>
-                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <ul className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                             {addon.features.map((feature: string) => (
-                              <li key={feature} className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                                <Check className="h-3 w-3 text-orange-500" /> {feature}
+                              <li key={feature} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                <Check className="h-3 w-3 text-primary shrink-0" strokeWidth={2.5} /> {feature}
                               </li>
                             ))}
                           </ul>
                         </div>
-                        <div className="flex sm:flex-col justify-end gap-3 shrink-0">
-                          <Button 
-                            className={cn(
-                              "font-bold rounded-none px-6 h-10 shadow-none border-none",
-                              activeAddons.includes(addon.id) 
-                                ? "bg-muted text-muted-foreground cursor-default hover:bg-muted" 
-                                : "bg-orange-500 hover:bg-orange-600 text-white"
-                            )}
-                            onClick={() => !activeAddons.includes(addon.id) && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
-                            disabled={activeAddons.includes(addon.id)}
-                          >
-                            {activeAddons.includes(addon.id) ? (
-                              <span className="flex items-center gap-2"><Check className="h-4 w-4" strokeWidth={3} /> Activated</span>
-                            ) : (
-                              "Activate"
-                            )}
-                          </Button>
+                        <div className="flex sm:flex-col justify-end gap-2 shrink-0">
+                          {addon.priceLabel && addon.price === 0 ? (
+                            <Button 
+                              variant="outline"
+                              disabled
+                              className="font-bold rounded-xl px-4 h-9 shadow-none text-xs border-border bg-muted/30 text-muted-foreground"
+                            >
+                              {addon.buttonText || "Termasuk"}
+                            </Button>
+                          ) : (
+                            <Button 
+                              className={cn(
+                                "font-bold rounded-xl px-4 h-9 shadow-xs text-xs",
+                                !addon.isTopup && activeAddons.includes(addon.id) 
+                                  ? "bg-muted text-muted-foreground cursor-default hover:bg-muted" 
+                                  : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                              )}
+                              onClick={() => (addon.isTopup || !activeAddons.includes(addon.id)) && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${addon.id}`)}
+                              disabled={!addon.isTopup && activeAddons.includes(addon.id)}
+                            >
+                              {!addon.isTopup && activeAddons.includes(addon.id) ? (
+                                <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" strokeWidth={3} /> Aktif</span>
+                              ) : (
+                                addon.buttonText || "Beli Add-on"
+                              )}
+                            </Button>
+                          )}
                         </div>
                       </div>
                     </CardContent>
@@ -643,57 +693,57 @@ export default function TenantSubscriptionsPage() {
 
           {/* Invoices */}
           {!isEnterpriseMode && (
-            <Card id="billing-history" className="border border-border shadow-none bg-card rounded-none overflow-hidden scroll-mt-24">
-              <CardHeader className="bg-muted/10 p-6 border-b border-border rounded-none">
+            <Card id="billing-history" className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden scroll-mt-24">
+              <CardHeader className="bg-muted/20 p-5 border-b border-border/60">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <History className="h-5 w-5 text-muted-foreground" />
-                    <CardTitle className="text-lg font-black uppercase tracking-tight">Billing History</CardTitle>
+                  <div className="flex items-center gap-2.5">
+                    <History className="h-4 w-4 text-primary" />
+                    <CardTitle className="text-sm font-bold tracking-tight text-foreground">Riwayat Tagihan & Transaksi</CardTitle>
                   </div>
-                  <Badge variant="outline" className="font-black rounded-none border-border">Recent Invoices</Badge>
+                  <Badge variant="secondary" className="font-bold text-[10px] rounded-full">Faktur Terakhir</Badge>
                 </div>
               </CardHeader>
               <CardContent className="p-0">
                 {invoices.length === 0 ? (
                   <div className="text-center py-16 text-muted-foreground">
-                    <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-10 text-muted-foreground" />
-                    <p className="font-bold text-foreground text-sm">No payment history yet</p>
-                    <p className="text-xs">Your future invoices will appear here.</p>
+                    <CreditCard className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                    <p className="font-bold text-xs text-foreground">Belum ada riwayat tagihan</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Semua faktur pembayaran Anda di masa mendatang akan tercatat di sini.</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-border">
+                  <div className="divide-y divide-border/60">
                     {invoices.map((inv) => (
                       <div key={inv.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className="w-10 h-10 rounded-none border border-border bg-muted flex items-center justify-center text-muted-foreground">
-                            <FileText className="h-5 w-5" />
+                        <div className="flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-xl border border-border/80 bg-muted/40 flex items-center justify-center text-primary">
+                            <FileText className="h-4 w-4" />
                           </div>
                           <div>
-                            <p className="text-sm font-bold">{inv.isTransaction ? 'Transaction' : 'Invoice'} #{inv.id.substring(0, 8).toUpperCase()}</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">
-                              {new Date(inv.createdAt).toLocaleDateString()} &middot; IDR {inv.amount.toLocaleString()}
+                            <p className="text-xs font-bold text-foreground">{inv.isTransaction ? 'Transaksi' : 'Faktur'} #{inv.id.substring(0, 8).toUpperCase()}</p>
+                            <p className="text-[10px] text-muted-foreground font-mono mt-0.5">
+                              {new Date(inv.createdAt).toLocaleDateString('id-ID')} &middot; IDR {inv.amount.toLocaleString('id-ID')}
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-4">
+                        <div className="flex items-center gap-3">
                           <Badge className={cn(
-                            "text-[10px] font-black uppercase px-2 py-0.5 rounded-none border shadow-none",
-                            inv.status === 'paid' ? 'bg-orange-500/10 border-orange-500/20 text-orange-500' : 'bg-amber-500/10 border-amber-500/20 text-amber-500'
+                            "text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-none",
+                            inv.status === 'paid' ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400' : 'bg-amber-500/10 border-amber-500/20 text-amber-600 dark:text-amber-400'
                           )}>
-                            {inv.status}
+                            {inv.status === 'paid' ? 'Lunas' : inv.status}
                           </Badge>
                           {inv.isTransaction && inv.status === 'pending' ? (
                             <Button 
                               variant="default" 
                               size="sm" 
-                              className="rounded-none bg-orange-500 hover:bg-orange-600 text-white border-none shadow-none text-[10px] font-black uppercase"
+                              className="rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground h-8 px-3 text-xs font-bold shadow-xs"
                               onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${inv.plan}&interval=year`)}
                             >
-                              Pay Now
+                              Bayar Sekarang
                             </Button>
                           ) : (
-                            <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-muted text-muted-foreground">
-                              <ExternalLink className="h-4 w-4" />
+                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground">
+                              <ExternalLink className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>
@@ -707,33 +757,33 @@ export default function TenantSubscriptionsPage() {
 
           {/* Infrastructure Overrides */}
           {isEnterpriseMode && (
-            <div className="space-y-6 mt-12">
+            <div className="space-y-4 mt-8">
               <div className="flex justify-between items-center">
                 <div>
-                  <h3 className="text-xl font-bold uppercase tracking-tight">Workspace Infrastructure</h3>
-                  <p className="text-sm text-muted-foreground font-medium mt-1">
-                    Override the default database and S3 credentials specifically for this workspace.
+                  <h3 className="text-base font-bold tracking-tight text-foreground">Infrastruktur Khusus Workspace</h3>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    Kustomisasi koneksi database PostgreSQL dan bucket S3 khusus untuk workspace ini.
                   </p>
                 </div>
-                <Button onClick={handleSaveInfra} disabled={savingInfra} className="rounded-none font-bold uppercase tracking-widest text-[10px]">
-                  {savingInfra ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Save Settings
+                <Button onClick={handleSaveInfra} disabled={savingInfra} className="rounded-xl font-bold text-xs h-9 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">
+                  {savingInfra ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                  Simpan Pengaturan
                 </Button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border border-border shadow-none rounded-none">
-                  <CardHeader className="pb-4 border-b bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase">
-                      <Database className="h-4 w-4 text-orange-500" />
-                      Database Override
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden">
+                  <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-xs font-bold flex items-center gap-2 text-foreground">
+                      <Database className="h-4 w-4 text-primary" />
+                      Override Database PostgreSQL
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-6">
-                    <div className="space-y-2">
-                      <label className="text-xs font-bold uppercase text-muted-foreground">PostgreSQL Connection URL</label>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-muted-foreground">PostgreSQL Connection URL</label>
                       <input 
-                        className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                        className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
                         value={infra.databaseUrl} 
                         onChange={(e) => setInfra({ ...infra, databaseUrl: e.target.value })}
                         placeholder="postgresql://user:password@host:port/database"
@@ -743,46 +793,46 @@ export default function TenantSubscriptionsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="border border-border shadow-none rounded-none">
-                  <CardHeader className="pb-4 border-b bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 uppercase">
-                      <Cloud className="h-4 w-4 text-orange-500" />
-                      S3 Storage Override
+                <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden">
+                  <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-xs font-bold flex items-center gap-2 text-foreground">
+                      <Cloud className="h-4 w-4 text-primary" />
+                      Override S3 Storage
                     </CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-4 pt-6">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Bucket Name</label>
+                  <CardContent className="p-4 space-y-3">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Nama Bucket</label>
                         <input 
-                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
                           value={infra.s3Bucket} 
                           onChange={(e) => setInfra({ ...infra, s3Bucket: e.target.value })}
                           placeholder="tenant-bucket"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Region</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Region</label>
                         <input 
-                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
                           value={infra.s3Region} 
                           onChange={(e) => setInfra({ ...infra, s3Region: e.target.value })}
                           placeholder="auto"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Access Key</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Access Key</label>
                         <input 
-                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
                           value={infra.s3AccessKey} 
                           onChange={(e) => setInfra({ ...infra, s3AccessKey: e.target.value })}
                           type="password"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <label className="text-xs font-bold uppercase text-muted-foreground">Secret Key</label>
+                      <div className="space-y-1.5">
+                        <label className="text-xs font-semibold text-muted-foreground">Secret Key</label>
                         <input 
-                          className="flex h-10 w-full border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 rounded-none"
+                          className="flex h-9 w-full rounded-xl border border-border/80 bg-background px-3 py-1 text-xs text-foreground placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary shadow-xs"
                           value={infra.s3SecretKey} 
                           onChange={(e) => setInfra({ ...infra, s3SecretKey: e.target.value })}
                           type="password"

@@ -41,24 +41,20 @@ import {
   CheckCircle,
   Activity,
   Server,
-  ShieldAlert,
   Mail,
   Copy,
   Key,
-  Check,
-  ArrowLeft,
-  Wand2,
 } from "lucide-react"
 import { toast } from "sonner"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
+
 export default function TenantSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
-
 
   const defaultTabParam = searchParams?.get("tab") || "general"
   const [activeTab, setActiveTab] = useState(defaultTabParam)
@@ -83,12 +79,7 @@ export default function TenantSettingsPage() {
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
 
-  // API settings
-  const [apiKey, setApiKey] = useState("")
-  const [generatingApiKey, setGeneratingApiKey] = useState(false)
-  const [showConfirmGenerateKey, setShowConfirmGenerateKey] = useState(false)
-  const [newGeneratedKeyModal, setNewGeneratedKeyModal] = useState<string | null>(null)
-  const [copiedModalKey, setCopiedModalKey] = useState(false)
+  // API & CORS settings
   const [apiVersion, setApiVersion] = useState("v1")
   const [rateLimiting, setRateLimiting] = useState(true)
   const [requestsPerMinute, setRequestsPerMinute] = useState("60")
@@ -109,6 +100,7 @@ export default function TenantSettingsPage() {
   const [storageSecretKey, setStorageSecretKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
   const [storagePublicUrl, setStoragePublicUrl] = useState("")
+
   // Email settings
   const [smtpHost, setSmtpHost] = useState("")
   const [smtpPort, setSmtpPort] = useState("")
@@ -119,7 +111,7 @@ export default function TenantSettingsPage() {
 
   const tenants = useMemo(() => {
     return session?.user?.tenants || []
-  }, [session])
+  }, [session?.user?.id])
 
   const currentTenant = useMemo(() => {
     return tenants.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
@@ -154,7 +146,6 @@ export default function TenantSettingsPage() {
           setTenantStatus(settings.status || "active")
           setSubscriptionStatus(settings.subscriptionStatus || null)
           setDaysRemaining(settings.daysRemaining !== undefined ? settings.daysRemaining : null)
-          setApiKey(settings.apiKey || "")
           setApiVersion(settings.apiVersion || "v1")
           setRateLimiting(settings.rateLimiting ?? true)
           setRequestsPerMinute(String(settings.requestsPerMinute || 60))
@@ -186,10 +177,10 @@ export default function TenantSettingsPage() {
       }
     }
 
-    if (session?.user) {
+    if (session?.user?.id) {
       fetchData()
     }
-  }, [tenantSlug, session])
+  }, [tenantSlug, session?.user?.id])
 
   const handleSave = async () => {
     setSaving(true)
@@ -226,52 +217,16 @@ export default function TenantSettingsPage() {
       })
 
       if (res.ok) {
-        alert("Settings saved successfully!")
+        toast.success("Pengaturan workspace berhasil disimpan!")
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to save settings")
+        toast.error(data.error || "Gagal menyimpan pengaturan")
       }
     } catch (error) {
       console.error("Failed to save:", error)
-      alert("Failed to save settings")
+      toast.error("Gagal menyimpan pengaturan")
     } finally {
       setSaving(false)
-    }
-  }
-
-  const handleGenerateApiKey = () => {
-    setShowConfirmGenerateKey(true)
-  }
-
-  const executeGenerateApiKey = async () => {
-    setGeneratingApiKey(true)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/api-keys`, {
-        method: "POST",
-      })
-
-      if (res.ok) {
-        const data = await res.json()
-        setApiKey(data.apiKey)
-        setNewGeneratedKeyModal(data.apiKey)
-        setShowConfirmGenerateKey(false)
-        toast.success("New API key generated successfully!")
-      } else {
-        const data = await res.json()
-        toast.error(data.error || "Failed to generate API key")
-      }
-    } catch (error) {
-      console.error("Failed to generate API key:", error)
-      toast.error("Failed to generate API key")
-    } finally {
-      setGeneratingApiKey(false)
-    }
-  }
-
-  const handleCopyApiKey = () => {
-    if (apiKey) {
-      navigator.clipboard.writeText(apiKey)
-      toast.success("API Key copied to clipboard")
     }
   }
 
@@ -288,12 +243,13 @@ export default function TenantSettingsPage() {
         a.click()
         window.URL.revokeObjectURL(url)
         document.body.removeChild(a)
+        toast.success("Data berhasil diekspor!")
       } else {
-        alert("Failed to export data")
+        toast.error("Gagal mengekspor data")
       }
     } catch (error) {
       console.error("Export failed:", error)
-      alert("Failed to export data")
+      toast.error("Gagal mengekspor data")
     }
   }
 
@@ -301,7 +257,7 @@ export default function TenantSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!confirm("Are you sure you want to import this data? This might overwrite existing configurations or fail if there are conflicts.")) return
+    if (!confirm("Apakah Anda yakin ingin mengimpor data ini? Ini dapat menimpa konfigurasi yang ada.")) return
     
     setSaving(true)
     try {
@@ -314,24 +270,23 @@ export default function TenantSettingsPage() {
       })
 
       if (res.ok) {
-        alert("Data imported successfully. Please refresh the page.")
+        toast.success("Data berhasil diimpor! Halaman akan dimuat ulang.")
         window.location.reload()
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to import data")
+        toast.error(data.error || "Gagal mengimpor data")
       }
     } catch (error) {
       console.error("Import failed:", error)
-      alert("Failed to import data")
+      toast.error("Gagal mengimpor data")
     } finally {
       setSaving(false)
-      // reset file input
       e.target.value = ""
     }
   }
 
   const handleDeleteContent = async () => {
-    if (!confirm("Are you sure you want to delete all content? This cannot be undone.")) return
+    if (!confirm("Apakah Anda yakin ingin menghapus semua entri konten? Tindakan ini tidak dapat dibatalkan.")) return
 
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/content`, {
@@ -339,24 +294,24 @@ export default function TenantSettingsPage() {
       })
 
       if (res.ok) {
-        alert("All content deleted successfully")
+        toast.success("Semua entri konten berhasil dikosongkan")
       } else {
-        alert("Failed to delete content")
+        toast.error("Gagal menghapus konten")
       }
     } catch (error) {
       console.error("Delete failed:", error)
-      alert("Failed to delete content")
+      toast.error("Gagal menghapus konten")
     }
   }
 
   const handleDeleteWorkspace = async () => {
     if (deleteConfirm !== tenantSlug) {
-      alert("Please type the workspace URL to confirm deletion")
+      toast.error("Ketik URL slug workspace untuk konfirmasi penghapusan")
       return
     }
 
     if (!currentTenant?.id) {
-      alert("Workspace ID not found. Please refresh the page.")
+      toast.error("ID Workspace tidak ditemukan. Silakan muat ulang halaman.")
       return
     }
 
@@ -366,130 +321,84 @@ export default function TenantSettingsPage() {
       })
 
       if (res.ok) {
+        toast.success("Workspace berhasil dihapus")
         window.location.href = "/dashboard"
       } else {
         const data = await res.json()
-        alert(data.error || "Failed to delete workspace")
+        toast.error(data.error || "Gagal menghapus workspace")
       }
     } catch (error) {
       console.error("Delete failed:", error)
-      alert("Failed to delete workspace")
+      toast.error("Gagal menghapus workspace")
     }
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center flex-1 flex-col w-full min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
-          {/* Header */}
-          <div className="mb-8">
-            <h1 className="text-3xl font-bold">Settings</h1>
-            <p className="text-muted-foreground">
-              Manage your workspace settings
-            </p>
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+          
+          {/* Header Section */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="space-y-1">
+              <h1 className="text-xl md:text-2xl font-bold tracking-tight text-foreground flex items-center gap-2.5">
+                <Building2 className="h-6 w-6 text-primary" />
+                Pengaturan Workspace
+              </h1>
+              <p className="text-xs md:text-sm text-muted-foreground">
+                Kelola identitas workspace, pembatasan CORS & rate limit, SMTP email, dan konfigurasi keamanan.
+              </p>
+            </div>
+            <div className="flex items-center gap-2.5 shrink-0">
+              <Button 
+                onClick={handleSave} 
+                disabled={saving} 
+                className="rounded-xl text-xs font-bold h-9 px-4 bg-primary text-primary-foreground shadow-xs hover:bg-primary/90 transition-colors"
+              >
+                {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                Simpan Perubahan
+              </Button>
+            </div>
           </div>
 
-          {/* Stats */}
-          <div className="grid gap-4 md:grid-cols-4 mb-6">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Plan
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Badge className="capitalize">{plan}</Badge>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Status
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                {subscriptionStatus === 'trialing' ? (
-                  <Badge 
-                    className="capitalize text-[10px] font-black bg-orange-500 hover:bg-orange-600 text-white border-none"
-                  >
-                    Trial {daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
-                  </Badge>
-                ) : (
-                  <Badge 
-                    variant={tenantStatus === "active" ? "default" : "secondary"}
-                    className={cn(
-                      "capitalize text-[10px] font-bold",
-                      tenantStatus === 'active' ? "bg-green-500 hover:bg-green-600 text-white border-none" : ""
-                    )}
-                  >
-                    {tenantStatus} {tenantStatus === 'active' && daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
-                  </Badge>
-                )}
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Content Types
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{contentTypes.length}</div>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium text-muted-foreground">
-                  Your Role
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <Badge variant="outline" className="capitalize">
-                  {currentTenant?.role || "member"}
-                </Badge>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Settings Tabs */}
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList>
-              <TabsTrigger value="general">
-                <Building2 className="h-4 w-4 mr-2" />
-                General
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+            <TabsList className="bg-muted/50 p-1 rounded-xl border border-border/80 flex flex-wrap h-auto gap-1">
+              <TabsTrigger value="general" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <Building2 className="h-3.5 w-3.5 mr-1.5" />
+                Umum
               </TabsTrigger>
-              <TabsTrigger value="api">
-                <Globe className="h-4 w-4 mr-2" />
-                API
+              <TabsTrigger value="api" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <Globe className="h-3.5 w-3.5 mr-1.5" />
+                CORS & Rate Limit
               </TabsTrigger>
-              <TabsTrigger value="email">
-                <Mail className="h-4 w-4 mr-2" />
-                Email
+              <TabsTrigger value="email" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <Mail className="h-3.5 w-3.5 mr-1.5" />
+                Email SMTP
               </TabsTrigger>
-              <TabsTrigger value="security">
-                <Shield className="h-4 w-4 mr-2" />
-                Security
+              <TabsTrigger value="security" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <Shield className="h-3.5 w-3.5 mr-1.5" />
+                Keamanan
               </TabsTrigger>
-              <TabsTrigger value="usage">
-                <Activity className="h-4 w-4 mr-2" />
-                Usage
+              <TabsTrigger value="usage" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <Activity className="h-3.5 w-3.5 mr-1.5" />
+                Penggunaan
               </TabsTrigger>
               {isEnterprise && (
-                <TabsTrigger value="infrastructure">
-                  <Server className="h-4 w-4 mr-2" />
-                  Infrastructure
+                <TabsTrigger value="infrastructure" className="rounded-lg text-xs font-semibold data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                  <Server className="h-3.5 w-3.5 mr-1.5" />
+                  Infrastruktur
                 </TabsTrigger>
               )}
-              <TabsTrigger value="danger">
-                <AlertTriangle className="h-4 w-4 mr-2" />
+              <TabsTrigger value="danger" className="rounded-lg text-xs font-semibold text-destructive data-[state=active]:bg-card data-[state=active]:shadow-xs">
+                <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                 Danger Zone
               </TabsTrigger>
             </TabsList>
@@ -499,91 +408,93 @@ export default function TenantSettingsPage() {
             </TabsContent>
 
             <TabsContent value="general">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Workspace Settings</CardTitle>
-                  <CardDescription>
-                    Configure your workspace settings
+              <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground">Identitas & Informasi Workspace</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Konfigurasikan nama dan deskripsi workspace Anda.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="p-5 space-y-5">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="workspace-name">Workspace Name</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="workspace-name" className="text-xs font-semibold text-foreground">Nama Workspace</Label>
                       <Input
                         id="workspace-name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="workspace-slug">Workspace URL</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="workspace-slug" className="text-xs font-semibold text-foreground">URL Slug Workspace</Label>
                       <div className="flex items-center">
-                        <span className="text-sm text-muted-foreground bg-muted px-3 py-2 rounded-l-md border border-r-0">
+                        <span className="text-xs text-muted-foreground bg-muted/60 px-3 py-2 rounded-l-xl border border-r-0 border-border/80 h-9 flex items-center font-mono">
                           sacms.io/
                         </span>
                         <Input
                           id="workspace-slug"
                           value={tenantSlug}
                           disabled
-                          className="rounded-l-none bg-muted"
+                          className="rounded-l-none rounded-r-xl bg-muted/30 border-border/80 h-9 text-xs font-mono"
                         />
                       </div>
-                      <p className="text-xs text-muted-foreground mt-2">
-                        URL slug cannot be changed.
+                      <p className="text-[10px] text-muted-foreground">
+                        URL slug bersifat permanen dan tidak dapat diubah setelah dibuat.
                       </p>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="workspace-description">Description</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="workspace-description" className="text-xs font-semibold text-foreground">Deskripsi</Label>
                     <Textarea
                       id="workspace-description"
-                      placeholder="Describe your workspace..."
+                      placeholder="Jelaskan tujuan atau proyek workspace ini..."
                       value={description}
                       onChange={(e) => setDescription(e.target.value)}
                       rows={3}
+                      className="rounded-xl text-xs bg-background border-border/80"
                     />
                   </div>
-                  <Separator />
+                  <Separator className="bg-border/60" />
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label>Plan</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Paket Aktif</Label>
                       <Select value={plan} onValueChange={setPlan} disabled>
-                        <SelectTrigger>
+                        <SelectTrigger className="rounded-xl h-9 text-xs bg-muted/30 border-border/80 font-bold">
                           <SelectValue />
                         </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="free">Free</SelectItem>
-                          <SelectItem value="starter">Starter</SelectItem>
-                          <SelectItem value="pro">Pro</SelectItem>
-                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="free" className="text-xs rounded-lg">Free</SelectItem>
+                          <SelectItem value="starter" className="text-xs rounded-lg">Starter</SelectItem>
+                          <SelectItem value="pro" className="text-xs rounded-lg">Pro</SelectItem>
+                          <SelectItem value="enterprise" className="text-xs rounded-lg">Enterprise</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-xs text-muted-foreground">
-                        Upgrade your plan in billing settings
+                      <p className="text-[10px] text-muted-foreground">
+                        Upgrade paket Anda melalui menu Langganan & Tagihan.
                       </p>
                     </div>
-                    <div className="space-y-2">
-                      <Label>Status</Label>
-                      <div className="flex items-center gap-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Status Operasional</Label>
+                      <div className="flex items-center gap-2 pt-1">
                         {subscriptionStatus === 'trialing' ? (
                           <Badge 
-                            className="capitalize text-[10px] font-black bg-orange-500 hover:bg-orange-600 text-white border-none"
+                            className="capitalize text-[10px] font-bold bg-amber-500/10 text-amber-600 border-amber-500/20 rounded-full"
                           >
-                            Trial {daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                            Trial {daysRemaining !== null ? `(${daysRemaining} Hari)` : ''}
                           </Badge>
                         ) : (
                           <Badge 
-                            variant={tenantStatus === "active" ? "default" : "secondary"}
+                            variant="outline"
                             className={cn(
-                              "capitalize text-[10px] font-bold",
-                              tenantStatus === 'active' ? "bg-green-500 hover:bg-green-600 text-white border-none" : ""
+                              "capitalize text-[10px] font-bold rounded-full",
+                              tenantStatus === 'active' ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground"
                             )}
                           >
-                            {tenantStatus} {tenantStatus === 'active' && daysRemaining !== null ? `(${daysRemaining} Days Left)` : ''}
+                            {tenantStatus === 'active' ? 'Aktif' : tenantStatus} {tenantStatus === 'active' && daysRemaining !== null ? `(${daysRemaining} Hari)` : ''}
                           </Badge>
                         )}
-                        {tenantStatus === "active" && subscriptionStatus !== 'trialing' && <CheckCircle className="h-4 w-4 text-green-500" />}
+                        {tenantStatus === "active" && subscriptionStatus !== 'trialing' && <CheckCircle className="h-4 w-4 text-emerald-500" />}
                       </div>
                     </div>
                   </div>
@@ -592,133 +503,122 @@ export default function TenantSettingsPage() {
             </TabsContent>
 
             <TabsContent value="api" className="space-y-6">
-
-              <Card>
-                <CardHeader>
-                  <CardTitle>API Configuration</CardTitle>
-                  <CardDescription>
-                    Configure API settings for your workspace
+              <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-primary" />
+                    CORS, Rate Limiting & Parameter API
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Pengaturan proteksi beban request, batas rate limit, dan izin domain CORS publik.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="space-y-2">
-                    <Label>Workspace ID / Tenant ID</Label>
+                <CardContent className="p-5 space-y-5">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Workspace ID / Tenant ID</Label>
                     <div className="flex gap-2">
                       <div className="relative flex-1">
                         <Input
                           type="text"
                           value={tenantId || ""}
                           readOnly
-                          className="pr-10 font-mono text-sm bg-muted/50"
+                          className="pr-10 font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9"
                         />
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+                          className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
                           onClick={() => {
                             if (tenantId) {
                               navigator.clipboard.writeText(tenantId)
-                              alert("Workspace ID copied to clipboard")
+                              toast.success("Workspace ID disalin")
                             }
                           }}
                         >
-                          <Copy className="h-4 w-4" />
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Use this ID for API paths (e.g., <code>/api/public/{tenantId || '[tenant-id]'}/content</code>)
+                    <p className="text-[10px] text-muted-foreground">
+                      Gunakan ID ini untuk rute publik: <code>/api/public/{tenantId || '[tenant-id]'}/content</code>
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label>API Key</Label>
-                    <div className="flex gap-2">
-                      <div className="relative flex-1">
-                        <Input
-                          type="text"
-                          value={apiKey || "No API key generated"}
-                          readOnly
-                          className="pr-10 font-mono text-sm"
-                        />
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
-                          onClick={handleCopyApiKey}
-                          disabled={!apiKey}
-                        >
-                          <Copy className="h-4 w-4" />
-                        </Button>
-                      </div>
-                      <Button 
-                        variant="secondary" 
-                        onClick={handleGenerateApiKey}
-                        disabled={generatingApiKey}
-                      >
-                        {generatingApiKey ? (
-                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                        ) : null}
-                        Generate
-                      </Button>
+
+                  {/* Centralized API Token Banner */}
+                  <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div className="space-y-0.5">
+                      <h4 className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Key className="h-3.5 w-3.5 text-primary" />
+                        Manajemen API Token & Hak Akses Terpusat
+                      </h4>
+                      <p className="text-[11px] text-muted-foreground">
+                        Pembuatan multi-token terenkripsi SHA-256, hak akses granular (Read-Only/Full-Access), dan integrasi v0/MCP dikelola di Developer Portal.
+                      </p>
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Use this key to authenticate external applications and integrations.
-                    </p>
+                    <Button size="sm" asChild className="rounded-xl text-xs font-bold h-8 bg-primary text-primary-foreground shrink-0 shadow-xs">
+                      <a href={`/dashboard/${tenantSlug}/developer/api-keys`}>
+                        Buka API Keys &rarr;
+                      </a>
+                    </Button>
                   </div>
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label>API Version</Label>
+
+                  <Separator className="bg-border/60" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Versi API Publik</Label>
                     <Select value={apiVersion} onValueChange={setApiVersion}>
-                      <SelectTrigger className="w-48">
+                      <SelectTrigger className="w-48 h-9 rounded-xl text-xs bg-background border-border/80 font-medium">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="v1">v1 (Stable)</SelectItem>
-                        <SelectItem value="v2">v2 (Beta)</SelectItem>
+                      <SelectContent className="rounded-xl border-border bg-card">
+                        <SelectItem value="v1" className="text-xs rounded-lg">v1 (Stabil)</SelectItem>
+                        <SelectItem value="v2" className="text-xs rounded-lg">v2 (Beta)</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
+                  <Separator className="bg-border/60" />
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
                     <div>
-                      <Label>Rate Limiting</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Enable rate limiting for API requests
+                      <Label className="text-xs font-bold text-foreground">Rate Limiting (Proteksi Beban)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Batasi frekuensi request API per menit untuk mencegah penyalahgunaan.
                       </p>
                     </div>
                     <Switch checked={rateLimiting} onCheckedChange={setRateLimiting} />
                   </div>
                   {rateLimiting && (
                     <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label>Requests per minute</Label>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Request per Menit</Label>
                         <Input
                           type="number"
                           value={requestsPerMinute}
                           onChange={(e) => setRequestsPerMinute(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80"
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label>Burst limit</Label>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-foreground">Batas Burst (Lonjakan)</Label>
                         <Input
                           type="number"
                           value={burstLimit}
                           onChange={(e) => setBurstLimit(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80"
                         />
                       </div>
                     </div>
                   )}
-                  <Separator />
-                  <div className="space-y-2">
-                    <Label>Allowed Origins (CORS)</Label>
+                  <Separator className="bg-border/60" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Domain Diizinkan (CORS)</Label>
                     <Textarea
-                      placeholder="Enter allowed origins, one per line&#10;https://example.com&#10;https://app.example.com"
-                      rows={4}
+                      placeholder="Masukkan domain asal, satu per baris&#10;https://domainanda.com&#10;https://app.domainanda.com"
+                      rows={3}
                       value={corsOrigins}
                       onChange={(e) => setCorsOrigins(e.target.value)}
+                      className="rounded-xl text-xs font-mono bg-background border-border/80"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Enter domain names, one per line. Use * for all origins (not recommended for production)
+                    <p className="text-[10px] text-muted-foreground">
+                      Tuliskan nama domain satu per baris. Gunakan * untuk mengizinkan semua domain (hanya development).
                     </p>
                   </div>
                 </CardContent>
@@ -726,73 +626,79 @@ export default function TenantSettingsPage() {
             </TabsContent>
 
             <TabsContent value="email">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Email Configuration</CardTitle>
-                  <CardDescription>
-                    Configure SMTP settings for outgoing emails from this workspace.
+              <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground">Konfigurasi Email SMTP</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Pengaturan server SMTP khusus untuk pengiriman notifikasi email keluar dari workspace ini.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
+                <CardContent className="p-5 space-y-5">
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpHost">SMTP Host</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="smtpHost" className="text-xs font-semibold text-foreground">SMTP Host</Label>
                       <Input
                         id="smtpHost"
-                        placeholder="smtp.example.com"
+                        placeholder="smtp.mailgun.org"
                         value={smtpHost}
                         onChange={(e) => setSmtpHost(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpPort">SMTP Port</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="smtpPort" className="text-xs font-semibold text-foreground">SMTP Port</Label>
                       <Input
                         id="smtpPort"
                         placeholder="587"
                         value={smtpPort}
                         onChange={(e) => setSmtpPort(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
                   </div>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpUser">SMTP User</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="smtpUser" className="text-xs font-semibold text-foreground">SMTP User / Akun</Label>
                       <Input
                         id="smtpUser"
-                        placeholder="user@example.com"
+                        placeholder="user@domain.com"
                         value={smtpUser}
                         onChange={(e) => setSmtpUser(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="smtpPassword">SMTP Password</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="smtpPassword" className="text-xs font-semibold text-foreground">SMTP Password</Label>
                       <Input
                         id="smtpPassword"
                         type="password"
                         placeholder="••••••••"
                         value={smtpPassword}
                         onChange={(e) => setSmtpPassword(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
                   </div>
-                  <Separator />
+                  <Separator className="bg-border/60" />
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="fromEmail">Default From Email</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fromEmail" className="text-xs font-semibold text-foreground">Email Pengirim Default</Label>
                       <Input
                         id="fromEmail"
-                        placeholder="noreply@example.com"
+                        placeholder="noreply@domainanda.com"
                         value={fromEmail}
                         onChange={(e) => setFromEmail(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="fromName">Default From Name</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="fromName" className="text-xs font-semibold text-foreground">Nama Pengirim Default</Label>
                       <Input
                         id="fromName"
-                        placeholder="My Workspace"
+                        placeholder="Tim ContentFlow"
                         value={fromName}
                         onChange={(e) => setFromName(e.target.value)}
+                        className="rounded-xl h-9 text-xs bg-background border-border/80"
                       />
                     </div>
                   </div>
@@ -801,53 +707,51 @@ export default function TenantSettingsPage() {
             </TabsContent>
 
             <TabsContent value="security">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Security Settings</CardTitle>
-                  <CardDescription>
-                    Configure security settings for your workspace
+              <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground">Keamanan & Kontrol Akses</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Tingkatkan proteksi autentikasi dan restriksi alamat IP workspace.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                  <div className="flex items-center justify-between">
+                <CardContent className="p-5 space-y-5">
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
                     <div>
-                      <Label>Two-Factor Authentication</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Require 2FA for all team members
+                      <Label className="text-xs font-bold text-foreground">Autentikasi Dua Faktor (2FA)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Wajibkan 2FA bagi seluruh anggota tim saat masuk ke workspace ini.
                       </p>
                     </div>
                     <Switch checked={twoFactorRequired} onCheckedChange={setTwoFactorRequired} />
                   </div>
-                  <Separator />
-                  <div className="flex items-center justify-between">
+                  <Separator className="bg-border/60" />
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
                     <div>
-                      <Label>IP Whitelist</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Restrict access to specific IP addresses
+                      <Label className="text-xs font-bold text-foreground">IP Whitelist (Restriksi Alamat IP)</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Batasi akses hanya dari alamat IP kantor atau VPN yang diizinkan.
                       </p>
                     </div>
                     <Switch checked={ipWhitelist} onCheckedChange={setIpWhitelist} />
                   </div>
                   {ipWhitelist && (
-                    <div className="space-y-2">
-                      <Label>Allowed IP Addresses</Label>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-semibold text-foreground">Daftar IP yang Diizinkan</Label>
                       <Textarea
-                        placeholder="Enter IP addresses, one per line&#10;192.168.1.1&#10;10.0.0.0/24"
-                        rows={4}
+                        placeholder="Masukkan IP address, satu per baris&#10;192.168.1.1&#10;10.0.0.0/24"
+                        rows={3}
                         value={allowedIps}
                         onChange={(e) => setAllowedIps(e.target.value)}
+                        className="rounded-xl text-xs font-mono bg-background border-border/80"
                       />
-                      <p className="text-xs text-muted-foreground">
-                        Supports individual IPs and CIDR notation
-                      </p>
                     </div>
                   )}
-                  <Separator />
-                  <div className="flex items-center justify-between">
+                  <Separator className="bg-border/60" />
+                  <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
                     <div>
-                      <Label>Audit Logging</Label>
-                      <p className="text-sm text-muted-foreground">
-                        Log all API requests and content changes
+                      <Label className="text-xs font-bold text-foreground">Audit Trail & Logging</Label>
+                      <p className="text-[11px] text-muted-foreground">
+                        Catat seluruh mutasi konten, perubahan skema, dan akses API secara permanen.
                       </p>
                     </div>
                     <Switch checked={auditLogging} onCheckedChange={setAuditLogging} />
@@ -858,114 +762,104 @@ export default function TenantSettingsPage() {
 
             {isEnterprise && (
               <TabsContent value="infrastructure">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Bring Your Own Infrastructure</CardTitle>
-                    <CardDescription>
-                      Configure dedicated database and storage specifically for this workspace. 
-                      Leave empty to use the shared platform infrastructure.
+                <Card className="border border-border/80 rounded-2xl shadow-xs bg-card overflow-hidden">
+                  <CardHeader className="p-5 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold text-foreground">Infrastruktur Dedicated (BYO)</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground">
+                      Koneksikan database PostgreSQL dan bucket S3 khusus milik perusahaan Anda.
                     </CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-6">
-                  
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium flex items-center gap-2">
-                      <Database className="h-5 w-5" /> Dedicated Database
-                    </h3>
-                    <div className="space-y-2">
-                      <Label htmlFor="dbUrl">PostgreSQL Connection URL</Label>
-                      <Input
-                        id="dbUrl"
-                        type="password"
-                        placeholder="postgresql://user:pass@host:5432/dbname"
-                        value={databaseUrl}
-                        onChange={(e) => setDatabaseUrl(e.target.value)}
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        All content data for this workspace will be queried from and saved to this database.
-                      </p>
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  <div className="space-y-4">
-                    <h3 className="text-lg font-medium flex items-center gap-2">
-                      <Server className="h-5 w-5" /> Custom S3 Storage
-                    </h3>
-                    <div className="grid gap-4 sm:grid-cols-2">
-                      <div className="space-y-2">
-                        <Label htmlFor="s3Endpoint">Endpoint URL</Label>
+                  <CardContent className="p-5 space-y-5">
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                        <Database className="h-4 w-4 text-primary" /> Database PostgreSQL Dedicated
+                      </h3>
+                      <div className="space-y-1.5">
+                        <Label htmlFor="dbUrl" className="text-xs font-semibold text-muted-foreground">Connection String</Label>
                         <Input
-                          id="s3Endpoint"
-                          placeholder="https://s3.eu-central-1.amazonaws.com"
-                          value={storageEndpoint}
-                          onChange={(e) => setStorageEndpoint(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="s3Bucket">Bucket Name</Label>
-                        <Input
-                          id="s3Bucket"
-                          placeholder="my-workspace-bucket"
-                          value={storageBucket}
-                          onChange={(e) => setStorageBucket(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="s3Access">Access Key</Label>
-                        <Input
-                          id="s3Access"
+                          id="dbUrl"
                           type="password"
-                          value={storageAccessKey}
-                          onChange={(e) => setStorageAccessKey(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2">
-                        <Label htmlFor="s3Secret">Secret Key</Label>
-                        <Input
-                          id="s3Secret"
-                          type="password"
-                          value={storageSecretKey}
-                          onChange={(e) => setStorageSecretKey(e.target.value)}
-                        />
-                      </div>
-                      <div className="space-y-2 sm:col-span-2">
-                        <Label htmlFor="s3Public">Public URL / CDN (Optional)</Label>
-                        <Input
-                          id="s3Public"
-                          placeholder="https://cdn.my-workspace.com"
-                          value={storagePublicUrl}
-                          onChange={(e) => setStoragePublicUrl(e.target.value)}
+                          placeholder="postgresql://user:pass@host:5432/dbname"
+                          value={databaseUrl}
+                          onChange={(e) => setDatabaseUrl(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80"
                         />
                       </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
+
+                    <Separator className="bg-border/60" />
+
+                    <div className="space-y-3">
+                      <h3 className="text-xs font-bold uppercase tracking-wider text-foreground flex items-center gap-2">
+                        <Server className="h-4 w-4 text-primary" /> Storage Cloudflare R2 / AWS S3
+                      </h3>
+                      <div className="grid gap-3 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3Endpoint" className="text-xs font-semibold text-muted-foreground">Endpoint URL</Label>
+                          <Input
+                            id="s3Endpoint"
+                            placeholder="https://<account-id>.r2.cloudflarestorage.com"
+                            value={storageEndpoint}
+                            onChange={(e) => setStorageEndpoint(e.target.value)}
+                            className="rounded-xl h-9 text-xs bg-background border-border/80"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3Bucket" className="text-xs font-semibold text-muted-foreground">Bucket Name</Label>
+                          <Input
+                            id="s3Bucket"
+                            placeholder="workspace-bucket"
+                            value={storageBucket}
+                            onChange={(e) => setStorageBucket(e.target.value)}
+                            className="rounded-xl h-9 text-xs bg-background border-border/80"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3Access" className="text-xs font-semibold text-muted-foreground">Access Key ID</Label>
+                          <Input
+                            id="s3Access"
+                            type="password"
+                            value={storageAccessKey}
+                            onChange={(e) => setStorageAccessKey(e.target.value)}
+                            className="rounded-xl h-9 text-xs bg-background border-border/80"
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label htmlFor="s3Secret" className="text-xs font-semibold text-muted-foreground">Secret Access Key</Label>
+                          <Input
+                            id="s3Secret"
+                            type="password"
+                            value={storageSecretKey}
+                            onChange={(e) => setStorageSecretKey(e.target.value)}
+                            className="rounded-xl h-9 text-xs bg-background border-border/80"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             )}
 
             <TabsContent value="danger">
-              <Card className="border-destructive/50">
-                <CardHeader>
-                  <CardTitle className="text-destructive">Danger Zone</CardTitle>
-                  <CardDescription>
-                    Irreversible and destructive actions
+              <Card className="border border-rose-500/30 rounded-2xl shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 border-b border-rose-500/20 bg-rose-500/5">
+                  <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400">Danger Zone (Aksi Kritis)</CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Tindakan permanen yang berpengaruh langsung terhadap seluruh data dan aset workspace.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
+                <CardContent className="p-5 space-y-4">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border/80 rounded-xl gap-3">
                     <div>
-                      <h4 className="font-medium">Export Data</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Download all your content and settings
+                      <h4 className="text-xs font-bold text-foreground">Ekspor & Impor Data Workspace</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Cadangkan atau pulihkan seluruh struktur skema dan entri konten dalam format JSON.
                       </p>
                     </div>
                     <div className="flex gap-2">
-                      <Button variant="outline" onClick={handleExport}>
-                        <Download className="mr-2 h-4 w-4" />
-                        Export
+                      <Button variant="outline" onClick={handleExport} className="rounded-xl text-xs font-bold h-9">
+                        <Download className="mr-1.5 h-3.5 w-3.5" /> Ekspor JSON
                       </Button>
                       <div className="relative">
                         <Input 
@@ -975,179 +869,83 @@ export default function TenantSettingsPage() {
                           className="absolute inset-0 opacity-0 cursor-pointer"
                           disabled={saving}
                         />
-                        <Button variant="outline" disabled={saving}>
-                          <Download className="mr-2 h-4 w-4 rotate-180" />
-                          Import
+                        <Button variant="outline" disabled={saving} className="rounded-xl text-xs font-bold h-9">
+                          <Download className="mr-1.5 h-3.5 w-3.5 rotate-180" /> Impor
                         </Button>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center justify-between p-4 border rounded-lg">
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-border/80 rounded-xl gap-3">
                     <div>
-                      <h4 className="font-medium">Delete All Content</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Delete all content entries but keep content types
+                      <h4 className="text-xs font-bold text-foreground">Kosongkan Seluruh Entri Konten</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Hapus semua entri konten yang tersimpan namun tetap mempertahankan struktur skema.
                       </p>
                     </div>
-                    <Button variant="destructive" onClick={handleDeleteContent}>
-                      <Trash2 className="mr-2 h-4 w-4" />
-                      Delete Content
+                    <Button variant="destructive" onClick={handleDeleteContent} className="rounded-xl text-xs font-bold h-9">
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Hapus Konten
                     </Button>
                   </div>
-                  <div className="flex items-center justify-between p-4 border border-destructive rounded-lg bg-destructive/5">
+
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 border border-rose-500/30 rounded-xl bg-rose-500/5 gap-3">
                     <div>
-                      <h4 className="font-medium text-destructive">Delete Workspace</h4>
-                      <p className="text-sm text-muted-foreground">
-                        Permanently delete this workspace and all data
+                      <h4 className="text-xs font-bold text-rose-600 dark:text-rose-400">Hapus Workspace Permanen</h4>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Menghapus permanen seluruh workspace, skema, entri, media, dan API keys.
                       </p>
                     </div>
-                    <div className="flex flex-col gap-2 items-end">
-                      <Button 
-                        variant="destructive" 
-                        disabled={plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')}
-                        onClick={() => {
-                          if (plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')) {
-                            alert("Cannot delete an active paid workspace. Please cancel your subscription or contact support first.");
-                            return;
-                          }
-                          setShowDeleteDialog(true)
-                        }}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Delete Workspace
-                      </Button>
-                      {plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing') && (
-                        <p className="text-[11px] text-destructive italic font-medium">
-                          Active paid workspaces cannot be deleted.
-                        </p>
-                      )}
-                    </div>
+                    <Button 
+                      variant="destructive" 
+                      disabled={plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')}
+                      onClick={() => {
+                        if (plan !== 'free' && plan !== 'trial' && (subscriptionStatus === 'active' || subscriptionStatus === 'trialing')) {
+                          toast.error("Tidak dapat menghapus workspace berbayar yang masih aktif.");
+                          return;
+                        }
+                        setShowDeleteDialog(true)
+                      }}
+                      className="rounded-xl text-xs font-bold h-9"
+                    >
+                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Hapus Workspace
+                    </Button>
                   </div>
                 </CardContent>
               </Card>
             </TabsContent>
           </Tabs>
 
-          {/* Save Button */}
-          <div className="flex justify-end mt-6">
-            <Button onClick={handleSave} disabled={saving}>
-              {saving ? (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              ) : (
-                <Save className="mr-2 h-4 w-4" />
-              )}
-              Save Changes
-            </Button>
-          </div>
-
           {/* Delete Workspace Dialog */}
           <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <DialogContent>
+            <DialogContent className="rounded-2xl border-border/80 bg-card sm:max-w-[420px]">
               <DialogHeader>
-                <DialogTitle>Delete Workspace</DialogTitle>
-                <DialogDescription>
-                  This action cannot be undone. This will permanently delete your workspace
-                  and all associated data including content, media, and settings.
+                <DialogTitle className="text-base font-bold text-rose-600 dark:text-rose-400">Hapus Workspace Permanen</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Aksi ini tidak dapat dibatalkan. Seluruh data konten, media, dan konfigurasi akan dihapus secara permanen.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="p-4 bg-destructive/10 rounded-lg">
-                  <p className="text-sm text-destructive font-medium">
-                    Type <code className="bg-muted px-1 rounded">{tenantSlug}</code> to confirm
-                  </p>
+              <div className="space-y-3 py-2">
+                <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs text-destructive font-medium">
+                  Ketik <code className="bg-background px-1.5 py-0.5 rounded font-mono font-bold">{tenantSlug}</code> untuk konfirmasi:
                 </div>
                 <Input
-                  placeholder={`Type ${tenantSlug} to confirm`}
+                  placeholder={`Ketik ${tenantSlug}`}
                   value={deleteConfirm}
                   onChange={(e) => setDeleteConfirm(e.target.value)}
+                  className="rounded-xl h-9 text-xs bg-background border-border/80"
                 />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
-                  Cancel
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-xl text-xs font-bold h-9">
+                  Batal
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDeleteWorkspace}
                   disabled={deleteConfirm !== tenantSlug}
+                  className="rounded-xl text-xs font-bold h-9"
                 >
-                  Delete Workspace
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* Confirm Generate API Key Dialog */}
-          <Dialog open={showConfirmGenerateKey} onOpenChange={setShowConfirmGenerateKey}>
-            <DialogContent className="sm:max-w-[420px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Key className="h-5 w-5 text-orange-500" />
-                  Generate New API Key?
-                </DialogTitle>
-                <DialogDescription>
-                  Are you sure you want to generate a new API key for this workspace?
-                  The old key will no longer work for new integrations if you rely on it.
-                </DialogDescription>
-              </DialogHeader>
-              <DialogFooter className="gap-2 sm:gap-0 mt-4">
-                <Button variant="outline" onClick={() => setShowConfirmGenerateKey(false)} disabled={generatingApiKey}>
-                  Cancel
-                </Button>
-                <Button onClick={executeGenerateApiKey} disabled={generatingApiKey} className="bg-orange-500 hover:bg-orange-600 text-white font-medium">
-                  {generatingApiKey ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Key className="h-4 w-4 mr-2" />}
-                  Generate Key
-                </Button>
-              </DialogFooter>
-            </DialogContent>
-          </Dialog>
-
-          {/* API Key Generated Success Modal */}
-          <Dialog open={!!newGeneratedKeyModal} onOpenChange={(open) => !open && setNewGeneratedKeyModal(null)}>
-            <DialogContent className="sm:max-w-[520px]">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400">
-                  <Check className="h-5 w-5 rounded-full bg-emerald-500/10 p-0.5" />
-                  API Key Generated Successfully
-                </DialogTitle>
-                <DialogDescription>
-                  Your new workspace API key has been created. Use this key for API authentication and environment variables.
-                </DialogDescription>
-              </DialogHeader>
-              <div className="space-y-4 py-4">
-                <div className="space-y-2">
-                  <Label>New Workspace API Key</Label>
-                  <div className="flex gap-2">
-                    <Input
-                      type="text"
-                      value={newGeneratedKeyModal || ""}
-                      readOnly
-                      className="font-mono text-sm bg-muted pr-10 border-orange-500/30"
-                    />
-                    <Button
-                      variant="secondary"
-                      onClick={() => {
-                        if (newGeneratedKeyModal) {
-                          navigator.clipboard.writeText(newGeneratedKeyModal)
-                          setCopiedModalKey(true)
-                          toast.success("API Key copied to clipboard!")
-                          setTimeout(() => setCopiedModalKey(false), 2000)
-                        }
-                      }}
-                      className="gap-1.5 whitespace-nowrap"
-                    >
-                      {copiedModalKey ? <Check className="h-4 w-4 text-emerald-500" /> : <Copy className="h-4 w-4" />}
-                      {copiedModalKey ? "Copied!" : "Copy Key"}
-                    </Button>
-                  </div>
-                </div>
-                <div className="p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-700 dark:text-amber-300">
-                  ⚠️ Make sure to copy your new API Key. Integrations using older keys will need to be updated.
-                </div>
-              </div>
-              <DialogFooter>
-                <Button onClick={() => setNewGeneratedKeyModal(null)} className="w-full sm:w-auto">
-                  Done & Close
+                  Hapus Permanen
                 </Button>
               </DialogFooter>
             </DialogContent>

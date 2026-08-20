@@ -17,6 +17,7 @@ const createTenantSchema = z.object({
   plan: z.string().optional(),
   aiPrompt: z.string().max(2000).optional(),
   websiteType: z.string().optional(),
+  addons: z.array(z.string()).optional(),
 })
 
 async function generateUniqueSlug(): Promise<string> {
@@ -46,7 +47,7 @@ export async function createTenantAction(data: any) {
       return { error: "Invalid data provided." }
     }
 
-    const { name, description, plan = "free", aiPrompt, websiteType } = validation.data
+    const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = validation.data
 
     const userPlan = await getUserPlanConfig(session.user.id)
     const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
@@ -88,6 +89,21 @@ export async function createTenantAction(data: any) {
           currentPeriodEnd: plan === "free" ? null : trialEndDate,
         }
       })
+
+      if (addons && addons.length > 0) {
+        for (const addonId of addons) {
+          await tx.subscription.create({
+            data: {
+              userId: session.user.id,
+              tenantId: newTenant.id,
+              plan: addonId,
+              status: "active",
+              currentPeriodStart: new Date(),
+              currentPeriodEnd: null,
+            }
+          })
+        }
+      }
 
       return newTenant
     })
@@ -246,25 +262,6 @@ export async function checkWorkspaceAccessAction(targetTenantId?: string) {
 
     // Case 1: Checking access to /dashboard (workspace manager selection page)
     if (!targetTenantId) {
-      if (session.user.role === "admin" || session.user.role === "super_admin") {
-        return { allowed: true, redirectUrl: "/dashboard" }
-      }
-      
-      const { getGlobalWorkspaceId } = await import("@/lib/settings")
-      const globalId = await getGlobalWorkspaceId()
-      
-      // Count non-global workspaces where user is a member
-      const userTenantsCount = await db.tenantMember.count({
-        where: { 
-          userId: session.user.id,
-          tenant: { slug: { notIn: [globalId, "sacms-global", "sacms"] }, id: { not: globalId } }
-        }
-      })
-
-      if (userTenantsCount <= 1) {
-        return { allowed: false, error: "You only have 1 workspace and cannot switch to the workspace manager." }
-      }
-      
       return { allowed: true, redirectUrl: "/dashboard" }
     }
 

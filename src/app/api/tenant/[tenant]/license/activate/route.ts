@@ -5,11 +5,11 @@
 import { NextRequest, NextResponse } from "next/server"
 import { parseLicenseKey, isLicenseExpired, upsertLicenseCache } from "@/lib/license"
 
-import { db } from "@/lib/database"
+export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+export async function POST(request: NextRequest, context: { params: Promise<{ tenant: string }> }) {
   try {
-    const { tenant: tenantId } = await params
+    const { tenant: tenantId } = await context.params
     const body = await request.json()
     const { licenseKey } = body
 

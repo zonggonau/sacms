@@ -12,7 +12,7 @@ export async function GET(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    if (session.user.role !== "super_admin") {
+    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -21,12 +21,27 @@ export async function GET(request: NextRequest) {
     const limit = parseInt(searchParams.get("limit") || "24")
     const search = searchParams.get("search")
 
-    const where: any = {}
+    // Filter to only include Account Owners and Super Admins
+    // Exclude users who are only workspace staff/members under another owner
+    const ownerFilter = {
+      OR: [
+        { role: { in: ["super_admin", "owner", "admin"] } },
+        { tenants: { some: { role: "owner" } } },
+        { tenants: { none: {} } },
+      ],
+    }
+
+    const where: any = {
+      AND: [ownerFilter],
+    }
+
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { email: { contains: search, mode: "insensitive" } }
-      ]
+      where.AND.push({
+        OR: [
+          { name: { contains: search, mode: "insensitive" } },
+          { email: { contains: search, mode: "insensitive" } },
+        ],
+      })
     }
 
     const [total, users] = await Promise.all([
@@ -38,13 +53,14 @@ export async function GET(request: NextRequest) {
           email: true,
           name: true,
           role: true,
+          plan: true,
           image: true,
           emailVerified: true,
           createdAt: true,
           tenants: {
             include: {
               tenant: {
-                select: { id: true, name: true, slug: true },
+                select: { id: true, name: true, slug: true, plan: true },
               },
             },
           },
@@ -52,7 +68,7 @@ export async function GET(request: NextRequest) {
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * limit,
         take: limit,
-      })
+      }),
     ])
 
     return NextResponse.json({
@@ -77,7 +93,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    if (session.user.role !== "super_admin") {
+    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -97,7 +113,7 @@ export async function POST(request: NextRequest) {
       data: {
         email,
         name: name || null,
-        role: role || "user",
+        role: role || "owner",
         password: hashedPassword,
         emailVerified: requireVerification ? null : new Date(),
       },

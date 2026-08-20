@@ -77,7 +77,7 @@ export async function GET(
               },
             })
 
-            // Update user or tenant plan
+            // Update user or tenant plan / top-ups
             const sub = transaction.subscription
             if (sub) {
               if (orderId.startsWith("SUB") && sub.tenantId) {
@@ -90,6 +90,48 @@ export async function GET(
                   where: { id: sub.userId },
                   data: { plan: sub.plan },
                 })
+              } else if (orderId.startsWith("AIC") && sub.userId) {
+                const raw = (transaction.rawResponse as any) || {}
+                let creditsToAdd = Number(raw.credits || 0)
+                const addonId = raw.addonId || ""
+
+                if (!creditsToAdd) {
+                  const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+                  const pack = AI_CREDIT_PACKS.find(p => p.id === addonId)
+                  if (pack) creditsToAdd = pack.credits
+                }
+
+                if (creditsToAdd > 0) {
+                  await db.user.update({
+                    where: { id: sub.userId },
+                    data: { aiCreditsExtra: { increment: creditsToAdd } },
+                  })
+                }
+              } else if (orderId.startsWith("ADD") && sub.tenantId) {
+                const raw = (transaction.rawResponse as any) || {}
+                const addonId = raw.addonId || ""
+
+                if (addonId === "topup_ai_500k") {
+                  await db.tenant.update({
+                    where: { id: sub.tenantId },
+                    data: { aiCreditsExtra: { increment: 500000 } } as any
+                  })
+                } else if (addonId === "topup_ai_2m") {
+                  await db.tenant.update({
+                    where: { id: sub.tenantId },
+                    data: { aiCreditsExtra: { increment: 2000000 } } as any
+                  })
+                } else if (addonId === "topup_storage_10gb") {
+                  await db.tenant.update({
+                    where: { id: sub.tenantId },
+                    data: { storageExtraBytes: { increment: BigInt(10 * 1024 * 1024 * 1024) } } as any
+                  })
+                } else if (addonId === "topup_api_500k") {
+                  await db.tenant.update({
+                    where: { id: sub.tenantId },
+                    data: { apiCallsExtra: { increment: 500000 } } as any
+                  })
+                }
               }
             }
           }

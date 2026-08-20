@@ -33,7 +33,10 @@ export interface AIConfig {
   temperature?: number
   responseFormat?: "text" | "json_object"
   tenantId?: string
+  userId?: string
+  creditsCost?: number
   action?: string
+  overrideModel?: string
 }
 
 /**
@@ -46,11 +49,22 @@ export async function safeGenerateContent(
 ): Promise<{ text: string; model: string; usage: any }> {
   const finalConfig: AIConfig = typeof config === 'number' ? { maxTokens: config } : config
   let lastError: any = null
+
+  // 1. Check user-level AI credits if userId is present
+  if (finalConfig.userId) {
+    const { enforceUserAiCredits } = await import("./plan-enforcement")
+    const creditCheck = await enforceUserAiCredits(finalConfig.userId, finalConfig.creditsCost || 1)
+    if (!creditCheck.allowed) {
+      const error: any = new Error(creditCheck.message)
+      error.status = 429
+      throw error
+    }
+  }
   
   if (finalConfig.tenantId) {
     const tenant = await db.tenant.findUnique({
       where: { id: finalConfig.tenantId },
-      select: { aiTokensUsed: true }
+      select: { aiTokensUsed: true, aiCreditsExtra: true } as any
     })
     
     if (tenant) {
@@ -61,16 +75,22 @@ export async function safeGenerateContent(
       if (override && override.maxAiTokens !== null) {
         maxAiTokens = override.maxAiTokens
       }
+
+      // Add one-time top-up extra tokens
+      const extraTokens = Number((tenant as any).aiCreditsExtra || 0)
+      maxAiTokens += extraTokens
       
-      if (maxAiTokens > 0 && tenant.aiTokensUsed >= maxAiTokens) {
-        const error: any = new Error(`AI Quota Exceeded. Used: ${tenant.aiTokensUsed}, Limit: ${maxAiTokens}`)
+      const usedTokens = Number((tenant as any).aiTokensUsed || 0)
+      if (maxAiTokens > 0 && usedTokens >= maxAiTokens) {
+        const error: any = new Error(`AI Quota Exceeded. Used: ${usedTokens}, Limit: ${maxAiTokens}`)
         error.status = 429
         throw error
       }
     }
   }
   
-  for (const modelName of MODELS_TO_TRY) {
+  const modelsToTry = finalConfig.overrideModel ? [finalConfig.overrideModel] : MODELS_TO_TRY
+  for (const modelName of modelsToTry) {
     let attempts = 0
     const maxAttempts = 3
     
@@ -103,7 +123,17 @@ export async function safeGenerateContent(
             totalTokens: completion.usage?.total_tokens ?? 0,
           }
           
-          if (finalConfig.tenantId && usage.totalTokens > 0) {
+          // Deduct user credits if userId is set
+          if (finalConfig.userId) {
+            const { deductUserAiCredits } = await import("./plan-enforcement")
+            deductUserAiCredits(
+              finalConfig.userId,
+              finalConfig.creditsCost || 1,
+              finalConfig.action || "generate",
+              finalConfig.tenantId,
+              modelName
+            ).catch(err => console.error("[User AI Credit Deduction Error]", err))
+          } else if (finalConfig.tenantId && usage.totalTokens > 0) {
             // Update ledger and tenant in background to avoid blocking response
             db.$transaction([
               db.tenant.update({
@@ -133,12 +163,13 @@ export async function safeGenerateContent(
         attempts++
         
         const status = error.status || (error.message?.includes("429") ? 429 : error.message?.includes("503") ? 503 : 500)
+        const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.message?.includes("fetch failed") || error.message?.includes("Connection error")
         console.warn(`[AI] Model ${modelName} failed (Status: ${status}):`, error.message)
         
-        if (status === 429 || status === 503) {
+        if (status === 429 || status === 503 || status === 500 || isConnectionError) {
           // Exponential backoff: 2s, 4s, 8s...
           const waitTime = Math.pow(2, attempts) * 1000
-          console.log(`[AI] Rate limited or server error. Retrying in ${waitTime}ms...`)
+          console.log(`[AI] Rate limited or connection error. Retrying in ${waitTime}ms...`)
           await sleep(waitTime)
           continue // Try again with same model
         }

@@ -20,12 +20,15 @@ model User {
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
   plan                String         @default("free")
+  aiCreditsUsed       Int            @default(0)
+  aiCreditsExtra      Int            @default(0)
   masterDatabaseUrl   String?
   masterStorageConfig Json?
   accounts            Account[]
-  sessions      Session[]
-  subscriptions Subscription[]
-  tenants       TenantMember[]
+  sessions            Session[]
+  subscriptions       Subscription[]
+  tenants             TenantMember[]
+  aiQuotaLedgers      AiQuotaLedger[]
 
   @@map("users")
 }
@@ -90,6 +93,9 @@ model Tenant {
   primaryColor           String?
   storageConfig          Json?
   aiTokensUsed           Int                           @default(0)
+  aiCreditsExtra         Int                           @default(0)
+  storageExtraBytes      BigInt                        @default(0)
+  apiCallsExtra          Int                           @default(0)
   apiKeys                ApiKey[]
   apiRequests            ApiRequest[]
   apiTokens              ApiToken[]
@@ -110,7 +116,11 @@ model Tenant {
   webhooks               Webhook[]
   aiQuotaLedgers         AiQuotaLedger[]
   customDomains          CustomDomain[]
-
+  oauthClients           OAuthClient[]
+  oauthCodes             OAuthCode[]
+  oauthTokens            OAuthToken[]
+  roles                  TenantRole[]
+  sites                  Site[]
 
   @@map("tenants")
 }
@@ -141,6 +151,7 @@ model CustomPlanOverride {
   maxLocales        Int?
   maxApiCalls       Int?
   maxAiTokens       Int?
+  maxAiCredits      Int?
   maxCustomDomains  Int?
   note              String?
   createdBy         String?
@@ -202,15 +213,19 @@ model SchemaField {
 
 model AiQuotaLedger {
   id          String   @id @default(cuid())
-  tenantId    String
+  tenantId    String?
+  userId      String?
   action      String
   tokens      Int      @default(0)
+  credits     Int      @default(0)
   words       Int      @default(0)
   model       String?
   createdAt   DateTime @default(now())
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  tenant      Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([tenantId])
+  @@index([userId])
   @@map("ai_quota_ledgers")
 }
 
@@ -722,3 +737,199 @@ model CustomDomain {
   @@index([tenantId])
   @@map("custom_domains")
 }
+
+// ─── OAuth 2.0 ─────────────────────────────────────────────────────────
+
+model OAuthClient {
+  id           String   @id @default(cuid())
+  clientId     String   @unique
+  clientSecret String?
+  name         String
+  redirectUris String[]
+  tenantId     String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  tenant       Tenant?  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("oauth_clients")
+}
+
+model OAuthCode {
+  id                  String   @id @default(cuid())
+  code                String   @unique
+  clientId            String
+  tenantId            String
+  redirectUri         String?
+  codeChallenge       String?
+  codeChallengeMethod String?
+  expiresAt           DateTime
+  createdAt           DateTime @default(now())
+  tenant              Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("oauth_codes")
+}
+
+model OAuthToken {
+  id           String   @id @default(cuid())
+  accessToken  String   @unique
+  refreshToken String?  @unique
+  clientId     String
+  tenantId     String
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId])
+  @@map("oauth_tokens")
+}
+
+// ─── RBAC & Permissions ──────────────────────────────────────────────
+
+model Permission {
+  id              String           @id @default(cuid())
+  name            String           @unique
+  displayName     String
+  description     String?
+  category        String
+  createdAt       DateTime         @default(now())
+  rolePermissions RolePermission[]
+
+  @@map("permissions")
+}
+
+model RolePermission {
+  id           String     @id @default(cuid())
+  roleId       String
+  permissionId String
+  granted      Boolean    @default(true)
+  tenantId     String?
+  createdAt    DateTime   @default(now())
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId, tenantId])
+  @@index([tenantId])
+  @@index([roleId])
+  @@map("role_permissions")
+}
+
+model TenantRole {
+  id          String   @id @default(cuid())
+  tenantId    String
+  name        String
+  slug        String
+  description String?
+  isSystem    Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("tenant_roles")
+}
+
+// ─── AI Website Builder (v0 + SaCMS MCP) ─────────────────────────────
+
+model Site {
+  id            String             @id @default(cuid())
+  tenantId      String
+  name          String
+  slug          String
+  description   String?
+  subdomain     String?            @unique
+  customDomain  String?
+  status        String             @default("draft") // draft | building | published | archived
+  framework     String             @default("nextjs")
+  previewUrl    String?
+  thumbnailUrl  String?
+  activeVersion Int                @default(1)
+  settings      Json?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+  tenant        Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  files         SiteFile[]
+  versions      SiteVersion[]
+  deployments   SiteDeployment[]
+  conversations SiteConversation[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("sites")
+}
+
+model SiteFile {
+  id        String   @id @default(cuid())
+  siteId    String
+  path      String
+  content   String   @db.Text
+  isBinary  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  site      Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, path])
+  @@index([siteId])
+  @@map("site_files")
+}
+
+model SiteVersion {
+  id          String   @id @default(cuid())
+  siteId      String
+  version     Int
+  name        String?
+  description String?
+  snapshot    Json
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@unique([siteId, version])
+  @@index([siteId])
+  @@map("site_versions")
+}
+
+model SiteDeployment {
+  id          String   @id @default(cuid())
+  siteId      String
+  url         String
+  status      String   @default("building") // queued | building | ready | error
+  logs        String?  @db.Text
+  deployedBy  String?
+  createdAt   DateTime @default(now())
+  site        Site     @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId])
+  @@map("site_deployments")
+}
+
+model SiteConversation {
+  id        String        @id @default(cuid())
+  siteId    String
+  title     String        @default("New Conversation")
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+  site      Site          @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  messages  SiteMessage[]
+
+  @@index([siteId])
+  @@map("site_conversations")
+}
+
+model SiteMessage {
+  id             String           @id @default(cuid())
+  conversationId String
+  role           String           // user | assistant | system
+  content        String           @db.Text
+  thought        String?          @db.Text
+  toolCalls      Json?
+  schemaDiff     Json?
+  creditsUsed    Int              @default(0)
+  status         String           @default("completed") // streaming | completed | failed
+  createdAt      DateTime         @default(now())
+  conversation   SiteConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@map("site_messages")
+}
+

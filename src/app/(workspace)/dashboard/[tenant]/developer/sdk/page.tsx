@@ -21,7 +21,7 @@ export default function SdkDocsPage() {
 
   const [copiedBlock, setCopiedBlock] = useState<string | null>(null)
   const [origin, setOrigin] = useState("https://your-domain.com")
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
 
   useEffect(() => {
     if (typeof window !== "undefined") {

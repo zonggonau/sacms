@@ -55,7 +55,7 @@ export function usePresence(roomName: string) {
     return () => {
       socket.disconnect()
     }
-  }, [session, roomName])
+  }, [session?.user?.id, session?.user?.name, session?.user?.email, roomName])
 
   return { users }
 }

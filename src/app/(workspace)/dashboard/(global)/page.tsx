@@ -12,12 +12,19 @@ export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) redirect("/login")
 
+  const isSuperAdmin = session.user.role === "super_admin"
+
+  const whereClause: any = {
+    slug: { notIn: SYSTEM_SLUGS },
+    id: { not: globalId }
+  }
+
+  if (!isSuperAdmin) {
+    whereClause.members = { some: { userId: session.user.id } }
+  }
+
   const tenants = await db.tenant.findMany({
-    where: {
-      members: { some: { userId: session.user.id } },
-      slug: { notIn: SYSTEM_SLUGS },
-      id: { not: globalId }
-    },
+    where: whereClause,
     include: {
       members: {
         where: { userId: session.user.id },
@@ -43,13 +50,10 @@ export default async function WorkspaceSelectionPage() {
   }
 
 
-  // Redirect non-admin users to their first workspace
-  if (session.user.role !== "admin" && session.user.role !== "super_admin") {
-    if (tenants.length > 0) {
-      redirect(`/dashboard/${tenants[0].id}`)
-    } else {
-      redirect("/")
-    }
+  // If non-admin / non-owner team member belongs to a single workspace, forward directly to its CMS studio
+  const isOwnerOrAdmin = session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "owner" || tenants.some(t => t.members[0]?.role === "owner" || t.members[0]?.role === "admin")
+  if (!isOwnerOrAdmin && tenants.length === 1) {
+    redirect(`/dashboard/${tenants[0].slug || tenants[0].id}/cms`)
   }
 
   const formattedTenants = tenants.map(t => {
@@ -68,7 +72,7 @@ export default async function WorkspaceSelectionPage() {
       status: (isGlobalEnterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
-      role: (session.user.role === "super_admin" && t.id === globalId) ? 'owner' : (t.members[0]?.role || 'member'),
+      role: t.members[0]?.role || (isSuperAdmin ? 'owner' : 'member'),
       daysRemaining,
       subscriptionStatus: sub?.status || null,
       expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null
@@ -82,12 +86,7 @@ export default async function WorkspaceSelectionPage() {
   let usage: any = null
 
   try {
-    console.log("[Dashboard] Fetching platform data...");
-    const [templates, wPlans, aPlans] = await Promise.all([
-      db.contentEntry.findMany({
-        where: { contentType: { slug: "templates" }, status: "PUBLISHED" },
-        select: { id: true, data: true }
-      }),
+    const [wPlans, aPlans] = await Promise.all([
       db.contentEntry.findMany({
         where: { contentType: { slug: "sacms-workspace-pricing" }, status: "PUBLISHED" },
         select: { id: true, data: true }
@@ -98,39 +97,43 @@ export default async function WorkspaceSelectionPage() {
       })
     ])
 
-    console.log(`[Dashboard] Found: ${templates.length} templates, ${wPlans.length} plans, ${aPlans.length} addons.`);
-
     const cleanPrice = (val: any) => {
       if (typeof val === 'number') return val
       if (typeof val === 'string') return parseInt(val.replace(/[^\d]/g, ''), 10) || 0
       return 0
     }
 
-    dbTemplates = templates.map(t => {
-      const d = typeof t.data === 'string' ? JSON.parse(t.data) : t.data
-      return { ...d, id: t.id }
-    })
     workspacePlans = wPlans.map(t => {
-      const d = t.data as any
+      const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
       const price = cleanPrice(d.price)
       const yearlyPrice = d.yearly_price !== undefined ? cleanPrice(d.yearly_price) : price * 10
 
       return {
         id: d.plan_slug || t.id,
-        name: d.name || "Standard Plan",
+        plan_slug: d.plan_slug || "free",
+        name: d.name || "Workspace Plan",
         desc: d.description || d.desc || "",
         priceAmount: price,
         yearlyPrice: yearlyPrice,
-        features: d.features || []
+        max_content_types: d.max_content_types,
+        max_content_entries: d.max_content_entries,
+        max_storage: d.max_storage,
+        max_team_members: d.max_team_members,
+        max_locales: d.max_locales,
+        max_api_calls: d.max_api_calls,
+        features: Array.isArray(d.features) ? d.features : []
       }
     }).sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
 
     addonPlans = aPlans.map(t => {
-      const d = t.data as any
+      const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
       return {
-        id: t.id || d.name?.toLowerCase().replace(/ /g, '-'),
+        id: d.addon_slug || t.id,
         name: d.name || "Add-on",
-        priceAmount: cleanPrice(d.price)
+        desc: d.description || "",
+        priceLabel: d.price_label || "",
+        priceAmount: cleanPrice(d.price),
+        icon: d.icon || "Sparkles"
       }
     })
 

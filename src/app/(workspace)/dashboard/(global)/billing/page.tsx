@@ -18,42 +18,44 @@ export default async function BillingPage() {
   const { isEnterpriseTenant } = await import("@/lib/license")
   const enterprise = await isEnterpriseTenant(session.user.id)
 
-  // 1. Fetch Workspace Plans directly from DB
+  // 1. Fetch Account Plans directly from DB
   let accountPlans: any[] = []
   try {
-    const contentType = await db.contentType.findFirst({
-      where: { slug: "sacms-account-pricing", tenantId: null }
+    const entries = await db.contentEntry.findMany({
+      where: { contentType: { slug: "sacms-account-pricing" }, status: "PUBLISHED" },
+      orderBy: { createdAt: "asc" }
     })
 
-    if (contentType) {
-      const { getGlobalWorkspaceId } = await import("@/lib/settings")
-      const globalTenantId = await getGlobalWorkspaceId();
-      const entries = await db.contentEntry.findMany({
-        where: { contentTypeId: contentType.id, tenantId: globalTenantId, status: "PUBLISHED" },
-        orderBy: { createdAt: "asc" }
-      })
-
+    if (entries.length > 0) {
       accountPlans = entries.map(t => {
         const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
         
-        let price = 0
+        let monthlyPrice = 0
         if (typeof d.price === 'string') {
-          price = parseInt(d.price.replace(/[^\d]/g, ''), 10) || 0
+          monthlyPrice = parseInt(d.price.replace(/[^\d]/g, ''), 10) || 0
         } else {
-          price = Number(d.price) || 0
+          monthlyPrice = Number(d.price) || 0
         }
 
-        let displayPrice = "Rp 0"
-        const yearlyPrice = d.yearly_price !== undefined ? d.yearly_price : price * 10
-        
-        if (price > 0) {
-          if (yearlyPrice >= 1000000) {
-            displayPrice = `Rp ${(yearlyPrice / 1000000).toLocaleString('id-ID')}M`
+        let yearlyPrice = 0
+        if (d.yearly_price !== undefined) {
+          if (typeof d.yearly_price === 'string') {
+            yearlyPrice = parseInt(d.yearly_price.replace(/[^\d]/g, ''), 10) || 0
           } else {
-            displayPrice = `Rp ${(yearlyPrice / 1000).toLocaleString('id-ID')}k`
+            yearlyPrice = Number(d.yearly_price) || 0
           }
-        } else if (price === 0 && d.cta_text?.toLowerCase().includes('contact')) {
-          displayPrice = "Custom"
+        } else {
+          yearlyPrice = monthlyPrice * 10
+        }
+
+        let displayYearlyPrice = "Rp 0"
+        if (yearlyPrice > 0) {
+          displayYearlyPrice = `Rp ${(yearlyPrice).toLocaleString('id-ID')}`
+        }
+
+        let displayMonthlyPrice = "Rp 0"
+        if (monthlyPrice > 0) {
+          displayMonthlyPrice = `Rp ${(monthlyPrice).toLocaleString('id-ID')}`
         }
 
         const features = Array.isArray(d.features) 
@@ -63,38 +65,100 @@ export default async function BillingPage() {
         return {
           id: d.plan_slug || t.id,
           name: d.name || "Unnamed Plan",
+          description: d.description || "",
           workspaces: d.max_workspaces || "Unlimited",
-          price: displayPrice,
-          priceAmount: price,
-          features: features
+          price: displayYearlyPrice,
+          priceAmount: yearlyPrice,
+          monthlyPrice: displayMonthlyPrice,
+          monthlyPriceAmount: monthlyPrice,
+          yearlyPrice: displayYearlyPrice,
+          yearlyPriceAmount: yearlyPrice,
+          features: features,
+          popular: d.is_popular === true || d.plan_slug === "pro"
         }
       })
-
-      // Add a fallback Free plan if not present
-      if (!accountPlans.some(p => p.id === "free" || p.priceAmount === 0)) {
-         accountPlans.unshift({
-           id: "free",
-           name: "Free Forever",
-           workspaces: "1",
-           price: "Rp 0",
-           priceAmount: 0,
-           features: ["1 Workspace", "Basic Support"]
-         })
-      }
-      
-      accountPlans.sort((a, b) => (a.priceAmount || 0) - (b.priceAmount || 0))
     }
+
+    // Default canonical account plans if none in database
+    const canonicalPlans = [
+      {
+        id: "free",
+        name: "Akun Gratis",
+        description: "Mulai tanpa biaya.",
+        workspaces: "1",
+        price: "Rp 0",
+        priceAmount: 0,
+        monthlyPrice: "Rp 0",
+        monthlyPriceAmount: 0,
+        yearlyPrice: "Rp 0",
+        yearlyPriceAmount: 0,
+        features: ["1 Workspace", "Dukungan Komunitas"],
+        popular: false
+      },
+      {
+        id: "starter",
+        name: "Akun Pemula",
+        description: "Untuk pengembang mandiri dan UMKM.",
+        workspaces: "3",
+        price: "Rp 990.000",
+        priceAmount: 990000,
+        monthlyPrice: "Rp 99.000",
+        monthlyPriceAmount: 99000,
+        yearlyPrice: "Rp 990.000",
+        yearlyPriceAmount: 990000,
+        features: ["3 Workspace", "Dukungan Email"],
+        popular: false
+      },
+      {
+        id: "pro",
+        name: "Akun Profesional",
+        description: "Untuk tim bertumbuh dan produk digital.",
+        workspaces: "10",
+        price: "Rp 2.990.000",
+        priceAmount: 2990000,
+        monthlyPrice: "Rp 299.000",
+        monthlyPriceAmount: 299000,
+        yearlyPrice: "Rp 2.990.000",
+        yearlyPriceAmount: 2990000,
+        features: ["10 Workspace", "Dukungan Prioritas"],
+        popular: true
+      },
+      {
+        id: "enterprise",
+        name: "Akun Pemerintah",
+        description: "Untuk instansi dan kapasitas skala besar.",
+        workspaces: "20",
+        price: "Rp 9.990.000",
+        priceAmount: 9990000,
+        monthlyPrice: "Rp 999.000",
+        monthlyPriceAmount: 999000,
+        yearlyPrice: "Rp 9.990.000",
+        yearlyPriceAmount: 9990000,
+        features: ["20 Workspace", "Dukungan Dedikasi", "SLA Khusus"],
+        popular: false
+      }
+    ]
+
+    if (accountPlans.length < 3) {
+      accountPlans = canonicalPlans
+    }
+
+    const PLAN_ORDER: Record<string, number> = { free: 1, starter: 2, pro: 3, enterprise: 4 }
+    accountPlans.sort((a, b) => (PLAN_ORDER[a.id] || 99) - (PLAN_ORDER[b.id] || 99) || (a.priceAmount || 0) - (b.priceAmount || 0))
   } catch (err) {
-    console.error("Failed to fetch workspace plans:", err)
+    console.error("Failed to fetch account plans:", err)
   }
 
-  // 2. Fetch Active Workspaces Count & Usage
+  // 2. Fetch Active Workspaces Count & Usage & AI Credits
   let activeWorkspacesCount = 0
   let usage: any = null
+  let aiCreditUsage: any = null
   try {
-    // Get usage from enforcement
-    const { enforceUserPlanLimit } = await import("@/lib/plan-enforcement")
-    const workspaceEnforcement = await enforceUserPlanLimit(session.user.id, "workspaces")
+    const { enforceUserPlanLimit, enforceUserAiCredits } = await import("@/lib/plan-enforcement")
+    const [workspaceEnforcement, aiCreditEnforcement] = await Promise.all([
+      enforceUserPlanLimit(session.user.id, "workspaces"),
+      enforceUserAiCredits(session.user.id, 0)
+    ])
     
     usage = {
       current: workspaceEnforcement.current,
@@ -103,16 +167,15 @@ export default async function BillingPage() {
       plan: workspaceEnforcement.planSlug
     }
     activeWorkspacesCount = workspaceEnforcement.current
+
+    aiCreditUsage = {
+      used: aiCreditEnforcement.current,
+      total: aiCreditEnforcement.max,
+      remaining: aiCreditEnforcement.remaining,
+      isUnlimited: aiCreditEnforcement.max >= 900000
+    }
   } catch (err) {
-    console.error("Failed to fetch workspace usage:", err)
-    // Fallback if the enforcement module fails
-    const tenants = await db.tenant.count({
-      where: {
-        members: { some: { userId: session.user.id } },
-        id: { notIn: [await (await import("@/lib/settings")).getGlobalWorkspaceId()] }
-      }
-    })
-    activeWorkspacesCount = tenants
+    console.error("Failed to fetch usage:", err)
   }
 
   // 3. Fetch Transaction History
@@ -141,11 +204,40 @@ export default async function BillingPage() {
     console.error("Failed to fetch master infra:", err)
   }
 
+  // 5. Fetch AI Credit Packs from SaCMS Global
+  const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+  let aiCreditPacks = AI_CREDIT_PACKS
+  try {
+    const aiEntries = await db.contentEntry.findMany({
+      where: { contentType: { slug: "sacms-ai-pricing" }, status: "PUBLISHED" },
+      orderBy: { createdAt: "asc" }
+    })
+    if (aiEntries.length > 0) {
+      aiCreditPacks = aiEntries.map(t => {
+        const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
+        return {
+          id: d.pack_slug || t.id,
+          name: d.name || "AI Credits",
+          credits: Number(d.credits) || 0,
+          price_usd: Number(d.price_usd) || 0,
+          price_idr: Number(d.price) || 0,
+          badge: d.badge || undefined,
+          description: d.description || "",
+          features: Array.isArray(d.features) ? d.features : []
+        }
+      }).sort((a, b) => a.price_idr - b.price_idr)
+    }
+  } catch (err) {
+    console.error("Failed to fetch AI credit packs from DB:", err)
+  }
+
   return (
     <BillingClient 
       initialAccountPlans={accountPlans}
+      initialAiCreditPacks={aiCreditPacks}
       initialActiveWorkspacesCount={activeWorkspacesCount}
       initialUsage={usage}
+      initialAiCreditUsage={aiCreditUsage}
       initialTransactions={transactions}
       isEnterpriseMode={enterprise}
       initialMasterInfra={masterInfra}

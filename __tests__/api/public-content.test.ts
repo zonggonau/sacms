@@ -53,7 +53,7 @@ describe("Public Content API GET Endpoint", () => {
     expect(response.status).toBe(401)
     
     const body = await response.json()
-    expect(body.error).toContain("Missing or invalid authorization header")
+    expect(body.error).toContain("Missing or invalid authorization")
   })
 
   it("should return 401 if API token is invalid", async () => {

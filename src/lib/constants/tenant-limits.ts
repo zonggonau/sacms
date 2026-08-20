@@ -15,10 +15,84 @@ export interface PlanConfig {
 export interface UserPlanConfig {
   plan_slug: string
   max_workspaces: number
+  max_ai_credits?: number
+  price_usd?: number
 }
 
+export interface AiCreditPack {
+  id: string
+  name: string
+  credits: number
+  price_usd: number
+  price_idr: number
+  badge?: string
+  description: string
+  features: string[]
+}
+
+export const AI_CREDIT_PACKS: AiCreditPack[] = [
+  {
+    id: "ai_pack_starter",
+    name: "Starter Credits",
+    credits: 300,
+    price_usd: 9,
+    price_idr: 149000,
+    description: "Top-up 300 AI credits untuk Next.js frontend builds.",
+    features: [
+      "300 AI Credits",
+      "Iterasi Desain AI Cepat",
+      "Deploy 1-Klik Vercel",
+      "Digunakan di Semua Workspace"
+    ]
+  },
+  {
+    id: "ai_pack_pro",
+    name: "Pro Credits",
+    credits: 1500,
+    price_usd: 29,
+    price_idr: 449000,
+    badge: "Most Popular",
+    description: "Top-up 1.500 AI credits dengan antrean prioritas.",
+    features: [
+      "1.500 AI Credits",
+      "Iterasi Desain AI Cepat",
+      "Deploy 1-Klik Vercel",
+      "Digunakan di Semua Workspace"
+    ]
+  },
+  {
+    id: "ai_pack_business",
+    name: "Business Credits",
+    credits: 5000,
+    price_usd: 79,
+    price_idr: 1199000,
+    description: "Top-up 5.000 AI credits untuk tim produksi.",
+    features: [
+      "5.000 AI Credits",
+      "Iterasi Desain AI Cepat",
+      "Deploy 1-Klik Vercel",
+      "Digunakan di Semua Workspace"
+    ]
+  },
+  {
+    id: "ai_pack_agency",
+    name: "Agency Credits",
+    credits: 15000,
+    price_usd: 149,
+    price_idr: 2299000,
+    badge: "Best Value",
+    description: "Top-up 15.000 AI credits untuk agensi dengan volume tinggi.",
+    features: [
+      "15.000 AI Credits",
+      "Iterasi Desain AI Cepat",
+      "Deploy 1-Klik Vercel",
+      "Digunakan di Semua Workspace"
+    ]
+  }
+]
+
 export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
-  // === Canonical plan names (from planpacket spec) ===
+  // === Canonical plan names ===
   free: {
     plan_slug: "free",
     max_workspaces: 1,
@@ -40,7 +114,7 @@ export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
     max_workspaces: 9999, // Overridable via CustomPlanOverride
   },
 
-  // === Backward-compat aliases (legacy plan names → canonical) ===
+  // === Backward-compat aliases ===
   standard: {   // legacy → starter
     plan_slug: "starter",
     max_workspaces: 3,
@@ -57,7 +131,7 @@ export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
     plan_slug: "pro",
     max_workspaces: 10,
   },
-  business: {   // legacy → enterprise
+  business: {     // Indonesian alias → enterprise
     plan_slug: "enterprise",
     max_workspaces: 20,
   },
@@ -74,7 +148,7 @@ export const USER_PLAN_LIMITS: Record<string, UserPlanConfig> = {
 export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   free: {
     plan_slug: "free",
-    max_content_types: 3,
+    max_content_types: 999999, // Unlimited schemas for all plans
     max_content_entries: 500,
     max_team_members: 1,
     max_api_calls: 1000,
@@ -82,12 +156,12 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_locales: 1,
     audit_log_retention: 0,
     support_level: "Community",
-    max_ai_tokens: 10000,
+    max_ai_tokens: 50000,
     max_custom_domains: 0,
   },
   starter: {
     plan_slug: "starter",
-    max_content_types: 5,
+    max_content_types: 999999, // Unlimited schemas for all plans
     max_content_entries: 5000,
     max_team_members: 3,
     max_api_calls: 10000,
@@ -100,7 +174,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   },
   pro: {
     plan_slug: "pro",
-    max_content_types: 10,
+    max_content_types: 999999, // Unlimited schemas for all plans
     max_content_entries: 10000,
     max_team_members: 10,
     max_api_calls: 100000,
@@ -113,7 +187,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   },
   enterprise: {
     plan_slug: "enterprise",
-    max_content_types: 20,
+    max_content_types: 999999, // Unlimited schemas for all plans
     max_content_entries: 20000,
     max_team_members: 20,
     max_api_calls: 1000000,
@@ -126,7 +200,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
   },
   custom: {
     plan_slug: "custom",
-    max_content_types: 9999,
+    max_content_types: 999999,
     max_content_entries: 9999999,
     max_team_members: 9999,
     max_api_calls: 99999999,

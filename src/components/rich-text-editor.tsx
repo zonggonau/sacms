@@ -136,7 +136,7 @@ export function RichTextEditor({
       provider.destroy()
       ydoc.destroy()
     }
-  }, [documentId, fieldSlug, tenantSlug, session])
+  }, [documentId, fieldSlug, tenantSlug, session?.user?.id, session?.user?.name])
 
   const handleGenerateAI = async () => {
     if (!aiPrompt.trim() || !tenantSlug) return

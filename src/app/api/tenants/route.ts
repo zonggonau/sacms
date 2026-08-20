@@ -37,11 +37,19 @@ export async function GET() {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
+    const isSuperAdmin = session.user.role === "super_admin"
+
+    const whereClause: any = {
+      slug: { notIn: [globalTenantId, "sacms-global", "sacms"] },
+      id: { not: globalTenantId },
+    }
+
+    if (!isSuperAdmin) {
+      whereClause.members = { some: { userId: session.user.id } }
+    }
+
     const tenants = await db.tenant.findMany({
-      where: {
-        members: { some: { userId: session.user.id } },
-        slug: { notIn: [globalTenantId] },
-      },
+      where: whereClause,
       include: {
         members: {
           where: { userId: session.user.id },
@@ -72,7 +80,7 @@ export async function GET() {
         status: t.status,
         plan: t.plan,
         createdAt: t.createdAt,
-        role: t.members[0]?.role || 'member',
+        role: t.members[0]?.role || (isSuperAdmin ? 'owner' : 'member'),
         daysRemaining,
         expiresAt: sub?.currentPeriodEnd || null,
         subscriptionStatus: sub?.status || null
@@ -163,14 +171,19 @@ export async function POST(request: NextRequest) {
         }
       })
 
-      // Create default API key
-      const newApiKey = `sacms_${randomBytes(24).toString("hex")}`
-      await tx.apiKey.create({
+      // Create default API key using ApiToken (new model)
+      const plainToken = `cf_${randomBytes(32).toString("hex")}`
+      const { createHash } = await import("crypto")
+      const hashedToken = createHash("sha256").update(plainToken).digest("hex")
+
+      await tx.apiToken.create({
         data: {
           tenantId: newTenant.id,
           name: "Default API Key",
-          key: newApiKey,
-          permissions: { fullAccess: true },
+          token: hashedToken,
+          type: "full-access",
+          permissions: ["read", "write", "delete"],
+          createdBy: session.user.id,
         }
       })
 

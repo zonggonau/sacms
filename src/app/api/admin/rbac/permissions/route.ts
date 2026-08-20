@@ -12,7 +12,7 @@ export async function GET() {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    if (session.user.role !== "super_admin") {
+    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
@@ -23,29 +23,28 @@ export async function GET() {
     // If no permissions exist yet, seed the defaults
     if (permissions.length === 0) {
       const defaults = [
-        // Content permissions
-        { name: "content.read", displayName: "Read Content", description: "View content entries", category: "content" },
-        { name: "content.create", displayName: "Create Content", description: "Create new content entries", category: "content" },
-        { name: "content.update", displayName: "Update Content", description: "Edit existing content entries", category: "content" },
-        { name: "content.delete", displayName: "Delete Content", description: "Delete content entries", category: "content" },
-        { name: "content.publish", displayName: "Publish Content", description: "Publish and unpublish content", category: "content" },
-        // Media permissions
-        { name: "media.read", displayName: "View Media", description: "Access the media library", category: "media" },
-        { name: "media.upload", displayName: "Upload Media", description: "Upload new media files", category: "media" },
-        { name: "media.delete", displayName: "Delete Media", description: "Remove media files", category: "media" },
-        // Users permissions
-        { name: "users.read", displayName: "View Users", description: "View team members", category: "users" },
-        { name: "users.manage", displayName: "Manage Users", description: "Invite and remove members", category: "users" },
-        // Settings permissions
-        { name: "settings.read", displayName: "View Settings", description: "View tenant settings", category: "settings" },
-        { name: "settings.update", displayName: "Update Settings", description: "Modify tenant settings", category: "settings" },
-        // API permissions
-        { name: "api.tokens.read", displayName: "View API Tokens", description: "View API tokens", category: "api" },
-        { name: "api.tokens.manage", displayName: "Manage API Tokens", description: "Create and delete API tokens", category: "api" },
-        { name: "api.webhooks.manage", displayName: "Manage Webhooks", description: "Create and configure webhooks", category: "api" },
+        // Workspaces & Tenants
+        { name: "workspaces.create", displayName: "Create Workspaces", description: "Ability to create new workspace instances", category: "workspaces" },
+        { name: "workspaces.manage_own", displayName: "Manage Own Workspaces", description: "Configure settings for owned workspaces", category: "workspaces" },
+        { name: "workspaces.manage_all", displayName: "Manage All Workspaces", description: "Super Admin full control over all platform workspaces", category: "workspaces" },
+        { name: "workspaces.delete", displayName: "Delete Workspaces", description: "Ability to delete workspaces", category: "workspaces" },
+        // Platform Accounts & Users
+        { name: "users.manage_platform", displayName: "Manage Platform Accounts", description: "Manage platform users, roles, and plan overrides", category: "users" },
+        { name: "users.view_platform", displayName: "View Platform Directory", description: "Browse platform account owners and admins", category: "users" },
+        { name: "users.invite_members", displayName: "Invite Workspace Members", description: "Invite team members into owned workspaces", category: "users" },
+        // Billing & Subscriptions
+        { name: "billing.manage_own", displayName: "Manage Own Subscriptions", description: "Subscribe to plans, manage payment methods, view invoices", category: "billing" },
+        { name: "billing.manage_all", displayName: "Manage Platform Billing", description: "Super Admin control over pricing plans and global billing", category: "billing" },
+        // Platform System & Infrastructure
+        { name: "settings.manage_platform", displayName: "Manage Platform Settings", description: "Configure global system settings and defaults", category: "system" },
+        { name: "infrastructure.manage", displayName: "Manage Infrastructure", description: "Configure multi-tenant databases and storage buckets", category: "system" },
+        { name: "audit_logs.view_all", displayName: "View Platform Audit Logs", description: "Super Admin access to platform-wide audit trail", category: "system" },
+        // Security & Licenses
+        { name: "licenses.manage", displayName: "Manage Enterprise Licenses", description: "Generate, inspect, and revoke Enterprise RSA licenses", category: "security" },
+        { name: "rbac.manage", displayName: "Manage Platform RBAC", description: "Configure platform role permissions", category: "security" },
       ]
 
-      await db.permission.createMany({ data: defaults })
+      await db.permission.createMany({ data: defaults, skipDuplicates: true })
       const seeded = await db.permission.findMany({
         orderBy: [{ category: "asc" }, { name: "asc" }],
       })
@@ -66,7 +65,7 @@ export async function POST(request: NextRequest) {
     if (!session?.user) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
-    if (session.user.role !== "super_admin") {
+    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 

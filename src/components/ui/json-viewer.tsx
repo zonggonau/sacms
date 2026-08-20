@@ -45,7 +45,7 @@ export function JsonViewer({ data, className }: JsonViewerProps) {
   return (
     <pre
       className={cn(
-        "p-4 rounded-xl bg-muted/30 font-mono text-[11px] overflow-auto max-h-[500px] border leading-relaxed",
+        "p-4 rounded-none bg-muted/40 dark:bg-zinc-950 font-mono text-[11px] overflow-auto max-h-[500px] border border-border text-foreground leading-relaxed",
         className
       )}
       dangerouslySetInnerHTML={{ __html: formatJson(data) }}

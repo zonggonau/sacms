@@ -26,7 +26,7 @@ export const WORKFLOW_TRANSITIONS: Record<WorkflowStatus, WorkflowStatus[]> = {
 }
 
 const TRANSITION_ROLES: Partial<Record<string, string[]>> = {
-  "DRAFT->IN_REVIEW": ["owner", "admin", "editor", "member"],
+  "DRAFT->IN_REVIEW": ["owner", "admin", "editor", "author", "contributor", "member"],
   "DRAFT->PUBLISHED": ["owner", "admin"],
   "DRAFT->SCHEDULED": ["owner", "admin"],
   "IN_REVIEW->APPROVED": ["owner", "admin"],
@@ -38,7 +38,7 @@ const TRANSITION_ROLES: Partial<Record<string, string[]>> = {
   "PUBLISHED->ARCHIVED": ["owner", "admin"],
   "PUBLISHED->DRAFT": ["owner", "admin"],
   "ARCHIVED->DRAFT": ["owner", "admin", "editor"],
-  "REJECTED->DRAFT": ["owner", "admin", "editor", "member"],
+  "REJECTED->DRAFT": ["owner", "admin", "editor", "author", "contributor", "member"],
 }
 
 export const TRANSITION_PERMISSIONS: Record<string, string> = {

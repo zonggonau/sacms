@@ -139,6 +139,7 @@ export const authOptions: NextAuthOptions = {
           name: user.name,
           role: user.role,
           plan: user.plan,
+          image: user.image,
           tenants: user.tenants
             .filter((t) => t.tenant.id !== globalTenantId && t.tenant.slug !== globalTenantId)
             .map((t) => ({
@@ -158,10 +159,17 @@ export const authOptions: NextAuthOptions = {
         if (session?.name) {
           token.name = session.name
         }
-        // Securely refetch plan from DB on update trigger
+        if (session?.image !== undefined) {
+          token.picture = session.image
+        }
+        // Securely refetch plan & profile from DB on update trigger
         if (token.id) {
-          const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { plan: true } })
-          if (dbUser) token.plan = dbUser.plan
+          const dbUser = await db.user.findUnique({ where: { id: token.id as string }, select: { plan: true, name: true, image: true } })
+          if (dbUser) {
+            token.plan = dbUser.plan
+            if (dbUser.name) token.name = dbUser.name
+            token.picture = dbUser.image
+          }
         }
       }
       
@@ -170,6 +178,7 @@ export const authOptions: NextAuthOptions = {
         token.role = user.role || "user"
         token.plan = user.plan || "free"
         token.tenants = user.tenants || []
+        token.picture = user.image
       }
       // For OAuth sign-in, load user data from DB
       if (account && account.type !== "credentials" && token.id) {
@@ -185,6 +194,7 @@ export const authOptions: NextAuthOptions = {
           
           token.role = dbUser.role
           token.plan = dbUser.plan
+          token.picture = dbUser.image
           token.tenants = dbUser.tenants
             .filter((t) => t.tenant.id !== globalTenantId && t.tenant.slug !== globalTenantId)
             .map((t) => ({
@@ -204,6 +214,7 @@ export const authOptions: NextAuthOptions = {
         session.user.role = token.role as string
         session.user.plan = token.plan as string
         if (token.name) session.user.name = token.name
+        session.user.image = (token.picture as string) || null
         session.user.tenants = token.tenants as Array<{
           id: string
           slug: string

@@ -15,6 +15,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { MediaLibraryDialog } from "@/components/media-library-dialog"
 import { toast } from "@/hooks/use-toast"
+import { cn } from "@/lib/utils"
 import Link from "next/link"
 
 interface MediaFile {
@@ -77,53 +78,66 @@ export default function CMSMediaPage() {
   }
 
   useEffect(() => {
-    if (session?.user) {
+    if (session?.user?.id) {
       fetchMedia()
       fetchStorageUsage()
     }
-  }, [tenantSlug, session])
+  }, [tenantSlug, session?.user?.id])
 
   const filteredMedia = useMemo(() => {
     return media.filter(m => m.name.toLowerCase().includes(search.toLowerCase()))
   }, [media, search])
 
   const formatFileSize = (bytes: number) => {
-    if (bytes === 0) return "0 Bytes"
+    if (bytes === 0) return "0 B"
     const k = 1024
-    const sizes = ["Bytes", "KB", "MB", "GB", "TB"]
+    const sizes = ["B", "KB", "MB", "GB", "TB"]
     const i = Math.floor(Math.log(bytes) / Math.log(k))
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i]
   }
 
-  if (loading) return <div className="min-h-[80vh] flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
+  if (loading) {
+    return (
+      <div className="min-h-[80vh] flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 lg:p-10 space-y-6">
-      <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div>
-            <h1 className="text-3xl font-extrabold tracking-tight">Media Library</h1>
-            <p className="text-muted-foreground">Manage your images and documents</p>
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-black tracking-tight text-foreground">Media CMS</h1>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+              {media.length} File
+            </Badge>
           </div>
-          <Button 
-            className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors shadow-none"
-            onClick={() => setIsLibraryOpen(true)}
-            disabled={isLimitReached}
-          >
-            <Upload className="mr-2 h-4 w-4" /> Upload Media
-          </Button>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Kelola dan pilih aset gambar, video, dan dokumen untuk konten CMS Anda.
+          </p>
         </div>
+        <Button 
+          className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-9 px-4 font-bold text-xs shadow-xs"
+          onClick={() => setIsLibraryOpen(true)}
+          disabled={isLimitReached}
+        >
+          <Upload className="mr-1.5 h-3.5 w-3.5" /> Unggah Media
+        </Button>
       </div>
 
-      <Card className="border border-border shadow-none bg-card rounded-none">
-        <CardContent className="p-4">
+      {/* Search Input */}
+      <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+        <CardContent className="p-3">
           <div className="relative max-w-md">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
-              placeholder="Search media..." 
+              placeholder="Cari file media..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="pl-10 bg-muted/30 border border-border h-11 rounded-none focus-visible:ring-orange-500"
+              className="pl-9 bg-background border-border/80 h-9 rounded-xl text-xs"
             />
           </div>
         </CardContent>
@@ -131,51 +145,64 @@ export default function CMSMediaPage() {
 
       {/* Limit Warning Banner */}
       {isLimitReached && (
-        <div className="bg-destructive/10 border border-destructive/20 rounded-none p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 animate-in fade-in slide-in-from-top-4">
-          <div className="flex items-start sm:items-center gap-4">
-            <div className="p-2 bg-destructive/25 text-destructive rounded-none shrink-0">
-              <AlertTriangle className="h-5 w-5" />
+        <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div className="flex items-start sm:items-center gap-3">
+            <div className="p-2 bg-destructive/20 text-destructive rounded-xl shrink-0">
+              <AlertTriangle className="h-4 w-4" />
             </div>
-            <div className="space-y-1">
-              <h4 className="font-bold text-sm text-destructive">Workspace Storage Full</h4>
-              <p className="text-xs text-muted-foreground">
-                You have used <span className="font-semibold text-foreground">{formatFileSize(currentStorage)}</span> of your {" "}
-                <span className="font-semibold text-foreground">{formatFileSize(storageLimit * 1024 * 1024)}</span> storage limit.
-                Delete existing assets or upgrade your plan to upload more files.
+            <div className="space-y-0.5">
+              <h4 className="font-bold text-xs text-destructive">Penyimpanan Media Penuh</h4>
+              <p className="text-[11px] text-muted-foreground">
+                Anda telah memakai <span className="font-bold text-foreground">{formatFileSize(currentStorage)}</span> dari kuota {" "}
+                <span className="font-bold text-foreground">{formatFileSize(storageLimit * 1024 * 1024)}</span>. Hapus aset lama atau upgrade paket Anda.
               </p>
             </div>
           </div>
-          <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/5 text-destructive text-xs h-8 shrink-0 rounded-none" asChild>
-            <Link href={`/dashboard/${tenantSlug}/subscriptions`}>Upgrade Plan</Link>
+          <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/10 text-destructive text-xs h-8 rounded-xl shrink-0 font-bold" asChild>
+            <Link href={`/dashboard/${tenantSlug}/subscriptions`}>Upgrade Paket</Link>
           </Button>
         </div>
       )}
 
       {filteredMedia.length === 0 ? (
-        <div className="py-24 text-center text-muted-foreground bg-card rounded-none border border-dashed border-border">
-          <ImageIcon className="h-12 w-12 mx-auto mb-4 opacity-10 text-orange-500" />
-          <p className="font-bold">No media assets found.</p>
-          <Button variant="link" className="text-orange-500 hover:text-orange-600 font-bold" onClick={() => !isLimitReached && setIsLibraryOpen(true)} disabled={isLimitReached}>Upload your first asset</Button>
-        </div>
+        <Card className="border border-dashed border-border/80 py-20 bg-card rounded-2xl shadow-xs text-center">
+          <CardContent className="flex flex-col items-center justify-center">
+            <div className="w-12 h-12 rounded-2xl bg-muted/60 flex items-center justify-center mb-3 border border-border/60">
+              <ImageIcon className="h-6 w-6 text-muted-foreground/40" />
+            </div>
+            <h3 className="text-sm font-bold text-foreground">Tidak Ada Aset Media</h3>
+            <p className="text-xs text-muted-foreground max-w-xs mt-1 mb-4">
+              {search ? "Tidak ditemukan file yang cocok dengan pencarian." : "Belum ada file media yang diunggah ke workspace ini."}
+            </p>
+            <Button 
+              variant="outline" 
+              className="rounded-xl text-xs font-bold h-9 shadow-xs" 
+              onClick={() => !isLimitReached && setIsLibraryOpen(true)} 
+              disabled={isLimitReached}
+            >
+              <Upload className="mr-1.5 h-3.5 w-3.5" /> Unggah Media Pertama
+            </Button>
+          </CardContent>
+        </Card>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
           {filteredMedia.map((item) => (
-            <Card key={item.id} className="group overflow-hidden border border-border shadow-none transition-all rounded-none bg-card">
-              <div className="aspect-square relative bg-muted flex items-center justify-center overflow-hidden border-b border-border">
-                {item.mimeType.startsWith('image/') ? (
-                  <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+            <Card key={item.id} className="group overflow-hidden border border-border/80 shadow-xs hover:shadow-md transition-all rounded-2xl bg-card">
+              <div className="aspect-square relative bg-muted flex items-center justify-center overflow-hidden border-b border-border/60">
+                {item.mimeType?.startsWith('image/') ? (
+                  <img src={item.url} alt={item.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                 ) : (
-                  <FileText className="h-10 w-10 text-muted-foreground opacity-20" />
+                  <FileText className="h-8 w-8 text-muted-foreground/40" />
                 )}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                  <Button size="icon" variant="secondary" className="h-8 w-8 rounded-none border border-border" onClick={() => window.open(item.url, '_blank')}>
-                    <ExternalLink className="h-4 w-4" />
+                <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                  <Button size="icon" variant="secondary" className="h-7 w-7 rounded-full shadow-xs" onClick={() => window.open(item.url, '_blank')}>
+                    <ExternalLink className="h-3.5 w-3.5" />
                   </Button>
                 </div>
               </div>
-              <div className="p-3">
-                <p className="text-[10px] font-bold truncate text-foreground">{item.name}</p>
-                <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest mt-1">{(item.size / 1024).toFixed(1)} KB</p>
+              <div className="p-2.5">
+                <p className="text-xs font-bold truncate text-foreground">{item.name}</p>
+                <p className="text-[10px] text-muted-foreground font-mono mt-0.5">{formatFileSize(item.size)}</p>
               </div>
             </Card>
           ))}

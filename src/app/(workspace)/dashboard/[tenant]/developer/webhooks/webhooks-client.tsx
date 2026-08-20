@@ -54,13 +54,13 @@ interface WebhooksClientProps {
 }
 
 const availableEvents = [
-  { id: "content.created", label: "Content Created", description: "When a new entry is created" },
-  { id: "content.updated", label: "Content Updated", description: "When an entry is updated" },
-  { id: "content.deleted", label: "Content Deleted", description: "When an entry is deleted" },
-  { id: "content.published", label: "Content Published", description: "When an entry is published" },
-  { id: "content.unpublished", label: "Content Unpublished", description: "When an entry is unpublished" },
-  { id: "media.uploaded", label: "Media Uploaded", description: "When a file is uploaded" },
-  { id: "media.deleted", label: "Media Deleted", description: "When a file is deleted" },
+  { id: "content.created", label: "Konten Dibuat (content.created)", description: "Dipicu saat entri konten baru tersimpan" },
+  { id: "content.updated", label: "Konten Diperbarui (content.updated)", description: "Dipicu saat data entri konten diedit" },
+  { id: "content.deleted", label: "Konten Dihapus (content.deleted)", description: "Dipicu saat entri konten dihapus" },
+  { id: "content.published", label: "Konten Dipublikasikan (content.published)", description: "Dipicu saat status entri beralih ke PUBLISHED" },
+  { id: "content.unpublished", label: "Konten Di-unpublish (content.unpublished)", description: "Dipicu saat status publikasi ditarik kembali" },
+  { id: "media.uploaded", label: "Media Diunggah (media.uploaded)", description: "Dipicu saat berkas media baru berhasil disimpan" },
+  { id: "media.deleted", label: "Media Dihapus (media.deleted)", description: "Dipicu saat berkas media dihapus dari storage" },
 ]
 
 export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientProps) {
@@ -113,9 +113,30 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
     )
   }
 
+  const handleToggleEnabled = (webhook: WebhookType) => {
+    startTransition(async () => {
+      const res = await updateWebhookAction(tenantSlug, webhook.id, {
+        enabled: !webhook.enabled,
+      })
+      if (res.error) {
+        toast({ variant: "destructive", title: "Error", description: res.error })
+      } else {
+        toast({ title: "Berhasil", description: `Webhook ${!webhook.enabled ? "diaktifkan" : "dinonaktifkan"}` })
+      }
+    })
+  }
+
+  const handleViewLogs = (webhook: WebhookType) => {
+    setLogsDialog({
+      open: true,
+      webhookId: webhook.id,
+      webhookName: webhook.name,
+    })
+  }
+
   const handleSave = () => {
     if (!name || !url || selectedEvents.length === 0) {
-      toast({ variant: "destructive", title: "Validation Error", description: "Please fill in all required fields" })
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Lengkapi semua field wajib dan pilih minimal satu event" })
       return
     }
 
@@ -139,7 +160,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
       if (res.error) {
         toast({ variant: "destructive", title: "Error", description: res.error })
       } else {
-        toast({ title: "Success", description: `Webhook ${editingWebhook ? "updated" : "created"} successfully` })
+        toast({ title: "Berhasil", description: `Webhook berhasil ${editingWebhook ? "diperbarui" : "dibuat"}` })
         setShowDialog(false)
         resetForm()
       }
@@ -147,131 +168,109 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
   }
 
   const handleDelete = (webhookId: string) => {
-    if (!confirm("Are you sure you want to delete this webhook?")) return
+    if (!confirm("Apakah Anda yakin ingin menghapus webhook ini?")) return
 
     startTransition(async () => {
       const res = await deleteWebhookAction(tenantSlug, webhookId)
       if (res.error) {
         toast({ variant: "destructive", title: "Error", description: res.error })
       } else {
-        toast({ title: "Success", description: "Webhook deleted successfully" })
+        toast({ title: "Berhasil", description: "Webhook berhasil dihapus" })
       }
-    })
-  }
-
-  const handleToggleEnabled = (webhook: WebhookType) => {
-    startTransition(async () => {
-      const res = await updateWebhookAction(tenantSlug, webhook.id, { enabled: !webhook.enabled })
-      if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
-      }
-    })
-  }
-
-  const handleViewLogs = (webhook: WebhookType) => {
-    setLogsDialog({
-      open: true,
-      webhookId: webhook.id,
-      webhookName: webhook.name,
     })
   }
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 min-h-screen flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+          
           {/* Header */}
-          <div className="flex items-center justify-between mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold">Webhooks</h1>
-              <p className="text-muted-foreground">
-                Configure webhooks for real-time event notifications
+              <h1 className="text-2xl font-black tracking-tight text-foreground">Webhooks & Integrasi Event</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Konfigurasi notifikasi HTTP POST otomatis ke URL eksternal saat konten atau media berubah.
               </p>
             </div>
-            <Button onClick={handleOpenCreate}>
-              <Plus className="mr-2 h-4 w-4" />
-              Create Webhook
+            <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
+              <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Webhook
             </Button>
           </div>
 
-          {/* Info Card */}
-          <Card className="mb-6 bg-muted/50">
-            <CardContent className="flex items-start gap-4 p-4">
-              <Webhook className="h-8 w-8 text-muted-foreground flex-shrink-0" />
-              <div>
-                <h3 className="font-semibold">What are Webhooks?</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Webhooks allow external services to be notified when events happen in your workspace.
-                  When an event occurs, we&apos;ll send a POST request to your configured URL with the event data.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Info Banner */}
+          <div className="p-4 bg-muted/30 border border-border/80 rounded-2xl flex items-center gap-3 text-xs text-muted-foreground shadow-xs">
+            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 text-primary">
+              <Webhook className="h-4 w-4" />
+            </div>
+            <p className="leading-relaxed">
+              Webhook mengirimkan payload JSON real-time ke endpoint server Anda (seperti Vercel, CI/CD deploy hooks, atau Slack) saat ada mutasi data di workspace ini.
+            </p>
+          </div>
 
           {/* Webhooks Table */}
           {initialWebhooks.length === 0 ? (
-            <Card>
-              <CardContent className="py-12 text-center">
-                <Zap className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                <p className="text-muted-foreground mb-2">No webhooks configured</p>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Create a webhook to receive real-time notifications
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card">
+              <CardContent className="py-16 text-center">
+                <Zap className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
+                <p className="font-bold text-xs text-foreground mb-0.5">Belum ada webhook yang dikonfigurasi</p>
+                <p className="text-[11px] text-muted-foreground mb-4">
+                  Buat webhook untuk mulai menerima notifikasi event secara instan.
                 </p>
-                <Button onClick={handleOpenCreate}>
-                  <Plus className="mr-2 h-4 w-4" />
-                  Create Webhook
+                <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Webhook
                 </Button>
               </CardContent>
             </Card>
           ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Webhooks</CardTitle>
-                <CardDescription>
-                  Manage webhooks for event notifications
+            <Card className="border border-border/80 shadow-xs rounded-2xl bg-card overflow-hidden">
+              <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
+                <CardTitle className="text-sm font-bold text-foreground">Daftar Webhook Terdaftar</CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Pantau status pengiriman webhook dan riwayat pengiriman event.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="p-0">
                 <Table>
-                  <TableHeader>
+                  <TableHeader className="bg-muted/30 border-b border-border/60">
                     <TableRow>
-                      <TableHead>Name</TableHead>
-                      <TableHead>URL</TableHead>
-                      <TableHead>Events</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Last Triggered</TableHead>
-                      <TableHead className="w-[100px]"></TableHead>
+                      <TableHead className="font-bold text-xs pl-6">Nama Webhook</TableHead>
+                      <TableHead className="font-bold text-xs">URL Endpoint</TableHead>
+                      <TableHead className="font-bold text-xs">Event Terpilih</TableHead>
+                      <TableHead className="font-bold text-xs">Status</TableHead>
+                      <TableHead className="font-bold text-xs">Terakhir Dipicu</TableHead>
+                      <TableHead className="text-right pr-6 font-bold text-xs"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {initialWebhooks.map((webhook) => (
-                      <TableRow key={webhook.id}>
-                        <TableCell>
+                      <TableRow key={webhook.id} className="hover:bg-muted/40 border-b border-border/60 transition-colors">
+                        <TableCell className="pl-6 py-3">
                           <div className="flex items-center gap-2">
-                            <Webhook className="h-4 w-4 text-muted-foreground" />
-                            <span className="font-medium">{webhook.name}</span>
+                            <Webhook className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-bold text-foreground">{webhook.name}</span>
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <code className="text-xs bg-muted px-2 py-1 rounded">
+                        <TableCell className="py-3">
+                          <code className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-foreground">
                             {webhook.url.length > 40 ? webhook.url.substring(0, 40) + "..." : webhook.url}
                           </code>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3">
                           <div className="flex flex-wrap gap-1">
                             {webhook.events.slice(0, 2).map((event) => (
-                              <Badge key={event} variant="outline" className="text-xs">
+                              <Badge key={event} variant="outline" className="text-[10px] font-bold rounded-md bg-muted/30">
                                 {event.split(".")[1]}
                               </Badge>
                             ))}
                             {webhook.events.length > 2 && (
-                              <Badge variant="outline" className="text-xs">
+                              <Badge variant="outline" className="text-[10px] font-bold rounded-md bg-muted/30">
                                 +{webhook.events.length - 2}
                               </Badge>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-3">
                           <div className="flex items-center gap-2">
                             <Switch
                               checked={webhook.enabled}
@@ -279,41 +278,44 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                               disabled={isPending}
                             />
                             {webhook.failureCount > 0 && (
-                              <Badge variant="destructive" className="text-xs">
-                                {webhook.failureCount} failures
+                              <Badge variant="destructive" className="text-[10px] font-bold px-1.5 py-0.5 rounded-md">
+                                {webhook.failureCount} gagal
                               </Badge>
                             )}
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground">
+                        <TableCell className="text-xs text-muted-foreground py-3">
                           {webhook.lastTriggeredAt
-                            ? new Date(webhook.lastTriggeredAt).toLocaleString()
-                            : "Never"}
+                            ? new Date(webhook.lastTriggeredAt).toLocaleString("id-ID")
+                            : "Belum Pernah"}
                         </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
+                        <TableCell className="text-right pr-6 py-3">
+                          <div className="flex items-center justify-end gap-1">
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
                               onClick={() => handleViewLogs(webhook)}
-                              title="View logs"
+                              title="Lihat Log Pengiriman"
                             >
-                              <History className="h-4 w-4" />
+                              <History className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
                               onClick={() => handleOpenEdit(webhook)}
                             >
-                              <Edit className="h-4 w-4" />
+                              <Edit className="h-3.5 w-3.5" />
                             </Button>
                             <Button
                               variant="ghost"
                               size="icon"
+                              className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
                               onClick={() => handleDelete(webhook.id)}
                               disabled={isPending}
                             >
-                              <Trash2 className="h-4 w-4 text-destructive" />
+                              <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </TableCell>
@@ -327,74 +329,74 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
 
           {/* Create/Edit Dialog */}
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+            <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto rounded-2xl border-border/80 bg-card">
               <DialogHeader>
-                <DialogTitle>
-                  {editingWebhook ? "Edit Webhook" : "Create Webhook"}
+                <DialogTitle className="text-base font-bold text-foreground">
+                  {editingWebhook ? "Edit Webhook" : "Buat Webhook Baru"}
                 </DialogTitle>
-                <DialogDescription>
-                  Configure webhook settings and event subscriptions
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Konfigurasikan URL penerima dan event yang ingin dilanggan.
                 </DialogDescription>
               </DialogHeader>
-              <div className="space-y-6 py-4">
+              <div className="space-y-4 py-2">
                 {/* Basic Info */}
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="name">Name</Label>
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="name" className="text-xs font-semibold text-foreground">Nama Webhook</Label>
                     <Input
                       id="name"
-                      placeholder="e.g., Slack Notifications"
+                      placeholder="Contoh: Deploy Hook Vercel"
                       value={name}
                       onChange={(e) => setName(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-background border-border/80"
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="url">Webhook URL</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="url" className="text-xs font-semibold text-foreground">Target URL Webhook</Label>
                     <Input
                       id="url"
                       type="url"
-                      placeholder="https://your-service.com/webhook"
+                      placeholder="https://api.domainanda.com/webhooks/sacms"
                       value={url}
                       onChange={(e) => setUrl(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-background border-border/80"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      The URL where we&apos;ll send POST requests for events
+                    <p className="text-[10px] text-muted-foreground">
+                      URL tujuan yang akan menerima HTTP POST request saat event terpicu.
                     </p>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="secret">Secret (Optional)</Label>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="secret" className="text-xs font-semibold text-foreground">Signing Secret (Opsional)</Label>
                     <Input
                       id="secret"
                       type="password"
-                      placeholder="Your signing secret"
+                      placeholder="Secret key untuk verifikasi payload HMAC-SHA256"
                       value={secret}
                       onChange={(e) => setSecret(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-background border-border/80"
                     />
-                    <p className="text-xs text-muted-foreground">
-                      Used to sign payloads with HMAC-SHA256 for verification
-                    </p>
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="bg-border/60" />
 
                 {/* Events */}
-                <div className="space-y-4">
-                  <Label>Events to Subscribe</Label>
+                <div className="space-y-2.5">
+                  <Label className="text-xs font-semibold text-foreground">Langganan Event</Label>
                   <div className="grid gap-2">
                     {availableEvents.map((event) => (
                       <div
                         key={event.id}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors cursor-pointer ${
                           selectedEvents.includes(event.id)
                             ? "border-primary bg-primary/5"
-                            : "hover:border-primary/50"
+                            : "border-border/80 bg-muted/20 hover:border-border"
                         }`}
                         onClick={() => handleToggleEvent(event.id)}
                       >
                         <div>
-                          <p className="font-medium text-sm">{event.label}</p>
-                          <p className="text-xs text-muted-foreground">{event.description}</p>
+                          <p className="font-bold text-xs text-foreground">{event.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{event.description}</p>
                         </div>
                         <Switch
                           checked={selectedEvents.includes(event.id)}
@@ -405,26 +407,26 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                   </div>
                 </div>
 
-                <Separator />
+                <Separator className="bg-border/60" />
 
                 {/* Enabled */}
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-2 rounded-xl bg-muted/20 border border-border/60">
                   <div>
-                    <p className="font-medium">Enable Webhook</p>
-                    <p className="text-sm text-muted-foreground">
-                      Webhook will receive events when enabled
+                    <p className="font-bold text-xs text-foreground">Status Aktif</p>
+                    <p className="text-[10px] text-muted-foreground">
+                      Webhook hanya akan mengirim event jika opsi ini diaktifkan.
                     </p>
                   </div>
                   <Switch checked={enabled} onCheckedChange={setEnabled} />
                 </div>
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isPending}>
-                  Cancel
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button variant="outline" onClick={() => setShowDialog(false)} disabled={isPending} className="rounded-xl text-xs font-bold h-9">
+                  Batal
                 </Button>
-                <Button onClick={handleSave} disabled={isPending}>
-                  {isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {editingWebhook ? "Update" : "Create"}
+                <Button onClick={handleSave} disabled={isPending} className="rounded-xl text-xs font-bold h-9 bg-primary text-primary-foreground">
+                  {isPending && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                  {editingWebhook ? "Simpan Perubahan" : "Buat Webhook"}
                 </Button>
               </DialogFooter>
             </DialogContent>

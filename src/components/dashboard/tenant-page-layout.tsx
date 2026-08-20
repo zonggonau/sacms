@@ -64,10 +64,10 @@ export function TenantPageLayout({
       }
     }
 
-    if (session?.user) {
+    if (session?.user?.id) {
       fetchContentTypes()
     }
-  }, [tenantId, session])
+  }, [tenantId, session?.user?.id])
 
   if (status === "loading") {
     return (

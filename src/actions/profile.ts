@@ -10,6 +10,7 @@ import { revalidatePath } from "next/cache"
 const updateProfileSchema = z.object({
   name: z.string().min(1, "Name is required").optional(),
   password: z.string().min(6, "Password must be at least 6 characters").optional(),
+  image: z.string().optional().nullable(),
 })
 
 export async function getProfileAction() {
@@ -21,7 +22,7 @@ export async function getProfileAction() {
 
     const user = await db.user.findUnique({
       where: { id: session.user.id },
-      select: { id: true, name: true, email: true, role: true }
+      select: { id: true, name: true, email: true, role: true, image: true }
     })
 
     if (!user) {
@@ -35,7 +36,7 @@ export async function getProfileAction() {
   }
 }
 
-export async function updateProfileAction(data: { name?: string; password?: string }) {
+export async function updateProfileAction(data: { name?: string; password?: string; image?: string | null }) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) {
@@ -49,6 +50,7 @@ export async function updateProfileAction(data: { name?: string; password?: stri
 
     const updateData: any = {}
     if (parsed.data.name) updateData.name = parsed.data.name
+    if (parsed.data.image !== undefined) updateData.image = parsed.data.image
     if (parsed.data.password) {
       updateData.password = await bcrypt.hash(parsed.data.password, 10)
     }
@@ -56,7 +58,7 @@ export async function updateProfileAction(data: { name?: string; password?: stri
     const updatedUser = await db.user.update({
       where: { id: session.user.id },
       data: updateData,
-      select: { id: true, name: true, email: true, role: true }
+      select: { id: true, name: true, email: true, role: true, image: true }
     })
 
     revalidatePath("/dashboard/settings/profile") // or wherever it's used

@@ -107,61 +107,69 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-xl font-bold text-slate-800">Content Schemas</h1>
-              <p className="text-xs text-slate-500 font-medium mt-1">Manage data structures and collection definitions.</p>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-foreground">Collection Types</h1>
+                <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
+                  {initialContentTypes.length}
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">Kelola struktur skema koleksi multi-entri (seperti Artikel, Produk, atau Pengguna).</p>
             </div>
             <div className="flex items-center gap-3">
-
               <Button
-                className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
+                className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
                 disabled={isLimitReached}
               >
-                <Plus className="mr-2 h-4 w-4" /> Create New Schema
+                <Plus className="mr-1.5 h-4 w-4" /> Skema Baru
               </Button>
             </div>
           </div>
 
           {/* Schema Stats */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center text-primary">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Total Skema</p>
+                  <p className="text-2xl font-black text-foreground">{initialContentTypes.length}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <Layout className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Schemas</p>
-                  <p className="text-xl font-black">{initialContentTypes.length}</p>
-                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-blue-100 flex items-center justify-center text-blue-600">
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Skema Sistem</p>
+                  <p className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                    {initialContentTypes.filter(c => c.isGlobal).length}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center text-blue-600 dark:text-blue-400">
                   <Globe className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Global Library</p>
-                  <p className="text-xl font-black">{initialContentTypes.filter(c => c.isGlobal).length}</p>
-                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-emerald-100 flex items-center justify-center text-emerald-600">
-                  <Plus className="h-5 w-5" />
-                </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Workspace Custom</p>
-                  <p className="text-xl font-black">
-                    {initialContentTypes.filter(c => !c.isGlobal).length} / {limit >= 999999 ? "∞" : limit}
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Skema Workspace</p>
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    {initialContentTypes.filter(c => !c.isGlobal).length} <span className="text-xs font-normal text-muted-foreground">/ {limit >= 999999 ? "∞" : limit}</span>
                   </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <Database className="h-5 w-5" />
                 </div>
               </CardContent>
             </Card>
@@ -169,178 +177,167 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
 
           {/* Limit Alert */}
           {isLimitReached && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
-              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 animate-pulse" />
-              <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                You have reached your content type limit of {limit} schemas. Delete an existing custom schema or upgrade your plan to create more.
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-xs">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                Anda telah mencapai batas maksimum {limit} skema tipe konten. Hapus skema lama atau upgrade paket untuk menambah kuota.
               </div>
             </div>
           )}
 
           {/* Filter & List Area */}
-          <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
-            <CardHeader className="bg-white border-b border-slate-200">
-              <div className="flex items-center justify-between">
-                <div className="relative max-w-sm w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Filter schemas..."
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    className="pl-10 h-10 bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm font-medium"
-                  />
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {filteredTypes.length === 0 ? (
-                <div className="py-24 text-center">
-                  <Database className="h-12 w-12 mx-auto mb-4 opacity-5" />
-                  <p className="font-bold text-muted-foreground">No schemas found</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">Start by creating a custom schema for your workspace.</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader className="bg-[#f6f6f9] border-b border-slate-200">
-                    <TableRow>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 pl-6">Structure Name</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500">Source</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Fields</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Data Entries</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Status</TableHead>
-                      <TableHead className="text-right pr-6"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredTypes.map((ct) => (
-                      <TableRow
-                        key={ct.id}
-                        className="group hover:bg-muted/5 transition-colors cursor-pointer"
-                        onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)}
-                      >
-                        <TableCell className="pl-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                              <FileText className="h-4.5 w-4.5" />
-                            </div>
-                            <div className="flex flex-col">
-                              <span className="text-sm font-bold text-foreground">{ct.name}</span>
-                              <span className="text-[10px] font-mono text-muted-foreground uppercase">{ct.slug}</span>
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {ct.isGlobal ? (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-black tracking-widest">SYSTEM</Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-100 text-[9px] font-black tracking-widest">CUSTOM</Badge>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-xs">{ct.fields?.length || 0}</TableCell>
-                        <TableCell className="text-center font-bold text-xs">
-                          <Badge variant="secondary" className="font-black text-[10px] bg-muted">{ct.entryCount?.toLocaleString() || 0}</Badge>
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {ct.isPublished ? (
-                            <div className="flex items-center justify-center gap-1.5 text-emerald-600">
-                              <CheckCircle2 className="h-3 w-3" />
-                              <span className="text-[10px] font-black uppercase">Live</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
-                              <AlertCircle className="h-3 w-3" />
-                              <span className="text-[10px] font-black uppercase">Draft</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-muted-foreground hover:text-foreground transition-colors">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="w-48">
-                              <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Schema
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}>
-                                <Layout className="mr-2 h-4 w-4" /> Browse Entries
-                              </DropdownMenuItem>
-                              {(!ct.isGlobal || isGlobalTenant) && (
-                                <>
-                                  <DropdownMenuSeparator />
-                                  <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:text-destructive">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Schema
-                                  </DropdownMenuItem>
-                                </>
-                              )}
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
+          <div className="space-y-3">
+            <div className="relative max-w-sm w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cari skema koleksi..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                className="pl-9 h-9 bg-card border-border/80 rounded-xl text-xs"
+              />
+            </div>
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs overflow-hidden">
+              <CardContent className="p-0">
+                {filteredTypes.length === 0 ? (
+                  <div className="py-16 text-center space-y-2">
+                    <Database className="h-8 w-8 mx-auto opacity-30 text-muted-foreground" />
+                    <p className="text-xs font-bold text-foreground">Skema tidak ditemukan</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                      Mulai dengan membuat skema koleksi kustom untuk workspace Anda.
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="text-xs font-bold pl-6">Nama Struktur</TableHead>
+                        <TableHead className="text-xs font-bold">Sumber</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Field</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Total Entri</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Status</TableHead>
+                        <TableHead className="text-right pr-6"></TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredTypes.map((ct) => (
+                        <TableRow
+                          key={ct.id}
+                          className="group hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/60"
+                          onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)}
+                        >
+                          <TableCell className="pl-6 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <span className="text-xs font-bold text-foreground">{ct.name}</span>
+                                <p className="text-[10px] font-mono text-muted-foreground uppercase">{ct.slug}</p>
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            {ct.isGlobal ? (
+                              <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 px-2">SISTEM</Badge>
+                            ) : (
+                              <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 px-2">KUSTOM</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-xs text-foreground py-3">{ct.fields?.length || 0}</TableCell>
+                          <TableCell className="text-center py-3">
+                            <Badge variant="secondary" className="font-bold text-[10px] rounded-full px-2 py-0.5">{ct.entryCount?.toLocaleString() || 0}</Badge>
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            {ct.isPublished ? (
+                              <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">Live</Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-full">Draft</Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
+                                  <MoreVertical className="h-3.5 w-3.5" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                                <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
+                                  <Edit className="mr-2 h-3.5 w-3.5" /> Edit Skema
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
+                                  <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
+                                </DropdownMenuItem>
+                                {(!ct.isGlobal || isGlobalTenant) && (
+                                  <>
+                                    <DropdownMenuSeparator />
+                                    <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">
+                                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Skema
+                                    </DropdownMenuItem>
+                                  </>
+                                )}
+                              </DropdownMenuContent>
+                            </DropdownMenu>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
 
       <Dialog open={deleteDialog.open} onOpenChange={(open) => !open && setDeleteDialog({ open: false, contentType: null })}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="rounded-2xl border border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="text-destructive flex items-center gap-2">
-              <AlertCircle className="h-5 w-5" /> Delete Content Type
+            <DialogTitle className="text-base font-bold text-destructive flex items-center gap-2">
+              <Trash2 className="h-4 w-4" /> Hapus Tipe Konten?
             </DialogTitle>
-            <DialogDescription className="pt-2">
-              This action cannot be undone. This will permanently delete the
-              <span className="font-bold text-foreground mx-1">
-                {deleteDialog.contentType?.name}
-              </span>
-              content type and all its entries.
+            <DialogDescription className="text-xs text-muted-foreground">
+              Tindakan ini akan menghapus skema <strong className="text-foreground font-bold">"{deleteDialog.contentType?.name}"</strong> beserta seluruh data entrinya secara permanen.
             </DialogDescription>
           </DialogHeader>
           
-          <div className="space-y-4 py-4">
-            <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-md font-medium">
-              Warning: All data associated with this content type will be lost forever.
+          <div className="space-y-3 py-2">
+            <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs">
+              <p className="font-semibold text-destructive">Ketik nama skema persis untuk konfirmasi:</p>
+              <p className="font-mono font-bold mt-1 text-foreground">{deleteDialog.contentType?.name}</p>
             </div>
             
-            <div className="space-y-2">
-              <label className="text-sm font-medium">
-                Please type <span className="font-bold">{deleteDialog.contentType?.name}</span> to confirm.
-              </label>
-              <Input
-                value={deleteConfirmName}
-                onChange={(e) => setDeleteConfirmName(e.target.value)}
-                placeholder="Type name here"
-                className="col-span-3"
-              />
-            </div>
+            <Input
+              value={deleteConfirmName}
+              onChange={(e) => setDeleteConfirmName(e.target.value)}
+              placeholder="Ketik nama skema"
+              className="h-9 text-xs rounded-xl"
+            />
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="gap-2 sm:gap-0">
             <Button
-              variant="outline"
+              variant="ghost"
+              className="rounded-xl text-xs"
               onClick={() => setDeleteDialog({ open: false, contentType: null })}
               disabled={isPending}
             >
-              Cancel
+              Batal
             </Button>
             <Button
               variant="destructive"
+              className="rounded-xl text-xs font-bold"
               onClick={handleDelete}
               disabled={deleteConfirmName !== deleteDialog.contentType?.name || isPending}
             >
               {isPending ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  Menghapus...
                 </>
               ) : (
-                "Delete Content Type"
+                "Hapus Permanen"
               )}
             </Button>
           </DialogFooter>

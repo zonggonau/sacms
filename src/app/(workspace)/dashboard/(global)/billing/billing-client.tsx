@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { 
-  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download, Cloud, Save
+  Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download, Cloud, Save, Sparkles
 } from "lucide-react"
 import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/actions/billing"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -20,15 +20,19 @@ import { generateInvoicePDF } from "@/lib/pdf-generator"
 
 export default function BillingClient({
   initialAccountPlans,
+  initialAiCreditPacks,
   initialActiveWorkspacesCount,
   initialUsage,
+  initialAiCreditUsage,
   initialTransactions,
   isEnterpriseMode,
   initialMasterInfra
 }: {
   initialAccountPlans: any[]
+  initialAiCreditPacks?: any[]
   initialActiveWorkspacesCount: number
   initialUsage: any
+  initialAiCreditUsage?: { used: number, total: number, remaining: number, isUnlimited: boolean }
   initialTransactions: any[]
   isEnterpriseMode?: boolean
   initialMasterInfra?: { databaseUrl: string, storageConfig: any }
@@ -37,9 +41,11 @@ export default function BillingClient({
   const router = useRouter()
   
   const [accountPlans, setAccountPlans] = useState<any[]>(initialAccountPlans)
+  const [aiCreditPacks, setAiCreditPacks] = useState<any[]>(initialAiCreditPacks || [])
   const [updatingPlanId, setUpdatingPlanId] = useState<string | null>(null)
   const [activeWorkspacesCount, setActiveWorkspacesCount] = useState(initialActiveWorkspacesCount)
   const [usage, setUsage] = useState<{current: number, max: number | null, allowed: boolean, plan: string} | null>(initialUsage)
+  const [aiUsage, setAiUsage] = useState(initialAiCreditUsage || null)
   const [transactions, setTransactions] = useState<any[]>(initialTransactions)
   const [checkingOrderId, setCheckingOrderId] = useState<string | null>(null)
 
@@ -58,10 +64,7 @@ export default function BillingClient({
       const result = await checkTransactionStatusAction(orderId)
       if (result.success) {
         toast({ title: "Status Updated", description: `Transaction status is now ${result.status}` })
-        // Update local state to reflect new status
         setTransactions(prev => prev.map(t => t.orderId === orderId ? { ...t, status: result.status } : t))
-        
-        // If it successfully updated to success, refresh the user's session plan automatically
         if (result.status === "success") {
           await update()
           router.refresh()
@@ -90,7 +93,7 @@ export default function BillingClient({
           router.refresh()
         }
       } else {
-        router.push(`/dashboard/billing/checkout?plan=${planId}&interval=year`)
+        router.push(`/dashboard/billing/checkout?plan=${planId}&type=account&interval=year`)
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error", description: "Failed to initiate checkout." })
@@ -99,26 +102,20 @@ export default function BillingClient({
     }
   }
 
+  const handleBuyAiCredits = (packId: string) => {
+    router.push(`/dashboard/billing/checkout?plan=${packId}&type=ai_credits`)
+  }
+
   const handleSaveInfra = async () => {
     setSavingInfra(true)
     try {
-      const storageConfig = {
-        bucket: infra.s3Bucket,
-        region: infra.s3Region,
-        accessKeyId: infra.s3AccessKey,
-        secretAccessKey: infra.s3SecretKey
-      }
-      const res = await fetch("/api/auth/user/infrastructure", {
+      const res = await fetch("/api/admin/infra", {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          masterDatabaseUrl: infra.databaseUrl,
-          masterStorageConfig: storageConfig
-        })
+        body: JSON.stringify(infra)
       })
       if (res.ok) {
-        toast({ title: "Infrastructure Saved", description: "Master infrastructure settings have been updated." })
-        router.refresh()
+        toast({ title: "Infrastructure Saved", description: "Database & Storage endpoints have been successfully updated." })
       } else {
         const error = await res.json()
         toast({ variant: "destructive", title: "Error", description: error.error || "Failed to save settings" })
@@ -139,10 +136,10 @@ export default function BillingClient({
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div>
-        <h2 className="text-3xl font-bold tracking-tight">Billing & Plans</h2>
-        <p className="text-muted-foreground">Manage your workspace limits, billing address, and view invoices.</p>
+        <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Billing & Quota Akun</h2>
+        <p className="text-xs text-muted-foreground mt-1">Kelola kapasitas workspace akun Anda dan isi ulang kuota AI Frontend builder.</p>
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
@@ -153,96 +150,257 @@ export default function BillingClient({
         </TabsList>
         
         <TabsContent value="plans" className="space-y-6 mt-6">
-          <section className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader>
+          <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Workspace Quota Card */}
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardHeader className="p-5 pb-2">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle>Workspace Usage</CardTitle>
-                    <CardDescription>Current global workspace quota</CardDescription>
+                    <CardTitle className="text-sm font-bold">Kapasitas Workspace</CardTitle>
+                    <CardDescription className="text-xs">Jumlah workspace aktif yang dimiliki akun Anda</CardDescription>
                   </div>
-                  <Database className="h-5 w-5 text-muted-foreground" />
+                  <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
+                    <Database className="h-4 w-4" />
+                  </div>
                 </div>
               </CardHeader>
-              <CardContent>
-                <div className="flex items-end gap-2 mt-2">
-                  <h3 className="text-4xl font-bold">{usage ? usage.current : activeWorkspacesCount}</h3>
-                  <span className="text-sm text-muted-foreground font-medium mb-1">
-                    / {usage ? (usage.max === null || usage.max > 9000 ? 'Unlimited' : usage.max) : (session?.user?.plan === 'free' ? '1' : 'Unlimited')}
+              <CardContent className="p-5 pt-1">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <h3 className="text-2xl lg:text-3xl font-black text-foreground">{usage ? usage.current : activeWorkspacesCount}</h3>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    / {usage ? (usage.max === null || usage.max > 9000 ? 'Unlimited' : `${usage.max} Workspace`) : (session?.user?.plan === 'free' ? '1 Workspace' : 'Unlimited')}
                   </span>
                 </div>
-                <div className="mt-4 w-full bg-secondary h-2 rounded-full overflow-hidden">
+                <div className="mt-3 w-full bg-muted h-2 rounded-full overflow-hidden">
                   {(!usage && session?.user?.plan === 'free') || (usage && usage.max !== null) ? (
                      <div 
-                       className={cn("h-full", (usage && !usage.allowed) ? "bg-destructive" : "bg-primary")} 
+                       className={cn("h-full transition-all rounded-full", (usage && !usage.allowed) ? "bg-destructive" : "bg-primary")} 
                        style={{ width: `${Math.min(((usage?.current || activeWorkspacesCount) / (usage?.max || 1)) * 100, 100)}%` }} 
                      />
                   ) : (
-                     <div className="h-full w-full bg-primary" />
+                     <div className="h-full w-full bg-primary rounded-full" />
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Account AI Credits Card */}
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardHeader className="p-5 pb-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-sm font-bold">Saldo AI Frontend Credits</CardTitle>
+                    <CardDescription className="text-xs">Kuota pembuatan schema, UI builder & iterasi frontend</CardDescription>
+                  </div>
+                  <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
+                    <Zap className="h-4 w-4 fill-amber-500" />
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-5 pt-1">
+                <div className="flex items-baseline gap-1.5 mt-1">
+                  <h3 className="text-2xl lg:text-3xl font-black text-foreground">{aiUsage ? aiUsage.remaining.toLocaleString() : "50"}</h3>
+                  <span className="text-xs text-muted-foreground font-semibold">
+                    / {aiUsage?.isUnlimited ? 'Unlimited' : (aiUsage ? `${aiUsage.total.toLocaleString()} Credits` : '50 Credits')}
+                  </span>
+                </div>
+                <div className="mt-3 w-full bg-muted h-2 rounded-full overflow-hidden">
+                  {aiUsage && !aiUsage.isUnlimited ? (
+                    <div 
+                      className="h-full bg-amber-500 transition-all rounded-full"
+                      style={{ width: `${Math.max(0, Math.min(100, (aiUsage.remaining / Math.max(1, aiUsage.total)) * 100))}%` }} 
+                    />
+                  ) : (
+                    <div className="h-full w-full bg-amber-500 rounded-full" />
                   )}
                 </div>
               </CardContent>
             </Card>
           </section>
 
+          {/* ── 1. ACCOUNT PLANS (YEARLY PRICING) ── */}
           {!isEnterpriseMode && (
-            <section className="space-y-6">
-              <div>
-                <h3 className="text-xl font-bold">Available Plans</h3>
-                <p className="text-sm text-muted-foreground">Select or upgrade your workspace tier.</p>
+            <section className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="text-base font-bold tracking-tight text-foreground">Paket Akun (Langganan Tahunan)</h3>
+                  <p className="text-xs text-muted-foreground">Tingkatkan kapasitas total workspace yang dapat dibuat oleh akun Anda.</p>
+                </div>
+                <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
+                  Billing Tahunan (Hemat 2 Bulan)
+                </Badge>
               </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {accountPlans.map((plan) => {
-                const isActive = session?.user?.plan === plan.id
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {accountPlans.map((plan) => {
+                  const isActive = session?.user?.plan === plan.id
+                  return (
+                    <Card 
+                      key={plan.id} 
+                      className={cn(
+                        "flex flex-col relative rounded-2xl transition-all duration-200 border bg-card shadow-xs hover:shadow-md", 
+                        isActive 
+                          ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]" 
+                          : plan.popular
+                          ? "border-primary/50 hover:border-primary"
+                          : "border-border hover:border-muted-foreground/40"
+                      )}
+                    >
+                      {isActive ? (
+                        <div className="absolute top-3.5 right-3.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
+                          <CheckCircle2 className="h-3 w-3 stroke-[3]" /> Aktif
+                        </div>
+                      ) : plan.popular ? (
+                        <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Populer
+                        </div>
+                      ) : null}
+
+                      <CardHeader className="p-4 pb-2 space-y-2">
+                        <div>
+                          <CardTitle className="text-base font-bold text-foreground">{plan.name}</CardTitle>
+                          {plan.description && (
+                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</p>
+                          )}
+                        </div>
+
+                        <div className="pt-1">
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-foreground">{plan.price}</span>
+                            <span className="text-xs font-semibold text-muted-foreground">/tahun</span>
+                          </div>
+                          {plan.monthlyPrice && plan.priceAmount > 0 && (
+                            <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                              Setara {plan.monthlyPrice}/bln
+                            </p>
+                          )}
+                        </div>
+
+                        <div className="p-2 rounded-xl bg-muted/40 border border-border/60 text-[11px] font-semibold text-foreground flex items-center justify-between">
+                          <span className="text-muted-foreground">Kapasitas:</span>
+                          <span className="font-bold">{plan.workspaces === "Unlimited" ? "Unlimited Workspaces" : `Maks ${plan.workspaces} Workspace`}</span>
+                        </div>
+                      </CardHeader>
+
+                      <CardContent className="p-4 pt-1 flex flex-col justify-between flex-1 space-y-4">
+                        <div className="space-y-1.5">
+                          {plan.features.map((f: string, i: number) => (
+                            <div key={i} className="flex items-start text-xs text-foreground/80 leading-snug">
+                              <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-primary shrink-0 mt-0.5" /> 
+                              <span>{f}</span>
+                            </div>
+                          ))}
+                        </div>
+
+                        <Button 
+                          variant={isActive ? "outline" : "default"} 
+                          disabled={isActive || updatingPlanId === plan.id}
+                          onClick={() => handleUpdateUserPlan(plan.id)}
+                          className={cn(
+                            "w-full h-9 font-bold rounded-xl text-xs transition-all shadow-xs",
+                            isActive 
+                              ? "bg-primary/10 text-primary cursor-default border border-primary/30 hover:bg-primary/10" 
+                              : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                          )}
+                        >
+                          {updatingPlanId === plan.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-2" /> : null}
+                          {isActive ? "Paket Aktif" : (plan.id === "free" ? "Gunakan Paket Gratis" : `Pilih ${plan.name}`)}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+            </section>
+          )}
+
+          {/* ── 2. AI PLAN CREDIT PACKS (DIBAWAH AKUN PLAN) ── */}
+          <section className="space-y-3 pt-2 border-t border-border/80">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-amber-500" />
+                  <h3 className="text-base font-bold tracking-tight text-foreground">AI Plan (Frontend Builder Credits)</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Paket credit AI sekali pakai (never expire) untuk generate Next.js frontend, schema, dan iterasi di semua workspace.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-600 dark:text-amber-400 shrink-0 font-medium">
+                <Zap className="h-3.5 w-3.5 fill-amber-500" />
+                <span>Saldo Anda: <strong>{aiUsage ? aiUsage.remaining.toLocaleString() : "50"} Credits</strong></span>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {aiCreditPacks.map((pack) => {
                 return (
                   <Card 
-                    key={plan.id} 
+                    key={pack.id} 
                     className={cn(
-                      "flex flex-col relative", 
-                      isActive && "border-primary shadow-sm"
+                      "flex flex-col relative rounded-2xl transition-all duration-200 border bg-card shadow-xs hover:shadow-md", 
+                      pack.badge 
+                        ? "border-amber-500/40 ring-1 ring-amber-500/20" 
+                        : "border-border hover:border-amber-500/40"
                     )}
                   >
-                    {isActive && (
-                      <div className="absolute top-0 right-0 bg-primary text-primary-foreground text-xs font-semibold px-3 py-1 rounded-bl-lg">
-                        Current
+                    {pack.badge && (
+                      <div className="absolute top-3.5 right-3.5 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                        {pack.badge}
                       </div>
                     )}
-                    <CardHeader>
-                      <CardTitle>{plan.name}</CardTitle>
-                      <div className="mt-2 flex items-baseline gap-1">
-                        <span className="text-3xl font-bold">{plan.price}</span>
-                        <span className="text-sm font-medium text-muted-foreground">/yr</span>
+                    <CardHeader className="p-4 pb-2 space-y-2">
+                      <div className="flex items-center gap-1.5 text-amber-500">
+                        <Zap className="h-3.5 w-3.5 fill-amber-500" />
+                        <span className="text-xs font-bold uppercase tracking-wider">{pack.name}</span>
                       </div>
-                      <CardDescription>{plan.workspaces === "Unlimited" ? "Unlimited workspaces" : `Max ${plan.workspaces} workspaces`}</CardDescription>
+                      <div>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-black text-foreground">Rp {pack.price_idr.toLocaleString('id-ID')}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                          ${pack.price_usd} USD • Sekali Beli
+                        </p>
+                      </div>
+                      <div className="pt-1">
+                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px] font-bold rounded-lg px-2 py-0.5">
+                          +{pack.credits.toLocaleString()} AI Credits
+                        </Badge>
+                      </div>
                     </CardHeader>
-                    <CardContent className="flex flex-col justify-between flex-1">
-                      <div className="space-y-3 mb-6">
-                        {plan.features.map((f: string, i: number) => (
-                          <div key={i} className="flex items-start text-sm">
-                            <CheckCircle2 className="mr-2 h-4 w-4 text-primary shrink-0 mt-0.5" /> 
+                    <CardContent className="p-4 pt-1 flex flex-col justify-between flex-1 space-y-4">
+                      <div className="space-y-1.5 pt-2 border-t border-border/60">
+                        {pack.features?.map((f: string, i: number) => (
+                          <div key={i} className="flex items-start text-xs text-foreground/80 leading-snug">
+                            <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" /> 
                             <span>{f}</span>
                           </div>
                         ))}
                       </div>
                       <Button 
-                        variant={isActive ? "outline" : "default"} 
-                        disabled={isActive || updatingPlanId === plan.id}
-                        onClick={() => handleUpdateUserPlan(plan.id)}
-                        className="w-full mt-auto"
+                        onClick={() => handleBuyAiCredits(pack.id)}
+                        className="w-full h-9 font-bold rounded-xl text-xs bg-amber-500 hover:bg-amber-600 text-black shadow-xs transition-all"
                       >
-                        {updatingPlanId === plan.id ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                        {isActive ? "Active Plan" : (plan.id === "free" ? "Downgrade to Free" : "Upgrade to Yearly")}
+                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                        Top Up {pack.name.split(" ")[0]}
                       </Button>
                     </CardContent>
                   </Card>
                 )
               })}
             </div>
-            
-            </section>
-          )}
 
+            <div className="p-3.5 bg-muted/40 border border-border/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground">
+              <div>
+                <strong className="text-foreground">Biaya AI:</strong> 25 Cr / Full Next.js Frontend Gen • 5 Cr / Chat Iterasi • 5 Cr / Schema Auto-Gen
+              </div>
+              <div className="text-muted-foreground text-[11px]">
+                *Credit tidak memiliki masa kedaluwarsa dan dapat digunakan kapan saja.
+              </div>
+            </div>
+          </section>
+
+          {/* ── 3. ENTERPRISE LICENSE ── */}
           <div className="mt-6">
             <h3 className="text-xl font-bold mb-4">Enterprise License</h3>
             {session?.user?.id && (

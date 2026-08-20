@@ -84,62 +84,62 @@ export function FieldConfigModal({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg sm:max-w-lg max-h-[90vh] rounded-none border border-slate-200 shadow-none overflow-hidden p-0 flex flex-col bg-[#f6f6f9]">
-        <DialogHeader className="p-6 bg-white border-b border-slate-200 shrink-0 flex flex-row items-center gap-4">
-          <div className="w-10 h-10 rounded-none bg-primary/5 border border-primary/10 flex items-center justify-center text-primary shrink-0">
+      <DialogContent className="max-w-lg sm:max-w-lg max-h-[90vh] rounded-2xl border border-border/80 shadow-xl overflow-hidden p-0 flex flex-col bg-card text-card-foreground">
+        <DialogHeader className="p-5 bg-card border-b border-border/60 shrink-0 flex flex-row items-center gap-3.5">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
             {Icon && <Icon className="h-5 w-5" />}
           </div>
           <div>
-            <DialogTitle className="text-lg font-bold text-slate-800 text-left">
-              Configure {fieldTypeInfo?.label || "Field"}
+            <DialogTitle className="text-base font-bold text-foreground text-left">
+              Konfigurasi {fieldTypeInfo?.label || "Field"}
             </DialogTitle>
-            <DialogDescription className="text-slate-500 text-xs text-left mt-0.5">
-              Define rules and identity for this attribute.
+            <DialogDescription className="text-muted-foreground text-xs text-left mt-0.5">
+              Tentukan nama, slug, dan aturan validasi atribut ini.
             </DialogDescription>
           </div>
         </DialogHeader>
         
-        <div className="flex-1 overflow-y-auto max-h-[60vh] min-h-[30vh] bg-white">
-          <div className="p-6 space-y-6">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-700">Field Name *</Label>
+        <div className="flex-1 overflow-y-auto max-h-[60vh] min-h-[30vh] bg-background">
+          <div className="p-5 space-y-4">
+            <div className="grid grid-cols-2 gap-3.5">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground">Nama Field *</Label>
                 <Input 
                   value={editingField?.name || ""} 
                   onChange={e => {
                     const slug = generateFieldSlug(e.target.value)
                     setEditingField(prev => prev ? ({ ...prev, name: e.target.value, slug }) : null)
                   }}
-                  placeholder="e.g., Hero Title"
-                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"
+                  placeholder="Contoh: Judul Artikel"
+                  className="bg-background border border-input h-9 rounded-xl text-xs"
                 />
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-700">API Slug *</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground">API Slug *</Label>
                 <Input 
                   value={editingField?.slug || ""} 
                   onChange={e => setEditingField(prev => prev ? ({ ...prev, slug: e.target.value }) : null)}
-                  placeholder="hero_title"
-                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none font-mono text-xs shadow-none transition-all"
+                  placeholder="judul_artikel"
+                  className="bg-background border border-input h-9 rounded-xl font-mono text-xs"
                 />
               </div>
             </div>
 
             {/* Field Specific Configs */}
             {(editingField?.type === "select" || editingField?.type === "multiselect" || editingField?.type === "tags") && (
-              <div className="space-y-2">
-                <Label className="text-xs font-bold text-slate-700">Options (Comma separated)</Label>
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-foreground">Opsi Pilihan (Pisahkan dengan koma)</Label>
                 <Input 
                   value={typeof editingField.options === 'string' ? editingField.options : (editingField.options?.choices?.join(', ') || (Array.isArray(editingField.options) ? editingField.options.join(', ') : ''))} 
                   onChange={e => setEditingField(prev => prev ? ({ ...prev, options: e.target.value }) : null)}
-                  placeholder="Option A, Option B, Option C"
-                  className="bg-white border border-slate-200 focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-11 rounded-none text-sm font-medium shadow-none transition-all"
+                  placeholder="Opsi A, Opsi B, Opsi C"
+                  className="bg-background border border-input h-9 rounded-xl text-xs"
                 />
               </div>
             )}
 
             {editingField?.type === "relation" && tenantSlug && (
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
+              <div className="p-3.5 bg-muted/30 border border-border/60 rounded-xl space-y-3">
                 <RelationFieldConfig
                   tenantSlug={tenantSlug}
                   context={context}
@@ -156,7 +156,7 @@ export function FieldConfigModal({
             )}
 
             {editingField?.type === "component" && tenantSlug && (
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none">
+              <div className="p-3.5 bg-muted/30 border border-border/60 rounded-xl">
                 <ComponentFieldConfig
                   tenantSlug={tenantSlug}
                   componentSlug={editingField.componentSlug}
@@ -169,33 +169,33 @@ export function FieldConfigModal({
             )}
 
             {editingField?.type === "slug" && (
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
-                <div className="flex items-center space-x-3">
+              <div className="p-3.5 bg-muted/30 border border-border/60 rounded-xl space-y-3">
+                <div className="flex items-center space-x-2.5">
                   <Checkbox 
                     id="autoGenerate" 
                     checked={editingField?.autoGenerate} 
                     onCheckedChange={checked => setEditingField(prev => prev ? ({ ...prev, autoGenerate: !!checked }) : null)} 
                   />
-                  <Label htmlFor="autoGenerate" className="text-xs font-bold cursor-pointer text-slate-700">Auto-generate from another field</Label>
+                  <Label htmlFor="autoGenerate" className="text-xs font-semibold cursor-pointer text-foreground">Otomatis generate dari field lain</Label>
                 </div>
                 {editingField?.autoGenerate && (
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold text-slate-700">Source Field</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Sumber Field</Label>
                     <Select 
                       value={editingField.sourceField || ""} 
                       onValueChange={v => setEditingField(prev => prev ? ({ ...prev, sourceField: v }) : null)}
                     >
-                      <SelectTrigger className="bg-white border border-slate-200 h-11 rounded-none text-sm font-medium shadow-none focus:ring-1 focus:ring-primary focus:border-primary">
-                        <SelectValue placeholder="Select a field" />
+                      <SelectTrigger className="bg-background border border-input h-9 rounded-xl text-xs">
+                        <SelectValue placeholder="Pilih field sumber" />
                       </SelectTrigger>
-                      <SelectContent className="rounded-none border border-slate-200 shadow-none bg-white">
+                      <SelectContent className="rounded-xl border border-border bg-card">
                         {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).map(f => (
-                          <SelectItem key={f.slug} value={f.slug} className="rounded-none text-sm font-medium cursor-pointer">
+                          <SelectItem key={f.slug} value={f.slug} className="rounded-lg text-xs cursor-pointer">
                             {f.name} ({f.slug})
                           </SelectItem>
                         ))}
                         {fields.filter(f => f.id !== editingField.id && (f.type === "text" || f.type === "textarea")).length === 0 && (
-                          <div className="p-2 text-xs text-muted-foreground italic">No text fields available</div>
+                          <div className="p-2 text-xs text-muted-foreground italic">Tidak ada field teks yang tersedia</div>
                         )}
                       </SelectContent>
                     </Select>
@@ -205,118 +205,132 @@ export function FieldConfigModal({
             )}
 
             {editingField?.type === "document_template" && (
-              <div className="p-4 bg-slate-50 border border-slate-100 rounded-none space-y-4">
-                <div className="space-y-2">
-                  <Label className="text-xs font-bold text-slate-700">Template DOCX URL</Label>
-                  <div className="flex flex-col gap-3">
-                    <Input 
-                      type="file" 
-                      accept=".docx"
+              <div className="p-3.5 bg-muted/30 border border-border/60 rounded-xl space-y-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Upload Template Dokumen (.docx)</Label>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Input
+                      type="file"
+                      accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                       disabled={isUploading}
-                      className="cursor-pointer bg-white file:mr-4 file:py-1 file:px-4 file:rounded-none file:border-0 file:text-xs file:font-bold file:bg-primary file:text-white hover:file:bg-primary/90 h-10"
                       onChange={async (e) => {
                         const file = e.target.files?.[0];
                         if (!file) return;
-                        if (!file.name.endsWith('.docx')) {
-                          toast({ variant: 'destructive', title: 'Invalid format', description: 'Hanya file .docx yang diizinkan.' });
-                          e.target.value = '';
+
+                        if (!file.name.endsWith(".docx")) {
+                          toast({
+                            title: "Format Salah",
+                            description: "Hanya berkas .docx yang diperbolehkan.",
+                            variant: "destructive",
+                          });
                           return;
                         }
-                        
+
+                        setIsUploading(true);
+                        const formData = new FormData();
+                        formData.append("file", file);
+
                         try {
-                          setIsUploading(true);
-                          const formData = new FormData();
-                          formData.append("files", file);
-                          
-                          const res = await fetch(`/api/tenant/${tenantSlug}/media`, {
+                          const res = await fetch(`/api/tenant/${tenantSlug}/media/upload`, {
                             method: "POST",
                             body: formData,
                           });
-                          
-                          if (res.ok) {
-                            const data = await res.json();
-                            setEditingField(prev => {
-                              if (!prev) return null;
-                              const newOptions = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {};
-                              newOptions.templateUrl = data.media[0].url;
-                              return { ...prev, options: newOptions };
-                            });
-                            toast({ title: 'Success', description: 'Template berhasil diupload.' });
-                          } else {
-                            toast({ variant: 'destructive', title: 'Error', description: 'Gagal upload template.' });
+
+                          if (!res.ok) throw new Error("Gagal mengunggah berkas");
+
+                          const data = await res.json();
+                          const fileUrl = data.url || data.media?.url;
+
+                          let currentOpts: any = {};
+                          if (typeof editingField.options === "string") {
+                            try { currentOpts = JSON.parse(editingField.options); } catch {}
+                          } else if (editingField.options) {
+                            currentOpts = { ...editingField.options };
                           }
-                        } catch (err) {
-                          toast({ variant: 'destructive', title: 'Error', description: 'Gagal upload template.' });
+
+                          currentOpts.templateUrl = fileUrl;
+                          currentOpts.templateName = file.name;
+
+                          setEditingField((prev) => prev ? ({ ...prev, options: currentOpts }) : null);
+                          toast({ title: "Template Berhasil Diunggah", description: `Berkas ${file.name} telah disimpan.` });
+                        } catch (err: any) {
+                          toast({ title: "Upload Gagal", description: err.message, variant: "destructive" });
                         } finally {
                           setIsUploading(false);
-                          e.target.value = '';
                         }
                       }}
+                      className="bg-background border border-input h-9 rounded-xl text-xs"
                     />
-                    
-                    {isUploading && (
-                      <div className="flex items-center gap-2 text-xs font-bold text-primary p-3 bg-primary/5">
-                        <Loader2 className="h-4 w-4 animate-spin" /> Sedang mengupload template...
-                      </div>
-                    )}
-
-                    {typeof editingField.options === 'object' && editingField.options !== null && editingField.options.templateUrl && !isUploading && (
-                      <div className="p-3 bg-blue-50 border border-blue-100 flex justify-between items-center text-xs">
-                        <div className="flex items-center gap-2 overflow-hidden">
-                          <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
-                          <span className="text-blue-700 font-bold truncate max-w-[200px]" title={editingField.options.templateUrl}>
-                            Template aktif: {editingField.options.templateUrl.split('/').pop()}
-                          </span>
-                        </div>
-                        <Button 
-                          variant="ghost" 
-                          size="icon"
-                          className="h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-100 rounded-none shrink-0"
-                          title="Hapus template"
-                          onClick={() => setEditingField(prev => {
-                            if (!prev) return null;
-                            const newOptions = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {};
-                            newOptions.templateUrl = "";
-                            return { ...prev, options: newOptions };
-                          })}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                    {isUploading && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
                   </div>
-                  <p className="text-[10px] uppercase font-black text-muted-foreground mt-1 tracking-wider">
-                    Upload file DOCX Anda. Hanya format .docx yang didukung.
-                  </p>
+
+                  {(() => {
+                    let opts: any = {};
+                    if (typeof editingField.options === "string") {
+                      try { opts = JSON.parse(editingField.options); } catch {}
+                    } else if (editingField.options) {
+                      opts = editingField.options;
+                    }
+                    if (opts?.templateUrl) {
+                      return (
+                        <div className="flex items-center justify-between p-2.5 mt-2 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-xs">
+                          <div className="flex items-center gap-2 overflow-hidden">
+                            <FileText className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0" />
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-300 truncate">
+                              {opts.templateName || "Template Terpasang"}
+                            </span>
+                          </div>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive rounded-lg"
+                            onClick={() => setEditingField((prev) => {
+                              if (!prev) return null;
+                              let newOptions = typeof prev.options === "string" ? JSON.parse(prev.options || "{}") : { ...prev.options };
+                              delete newOptions.templateUrl;
+                              delete newOptions.templateName;
+                              return { ...prev, options: newOptions };
+                            })}
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-4 pt-2">
-              <div className="flex items-center space-x-2.5 p-3.5 bg-slate-50 border border-slate-100 rounded-none">
+            <div className="grid grid-cols-2 gap-3 pt-1">
+              <div className="flex items-center space-x-2.5 p-3 bg-muted/30 border border-border/60 rounded-xl">
                 <Checkbox 
                   id="required" 
                   checked={editingField?.required || false} 
                   onCheckedChange={(checked) => setEditingField(prev => prev ? ({ ...prev, required: !!checked }) : null)}
                 />
-                <Label htmlFor="required" className="text-xs font-bold cursor-pointer text-slate-700">Required Field</Label>
+                <Label htmlFor="required" className="text-xs font-semibold cursor-pointer text-foreground">Wajib Diisi (Required)</Label>
               </div>
-              <div className="flex items-center space-x-2.5 p-3.5 bg-slate-50 border border-slate-100 rounded-none">
+              <div className="flex items-center space-x-2.5 p-3 bg-muted/30 border border-border/60 rounded-xl">
                 <Checkbox 
                   id="unique" 
                   checked={editingField?.unique || false} 
                   onCheckedChange={(checked) => setEditingField(prev => prev ? ({ ...prev, unique: !!checked }) : null)}
                 />
-                <Label htmlFor="unique" className="text-xs font-bold cursor-pointer text-slate-700">Unique Field</Label>
+                <Label htmlFor="unique" className="text-xs font-semibold cursor-pointer text-foreground">Nilai Unik (Unique)</Label>
               </div>
             </div>
           </div>
         </div>
 
-        <DialogFooter className="p-6 bg-slate-50 border-t border-slate-200 gap-2 shrink-0 flex flex-row justify-end">
-          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-none font-bold text-xs">Cancel</Button>
-          <Button onClick={onSave} className="rounded-none font-bold text-xs px-6 bg-primary hover:bg-primary/90 text-white shadow-none">
-            {fields.some(f => f.id === (editingField?.id || "")) ? "Update Field" : "Add Field"}
+        <DialogFooter className="p-4 bg-muted/20 border-t border-border/60 gap-2 shrink-0 flex flex-row justify-end">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} className="rounded-xl font-semibold text-xs h-8">
+            Batal
+          </Button>
+          <Button onClick={onSave} className="rounded-xl font-bold text-xs px-5 h-8 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">
+            {fields.some(f => f.id === (editingField?.id || "")) ? "Simpan Perubahan" : "Tambahkan Field"}
           </Button>
         </DialogFooter>
       </DialogContent>

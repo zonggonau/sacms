@@ -32,12 +32,14 @@ export default function LoginPage() {
       if (redirectTo) {
         router.push(redirectTo)
       } else {
-        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        const userTenants = user?.tenants || []
+        const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
         
-        if (isOwnerOrAdmin) {
+        if (isSuperAdminOwnerOrAdmin) {
           router.push("/dashboard")
-        } else if (user?.tenants && user.tenants.length > 0) {
-          router.push(`/dashboard/${user.tenants[0].slug}/cms`)
+        } else if (userTenants.length > 0) {
+          router.push(`/dashboard/${userTenants[0].slug || userTenants[0].id}/cms`)
         } else {
           router.push("/dashboard")
         }
@@ -122,12 +124,14 @@ export default function LoginPage() {
       if (redirectTo) {
         destination = redirectTo
       } else {
-        const isOwnerOrAdmin = user?.tenants?.some((t: any) => t.role === "owner" || t.role === "admin")
+        const userTenants = user?.tenants || []
+        const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
         
-        if (isOwnerOrAdmin) {
+        if (isSuperAdminOwnerOrAdmin) {
           destination = "/dashboard"
-        } else if (user?.tenants && user.tenants.length > 0) {
-          destination = `/dashboard/${user.tenants[0].slug}/cms`
+        } else if (userTenants.length > 0) {
+          destination = `/dashboard/${userTenants[0].slug || userTenants[0].id}/cms`
         } else {
           destination = "/dashboard"
         }

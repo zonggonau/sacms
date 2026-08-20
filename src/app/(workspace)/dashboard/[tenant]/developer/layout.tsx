@@ -10,9 +10,11 @@ export default async function DeveloperLayout({
   const { tenant } = await params
 
   return (
-    <div className="flex flex-1 overflow-hidden h-full">
-      <DeveloperSidebar tenantId={tenant} />
-      <div className="flex-1 overflow-y-auto">
+    <div className="flex min-h-screen w-full">
+      <div className="sticky top-0 h-screen shrink-0">
+        <DeveloperSidebar tenantId={tenant} />
+      </div>
+      <div className="flex-1 min-w-0">
         {children}
       </div>
     </div>

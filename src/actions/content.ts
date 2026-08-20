@@ -234,22 +234,29 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 
     const documentId = baseEntry.documentId || baseEntry.id
 
-    let entry = await tenantDb.contentEntry.findFirst({
-      where: { 
-        documentId, 
-        locale, 
-        OR: [
-          { tenantId: access.tenantId },
-          { tenantId: null }
-        ]
-      },
-      include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
-    })
-
+    let entry = null
     let isNewTranslation = false
-    if (!entry) {
+
+    if (baseEntry.locale === locale) {
       entry = baseEntry
-      isNewTranslation = true
+      isNewTranslation = false
+    } else {
+      entry = await tenantDb.contentEntry.findFirst({
+        where: { 
+          documentId, 
+          locale, 
+          OR: [
+            { tenantId: access.tenantId },
+            { tenantId: null }
+          ]
+        },
+        include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
+      })
+
+      if (!entry) {
+        entry = baseEntry
+        isNewTranslation = true
+      }
     }
 
     return { entry, isNewTranslation, documentId, contentType }
@@ -583,16 +590,22 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
     if (!baseEntry) return { error: "Entry not found" }
 
     const documentId = baseEntry.documentId || baseEntry.id
-    const existingLocaleEntry = await tenantDb.contentEntry.findFirst({ 
-      where: { 
-        documentId, 
-        locale: targetLocale, 
-        OR: [
-          { tenantId },
-          { tenantId: null }
-        ]
-      } 
-    })
+    let existingLocaleEntry = null
+
+    if (baseEntry.locale === targetLocale) {
+      existingLocaleEntry = baseEntry
+    } else {
+      existingLocaleEntry = await tenantDb.contentEntry.findFirst({ 
+        where: { 
+          documentId, 
+          locale: targetLocale, 
+          OR: [
+            { tenantId },
+            { tenantId: null }
+          ]
+        } 
+      })
+    }
 
     const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
     if (!isWorkflowStatus(targetStatus)) return { error: "Invalid content status" }
@@ -692,6 +705,9 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         }
 
         const updateData: any = { updatedBy: session.user.id }
+        if (!existingLocaleEntry.documentId) {
+          updateData.documentId = documentId
+        }
         if (finalData) updateData.data = finalData
         if (status) {
           updateData.status = status
@@ -722,6 +738,13 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
           )
           if (!publishHook.allowed) throw new Error(publishHook.rejectMessage || "Rejected by publish hook")
           finalData = publishHook.modifiedData || finalData
+        }
+
+        if (!baseEntry.documentId) {
+          await tx.contentEntry.update({
+            where: { id: baseEntry.id },
+            data: { documentId }
+          })
         }
 
         const newEntry = await tx.contentEntry.create({

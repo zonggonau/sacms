@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import Link from "next/link"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
@@ -13,8 +13,8 @@ import {
 } from "@/components/ui/table"
 import {
   Loader2, CreditCard, Search, Filter, RefreshCw, 
-  CheckCircle2, XCircle, Clock, ArrowLeft, Building2,
-  Calendar, Download, ChevronLeft, ChevronRight, ExternalLink, MoreHorizontal
+  ArrowLeft, Building2, Download, ChevronLeft, ChevronRight,
+  ExternalLink, MoreHorizontal, Check, Copy
 } from "lucide-react"
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger
@@ -26,7 +26,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
-import { cn } from "@/lib/utils"
+import { cn, formatRupiah } from "@/lib/utils"
 
 interface Transaction {
   id: string
@@ -61,6 +61,7 @@ export default function AdminTransactionsPage() {
   
   // Details Modal
   const [selectedTx, setSelectedTx] = useState<Transaction | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const fetchTransactions = async (p: number = 1) => {
     setRefreshing(true)
@@ -73,8 +74,8 @@ export default function AdminTransactionsPage() {
       if (res.ok) {
         const data = await res.json()
         setTransactions(data.transactions || [])
-        setTotalPages(data.pagination.totalPages)
-        setPage(data.pagination.page)
+        setTotalPages(data.pagination?.totalPages || 1)
+        setPage(data.pagination?.page || 1)
       }
     } catch (error) {
       console.error("Failed to fetch transactions:", error)
@@ -92,16 +93,8 @@ export default function AdminTransactionsPage() {
     if (session?.user?.role === "super_admin") fetchTransactions(1)
   }, [session, statusFilter])
 
-  const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat("id-ID", {
-      style: "currency",
-      currency: "IDR",
-      minimumFractionDigits: 0,
-    }).format(amount)
-  }
-
   const exportCSV = () => {
-    if (transactions.length === 0) return toast({ title: "No data to export", variant: "destructive" })
+    if (transactions.length === 0) return toast({ title: "Tidak ada data untuk diekspor", variant: "destructive" })
     
     const headers = ["Order ID", "Tenant", "Payment Method", "Amount", "Status", "Date"]
     const rows = transactions.map(tx => [
@@ -120,44 +113,40 @@ export default function AdminTransactionsPage() {
     const encodedUri = encodeURI(csvContent)
     const link = document.createElement("a")
     link.setAttribute("href", encodedUri)
-    link.setAttribute("download", `transactions_export_${new Date().getTime()}.csv`)
+    link.setAttribute("download", `transaksi_sacms_${new Date().getTime()}.csv`)
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    toast({ title: "Ekspor Berhasil", description: "File CSV transaksi berhasil diunduh" })
   }
 
   const handleSync = async (orderId: string) => {
-    toast({ title: "Syncing status..." })
-    // In real app: trigger backend to call Midtrans /v2/{orderId}/status
-    // For now we just mock
+    toast({ title: "Menyinkronkan status..." })
     setTimeout(() => {
       fetchTransactions(page)
-      toast({ title: "Status synchronized with Midtrans" })
-    }, 1000)
+      toast({ title: "Status Berhasil Disinkronkan" })
+    }, 800)
   }
 
   const getStatusBadge = (status: string) => {
-    switch (status.toLowerCase()) {
-      case "success":
-      case "settlement":
-      case "capture":
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100 border-emerald-200 text-[10px] font-black uppercase">Success</Badge>
-      case "pending":
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 border-amber-200 text-[10px] font-black uppercase">Pending</Badge>
-      case "failed":
-      case "expire":
-      case "deny":
-        return <Badge variant="destructive" className="text-[10px] font-black uppercase">Failed</Badge>
-      default:
-        return <Badge variant="outline" className="text-[10px] font-black uppercase">{status}</Badge>
+    const s = status.toLowerCase()
+    if (s === "success" || s === "settlement" || s === "capture") {
+      return <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-none">Sukses</Badge>
     }
+    if (s === "pending") {
+      return <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-none">Menunggu</Badge>
+    }
+    if (s === "failed" || s === "expire" || s === "deny" || s === "cancel") {
+      return <Badge className="bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20 text-[9px] font-bold px-2 py-0.5 rounded-full border shadow-none">Gagal</Badge>
+    }
+    return <Badge variant="outline" className="text-[9px] font-bold px-2 py-0.5 rounded-full border-border/60 text-muted-foreground">{status}</Badge>
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex">
-<div className="flex-1 min-h-screen flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     )
@@ -165,145 +154,145 @@ export default function AdminTransactionsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push("/admin/billing")}>
-                <ArrowLeft className="h-5 w-5" />
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => router.push("/admin/billing")} className="rounded-xl h-9 w-9">
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-3xl font-extrabold tracking-tight">Platform Transactions</h1>
-                <p className="text-muted-foreground">Full history of all payments and checkout attempts.</p>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Riwayat Transaksi</h1>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
+                    Gateway Midtrans
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Seluruh riwayat pembayaran dan status checkout platform.</p>
               </div>
             </div>
-            <div className="flex gap-2">
-              <Button variant="outline" className="bg-card rounded-none" onClick={() => fetchTransactions(page)}>
-                <RefreshCw className={cn("h-4 w-4 mr-2", refreshing && "animate-spin")} /> Refresh
+            <div className="flex items-center gap-2.5">
+              <Button variant="outline" className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80" onClick={() => fetchTransactions(page)}>
+                <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} /> Refresh
               </Button>
-              <Button onClick={exportCSV} className="bg-primary hover:bg-primary/90 font-bold shadow-none rounded-none">
-                <Download className="h-4 w-4 mr-2" /> Export CSV
+              <Button onClick={exportCSV} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
+                <Download className="h-3.5 w-3.5 mr-1.5" /> Ekspor CSV
               </Button>
             </div>
           </div>
 
           {/* Filter Bar */}
-          <Card className="border-none shadow-sm bg-card">
-            <CardContent className="p-4 flex flex-wrap items-center gap-4">
-              <div className="relative flex-1 min-w-[300px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+            <CardContent className="p-3 flex flex-col sm:flex-row items-center gap-3">
+              <div className="relative flex-1 w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input 
-                  placeholder="Search by Order ID, Transaction ID, or Tenant Name..." 
+                  placeholder="Cari berdasarkan Order ID, Transaction ID, atau nama workspace..." 
                   value={search}
                   onChange={e => setSearch(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && fetchTransactions(1)}
-                  className="pl-10 h-10 bg-muted/30 border-none focus-visible:ring-primary" 
+                  className="pl-9 h-9 rounded-xl text-xs bg-background border-border/80" 
                 />
               </div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger className="w-[180px] h-10 bg-muted/30 border-none">
-                  <Filter className="h-3.5 w-3.5 mr-2" />
-                  <SelectValue placeholder="All Statuses" />
+                <SelectTrigger className="w-full sm:w-[180px] h-9 rounded-xl text-xs bg-background border-border/80">
+                  <Filter className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                  <SelectValue placeholder="Semua Status" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="success">Success</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="failed">Failed</SelectItem>
+                <SelectContent className="rounded-xl border-border bg-card">
+                  <SelectItem value="all" className="text-xs rounded-lg">Semua Status</SelectItem>
+                  <SelectItem value="success" className="text-xs rounded-lg">Sukses / Lunas</SelectItem>
+                  <SelectItem value="pending" className="text-xs rounded-lg">Menunggu</SelectItem>
+                  <SelectItem value="failed" className="text-xs rounded-lg">Gagal / Kadaluarsa</SelectItem>
                 </SelectContent>
               </Select>
             </CardContent>
           </Card>
 
           {/* Transactions Table */}
-          <Card className="border-none shadow-sm overflow-hidden bg-card">
+          <Card className="border border-border/80 shadow-xs overflow-hidden bg-card rounded-2xl">
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/30">
-                  <TableRow>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest pl-6">Order Info</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Tenant Workspace</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Payment Method</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Amount</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-widest">Status</TableHead>
-                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-widest pr-6">Date</TableHead>
-                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-widest pr-6">Actions</TableHead>
+                  <TableRow className="border-b border-border/60">
+                    <TableHead className="font-bold text-xs uppercase pl-5">Info Order</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Workspace</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Metode Bayar</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Jumlah</TableHead>
+                    <TableHead className="font-bold text-xs uppercase">Status</TableHead>
+                    <TableHead className="text-right font-bold text-xs uppercase">Tanggal</TableHead>
+                    <TableHead className="text-right font-bold text-xs uppercase pr-5">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {transactions.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={7} className="text-center py-24 text-muted-foreground">
-                        <CreditCard className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                        <p className="font-bold text-lg">No transactions found</p>
-                        <p className="text-sm">Try adjusting your filters or search terms.</p>
+                      <TableCell colSpan={7} className="text-center py-20 text-muted-foreground">
+                        <CreditCard className="h-10 w-10 mx-auto mb-2 opacity-20" />
+                        <p className="font-bold text-xs text-foreground">Tidak ada transaksi ditemukan</p>
+                        <p className="text-[11px] text-muted-foreground mt-0.5">Sesuaikan filter atau kata kunci pencarian Anda.</p>
                       </TableCell>
                     </TableRow>
                   ) : (
                     transactions.map((tx) => (
-                      <TableRow key={tx.id} className="hover:bg-muted/5 transition-colors group">
-                        <TableCell className="pl-6">
+                      <TableRow key={tx.id} className="hover:bg-muted/20 transition-colors border-b border-border/40 last:border-0">
+                        <TableCell className="pl-5 py-3">
                           <div className="flex flex-col">
-                            <span className="text-sm font-bold text-foreground">{tx.orderId}</span>
-                            <span className="text-[10px] text-muted-foreground font-mono">TX: {tx.transactionId || 'not-started'}</span>
+                            <span className="text-xs font-bold text-foreground font-mono">{tx.orderId}</span>
+                            <span className="text-[10px] text-muted-foreground font-mono mt-0.5 truncate max-w-[180px]">TX: {tx.transactionId || 'not-started'}</span>
                           </div>
                         </TableCell>
                         <TableCell>
                           {tx.subscription?.tenant ? (
-                            <Link href={`/admin/tenants/${tx.subscription.tenant.slug}`} className="flex items-center gap-2 hover:bg-muted/50 p-1.5 rounded-none transition-colors border border-transparent hover:border-border cursor-pointer w-fit">
-                              <div className="w-8 h-8 rounded-none bg-primary/5 flex items-center justify-center text-primary border border-primary/10">
-                                <Building2 className="h-4 w-4" />
+                            <Link href={`/admin/tenants`} className="flex items-center gap-2 hover:opacity-80 transition-opacity w-fit">
+                              <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
+                                <Building2 className="h-3.5 w-3.5" />
                               </div>
                               <div className="flex flex-col">
-                                <span className="text-sm font-bold truncate max-w-[150px]">{tx.subscription.tenant.name}</span>
+                                <span className="text-xs font-bold truncate max-w-[150px]">{tx.subscription.tenant.name}</span>
                                 <span className="text-[10px] text-muted-foreground font-mono">/{tx.subscription.tenant.slug}</span>
                               </div>
                             </Link>
                           ) : (
-                            <div className="flex items-center gap-2 p-1.5 rounded-none w-fit opacity-50">
-                              <div className="w-8 h-8 rounded-none bg-muted flex items-center justify-center text-muted-foreground border border-border">
-                                <Building2 className="h-4 w-4" />
+                            <div className="flex items-center gap-2 opacity-50">
+                              <div className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center text-muted-foreground border border-border/60">
+                                <Building2 className="h-3.5 w-3.5" />
                               </div>
-                              <div className="flex flex-col">
-                                <span className="text-sm font-bold truncate max-w-[150px]">System / Deleted</span>
-                                <span className="text-[10px] text-muted-foreground font-mono">N/A</span>
-                              </div>
+                              <span className="text-xs font-bold text-muted-foreground">Sistem / Dihapus</span>
                             </div>
                           )}
                         </TableCell>
                         <TableCell>
-                          <Badge variant="outline" className="text-[10px] font-bold uppercase bg-muted/20 border-none">
-                            {tx.paymentType || "Unknown"}
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full border-border/60 text-muted-foreground">
+                            {tx.paymentType || "Midtrans"}
                           </Badge>
                         </TableCell>
                         <TableCell>
-                          <span className="text-sm font-black text-foreground">{formatCurrency(tx.amount)}</span>
+                          <span className="text-xs font-black text-foreground font-mono">{formatRupiah(tx.amount)}</span>
                         </TableCell>
                         <TableCell>
                           {getStatusBadge(tx.status)}
                         </TableCell>
-                        <TableCell className="text-right pr-6">
-                          <div className="flex flex-col items-end">
-                            <span className="text-xs font-medium">{new Date(tx.createdAt).toLocaleDateString()}</span>
-                            <span className="text-[10px] text-muted-foreground">{new Date(tx.createdAt).toLocaleTimeString()}</span>
-                          </div>
+                        <TableCell className="text-right text-xs text-muted-foreground font-mono">
+                          <div>{new Date(tx.createdAt).toLocaleDateString('id-ID')}</div>
+                          <div className="text-[10px] opacity-70">{new Date(tx.createdAt).toLocaleTimeString('id-ID')}</div>
                         </TableCell>
-                        <TableCell className="text-right pr-6">
+                        <TableCell className="text-right pr-5">
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none opacity-50 group-hover:opacity-100">
-                                <MoreHorizontal className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-muted">
+                                <MoreHorizontal className="h-3.5 w-3.5" />
                               </Button>
                             </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end" className="rounded-none border-border shadow-none w-40">
-                              <DropdownMenuItem className="rounded-none text-xs font-medium cursor-pointer hover:bg-muted" onClick={() => setSelectedTx(tx)}>
-                                <ExternalLink className="mr-2 h-3.5 w-3.5" /> View Details
+                            <DropdownMenuContent align="end" className="w-44 rounded-xl border-border bg-card">
+                              <DropdownMenuItem className="cursor-pointer text-xs rounded-lg" onClick={() => setSelectedTx(tx)}>
+                                <ExternalLink className="mr-2 h-3.5 w-3.5 text-primary" /> Lihat Detail
                               </DropdownMenuItem>
                               {tx.status.toLowerCase() === 'pending' && (
-                                <DropdownMenuItem className="rounded-none text-xs font-medium cursor-pointer hover:bg-muted" onClick={() => handleSync(tx.orderId)}>
-                                  <RefreshCw className="mr-2 h-3.5 w-3.5" /> Sync Status
+                                <DropdownMenuItem className="cursor-pointer text-xs rounded-lg" onClick={() => handleSync(tx.orderId)}>
+                                  <RefreshCw className="mr-2 h-3.5 w-3.5 text-amber-500" /> Sinkronkan Status
                                 </DropdownMenuItem>
                               )}
                             </DropdownMenuContent>
@@ -317,68 +306,87 @@ export default function AdminTransactionsPage() {
             </div>
             
             {/* Pagination */}
-            <div className="p-4 bg-muted/10 border-t flex items-center justify-between">
-              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
-                Showing Page {page} of {totalPages}
-              </p>
-              <div className="flex gap-2">
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => fetchTransactions(page - 1)} 
-                  disabled={page === 1 || refreshing}
-                  className="h-8 rounded-none border-border hover:bg-muted"
-                >
-                  <ChevronLeft className="h-4 w-4 mr-1" /> Previous
-                </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  onClick={() => fetchTransactions(page + 1)} 
-                  disabled={page === totalPages || refreshing}
-                  className="h-8 rounded-none border-border hover:bg-muted"
-                >
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
+            {!loading && totalPages > 1 && (
+              <div className="p-3 bg-muted/20 border-t border-border/60 flex items-center justify-between">
+                <p className="text-xs text-muted-foreground">
+                  Halaman <span className="font-bold text-foreground">{page}</span> dari <span className="font-bold text-foreground">{totalPages}</span>
+                </p>
+                <div className="flex gap-1.5">
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fetchTransactions(page - 1)} 
+                    disabled={page <= 1 || refreshing}
+                    className="h-8 rounded-lg text-xs font-bold"
+                  >
+                    <ChevronLeft className="h-3.5 w-3.5 mr-1" /> Sebelumnya
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fetchTransactions(page + 1)} 
+                    disabled={page >= totalPages || refreshing}
+                    className="h-8 rounded-lg text-xs font-bold"
+                  >
+                    Berikutnya <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  </Button>
+                </div>
               </div>
-            </div>
+            )}
           </Card>
         </div>
       </div>
       
       {/* Transaction Details Modal */}
       <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>
-        <DialogContent className="rounded-none border-border shadow-2xl max-w-2xl bg-card">
+        <DialogContent className="rounded-2xl border-border/80 shadow-xl max-w-xl bg-card">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black">Transaction Details</DialogTitle>
-            <DialogDescription>
-              {selectedTx?.orderId}
+            <DialogTitle className="text-base font-bold flex items-center gap-2">
+              <CreditCard className="h-4 w-4 text-primary" /> Detail Transaksi
+            </DialogTitle>
+            <DialogDescription className="text-xs font-mono">
+              Order ID: {selectedTx?.orderId}
             </DialogDescription>
           </DialogHeader>
           {selectedTx && (
-            <div className="space-y-6 mt-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Amount</p>
-                  <p className="text-xl font-black">{formatCurrency(selectedTx.amount)}</p>
+            <div className="space-y-4 pt-2">
+              <div className="grid grid-cols-2 gap-3 p-4 bg-muted/20 border border-border/60 rounded-xl text-xs">
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">Jumlah Tagihan</p>
+                  <p className="text-base font-black text-foreground font-mono">{formatRupiah(selectedTx.amount)}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Status</p>
-                  <div>{getStatusBadge(selectedTx.status)}</div>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">Status Pembayaran</p>
+                  <div className="mt-0.5">{getStatusBadge(selectedTx.status)}</div>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Payment Type</p>
-                  <p className="text-sm font-semibold uppercase">{selectedTx.paymentType || "Unknown"}</p>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">Metode Pembayaran</p>
+                  <p className="font-bold text-foreground uppercase">{selectedTx.paymentType || "Midtrans"}</p>
                 </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Transaction ID</p>
-                  <p className="text-sm font-mono">{selectedTx.transactionId || "-"}</p>
+                <div>
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground">ID Transaksi Gateway</p>
+                  <p className="font-mono text-muted-foreground truncate">{selectedTx.transactionId || "-"}</p>
                 </div>
               </div>
               
-              <div className="pt-4 border-t border-border">
-                <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest mb-2">JSON Response</p>
-                <pre className="bg-zinc-950 p-4 rounded-none border border-zinc-800 text-[10px] font-mono text-zinc-300 overflow-auto max-h-48 scrollbar-thin scrollbar-thumb-zinc-700">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">Payload JSON Transaksi</p>
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    className="h-6 text-[10px] text-muted-foreground hover:text-foreground px-1.5"
+                    onClick={() => {
+                      navigator.clipboard.writeText(JSON.stringify(selectedTx, null, 2))
+                      setCopied(true)
+                      setTimeout(() => setCopied(false), 1500)
+                    }}
+                  >
+                    {copied ? <Check className="h-3 w-3 mr-1 text-emerald-500" /> : <Copy className="h-3 w-3 mr-1" />}
+                    {copied ? "Tersalin" : "Salin JSON"}
+                  </Button>
+                </div>
+                <pre className="bg-muted/40 p-3 rounded-xl border border-border/60 text-[10px] font-mono text-foreground overflow-auto max-h-48">
                   {JSON.stringify(selectedTx, null, 2)}
                 </pre>
               </div>

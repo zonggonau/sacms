@@ -50,7 +50,7 @@ export default function SystemJobsPage() {
   const [jobs, setJobs] = useState<ScheduledJob[]>([])
   const [loading, setLoading] = useState(true)
 
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
@@ -139,8 +139,8 @@ export default function SystemJobsPage() {
   }
 
   useEffect(() => {
-    if (session?.user) fetchJobs()
-  }, [tenantSlug, session])
+    if (session?.user?.id) fetchJobs()
+  }, [tenantSlug, session?.user?.id])
 
   if (status === "loading") {
     return (

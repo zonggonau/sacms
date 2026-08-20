@@ -128,64 +128,76 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted">
-                <ArrowLeft className="h-5 w-5" />
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl h-9 w-9 hover:bg-muted/60">
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">Single Types</h1>
-                <p className="text-xs text-slate-500 font-medium mt-1">
-                  Manage your singleton content structures and data.
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl font-black tracking-tight text-foreground">Single Types</h1>
+                  <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
+                    {initialSingleTypes.length}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Kelola struktur skema konten tunggal (seperti Beranda, Pengaturan Global, atau Tentang Kami).
                 </p>
               </div>
             </div>
             <div className="flex items-center gap-3">
-
               <Button 
-                className="bg-primary hover:bg-primary/90 text-white font-bold rounded-none shadow-none"
+                className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/new`)}
                 disabled={isLimitReached}
               >
-                <Plus className="mr-2 h-4 w-4" /> New Single Type
+                <Plus className="mr-1.5 h-4 w-4" /> Single Type Baru
               </Button>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center text-primary">
+          {/* Stats Bar */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Total Skema</p>
+                  <p className="text-2xl font-black text-foreground">{initialSingleTypes.length}</p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary">
                   <Layers className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Total Types</p>
-                  <p className="text-xl font-black">{initialSingleTypes.length}</p>
-                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-blue-100 flex items-center justify-center text-blue-600">
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Terpublikasi (Live)</p>
+                  <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                    {initialSingleTypes.filter(s => s.publishedAt).length}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-xl bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <Globe className="h-5 w-5" />
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Published</p>
-                  <p className="text-xl font-black">{initialSingleTypes.filter(s => s.publishedAt).length}</p>
-                </div>
               </CardContent>
             </Card>
-            <Card className="bg-white border border-slate-200 rounded-none shadow-sm">
-              <CardContent className="p-5 flex items-center gap-4">
-                <div className="w-10 h-10 rounded-none bg-amber-100 flex items-center justify-center text-amber-600">
-                  <FileText className="h-5 w-5" />
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
+              <CardContent className="p-4 flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <p className="text-xs font-semibold text-muted-foreground">Draft</p>
+                  <p className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                    {initialSingleTypes.filter(s => !s.publishedAt).length}
+                  </p>
                 </div>
-                <div>
-                  <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Drafts</p>
-                  <p className="text-xl font-black">{initialSingleTypes.filter(s => !s.publishedAt).length}</p>
+                <div className="w-10 h-10 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-600 dark:text-amber-400">
+                  <FileText className="h-5 w-5" />
                 </div>
               </CardContent>
             </Card>
@@ -193,173 +205,181 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
 
           {/* Limit Alert */}
           {isLimitReached && (
-            <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
-              <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 animate-pulse" />
-              <div className="text-xs text-amber-800 dark:text-amber-300 font-medium">
-                You have reached your content structures limit of {limit} schemas. Delete an existing custom schema or upgrade your plan to create more.
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-xs">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                Anda telah mencapai batas maksimum {limit} skema. Hapus skema yang tidak terpakai atau upgrade paket untuk menambah kuota.
               </div>
             </div>
           )}
 
-          <Card className="border border-slate-200 shadow-sm overflow-hidden bg-white rounded-none">
-            <CardHeader className="bg-white border-b border-slate-200">
-              <div className="flex items-center justify-between">
-                <div className="relative max-w-sm w-full">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    placeholder="Search single types..." 
-                    className="pl-10 h-10 bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm font-medium"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
-                  {searchTerm && (
-                    <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-                      <X className="h-4 w-4" />
-                    </button>
-                  )}
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-0">
-              {filteredSingleTypes.length === 0 ? (
-                <div className="py-24 text-center">
-                  <FileText className="h-12 w-12 mx-auto mb-4 opacity-5" />
-                  <p className="font-bold text-muted-foreground">No single types found</p>
-                  <p className="text-xs text-muted-foreground/60 mt-1">
-                    {searchTerm ? `No results for "${searchTerm}". Try another keyword.` : "Start by creating a new structure for your singleton content."}
-                  </p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader className="bg-[#f6f6f9] border-b border-slate-200">
-                    <TableRow>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 pl-6">Structure Name</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500">API Slug</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Fields</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Status</TableHead>
-                      <TableHead className="font-bold text-[10px] uppercase tracking-wider text-slate-500 text-center">Last Updated</TableHead>
-                      <TableHead className="text-right pr-6"></TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {filteredSingleTypes.map((st) => (
-                      <TableRow key={st.id} className="group hover:bg-muted/5 transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}>
-                        <TableCell className="pl-6">
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-none bg-primary/5 flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
-                              <FileText className="h-4.5 w-4.5" />
-                            </div>
-                            <div className="flex flex-col">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-bold text-foreground">{st.name}</span>
-                                {st.isGlobal && <Badge variant="outline" className="text-[8px] uppercase font-black px-1.5 h-4 border-primary/20 text-primary">Global</Badge>}
-                              </div>
-                              {st.description && <p className="text-[11px] text-muted-foreground truncate max-w-[200px] mt-0.5">{st.description}</p>}
-                            </div>
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <code className="text-[11px] font-mono font-bold bg-muted px-2 py-1 rounded-none text-muted-foreground">/{st.slug}</code>
-                        </TableCell>
-                        <TableCell className="text-center font-bold text-xs">{st.fields?.length || 0}</TableCell>
-                        <TableCell className="text-center">
-                          {st.publishedAt ? (
-                            <div className="flex items-center justify-center gap-1.5 text-emerald-600">
-                              <CheckCircle2 className="h-3 w-3" />
-                              <span className="text-[10px] font-black uppercase">Live</span>
-                            </div>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1.5 text-muted-foreground">
-                              <AlertCircle className="h-3 w-3" />
-                              <span className="text-[10px] font-black uppercase">Draft</span>
-                            </div>
-                          )}
-                        </TableCell>
-                        <TableCell className="text-center text-xs font-medium text-slate-500">
-                          {st.updatedAt ? new Date(st.updatedAt).toLocaleDateString() : "Never"}
-                        </TableCell>
-                        <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex justify-end gap-2 items-center">
-
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48">
-                                {(!st.isGlobal || isGlobalTenant) && (
-                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}>
-                                    <Layout className="mr-2 h-4 w-4" /> Edit Schema
-                                  </DropdownMenuItem>
-                                )}
-                                {(!st.isGlobal || isGlobalTenant) && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleDeleteClick(st)} className="text-destructive focus:text-destructive">
-                                      <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+          {/* Search & List */}
+          <div className="space-y-3">
+            <div className="relative max-w-sm w-full">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Cari nama atau slug single type..." 
+                className="pl-9 h-9 bg-card border-border/80 rounded-xl text-xs"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              {searchTerm && (
+                <button onClick={() => setSearchTerm("")} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                  <X className="h-3.5 w-3.5" />
+                </button>
               )}
-            </CardContent>
-          </Card>
-
-          <div className="p-4 bg-primary/5 border border-primary/10 rounded-none flex gap-4 text-primary shadow-none">
-            <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center shrink-0">
-              <ShieldCheck className="h-5 w-5" />
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-widest">Governance Policy</p>
-              <p className="text-[11px] leading-relaxed mt-1 opacity-80 max-w-2xl">
-                Single types are designed for single-entry content (like Homepage, About Us, or Global Settings). Custom structures are private to this workspace, while global structures are administered platform-wide.
-              </p>
+
+            <Card className="border border-border/80 bg-card rounded-2xl shadow-xs overflow-hidden">
+              <CardContent className="p-0">
+                {filteredSingleTypes.length === 0 ? (
+                  <div className="py-16 text-center space-y-2">
+                    <FileText className="h-8 w-8 mx-auto opacity-30 text-muted-foreground" />
+                    <p className="text-xs font-bold text-foreground">Single type tidak ditemukan</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                      {searchTerm ? `Tidak ada hasil untuk "${searchTerm}".` : "Mulai dengan membuat struktur skema single type pertama Anda."}
+                    </p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader className="bg-muted/30">
+                      <TableRow>
+                        <TableHead className="text-xs font-bold pl-6">Nama Struktur</TableHead>
+                        <TableHead className="text-xs font-bold">API Slug</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Field</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Status</TableHead>
+                        <TableHead className="text-xs font-bold text-center">Terakhir Diperbarui</TableHead>
+                        <TableHead className="text-right pr-6"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredSingleTypes.map((st) => (
+                        <TableRow 
+                          key={st.id} 
+                          className="group hover:bg-muted/40 transition-colors cursor-pointer border-b border-border/60" 
+                          onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)}
+                        >
+                          <TableCell className="pl-6 py-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary font-bold text-xs shrink-0">
+                                <FileText className="h-4 w-4" />
+                              </div>
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs font-bold text-foreground truncate">{st.name}</span>
+                                  {st.isGlobal && (
+                                    <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 rounded-full border-primary/30 text-primary">
+                                      Global
+                                    </Badge>
+                                  )}
+                                </div>
+                                {st.description && <p className="text-[11px] text-muted-foreground truncate max-w-[220px] mt-0.5">{st.description}</p>}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-3">
+                            <code className="text-[11px] font-mono font-bold bg-muted/60 px-2 py-0.5 rounded-md text-foreground">
+                              /{st.slug}
+                            </code>
+                          </TableCell>
+                          <TableCell className="text-center font-bold text-xs text-foreground py-3">
+                            {st.fields?.length || 0}
+                          </TableCell>
+                          <TableCell className="text-center py-3">
+                            {st.publishedAt ? (
+                              <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
+                                Live
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-full">
+                                Draft
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="text-center text-xs text-muted-foreground font-mono py-3">
+                            {st.updatedAt ? new Date(st.updatedAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' }) : "-"}
+                          </TableCell>
+                          <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex justify-end gap-1.5 items-center">
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                                  {(!st.isGlobal || isGlobalTenant) && (
+                                    <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)} className="text-xs cursor-pointer rounded-lg">
+                                      <Layout className="mr-2 h-3.5 w-3.5" /> Edit Skema
+                                    </DropdownMenuItem>
+                                  )}
+                                  {(!st.isGlobal || isGlobalTenant) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleDeleteClick(st)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">
+                                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Skema
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Governance Footer */}
+          <div className="p-3.5 bg-muted/30 border border-border/60 rounded-2xl flex items-start gap-3">
+            <ShieldCheck className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
+            <div className="text-[11px] text-muted-foreground leading-relaxed">
+              <strong>Single Type</strong> didesain untuk konten halaman tunggal (seperti Beranda, Tentang Kami, atau Pengaturan). Skema kustom bersifat privat untuk workspace ini.
             </div>
           </div>
 
         </div>
       </div>
 
+      {/* Delete Confirmation Modal */}
       <Dialog open={deleteDialog.open} onOpenChange={(open) => setDeleteDialog({ ...deleteDialog, open })}>
-        <DialogContent className="rounded-none border-none shadow-none">
+        <DialogContent className="rounded-2xl border border-border bg-card">
           <DialogHeader>
-            <DialogTitle className="text-xl font-black uppercase tracking-tight text-destructive flex items-center gap-2">
-              <Trash2 className="h-5 w-5" /> Critical Action
+            <DialogTitle className="text-base font-bold text-destructive flex items-center gap-2">
+              <Trash2 className="h-4 w-4" /> Hapus Single Type?
             </DialogTitle>
-            <DialogDescription className="text-sm font-medium">
-              You are about to delete <strong>"{deleteDialog.singleType?.name}"</strong>. This will also erase all associated content permanently.
+            <DialogDescription className="text-xs text-muted-foreground">
+              Tindakan ini akan menghapus skema <strong className="text-foreground font-bold">"{deleteDialog.singleType?.name}"</strong> beserta seluruh datanya secara permanen.
             </DialogDescription>
           </DialogHeader>
-          <div className="py-4 space-y-4">
-            <div className="p-4 bg-destructive/10 rounded-none border border-destructive/20">
-              <p className="text-xs font-bold text-destructive">To confirm, type the exact name of the schema below:</p>
-              <p className="text-sm font-black mt-1 text-destructive">{deleteDialog.singleType?.name}</p>
+          <div className="py-3 space-y-3">
+            <div className="p-3 bg-destructive/10 rounded-xl border border-destructive/20 text-xs">
+              <p className="font-semibold text-destructive">Ketik nama skema persis untuk konfirmasi:</p>
+              <p className="font-mono font-bold mt-1 text-foreground">{deleteDialog.singleType?.name}</p>
             </div>
             <Input
               value={deleteConfirmName}
               onChange={(e) => setDeleteConfirmName(e.target.value)}
-              placeholder="Confirm schema name"
-              className="bg-muted/30 border-none h-10"
+              placeholder="Ketik nama skema"
+              className="h-9 text-xs rounded-xl"
             />
           </div>
-          <DialogFooter className="gap-2">
-            <Button variant="outline" className="rounded-none h-10" onClick={() => setDeleteDialog({ open: false, singleType: null })}>Cancel</Button>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="ghost" className="rounded-xl text-xs" onClick={() => setDeleteDialog({ open: false, singleType: null })}>
+              Batal
+            </Button>
             <Button
               variant="destructive"
-              className="rounded-none h-10 font-bold"
+              className="rounded-xl text-xs font-bold"
               onClick={handleDelete}
               disabled={isPending || deleteConfirmName !== deleteDialog.singleType?.name}
             >
-              {isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Trash2 className="h-4 w-4 mr-2" />}
-              Erase Schema
+              {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+              Hapus Permanen
             </Button>
           </DialogFooter>
         </DialogContent>

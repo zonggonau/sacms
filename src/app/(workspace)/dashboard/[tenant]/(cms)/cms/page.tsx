@@ -94,93 +94,108 @@ export default async function CMSDashboardPage({
   }
 
   return (
-    <div className="p-6 lg:p-10 space-y-8 max-w-7xl mx-auto animate-in fade-in duration-300">
-      {/* Welcome Section */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight text-foreground">
-            Hi, {session.user.name?.split(' ')[0]} 👋
-          </h1>
-          <p className="text-muted-foreground text-sm">Ready to craft some amazing content today?</p>
-        </div>
-        <div className="border border-border bg-card p-4 px-6 flex items-center gap-4 rounded-none shadow-none">
-          <div className="w-10 h-10 bg-orange-500 flex items-center justify-center text-white shrink-0">
-            <Sparkles className="h-5 w-5" />
-          </div>
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Workspace</p>
-            <p className="font-bold text-sm text-foreground">
+    <div className="p-4 md:p-6 lg:p-8 space-y-6 max-w-7xl mx-auto">
+      {/* Welcome & Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div className="flex items-center gap-2.5">
+            <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">
+              CMS Content Studio
+            </h1>
+            <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
               {tenantData?.name || tenantSlug}
-            </p>
+            </Badge>
           </div>
+          <p className="text-xs text-muted-foreground mt-1">
+            Halo {session.user.name?.split(' ')[0]} 👋 Siap untuk mengelola dan mempublikasikan konten hari ini?
+          </p>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2.5">
+          <Button asChild variant="outline" className="h-9 px-3 text-xs font-semibold rounded-xl border-border/80 bg-card hover:bg-muted/50">
+            <Link href={`/dashboard/${tenantSlug}/cms/media`}>
+              <ImageIcon className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              Media Library
+            </Link>
+          </Button>
+
+          <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
+            <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
+              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+              Kelola Skema
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* Mini Stats */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
+      {/* Mini Metric Stats */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         {[
-          { label: "Active Collections", value: stats.contentTypeCount, icon: Database },
-          { label: "Total Entries", value: stats.totalEntries, icon: FileText },
-          { label: "Media Assets", value: stats.mediaCount, icon: ImageIcon },
+          { label: "Koleksi Tipe Konten", value: stats.contentTypeCount, icon: Database, color: "text-primary", bg: "bg-primary/10" },
+          { label: "Total Entri Konten", value: stats.totalEntries, icon: FileText, color: "text-emerald-500", bg: "bg-emerald-500/10" },
+          { label: "Aset Media Tersimpan", value: stats.mediaCount, icon: ImageIcon, color: "text-blue-500", bg: "bg-blue-500/10" },
         ].map((s) => (
-          <Card key={s.label} className="border border-border shadow-none bg-card rounded-none">
-            <CardContent className="p-6 flex items-center gap-4">
-              <div className="w-10 h-10 bg-muted flex items-center justify-center shrink-0 border border-border">
-                <s.icon className="h-5 w-5 text-muted-foreground" />
+          <Card key={s.label} className="border border-border/80 bg-card rounded-2xl shadow-xs">
+            <CardContent className="p-4 flex items-center justify-between">
+              <div className="space-y-0.5">
+                <p className="text-xs font-semibold text-muted-foreground">{s.label}</p>
+                <p className="text-2xl font-black text-foreground">{s.value}</p>
               </div>
-              <div>
-                <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">{s.label}</p>
-                <p className="text-2xl font-bold text-foreground">{s.value}</p>
+              <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center shrink-0", s.bg)}>
+                <s.icon className={cn("h-5 w-5", s.color)} />
               </div>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Recent Work */}
-        <Card className="lg:col-span-2 border border-border shadow-none bg-card rounded-none overflow-hidden">
-          <CardHeader className="bg-muted/50 border-b border-border p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Content Edits */}
+        <Card className="lg:col-span-2 border border-border/80 bg-card rounded-2xl shadow-xs overflow-hidden">
+          <CardHeader className="p-5 pb-3 border-b border-border/60">
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-bold flex items-center gap-2 text-foreground">
-                <Clock className="h-4 w-4 text-orange-500" /> Recent Content Edits
+                <Clock className="h-4 w-4 text-primary" /> Pembaruan Konten Terakhir
               </CardTitle>
-              <Badge variant="outline" className="font-bold text-[9px] rounded-none px-2 py-0.5">LATEST</Badge>
+              <Badge variant="outline" className="text-[10px] font-bold rounded-full px-2 py-0.5 border-border">
+                Aktivitas Terbaru
+              </Badge>
             </div>
           </CardHeader>
           <CardContent className="p-0">
             {stats.recentEntries.length === 0 ? (
-              <div className="py-20 text-center text-muted-foreground">
-                <PenTool className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                <p className="text-sm">No content has been created yet.</p>
+              <div className="py-16 text-center text-muted-foreground space-y-2">
+                <PenTool className="h-8 w-8 mx-auto opacity-30" />
+                <p className="text-xs font-semibold text-foreground">Belum ada konten yang dibuat</p>
+                <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">Pilih koleksi konten di menu samping untuk membuat entri pertama Anda.</p>
               </div>
             ) : (
-              <div className="divide-y divide-border">
+              <div className="divide-y divide-border/60">
                 {stats.recentEntries.map((entry) => (
-                  <div key={entry.id} className="p-4 px-6 flex items-center justify-between hover:bg-muted/30 transition-colors group">
-                    <div className="flex items-center gap-4">
-                      <div className="w-9 h-9 border border-border bg-muted flex items-center justify-center text-muted-foreground group-hover:bg-orange-500 group-hover:text-white transition-colors">
-                        <FileText className="h-4.5 w-4.5" />
+                  <div key={entry.id} className="p-3.5 px-5 flex items-center justify-between hover:bg-muted/30 transition-colors group">
+                    <div className="flex items-center gap-3.5 min-w-0">
+                      <div className="w-9 h-9 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0">
+                        <FileText className="h-4 w-4" />
                       </div>
-                      <div>
-                        <p className="text-sm font-bold text-foreground">{entry.contentType}</p>
-                        <p className="text-[10px] text-muted-foreground mt-0.5">
-                          Last edited {new Date(entry.updatedAt).toLocaleDateString()}
+                      <div className="min-w-0">
+                        <p className="text-xs font-bold text-foreground truncate">{entry.contentType}</p>
+                        <p className="text-[11px] text-muted-foreground font-mono mt-0.5">
+                          Diperbarui {new Date(entry.updatedAt).toLocaleDateString("id-ID", { day: 'numeric', month: 'short' })}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <Badge variant="outline" className={cn(
-                        "text-[9px] font-bold uppercase px-2 py-0.5 rounded-none border",
+                    <div className="flex items-center gap-3">
+                      <Badge className={cn(
+                        "text-[9px] font-bold uppercase px-2 py-0.5 rounded-full border-0",
                         entry.status === 'PUBLISHED' 
-                          ? 'border-orange-500 text-orange-500 bg-orange-500/5 dark:bg-orange-950/10' 
-                          : 'border-amber-500 text-amber-600 bg-amber-50/50 dark:bg-amber-950/20'
+                          ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' 
+                          : 'bg-amber-500/15 text-amber-600 dark:text-amber-400'
                       )}>
                         {entry.status}
                       </Badge>
                       <Link href={`/dashboard/${tenantSlug}/cms/content/${entry.contentTypeSlug}`}>
-                        <Button variant="outline" size="icon" className="rounded-none h-8 w-8 hover:bg-muted">
-                          <ArrowRight className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" className="rounded-lg h-7 w-7 text-muted-foreground hover:text-foreground">
+                          <ArrowRight className="h-3.5 w-3.5" />
                         </Button>
                       </Link>
                     </div>
@@ -191,42 +206,42 @@ export default async function CMSDashboardPage({
           </CardContent>
         </Card>
 
-        {/* Quick Tips & Status */}
+        {/* Workflow Overview & Pro Tips */}
         <div className="space-y-6">
-          <Card className="border border-border bg-card shadow-none rounded-none overflow-hidden relative">
-            <CardHeader className="p-6 pb-2">
-              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                <Zap className="h-4 w-4 text-orange-500 fill-current" /> Pro Tip
-              </CardTitle>
+          <Card className="border border-border/80 bg-card rounded-2xl shadow-xs overflow-hidden">
+            <CardHeader className="p-4 pb-2 border-b border-border/60">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Status Alur Kerja</CardTitle>
             </CardHeader>
-            <CardContent className="p-6 pt-0 space-y-4">
-              <p className="text-xs text-muted-foreground leading-relaxed">
-                You can use the **AI Content Assistant** inside any text field to help you generate headlines, translate copy, or summarize long articles in seconds.
-              </p>
-              <Button variant="outline" className="w-full font-bold rounded-none border border-border h-9 text-xs" asChild>
-                <Link href={`/dashboard/${tenantSlug}/cms/media`}>Explore Media</Link>
-              </Button>
+            <CardContent className="space-y-2 p-4 pt-3">
+              {[
+                { label: "Draft", count: stats.entries.draft, dot: "bg-slate-400" },
+                { label: "In Review", count: stats.entries.in_review, dot: "bg-amber-500" },
+                { label: "Published", count: stats.entries.published, dot: "bg-emerald-500" },
+              ].map((w) => (
+                <div key={w.label} className="flex items-center justify-between p-2.5 rounded-xl bg-muted/30 border border-border/60">
+                  <div className="flex items-center gap-2">
+                    <div className={cn("w-2 h-2 rounded-full", w.dot)} />
+                    <span className="text-xs font-semibold text-muted-foreground">{w.label}</span>
+                  </div>
+                  <span className="text-xs font-black text-foreground">{w.count}</span>
+                </div>
+              ))}
             </CardContent>
           </Card>
 
-          <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-            <CardHeader className="pb-2 p-6 border-b border-border bg-muted/50">
-              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Workflow Overview</CardTitle>
+          <Card className="border border-border/80 bg-card rounded-2xl shadow-xs overflow-hidden">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 text-primary">
+                <Sparkles className="h-3.5 w-3.5" /> Tips AI Studio
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3 p-6">
-              {[
-                { label: "Drafts", count: stats.entries.draft, color: "bg-zinc-400" },
-                { label: "In Review", count: stats.entries.in_review, color: "bg-amber-500" },
-                { label: "Published", count: stats.entries.published, color: "bg-orange-500" },
-              ].map((w) => (
-                <div key={w.label} className="flex items-center justify-between p-3 rounded-none bg-muted/20 border border-border/40">
-                  <div className="flex items-center gap-2">
-                    <div className={cn("w-2 h-2 rounded-none", w.color)} />
-                    <span className="text-xs font-semibold text-muted-foreground">{w.label}</span>
-                  </div>
-                  <span className="text-sm font-bold">{w.count}</span>
-                </div>
-              ))}
+            <CardContent className="p-4 pt-1 space-y-3">
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Manfaatkan <strong>AI Content Assistant</strong> di setiap editor konten untuk membuat artikel, menerjemahkan bahasa, atau meringkas teks secara instan.
+              </p>
+              <Button variant="outline" className="w-full font-bold rounded-xl border-border/80 h-8 text-xs bg-muted/30 hover:bg-muted/60" asChild>
+                <Link href={`/dashboard/${tenantSlug}/cms/media`}>Buka Media Library</Link>
+              </Button>
             </CardContent>
           </Card>
         </div>

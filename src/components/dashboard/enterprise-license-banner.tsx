@@ -106,40 +106,60 @@ export function EnterpriseLicenseBanner({ tenantId, hideActivation = false }: { 
   if (!license || !license.valid) {
     if (hideActivation) return null
     return (
-      <Card className="border-dashed border-muted-foreground/30">
-        <CardContent className="p-4 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center shrink-0">
+      <Card className="border border-border/80 bg-card/60 shadow-xs rounded-2xl overflow-hidden">
+        <CardContent className="p-4 sm:p-5">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5">
+              <div className="w-10 h-10 rounded-xl bg-muted/80 border border-border/80 flex items-center justify-center shrink-0">
                 <ShieldAlert className="w-5 h-5 text-muted-foreground" />
               </div>
-              <div>
-                <p className="text-sm font-bold">Standard Mode</p>
-                <p className="text-xs text-muted-foreground">Workspace plan limits apply. Activate an enterprise key for unlimited access.</p>
+              <div className="space-y-0.5">
+                <div className="flex items-center gap-2">
+                  <p className="text-sm font-bold text-foreground">Mode Standar (Standard Mode)</p>
+                  <Badge variant="outline" className="text-[10px] font-semibold px-2 py-0.5 rounded-full border-border">
+                    Batasan Kuota Aktif
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Batasan paket workspace berlaku. Untuk mendapatkan lisensi Enterprise atau akses tanpa batas, <strong>silakan hubungi Administrator</strong>.
+                </p>
               </div>
             </div>
-            {!showActivate ? (
-              <Button variant="outline" size="sm" onClick={() => setShowActivate(true)}>
-                <KeyRound className="w-3.5 h-3.5 mr-2" />
-                Activate License
-              </Button>
-            ) : (
-              <Button variant="ghost" size="sm" onClick={() => setShowActivate(false)}>
-                Cancel
-              </Button>
-            )}
+            
+            <div className="flex items-center gap-2 self-end sm:self-center shrink-0">
+              <a href="mailto:admin@sacms.cloud?subject=Permintaan%20Lisensi%20Enterprise%20SaCMS">
+                <Button variant="outline" size="sm" className="h-8 text-xs font-semibold rounded-xl border-border">
+                  <ExternalLink className="w-3 h-3 mr-1.5" />
+                  Hubungi Admin
+                </Button>
+              </a>
+              {!showActivate ? (
+                <Button variant="default" size="sm" onClick={() => setShowActivate(true)} className="h-8 text-xs font-semibold rounded-xl bg-primary text-primary-foreground">
+                  <KeyRound className="w-3 h-3 mr-1.5" />
+                  Aktivasi Key
+                </Button>
+              ) : (
+                <Button variant="ghost" size="sm" onClick={() => setShowActivate(false)} className="h-8 text-xs font-semibold rounded-xl">
+                  Batal
+                </Button>
+              )}
+            </div>
           </div>
+          
           {showActivate && (
-            <form onSubmit={handleActivate} className="mt-4 pt-4 border-t space-y-3">
-              <Input
-                value={licenseKeyInput}
-                onChange={(e) => setLicenseKeyInput(e.target.value)}
-                placeholder="Paste your SACMS-... serial key here"
-                className="font-mono text-xs"
-                required
-              />
-              <Button type="submit" disabled={activating || !licenseKeyInput.trim()} className="w-full">
-                {activating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating...</> : "Activate License"}
+            <form onSubmit={handleActivate} className="mt-4 pt-4 border-t border-border/80 space-y-3">
+              <div className="space-y-1">
+                <label className="text-xs font-semibold text-foreground">Serial Key Lisensi Enterprise</label>
+                <Input
+                  value={licenseKeyInput}
+                  onChange={(e) => setLicenseKeyInput(e.target.value)}
+                  placeholder="Tempelkan serial key SACMS-... yang diberikan Administrator"
+                  className="font-mono text-xs rounded-xl"
+                  required
+                />
+              </div>
+              <Button type="submit" disabled={activating || !licenseKeyInput.trim()} className="w-full h-9 text-xs font-bold rounded-xl bg-primary text-primary-foreground">
+                {activating ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Mengaktifkan...</> : "Aktifkan Lisensi Enterprise"}
               </Button>
             </form>
           )}

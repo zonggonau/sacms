@@ -69,13 +69,13 @@ export async function registerUser(formData: any) {
     // Hash password
     const hashedPassword = await hashPassword(password)
 
-    // Create user
+    // Create user (first user is super_admin, all new registrants are account owners)
     const user = await db.user.create({
       data: {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: isFirstUser ? "super_admin" : "admin",
+        role: isFirstUser ? "super_admin" : "owner",
         plan: isFirstUser ? "enterprise" : "free",
         emailVerified: isFirstUser ? new Date() : null, // Super admin is auto-verified
       },

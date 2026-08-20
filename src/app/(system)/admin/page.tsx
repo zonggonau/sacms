@@ -3,17 +3,17 @@
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import {
-  Loader2, Database, Plus, ArrowRight, ArrowUpRight, FileText,
-  Building2, Users, DollarSign, Activity, TrendingUp, ImageIcon,
-  CheckCircle2, Puzzle, CreditCard, Shield, Trophy
+  Loader2, Database, ArrowRight, ArrowUpRight, FileText,
+  Building2, Users, DollarSign, TrendingUp, ImageIcon,
+  Puzzle, CreditCard, Trophy
 } from "lucide-react"
 import Link from "next/link"
 import { formatRupiah } from "@/lib/utils"
+
 interface RecentTenant {
   id: string
   name: string
@@ -79,14 +79,13 @@ export default function GlobalAdminDashboard() {
     if (session?.user?.role === "super_admin") {
       fetchStats()
     }
-  }, [session])
+  }, [session?.user?.id, session?.user?.role])
 
-  // Removed local formatCurrency in favor of formatRupiah from utils
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
       </div>
     )
@@ -98,45 +97,52 @@ export default function GlobalAdminDashboard() {
   }
 
   return (
-    <div className="flex text-foreground flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 md:p-10 space-y-8 w-full">
+    <div className="flex flex-1 flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
           {/* Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-              <p className="text-muted-foreground mt-1">
-                Global platform overview and metrics.
+              <div className="flex items-center gap-2">
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Admin Super Panel</h1>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold rounded-full">
+                  Global Overview
+                </Badge>
+              </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Pemantauan metrik platform, tenant workspace, dan kesehatan ekosistem SaCMS.
               </p>
             </div>
-            <div className="flex gap-3 shrink-0">
-              <Link href="/dashboard">
-                <Button variant="outline" className="rounded-none border-border">
-                  <ArrowRight className="mr-2 h-4 w-4" />
-                  Go to Dashboard
-                </Button>
-              </Link>
+            <div className="flex gap-2.5 shrink-0">
+              <Button variant="outline" className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80" asChild>
+                <Link href="/dashboard">
+                  <ArrowRight className="mr-1.5 h-3.5 w-3.5" />
+                  Ke Dashboard Tenant
+                </Link>
+              </Button>
             </div>
           </div>
 
           {/* KPI Strip */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: "Total Tenants", value: stats.tenants, sub: `${stats.activeTenants} active`, icon: Building2, href: "/admin/tenants" },
-              { label: "Platform Users", value: stats.users, sub: "Registered accounts", icon: Users, href: "/admin/users" },
-              { label: "Monthly Revenue", value: formatRupiah(stats.monthlyRevenue), sub: `${stats.activeSubscriptions} active subs`, icon: TrendingUp, href: "/admin/billing" },
-              { label: "Total Revenue", value: formatRupiah(stats.totalRevenue), sub: "Historical total", icon: DollarSign, href: "/admin/billing" },
+              { label: "Total Workspace", value: stats.tenants, sub: `${stats.activeTenants} workspace aktif`, icon: Building2, href: "/admin/tenants" },
+              { label: "Pengguna Platform", value: stats.users, sub: "Akun terdaftar", icon: Users, href: "/admin/users" },
+              { label: "Pendapatan Bulanan", value: formatRupiah(stats.monthlyRevenue), sub: `${stats.activeSubscriptions} langganan aktif`, icon: TrendingUp, href: "/admin/billing" },
+              { label: "Total Pendapatan", value: formatRupiah(stats.totalRevenue), sub: "Akumulasi historis", icon: DollarSign, href: "/admin/billing" },
             ].map((kpi) => (
-              <Link key={kpi.label} href={kpi.href}>
-                <Card className="rounded-none border border-border shadow-none hover:bg-background transition-colors">
-                  <CardContent className="p-6">
-                    <div className="flex items-center justify-between mb-4">
-                      <span className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
-                      <kpi.icon className="h-5 w-5 text-muted-foreground" />
+              <Link key={kpi.label} href={kpi.href} className="group">
+                <Card className="rounded-2xl border border-border/80 bg-card shadow-xs hover:shadow-md hover:border-primary/40 transition-all duration-200">
+                  <CardContent className="p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider">{kpi.label}</span>
+                      <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-110 transition-transform">
+                        <kpi.icon className="h-4 w-4" />
+                      </div>
                     </div>
-                    <div className="text-3xl font-bold text-foreground">{kpi.value}</div>
-                    <p className="text-sm text-muted-foreground mt-1">{kpi.sub}</p>
+                    <div className="text-2xl font-black text-foreground tracking-tight">{kpi.value}</div>
+                    <p className="text-xs text-muted-foreground mt-1">{kpi.sub}</p>
                   </CardContent>
                 </Card>
               </Link>
@@ -144,78 +150,68 @@ export default function GlobalAdminDashboard() {
           </div>
 
           {/* Schema Counters */}
-          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {[
-              { label: "Content Types", value: stats.contentTypes, icon: Database, href: "/admin/content-types" },
-              { label: "Single Types", value: stats.singleTypes, icon: FileText, href: "/admin/single-types" },
-              { label: "Components", value: stats.components, icon: Puzzle, href: "/admin/component" },
-              { label: "Media Library", value: stats.mediaCount, icon: ImageIcon, href: "/admin/media" },
-              { label: "Billing", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
+              { label: "Tipe Konten", value: stats.contentTypes, icon: Database, href: "/admin/content-types" },
+              { label: "Halaman Statis", value: stats.singleTypes, icon: FileText, href: "/admin/single-types" },
+              { label: "Komponen", value: stats.components, icon: Puzzle, href: "/admin/component" },
+              { label: "Langganan Aktif", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
             ].map((s) => (
-              (s as any).disabled ? (
-                <Card key={s.label} className="rounded-none border border-border shadow-none h-full bg-muted/20 opacity-70 cursor-not-allowed">
-                  <CardContent className="p-6 flex flex-col items-center text-center relative">
-                    <div className="absolute top-2 right-2 text-[8px] font-bold uppercase bg-muted px-1 py-0.5 rounded text-muted-foreground">Soon</div>
-                    <s.icon className="h-6 w-6 text-muted-foreground mb-4" />
-                    <div className="text-2xl font-bold text-foreground mb-1">{s.value}</div>
-                    <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{s.label}</p>
+              <Link key={s.label} href={s.href} className="group">
+                <Card className="rounded-2xl border border-border/80 bg-card shadow-xs hover:shadow-md hover:border-primary/40 transition-all duration-200 h-full">
+                  <CardContent className="p-4 flex flex-col items-center text-center">
+                    <div className="w-9 h-9 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-center text-muted-foreground mb-2.5 group-hover:text-primary group-hover:bg-primary/10 transition-colors">
+                      <s.icon className="h-4 w-4" />
+                    </div>
+                    <div className="text-xl font-black text-foreground mb-0.5">{s.value}</div>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">{s.label}</p>
                   </CardContent>
                 </Card>
-              ) : (
-                <Link key={s.label} href={s.href}>
-                  <Card className="rounded-none border border-border shadow-none hover:bg-background transition-colors h-full">
-                    <CardContent className="p-6 flex flex-col items-center text-center">
-                      <s.icon className="h-6 w-6 text-muted-foreground mb-4" />
-                      <div className="text-2xl font-bold text-foreground mb-1">{s.value}</div>
-                      <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">{s.label}</p>
-                    </CardContent>
-                  </Card>
-                </Link>
-              )
+              </Link>
             ))}
           </div>
 
           {/* Recent Tenants + Top Tenants */}
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Recent Tenants */}
-            <Card className="rounded-none border border-border shadow-none">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border px-6 py-4 bg-card">
+            <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-4 border-b border-border/60 bg-muted/20">
                 <div>
-                  <CardTitle className="text-lg font-bold">Recently Registered</CardTitle>
+                  <CardTitle className="text-sm font-bold text-foreground">Workspace Terbaru</CardTitle>
                 </div>
-                <Link href="/admin/tenants">
-                  <Button variant="ghost" size="sm" className="h-8 text-sm font-semibold text-orange-500 hover:text-orange-600 hover:bg-transparent px-0">
-                    View All <ArrowRight className="ml-1 h-4 w-4" />
-                  </Button>
-                </Link>
+                <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary hover:text-primary/80 px-2 rounded-lg" asChild>
+                  <Link href="/admin/tenants">
+                    Lihat Semua <ArrowRight className="ml-1 h-3.5 w-3.5" />
+                  </Link>
+                </Button>
               </CardHeader>
-              <CardContent className="p-0 bg-card">
+              <CardContent className="p-0">
                 {stats.recentTenants.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-sm">No workspace registration data</p>
+                    <p className="text-xs">Belum ada registrasi workspace</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-zinc-200">
+                  <div className="divide-y divide-border/60">
                     {stats.recentTenants.map((tenant) => (
-                      <div key={tenant.id} className="flex items-center justify-between p-4 hover:bg-background transition-colors">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-10 h-10 bg-muted flex items-center justify-center font-bold text-foreground shrink-0 border border-border">
+                      <div key={tenant.id} className="flex items-center justify-between p-4 px-5 hover:bg-muted/20 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center font-bold text-xs text-primary shrink-0">
                             {tenant.name ? tenant.name.charAt(0).toUpperCase() : "?"}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate">{tenant.name || "Unnamed"}</p>
-                            <p className="text-xs text-muted-foreground mt-1 font-mono">
-                              /{tenant.slug} &middot; {tenant._count.members} users
+                            <p className="text-xs font-bold text-foreground truncate">{tenant.name || "Tanpa Nama"}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5 font-mono">
+                              /{tenant.slug} &middot; {tenant._count.members} anggota
                             </p>
                           </div>
                         </div>
-                        <div className="flex items-center gap-3 shrink-0">
-                          <Badge variant="outline" className="text-xs font-semibold rounded-none border-border">{tenant.plan}</Badge>
-                          <Link href={`/dashboard/${tenant.slug}`}>
-                            <Button variant="outline" size="icon" className="h-8 w-8 rounded-none border-border">
-                              <ArrowUpRight className="h-4 w-4" />
-                            </Button>
-                          </Link>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full border-border/80">{tenant.plan}</Badge>
+                          <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" asChild>
+                            <Link href={`/dashboard/${tenant.slug}`}>
+                              <ArrowUpRight className="h-3.5 w-3.5" />
+                            </Link>
+                          </Button>
                         </div>
                       </div>
                     ))}
@@ -225,37 +221,38 @@ export default function GlobalAdminDashboard() {
             </Card>
 
             {/* Top Tenants by Activity */}
-            <Card className="rounded-none border border-border shadow-none">
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 border-b border-border px-6 py-4 bg-card">
+            <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 p-5 pb-4 border-b border-border/60 bg-muted/20">
                 <div>
-                  <CardTitle className="text-lg font-bold">Top Workspaces</CardTitle>
+                  <CardTitle className="text-sm font-bold text-foreground">Workspace Paling Aktif</CardTitle>
                 </div>
-                <Trophy className="h-5 w-5 text-muted-foreground" />
+                <Trophy className="h-4 w-4 text-primary" />
               </CardHeader>
-              <CardContent className="p-0 bg-card">
+              <CardContent className="p-0">
                 {stats.topTenants.length === 0 ? (
                   <div className="text-center py-12 text-muted-foreground">
-                    <p className="text-sm">No usage data available yet</p>
+                    <p className="text-xs">Belum ada data aktivitas workspace</p>
                   </div>
                 ) : (
-                  <div className="divide-y divide-zinc-200">
+                  <div className="divide-y divide-border/60">
                     {stats.topTenants.map((tenant, i) => (
-                      <div key={tenant.id} className="flex items-center justify-between p-4 hover:bg-background transition-colors">
-                        <div className="flex items-center gap-4 min-w-0">
-                          <div className="w-10 h-10 bg-muted flex items-center justify-center font-bold text-foreground shrink-0 border border-border">
+                      <div key={tenant.id} className="flex items-center justify-between p-4 px-5 hover:bg-muted/20 transition-colors">
+                        <div className="flex items-center gap-3 min-w-0">
+                          <div className="w-8 h-8 rounded-xl bg-muted/40 border border-border/60 flex items-center justify-center font-bold text-xs text-foreground shrink-0">
                             #{i + 1}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-sm font-bold text-foreground truncate">{tenant.name}</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {tenant._count.contentEntries} entries &middot; {tenant._count.media} files
+                            <p className="text-xs font-bold text-foreground truncate">{tenant.name}</p>
+                            <p className="text-[10px] text-muted-foreground mt-0.5">
+                              {tenant._count.contentEntries} entri konten &middot; {tenant._count.media} aset media
                             </p>
                           </div>
                         </div>
-                        <div className="text-right shrink-0">
-                          <p className="text-xs font-semibold text-muted-foreground">Usage</p>
-                          <p className="text-sm font-bold text-foreground mt-1">{(tenant._count.contentEntries + tenant._count.media).toLocaleString()}</p>
-                        </div>
+                        <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" asChild>
+                          <Link href={`/dashboard/${tenant.slug}`}>
+                            <ArrowUpRight className="h-3.5 w-3.5" />
+                          </Link>
+                        </Button>
                       </div>
                     ))}
                   </div>
@@ -263,79 +260,6 @@ export default function GlobalAdminDashboard() {
               </CardContent>
             </Card>
           </div>
-
-          {/* Quick Access & System Health */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            {/* Quick Access */}
-            <Card className="lg:col-span-2 rounded-none border border-border shadow-none">
-              <CardHeader className="border-b border-border px-6 py-4 bg-card">
-                <CardTitle className="text-base font-bold">System Management</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y divide-zinc-200 bg-card">
-                  {[
-                    { label: "Content Schema", href: "/admin/content-types", icon: Database },
-                    { label: "Single Types",  href: "/admin/single-types",  icon: FileText },
-                    { label: "Components",    href: "/admin/component",     icon: Puzzle },
-                    { label: "Tenants List",   href: "/admin/tenants",            icon: Building2 },
-                    { label: "User Directory", href: "/admin/users",              icon: Users },
-                    { label: "RBAC Security",  href: "/admin/rbac",              icon: Shield },
-                    { label: "Monitoring",       href: "/admin/monitoring",         icon: Activity },
-                    { label: "Billing Admin",    href: "/admin/billing",           icon: CreditCard },
-                  ].map((action, index) => (
-                    (action as any).disabled ? (
-                      <div key={action.label} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 bg-muted/20 opacity-60 cursor-not-allowed">
-                        <action.icon className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-muted-foreground">{action.label} <span className="text-[9px] uppercase ml-1 opacity-50">(Soon)</span></span>
-                      </div>
-                    ) : (
-                      <Link key={action.label} href={action.href} className="col-span-1 p-6 flex flex-col items-center justify-center gap-3 hover:bg-background transition-colors">
-                        <action.icon className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-xs font-semibold text-muted-foreground">{action.label}</span>
-                      </Link>
-                    )
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* System Health */}
-            <Card className="rounded-none border border-border shadow-none bg-card">
-              <CardHeader className="border-b border-border px-6 py-4">
-                <div className="flex items-center gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-orange-500" />
-                  <div>
-                    <CardTitle className="text-base font-bold text-foreground">System Status</CardTitle>
-                    <CardDescription className="text-xs">All Systems Operational</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6">
-                <div className="space-y-4">
-                  {[
-                    { name: "Database Cluster", status: "Healthy" },
-                    { name: "Object Storage (R2)", status: "Active" },
-                    { name: "WebSocket Gateway", status: "Connected" },
-                    { name: "API Rate Limiter", status: "Enabled" },
-                    { name: "Webhook Dispatcher", status: "Running" },
-                  ].map((service) => (
-                    <div key={service.name} className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground font-medium">{service.name}</span>
-                      <span className="flex items-center gap-2 font-semibold text-foreground">
-                        <span className="h-2 w-2 bg-orange-500" />
-                        {service.status}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-                <Separator className="my-6" />
-                <p className="text-xs text-muted-foreground text-center">
-                  SaCMS v0.2.0 &middot; Production Infrastructure
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
         </div>
       </div>
     </div>

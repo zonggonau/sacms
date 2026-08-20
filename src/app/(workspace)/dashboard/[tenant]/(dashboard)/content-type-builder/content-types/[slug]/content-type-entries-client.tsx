@@ -1,16 +1,17 @@
 "use client"
 
-import { useEffect, useState, useMemo, useCallback } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
+import Link from "next/link"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
-  Clock, CheckCircle2, Archive, XCircle, MoreHorizontal,
+  Clock, CheckCircle2, Archive, XCircle,
   ImageIcon, Calendar, Loader2, Send, Search, X, Download,
   AlertCircle
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent } from "@/components/ui/card"
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table"
@@ -21,13 +22,12 @@ import {
   DropdownMenuContent, 
   DropdownMenuItem, 
   DropdownMenuTrigger,
-  DropdownMenuSeparator,
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
-import { getEntriesAction, updateEntryAction, deleteEntryAction } from "@/actions/content"
+import { getEntriesAction, updateContentEntryStatusAction, deleteEntryAction } from "@/actions/content"
 
 interface Field {
   id: string
@@ -55,11 +55,11 @@ interface Entry {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; icon: any }> = {
-  DRAFT:     { label: "Draft",      dot: "bg-gray-400",    bg: "bg-gray-100 text-gray-700 border-gray-200", icon: FileText },
-  PUBLISHED: { label: "Published",  dot: "bg-emerald-500", bg: "bg-emerald-50 text-emerald-700 border-emerald-200", icon: CheckCircle2 },
-  ARCHIVED:  { label: "Archived",   dot: "bg-orange-500",  bg: "bg-orange-50 text-orange-700 border-orange-200", icon: Archive },
-  IN_REVIEW: { label: "In Review",  dot: "bg-blue-500",    bg: "bg-blue-50 text-blue-700 border-blue-200", icon: Clock },
-  SCHEDULED: { label: "Scheduled",  dot: "bg-purple-500",  bg: "bg-purple-50 text-purple-700 border-purple-200", icon: Calendar },
+  DRAFT:     { label: "Draft",      dot: "bg-muted-foreground", bg: "bg-muted text-muted-foreground border-border", icon: FileText },
+  PUBLISHED: { label: "Published",  dot: "bg-emerald-500",      bg: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
+  ARCHIVED:  { label: "Archived",   dot: "bg-amber-500",        bg: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", icon: Archive },
+  IN_REVIEW: { label: "In Review",  dot: "bg-blue-500",         bg: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", icon: Clock },
+  SCHEDULED: { label: "Scheduled",  dot: "bg-purple-500",       bg: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", icon: Calendar },
 }
 
 export default function ContentTypeEntriesClient({
@@ -73,20 +73,17 @@ export default function ContentTypeEntriesClient({
   initialContentType: ContentType | null
   initialEntries: Entry[]
 }) {
-  const { data: session, status } = useSession()
+  const { data: session } = useSession()
   const router = useRouter()
   
   const [contentType, setContentType] = useState<ContentType | null>(initialContentType)
-  const [entries, setEntries] = useState<Entry[]>(initialEntries)
+  const [entries, setEntries] = useState<Entry[]>(initialEntries || [])
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
   const [isLimitReached, setIsLimitReached] = useState(false)
   const [entriesLimit, setEntriesLimit] = useState(100)
 
-  const tenants = session?.user?.tenants || []
-
-  // Debounce search term
   useEffect(() => {
     const timer = setTimeout(() => {
       setDebouncedSearch(searchTerm)
@@ -98,170 +95,142 @@ export default function ContentTypeEntriesClient({
     if (!tenantSlug || !contentTypeSlug) return
     try {
       setLoading(true)
-      
-      const [ctRes, entriesRes, usageRes] = await Promise.all([
+      const [typeRes, entriesRes] = await Promise.all([
         getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
-        getEntriesAction(tenantSlug, contentTypeSlug, { 
-          page: 1, 
-          pageSize: 50, 
-          search: debouncedSearch 
-        }),
-        fetch(`/api/tenant/${tenantSlug}/billing/usage`)
+        getEntriesAction(tenantSlug, contentTypeSlug, { search: debouncedSearch })
       ])
-      
-      if (ctRes.contentType) setContentType(ctRes.contentType)
-      
-      if (entriesRes.entries) {
-        const parsedEntries = entriesRes.entries.map((e: any) => ({
-          ...e,
-          data: typeof e.data === 'string' ? JSON.parse(e.data) : e.data
-        }))
-        setEntries(parsedEntries)
-      } else if (entriesRes.error) {
-        throw new Error(entriesRes.error)
-      }
 
-      if (usageRes.ok) {
-        const usageData = await usageRes.json()
-        const entriesUsage = usageData.usage?.find((u: any) => u.label === "Content Entries")
-        if (entriesUsage) {
-          setEntriesLimit(entriesUsage.limit)
-          setIsLimitReached(entriesUsage.current >= entriesUsage.limit)
-        }
+      if (typeRes.contentType) {
+        setContentType(typeRes.contentType as unknown as ContentType)
       }
-    } catch (error) {
-      console.error("Error fetching data:", error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to load entries" })
+      if (entriesRes.entries) {
+        setEntries(entriesRes.entries as unknown as Entry[])
+      }
+    } catch (err) {
+      toast({ title: "Error", description: "Gagal memuat data", variant: "destructive" })
     } finally {
       setLoading(false)
     }
   }, [tenantSlug, contentTypeSlug, debouncedSearch])
 
   useEffect(() => {
-    if (session?.user) fetchData()
-  }, [fetchData, session])
+    fetchData()
+  }, [fetchData])
 
-  const handleStatusChange = async (entryId: string, newStatus: string) => {
+  const handleStatusChange = async (id: string, newStatus: string) => {
     try {
-      const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
-        data: undefined, // Status only update
-        status: newStatus,
-        locale: "en" // We just use en for list view status update for now
-      })
-      
-      if (res.success) {
-        toast({ title: "Status Updated", description: `Entry is now ${newStatus.toLowerCase()}` })
+      const res = await updateContentEntryStatusAction(tenantSlug, contentTypeSlug, id, newStatus)
+      if (res && "success" in res && res.success) {
+        toast({ title: "Status Diperbarui", description: `Entri diubah menjadi ${newStatus}` })
         fetchData()
       } else {
-        throw new Error(res.error || "Failed to update status")
+        toast({ title: "Gagal", description: (res as any)?.error || "Gagal mengubah status", variant: "destructive" })
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Status change failed" })
+    } catch (err) {
+      toast({ title: "Error", description: "Terjadi kesalahan sistem", variant: "destructive" })
     }
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Are you sure?")) return
+    if (!confirm("Apakah Anda yakin ingin menghapus entri ini?")) return
     try {
       const res = await deleteEntryAction(tenantSlug, contentTypeSlug, id)
       if (res.success) {
-        toast({ title: "Deleted" })
+        toast({ title: "Entri Dihapus" })
         fetchData()
       } else {
-        throw new Error(res.error || "Failed to delete")
+        toast({ title: "Gagal Menghapus", description: res.error, variant: "destructive" })
       }
-    } catch (error) {
-      toast({ variant: "destructive", title: "Error" })
+    } catch (err) {
+      toast({ title: "Error", description: "Gagal menghapus entri", variant: "destructive" })
     }
-  }
-
-  if (loading && entries.length === 0) {
-    return (
-      <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </div>
-    )
   }
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.back()}>
-                <ArrowLeft className="h-5 w-5" />
-              </Button>
+            <div className="flex items-center gap-3">
+              <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
+                <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60">
+                  <ArrowLeft className="h-4 w-4" />
+                </Button>
+              </Link>
               <div>
-                <h1 className="text-3xl font-extrabold tracking-tight">{contentType?.name}</h1>
-                <p className="text-muted-foreground">Manage your collection entries</p>
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl font-black tracking-tight text-foreground">{contentType?.name || contentTypeSlug}</h1>
+                  <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
+                    {entries.length} Entri
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">Kelola data entri untuk koleksi ini.</p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="relative w-full sm:w-64">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <div className="flex items-center gap-2.5">
+              <div className="relative w-full sm:w-60">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
-                  placeholder="Search entries..."
-                  className="pl-9 pr-9 h-10 rounded-none bg-card border shadow-none focus-visible:ring-primary"
+                  placeholder="Cari entri..."
+                  className="pl-9 pr-8 h-9 rounded-xl bg-card border-border/80 text-xs"
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
                 {searchTerm && (
                   <button 
                     onClick={() => setSearchTerm("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
-                    <X className="h-4 w-4" />
+                    <X className="h-3.5 w-3.5" />
                   </button>
                 )}
               </div>
               <Button 
-                className="bg-primary hover:bg-primary/90 shadow-none shadow-none h-10 rounded-none font-bold" 
+                className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 px-4 rounded-xl font-bold text-xs shadow-xs" 
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/new`)}
                 disabled={isLimitReached}
               >
-                <Plus className="mr-2 h-4 w-4" /> New Entry
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Entri Baru
               </Button>
             </div>
           </div>
 
           {/* Limit Alert */}
           {isLimitReached && (
-            <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/50 rounded-none p-4 flex items-center gap-3 shadow-sm animate-in fade-in slide-in-from-top-4">
-              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 animate-pulse" />
-              <div className="text-xs text-red-800 dark:text-red-300 font-medium">
-                You have reached your content entries limit of {entriesLimit} entries. Delete an existing entry or upgrade your plan to create more.
+            <div className="bg-amber-500/10 border border-amber-500/30 rounded-2xl p-4 flex items-center gap-3 shadow-xs">
+              <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+              <div className="text-xs text-muted-foreground">
+                Anda telah mencapai kuota maksimum {entriesLimit} entri. Hapus entri lama atau upgrade paket untuk menambah entri.
               </div>
             </div>
           )}
 
-          <Card className="border rounded-none shadow-none overflow-hidden bg-card">
-            <CardContent className="p-0">
+          <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
+            <CardContent className="p-0 relative">
               {loading && entries.length > 0 && (
                 <div className="absolute inset-0 bg-card/50 z-10 flex items-center justify-center backdrop-blur-[1px]">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
                 </div>
               )}
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="w-[80px] pl-6 font-bold text-[10px] uppercase">Preview</TableHead>
+                    <TableHead className="w-[70px] pl-6 font-bold text-xs">Preview</TableHead>
                     {contentType?.fields.filter(f => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3).map(field => (
-                      <TableHead key={field.id} className="font-bold text-[10px] uppercase">{field.name}</TableHead>
+                      <TableHead key={field.id} className="font-bold text-xs">{field.name}</TableHead>
                     ))}
-                    <TableHead className="font-bold text-[10px] uppercase">Status</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase">Last Updated</TableHead>
-                    <TableHead className="text-right pr-6 font-bold text-[10px] uppercase">Actions</TableHead>
+                    <TableHead className="font-bold text-xs">Status</TableHead>
+                    <TableHead className="font-bold text-xs">Diperbarui</TableHead>
+                    <TableHead className="text-right pr-6 font-bold text-xs"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {entries.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={6} className="text-center py-20 text-muted-foreground">
-                        {debouncedSearch ? "No entries match your search." : "No entries found."}
+                      <TableCell colSpan={6} className="text-center py-16 text-xs text-muted-foreground">
+                        {debouncedSearch ? "Tidak ada entri yang cocok dengan pencarian." : "Belum ada entri konten."}
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -269,21 +238,18 @@ export default function ContentTypeEntriesClient({
                       const data = entry.data || {}
                       const statusCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.DRAFT
                       
-                      // Find primary fields for display
                       const displayFields = contentType?.fields.filter(f => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3) || []
-                      
-                      // Find a media field for preview
                       const mediaField = contentType?.fields.find(f => f.type === 'media' || f.type === 'mediaMultiple')
                       const coverUrl = mediaField ? (Array.isArray(data[mediaField.slug]) ? data[mediaField.slug][0] : data[mediaField.slug]) : null
                       
                       return (
-                        <TableRow key={entry.id} className="group hover:bg-muted/5 transition-colors">
-                          <TableCell className="pl-6">
-                            <div className="w-10 h-10 rounded-none bg-muted flex items-center justify-center overflow-hidden border shadow-none">
+                        <TableRow key={entry.id} className="group hover:bg-muted/40 transition-colors border-b border-border/60">
+                          <TableCell className="pl-6 py-3">
+                            <div className="w-9 h-9 rounded-lg bg-muted/60 flex items-center justify-center overflow-hidden border border-border/60">
                               {coverUrl ? (
                                 <img src={coverUrl} alt="" className="w-full h-full object-cover" />
                               ) : (
-                                <ImageIcon className="h-4 w-4 text-muted-foreground/30" />
+                                <ImageIcon className="h-4 w-4 text-muted-foreground/40" />
                               )}
                             </div>
                           </TableCell>
@@ -291,13 +257,13 @@ export default function ContentTypeEntriesClient({
                           {displayFields.map((field, idx) => {
                             const val = data[field.slug]
                             return (
-                              <TableCell key={field.id}>
+                              <TableCell key={field.id} className="py-3">
                                 {idx === 0 ? (
                                   <div className="flex flex-col">
-                                    <span className="text-sm font-bold text-foreground block max-w-[250px] truncate">
+                                    <span className="text-xs font-bold text-foreground block max-w-[250px] truncate">
                                       {val || "—"}
                                     </span>
-                                    <span className="text-[9px] text-muted-foreground font-mono uppercase">ID: {entry.id.substring(0,8)}</span>
+                                    <span className="text-[10px] text-muted-foreground font-mono">ID: {entry.id.substring(0,8)}</span>
                                   </div>
                                 ) : (
                                   <span className="text-xs text-muted-foreground">{typeof val === 'object' ? JSON.stringify(val) : String(val || "—")}</span>
@@ -306,52 +272,52 @@ export default function ContentTypeEntriesClient({
                             )
                           })}
 
-                          <TableCell>
+                          <TableCell className="py-3">
                             <DropdownMenu>
                               <DropdownMenuTrigger asChild>
-                                <button className={cn("inline-flex items-center gap-1.5 rounded-none px-2 py-0.5 text-[9px] font-black border hover:opacity-80 transition-opacity", statusCfg.bg)}>
-                                  <span className={cn("h-1 w-1 rounded-none", statusCfg.dot)} />
-                                  {statusCfg.label.toUpperCase()}
+                                <button className={cn("inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-[10px] font-bold border transition-opacity cursor-pointer", statusCfg.bg)}>
+                                  <span className={cn("h-1.5 w-1.5 rounded-full", statusCfg.dot)} />
+                                  {statusCfg.label}
                                 </button>
                               </DropdownMenuTrigger>
-                              <DropdownMenuContent align="start" className="w-40 rounded-none">
-                                <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Set Status</DropdownMenuLabel>
-                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "DRAFT")} className="text-xs font-bold">
-                                  <FileText className="mr-2 h-3.5 w-3.5 text-gray-400" /> Draft
+                              <DropdownMenuContent align="start" className="w-36 rounded-xl">
+                                <DropdownMenuLabel className="text-[10px] uppercase font-bold text-muted-foreground">Ubah Status</DropdownMenuLabel>
+                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "DRAFT")} className="text-xs font-medium cursor-pointer rounded-lg">
+                                  <FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Draft
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "PUBLISHED")} className="text-xs font-bold text-emerald-600">
+                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "PUBLISHED")} className="text-xs font-medium cursor-pointer rounded-lg text-emerald-600">
                                   <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-emerald-500" /> Published
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "ARCHIVED")} className="text-xs font-bold text-orange-600">
-                                  <Archive className="mr-2 h-3.5 w-3.5 text-orange-500" /> Archived
+                                <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "ARCHIVED")} className="text-xs font-medium cursor-pointer rounded-lg text-amber-600">
+                                  <Archive className="mr-2 h-3.5 w-3.5 text-amber-500" /> Archived
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
                           </TableCell>
-                          <TableCell className="text-xs text-muted-foreground">
+                          <TableCell className="text-xs text-muted-foreground py-3">
                             {new Date(entry.updatedAt).toLocaleDateString()}
                           </TableCell>
-                          <TableCell className="text-right pr-6">
+                          <TableCell className="text-right pr-6 py-3">
                             <div className="flex justify-end gap-1">
                               {contentType?.fields?.some((f: any) => f.type === "document_template") && (
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
-                                  className="h-8 w-8 rounded-none hover:bg-green-50 hover:text-green-600 text-green-600" 
+                                  className="h-7 w-7 rounded-lg text-emerald-600 hover:bg-emerald-500/10" 
                                   onClick={() => window.open(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/export-docx/${entry.id}`, '_blank')}
                                   title="Download Surat DOCX"
                                 >
-                                  <Download className="h-4 w-4" />
+                                  <Download className="h-3.5 w-3.5" />
                                 </Button>
                               )}
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-blue-50 hover:text-blue-600" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
-                                <Eye className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => window.open(`/preview/${tenantSlug}/${contentTypeSlug}/${entry.id}`, '_blank')}>
+                                <Eye className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
-                                <Edit className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/${entry.id}/edit`)}>
+                                <Edit className="h-3.5 w-3.5" />
                               </Button>
-                              <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none hover:bg-red-50 hover:text-red-600" onClick={() => handleDelete(entry.id)}>
-                                <Trash2 className="h-4 w-4" />
+                              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => handleDelete(entry.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             </div>
                           </TableCell>
@@ -368,4 +334,3 @@ export default function ContentTypeEntriesClient({
     </div>
   )
 }
-

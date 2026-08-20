@@ -5,15 +5,17 @@ import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { enforcePlanLimit } from "@/lib/plan-enforcement"
 
+export const dynamic = "force-dynamic"
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
+  context: { params: Promise<{ tenant: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
 
-    const { tenant: tenantSlug } = await params
+    const { tenant: tenantSlug } = await context.params
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
@@ -31,6 +33,15 @@ export async function GET(
     })
     const mediaSizeVal = Number(mediaSizeSum._sum?.size || 0)
 
+    const tenantData = await db.tenant.findUnique({
+      where: { id: tenantId },
+      select: { aiTokensUsed: true, aiCreditsExtra: true } as any
+    })
+    const planConfig = await (await import("@/lib/tenant-plan")).getTenantPlanConfig(tenantId)
+    const baseAiTokens = planConfig.max_ai_tokens || 0
+    const extraAiTokens = Number((tenantData as any)?.aiCreditsExtra || 0)
+    const totalAiTokens = baseAiTokens + extraAiTokens
+
     const usageData = [
       {
         label: "Content Entries",
@@ -40,15 +51,21 @@ export async function GET(
       },
       {
         label: "Media Storage",
-        current: mediaSizeVal,
-        limit: storageLimit.max * 1024 * 1024,
+        current: Number(mediaSizeVal),
+        limit: Number(storageLimit.max),
         unit: "bytes"
       },
       {
         label: "Team Members",
-        current: membersLimit.current,
-        limit: membersLimit.max,
+        current: Number(membersLimit.current),
+        limit: Number(membersLimit.max),
         unit: "users"
+      },
+      {
+        label: "AI Generation Tokens",
+        current: Number(tenantData?.aiTokensUsed || 0),
+        limit: totalAiTokens,
+        unit: "tokens"
       }
     ]
 

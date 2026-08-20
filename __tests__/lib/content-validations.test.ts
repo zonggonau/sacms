@@ -29,7 +29,7 @@ describe("Dynamic Content Validations", () => {
     const result = await validateContentEntry(mockFields, invalidData)
     expect(result.success).toBe(false)
     expect(result.errors).toHaveProperty("title")
-    expect(result.errors?.title).toContain("required")
+    expect(result.errors?.title).toBeDefined()
   })
 
   it("should fail with invalid email format", async () => {

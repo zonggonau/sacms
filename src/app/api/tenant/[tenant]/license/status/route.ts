@@ -8,8 +8,8 @@ import { db } from "@/lib/database"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
-  const { tenant: tenantId } = await params
+export async function GET(request: NextRequest, context: { params: Promise<{ tenant: string }> }) {
+  const { tenant: tenantId } = await context.params
   try {
     // 1. Try database cache first
     let license = await getCachedLicense(tenantId)

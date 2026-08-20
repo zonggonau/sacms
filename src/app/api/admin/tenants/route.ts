@@ -204,6 +204,22 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      // Create default API key using ApiToken
+      const { randomBytes, createHash } = await import("crypto")
+      const plainToken = `cf_${randomBytes(32).toString("hex")}`
+      const hashedToken = createHash("sha256").update(plainToken).digest("hex")
+
+      await tx.apiToken.create({
+        data: {
+          tenantId: newTenant.id,
+          name: "Default API Key",
+          token: hashedToken,
+          type: "full-access",
+          permissions: ["read", "write", "delete"],
+          createdBy: session.user.id,
+        }
+      })
+
       return newTenant
     })
 

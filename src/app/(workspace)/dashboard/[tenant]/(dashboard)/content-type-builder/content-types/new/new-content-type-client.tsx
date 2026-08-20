@@ -220,59 +220,55 @@ export default function NewContentTypeClient({
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         
         {/* Sticky Header */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-          <div className="w-full">
-            
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="bg-card/80 backdrop-blur-md border-b border-border/60 px-4 md:px-6 py-3.5 sticky top-0 z-10 shrink-0">
+          <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-3">
               <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
-                <Button variant="ghost" size="icon" className="rounded-none">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60">
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">New Schema</h1>
-                <p className="text-muted-foreground">Define your data structure and rules.</p>
+                <h1 className="text-base font-black text-foreground">Skema Koleksi Baru</h1>
+                <p className="text-muted-foreground text-xs">Definisikan model data dan atribut field.</p>
               </div>
             </div>
-            <Button onClick={handleSaveSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Schema
+            <Button onClick={handleSaveSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-4 h-8 text-xs rounded-xl shadow-xs">
+              {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+              Simpan Skema
             </Button>
-          </div>
-
-          
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="p-6 lg:p-8 w-full flex-1">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Col: Info */}
             <div className="lg:col-span-1 space-y-6">
-              <Card className="bg-white border border-slate-200 shadow-sm rounded-none">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Identity</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Display Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Blog Post" className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
+              <Card className="bg-card text-card-foreground border border-border/80 shadow-xs rounded-2xl overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Identitas Model</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Nama Tampilan *</Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Artikel Blog" className="bg-background border-border/80 rounded-xl h-9 text-xs" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">API Slug</Label>
-                    <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g., blog-post" className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-mono text-xs" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">API Slug *</Label>
+                    <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="artikel-blog" className="bg-background border-border/80 rounded-xl h-9 font-mono text-xs" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Description</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this collection for?" rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Deskripsi</Label>
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Untuk apa koleksi ini digunakan?" rows={3} className="bg-background border-border/80 rounded-xl text-xs resize-none" />
                   </div>
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-3 border-t border-border/60 flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsNew">Tampilkan di Menu CMS</Label>
-                      <p className="text-[10px] text-muted-foreground">Tampilkan koleksi ini di menu navigasi /cms</p>
+                      <Label className="text-xs font-semibold cursor-pointer text-foreground" htmlFor="showInCmsNew">Tampilkan di CMS</Label>
+                      <p className="text-[11px] text-muted-foreground">Munculkan di menu studio konten /cms</p>
                     </div>
                     <Switch 
                       id="showInCmsNew"
@@ -286,48 +282,48 @@ export default function NewContentTypeClient({
 
             {/* Right Col: Fields */}
             <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                  <Layers className="h-4 w-4" /> Attributes List ({fields.length})
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Layers className="h-3.5 w-3.5 text-primary" /> Daftar Atribut ({fields.length})
                 </h2>
-                <Button variant="outline" size="sm" onClick={openTypeSelector} className="rounded-none font-bold bg-white border-slate-200 text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-sm">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add New Field
+                <Button variant="outline" size="sm" onClick={openTypeSelector} className="rounded-xl font-bold bg-card border-border/80 h-8 text-xs text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Tambah Field
                 </Button>
               </div>
 
               {fields.length === 0 ? (
-                <Card className="border-dashed border-2 border-slate-200 bg-transparent shadow-none rounded-none">
-                  <CardContent className="py-20 flex flex-col items-center justify-center text-center opacity-40">
-                    <Plus className="h-12 w-12 mb-4" />
-                    <p className="font-bold">No fields defined yet</p>
-                    <p className="text-xs mt-1">Start by adding your first content attribute.</p>
+                <Card className="border-dashed border-2 border-border/80 bg-card/40 shadow-none rounded-2xl">
+                  <CardContent className="py-16 flex flex-col items-center justify-center text-center space-y-2">
+                    <Plus className="h-8 w-8 text-muted-foreground/40" />
+                    <p className="font-bold text-xs text-foreground">Belum ada field yang ditambahkan</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs">Klik tombol "Tambah Field" di atas untuk menambahkan atribut data pertama.</p>
                   </CardContent>
                 </Card>
               ) : (
-                <div className="space-y-2">
-                  {fields.map((field, index) => {
+                <div className="space-y-2.5">
+                  {fields.map((field) => {
                     const fieldTypeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
                     const Icon = fieldTypeInfo?.icon || Zap
                     return (
-                      <div key={field.id} className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none">
-                        <div className="cursor-grab text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"><GripVertical className="h-4 w-4" /></div>
-                        <div className={cn("w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5", `bg-${fieldTypeInfo?.category.toLowerCase()}/10`)}>
-                          <Icon className="h-5 w-5" />
+                      <div key={field.id} className="group bg-card text-card-foreground border border-border/80 rounded-xl p-3.5 flex items-center gap-3.5 hover:border-primary/60 transition-all shadow-xs">
+                        <div className="cursor-grab text-muted-foreground/30 group-hover:text-muted-foreground transition-colors"><GripVertical className="h-4 w-4" /></div>
+                        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-primary bg-primary/10 shrink-0">
+                          <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-sm truncate">{field.name}</span>
-                            {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-red-100 text-red-500 bg-red-50 font-black">REQ</Badge>}
+                            <span className="font-bold text-xs truncate text-foreground">{field.name}</span>
+                            {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-rose-500/20 text-rose-600 bg-rose-500/10 font-bold rounded-full">WAJIB</Badge>}
                           </div>
-                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+                          <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5">
                             <span className="uppercase">{field.type}</span>
                             <span>&middot;</span>
                             <span>/{field.slug}</span>
                           </div>
                         </div>
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => editField(field)}><Settings2 className="h-4 w-4" /></Button>
-                          <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-destructive hover:bg-red-50" onClick={() => removeField(field.id)}><Trash2 className="h-4 w-4" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => editField(field)}><Settings2 className="h-3.5 w-3.5" /></Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
                         </div>
                       </div>
                     )

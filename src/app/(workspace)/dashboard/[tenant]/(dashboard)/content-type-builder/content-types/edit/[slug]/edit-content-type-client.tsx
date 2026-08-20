@@ -77,7 +77,6 @@ import {
 import { CSS } from "@dnd-kit/utilities"
 import { FIELD_TYPES } from "@/lib/field-types"
 
-// Sortable Item Component
 function SortableFieldItem({ 
   field, 
   onEdit, 
@@ -110,26 +109,26 @@ function SortableFieldItem({
     <div 
       ref={setNodeRef} 
       style={style}
-      className="group bg-white border border-slate-200 rounded-none p-4 flex items-center gap-4 hover:border-primary hover:shadow-sm transition-all shadow-none"
+      className="group bg-card text-card-foreground border border-border/80 rounded-xl p-3.5 flex items-center gap-3.5 hover:border-primary/60 transition-all shadow-xs"
     >
       <div 
         {...attributes} 
         {...listeners} 
-        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-none text-muted-foreground/20 group-hover:text-muted-foreground transition-colors"
+        className="cursor-grab active:cursor-grabbing p-1 hover:bg-muted rounded-lg text-muted-foreground/30 group-hover:text-muted-foreground transition-colors"
       >
         <GripVertical className="h-4 w-4" />
       </div>
 
-      <div className="w-10 h-10 rounded-none flex items-center justify-center text-primary bg-primary/5 shrink-0">
-        <Icon className="h-5 w-5" />
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center text-primary bg-primary/10 shrink-0">
+        <Icon className="h-4 w-4" />
       </div>
 
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2">
-          <span className="font-bold text-sm truncate">{field.name}</span>
-          {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-red-100 text-red-500 bg-red-50 font-black">REQ</Badge>}
+          <span className="font-bold text-xs truncate text-foreground">{field.name}</span>
+          {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-rose-500/20 text-rose-600 bg-rose-500/10 font-bold rounded-full">WAJIB</Badge>}
         </div>
-        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
+        <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5">
           <span className="uppercase">{field.type}</span>
           <span>&middot;</span>
           <span>/{field.slug}</span>
@@ -137,11 +136,11 @@ function SortableFieldItem({
       </div>
 
       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none" onClick={() => onEdit(field)}>
-          <Settings2 className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => onEdit(field)}>
+          <Settings2 className="h-3.5 w-3.5" />
         </Button>
-        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-none text-destructive hover:bg-red-50" onClick={() => onDelete(field.id)}>
-          <Trash2 className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => onDelete(field.id)}>
+          <Trash2 className="h-3.5 w-3.5" />
         </Button>
       </div>
     </div>
@@ -159,47 +158,48 @@ export default function EditContentTypeClient({
   initialContentType: ContentType | null
   initialFields: Field[]
 }) {
-  const { data: session, status } = useSession()
+  const { status } = useSession()
   const router = useRouter()
   
-  const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [contentType, setContentType] = useState<ContentType | null>(initialContentType)
   const [name, setName] = useState(initialContentType?.name || "")
   const [slug, setSlug] = useState(initialContentType?.slug || "")
   const [description, setDescription] = useState(initialContentType?.description || "")
-  const [showInCms, setShowInCms] = useState((initialContentType as any)?.showInCms ?? true)
+  const [showInCms, setShowInCms] = useState(initialContentType?.showInCms ?? true)
   const [docxTemplateUrl, setDocxTemplateUrl] = useState(initialContentType?.docxTemplateUrl || "")
-  const [fields, setFields] = useState<Field[]>(initialFields)
+  const [fields, setFields] = useState<Field[]>(initialFields || [])
 
-  // Modal States
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [editingField, setEditingField] = useState<Field | null>(null)
 
-  const tenants = session?.user?.tenants || []
-
-  // DnD Sensors
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 5,
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
   )
 
-  useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
-  }, [status, router])
-
-  const generateFieldSlug = (value: string) => {
-    return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setFields((items) => {
+        const oldIndex = items.findIndex((item) => item.id === active.id)
+        const newIndex = items.findIndex((item) => item.id === over.id)
+        return arrayMove(items, oldIndex, newIndex)
+      })
+    }
   }
-
-  const openTypeSelector = () => setIsTypeSelectorOpen(true)
 
   const selectType = (type: string) => {
     const newField: Field = {
-      id: `field-${Date.now()}`,
+      id: Date.now().toString(),
       name: "",
       slug: "",
       type: type,
@@ -224,24 +224,9 @@ export default function EditContentTypeClient({
     setIsConfigModalOpen(true)
   }
 
-  const removeField = (id: string) => {
-    setFields(fields.filter(f => f.id !== id))
-  }
-
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event
-    if (over && active.id !== over.id) {
-      setFields((items) => {
-        const oldIndex = items.findIndex((i) => i.id === active.id)
-        const newIndex = items.findIndex((i) => i.id === over.id)
-        return arrayMove(items, oldIndex, newIndex)
-      })
-    }
-  }
-
   const saveFieldConfig = () => {
     if (!editingField?.name || !editingField?.slug) {
-      toast({ variant: "destructive", title: "Missing info", description: "Name and Slug are required" })
+      toast({ variant: "destructive", title: "Data Kurang", description: "Nama dan Slug wajib diisi" })
       return
     }
 
@@ -254,6 +239,10 @@ export default function EditContentTypeClient({
     
     setIsConfigModalOpen(false)
     setEditingField(null)
+  }
+
+  const removeField = (id: string) => {
+    setFields(fields.filter(f => f.id !== id))
   }
 
   const serializeFieldOptions = (field: Field) => {
@@ -270,63 +259,58 @@ export default function EditContentTypeClient({
             options = field.options
           }
         }
-      } else {
-        options = field.options || {}
+      } else if (typeof field.options === 'object' && field.options !== null) {
+        options = field.options
       }
-    } catch (e) {
-      options = {}
-    }
+    } catch (e) {}
 
-    if (field.type === "relation") {
-      options.relationType = field.relationType
-      options.targetModel = field.targetModel
-      options.targetSlug = field.targetSlug
-    } else if (field.type === "component") {
-      options.componentSlug = field.componentSlug
-      options.repeatable = field.repeatable
-    } else if (field.type === "slug") {
-      options.autoGenerate = field.autoGenerate
+    if (field.type === 'slug' && field.autoGenerate) {
+      if (typeof options !== 'object' || options === null) options = {}
+      options.autoGenerate = true
       options.sourceField = field.sourceField
     }
-    
+
     return options
   }
 
   const handleUpdateSchema = async () => {
-    if (!name || !slug) {
-      toast({ variant: "destructive", title: "Validation Error", description: "Name and slug are required" })
+    if (!name) {
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Nama skema wajib diisi" })
       return
     }
 
     setSaving(true)
     try {
-      const res = await updateContentTypeAction(tenantSlug, contentType!.id, {
+      const res = await updateContentTypeAction(tenantSlug, initialContentType!.id, {
         name,
-        slug,
-        description,
+        slug: contentTypeSlug,
+        description: description || undefined,
+        docxTemplateUrl: docxTemplateUrl || undefined,
         showInCms,
-        docxTemplateUrl: docxTemplateUrl || null,
-        fields: fields.map((f, index) => ({
+        fields: fields.map((f, i) => ({
           name: f.name,
           slug: f.slug,
           type: f.type,
           required: f.required,
           unique: f.unique,
           options: serializeFieldOptions(f),
-          relationSlug: f.type === "relation" ? f.targetSlug : null,
-          order: index,
-        })),
+          relationType: f.relationType || undefined,
+          targetModel: f.targetModel || undefined,
+          targetSlug: f.targetSlug || undefined,
+          componentSlug: f.componentSlug || undefined,
+          repeatable: f.repeatable,
+          order: i,
+        }))
       })
 
       if (!res.error) {
-        toast({ title: "Success", description: "Content type updated successfully" })
+        toast({ title: "Berhasil", description: "Skema berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to update content type" })
+        toast({ variant: "destructive", title: "Error", description: res.error || "Gagal memperbarui skema" })
       }
     } catch (error) {
-      console.error("Failed to save:", error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to save schema" })
+      toast({ variant: "destructive", title: "Error", description: "Gagal menyimpan skema" })
     } finally {
       setSaving(false)
     }
@@ -334,7 +318,7 @@ export default function EditContentTypeClient({
 
   if (loading) return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex items-center justify-center flex-col w-full">
+      <div className="flex-1 flex items-center justify-center flex-col w-full">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     </div>
@@ -342,58 +326,54 @@ export default function EditContentTypeClient({
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 bg-[#f6f6f9] text-foreground flex flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         
         {/* Sticky Header */}
-        <div className="bg-white border-b border-slate-200 px-6 py-4 sticky top-0 z-10 shrink-0">
-          <div className="w-full">
-            
-          
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="bg-card/80 backdrop-blur-md border-b border-border/60 px-4 md:px-6 py-3.5 sticky top-0 z-10 shrink-0">
+          <div className="flex items-center justify-between max-w-7xl mx-auto w-full">
+            <div className="flex items-center gap-3">
               <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
-                <Button variant="ghost" size="icon" className="rounded-none">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60">
+                  <ArrowLeft className="h-4 w-4" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-bold text-slate-800">Edit Schema</h1>
-                <p className="text-muted-foreground">{contentType?.name} &middot; /{contentType?.slug}</p>
+                <h1 className="text-base font-black text-foreground">Edit Skema Koleksi</h1>
+                <p className="text-muted-foreground text-xs">{contentType?.name} &middot; <span className="font-mono">/{contentType?.slug}</span></p>
               </div>
             </div>
-            <Button onClick={handleUpdateSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-white font-bold px-6 rounded-none shadow-none">
-              {saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Changes
+            <Button onClick={handleUpdateSchema} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-4 h-8 text-xs rounded-xl shadow-xs">
+              {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+              Simpan Perubahan
             </Button>
-          </div>
-
-          
           </div>
         </div>
 
         {/* Main Content */}
-        <div className="p-6 lg:p-8 w-full flex-1">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto flex-1">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-1 space-y-6">
-              <Card className="bg-white border border-slate-200 shadow-sm rounded-none">
-                <CardHeader><CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-500">Identity</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Display Name</Label>
-                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g., Blog Post" className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-medium text-sm" />
+              <Card className="bg-card text-card-foreground border border-border/80 shadow-xs rounded-2xl overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Identitas Model</CardTitle>
+                </CardHeader>
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Nama Tampilan *</Label>
+                    <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Contoh: Artikel Blog" className="bg-background border-border/80 rounded-xl h-9 text-xs" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">API Slug</Label>
-                    <Input value={slug} onChange={(e) => setSlug(e.target.value)} placeholder="e.g., blog-post" className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary h-10 font-mono text-xs" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">API Slug</Label>
+                    <Input value={slug} disabled className="bg-muted/50 border-input font-mono text-xs opacity-70 text-foreground rounded-xl h-9" />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-bold">Description</Label>
-                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="What is this collection for?" rows={3} className="bg-white border border-slate-200 rounded-none shadow-sm focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary text-sm p-3" />
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Deskripsi</Label>
+                    <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Untuk apa koleksi ini digunakan?" rows={3} className="bg-background border-border/80 rounded-xl text-xs resize-none" />
                   </div>
-                  <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                  <div className="pt-3 border-t border-border/60 flex items-center justify-between">
                     <div className="space-y-0.5">
-                      <Label className="text-xs font-bold cursor-pointer" htmlFor="showInCmsEdit">Tampilkan di Menu CMS</Label>
-                      <p className="text-[10px] text-muted-foreground">Tampilkan koleksi ini di menu navigasi /cms</p>
+                      <Label className="text-xs font-semibold cursor-pointer text-foreground" htmlFor="showInCmsEdit">Tampilkan di CMS</Label>
+                      <p className="text-[11px] text-muted-foreground">Munculkan di menu studio konten /cms</p>
                     </div>
                     <Switch 
                       id="showInCmsEdit"
@@ -406,12 +386,12 @@ export default function EditContentTypeClient({
             </div>
 
             <div className="lg:col-span-2 space-y-4">
-              <div className="flex items-center justify-between px-2">
-                <h2 className="text-xs font-bold uppercase tracking-wider text-slate-500 flex items-center gap-2">
-                  <Layers className="h-4 w-4" /> Attributes List ({fields.length})
+              <div className="flex items-center justify-between">
+                <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                  <Layers className="h-3.5 w-3.5 text-primary" /> Daftar Atribut ({fields.length})
                 </h2>
-                <Button variant="outline" size="sm" onClick={openTypeSelector} className="rounded-none font-bold bg-white border-slate-200 text-primary hover:bg-primary hover:border-primary hover:text-white transition-all shadow-sm">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Add New Field
+                <Button variant="outline" size="sm" onClick={() => setIsTypeSelectorOpen(true)} className="rounded-xl font-bold bg-card border-border/80 h-8 text-xs text-primary hover:bg-primary hover:text-primary-foreground transition-all shadow-xs">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Tambah Field
                 </Button>
               </div>
 
@@ -425,7 +405,7 @@ export default function EditContentTypeClient({
                   items={fields.map(f => f.id)}
                   strategy={verticalListSortingStrategy}
                 >
-                  <div className="space-y-2">
+                  <div className="space-y-2.5">
                     {fields.map(field => (
                       <SortableFieldItem 
                         key={field.id} 
@@ -441,12 +421,6 @@ export default function EditContentTypeClient({
           </div>
         </div>
       </div>
-
-      <FieldTypeSelector
-        isOpen={isTypeSelectorOpen}
-        onOpenChange={setIsTypeSelectorOpen}
-        onSelect={selectType}
-      />
 
       <FieldTypeSelector
         isOpen={isTypeSelectorOpen}

@@ -1,3 +1,21 @@
+import path from 'path'
+import fs from 'fs'
+
+// Explicitly resolve Prisma Query Engine library path on Windows to avoid runtime lookup errors
+if (process.platform === 'win32' && !process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
+  const possiblePaths = [
+    path.resolve(process.cwd(), 'prisma/generated-client/query_engine-windows.dll.node'),
+    path.resolve(process.cwd(), 'prisma/generated-client-new/query_engine-windows.dll.node'),
+    path.resolve(process.cwd(), 'prisma/query_engine-windows.dll.node'),
+  ]
+  for (const p of possiblePaths) {
+    if (fs.existsSync(p)) {
+      process.env.PRISMA_QUERY_ENGINE_LIBRARY = p
+      break
+    }
+  }
+}
+
 import { PrismaClient } from '../../prisma/generated-client'
 
 interface TenantClientEntry {
@@ -14,13 +32,19 @@ const globalForPrisma = globalThis as unknown as {
 // Reset logic to pick up schema changes in dev
 if (globalForPrisma.prisma) {
   try {
-    if (!(globalThis as any).__prisma_reset_v4) {
-       console.log('[Prisma] Forcing client refresh for SingleType showInCms field...')
-       globalForPrisma.prisma = undefined
-       if (globalForPrisma.tenantClients) {
-         globalForPrisma.tenantClients.clear()
-       }
-       ;(globalThis as any).__prisma_reset_v4 = true
+    if (
+      !(globalThis as any).__prisma_reset_v9 ||
+      !(globalForPrisma.prisma as any).site ||
+      !(globalForPrisma.prisma as any).siteFile ||
+      !(globalForPrisma.prisma as any).permission ||
+      !(globalForPrisma.prisma as any).rolePermission
+    ) {
+      console.log('[Prisma] Forcing client refresh for query engine recovery, Site models & RBAC...')
+      globalForPrisma.prisma = undefined
+      if (globalForPrisma.tenantClients) {
+        globalForPrisma.tenantClients.clear()
+      }
+      ;(globalThis as any).__prisma_reset_v9 = true
     }
   } catch (e) {
     globalForPrisma.prisma = undefined

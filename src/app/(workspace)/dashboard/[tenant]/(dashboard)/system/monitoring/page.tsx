@@ -48,7 +48,7 @@ export default function SystemMonitoringPage() {
   const [stats, setStats] = useState<MonitoringStats | null>(null)
   const [loading, setLoading] = useState(true)
 
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
@@ -96,8 +96,8 @@ export default function SystemMonitoringPage() {
   }
 
   useEffect(() => {
-    if (session?.user) fetchStats()
-  }, [tenantSlug, session])
+    if (session?.user?.id) fetchStats()
+  }, [tenantSlug, session?.user?.id])
 
   if (status === "loading") {
     return (

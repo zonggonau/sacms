@@ -168,7 +168,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
       }
     }
 
-    // If still empty, try static starter kits
+    // If still empty and a specific static starter kit was requested
     if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0) {
       if (websiteType && STARTER_KITS[websiteType]) {
         console.log(`[Provisioning] Using Static Starter Kit: ${websiteType}`)
@@ -179,49 +179,10 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
       }
     }
 
-    // Ultimate fallback if still empty (ONLY if not explicitly requested 'custom'/blank)
-    if (contentTypes.length === 0 && singleTypes.length === 0 && components.length === 0 && websiteType !== 'custom') {
-      console.log("[Provisioning] No template found, falling back to sacms-starter")
-      const kit = STARTER_KITS["sacms-starter"]
-      contentTypes = kit.contentTypes
-      singleTypes = kit.singleTypes
-      components = kit.components
-    }
+    // Default: Workspaces are created completely empty by default.
+    // Users create schemas manually in Content-Type Builder or via AI Builder.
 
-    // 2.5 Inject System Collection Types (User and Role) like Strapi
-    const hasUsers = contentTypes.some((ct: any) => ct.slug === "users")
-    if (!hasUsers) {
-      contentTypes.push({
-        name: "User",
-        slug: "users",
-        description: "System user collection",
-        fields: [
-          { name: "Username", slug: "username", type: "text", required: true },
-          { name: "Email", slug: "email", type: "email", required: true },
-          { name: "Provider", slug: "provider", type: "text" },
-          { name: "Password", slug: "password", type: "text" },
-          { name: "Reset Password Token", slug: "resetPasswordToken", type: "text" },
-          { name: "Confirmation Token", slug: "confirmationToken", type: "text" },
-          { name: "Confirmed", slug: "confirmed", type: "boolean" },
-          { name: "Blocked", slug: "blocked", type: "boolean" },
-          { name: "Role", slug: "role", type: "relation", relationSlug: "roles" }
-        ]
-      })
-    }
-    
-    const hasRoles = contentTypes.some((ct: any) => ct.slug === "roles")
-    if (!hasRoles) {
-      contentTypes.push({
-        name: "Role",
-        slug: "roles",
-        description: "System role collection for users",
-        fields: [
-          { name: "Name", slug: "name", type: "text", required: true },
-          { name: "Description", slug: "description", type: "textarea" },
-          { name: "Type", slug: "type", type: "text" }
-        ]
-      })
-    }
+    // 2.5 Inject System Collection Types (User and Role) like Strapi - DISABLED AS PER USER REQUEST
 
     // 3. Create Components
     for (const comp of components) {

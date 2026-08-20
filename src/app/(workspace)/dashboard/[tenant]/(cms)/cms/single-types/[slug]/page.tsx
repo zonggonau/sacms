@@ -5,12 +5,11 @@ import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
   ArrowLeft, Save, FileText, Loader2, 
-  Globe, ShieldCheck, Send, Zap, ChevronRight
+  Globe, ShieldCheck, Send, Zap
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Separator } from "@/components/ui/separator"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -96,77 +95,59 @@ export default function CMSSingleTypeDetailPage() {
       }
     } catch (error) {
       console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to load content" })
+      toast({ variant: "destructive", title: "Error", description: "Gagal memuat konten halaman" })
     } finally {
       setLoading(false)
     }
   }, [tenantSlug, singleTypeSlug])
 
   useEffect(() => {
-    if (status === "authenticated") {
-      setSingleType(null)
-      setFormData({})
-      fetchData()
-    }
-  }, [fetchData, status, singleTypeSlug])
+    if (session?.user?.id) fetchData()
+  }, [session?.user?.id, fetchData])
 
-  const handleSave = async (publishNow: boolean = false) => {
-    if (!singleTypeSlug || !singleType) return
+  const handleFieldChange = (fieldSlug: string, value: unknown) => {
+    setFormData(prev => ({
+      ...prev,
+      [fieldSlug]: value
+    }))
+  }
+
+  const handleSave = async (publish: boolean = false) => {
+    if (!singleType) return
     setSaving(true)
     try {
-      const response = await saveSingleTypeDataAction(
-        tenantSlug, 
-        singleType.id, 
-        formData, 
-        publishNow
-      )
-      if (response.error) throw new Error(response.error)
-      
-      toast({ 
-        title: publishNow ? "Published Successfully!" : "Draft Saved",
-        className: publishNow ? "bg-orange-500/10 border-orange-500/30 text-orange-500 rounded-none border font-bold" : "rounded-none border border-border bg-card text-foreground"
-      })
-      
-      if (publishNow) {
-        router.push(`/dashboard/${tenantSlug}/cms/single-types`)
-      } else {
+      const res = await saveSingleTypeDataAction(tenantSlug, singleType.slug, formData, locale, publish)
+      if (res.success) {
+        toast({ 
+          title: publish ? "Halaman Diterbitkan" : "Draft Disimpan", 
+          description: publish ? "Perubahan halaman kini live di API publik" : "Draft perubahan konten berhasil disimpan" 
+        })
         fetchData()
+      } else {
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description: res.error || "Terjadi kesalahan saat menyimpan konten" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save content" })
+      console.error(error)
+      toast({ variant: "destructive", title: "Koneksi Error", description: "Gagal menghubungi server" })
     } finally {
       setSaving(false)
     }
   }
 
-  const handleFieldChange = (slug: string, value: any) => {
-    setFormData(prev => ({ ...prev, [slug]: value }))
-  }
-
   const renderField = (field: Field) => {
     const value = formData[field.slug]
-    let options: string[] = []
-    
-    if (field.options) {
-      try {
-        const opts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        if (Array.isArray(opts)) options = opts
-        else if (typeof opts === 'string') options = opts.split(",").map(o => o.trim()).filter(Boolean)
-      } catch (e) {
-        if (typeof field.options === 'string') options = field.options.split(",").map(o => o.trim()).filter(Boolean)
-      }
-    }
-
     const renderLabelWithAI = () => (
-      <div className="flex items-center justify-between mb-2">
-        <Label className="text-sm font-bold text-foreground">{field.name} {field.required && "*"}</Label>
-        {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
-          <AIAssistantDialog
-            tenantSlug={tenantSlug}
-            contentTypeSlug={singleTypeSlug}
-            fieldName={field.name}
-            currentValue={value as string}
-            onApply={(content) => handleFieldChange(field.slug, content)}
+      <div className="flex items-center justify-between mb-1.5">
+        <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+          {field.name}
+          {field.required && <span className="text-destructive font-bold">*</span>}
+        </Label>
+        {["text", "rich_text", "textarea"].includes(field.type) && (
+          <AIAssistantDialog 
+            field={field} 
+            tenantSlug={tenantSlug} 
+            currentValue={value as string || ""} 
+            onGenerated={val => handleFieldChange(field.slug, val)} 
           />
         )}
       </div>
@@ -174,77 +155,56 @@ export default function CMSSingleTypeDetailPage() {
 
     switch (field.type) {
       case "text":
-        if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
-          return <div className="space-y-2">{renderLabelWithAI()}<TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
-        }
-        return <div className="space-y-2">{renderLabelWithAI()}<TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "slug":
-      case "uid":
-        // Find source field for auto-generation (usually 'title' or 'name')
-        const sourceFieldName = (singleType?.fields.find(f => f.slug === 'title') || singleType?.fields.find(f => f.slug === 'name'))?.slug
-        const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
-        
-        return (
-          <div className="space-y-2">
-            <SlugField 
-              label={renderLabelWithAI()}
-              value={value as string} 
-              onChange={v => handleFieldChange(field.slug, v)} 
-              required={field.required} 
-              placeholder={field.name}
-              sourceValue={sourceValue}
-              autoGenerate={false} // Default to manual entry for single types
-            />
-          </div>
-        )
-      
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SlugField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "textarea":
-      case "markdown":
-        return <div className="space-y-2">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
-      
-      case "richText":
-        return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} documentId={singleType?.slug} fieldSlug={field.slug} tenantSlug={tenantSlug} /></div>
-      
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "rich_text":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "number":
-      case "integer":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
-      
+        return <div className="space-y-1.5">{renderLabelWithAI()}<NumberField label={null} value={value as number || 0} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "boolean":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
-      
+        return <div className="space-y-1.5">{renderLabelWithAI()}<BooleanField label={null} value={value as boolean || false} onChange={v => handleFieldChange(field.slug, v)} /></div>
+
       case "date":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "datetime":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
-      
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "select":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
-      
+        let opts: string[] = []
+        try { opts = typeof field.options === 'string' ? JSON.parse(field.options) : (field.options?.options || []) } catch { opts = [] }
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField label={null} options={opts} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "tags":
-      case "hashtags":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField label={null} value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "media":
-      case "file":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
-      
-      case "mediaMultiple":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label={null} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+
+      case "media_multiple":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaMultipleField label={null} value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":
-        const relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options
-        const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
+        let relOpts: any = {}
+        try { relOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { relOpts = {} }
         return (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {renderLabelWithAI()}
             <RelationSelectField 
+              label={null} 
+              tenantSlug={tenantSlug} 
+              targetSlug={field.relationSlug || relOpts?.targetContentType} 
+              relationType={relOpts?.relationType || "oneToOne"} 
               value={value as any} 
               onChange={v => handleFieldChange(field.slug, v)} 
-              tenantSlug={tenantSlug}
-              targetSlug={field.relationSlug || ""}
-              
-              required={field.required}
-              multiple={isMultiple}
             />
           </div>
         )
@@ -252,140 +212,137 @@ export default function CMSSingleTypeDetailPage() {
       case "json":
       case "color":
       case "location":
-        return <div className="space-y-2">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)}  repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
       
       default:
-        return <div className="space-y-2"><Label className="text-sm font-bold text-slate-700">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-semibold text-foreground">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} className="rounded-xl h-9 text-xs" /></div>
     }
   }
 
   if (loading) return (
-    <div className="min-h-screen flex items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+    <div className="min-h-[80vh] flex items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   )
 
   if (!singleType) return null
 
   const tenantMembership = session?.user?.tenants?.find((t) => t.slug === tenantSlug || t.id === tenantSlug)
-  const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
+  const effectiveRole = session?.user?.role === "super_admin" 
+    ? "owner" 
+    : (tenantMembership?.role || "owner")
   const customPermissions = Array.isArray(tenantMembership?.customPermissions)
     ? tenantMembership.customPermissions as string[]
     : null
 
-  const canPublish = effectiveRole === "owner" || effectiveRole === "admin" || effectiveRole === "editor" || Boolean(customPermissions?.includes("workflow.draft_to_publish"))
-  const canEdit = effectiveRole !== "subscriber" && effectiveRole !== "viewer"
+  const isRestrictedViewer = effectiveRole === "subscriber" || effectiveRole === "viewer"
+  const canPublish = !isRestrictedViewer || Boolean(customPermissions?.includes("workflow.draft_to_publish"))
+  const canEdit = !isRestrictedViewer
 
   return (
-    <div className="min-h-screen bg-muted/10">
-      <main className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
-        
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types`)} className="rounded-none hover:bg-muted">
-              <ArrowLeft className="h-5 w-5 text-foreground" />
-            </Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-zinc-50">{singleType.name}</h1>
-                <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 shadow-none border", singleType.publishedAt ? "bg-zinc-950 text-white border-zinc-950 dark:bg-zinc-50 dark:text-zinc-950 dark:border-zinc-50" : "bg-muted text-muted-foreground border-border")}>
-                  {singleType.publishedAt ? "Live" : "Draft"}
-                </Badge>
-              </div>
-              <p className="text-muted-foreground font-medium mt-1">Page Content &middot; /{singleType.slug}</p>
+    <div className="p-4 md:p-6 lg:p-8 max-w-7xl mx-auto space-y-6">
+      
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types`)} className="rounded-xl h-9 w-9">
+            <ArrowLeft className="h-4 w-4 text-foreground" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-black tracking-tight text-foreground">{singleType.name}</h1>
+              <Badge className={cn("text-[10px] font-bold uppercase px-2.5 py-0.5 shadow-none border rounded-full", singleType.publishedAt ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" : "bg-muted text-muted-foreground border-border/60")}>
+                {singleType.publishedAt ? "Terbit" : "Draft"}
+              </Badge>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            {canEdit && (
-              <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500">
-                Save Draft
-              </Button>
-            )}
-            {canPublish ? (
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Publish Now
-              </Button>
-            ) : canEdit && (
-              <Button onClick={() => handleSave(false)} disabled={saving} className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Save Changes
-              </Button>
-            )}
+            <p className="text-xs text-muted-foreground mt-0.5">Konten Singleton &middot; /{singleType.slug}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2.5">
+          <Button 
+            variant="outline" 
+            onClick={() => handleSave(false)} 
+            disabled={saving || !canEdit} 
+            className="rounded-xl text-xs font-bold h-9 shadow-xs"
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+            Simpan Draft
+          </Button>
+          <Button 
+            onClick={() => handleSave(true)} 
+            disabled={saving || !canPublish} 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl h-9 px-4 font-bold text-xs shadow-xs"
+          >
+            {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+            Terbitkan Sekarang
+          </Button>
+        </div>
+      </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/30 p-6">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-500" /> Page Editor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-10">
-                {singleType.fields.length === 0 ? (
-                  <div className="text-center py-12 opacity-40">
-                    <Zap className="h-12 w-12 mx-auto mb-4 text-orange-500" />
-                    <p className="font-bold">No fields defined for this page</p>
-                  </div>
-                ) : (
-                  singleType.fields.map((field) => (
-                    <div key={field.id} className="relative group">
-                      <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                      {renderField(field)}
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
-          </div>
-
-          <div className="space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="p-6 pb-2">
-                <CardTitle className="text-base font-bold flex items-center gap-2">
-                  <Globe className="h-4 w-4 text-orange-500" /> Localization
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-6 pt-2">
-                <div className="space-y-2">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Target Language</Label>
-                  <Select value={locale} onValueChange={setLocale}>
-                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                      {availableLocales.map(l => (
-                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+            <CardHeader className="border-b border-border/60 bg-muted/20 p-5">
+              <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                <FileText className="h-4 w-4 text-primary" /> Editor Konten Halaman
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-6 space-y-6">
+              {singleType.fields.length === 0 ? (
+                <div className="text-center py-12 opacity-40">
+                  <Zap className="h-10 w-10 mx-auto mb-2 text-primary" />
+                  <p className="font-bold text-xs text-foreground">Belum ada field yang didefinisikan untuk halaman ini</p>
                 </div>
-              </CardContent>
-            </Card>
+              ) : (
+                singleType.fields.map((field) => (
+                  <div key={field.id} className="space-y-1.5 pb-2">
+                    {renderField(field)}
+                  </div>
+                ))
+              )}
+            </CardContent>
+          </Card>
+        </div>
 
-            <div className="p-6 bg-card border border-border rounded-none text-foreground shadow-none relative">
-              <div className="absolute top-0 right-0 w-8 h-8 bg-orange-500 flex items-center justify-center text-white">
-                <ShieldCheck className="h-4 w-4" />
+        <div className="space-y-6">
+          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+            <CardHeader className="p-5 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-wider flex items-center gap-2 text-foreground">
+                <Globe className="h-4 w-4 text-primary" /> Bahasa & Lokalisasi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 pt-2">
+              <div className="space-y-1.5">
+                <Label className="text-xs font-semibold text-muted-foreground">Bahasa Target</Label>
+                <Select value={locale} onValueChange={setLocale}>
+                  <SelectTrigger className="bg-background border-border/80 h-9 rounded-xl font-bold text-xs text-foreground">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-border bg-card">
+                    {availableLocales.map(l => (
+                      <SelectItem key={l.locale} value={l.locale} className="font-bold text-xs rounded-lg">{l.name} ({l.locale.toUpperCase()})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-              <div className="flex items-center gap-2 mb-3">
-                <h4 className="font-black uppercase text-xs tracking-widest text-foreground">Isolated Content</h4>
-              </div>
-              <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
-                These changes are specific to <strong>{tenantSlug}</strong> and will not affect other workspaces or the global template.
-              </p>
+            </CardContent>
+          </Card>
+
+          <div className="p-4 bg-muted/20 border border-border/80 rounded-2xl text-foreground shadow-xs relative">
+            <div className="flex items-center gap-2 mb-1.5">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <h4 className="font-bold text-xs uppercase tracking-wider text-foreground">Data Terisolasi</h4>
             </div>
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Perubahan pada halaman ini khusus disimpan untuk workspace <strong>{tenantSlug}</strong> dan aman dari workspace lain.
+            </p>
           </div>
         </div>
-      </main>
+      </div>
     </div>
   )
 }
-
-

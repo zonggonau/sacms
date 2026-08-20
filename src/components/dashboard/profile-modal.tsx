@@ -1,0 +1,448 @@
+"use client"
+
+import React, { useState, useRef, useTransition } from "react"
+import { useSession } from "next-auth/react"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { 
+  Loader2, Save, User as UserIcon, Mail, Shield, Key, 
+  Sparkles, Camera, Trash2, Upload, CheckCircle2 
+} from "lucide-react"
+import { useToast } from "@/hooks/use-toast"
+import { updateProfileAction } from "@/actions/profile"
+import Image from "next/image"
+
+interface ProfileModalProps {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  userRole?: string
+}
+
+export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps) {
+  const { data: session, update } = useSession()
+  const { toast } = useToast()
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  
+  const [isPending, startTransition] = useTransition()
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false)
+
+  const [name, setName] = useState(session?.user?.name || "")
+  const [imageUrl, setImageUrl] = useState<string | null>(session?.user?.image || null)
+  const [password, setPassword] = useState("")
+  const [confirmPassword, setConfirmPassword] = useState("")
+  const [showPasswordSection, setShowPasswordSection] = useState(false)
+
+  // Keep state synchronized when session loads or dialog opens
+  React.useEffect(() => {
+    if (open && session?.user) {
+      setName(session.user.name || "")
+      setImageUrl(session.user.image || null)
+      setPassword("")
+      setConfirmPassword("")
+      setShowPasswordSection(false)
+    }
+  }, [open, session?.user?.name, session?.user?.image])
+
+  const email = session?.user?.email || ""
+  const displayRole = userRole || (session?.user?.role === "super_admin" ? "super_admin" : session?.user?.role || "owner")
+  const plan = (session?.user as any)?.plan || "free"
+
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (!file.type.startsWith("image/")) {
+      toast({
+        variant: "destructive",
+        title: "Format Tidak Didukung",
+        description: "Harap pilih file gambar (JPG, PNG, WEBP, atau GIF).",
+      })
+      return
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Ukuran Terlalu Besar",
+        description: "Maksimal ukuran foto adalah 5MB.",
+      })
+      return
+    }
+
+    setIsUploadingPhoto(true)
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const res = await fetch("/api/user/avatar", {
+        method: "POST",
+        body: formData,
+      })
+
+      const data = await res.json()
+      if (res.ok && data.url) {
+        setImageUrl(data.url)
+        await update({ image: data.url })
+        toast({
+          title: "Foto Profil Berhasil Diperbarui",
+          description: "Foto profil Anda telah disimpan.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Gagal Mengupload Foto",
+          description: data.error || "Terjadi kesalahan saat mengupload gambar.",
+        })
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Gagal Mengupload",
+        description: "Terjadi kesalahan koneksi saat mengupload foto.",
+      })
+    } finally {
+      setIsUploadingPhoto(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ""
+      }
+    }
+  }
+
+  const handleRemovePhoto = async () => {
+    setIsUploadingPhoto(true)
+    try {
+      const res = await fetch("/api/user/avatar", {
+        method: "DELETE",
+      })
+      if (res.ok) {
+        setImageUrl(null)
+        await update({ image: null })
+        toast({
+          title: "Foto Profil Dihapus",
+          description: "Foto profil Anda telah dikembalikan ke inisial default.",
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Gagal Menghapus Foto",
+          description: "Terjadi kesalahan saat menghapus foto profil.",
+        })
+      }
+    } catch (err) {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "Gagal menghapus foto profil.",
+      })
+    } finally {
+      setIsUploadingPhoto(false)
+    }
+  }
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+
+    if (password) {
+      if (password.length < 6) {
+        toast({
+          title: "Password Terlalu Pendek",
+          description: "Password baru harus memiliki minimal 6 karakter.",
+          variant: "destructive",
+        })
+        return
+      }
+      if (password !== confirmPassword) {
+        toast({
+          title: "Konfirmasi Password Tidak Cocok",
+          description: "Password baru dan konfirmasi password tidak sama.",
+          variant: "destructive",
+        })
+        return
+      }
+    }
+
+    startTransition(async () => {
+      try {
+        const result = await updateProfileAction({
+          name: name.trim() || undefined,
+          password: password || undefined,
+          image: imageUrl,
+        })
+
+        if (result.success) {
+          if (result.user?.name) {
+            await update({ name: result.user.name, image: imageUrl })
+          }
+          setPassword("")
+          setConfirmPassword("")
+          setShowPasswordSection(false)
+          toast({
+            title: "Profil Berhasil Disimpan",
+            description: "Perubahan data profil Anda telah tersimpan.",
+          })
+          onOpenChange(false)
+        } else {
+          toast({
+            title: "Gagal Menyimpan",
+            description: result.error || "Gagal memperbarui data profil.",
+            variant: "destructive",
+          })
+        }
+      } catch (error) {
+        toast({
+          title: "Error",
+          description: "Terjadi kesalahan saat menyimpan profil.",
+          variant: "destructive",
+        })
+      }
+    })
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[480px] p-0 overflow-hidden border border-border bg-card shadow-2xl rounded-2xl">
+        {/* Header Visual Banner */}
+        <div className="bg-gradient-to-r from-primary/15 via-primary/5 to-purple-500/10 p-6 pb-5 border-b border-border/50">
+          <div className="flex items-center gap-4">
+            {/* Avatar & Photo Upload Trigger */}
+            <div className="relative group shrink-0">
+              <div className="w-16 h-16 rounded-2xl overflow-hidden bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-2xl font-black shadow-md shadow-primary/20 border-2 border-background">
+                {imageUrl ? (
+                  <img
+                    src={imageUrl}
+                    alt={name || "User Avatar"}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <span>{name?.[0]?.toUpperCase() || email?.[0]?.toUpperCase() || "U"}</span>
+                )}
+              </div>
+
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploadingPhoto}
+                title="Ganti Foto Profil"
+                className="absolute inset-0 rounded-2xl bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center text-white transition-opacity cursor-pointer disabled:opacity-50"
+              >
+                {isUploadingPhoto ? (
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                ) : (
+                  <Camera className="w-5 h-5" />
+                )}
+              </button>
+
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif,image/avif"
+                className="hidden"
+                onChange={handlePhotoUpload}
+              />
+            </div>
+
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <h2 className="text-lg font-bold text-foreground truncate leading-tight">
+                  {name || "User Profile"}
+                </h2>
+              </div>
+              <p className="text-xs text-muted-foreground font-mono truncate mt-0.5">{email}</p>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge
+                  variant={displayRole === "super_admin" ? "default" : "secondary"}
+                  className={
+                    displayRole === "super_admin"
+                      ? "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 text-[10px] uppercase font-bold"
+                      : "bg-emerald-50 text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300 text-[10px] uppercase font-bold"
+                  }
+                >
+                  <Shield className="w-3 h-3 mr-1" />
+                  {displayRole.replace("_", " ")}
+                </Badge>
+                {plan && (
+                  <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider bg-background/50">
+                    <Sparkles className="w-3 h-3 mr-1 text-amber-500" />
+                    Plan: {plan}
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Quick Photo Actions */}
+          <div className="flex items-center gap-2 mt-4 pt-3 border-t border-border/40">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploadingPhoto}
+              className="h-7 text-[11px] font-semibold rounded-lg bg-background/80 hover:bg-background border-border/70"
+            >
+              {isUploadingPhoto ? (
+                <>
+                  <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+                  Mengupload...
+                </>
+              ) : (
+                <>
+                  <Upload className="w-3 h-3 mr-1.5" />
+                  Upload Foto
+                </>
+              )}
+            </Button>
+            {imageUrl && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={handleRemovePhoto}
+                disabled={isUploadingPhoto}
+                className="h-7 text-[11px] font-semibold text-destructive hover:text-destructive hover:bg-destructive/10 rounded-lg"
+              >
+                <Trash2 className="w-3 h-3 mr-1.5" />
+                Hapus Foto
+              </Button>
+            )}
+          </div>
+        </div>
+
+        {/* Form Body */}
+        <form onSubmit={handleSave} className="p-6 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="profile-name" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <UserIcon className="h-3.5 w-3.5 text-primary" /> Nama Lengkap
+            </Label>
+            <Input
+              id="profile-name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="Nama lengkap Anda"
+              required
+              className="h-10 bg-muted/20 border-border rounded-xl"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="profile-email" className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <Mail className="h-3.5 w-3.5 text-primary" /> Alamat Email
+            </Label>
+            <Input
+              id="profile-email"
+              type="email"
+              value={email}
+              disabled
+              className="h-10 bg-muted/40 text-muted-foreground border-border/50 rounded-xl cursor-not-allowed"
+            />
+            <p className="text-[10px] text-muted-foreground italic">Alamat email terdaftar dan tidak dapat diubah langsung.</p>
+          </div>
+
+          {/* Change Password Section Toggle */}
+          <div className="pt-2 border-t border-border/50">
+            {!showPasswordSection ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={() => setShowPasswordSection(true)}
+                className="text-xs text-primary font-semibold hover:bg-primary/10 -ml-2 h-8 px-2.5 rounded-lg"
+              >
+                <Key className="h-3.5 w-3.5 mr-1.5" />
+                Ganti Kata Sandi Akun
+              </Button>
+            ) : (
+              <div className="space-y-3 pt-1">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+                    <Key className="h-3.5 w-3.5 text-primary" /> Keamanan & Password Baru
+                  </Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowPasswordSection(false)
+                      setPassword("")
+                      setConfirmPassword("")
+                    }}
+                    className="text-[11px] text-muted-foreground hover:text-foreground underline"
+                  >
+                    Batal ganti password
+                  </button>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="profile-new-password" className="text-[11px] font-medium text-muted-foreground">
+                      Password Baru
+                    </Label>
+                    <Input
+                      id="profile-new-password"
+                      type="password"
+                      placeholder="Min. 6 karakter"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="h-9 bg-muted/20 border-border rounded-xl text-xs"
+                      minLength={6}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="profile-confirm-password" className="text-[11px] font-medium text-muted-foreground">
+                      Ulangi Password
+                    </Label>
+                    <Input
+                      id="profile-confirm-password"
+                      type="password"
+                      placeholder="Ulangi password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="h-9 bg-muted/20 border-border rounded-xl text-xs"
+                      minLength={6}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="pt-3 border-t border-border/50 gap-2 sm:gap-0">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+              disabled={isPending || isUploadingPhoto}
+              className="rounded-xl border-border h-10 text-xs font-semibold"
+            >
+              Tutup
+            </Button>
+            <Button
+              type="submit"
+              disabled={isPending || isUploadingPhoto}
+              className="rounded-xl bg-primary text-primary-foreground font-bold h-10 px-5 text-xs shadow-md shadow-primary/20 hover:bg-primary/90 ml-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                  Menyimpan...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-3.5 w-3.5" />
+                  Simpan Perubahan
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}

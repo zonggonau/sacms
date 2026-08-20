@@ -94,7 +94,7 @@ export default function RBACPage() {
     if (session?.user?.role === "super_admin") {
       fetchData()
     }
-  }, [session])
+  }, [session?.user?.id, session?.user?.role])
 
   // Initialize default permissions for each role
   useEffect(() => {

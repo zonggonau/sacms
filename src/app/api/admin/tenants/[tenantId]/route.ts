@@ -123,6 +123,21 @@ export async function DELETE(
       await dropEnterpriseDb(tenant.databaseUrl)
     }
 
+    // 3. Delete v0.dev project if exists
+    const v0Setting = await db.setting.findFirst({
+      where: { key: `${tenantId}_v0ChatId` }
+    })
+    
+    if (v0Setting?.value) {
+      try {
+        console.log(`[Admin Tenant Deletion] Deleting v0.dev chat ${v0Setting.value} for ${tenant.slug}`)
+        const { v0 } = await import("v0")
+        await v0.chats.delete({ chatId: v0Setting.value })
+      } catch (err) {
+        console.error(`Failed to delete v0.dev chat ${v0Setting.value}:`, err)
+      }
+    }
+
     // 3. Delete tenant from master database (Cascade will handle members, entries, etc.)
     await db.tenant.delete({
       where: { id: tenantId }

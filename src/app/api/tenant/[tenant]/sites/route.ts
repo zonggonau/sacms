@@ -1,0 +1,265 @@
+import { NextRequest, NextResponse } from "next/server"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/database"
+import { z } from "zod"
+
+const createSiteSchema = z.object({
+  name: z.string().min(2, "Nama website minimal 2 karakter"),
+  slug: z.string().min(2, "Slug minimal 2 karakter").regex(/^[a-z0-9-]+$/, "Slug hanya boleh berisi huruf kecil, angka, dan strip"),
+  description: z.string().optional(),
+  template: z.enum(["blank", "nextjs-tailwind", "landing-page", "ecommerce", "hotel", "blog"]).default("nextjs-tailwind"),
+})
+
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { tenant: tenantSlug } = await params
+    const tenant = await db.tenant.findFirst({
+      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
+      select: { id: true, slug: true, name: true }
+    })
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    }
+
+    const sites = await db.site.findMany({
+      where: { tenantId: tenant.id },
+      include: {
+        _count: {
+          select: { files: true, versions: true, deployments: true }
+        }
+      },
+      orderBy: { updatedAt: "desc" }
+    })
+
+    return NextResponse.json({ sites })
+  } catch (error) {
+    console.error("Failed to list sites:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}
+
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const { tenant: tenantSlug } = await params
+    const tenant = await db.tenant.findFirst({
+      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
+      select: { id: true, slug: true, name: true }
+    })
+
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+    }
+
+    const json = await request.json()
+    const parsed = createSiteSchema.safeParse(json)
+    if (!parsed.success) {
+      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
+    }
+
+    const { name, slug, description, template } = parsed.data
+
+    // Check duplicate slug
+    const existing = await db.site.findFirst({
+      where: { tenantId: tenant.id, slug }
+    })
+    if (existing) {
+      return NextResponse.json({ error: `Website dengan slug "${slug}" sudah digunakan.` }, { status: 409 })
+    }
+
+    // Default starter files for Next.js App Router + Tailwind
+    const starterFiles = [
+      {
+        path: "package.json",
+        content: JSON.stringify({
+          name: slug,
+          version: "0.1.0",
+          private: true,
+          scripts: {
+            dev: "next dev",
+            build: "next build",
+            start: "next start",
+            lint: "next lint"
+          },
+          dependencies: {
+            react: "^19.0.0",
+            "react-dom": "^19.0.0",
+            next: "^16.0.0",
+            "lucide-react": "^0.475.0",
+            "clsx": "^2.1.1",
+            "tailwind-merge": "^3.0.0"
+          }
+        }, null, 2),
+      },
+      {
+        path: "app/layout.tsx",
+        content: `import type { Metadata } from "next";
+import "./globals.css";
+
+export const metadata: Metadata = {
+  title: "${name} — Powered by SaCMS",
+  description: "${description || 'Modern dynamic website created with SaCMS AI Builder'}",
+};
+
+export default function RootLayout({
+  children,
+}: Readonly<{
+  children: React.ReactNode;
+}>) {
+  return (
+    <html lang="id">
+      <body className="antialiased min-h-screen bg-slate-950 text-slate-50 font-sans">
+        {children}
+      </body>
+    </html>
+  );
+}`
+      },
+      {
+        path: "app/globals.css",
+        content: `@import "tailwindcss";
+
+:root {
+  --background: #020617;
+  --foreground: #f8fafc;
+}
+
+body {
+  background-color: var(--background);
+  color: var(--foreground);
+}`
+      },
+      {
+        path: "lib/sacms.ts",
+        content: `/**
+ * SaCMS Content API Client
+ * Generated for workspace: ${tenant.name} (${tenant.slug})
+ */
+
+const SACMS_HOST = process.env.NEXT_PUBLIC_SACMS_URL || "";
+const TENANT_ID = "${tenant.id}";
+
+export async function getCollection<T = any>(contentTypeSlug: string, params: Record<string, string> = {}): Promise<T[]> {
+  const query = new URLSearchParams(params).toString();
+  const url = \`\${SACMS_HOST}/api/public/\${TENANT_ID}/content/\${contentTypeSlug}\${query ? '?' + query : ''}\`;
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) throw new Error(\`Failed to fetch collection: \${contentTypeSlug}\`);
+  const json = await res.json();
+  return json.data || json.entries || [];
+}
+
+export async function getSingleType<T = any>(singleTypeSlug: string): Promise<T | null> {
+  const url = \`\${SACMS_HOST}/api/public/\${TENANT_ID}/single/\${singleTypeSlug}\`;
+  const res = await fetch(url, { next: { revalidate: 60 } });
+  if (!res.ok) return null;
+  const json = await res.json();
+  return json.data || null;
+}`
+      },
+      {
+        path: "app/page.tsx",
+        content: `import { getCollection, getSingleType } from "@/lib/sacms";
+import { Sparkles, ArrowRight, Layers, Globe, Zap } from "lucide-react";
+
+export default async function HomePage() {
+  return (
+    <main className="min-h-screen flex flex-col items-center justify-center p-6 text-center max-w-4xl mx-auto space-y-8">
+      <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-indigo-500/30 bg-indigo-500/10 text-xs font-semibold text-indigo-400">
+        <Sparkles className="h-3.5 w-3.5" />
+        Website Generated by SaCMS AI Builder
+      </div>
+      
+      <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent">
+        ${name}
+      </h1>
+      
+      <p className="text-base md:text-lg text-slate-400 max-w-2xl">
+        ${description || "Website dinamis Anda telah berhasil di-scaffold dan siap dihubungkan langsung dengan skema SaCMS MCP."}
+      </p>
+
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 w-full pt-4">
+        <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 text-left space-y-2">
+          <Layers className="h-5 w-5 text-indigo-400" />
+          <h3 className="font-bold text-sm text-slate-100">Dynamic Content Types</h3>
+          <p className="text-xs text-slate-400">Kelola koleksi data dan skema database secara langsung melalui MCP.</p>
+        </div>
+        <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 text-left space-y-2">
+          <Zap className="h-5 w-5 text-amber-400" />
+          <h3 className="font-bold text-sm text-slate-100">Next.js App Router</h3>
+          <p className="text-xs text-slate-400">Dibangun dengan performa kilat Server Components dan Tailwind CSS.</p>
+        </div>
+        <div className="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 text-left space-y-2">
+          <Globe className="h-5 w-5 text-emerald-400" />
+          <h3 className="font-bold text-sm text-slate-100">One-Click Deploy</h3>
+          <p className="text-xs text-slate-400">Siap dipublikasikan ke custom domain atau subdomain SaCMS.</p>
+        </div>
+      </div>
+    </main>
+  );
+}`
+      }
+    ]
+
+    // Create Site in Transaction with Starter Files & Initial Conversation
+    const site = await db.$transaction(async (tx) => {
+      const createdSite = await tx.site.create({
+        data: {
+          tenantId: tenant.id,
+          name,
+          slug,
+          description,
+          subdomain: `${slug}-${tenant.slug}`.toLowerCase(),
+          status: "draft",
+          framework: "nextjs",
+          files: {
+            create: starterFiles.map((f) => ({
+              path: f.path,
+              content: f.content,
+            }))
+          },
+          conversations: {
+            create: {
+              title: `Membangun ${name}`,
+              messages: {
+                create: {
+                  role: "assistant",
+                  content: `Halo! Saya adalah AI Website Builder untuk workspace **${tenant.name}**.\n\nSaya telah menyiapkan struktur proyek dasar Next.js. Silakan berikan instruksi atau prompt tentang website yang ingin Anda bangun (contoh: *"Buatkan halaman katalog kamar hotel lengkap dengan form booking"*), dan saya akan merancang skema CMS (Content Types) serta meng-generate halaman frontend-nya secara otomatis!`,
+                }
+              }
+            }
+          }
+        },
+        include: {
+          files: true,
+          conversations: {
+            include: { messages: true }
+          }
+        }
+      })
+
+      return createdSite
+    })
+
+    return NextResponse.json({ site }, { status: 201 })
+  } catch (error) {
+    console.error("Failed to create site:", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+  }
+}

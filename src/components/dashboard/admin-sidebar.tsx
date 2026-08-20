@@ -34,6 +34,7 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut, useSession } from "next-auth/react"
+import { ProfileModal } from "@/components/dashboard/profile-modal"
 
 interface AdminSidebarProps {
   tenantSlug?: string
@@ -65,6 +66,7 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [openItems, setOpenItems] = useState<string[]>([])
   const [mounted, setMounted] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -212,9 +214,13 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
 
       <div className="border-t p-4 space-y-2">
         <div className="flex items-center justify-between">
-          <Link href="/dashboard/profile" className="text-sm text-muted-foreground hover:underline truncate mr-2">
-            {session?.user?.email}
-          </Link>
+          <button 
+            type="button"
+            onClick={() => setIsProfileOpen(true)}
+            className="text-sm text-muted-foreground hover:underline truncate mr-2 text-left cursor-pointer"
+          >
+            {session?.user?.name || session?.user?.email}
+          </button>
           <Button
             variant="ghost"
             size="icon"
@@ -271,6 +277,8 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
       <aside className="hidden md:block w-64 border-r bg-card">
         {renderSidebarContent()}
       </aside>
+
+      <ProfileModal open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </>
   )
 }

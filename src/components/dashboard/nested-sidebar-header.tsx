@@ -26,9 +26,9 @@ export function NestedSidebarHeader({
         <Link 
           href={actualBackHref} 
           title={backTooltip}
-          className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-none border border-transparent hover:border-border flex items-center justify-center shrink-0"
+          className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-xl border border-border/60 flex items-center justify-center shrink-0"
         >
-          <ArrowLeft className="h-4.5 w-4.5" />
+          <ArrowLeft className="h-4 w-4" />
         </Link>
       )}
       <Link href={actualLogoHref} className="flex items-center gap-3 min-w-0">

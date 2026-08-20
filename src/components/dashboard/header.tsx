@@ -17,6 +17,7 @@ import { useSession, signOut } from "next-auth/react"
 import { useTheme } from "next-themes"
 import { Moon, Sun } from "lucide-react"
 import { useState, useEffect } from "react"
+import { ProfileModal } from "@/components/dashboard/profile-modal"
 
 interface HeaderProps {
   title: string
@@ -28,6 +29,7 @@ export function DashboardHeader({ title, description, tenantName }: HeaderProps)
   const { data: session } = useSession()
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
 
   useEffect(() => {
     setMounted(true)
@@ -137,11 +139,12 @@ export function DashboardHeader({ title, description, tenantName }: HeaderProps)
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setIsProfileOpen(true)} className="cursor-pointer">
+              Profile
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem
-              className="text-destructive focus:text-destructive"
+              className="text-destructive focus:text-destructive cursor-pointer"
               onClick={handleSignOut}
             >
               Sign Out
@@ -149,6 +152,8 @@ export function DashboardHeader({ title, description, tenantName }: HeaderProps)
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <ProfileModal open={isProfileOpen} onOpenChange={setIsProfileOpen} />
     </header>
   )
 }

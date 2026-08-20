@@ -86,7 +86,7 @@ export default function SingleTypeDetailClient({
   const [locale, setLocale] = useState<string>("en")
   const [availableLocales, setAvailableLocales] = useState<any[]>(initialLocales)
 
-  const tenants = useMemo(() => session?.user?.tenants || [], [session])
+  const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login")
@@ -225,59 +225,59 @@ export default function SingleTypeDetailClient({
 
   return (
     <div className="flex flex-1 flex-col w-full">
-<div className="flex-1 flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-6">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)}>
-                <ArrowLeft className="h-5 w-5" />
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" className="rounded-xl h-8 w-8 hover:bg-muted/60" onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)}>
+                <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-3xl font-extrabold tracking-tight">{singleType.name}</h1>
-                  <Badge variant={singleType.publishedAt ? "default" : "secondary"} className="uppercase font-black text-[10px]">
+                <div className="flex items-center gap-2.5">
+                  <h1 className="text-2xl font-black tracking-tight text-foreground">{singleType.name}</h1>
+                  <Badge variant={singleType.publishedAt ? "default" : "secondary"} className="text-[10px] font-bold px-2 py-0.5 rounded-full">
                     {singleType.publishedAt ? "Live" : "Draft"}
                   </Badge>
                 </div>
-                <p className="text-muted-foreground text-sm">Singleton Content &middot; /{singleType.slug}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Konten Tunggal &middot; <span className="font-mono">/{singleType.slug}</span></p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button variant="outline" className="bg-card" asChild>
+              <Button variant="outline" className="h-8 px-3 text-xs font-bold rounded-xl border-border/80" asChild>
                 <Link href={`/dashboard/${tenantSlug}/content-type-builder/single-types/${singleType.slug}/edit`}>
-                  <Edit2 className="h-4 w-4 mr-2" /> Schema
+                  <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit Skema
                 </Link>
               </Button>
-              <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="bg-card font-bold">
-                Save Draft
+              <Button variant="outline" onClick={() => handleSave(false)} disabled={saving} className="h-8 px-3 text-xs font-bold rounded-xl border-border/80">
+                Simpan Draft
               </Button>
-              <Button onClick={() => handleSave(true)} disabled={saving} className="bg-primary hover:bg-primary/90 text-primary-foreground shadow-none shadow-none font-bold">
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Publish Now
+              <Button onClick={() => handleSave(true)} disabled={saving} className="h-8 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                Publikasikan
               </Button>
             </div>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              <Card className="border-none shadow-none bg-card">
-                <CardHeader className="border-b bg-muted/10">
-                  <CardTitle className="text-lg font-bold">Content Editor</CardTitle>
+              <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
+                <CardHeader className="p-5 pb-3 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Editor Konten</CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 space-y-8">
+                <CardContent className="p-5 space-y-6">
                   {singleType.fields.length === 0 ? (
-                    <div className="text-center py-12 opacity-40">
-                      <Zap className="h-12 w-12 mx-auto mb-4" />
-                      <p className="font-bold">No fields defined</p>
-                      <p className="text-xs">Go to schema editor to add attributes.</p>
+                    <div className="text-center py-16 space-y-2">
+                      <Zap className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                      <p className="font-bold text-xs text-foreground">Belum ada field yang didefinisikan</p>
+                      <p className="text-[11px] text-muted-foreground">Buka editor skema untuk menambahkan atribut konten.</p>
                     </div>
                   ) : (
                     singleType.fields.map((field) => (
-                      <div key={field.id} className="space-y-2.5">
+                      <div key={field.id} className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <Label className="text-sm font-bold">{field.name} {field.required && <span className="text-destructive">*</span>}</Label>
-                          <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-widest opacity-50">{field.type}</Badge>
+                          <Label className="text-xs font-semibold text-foreground">{field.name} {field.required && <span className="text-rose-500">*</span>}</Label>
+                          <Badge variant="outline" className="text-[9px] font-mono uppercase px-1.5 py-0 rounded-full border-border/60 text-muted-foreground">{field.type}</Badge>
                         </div>
                         {renderField(field)}
                       </div>
@@ -287,17 +287,19 @@ export default function SingleTypeDetailClient({
               </Card>
             </div>
 
-            <div className="space-y-6">
-              <Card className="border-none shadow-none bg-card">
-                <CardHeader><CardTitle className="text-base font-bold">Localization</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase text-muted-foreground">Language</Label>
+            <div className="space-y-4">
+              <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
+                <CardHeader className="p-4 pb-2 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Bahasa & Lokalisasi</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Bahasa Aktif</Label>
                     <Select value={locale} onValueChange={setLocale}>
-                      <SelectTrigger className="bg-muted/30 border-none"><SelectValue /></SelectTrigger>
-                      <SelectContent>
+                      <SelectTrigger className="bg-background border-border/80 rounded-xl h-9 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-border bg-card">
                         {availableLocales.map(l => (
-                          <SelectItem key={l.locale} value={l.locale}>{l.name} ({l.locale})</SelectItem>
+                          <SelectItem key={l.locale} value={l.locale} className="rounded-lg text-xs cursor-pointer">{l.name} ({l.locale})</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -305,24 +307,26 @@ export default function SingleTypeDetailClient({
                 </CardContent>
               </Card>
 
-              <Card className="border-none shadow-none bg-card">
-                <CardHeader><CardTitle className="text-base font-bold">System Info</CardTitle></CardHeader>
-                <CardContent className="space-y-4 text-xs">
-                  <div className="flex justify-between border-b border-dashed pb-2">
-                    <span className="text-muted-foreground uppercase font-bold text-[10px]">API Slug</span>
-                    <code className="font-bold bg-muted px-1.5 py-0.5 rounded-none text-primary">/{singleType.slug}</code>
+              <Card className="border border-border/80 rounded-2xl shadow-xs overflow-hidden bg-card">
+                <CardHeader className="p-4 pb-2 border-b border-border/60">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Informasi Sistem</CardTitle>
+                </CardHeader>
+                <CardContent className="p-4 space-y-2.5 text-xs">
+                  <div className="flex justify-between items-center py-1 border-b border-border/60">
+                    <span className="text-muted-foreground text-xs">API Slug</span>
+                    <code className="font-mono font-bold bg-primary/10 text-primary px-2 py-0.5 rounded-lg text-xs">/{singleType.slug}</code>
                   </div>
-                  <div className="flex justify-between border-b border-dashed pb-2">
-                    <span className="text-muted-foreground uppercase font-bold text-[10px]">Updated</span>
-                    <span className="font-medium">{new Date(singleType.updatedAt).toLocaleDateString()}</span>
+                  <div className="flex justify-between items-center py-1">
+                    <span className="text-muted-foreground text-xs">Terakhir Diperbarui</span>
+                    <span className="font-medium text-foreground">{new Date(singleType.updatedAt).toLocaleDateString()}</span>
                   </div>
                 </CardContent>
               </Card>
 
-              <div className="p-4 bg-primary/5 border border-primary/10 rounded-none flex gap-3 text-primary shadow-none">
+              <div className="p-4 bg-primary/5 border border-primary/15 rounded-2xl flex gap-3 text-primary shadow-xs">
                 <ShieldCheck className="h-5 w-5 shrink-0" />
-                <p className="text-[11px] leading-relaxed font-medium">
-                  Singleton data is isolated per workspace. Changes here only affect <strong>{tenantSlug}</strong>.
+                <p className="text-xs leading-relaxed text-muted-foreground">
+                  Data single type terisolasi per workspace. Perubahan hanya berlaku untuk workspace <strong className="text-foreground">{tenantSlug}</strong>.
                 </p>
               </div>
             </div>

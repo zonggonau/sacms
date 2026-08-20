@@ -159,15 +159,22 @@ export async function getAdminEntryAction(contentTypeSlug: string, entryId: stri
 
     const documentId = baseEntry.documentId || baseEntry.id
 
-    let entry = await db.contentEntry.findFirst({
-      where: { documentId, locale, tenantId: undefined },
-      include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
-    })
-
+    let entry = null
     let isNewTranslation = false
-    if (!entry) {
+
+    if (baseEntry.locale === locale) {
       entry = baseEntry
-      isNewTranslation = true
+      isNewTranslation = false
+    } else {
+      entry = await db.contentEntry.findFirst({
+        where: { documentId, locale, tenantId: undefined },
+        include: { versions: { orderBy: { version: "desc" }, take: 1, select: { version: true } } },
+      })
+
+      if (!entry) {
+        entry = baseEntry
+        isNewTranslation = true
+      }
     }
 
     return { entry, isNewTranslation, documentId, contentType }
@@ -316,7 +323,13 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
     if (!baseEntry) return { error: "Entry not found" }
 
     const documentId = baseEntry.documentId || baseEntry.id
-    const existingLocaleEntry = await db.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId: undefined } })
+    let existingLocaleEntry = null
+
+    if (baseEntry.locale === targetLocale) {
+      existingLocaleEntry = baseEntry
+    } else {
+      existingLocaleEntry = await db.contentEntry.findFirst({ where: { documentId, locale: targetLocale, tenantId: undefined } })
+    }
 
     const targetStatus = status || existingLocaleEntry?.status || "DRAFT"
     if (!isWorkflowStatus(targetStatus)) return { error: "Invalid content status" }
@@ -345,6 +358,9 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
         let finalData = data
 
         const updateData: any = { updatedBy: session.user.id }
+        if (!existingLocaleEntry.documentId) {
+          updateData.documentId = documentId
+        }
         if (finalData) updateData.data = finalData
         if (status) {
           updateData.status = status
@@ -360,6 +376,14 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
         await tx.contentEntry.update({ where: { id: existingLocaleEntry.id }, data: updateData })
       } else {
         if (!data) throw new Error("Data required for new translation")
+
+        if (!baseEntry.documentId) {
+          await tx.contentEntry.update({
+            where: { id: baseEntry.id },
+            data: { documentId }
+          })
+        }
+
         const newEntry = await tx.contentEntry.create({
           data: {
             documentId,

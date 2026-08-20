@@ -105,75 +105,88 @@ export default function CustomerLicensePage() {
   if (!license || !license.valid) {
     return (
       <div className="max-w-2xl mx-auto space-y-6">
-        <Card>
+        <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
           <CardHeader className="text-center pb-2">
-            <div className="w-16 h-16 mx-auto bg-muted rounded-full flex items-center justify-center mb-4">
-              <ShieldAlert className="w-8 h-8 text-muted-foreground" />
+            <div className="w-14 h-14 mx-auto bg-muted rounded-2xl flex items-center justify-center mb-3 border border-border/60">
+              <ShieldAlert className="w-7 h-7 text-muted-foreground" />
             </div>
-            <CardTitle>No Enterprise License</CardTitle>
-            <CardDescription>
-              This instance is running in standard mode with plan limits applied.
+            <CardTitle className="text-xl font-bold">Mode Standar (Standard Mode)</CardTitle>
+            <CardDescription className="text-xs max-w-md mx-auto mt-1">
+              Workspace ini berjalan dalam mode standar dengan batasan kuota paket. Untuk akses tanpa batas dan dukungan mandiri (Self-Hosted), <strong>silakan hubungi Administrator</strong>.
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {!showActivate && (
-              <Button
-                className="w-full"
-                onClick={() => setShowActivate(true)}
-              >
-                <KeyRound className="w-4 h-4 mr-2" />
-                Activate License
-              </Button>
-            )}
-
-            {showActivate && (
-              <form onSubmit={handleActivate} className="space-y-4 pt-4 border-t">
+          <CardContent className="space-y-4 pt-2">
+            {!showActivate ? (
+              <div className="flex flex-col sm:flex-row gap-3">
+                <a
+                  href="mailto:admin@sacms.cloud?subject=Permintaan%20Lisensi%20Enterprise%20SaCMS"
+                  className="flex-1"
+                >
+                  <Button
+                    variant="outline"
+                    className="w-full h-10 rounded-xl font-semibold text-xs border-border"
+                  >
+                    <ExternalLink className="w-3.5 h-3.5 mr-2" />
+                    Hubungi Administrator
+                  </Button>
+                </a>
+                <Button
+                  className="flex-1 h-10 rounded-xl font-bold text-xs bg-primary text-primary-foreground"
+                  onClick={() => setShowActivate(true)}
+                >
+                  <KeyRound className="w-3.5 h-3.5 mr-2" />
+                  Aktivasi Serial Key
+                </Button>
+              </div>
+            ) : (
+              <form onSubmit={handleActivate} className="space-y-4 pt-2">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold">License Key</label>
+                  <label className="text-xs font-bold text-foreground">Serial Key Lisensi Enterprise</label>
                   <Input
                     value={licenseKeyInput}
                     onChange={(e) => setLicenseKeyInput(e.target.value)}
-                    placeholder="Paste your SACMS-... key here"
-                    className="font-mono text-xs min-h-[80px]"
+                    placeholder="Tempelkan serial key SACMS-... di sini"
+                    className="font-mono text-xs min-h-[80px] rounded-xl"
                     required
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Enter the serial key you received from SaCMS.
+                  <p className="text-[11px] text-muted-foreground">
+                    Masukkan serial key yang Anda peroleh dari Administrator sistem.
                   </p>
                 </div>
-                <div className="flex gap-3">
+                <div className="flex gap-2.5">
                   <Button
                     type="submit"
                     disabled={activating || !licenseKeyInput.trim()}
-                    className="flex-1"
+                    className="flex-1 h-10 rounded-xl font-bold text-xs bg-primary text-primary-foreground"
                   >
                     {activating ? (
-                      <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Activating...</>
+                      <><Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> Mengaktifkan...</>
                     ) : (
-                      <>Activate</>
+                      <>Aktifkan Lisensi</>
                     )}
                   </Button>
                   <Button
                     type="button"
                     variant="outline"
                     onClick={() => setShowActivate(false)}
+                    className="h-10 px-5 rounded-xl text-xs font-semibold"
                   >
-                    Cancel
+                    Batal
                   </Button>
                 </div>
               </form>
             )}
 
-            <div className="text-center pt-4 border-t">
-              <p className="text-xs text-muted-foreground mb-2">
-                Don&apos;t have a license yet?
+            <div className="text-center pt-3 border-t border-border/60">
+              <p className="text-xs text-muted-foreground">
+                Butuh bantuan implementasi atau konsultasi SLA khusus?{" "}
+                <a
+                  href="mailto:admin@sacms.cloud?subject=Konsultasi%20Enterprise%20SaCMS"
+                  className="text-primary font-semibold hover:underline inline-flex items-center gap-1"
+                >
+                  Hubungi Admin <ExternalLink className="w-3 h-3" />
+                </a>
               </p>
-              <a
-                href="mailto:sales@sacms.cloud?subject=Enterprise%20License%20Inquiry"
-                className="text-sm text-primary hover:underline inline-flex items-center gap-1"
-              >
-                Contact Sales <ExternalLink className="w-3 h-3" />
-              </a>
             </div>
           </CardContent>
         </Card>
@@ -192,70 +205,70 @@ export default function CustomerLicensePage() {
   return (
     <div className="max-w-3xl mx-auto space-y-6">
       {/* License Active Card */}
-      <Card className={`border-2 ${
-        isExpired ? "border-red-500/30" :
-        isExpiring ? "border-yellow-500/30" :
-        "border-green-500/30"
+      <Card className={`border rounded-2xl shadow-xs bg-card overflow-hidden ${
+        isExpired ? "border-rose-500/30" :
+        isExpiring ? "border-amber-500/30" :
+        "border-emerald-500/30"
       }`}>
         <CardHeader className={`${
-          isExpired ? "bg-red-500/5" :
-          isExpiring ? "bg-yellow-500/5" :
-          "bg-green-500/5"
-        } rounded-t-lg`}>
+          isExpired ? "bg-rose-500/5" :
+          isExpiring ? "bg-amber-500/5" :
+          "bg-emerald-500/5"
+        } p-5 border-b border-border/60`}>
           <div className="flex items-start justify-between">
             <div className="space-y-2">
               <div className="flex items-center gap-2">
                 {isExpired ? (
-                  <Badge variant="outline" className="bg-red-500/10 text-red-600 border-red-500/30 font-bold">
-                    <ShieldAlert className="w-3 h-3 mr-1" /> Expired
+                  <Badge variant="outline" className="bg-rose-500/10 text-rose-600 border-rose-500/30 font-bold text-[10px] rounded-full">
+                    <ShieldAlert className="w-3 h-3 mr-1" /> Kadaluarsa
                   </Badge>
                 ) : isExpiring ? (
-                  <Badge variant="outline" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/30 font-bold">
-                    <ShieldAlert className="w-3 h-3 mr-1" /> Expiring Soon
+                  <Badge variant="outline" className="bg-amber-500/10 text-amber-600 border-amber-500/30 font-bold text-[10px] rounded-full">
+                    <ShieldAlert className="w-3 h-3 mr-1" /> Segera Berakhir
                   </Badge>
                 ) : (
-                  <Badge variant="outline" className="bg-green-500/10 text-green-600 border-green-500/30 font-bold">
-                    <ShieldCheck className="w-3 h-3 mr-1" /> Active
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 font-bold text-[10px] rounded-full">
+                    <ShieldCheck className="w-3 h-3 mr-1" /> Aktif
                   </Badge>
                 )}
-                <Badge variant="secondary" className="uppercase text-[10px] font-bold">
+                <Badge variant="secondary" className="uppercase text-[10px] font-bold rounded-full">
                   {license.type}
                 </Badge>
               </div>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="w-5 h-5 text-primary" />
-                Enterprise License
+              <CardTitle className="flex items-center gap-2 text-base font-bold text-foreground">
+                <Shield className="w-4 h-4 text-primary" />
+                Lisensi Enterprise Terverifikasi
               </CardTitle>
             </div>
-            <ShieldCheck className={`w-10 h-10 ${
-              isExpired ? "text-red-500" :
-              isExpiring ? "text-yellow-500" :
-              "text-green-500"
+            <ShieldCheck className={`w-8 h-8 ${
+              isExpired ? "text-rose-500" :
+              isExpiring ? "text-amber-500" :
+              "text-emerald-500"
             }`} />
           </div>
         </CardHeader>
-        <CardContent className="space-y-6 pt-6">
+        <CardContent className="space-y-6 p-5">
           {/* Info Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-semibold">Customer</p>
-              <p className="text-sm font-bold">{license.customerName}</p>
+              <p className="text-xs text-muted-foreground font-semibold">Nama Pemegang</p>
+              <p className="text-xs font-bold text-foreground">{license.customerName}</p>
             </div>
             {license.organization && (
               <div className="space-y-1">
-                <p className="text-xs text-muted-foreground font-semibold">Organization</p>
-                <p className="text-sm font-bold">{license.organization}</p>
+                <p className="text-xs text-muted-foreground font-semibold">Organisasi / PT</p>
+                <p className="text-xs font-bold text-foreground">{license.organization}</p>
               </div>
             )}
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-semibold">Issued</p>
-              <p className="text-sm font-bold">
+              <p className="text-xs text-muted-foreground font-semibold">Diterbitkan</p>
+              <p className="text-xs font-bold text-foreground">
                 {license.issuedAt ? new Date(license.issuedAt).toLocaleDateString() : "-"}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-xs text-muted-foreground font-semibold">Expires</p>
-              <p className={`text-sm font-bold ${isExpiring || isExpired ? "text-destructive" : ""}`}>
+              <p className="text-xs text-muted-foreground font-semibold">Masa Berlaku</p>
+              <p className={`text-xs font-bold ${isExpiring || isExpired ? "text-destructive" : "text-foreground"}`}>
                 {license.expiresAt ? new Date(license.expiresAt).toLocaleDateString() : "-"}
               </p>
             </div>
@@ -264,39 +277,39 @@ export default function CustomerLicensePage() {
           {/* Progress Bar */}
           <div className="space-y-2">
             <div className="flex justify-between text-xs">
-              <span className={`font-semibold ${
+              <span className={`font-bold ${
                 isExpired ? "text-destructive" :
-                isExpiring ? "text-yellow-600" :
-                "text-green-600"
+                isExpiring ? "text-amber-600" :
+                "text-emerald-600 dark:text-emerald-400"
               }`}>
                 {isExpired
-                  ? "License Expired"
-                  : `${daysRemaining} day${daysRemaining !== 1 ? "s" : ""} remaining`
+                  ? "Lisensi Telah Berakhir"
+                  : `Tersisa ${daysRemaining} hari`
                 }
               </span>
-              <span className="text-muted-foreground">
-                {Math.round(progressPct)}% used
+              <span className="text-muted-foreground text-[11px]">
+                {Math.round(progressPct)}% terpakai
               </span>
             </div>
             <Progress
               value={Math.min(progressPct, 100)}
-              className={`h-2 ${
-                isExpired ? "bg-red-500/20" :
-                isExpiring ? "bg-yellow-500/20" :
-                "bg-green-500/20"
+              className={`h-2 rounded-full ${
+                isExpired ? "bg-rose-500/20" :
+                isExpiring ? "bg-amber-500/20" :
+                "bg-emerald-500/20"
               }`}
             />
           </div>
 
           {/* Features */}
           {license.features && license.features.length > 0 && (
-            <div className="pt-4 border-t space-y-3">
+            <div className="pt-4 border-t border-border/60 space-y-2.5">
               <p className="text-xs text-muted-foreground font-semibold uppercase tracking-wider">
-                Included Features
+                Fitur Enterprise Termasuk
               </p>
               <div className="flex flex-wrap gap-2">
                 {license.features.map((f: string) => (
-                  <Badge key={f} variant="secondary" className="text-xs">
+                  <Badge key={f} variant="secondary" className="text-xs rounded-full font-medium">
                     ✅ {f.replace(/-/g, " ")}
                   </Badge>
                 ))}
@@ -305,42 +318,26 @@ export default function CustomerLicensePage() {
           )}
 
           {/* Actions */}
-          <div className="pt-4 border-t flex flex-col sm:flex-row gap-3">
+          <div className="pt-4 border-t border-border/60 flex flex-col sm:flex-row gap-3">
             {isExpiring || isExpired ? (
               <a
-                href="mailto:support@sacms.cloud?subject=License%20Renewal"
+                href="mailto:admin@sacms.cloud?subject=Pembaruan%20Lisensi%20Enterprise"
                 className="flex-1"
               >
-                <Button className="w-full">
-                  Renew License
+                <Button className="w-full h-9 rounded-xl text-xs font-bold bg-primary text-primary-foreground">
+                  Perpanjang Lisensi
                 </Button>
               </a>
             ) : null}
             <Button
               variant="outline"
               onClick={() => fetchStatus()}
-              className={isExpiring || isExpired ? "" : "flex-1"}
+              className={`h-9 rounded-xl text-xs font-bold ${isExpiring || isExpired ? "" : "flex-1"}`}
             >
-              <RefreshCw className="w-4 h-4 mr-2" />
-              Refresh Status
+              <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+              Perbarui Status
             </Button>
           </div>
-        </CardContent>
-      </Card>
-
-      {/* Help Card */}
-      <Card className="border-dashed">
-        <CardContent className="p-4 text-center">
-          <p className="text-xs text-muted-foreground">
-            Need help?{" "}
-            <a href="mailto:support@sacms.cloud" className="text-primary hover:underline">
-              support@sacms.cloud
-            </a>
-            {" "}·{" "}
-            <a href="/docs/enterprise" className="text-primary hover:underline">
-              Documentation
-            </a>
-          </p>
         </CardContent>
       </Card>
     </div>
