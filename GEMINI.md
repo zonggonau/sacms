@@ -5,6 +5,7 @@
 
 ## Tech Stack
 - **Framework:** Next.js 16 (App Router, Server Components)
+- **Package Manager & Runtime:** Bun (`bun run dev`, `bun run build`, `bun run start`, `bun test`, `bunx prisma ...`)
 - **Database:** PostgreSQL via Prisma ORM (output: `prisma/generated-client/`)
 - **Auth:** NextAuth v4 dengan Prisma adapter
 - **Storage:** Cloudflare R2 (S3-compatible) via `@aws-sdk/client-s3`
@@ -219,6 +220,7 @@ if (!canRoleTransition(current.status, "PUBLISHED", userRole)) {
 ## DO & DON'T
 
 ### DO
+- Selalu gunakan Bun (`bun`, `bunx`, `bun test`, `bun run build`) untuk package management, command execution, dan database migration
 - Selalu gunakan Zod untuk validasi input di API routes
 - Gunakan `tenantDb` (dari `getTenantDb`) bukan `db` langsung untuk data content
 - Rate limit semua endpoint publik menggunakan `rateLimit()` dari `lib/rate-limit.ts`
@@ -226,6 +228,7 @@ if (!canRoleTransition(current.status, "PUBLISHED", userRole)) {
 - Handle JSON data field dengan `.data as Record<string, unknown>` — bukan string
 
 ### DON'T
+- Jangan gunakan `npm` atau `npx` — selalu gunakan `bun` dan `bunx`
 - Jangan gunakan `JSON.parse()` pada field yang bertipe `Json` di Prisma — sudah otomatis di-deserialize
 - Jangan import `ioredis` — proyek hanya menggunakan `@upstash/redis`
 - Jangan hardcode locale `"en"` — selalu lookup default locale dari `TenantLocale`
