@@ -33,18 +33,18 @@ const globalForPrisma = globalThis as unknown as {
 if (globalForPrisma.prisma) {
   try {
     if (
-      !(globalThis as any).__prisma_reset_v9 ||
+      !(globalThis as any).__prisma_reset_v11 ||
       !(globalForPrisma.prisma as any).site ||
       !(globalForPrisma.prisma as any).siteFile ||
       !(globalForPrisma.prisma as any).permission ||
       !(globalForPrisma.prisma as any).rolePermission
     ) {
-      console.log('[Prisma] Forcing client refresh for query engine recovery, Site models & RBAC...')
+      console.log('[Prisma] Forcing client refresh for query engine recovery & RBAC...')
       globalForPrisma.prisma = undefined
       if (globalForPrisma.tenantClients) {
         globalForPrisma.tenantClients.clear()
       }
-      ;(globalThis as any).__prisma_reset_v9 = true
+      ;(globalThis as any).__prisma_reset_v11 = true
     }
   } catch (e) {
     globalForPrisma.prisma = undefined
@@ -107,14 +107,19 @@ export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): P
     return entry.client
   }
 
-  console.log(`[Database] Initializing dedicated DB client for tenant: ${tenant.slug}`)
-  const client = new PrismaClient({
-    datasources: { db: { url: dbUrl } },
-    log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
-  })
+  try {
+    console.log(`[Database] Initializing dedicated DB client for tenant: ${tenant.slug}`)
+    const client = new PrismaClient({
+      datasources: { db: { url: dbUrl } },
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    })
 
-  tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
-  return client
+    tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
+    return client
+  } catch (error) {
+    console.error(`[Database] Failed to initialize dedicated DB for tenant ${tenant.slug}:`, error)
+    return db
+  }
 }
 
 export async function getTenantDbById(tenantId: string | null | undefined, forceFresh = false): Promise<PrismaClient> {
@@ -124,7 +129,7 @@ export async function getTenantDbById(tenantId: string | null | undefined, force
 
   const tenant = await db.tenant.findUnique({
     where: { id: tenantId },
-    select: { databaseUrl: true }
+    select: { databaseUrl: true, slug: true }
   })
 
   if (!tenant || !tenant.databaseUrl) {
@@ -139,10 +144,16 @@ export async function getTenantDbById(tenantId: string | null | undefined, force
     return entry.client
   }
 
-  const client = new PrismaClient({
-    datasources: { db: { url: dbUrl } }
-  })
+  try {
+    const client = new PrismaClient({
+      datasources: { db: { url: dbUrl } },
+      log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
+    })
 
-  tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
-  return client
+    tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
+    return client
+  } catch (error) {
+    console.error(`[Database] Failed to initialize dedicated DB by ID ${tenantId}:`, error)
+    return db
+  }
 }

@@ -46,8 +46,8 @@ export const FieldDefinitionSchema = z.object({
     "button",
     "document_template",
   ]),
-  required: z.boolean().default(false),
-  unique: z.boolean().default(false),
+  required: z.boolean().optional().default(false),
+  unique: z.boolean().optional().default(false),
   relationSlug: z.string().optional(),
   componentSlug: z.string().optional(),
   options: z.any().optional(),
@@ -58,7 +58,7 @@ export const ContentTypePlanSchema = z.object({
   slug: z.string().min(1),
   description: z.string().optional(),
   fields: z.array(FieldDefinitionSchema),
-  mockEntries: z.array(z.record(z.any())).optional(),
+  mockEntries: z.array(z.record(z.string(), z.any())).optional(),
 })
 
 export const SingleTypePlanSchema = z.object({
@@ -66,7 +66,7 @@ export const SingleTypePlanSchema = z.object({
   slug: z.string().min(1),
   description: z.string().optional(),
   fields: z.array(FieldDefinitionSchema),
-  initialData: z.record(z.any()).optional(),
+  initialData: z.record(z.string(), z.any()).optional(),
 })
 
 export const ComponentPlanSchema = z.object({
@@ -102,12 +102,12 @@ export const WebsitePlanSchema = z.object({
   ),
 })
 
-export type FieldDefinition = z.infer<typeof FieldDefinitionSchema>
-export type ContentTypePlan = z.infer<typeof ContentTypePlanSchema>
-export type SingleTypePlan = z.infer<typeof SingleTypePlanSchema>
-export type ComponentPlan = z.infer<typeof ComponentPlanSchema>
-export type SchemaPlan = z.infer<typeof SchemaPlanSchema>
-export type WebsitePlan = z.infer<typeof WebsitePlanSchema>
+export type FieldDefinition = z.input<typeof FieldDefinitionSchema>
+export type ContentTypePlan = z.input<typeof ContentTypePlanSchema>
+export type SingleTypePlan = z.input<typeof SingleTypePlanSchema>
+export type ComponentPlan = z.input<typeof ComponentPlanSchema>
+export type SchemaPlan = z.input<typeof SchemaPlanSchema>
+export type WebsitePlan = z.input<typeof WebsitePlanSchema>
 
 export interface SchemaDiff {
   creates: {
@@ -151,7 +151,7 @@ export function computeSchemaDiff(
   }
 
   // 1. Content Types Diff
-  for (const ct of plan.contentTypes) {
+  for (const ct of plan.contentTypes || []) {
     const existing = currentSchema.contentTypes.find((c) => c.slug === ct.slug)
     if (!existing) {
       diff.creates.push({
@@ -181,7 +181,7 @@ export function computeSchemaDiff(
   }
 
   // 2. Single Types Diff
-  for (const st of plan.singleTypes) {
+  for (const st of plan.singleTypes || []) {
     const existing = currentSchema.singleTypes.find((s) => s.slug === st.slug)
     if (!existing) {
       diff.creates.push({
@@ -200,7 +200,7 @@ export function computeSchemaDiff(
   }
 
   // 3. Components Diff
-  for (const comp of plan.components) {
+  for (const comp of plan.components || []) {
     const existing = currentSchema.components.find((c) => c.slug === comp.slug)
     if (!existing) {
       diff.creates.push({
@@ -237,7 +237,7 @@ export async function applySchemaPlan(
   }
 
   // 1. Create Components
-  for (const comp of plan.components) {
+  for (const comp of plan.components || []) {
     onStep?.(`Membuat komponen SaCMS: ${comp.name} (${comp.slug})...`)
     const res = await bridge.createComponent(comp)
     if (res.success) {
@@ -248,7 +248,7 @@ export async function applySchemaPlan(
   }
 
   // 2. Create Single Types
-  for (const st of plan.singleTypes) {
+  for (const st of plan.singleTypes || []) {
     onStep?.(`Membuat tipe tunggal SaCMS: ${st.name} (${st.slug})...`)
     const res = await bridge.createSingleType(st)
     if (res.success) {
@@ -259,7 +259,7 @@ export async function applySchemaPlan(
   }
 
   // 3. Create Content Types
-  for (const ct of plan.contentTypes) {
+  for (const ct of plan.contentTypes || []) {
     onStep?.(`Membuat tipe koleksi SaCMS: ${ct.name} (${ct.slug})...`)
     const res = await bridge.createContentType(ct)
     if (res.success) {

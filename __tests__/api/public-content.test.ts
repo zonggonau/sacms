@@ -12,7 +12,7 @@ vi.mock("@/lib/monitoring", () => ({
 vi.mock("@/lib/database", () => {
   const mockDb = {
     apiKey: { findUnique: vi.fn(), update: vi.fn() },
-    apiToken: { findUnique: vi.fn(), update: vi.fn() },
+    apiToken: { findUnique: vi.fn(), findFirst: vi.fn(), update: vi.fn() },
     contentType: { findFirst: vi.fn() },
     contentEntry: { findMany: vi.fn(), count: vi.fn() },
     tenantLocale: { findFirst: vi.fn(), findMany: vi.fn() },
@@ -57,8 +57,8 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return 401 if API token is invalid", async () => {
-    // Mock db.apiToken.findUnique to return null
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue(null)
+    // Mock db.apiToken.findFirst to return null
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue(null)
 
     const req = createRequest("http://localhost:3000/api/public/tenant-1/content/articles")
     const params = Promise.resolve({ tenant: "tenant-1", contentType: "articles" })
@@ -72,11 +72,12 @@ describe("Public Content API GET Endpoint", () => {
 
   it("should return 403 if token does not match tenant", async () => {
     // Mock valid API token but for a different tenant
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-other",
       expiresAt: null,
+      type: "read-only",
       tenant: {
         id: "tenant-other",
         slug: "tenant-other",
@@ -94,11 +95,12 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return 401 if token is expired", async () => {
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",
       expiresAt: new Date(Date.now() - 3600000), // Expired 1 hour ago
+      type: "read-only",
       tenant: {
         id: "tenant-1",
         slug: "tenant-1",
@@ -116,7 +118,7 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return 429 if rate limit is exceeded", async () => {
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",
@@ -146,7 +148,7 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return cached response if hit in Redis", async () => {
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",
@@ -188,11 +190,12 @@ describe("Public Content API GET Endpoint", () => {
   })
 
   it("should return 404 if content type is not found", async () => {
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",
       expiresAt: null,
+      type: "read-only",
       tenant: {
         id: "tenant-1",
         slug: "tenant-1",
@@ -214,7 +217,7 @@ describe("Public Content API GET Endpoint", () => {
 
   it("should retrieve and shape entries correctly (cache MISS)", async () => {
     vi.mocked(db.apiToken.update).mockResolvedValue({} as any)
-    vi.mocked(db.apiToken.findUnique).mockResolvedValue({
+    vi.mocked(db.apiToken.findFirst).mockResolvedValue({
       id: "token-1",
       token: "cf_test_token",
       tenantId: "tenant-1",

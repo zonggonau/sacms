@@ -21,8 +21,8 @@ const fieldSchema = z.object({
   name: z.string(),
   slug: z.string(),
   type: z.enum(VALID_FIELD_TYPES),
-  required: z.boolean().default(false),
-  unique: z.boolean().default(false),
+  required: z.boolean().optional().default(false),
+  unique: z.boolean().optional().default(false),
   relationSlug: z.string().optional().describe("If type is relation, the slug of the target ContentType"),
   componentSlug: z.string().optional().describe("If type is component, the slug of the target Component"),
 })
@@ -32,7 +32,7 @@ const modelSchema = z.object({
   slug: z.string(),
   description: z.string().optional(),
   fields: z.array(fieldSchema),
-  dummyData: z.array(z.record(z.any())).optional().describe("An array of 3-5 highly realistic, varied dummy data objects matching the fields defined. For singleTypes, provide just 1 object.")
+  dummyData: z.array(z.record(z.string(), z.any())).optional().describe("An array of 3-5 highly realistic, varied dummy data objects matching the fields defined. For singleTypes, provide just 1 object.")
 })
 
 const systemSchema = z.object({
@@ -41,7 +41,7 @@ const systemSchema = z.object({
   components: z.array(modelSchema).describe("Reusable components (e.g., SEO, Contact, Badge)"),
 })
 
-export type GeneratedSystemSchema = z.infer<typeof systemSchema>
+export type GeneratedSystemSchema = z.input<typeof systemSchema>
 
 const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS.
 Given a user's description of a website they want to build, generate a complete, comprehensive multi-collection database architecture.

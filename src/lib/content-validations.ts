@@ -22,7 +22,7 @@ export function generateContentSchema(
     let fieldSchema: z.ZodTypeAny
     const isRequired = enforceRequired && field.required
 
-    const requiredParams: any = isRequired ? { required_error: `${field.name} is required` } : {}
+    const requiredParams = isRequired ? { message: `${field.name} is required` } : undefined
 
     switch (field.type) {
       case "text":
@@ -54,8 +54,8 @@ export function generateContentSchema(
         fieldSchema = z.preprocess(
           (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
           isRequired
-            ? z.number({ required_error: `${field.name} is required`, invalid_type_error: `${field.name} must be a number` })
-            : z.number({ invalid_type_error: `${field.name} must be a number` }).optional().nullable()
+            ? z.number({ message: `${field.name} must be a number` })
+            : z.number({ message: `${field.name} must be a number` }).optional().nullable()
         )
         break
 
@@ -69,7 +69,7 @@ export function generateContentSchema(
         fieldSchema = z.preprocess(
           (val) => (val === "" ? undefined : val),
           isRequired
-            ? z.string({ required_error: `${field.name} is required` }).or(z.date())
+            ? z.string(requiredParams).or(z.date())
             : z.string().or(z.date()).optional().nullable()
         )
         break

@@ -314,8 +314,8 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
    * Next.js App Router Project Generator
    */
   private generateNextJsProjectFiles(prompt: string, plan: SchemaPlan): Array<{ path: string; content: string }> {
-    const isHotel = plan.contentTypes.some((c) => c.slug === "rooms")
-    const isStore = plan.contentTypes.some((c) => c.slug === "products")
+    const isHotel = (plan.contentTypes || []).some((c) => c.slug === "rooms")
+    const isStore = (plan.contentTypes || []).some((c) => c.slug === "products")
 
     const files: Array<{ path: string; content: string }> = []
 
