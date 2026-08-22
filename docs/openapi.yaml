@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: SaCMS Public API
-  version: 1.0.0
+  version: 1.2.1
   description: Public Content API for SaCMS (Headless CMS)
 servers:
   - url: https://cases-lawyers-tolerance-sept.trycloudflare.com

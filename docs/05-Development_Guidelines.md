@@ -1,161 +1,87 @@
-# Development Guidelines
+# SaCMS Development Guidelines
 
-**Baseline:** 27 June 2026  
-**Objective:** Keep feature behavior, workflow, security, and documentation synchronized. Synchronized with codebase on 27 June 2026.
+**Baseline:** 23 Agustus 2026 (v1.2.1.0)  
+**Tujuan:** Menjaga konsistensi arsitektur kode, keamanan multi-tenant, type safety, dan performa tinggi di seluruh stack Next.js 16.
 
-## 1. Naming
+---
 
-| Element | Convention | Example |
+## 1. Naming Conventions
+
+| Elemen | Konvensi | Contoh |
 |---|---|---|
-| React/Next file | kebab-case or framework filename | `reviewer-assignment.tsx`, `page.tsx` |
-| Utility module | kebab-case | `content-workflow-rules.ts` |
-| React component/type | PascalCase | `ReviewerAssignment` |
-| Function/variable | camelCase | `getTenantAccess` |
-| Constant | UPPER_SNAKE_CASE | `CONTENT_STATUSES` |
-| Prisma model | Singular PascalCase | `ContentEntry` |
-| Route parameter directory | Next dynamic segment | `[tenant]`, `[entryId]` |
-| Permission key | dotted lower-case | `content.update` |
-| Workflow status | upper-case enum | `IN_REVIEW` |
+| File Komponen / Page | `kebab-case.tsx` | `reviewer-assignment.tsx`, `page.tsx` |
+| Utility / Module Lib | `kebab-case.ts` | `content-workflow.ts`, `schema-engine.ts` |
+| Server Action | `kebab-case.ts` | `src/actions/content.ts`, `src/actions/mcp-tokens.ts` |
+| Komponen React & Type | `PascalCase` | `ContentEntriesManager`, `SchemaField` |
+| Fungsi & Variabel | `camelCase` | `getTenantDb`, `validateFieldData` |
+| Konstanta Global | `UPPER_SNAKE_CASE` | `CONTENT_STATUSES`, `DEFAULT_LIMITS` |
+| Model Prisma | `SingularPascalCase` | `ContentEntry`, `TenantMember`, `ApiKey` |
+| Permission Key | `dotted.lowercase` | `content.publish`, `schema.create` |
+| Status Workflow Enum | `UPPERCASE` | `DRAFT`, `IN_REVIEW`, `APPROVED`, `PUBLISHED` |
 
-## 2. Module boundaries
+---
 
-- Put pure, framework-independent rules in `src/lib/*-rules.ts` so server and client can share them safely.
-- Put authenticated dashboard mutations in `src/actions/`.
-- Put external/session HTTP contracts in `src/app/api/**/route.ts`.
-- Keep database/provider code in `src/lib/` adapters.
-- Keep interactive UI at the leaves with `"use client"`; pages/layouts remain Server Components unless browser state is required.
-- Do not import a database-bearing module into Client Components.
+## 2. Batasan Arsitektur Modul (Next.js 16 App Router)
 
-## 3. Mandatory mutation sequence
+1. **Server Components by Default:** Semua `page.tsx` dan `layout.tsx` adalah Server Components. Data di-fetch langsung di server tanpa network waterfall.
+2. **Client Components di Leaf Nodes:** Gunakan directive `"use client"` hanya pada komponen interaktif formulir, builder visual, dialog modal, atau komponen yang membutuhkan browser hooks (`useState`, `useEffect`).
+3. **Isolasi Server Actions:** Seluruh fungsi mutasi internal dashboard wajib diletakkan di `src/actions/` dengan directive `"use server"`.
+4. **Isolasi Database:** Dilarang mengimpor `src/lib/database.ts` atau Prisma client ke dalam Client Component.
+5. **No Direct JSON.parse on Prisma Json:** Kolom JSONB Prisma sudah otomatis di-deserialize menjadi JavaScript object. Gunakan tipe `data as Record<string, unknown>`.
 
-For tenant-scoped mutations, use this order:
+---
 
-1. Resolve session/token.
-2. Resolve tenant access and canonical tenant ID.
-3. Check role/RBAC/feature/plan.
-4. Validate path/query/body.
-5. Resolve the target resource with its tenant predicate.
-6. Validate business state and workflow transition.
-7. Execute synchronous pre-hooks.
-8. Commit the smallest practical transaction.
-9. Write version/audit records.
-10. Trigger asynchronous webhooks and cache/path invalidation.
-11. Return a stable error/success shape.
+## 3. Urutan Wajib Eksekusi Mutasi Data (Server Actions & Routes)
 
-Never fetch an entry/member/media/webhook by client-provided ID and only later assume it belongs to the current tenant.
+Setiap mutasi data tenant wajib menjalankan tahapan berurutan berikut:
+1. **Autentikasi Session:** Verifikasi session NextAuth atau validitas API token.
+2. **Resolusi Tenant Access:** Validasi keanggotaan user pada tenant (`getTenantAccess`).
+3. **Pemeriksaan RBAC & Plan Limits:** Cek izin role (`canRoleTransition`) dan batas kuota paket (`plan-enforcement.ts`).
+4. **Validasi Payload Dinamis:** Validasi input menggunakan schema Zod v4 (`content-validations.ts`).
+5. **Eksekusi Sync Hooks:** Jalankan webhook sinkron (`content.beforeCreate` / `beforeUpdate`). Jika hook mengembalikan `allowed: false`, batalkan transaksi.
+6. **Eksekusi Database Transaction:** Jalankan query menggunakan client tenant (`getTenantDb(tenantId)`).
+7. **Pencatatan Version & Audit Log:** Simpan snapshot histori ke `ContentVersion` dan log aksi ke `AuditLog`.
+8. **Invalidasi Cache & Webhook Asinkron:** Hapus cache Redis (`public_api:tenant:*`) dan trigger webhook asinkron ke antrean worker.
 
-## 4. Validation rules
+---
 
-- Prefer Zod schemas close to Route Handler boundaries.
-- Reuse validation helpers for Server Actions.
-- Validate enum/status values explicitly; avoid unchecked `as any` at persistence boundaries.
-- Draft content may defer required fields, but type and uniqueness checks still apply.
-- Validate updates against merged existing + submitted data when partial patches are supported.
-- Validate date semantics, not only date syntax (`scheduledAt` must be in the future).
-- Limit free-form strings and collection sizes to prevent oversized payloads.
+## 4. Pola Query Multi-Tenant yang Aman
 
-## 5. Tenant safety
-
-Safe:
-
+### ✅ Pola Aman (Selalu sertakan `tenantId`):
 ```ts
-await tenantDb.contentEntry.findFirst({
-  where: { id: entryId, tenantId, contentTypeId },
+const tenantDb = await getTenantDb(tenantId)
+
+const entry = await tenantDb.contentEntry.findFirst({
+  where: {
+    id: entryId,
+    tenantId: tenantId,
+    contentTypeId: contentTypeId,
+  },
 })
 ```
 
-Unsafe:
-
+### ❌ Pola Berbahaya (Dilarang):
 ```ts
-await tenantDb.contentEntry.findUnique({ where: { id: entryId } })
+// JANGAN gunakan findUnique hanya dengan id tanpa tenantId
+const entry = await tenantDb.contentEntry.findUnique({
+  where: { id: entryId }
+})
 ```
 
-The unsafe form is especially dangerous because `getTenantDb()` may return the shared master client when the tenant has no dedicated database URL.
+---
 
-## 6. Workflow changes
+## 5. Standar Testing & Verifikasi
 
-`src/lib/content-workflow-rules.ts` is the canonical state machine. A workflow change must update:
+- **Unit Testing (Vitest):** Wajib lulus 100% sebelum commit (`npm test`). Semua mock database wajib mensimulasikan Prisma client secara akurat.
+- **Type Checking (TypeScript):** `tsc --noEmit` wajib menghasilkan 0 error (`npm run typecheck`).
+- **Browser QA (gstack browse):** Halaman publik dan dashboard wajib diverifikasi terhadap responsive layout dan 0 console error sebelum rilis.
 
-- Pure transition rules and permission key.
-- Server Actions and relevant API/GraphQL write paths.
-- UI status choices/buttons.
-- Permission seed data when adding a permission.
-- Cron logic if the scheduler transition changes.
-- Documents 02, 04, 09, 14, and 15.
+---
 
-Do not duplicate a second transition matrix in a component.
+## 6. Git Workflow & Conventional Commits
 
-## 7. Public API and cache
-
-- Authenticate before reading cache.
-- Never use plaintext secrets in Redis/cache keys.
-- Bind token to tenant before data access.
-- Force read-only tokens to published content.
-- Scope populated relations to tenant and visibility rules.
-- Build dynamic SQL values with parameters; field/operator/sort identifiers require allowlists.
-- Invalidate all affected cache namespaces after mutations.
-
-## 8. Error handling
-
-Use predictable HTTP semantics:
-
-- `400`: malformed input.
-- `401`: missing/invalid authentication.
-- `403`: authenticated but not permitted.
-- `404`: resource absent in the authorized scope.
-- `409`: lifecycle/uniqueness conflict.
-- `429`: request/provider rate limit.
-- `500`: unexpected internal failure.
-- `503`: optional provider not configured/available.
-
-Avoid returning internal stack traces, raw provider responses, credentials, or database URLs.
-
-## 9. Git workflow
-
-This repository has had multiple historical branch names. Do not hard-code a `main/dev` or `master/develop` assumption in feature documentation. Use the repository's current default/integration branches agreed by the maintainer.
-
-Recommended branch prefixes:
-
-- `feature/…`
-- `fix/…`
-- `refactor/…`
-- `docs/…`
-- `hotfix/…`
-
-Use Conventional Commits:
-
-```text
-feat(workflow): add sequential review decision endpoint
-fix(api): authenticate before public cache lookup
-docs(workflow): document scheduled publication invariants
-```
-
-## 10. Pull request/change checklist
-
-- Problem and desired behavior are stated.
-- Tenant and authorization boundaries are reviewed.
-- Plan/feature gating is explicit.
-- Workflow transition and side effects are explicit.
-- Database/schema changes include a migration strategy.
-- API method/path/payload examples match Route Handlers.
-- UI exposes only valid operations but server remains authoritative.
-- Documentation and traceability matrix are updated.
-- Verification activity is run only in its authorized phase and results are recorded honestly.
-
-## 11. Database changes
-
-- Change `prisma/schema.prisma` first.
-- Generate a named migration during the authorized database workflow.
-- Commit migration SQL and review destructive statements.
-- Never use `prisma migrate dev` in production.
-- Regenerate the custom Prisma client output when the schema changes.
-- Dedicated tenant schemas must be migrated consistently with the master schema where applicable.
-
-## 12. Documentation standard
-
-- Use exact current method names, paths, enum values, and environment variables.
-- Mark examples as examples; do not present them as verified production facts.
-- Separate “implemented,” “partial,” and “planned.”
-- Avoid exact test counts or performance claims unless the result/date/environment is recorded.
-- Update release notes after code exists, not before.
-- Add a constraint section when a feature relies on Redis, R2, DNS, cron, or another external service.
+Gunakan format commit standar:
+- `feat(scope): ...` untuk penambahan fitur baru.
+- `fix(scope): ...` untuk perbaikan bug atau error.
+- `refactor(scope): ...` untuk restrukturisasi kode tanpa mengubah fungsionalitas.
+- `chore(release): ...` untuk bump versi, changelog, dan pembaruan dependensi.

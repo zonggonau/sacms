@@ -1,85 +1,90 @@
 # SaCMS API Specification
 
-**Baseline:** 27 June 2026  
-**Contract status:** Public collection, Single Type, and GraphQL routes are the stable external surface. Tenant routes are session-authenticated dashboard APIs and may evolve with the UI. `04-openapi.yaml` documents only the stable public subset. Synchronized with codebase on 27 June 2026.
-
-Dokumentasi ini menjelaskan Public API SaCMS, API internal tenant, developer endpoint, dan cron. Semua contoh `{tenant}` menerima slug tenant kecuali dinyatakan lain.
-
-## 🔑 Autentikasi
-Public content requests must include:
-`Authorization: Bearer <YOUR_API_TOKEN>`
-
-Token rules:
-
-- `read-only`: can only read `PUBLISHED` content.
-- `full-access`: may query another valid content status and execute supported GraphQL/Single Type mutations.
-- The token must belong to the tenant in the route and must not be expired.
-- The plaintext token is displayed only at creation; the server stores SHA-256.
-
-Tenant Management endpoints use the NextAuth session cookie rather than an API token.
+**Baseline:** 23 Agustus 2026 (v1.2.1.0)  
+**Contract Status:** Public collection, Single Type, GraphQL, and MCP routes represent the stable integration surface. Tenant management routes are session-authenticated dashboard APIs.
 
 ---
 
-## 🔍 REST API: Filtering & Querying
-Endpoint: `GET /api/public/[tenant]/content/[contentType]`
+## 🔑 1. Autentikasi & Otorisasi
 
-### 1. Filtering (Strapi-style)
-Gunakan parameter `filters` untuk menyaring data berdasarkan field di dalam JSON `data`.
+### 1.1 Public API Tokens
+Setiap request ke endpoint public konten wajib menyertakan header:
+```http
+Authorization: Bearer <YOUR_API_TOKEN>
+```
 
-**Operator yang didukung:**
-- `$eq`: Equal (Sama dengan)
-- `$ne`: Not equal
-- `$lt`, `$lte`: Less than (or equal)
-- `$gt`, `$gte`: Greater than (or equal)
-- `$contains`: Case-insensitive search
-- `$startsWith`, `$endsWith`: Prefix/suffix match
-- `$in`, `$notIn`: Array of values (pisahkan dengan koma)
-- `$null`, `$notNull`: Check for null values
+**Aturan Token:**
+- **Prefix:** Selalu diawali dengan `cf_` (contoh: `cf_live_a1b2c3d4...`).
+- **Penyimpanan:** Plaintext token hanya ditampilkan **satu kali** saat dibuat. Database hanya menyimpan hash **SHA-256**.
+- **Scope Tipe:**
+  - `read-only`: Hanya dapat membaca konten berstatus `PUBLISHED`.
+  - `full-access`: Dapat membaca draft, konten terjadwal, dan melakukan mutasi data via GraphQL / Single Type PUT.
+- **Isolasi Tenant:** Token terikat secara absolut pada satu `tenantId`. Request lintas tenant akan ditolak dengan `403 Forbidden`.
 
-**Contoh:**
-- Cari artikel dengan harga di atas 50.000:
-  `?filters[price][$gte]=50000`
-- Cari artikel yang judulnya mengandung kata "Nextjs":
-  `?filters[title][$contains]=nextjs`
-- Filter dengan logika OR:
-  `?filters[$or][0][category][$eq]=tech&filters[$or][1][featured][$eq]=true`
+---
 
-### 2. Relation Population
-Secara default, field relasi hanya akan mengembalikan ID. Gunakan `populate` untuk menarik data lengkap.
+## 🔍 2. Public REST API: Filtering & Querying
 
-- Populasikan field tertentu: `?populate=author,category`
-- Populasikan semua relasi tingkat pertama: `?populate=*`
+**Endpoint Koleksi:** `GET /api/public/[tenant]/content/[contentType]`
 
-### 3. Full-Text Search
-Pencarian teks lengkap yang dioptimalkan dengan PostgreSQL GIN Index.
-`?search=kata kunci pencarian`
+### 2.1 Filtering (Strapi-style Operators)
+Gunakan parameter `filters` pada query string untuk memfilter data JSON:
 
-### 4. Localization (i18n)
-Ambil konten dalam bahasa spesifik.
-`?locale=id` (Default: `en`)
+| Operator | Deskripsi | Contoh |
+|---|---|---|
+| `$eq` | Sama dengan (Equal) | `?filters[category][$eq]=technology` |
+| `$ne` | Tidak sama dengan (Not Equal) | `?filters[status][$ne]=archived` |
+| `$gt` / `$gte` | Lebih besar dari / sama dengan | `?filters[price][$gte]=50000` |
+| `$lt` / `$lte` | Lebih kecil dari / sama dengan | `?filters[stock][$lte]=10` |
+| `$contains` | Pencarian teks (Case-insensitive) | `?filters[title][$contains]=nextjs` |
+| `$startsWith` / `$endsWith` | Awalan / Akhiran teks | `?filters[slug][$startsWith]=tutorial-` |
+| `$in` / `$notIn` | Berada dalam list nilai | `?filters[tag][$in]=react,nextjs,ai` |
+| `$null` / `$notNull` | Memeriksa nilai kosong / tidak kosong | `?filters[deletedAt][$null]=true` |
 
-### 5. Sorting & Pagination
-- Urutkan berdasarkan field: `?sort=price:desc` atau `?sort=createdAt:asc`
-- Paginasi: `?page=1&pageSize=10` atau `?pagination[page]=1&pagination[pageSize]=10`
-- Seleksi field: `?fields=title,slug,summary`
-- Status: `?status=DRAFT` hanya untuk token `full-access`; default selalu `PUBLISHED`.
-- Metadata locale, populate relasi, dan fallback ke locale default mengikuti batas visibilitas yang sama; token `read-only` tidak menerima varian yang belum `PUBLISHED`.
-- `pageSize` dibatasi maksimum 100.
+**Logika OR:**
+```http
+GET /api/public/agency-1/content/articles?filters[$or][0][featured][$eq]=true&filters[$or][1][views][$gte]=1000
+```
 
-**Response shape:**
+### 2.2 Relasi & Deep Population
+- Populasikan relasi spesifik: `?populate=author,category`
+- Populasikan seluruh relasi tingkat pertama: `?populate=*`
 
+### 2.3 Full-Text Search (FTS)
+Pencarian teks cepat dioptimalkan menggunakan PostgreSQL GIN Index pada kolom `searchVector`:
+```http
+GET /api/public/agency-1/content/articles?search=headless+cms+architecture
+```
+
+### 2.4 Localization (i18n)
+```http
+GET /api/public/agency-1/content/articles?locale=id
+```
+*(Jika `locale` tidak disertakan, sistem secara otomatis menggunakan default locale tenant atau fallback ke `en`)*
+
+### 2.5 Sorting & Pagination
+- **Sorting:** `?sort=createdAt:desc` atau `?sort=price:asc,createdAt:desc`
+- **Pagination:** `?page=1&pageSize=25` (Maksimum `pageSize` adalah 100)
+- **Field Selection:** `?fields=title,slug,coverImage`
+
+**Contoh Format Respons:**
 ```json
 {
   "data": [
     {
-      "id": "...",
-      "title": "Example",
+      "id": "cm123abc456",
+      "title": "Tutorial Next.js 16 App Router",
+      "slug": "tutorial-nextjs-16",
       "locale": "id",
       "availableLocales": ["id", "en"],
       "status": "PUBLISHED",
-      "publishedAt": "2026-06-19T07:00:00.000Z",
-      "createdAt": "...",
-      "updatedAt": "..."
+      "publishedAt": "2026-08-23T01:00:00.000Z",
+      "createdAt": "2026-08-23T00:30:00.000Z",
+      "updatedAt": "2026-08-23T01:00:00.000Z",
+      "data": {
+        "author": { "id": "user_1", "name": "Admin" },
+        "content": "<p>Panduan lengkap...</p>"
+      }
     }
   ],
   "meta": {
@@ -89,35 +94,35 @@ Ambil konten dalam bahasa spesifik.
 }
 ```
 
-Important headers include `X-RateLimit-*`, `X-Cache`, and `Cache-Control`. Authentication and tenant/status authorization occur before a cached response is returned.
+---
+
+## 🧩 3. Public Single Types REST API
+
+- **Read:** `GET /api/public/[tenant]/single/[singleType]`
+- **Update (Full-Access Token):** `PUT /api/public/[tenant]/single/[singleType]`
+
+Mendukung isolasi cache terpisah antar-locale dan antar-tipe token (`read-only` vs `full-access`).
 
 ---
 
-## 🧩 Single Types REST API
-Endpoint: `GET /api/public/[tenant]/single/[singleType]`
-Endpoint: `PUT /api/public/[tenant]/single/[singleType]`
+## 🧬 4. Public GraphQL API
 
-Single Type reads are locale-aware. If `?locale=` is omitted, the server falls back to the tenant default locale and then to `en` when no default locale exists.
+**Endpoint:** `POST /api/public/[tenant]/graphql`  
+**Header:** `Content-Type: application/json` dan `Authorization: Bearer <API_TOKEN>`
 
-- `read-only` tokens can only read the published variant for the resolved locale.
-- `full-access` tokens may read and update the supported Single Type endpoint.
-- Cache keys are separated by tenant, locale, and token type so read-only and full-access requests never share a payload.
-- PUT requests use the same locale resolution as GET and invalidate cached variants after save.
-
----
-
-## 🧬 GraphQL API
-Endpoint: `POST /api/public/[tenant]/graphql`
-
-### 1. Query Collection
+### 4.1 Query Collection dengan Deep Resolution
 ```graphql
-query {
-  articles(page: 1, limit: 5, sort: "createdAt", order: "desc") {
+query GetArticles {
+  articles(page: 1, limit: 10, sort: "createdAt", order: "desc") {
     data {
       id
       title
       slug
       content
+      author {
+        name
+        avatar
+      }
     }
     meta {
       total
@@ -126,240 +131,70 @@ query {
   }
 }
 ```
-*Catatan:* GraphQL API di SaCMS kini mendukung **Deep Resolution** secara otomatis. Jika Anda melakukan kueri pada field yang berupa relasi (ke *Content Type* maupun *Single Type*) atau berupa komponen, sistem akan secara otomatis mempopulasinya secara rekursif sehingga klien menerima struktur JSON yang utuh tanpa perlu melakukan *waterfall requests*.
 
-### 2. Mutations (Membutuhkan Full-Access Token)
-**Create Entry:**
+### 4.2 Mutations (Memerlukan Token Full-Access)
 ```graphql
-mutation {
-  createArticle(data: { title: "New Article", slug: "new-article" }, locale: "en") {
+mutation CreateNewArticle {
+  createArticle(
+    data: {
+      title: "Building with MCP"
+      slug: "building-with-mcp"
+      content: "Panduan integrasi Model Context Protocol..."
+    }
+    locale: "en"
+  ) {
     id
     title
+    status
   }
 }
 ```
 
-**Update Entry:**
-```graphql
-mutation {
-  updateArticle(id: "ID_ENTRI", data: { title: "Updated Title" }) {
-    id
-    title
-  }
-}
-```
+---
+
+## 🤖 5. Model Context Protocol (MCP) API
+
+**Endpoint:** `POST /api/mcp/[[...transport]]` / `GET /api/mcp/[[...transport]]`  
+**Header:** `Authorization: Bearer <MCP_TOKEN>`
+
+Memungkinkan AI Coding Assistant (seperti Cursor, Windsurf, Claude Code) mengeksekusi *tools* SaCMS:
+- `sacms_list_content_types`: Mendapatkan daftar skema dan tipe data.
+- `sacms_get_schema`: Membaca field-field dan validasi pada Content Type tertentu.
+- `sacms_query_content`: Melakukan pencarian dan pengambilan data entri konten.
+- `sacms_create_entry`: Menambahkan draft konten baru secara langsung via AI assistant.
 
 ---
 
-## 🛠️ Pemeliharaan System (FTS)
-Jika Anda menambahkan field baru atau ingin melakukan re-index manual pada Full-Text Search, jalankan:
-```bash
-npx tsx scripts/setup-fts.ts
-```
+## ⚡ 6. AI Builder & Starter Exporter API
+
+| Method | Path | Deskripsi |
+|---|---|---|
+| `POST` | `/api/tenant/[tenant]/ai-builder/plan-schema` | Merencanakan arsitektur Content Type dari deskripsi domain bisnis |
+| `POST` | `/api/tenant/[tenant]/ai-builder/export-starter` | Mengunduh starter project Next.js 16 + TailwindCSS v4 dalam format ZIP |
+| `POST` | `/api/tenant/[tenant]/ai-builder/generate-frontend` | Membuat halaman frontend dinamis berbasis konten SaCMS |
+| `POST` | `/api/tenant/[tenant]/ai-builder/export-schema` | Mengekspor skema dalam format JSON blueprint portabel |
+| `POST` | `/api/tenant/[tenant]/ai-builder/import-schema` | Mengimpor blueprint skema dari file JSON |
 
 ---
 
-## 🏗️ Tenant Management API
-Endpoint internal untuk mengelola data workspace. Memerlukan sesi NextAuth yang valid (cookie `next-auth.session-token`) dan keanggotaan aktif di tenant yang dituju.
-
-> **Base Path:** `/api/tenant/[tenant]/`
-
-### 📋 Content Types
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `POST` | `/api/tenant/[tenant]/content-types/slug/[slug]/entries/bulk` | Jalankan aksi massal terhadap entry berdasarkan payload |
-
-### 🤖 AI Content Generation
-Semua endpoint AI memerlukan addon `ai-gen` aktif pada tenant (kecuali plan Enterprise/Custom).
+## 🏢 7. Enterprise Licensing & Self-Hosted API
 
 | Method | Path | Deskripsi |
-|--------|------|-----------|
-| `POST` | `/api/tenant/[tenant]/ai/generate` | Generate teks untuk satu field dari prompt |
-| `POST` | `/api/tenant/[tenant]/ai/generate-component` | Generate konten untuk field komponen |
-| `POST` | `/api/tenant/[tenant]/ai/generate-schema` | Generate definisi Content Type dari deskripsi natural language |
-| `POST` | `/api/tenant/[tenant]/ai/generate-single-type` | Generate data untuk Single Type |
-| `POST` | `/api/tenant/[tenant]/ai/smart-fill` | Auto-fill semua field dalam sebuah entry dari deskripsi singkat |
-| `POST` | `/api/tenant/[tenant]/ai/summarize` | Meringkas teks panjang menjadi deskripsi singkat |
-| `POST` | `/api/tenant/[tenant]/ai/translate` | Menerjemahkan konten ke locale target |
-
-**Contoh request `smart-fill`:**
-```json
-POST /api/tenant/my-workspace/ai/smart-fill
-{
-  "prompt": "Artikel tentang tutorial Next.js 16 untuk pemula",
-  "contentType": "Articles",
-  "schema": [
-    { "slug": "title", "type": "text", "required": true },
-    { "slug": "content", "type": "richText", "required": true }
-  ]
-}
-```
-
-**Model AI yang digunakan:** DeepSeek V3 (`deepseek-chat`) dengan fallback ke `deepseek-reasoner`. Memerlukan env var `DEEPSEEK_API_KEY`.
-
-### 🔑 API Tokens
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/api-tokens` | List semua token milik tenant |
-| `POST` | `/api/tenant/[tenant]/api-tokens` | Buat token baru (prefix `cf_`, hash SHA-256) |
-| `GET` | `/api/tenant/[tenant]/api-tokens/[tokenId]` | Ambil metadata token tanpa hash/plaintext |
-| `DELETE` | `/api/tenant/[tenant]/api-tokens/[tokenId]` | Hapus token |
-
-Plaintext token yang baru dibuat ditampilkan **satu kali** dalam respons. List/detail dan metadata create tidak mengembalikan hash tersimpan. Sistem hanya menyimpan hash SHA-256.
-
-### 📋 Audit Logs
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/audit-logs` | Ambil log audit (filter: `?action=`, `?userId=`, `?from=`, `?to=`) |
-
-Retensi log bergantung pada plan (`audit_log_retention` dalam hari). Free plan tidak memiliki retensi log.
-
-### 📊 Export & Import
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/export` | Export data tenant sebagai JSON/ZIP |
-| `POST` | `/api/tenant/[tenant]/import` | Import data dari file JSON/ZIP |
-
-**Query params export:** `?types=contentTypes,entries,media&format=json`
-
-### 🧾 Invoices
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/invoices` | List invoice pembayaran tenant |
-
-### 🌍 Locales (i18n)
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/locales` | List locale yang aktif di tenant |
-| `POST` | `/api/tenant/[tenant]/locales` | Tambah locale baru |
-| `PATCH` | `/api/tenant/[tenant]/locales/[localeId]` | Update locale (termasuk default/enabled) |
-| `DELETE` | `/api/tenant/[tenant]/locales/[localeId]` | Hapus locale |
-
-### 🖼️ Media
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/media` | List aset media (filter: `?folder=`, `?type=`) |
-| `POST` | `/api/tenant/[tenant]/media` | Upload file ke Cloudflare R2 (multipart/form-data) |
-| `GET` | `/api/tenant/[tenant]/media/[mediaId]` | Ambil metadata/signed access media |
-| `PATCH` | `/api/tenant/[tenant]/media/[mediaId]` | Update metadata media |
-| `DELETE` | `/api/tenant/[tenant]/media/[mediaId]` | Hapus media dari R2 dan database |
-
-Sistem otomatis menghasilkan versi **thumbnail** (150px) dan **medium** saat upload.
-
-### 👥 Members (Team Management)
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/members` | List anggota tim |
-| `POST` | `/api/tenant/[tenant]/members` | Undang anggota baru via email |
-| `PATCH` | `/api/tenant/[tenant]/members/[memberId]` | Ubah role anggota |
-| `DELETE` | `/api/tenant/[tenant]/members/[memberId]` | Hapus anggota dari workspace |
-
-**Roles yang tersedia:** `owner`, `admin`, `editor`, `viewer`
-
-### 🛡️ RBAC (Role-Based Access Control)
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/rbac` | Lihat mapping permission saat ini |
-| `POST` | `/api/tenant/[tenant]/rbac` | Simpan mapping permission |
-| `POST` | `/api/tenant/[tenant]/rbac/roles` | Buat custom role |
-| `DELETE` | `/api/tenant/[tenant]/rbac/roles/[roleId]` | Hapus custom role |
-| `GET` | `/api/tenant/[tenant]/roles` | List role tenant |
-| `POST` | `/api/tenant/[tenant]/roles` | Buat role tenant |
-| `GET` | `/api/tenant/[tenant]/roles/[roleSlug]` | Detail role |
-| `PATCH` | `/api/tenant/[tenant]/roles/[roleSlug]` | Update role/permissions |
-| `DELETE` | `/api/tenant/[tenant]/roles/[roleSlug]` | Hapus role |
-
-### ⚙️ Settings
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/settings` | Ambil pengaturan workspace |
-| `PUT` | `/api/tenant/[tenant]/settings` | Update pengaturan workspace |
-
-### 📈 Stats & Usage
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/stats` | Statistik konten (total entries, media size, dll) |
-| `GET` | `/api/tenant/[tenant]/usage` | Penggunaan resource vs limit plan |
-| `GET` | `/api/tenant/[tenant]/billing/usage` | Detail penggunaan untuk billing |
-
-### 💳 Subscription & Billing
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/subscriptions/plans` | List semua paket yang tersedia |
-| `PATCH` | `/api/tenant/[tenant]/subscription/plan` | Upgrade/Downgrade plan |
-| `POST` | `/api/tenant/[tenant]/subscription/cancel` | Batalkan langganan |
-| `POST` | `/api/tenant/[tenant]/subscription/prorate` | Kalkulasi biaya prorate untuk upgrade |
-
-### 🔗 Webhooks
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/webhooks` | List webhook yang dikonfigurasi |
-| `POST` | `/api/tenant/[tenant]/webhooks` | Tambah endpoint webhook baru |
-| `PUT` | `/api/tenant/[tenant]/webhooks/[webhookId]` | Update konfigurasi webhook |
-| `DELETE` | `/api/tenant/[tenant]/webhooks/[webhookId]` | Hapus webhook |
-| `GET` | `/api/tenant/[tenant]/webhooks/[webhookId]/logs` | Log eksekusi webhook |
-| `GET` | `/api/tenant/[tenant]/webhooks/dead-letters` | Antrian DLQ (webhook gagal pending retry) |
-
-**Events yang dapat di-subscribe:**
-- `content.created`, `content.updated`, `content.deleted`, `content.published`
-- `content.beforeCreate`, `content.beforeUpdate` *(sync hook)*
-- `media.uploaded`, `media.deleted`
-
-### 🎨 White-Label & Custom Domain
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/white-label` | Ambil konfigurasi white-label |
-| `PATCH` | `/api/tenant/[tenant]/white-label` | Update branding (logo, warna, nama) |
-| `GET` | `/api/tenant/[tenant]/white-label/domain` | Ambil domain dan record verifikasi |
-| `PUT` | `/api/tenant/[tenant]/white-label/domain` | Daftarkan, ganti, atau hapus domain |
-| `POST` | `/api/tenant/[tenant]/white-label/domain` | Jalankan verifikasi DNS TXT |
-
-White-Label dan Custom Domain memerlukan plan Pro, Enterprise, atau Custom. Model saat ini mendukung satu domain per tenant.
-
-### 🔄 Workflow
-| Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/workflow/reviewers?entryId=...` | Ambil assignment reviewer suatu entry |
-| `POST` | `/api/tenant/[tenant]/workflow/reviewers` | Ganti urutan assignment reviewer |
-| `PATCH` | `/api/tenant/[tenant]/workflow/reviewers` | Kirim keputusan reviewer saat ini |
+|---|---|---|
+| `POST` | `/api/tenant/[tenant]/license/activate` | Mengaktifkan lisensi Enterprise offline via RSA signature |
+| `GET` | `/api/tenant/[tenant]/license/status` | Mengecek status dan tanggal kedaluwarsa lisensi instance |
+| `POST` | `/api/admin/license/generate` | (Super Admin) Membuat lisensi RSA baru untuk customer enterprise |
+| `GET` | `/api/admin/license/list` | (Super Admin) Melihat daftar lisensi enterprise yang aktif |
 
 ---
 
-## 🔐 Developer Endpoints
+## ⏰ 8. Automated Cron Endpoints
+
+Semua endpoint cron dilindungi dengan header `Authorization: Bearer <CRON_SECRET>`:
+
 | Method | Path | Deskripsi |
-|--------|------|-----------|
-| `GET` | `/api/tenant/[tenant]/developer/openapi` | Generate spesifikasi OpenAPI untuk content types tenant |
-| `GET` | `/api/tenant/[tenant]/developer/ai-prompt` | Download prompt Markdown untuk CMS schemas |
-
-Developer prompt tidak memanggil provider AI. Dokumen hasil memakai placeholder `<YOUR_API_TOKEN>`; hash token yang tersimpan tidak pernah diekspor sebagai credential.
-
----
-
-## 🕐 Cron Endpoints
-Diproteksi oleh header `Authorization: Bearer <CRON_SECRET>`.
-
-| Method | Path | Interval | Deskripsi |
-|--------|------|----------|-----------|
-| `GET` | `/api/cron/publish` | Setiap 5 menit pada `vercel.json` | Auto-publish konten berstatus `SCHEDULED` |
-| `GET` | `/api/cron/webhook-retry` | Setiap 2 menit pada `vercel.json` | Retry webhook di DLQ dengan exponential backoff |
-| `GET` | `/api/cron/backup` | Jadwal eksternal/belum ada di `vercel.json` | Jalankan backup terkonfigurasi |
-
-## Error conventions
-
-| Status | Arti umum |
-|---:|---|
-| `400` | Payload/query tidak valid |
-| `401` | Sesi/token tidak ada, salah, atau kedaluwarsa |
-| `403` | Tenant, role, token type, feature, atau plan tidak mengizinkan |
-| `404` | Resource tidak ada di scope tenant |
-| `409` | Konflik lifecycle/keunikan, misalnya domain atau status review |
-| `429` | Rate limit/provider quota |
-| `500` | Error internal yang tidak dapat dipulihkan pada request tersebut |
-| `503` | Integrasi opsional belum dikonfigurasi/tersedia |
-
-## Contract limitations
-
-- Public REST Collection saat ini menyediakan endpoint daftar/filter, bukan route langsung `/content/{type}/{entryId}`.
-- Mutasi Collection eksternal dilakukan melalui GraphQL dengan token `full-access`; REST Collection tidak menyediakan POST/PATCH/DELETE.
-- Tenant API merupakan surface internal dashboard dan menggunakan session cookie.
-- Detail payload/response AI terdapat pada dokumen 12; domain pada dokumen 13; workflow pada dokumen 14.
+|---|---|---|
+| `GET` | `/api/cron/publish` | Mempublikasikan konten berstatus `SCHEDULED` yang telah jatuh tempo |
+| `GET` | `/api/cron/webhook-retry` | Mencoba ulang pengiriman webhook yang gagal pada antrean DLQ |
+| `GET` | `/api/cron/backup` | Mengeksekusi backup basis data otomatis ke Cloudflare R2 |
+| `GET` | `/api/cron/suspend-tenants` | Mengunci akses tenant yang menunggak tagihan Midtrans |
