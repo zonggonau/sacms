@@ -174,16 +174,16 @@ export function GlobalAdminSidebar() {
                     >
                       <div
                         className={cn(
-                          "flex items-center gap-3 px-2 py-2 text-sm transition-colors rounded-none",
+                          "flex items-center gap-3 px-3 py-2 text-xs font-semibold transition-all rounded-xl",
                           active
-                            ? "bg-muted text-foreground font-semibold border-l-2 border-orange-500"
-                            : "text-muted-foreground hover:text-foreground hover:bg-background border-l-2 border-transparent"
+                            ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                            : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
                         )}
                       >
-                        <item.icon className={cn("h-4 w-4 shrink-0", active && "text-orange-500")} />
+                        <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground")} />
                         <span className="truncate">{item.title}</span>
                         {item.badge && (
-                          <Badge variant="secondary" className="ml-auto text-[10px] h-4 px-1.5 rounded-none">{item.badge}</Badge>
+                          <Badge variant={active ? "outline" : "orange"} className={cn("ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold", active && "border-primary-foreground/30 text-primary-foreground")}>{item.badge}</Badge>
                         )}
                       </div>
                     </Link>

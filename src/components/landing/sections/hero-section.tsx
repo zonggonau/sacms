@@ -1,6 +1,10 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { HeroData } from "../types"
+import { useSession } from "next-auth/react"
+import { LayoutDashboard, ArrowRight } from "lucide-react"
 
 function HighlightedHeadline({ text }: { text: string }) {
   const words = (text || "").split(" ")
@@ -15,7 +19,12 @@ function HighlightedHeadline({ text }: { text: string }) {
 }
 
 export function HeroSection({ data }: { data: HeroData | null }) {
+  const { data: session, status } = useSession()
   const hero = data || { headline: "Loading API Data..." }
+
+  const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
+  const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
+  const isAuthenticated = status === "authenticated" && session?.user
 
   return (
     <section className="min-h-[75vh] flex items-center justify-center pt-24 pb-16 relative overflow-hidden">
@@ -44,11 +53,20 @@ export function HeroSection({ data }: { data: HeroData | null }) {
         />
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-500 fill-mode-both">
-          <Link href={hero.cta_href || "/register"}>
-            <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40">
-              {hero.cta_primary || "Mulai Gratis"}
-            </Button>
-          </Link>
+          {isAuthenticated ? (
+            <Link href={dashboardUrl}>
+              <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40 gap-2">
+                <LayoutDashboard className="w-4 h-4" />
+                Buka Dashboard
+              </Button>
+            </Link>
+          ) : (
+            <Link href={hero.cta_href || "/register"}>
+              <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40">
+                {hero.cta_primary || "Mulai Gratis"}
+              </Button>
+            </Link>
+          )}
           <Link href="/docs">
             <Button size="lg" variant="outline" className="h-11 px-8 rounded-full border-border/50 bg-background/50 backdrop-blur-md font-bold text-sm hover:bg-muted/50 hover:border-border transition-all hover:scale-105">
               {hero.cta_secondary || "Lihat Demo"}

@@ -30,7 +30,10 @@ export async function getApiTokensAction(tenantSlug: string) {
     if (!access) return { error: "Forbidden or Tenant not found" }
 
     const tokens = await db.apiToken.findMany({
-      where: { tenantId: access.tenantId },
+      where: { 
+        tenantId: access.tenantId,
+        type: { not: "mcp" }
+      },
       orderBy: { createdAt: "desc" },
       select: {
         id: true,

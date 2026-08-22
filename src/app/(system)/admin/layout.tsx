@@ -21,8 +21,8 @@ export default async function AdminLayout({
     // allowed
   } else {
     // Check if the role is a dynamic SystemRole
-    const systemRole = await db.systemRole.findUnique({
-      where: { slug: session.user.role }
+    const systemRole = await db.tenantRole.findFirst({
+      where: { slug: session.user.role, isSystem: true }
     })
     
     // Also support legacy tenant-level employee roles temporarily

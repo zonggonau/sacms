@@ -23,23 +23,22 @@ export function Logo({ className, iconSize = "md", showText = true, useOrange = 
   }
 
   return (
-    <div className={cn("flex items-center gap-2 group", className)}>
+    <div className={cn("flex items-center gap-2.5 group", className)}>
       <div className={cn(
-        "flex items-center justify-center text-white rounded-md shadow-sm transition-transform group-hover:scale-105",
-        useOrange ? "bg-orange-500" : "bg-indigo-600",
+        "flex items-center justify-center text-white rounded-xl shadow-xs transition-transform group-hover:scale-105 bg-primary font-mono font-bold leading-none shrink-0",
         sizeClasses[iconSize]
       )}>
-        <span className="font-mono font-bold leading-none">&lt;/&gt;</span>
+        <span>&lt;/&gt;</span>
       </div>
       
       {showText && (
         <div className={cn("font-sans tracking-tight", textSizeClasses[iconSize])}>
           {customName ? (
-            <span className="font-extrabold text-slate-900 dark:text-white">{customName}</span>
+            <span className="font-extrabold text-foreground">{customName}</span>
           ) : (
             <>
-              <span className="font-extrabold text-slate-900 dark:text-white">Sa</span>
-              <span className="font-medium text-slate-600 dark:text-slate-300">CMS</span>
+              <span className="font-black text-foreground">Sa</span>
+              <span className="font-bold text-primary">CMS</span>
             </>
           )}
         </div>

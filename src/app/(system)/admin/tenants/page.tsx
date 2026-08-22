@@ -113,7 +113,13 @@ export default function AdminTenantsPage() {
 
   const handleDelete = async () => {
     if (!tenantToDelete) return
-    if (deleteConfirmation !== tenantToDelete.name) {
+    const confirmation = (deleteConfirmation || "").trim().toLowerCase()
+    const validMatch = 
+      confirmation === tenantToDelete.name.trim().toLowerCase() ||
+      confirmation === tenantToDelete.id.trim().toLowerCase() ||
+      confirmation === (tenantToDelete.slug || "").trim().toLowerCase()
+
+    if (!validMatch) {
       toast({ variant: "destructive", title: "Gagal", description: "Nama konfirmasi tidak cocok" })
       return
     }

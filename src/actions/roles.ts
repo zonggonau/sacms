@@ -137,7 +137,7 @@ export async function saveRoleAction(
             if (permId) {
               await tx.rolePermission.upsert({
                 where: {
-                  tenantId_roleId_permissionId: {
+                  roleId_permissionId_tenantId: {
                     tenantId: access.tenantId,
                     roleId: roleSlugToUse,
                     permissionId: permId

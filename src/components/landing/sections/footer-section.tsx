@@ -26,7 +26,7 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
             <div>
               <p className="font-black text-foreground mb-6 text-sm uppercase tracking-widest text-primary">Produk</p>
               <div className="space-y-4">
-                <Link href="/#features" className="block text-muted-foreground hover:text-primary transition-colors font-medium">Fitur</Link>
+                <Link href="/#fitur" className="block text-muted-foreground hover:text-primary transition-colors font-medium">Fitur</Link>
                 <Link href="/#pricing" className="block text-muted-foreground hover:text-primary transition-colors font-medium">Harga</Link>
                 <Link href="/#addons" className="block text-muted-foreground hover:text-primary transition-colors font-medium">Layanan Tambahan</Link>
                 <Link href="/#sektor" className="block text-muted-foreground hover:text-primary transition-colors font-medium">Sektor Layanan</Link>

@@ -168,17 +168,23 @@ export default function TenantAuditLogsPage() {
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
+          {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                <Activity className="h-5 w-5 text-primary" />
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Activity className="h-4 w-4" />
               </div>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-foreground">Audit Log & Aktivitas</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Pemantauan kepatuhan dan riwayat perubahan pada workspace.</p>
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Audit Log & Aktivitas</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Pemantauan kepatuhan dan jejak audit perubahan pada workspace.</p>
               </div>
             </div>
-            <Button variant="outline" onClick={() => fetchLogs(page)} disabled={refreshing} className="bg-card font-bold text-xs h-9 rounded-xl border-border/80 shadow-xs hover:bg-muted">
+            <Button 
+              variant="outline" 
+              onClick={() => fetchLogs(page)} 
+              disabled={refreshing} 
+              className="bg-card font-bold text-xs h-9 rounded-xl border-border/80 shadow-xs hover:bg-muted shrink-0"
+            >
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin text-primary")} />
               Muat Ulang
             </Button>

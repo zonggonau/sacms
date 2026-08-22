@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { db } from "@/lib/database"
 import { enforceUserAiCredits } from "@/lib/plan-enforcement"
 import { getUserPlanConfig } from "@/lib/tenant-plan"
 

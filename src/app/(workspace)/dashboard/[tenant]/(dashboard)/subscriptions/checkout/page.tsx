@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { 
   Loader2, CreditCard, ShieldCheck, CheckCircle2, 
-  ArrowLeft, Zap, Lock, AlertCircle, Info, Check
+  ArrowLeft, Zap, Lock, AlertCircle, Info, Check, Shield
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -82,31 +82,25 @@ export default function CheckoutPage() {
     async function fetchData() {
       if (!tenantSlug || !planId) return
       try {
-        console.log("Fetching plans for tenant:", tenantSlug);
-        // Fetch Plan Details
         const plansRes = await fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`)
         const plansData = await plansRes.json()
-        console.log("Plans data received:", plansData);
         
         const selectedPlan = plansData.plans?.find((p: any) => p.id === planId || p.slug === planId)
-        console.log("Selected plan:", selectedPlan);
         setPlan(selectedPlan)
 
-        // Fetch Proration Info
         const prorateRes = await fetch(`/api/tenant/${tenantSlug}/subscription/prorate`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ newPlan: planId })
         })
-          if (prorateRes.ok) {
-            const prorateData = await prorateRes.json();
-            console.log("Proration data:", prorateData);
-            setProration(prorateData)
-          }
+        if (prorateRes.ok) {
+          const prorateData = await prorateRes.json()
+          setProration(prorateData)
+        }
 
-          const globalId = await getGlobalWorkspaceIdAction();
-          setGlobalTenantId(globalId);
-        } catch (error) {
+        const globalId = await getGlobalWorkspaceIdAction()
+        setGlobalTenantId(globalId)
+      } catch (error) {
         console.error("Failed to fetch checkout data", error)
       }
     }
@@ -117,15 +111,11 @@ export default function CheckoutPage() {
   useEffect(() => {
     const snapScript = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || "https://app.sandbox.midtrans.com/snap/snap.js"
     const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ""
-    
-    console.log("Loading Midtrans Snap Script from:", snapScript);
 
     const script = document.createElement("script")
     script.src = snapScript
     script.setAttribute("data-client-key", clientKey)
     script.async = true
-    script.onload = () => console.log("Midtrans Snap Script loaded successfully");
-    script.onerror = () => console.error("Failed to load Midtrans Snap Script");
     document.body.appendChild(script)
 
     return () => {
@@ -139,19 +129,16 @@ export default function CheckoutPage() {
     const isAccount = tenantSlug === "account"
     const isSystemTenant = tenantSlug === globalTenantId
     if (!currentTenant && !isAccount && !isSystemTenant) {
-      console.error("Missing tenant data. TenantSlug:", tenantSlug, "Available tenants:", tenants);
-      toast({ variant: "destructive", title: "Error", description: "Tenant information not found. Please try again." });
+      toast({ variant: "destructive", title: "Error", description: "Informasi workspace tidak ditemukan." })
       return
     }
     if (!plan) {
-      console.error("Missing plan data. PlanId:", planId);
-      toast({ variant: "destructive", title: "Error", description: "Plan information not found. Please try again." });
+      toast({ variant: "destructive", title: "Error", description: "Paket langganan tidak ditemukan." })
       return
     }
     
     setLoading(true)
     try {
-      console.log("Creating checkout session for:", { planId: plan.id, tenantId: currentTenant?.id || tenantSlug, interval });
       const res = await fetch("/api/billing/checkout", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -164,45 +151,36 @@ export default function CheckoutPage() {
       })
 
       const data = await res.json()
-      console.log("Checkout API response:", data);
 
       if (res.ok && data.token) {
         setSnapToken(data.token)
-        console.log("Triggering Midtrans Snap for token:", data.token);
         
-        // Check if snap is available on window
         if (typeof window !== 'undefined' && (window as any).snap) {
           (window as any).snap.pay(data.token, {
             onSuccess: (result: any) => {
-              console.log("Payment success:", result);
-              toast({ title: "Payment Successful!", description: "Your workspace has been upgraded." })
+              toast({ title: "Pembayaran Berhasil!", description: "Paket workspace Anda telah diperbarui." })
               router.push(`/dashboard/${tenantSlug}/subscriptions`)
             },
             onPending: (result: any) => {
-              console.log("Payment pending:", result);
-              toast({ title: "Payment Pending", description: "Please complete your payment." })
+              toast({ title: "Menunggu Pembayaran", description: "Silakan selesaikan pembayaran Anda." })
               router.push(`/dashboard/${tenantSlug}/subscriptions`)
             },
             onError: (error: any) => {
-              console.error("Payment error:", error);
-              toast({ variant: "destructive", title: "Payment Failed", description: "Please try again." })
+              toast({ variant: "destructive", title: "Pembayaran Gagal", description: "Silakan coba lagi." })
             },
             onClose: () => {
-              console.log("Payment popup closed");
               setLoading(false)
             }
           })
         } else {
-          console.error("Midtrans Snap is not loaded on window object");
-          toast({ variant: "destructive", title: "Checkout Error", description: "Payment system not ready. Please refresh the page." })
+          toast({ variant: "destructive", title: "Sistem Pembayaran Belum Siap", description: "Silakan muat ulang halaman." })
           setLoading(false)
         }
       } else {
-        throw new Error(data.error || "Checkout initialization failed")
+        throw new Error(data.error || "Inisialisasi checkout gagal.")
       }
     } catch (err: any) {
-      console.error("Checkout process error:", err);
-      toast({ variant: "destructive", title: "Checkout Error", description: err.message })
+      toast({ variant: "destructive", title: "Gagal Checkout", description: err.message })
       setLoading(false)
     }
   }
@@ -217,8 +195,8 @@ export default function CheckoutPage() {
 
   if (initializing || !plan || loadingTenants) {
     return (
-      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -230,165 +208,156 @@ export default function CheckoutPage() {
   const total = subtotal + tax
 
   return (
-    <div className="flex relative flex-1 flex-col w-full">
-<div className="flex-1 min-w-0 h-full overflow-x-hidden bg-background text-foreground flex-col w-full">
-        <div className="p-6 lg:p-8 w-full space-y-8">
+    <div className="flex flex-1 flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto space-y-6">
           
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted border border-border">
-              <ArrowLeft className="h-5 w-5" />
+          {/* Header */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => router.back()} 
+              className="rounded-xl h-9 w-9 border-border/80"
+            >
+              <ArrowLeft className="h-4 w-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-black uppercase tracking-tight">Checkout</h1>
-              <p className="text-xs text-muted-foreground font-medium mt-1">Review your plan and complete the payment securely.</p>
+              <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Langganan</h1>
+              <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran dengan aman.</p>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            <div className="md:col-span-2 space-y-6">
-              {/* Order Summary */}
-              <Card className="border border-border shadow-none rounded-none overflow-hidden bg-card text-card-foreground">
-                <CardHeader className="bg-muted/10 border-b border-border p-6 rounded-none">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg font-black uppercase tracking-tight">Review Order</CardTitle>
-                    <Badge variant="outline" className="rounded-none border-border font-black uppercase tracking-widest text-[9px]">
-                      {interval === 'year' ? 'Annual' : 'Monthly'}
-                    </Badge>
-                  </div>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            
+            {/* Left: Order Review */}
+            <div className="lg:col-span-2 space-y-4">
+              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Zap className="h-4 w-4 text-primary" />
+                    Rincian Pesanan
+                  </CardTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full bg-primary/10 text-primary border-primary/20">
+                    Billing {interval === 'year' ? 'Tahunan' : 'Bulanan'}
+                  </Badge>
                 </CardHeader>
-                <CardContent className="p-8 space-y-6">
-                  <div className="flex items-center justify-between p-6 rounded-none bg-muted/30 border border-border">
-                    <div className="flex items-center gap-4">
-                      <div className="w-14 h-14 rounded-none bg-orange-500/10 border border-orange-500/20 flex items-center justify-center text-orange-500 shrink-0">
-                        <Zap className="h-7 w-7" />
+
+                <CardContent className="p-5 space-y-5">
+                  <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                        <Zap className="h-5 w-5" />
                       </div>
                       <div>
-                        <p className="font-black text-xl uppercase tracking-tight">{plan.name}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mt-1">{interval === 'year' ? 'Yearly Billing' : 'Monthly Billing'}</p>
+                        <p className="font-bold text-base text-foreground">{plan.name}</p>
+                        <p className="text-[11px] text-muted-foreground">{interval === 'year' ? 'Periode Tagihan Tahunan' : 'Periode Tagihan Bulanan'}</p>
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-2xl font-black">{formatPrice(basePrice)}</p>
+                      <p className="text-xl font-black text-foreground">{formatPrice(basePrice)}</p>
                     </div>
                   </div>
 
-                  <div className="space-y-4 pt-2">
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
-                      <span>Plan Price</span>
-                      <span className="text-foreground">{formatPrice(basePrice)}</span>
+                  <div className="space-y-2.5 text-xs">
+                    <div className="flex justify-between font-medium text-muted-foreground">
+                      <span>Harga Paket</span>
+                      <span className="text-foreground font-bold">{formatPrice(basePrice)}</span>
                     </div>
                     
                     {credit > 0 && (
-                      <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-orange-500">
+                      <div className="flex justify-between font-bold text-emerald-600 dark:text-emerald-400">
                         <span className="flex items-center gap-1.5">
-                          <Check className="h-4 w-4" /> Unused Credit ({proration.currentPlan})
+                          <Check className="h-3.5 w-3.5" /> Kredit Sisa Periode ({proration.currentPlan})
                         </span>
                         <span>-{formatPrice(credit)}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <div className="flex justify-between font-medium text-muted-foreground">
                       <span>Subtotal</span>
-                      <span className="text-foreground">{formatPrice(subtotal)}</span>
+                      <span className="text-foreground font-bold">{formatPrice(subtotal)}</span>
                     </div>
 
-                    <div className="flex justify-between text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    <div className="flex justify-between font-medium text-muted-foreground">
                       <span>PPN (11%)</span>
-                      <span className="text-foreground">{formatPrice(tax)}</span>
+                      <span className="text-foreground font-bold">{formatPrice(tax)}</span>
                     </div>
                     
-                    <Separator className="my-4 bg-border" />
+                    <Separator className="my-2" />
                     
-                    <div className="flex justify-between items-end">
+                    <div className="flex justify-between items-baseline pt-1">
                       <div>
-                        <span className="text-base font-black uppercase tracking-tight">Total Amount</span>
-                        {credit > 0 && <p className="text-[9px] text-orange-500 font-black uppercase tracking-widest mt-0.5">Proration applied</p>}
+                        <span className="text-sm font-bold text-foreground">Total Tagihan</span>
+                        {credit > 0 && <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Prorasi otomatis diterapkan</p>}
                       </div>
-                      <span className="text-3xl font-black text-foreground tracking-tight">{formatPrice(total)}</span>
+                      <span className="text-2xl font-black text-primary tracking-tight">{formatPrice(total)}</span>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Proration Info (if applicable) */}
-              {proration && proration.credit > 0 && !proration.isDowngrade && (
-                <div className="p-5 bg-orange-500/5 border border-orange-500/10 rounded-none flex gap-4 text-orange-500 shadow-none">
-                  <Info className="h-5 w-5 shrink-0 mt-0.5 text-orange-500" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-black uppercase tracking-widest">Proration applied</p>
-                    <p className="text-[11px] leading-relaxed text-muted-foreground font-medium">
-                      We've credited <strong className="text-foreground">{formatPrice(proration.credit)}</strong> from your unused time on the <strong className="text-foreground">{proration.currentPlan}</strong> plan toward this upgrade.
-                    </p>
-                  </div>
-                </div>
-              )}
-
-              {/* Downgrade Warning */}
-              {proration?.isDowngrade && proration?.isActive && (
-                <div className="p-5 bg-red-500/5 border border-red-500/20 rounded-none flex gap-4 text-red-500 shadow-none">
-                  <AlertCircle className="h-5 w-5 shrink-0 mt-0.5 text-red-500" />
-                  <div className="space-y-1">
-                    <p className="text-xs font-black uppercase tracking-widest">Downgrade Not Allowed</p>
-                    <p className="text-[11px] leading-relaxed text-red-500/80 font-medium">
-                      You cannot downgrade to <strong className="text-red-500">{plan.name}</strong> while your <strong className="text-red-500">{proration.currentPlan}</strong> subscription is still active. Please wait until your current billing period ends.
-                    </p>
-                  </div>
-                </div>
-              )}
-
               {/* Security Hint */}
-              <div className="p-5 bg-card border border-border rounded-none flex gap-4 text-muted-foreground shadow-none">
-                <Lock className="h-5 w-5 shrink-0 mt-0.5 text-orange-500" />
-                <div className="space-y-1">
-                  <p className="text-xs font-black uppercase tracking-widest text-foreground">Secure Payment</p>
-                  <p className="text-[11px] leading-relaxed font-medium text-muted-foreground">
-                    Your transaction is processed securely via <strong>Midtrans</strong>. We do not store your credit card or sensitive financial information on our servers.
-                  </p>
-                </div>
+              <div className="p-4 bg-muted/20 border border-border/60 rounded-xl flex items-center gap-3 text-xs text-muted-foreground">
+                <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
+                <p className="leading-relaxed">
+                  Transaksi diproses secara aman menggunakan payment gateway <strong>Midtrans</strong>. Kredensial kartu atau akun finansial Anda terlindungi dengan enkripsi standar industri.
+                </p>
               </div>
             </div>
 
-            <div className="space-y-6">
-              <Card className="border border-border shadow-none bg-card text-foreground rounded-none overflow-hidden">
-                <CardHeader className="p-6 pb-0 rounded-none">
-                  <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Summary</CardTitle>
+            {/* Right: Payment Action Box */}
+            <div className="space-y-4">
+              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                    Ringkasan Pembayaran
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="p-6 space-y-6">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">{tenantSlug === "account" ? "Account" : "Workspace"}</p>
-                    <p className="font-bold text-lg uppercase tracking-tight truncate">{tenantSlug === "account" ? session?.user?.name || "Personal Account" : currentTenant?.name}</p>
+
+                <CardContent className="p-5 space-y-4">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Workspace Tujuan</p>
+                    <p className="font-bold text-sm text-foreground truncate">
+                      {tenantSlug === "account" ? session?.user?.name || "Personal Account" : currentTenant?.name}
+                    </p>
                   </div>
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Selected Plan</p>
-                    <Badge className="bg-orange-500 text-white hover:bg-orange-600 border-none font-black text-[10px] px-2 py-0.5 rounded-none uppercase tracking-widest">{plan.name}</Badge>
+
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Paket Dipilih</p>
+                    <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-bold text-xs rounded-lg">
+                      {plan.name}
+                    </Badge>
                   </div>
                   
-                  <Separator className="bg-border" />
+                  <Separator />
                   
                   <Button 
-                    className="w-full h-14 bg-orange-500 hover:bg-orange-600 text-white font-black text-lg rounded-none shadow-none border-none disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-11 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm rounded-xl shadow-xs"
                     onClick={handleCheckout}
                     disabled={loading || (proration?.isDowngrade && proration?.isActive)}
                   >
-                    {loading ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : <><CreditCard className="mr-2 h-5 w-5" /> PAY NOW</>}
+                    {loading ? (
+                      <Loader2 className="h-4 w-4 animate-spin text-white" />
+                    ) : (
+                      <><CreditCard className="mr-2 h-4 w-4" /> BAYAR SEKARANG</>
+                    )}
                   </Button>
                   
-                  <p className="text-[10px] text-center text-muted-foreground font-medium">
-                    By clicking "Pay Now", you agree to our Terms of Service and Subscription Agreement.
+                  <p className="text-[10px] text-center text-muted-foreground leading-relaxed">
+                    Dengan mengklik "Bayar Sekarang", Anda menyetujui Ketentuan Layanan SaCMS.
                   </p>
                 </CardContent>
               </Card>
 
-              <div className="flex flex-col items-center gap-4 py-4">
-                <p className="text-[10px] font-black uppercase text-muted-foreground tracking-widest">Supported Methods</p>
-                <div className="flex gap-4 grayscale opacity-50 h-6">
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/b/b5/PayPal.svg" alt="PayPal" className="h-full" />
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/5/5e/Visa_Inc._logo.svg" alt="Visa" className="h-full" />
-                  <img src="https://upload.wikimedia.org/wikipedia/commons/2/2a/Mastercard-logo.svg" alt="Mastercard" className="h-full" />
-                </div>
+              <div className="flex flex-col items-center gap-2 p-3 text-center">
+                <p className="text-[10px] font-bold uppercase text-muted-foreground">Metode Pembayaran Didukung</p>
+                <p className="text-xs text-muted-foreground font-medium">QRIS, GoPay, OVO, ShopeePay, Virtual Account BCA/Mandiri/BNI/BRI, Kartu Kredit.</p>
               </div>
             </div>
+
           </div>
+
         </div>
       </div>
     </div>

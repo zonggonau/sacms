@@ -26,8 +26,10 @@ const TENANT_PLANS = Object.keys(DEFAULT_LIMITS)
 
 interface TenantFormModalProps {
   isOpen: boolean
-  onOpenChange: (open: boolean) => void
-  isEditing: boolean
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
+  isEditing?: boolean
+  mode?: "create" | "edit"
   formData: {
     name: string
     slug: string
@@ -44,19 +46,31 @@ interface TenantFormModalProps {
 export function TenantFormModal({
   isOpen,
   onOpenChange,
+  onClose,
   isEditing,
+  mode,
   formData,
   setFormData,
   onSubmit,
   isSubmitting
 }: TenantFormModalProps) {
   const isSystemTenant = false // formData.slug === globalTenantId
+  const isEditMode = isEditing ?? (mode === "edit")
+
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      if (onClose) onClose()
+      if (onOpenChange) onOpenChange(false)
+    } else {
+      if (onOpenChange) onOpenChange(true)
+    }
+  }
 
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
-          <DialogTitle>{isEditing ? "Edit Tenant" : "Create Workspace"}</DialogTitle>
+          <DialogTitle>{isEditMode ? "Edit Tenant" : "Create Workspace"}</DialogTitle>
           <DialogDescription>
             {isEditing ? "Update tenant configuration." : "Create a new isolated workspace environment."}
           </DialogDescription>
@@ -146,12 +160,12 @@ export function TenantFormModal({
           </div>
 
           <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
               Cancel
             </Button>
             <Button type="submit" disabled={isSubmitting || (isSystemTenant && !formData.databaseUrl)}>
               {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isEditing ? "Save Changes" : "Create Workspace"}
+              {isEditMode ? "Save Changes" : "Create Workspace"}
             </Button>
           </DialogFooter>
         </form>

@@ -55,51 +55,42 @@ const MCP_TOOLS: ToolDefinition[] = [
       "Get the complete database schema of a SaCMS workspace — all Content Types, Single Types, and Components with their fields and relationships. Call this FIRST before building any frontend or generating types.",
     inputs: [],
     sampleResponse: {
-      workspace: "Acme Corp Workspace",
+      workspace: { id: "cmsx45pyb0015ujloxp9f4r6v", name: "My Workspace", slug: "my-workspace" },
       contentTypes: [
         {
+          id: "ct_articles",
           name: "Articles",
           slug: "articles",
           description: "Blog posts and news articles",
           fields: [
-            { name: "Title", slug: "title", type: "STRING", required: true, unique: false },
-            { name: "Slug", slug: "slug", type: "SLUG", required: true, unique: true },
-            { name: "Content", slug: "content", type: "RICH_TEXT", required: true },
-            { name: "Cover Image", slug: "coverImage", type: "MEDIA", required: false },
-            { name: "Author", slug: "author", type: "RELATION", required: false, relationSlug: "authors" }
-          ]
-        },
-        {
-          name: "Products",
-          slug: "products",
-          description: "E-commerce product catalog",
-          fields: [
-            { name: "Name", slug: "name", type: "STRING", required: true },
-            { name: "Price", slug: "price", type: "NUMBER", required: true },
-            { name: "Stock", slug: "stock", type: "NUMBER", required: true }
+            { name: "Title", slug: "title", type: "text", required: true, unique: false },
+            { name: "Slug", slug: "slug", type: "slug", required: true, unique: true },
+            { name: "Content", slug: "content", type: "richText", required: true },
+            { name: "Author", slug: "author", type: "relation", required: false, relationSlug: "authors" }
           ]
         }
       ],
       singleTypes: [
         {
-          name: "Homepage Settings",
-          slug: "homepage",
+          id: "st_homepage",
+          name: "Homepage Config",
+          slug: "homepage-config",
           description: "Hero banner and featured layout config",
           fields: [
-            { name: "Hero Title", slug: "heroTitle", type: "STRING", required: true },
-            { name: "Hero Subtitle", slug: "heroSubtitle", type: "TEXT", required: false },
-            { name: "CTA Text", slug: "ctaText", type: "STRING", required: false }
+            { name: "Site Title", slug: "siteTitle", type: "text", required: true },
+            { name: "Hero Heading", slug: "heroHeading", type: "text", required: false }
           ]
         }
       ],
       components: [
         {
+          id: "comp_seo",
           name: "SEO Metadata",
           slug: "seo-metadata",
-          description: "OpenGraph and meta tags component",
+          category: "SEO",
           fields: [
-            { name: "Meta Title", slug: "metaTitle", type: "STRING", required: true },
-            { name: "Meta Description", slug: "metaDescription", type: "TEXT", required: false }
+            { name: "Meta Title", slug: "metaTitle", type: "text", required: true },
+            { name: "Meta Description", slug: "metaDescription", type: "text", required: false }
           ]
         }
       ]
@@ -109,185 +100,222 @@ const MCP_TOOLS: ToolDefinition[] = [
     name: "list_content_types",
     title: "List Content Types",
     description:
-      "List all Content Types (collections like articles, products, authors) with their slugs and field definitions.",
+      "List all Content Types (collections like articles, products, authors) with their field definitions and entry counts.",
     inputs: [],
     sampleResponse: [
       {
+        id: "ct_articles",
         name: "Articles",
         slug: "articles",
         description: "Blog posts and news articles",
+        entryCount: 15,
         fields: [
-          { name: "Title", slug: "title", type: "STRING", required: true },
-          { name: "Slug", slug: "slug", type: "SLUG", required: true },
-          { name: "Content", slug: "content", type: "RICH_TEXT", required: true }
-        ]
-      },
-      {
-        name: "Categories",
-        slug: "categories",
-        description: "Article taxonomy",
-        fields: [
-          { name: "Name", slug: "name", type: "STRING", required: true },
-          { name: "Slug", slug: "slug", type: "SLUG", required: true }
+          { name: "Title", slug: "title", type: "text", required: true },
+          { name: "Slug", slug: "slug", type: "slug", required: true },
+          { name: "Content", slug: "content", type: "richText", required: true }
         ]
       }
     ]
   },
   {
-    name: "list_single_types",
-    title: "List Single Types",
-    description:
-      "List all Single Types (one-off pages like Homepage, About Us, Global Settings) with their fields.",
-    inputs: [],
-    sampleResponse: [
-      {
-        name: "Homepage",
-        slug: "homepage",
-        description: "Main landing page hero and promotional sections",
-        fields: [
-          { name: "Hero Title", slug: "heroTitle", type: "STRING", required: true },
-          { name: "Hero Image", slug: "heroImage", type: "MEDIA", required: false }
-        ]
-      },
-      {
-        name: "Global Settings",
-        slug: "global-settings",
-        description: "Site header, footer copyright, and contact details",
-        fields: [
-          { name: "Site Name", slug: "siteName", type: "STRING", required: true },
-          { name: "Support Email", slug: "supportEmail", type: "EMAIL", required: true }
-        ]
-      }
-    ]
-  },
-  {
-    name: "list_components",
-    title: "List Components",
-    description:
-      "List all reusable Components (e.g. SEO, Hero, CTA blocks) with their field definitions. Components are modular structures embedded inside Content Types and Single Types.",
-    inputs: [],
-    sampleResponse: [
-      {
-        name: "SEO Block",
-        slug: "seo-block",
-        description: "Search engine optimization metadata",
-        fields: [
-          { name: "Title", slug: "title", type: "STRING", required: true },
-          { name: "Description", slug: "description", type: "TEXT", required: true },
-          { name: "OG Image", slug: "ogImage", type: "MEDIA", required: false }
-        ]
-      }
-    ]
-  },
-  {
-    name: "query_content",
-    title: "Query Content",
-    description:
-      "Fetch published content entries from a specific Content Type. Returns paginated data you can use to build UI components, generate previews, or analyze.",
+    name: "get_content_type",
+    title: "Get Content Type Schema",
+    description: "Get detailed field schema and metadata for a specific Content Type by its slug or ID.",
     inputs: [
-      {
-        name: "contentTypeSlug",
-        type: "string",
-        required: true,
-        description: "Slug of the Content Type to query (e.g. 'articles', 'products')"
-      },
-      {
-        name: "limit",
-        type: "number",
-        required: false,
-        default: "10",
-        description: "Number of entries to return (max 100)"
-      },
-      {
-        name: "page",
-        type: "number",
-        required: false,
-        default: "1",
-        description: "Page number for pagination"
-      },
-      {
-        name: "search",
-        type: "string",
-        required: false,
-        description: "Keyword to search across text fields"
-      },
-      {
-        name: "sortOrder",
-        type: "'asc' | 'desc'",
-        required: false,
-        default: "'desc'",
-        description: "Sort order by creation time"
-      }
+      { name: "slug", type: "string", required: true, description: "Slug or ID of the Content Type (e.g. 'articles')" }
     ],
     sampleResponse: {
-      contentType: "articles",
-      page: 1,
-      limit: 10,
-      count: 2,
-      data: [
-        {
-          id: "clx9102837490",
-          title: "Building Modern Web Apps with Next.js 16 and SaCMS",
-          slug: "building-modern-web-apps",
-          content: "SaCMS provides a seamless headless CMS experience...",
-          _createdAt: "2026-06-15T08:30:00.000Z"
-        },
-        {
-          id: "clx9102837491",
-          title: "Why MCP is Transforming Headless CMS Development",
-          slug: "why-mcp-is-transforming-headless-cms",
-          content: "The Model Context Protocol allows AI coding assistants to directly interact...",
-          _createdAt: "2026-06-14T11:00:00.000Z"
-        }
+      id: "ct_articles",
+      name: "Articles",
+      slug: "articles",
+      description: "Blog posts and news articles",
+      fields: [
+        { name: "Title", slug: "title", type: "text", required: true },
+        { name: "Content", slug: "content", type: "richText", required: true }
       ]
     }
   },
   {
-    name: "get_single_type_content",
-    title: "Get Single Type Content",
-    description:
-      "Fetch the actual content stored in a Single Type (e.g. homepage hero text, global navigation links, footer copyright).",
+    name: "create_content_type",
+    title: "Create Content Type",
+    description: "Create a new Content Type (collection) in the workspace with field definitions.",
     inputs: [
-      {
-        name: "singleTypeSlug",
-        type: "string",
-        required: true,
-        description: "Slug of the Single Type (e.g. 'homepage', 'global-settings', 'about')"
-      }
+      { name: "name", type: "string", required: true, description: "Display name (e.g. 'Products')" },
+      { name: "slug", type: "string", required: true, description: "Unique slug identifier (e.g. 'products')" },
+      { name: "description", type: "string", required: false, description: "Optional description" },
+      { name: "fields", type: "array", required: true, description: "Array of field definitions" }
     ],
     sampleResponse: {
-      singleType: "homepage",
-      data: {
-        heroTitle: "Build Better Digital Experiences Faster",
-        heroSubtitle: "Empower your team with a multi-tenant headless CMS with native AI and MCP support.",
-        ctaText: "Get Started Free",
-        ctaUrl: "https://example.com/signup"
+      success: true,
+      contentType: { id: "ct_products", name: "Products", slug: "products" }
+    }
+  },
+  {
+    name: "list_entries",
+    title: "List / Query Entries",
+    description:
+      "Query published content entries with Strapi-compatible filters, search, sort, pagination, and relational populate.",
+    inputs: [
+      { name: "contentTypeSlug", type: "string", required: true, description: "Slug of the Content Type (e.g. 'articles')" },
+      { name: "page", type: "number", required: false, default: "1", description: "Page number" },
+      { name: "pageSize", type: "number", required: false, default: "25", description: "Number of entries per page (max 100)" },
+      { name: "search", type: "string", required: false, description: "Search keyword across text fields" },
+      { name: "filters", type: "object", required: false, description: "Strapi-style filter object (e.g. { category: { $eq: 'tech' } })" },
+      { name: "sort", type: "string", required: false, description: "Sort string (e.g. 'createdAt:desc')" },
+      { name: "populate", type: "array", required: false, description: "Relation field slugs to populate" }
+    ],
+    sampleResponse: {
+      data: [
+        {
+          id: "cmt191h9s000nujikfe9o533b",
+          title: "Building Modern Web Apps with Next.js 16 and SaCMS",
+          author: "Admin",
+          status: "PUBLISHED",
+          createdAt: "2026-08-20T08:19:09.615Z"
+        }
+      ],
+      meta: {
+        pagination: { page: 1, pageSize: 25, total: 1, totalPages: 1 }
       }
     }
   },
   {
-    name: "get_api_info",
-    title: "Get API Info",
-    description:
-      "Get the full REST API guide for this SaCMS workspace — endpoints, authentication, filter operators, and usage examples for building a frontend app.",
+    name: "get_entry",
+    title: "Get Single Entry",
+    description: "Get a specific content entry by its ID with populated relational data.",
     inputs: [
-      {
-        name: "baseUrl",
-        type: "string",
-        required: false,
-        description: "Public base URL of SaCMS (defaults to instance origin)"
-      }
+      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
+      { name: "id", type: "string", required: true, description: "Entry ID" },
+      { name: "locale", type: "string", required: false, default: "en", description: "Language locale code" },
+      { name: "populate", type: "array", required: false, description: "Relations to populate" }
     ],
     sampleResponse: {
-      workspace: "Acme Corp Workspace",
-      baseUrl: "https://your-sacms.com/api/public/acme-corp",
-      authHeader: "Authorization: Bearer YOUR_READ_ONLY_API_TOKEN",
+      id: "cmt191h9s000nujikfe9o533b",
+      title: "Building Modern Web Apps with Next.js 16 and SaCMS",
+      author: "Admin",
+      content: "<p>Complete guide on headless CMS...</p>",
+      status: "PUBLISHED"
+    }
+  },
+  {
+    name: "create_entry",
+    title: "Create Content Entry",
+    description: "Create a new content entry in a collection (DRAFT or PUBLISHED).",
+    inputs: [
+      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
+      { name: "data", type: "object", required: true, description: "JSON object with field values" },
+      { name: "status", type: "string", required: false, default: "DRAFT", description: "DRAFT | PUBLISHED" },
+      { name: "locale", type: "string", required: false, default: "en", description: "Language locale" }
+    ],
+    sampleResponse: {
+      success: true,
+      entry: { id: "cmt_new_entry_id", status: "PUBLISHED" }
+    }
+  },
+  {
+    name: "update_entry",
+    title: "Update Content Entry",
+    description: "Update field values or workflow status of an existing entry.",
+    inputs: [
+      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
+      { name: "id", type: "string", required: true, description: "Entry ID to update" },
+      { name: "data", type: "object", required: true, description: "Updated field values" },
+      { name: "status", type: "string", required: false, description: "New workflow status" }
+    ],
+    sampleResponse: {
+      success: true,
+      entry: { id: "cmt191h9s000nujikfe9o533b", updatedAt: "2026-08-20T18:47:12.000Z" }
+    }
+  },
+  {
+    name: "delete_entry",
+    title: "Delete Content Entry",
+    description: "Delete an entry from the collection permanently.",
+    inputs: [
+      { name: "contentTypeSlug", type: "string", required: true, description: "Content Type slug" },
+      { name: "id", type: "string", required: true, description: "Entry ID" }
+    ],
+    sampleResponse: {
+      success: true,
+      message: "Entry deleted successfully"
+    }
+  },
+  {
+    name: "get_single_type",
+    title: "Get Single Type Content",
+    description: "Fetch content stored in a Single Type (e.g. homepage config, site settings).",
+    inputs: [
+      { name: "slug", type: "string", required: true, description: "Slug of the Single Type (e.g. 'homepage-config')" },
+      { name: "locale", type: "string", required: false, default: "en", description: "Locale code" }
+    ],
+    sampleResponse: {
+      siteTitle: "My Awesome Website",
+      heroHeading: "Welcome to our portal",
+      heroDescription: "Powered by SaCMS"
+    }
+  },
+  {
+    name: "update_single_type",
+    title: "Update Single Type Content",
+    description: "Update and optionally publish data for a Single Type.",
+    inputs: [
+      { name: "slug", type: "string", required: true, description: "Single Type slug" },
+      { name: "data", type: "object", required: true, description: "Updated JSON data" },
+      { name: "publish", type: "boolean", required: false, default: "true", description: "Whether to publish immediately" }
+    ],
+    sampleResponse: {
+      success: true,
+      updatedAt: "2026-08-20T18:50:00.000Z"
+    }
+  },
+  {
+    name: "list_components",
+    title: "List Components",
+    description: "List all reusable schema components (e.g. SEO block, CTA banner, Author card).",
+    inputs: [],
+    sampleResponse: [
+      {
+        id: "comp_seo",
+        name: "SEO Block",
+        slug: "seo-block",
+        category: "SEO",
+        fields: [{ name: "Meta Title", slug: "metaTitle", type: "text", required: true }]
+      }
+    ]
+  },
+  {
+    name: "list_webhooks",
+    title: "List Webhooks",
+    description: "List all webhook endpoints configured in the workspace.",
+    inputs: [],
+    sampleResponse: [
+      {
+        id: "wh_vercel_deploy",
+        name: "Vercel Deploy Hook",
+        url: "https://api.vercel.com/v1/integrations/deploy/...",
+        events: ["content.publish", "content.update"],
+        enabled: true
+      }
+    ]
+  },
+  {
+    name: "get_api_docs",
+    title: "Get API Docs & Reference",
+    description: "Get the complete REST and GraphQL API guide with live endpoints for this workspace.",
+    inputs: [],
+    sampleResponse: {
+      workspace: "my-workspace",
+      baseUrl: "http://localhost:3000/api/public/my-workspace",
+      authHeader: "Authorization: Bearer <API_TOKEN>",
       endpoints: [
-        "GET /content/{contentTypeSlug} - List entries",
-        "GET /content/{contentTypeSlug}/{id} - Single entry",
-        "GET /single/{singleTypeSlug} - Single type data"
-      ],
-      filterOperators: ["$eq", "$ne", "$contains", "$gt", "$gte", "$lt", "$lte", "$in", "$null"]
+        "GET /content/{contentTypeSlug}",
+        "GET /content/{contentTypeSlug}/{id}",
+        "POST /content/{contentTypeSlug}",
+        "PUT /content/{contentTypeSlug}/{id}",
+        "DELETE /content/{contentTypeSlug}/{id}",
+        "GET /single/{singleTypeSlug}",
+        "PUT /single/{singleTypeSlug}"
+      ]
     }
   }
 ]

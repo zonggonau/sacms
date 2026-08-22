@@ -5,7 +5,8 @@ import { useRouter, useParams } from "next/navigation"
 import { 
   ArrowLeft, Save, Send, FileText, CheckCircle2, 
   Clock, Archive, Loader2, Globe, Layout, ChevronDown,
-  Calendar as CalendarIcon, Eye, AlertCircle, Check, Plus, Zap
+  Calendar as CalendarIcon, Eye, AlertCircle, Check, Plus, Sparkles,
+  Copy, History, Shield, Info
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { format } from "date-fns"
@@ -83,13 +84,41 @@ interface ContentType {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
-  DRAFT: { label: "Draft", color: "bg-muted text-foreground border border-border rounded-none", icon: FileText },
-  IN_REVIEW: { label: "In Review", color: "bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border rounded-none", icon: Clock },
-  APPROVED: { label: "Approved", color: "bg-zinc-100 dark:bg-zinc-800 text-foreground border border-border rounded-none", icon: CheckCircle2 },
-  SCHEDULED: { label: "Scheduled", color: "bg-orange-500/10 text-orange-500 border border-orange-500/20 rounded-none", icon: CalendarIcon },
-  PUBLISHED: { label: "Published", color: "bg-zinc-950 dark:bg-zinc-50 text-background border border-border rounded-none", icon: Check },
-  ARCHIVED: { label: "Archived", color: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border border-orange-500/20 rounded-none", icon: Archive },
-  REJECTED: { label: "Rejected", color: "bg-red-500/10 text-red-500 border border-red-500/20 rounded-none", icon: AlertCircle },
+  DRAFT: { 
+    label: "Draft", 
+    color: "bg-muted text-muted-foreground border-border/80", 
+    icon: FileText 
+  },
+  IN_REVIEW: { 
+    label: "In Review", 
+    color: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20", 
+    icon: Clock 
+  },
+  APPROVED: { 
+    label: "Approved", 
+    color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", 
+    icon: CheckCircle2 
+  },
+  SCHEDULED: { 
+    label: "Scheduled", 
+    color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", 
+    icon: CalendarIcon 
+  },
+  PUBLISHED: { 
+    label: "Published", 
+    color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", 
+    icon: Check 
+  },
+  ARCHIVED: { 
+    label: "Archived", 
+    color: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20", 
+    icon: Archive 
+  },
+  REJECTED: { 
+    label: "Rejected", 
+    color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", 
+    icon: AlertCircle 
+  },
 }
 
 export default function CMSEditEntryPage() {
@@ -136,13 +165,13 @@ export default function CMSEditEntryPage() {
       ])
       
       if (ctData?.error) {
-        toast({ variant: "destructive", title: "Error Loading Schema", description: ctData.error })
+        toast({ variant: "destructive", title: "Gagal Memuat Skema", description: ctData.error })
       } else if (ctData?.contentType) {
         setContentType(ctData.contentType as any)
       }
 
       if (entData?.error) {
-        toast({ variant: "destructive", title: "Error Loading Entry", description: entData.error })
+        toast({ variant: "destructive", title: "Gagal Memuat Entri", description: entData.error })
       } else if (entData?.entry) {
         const data = entData.entry.data as Record<string, unknown>
         setFormData(data || {})
@@ -158,7 +187,7 @@ export default function CMSEditEntryPage() {
         if (data.locales?.length > 0) setAvailableLocales(data.locales)
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error Loading Data" })
+      toast({ variant: "destructive", title: "Error Memuat Data" })
     } finally {
       setLoading(false)
     }
@@ -198,21 +227,21 @@ export default function CMSEditEntryPage() {
       const res = await updateEntryAction(tenantSlug, contentTypeSlug, entryId, {
         data: formData,
         status: targetStatus,
-        locale, // Send current locale to the backend
+        locale,
         scheduledAt: scheduledAt || null
       })
 
       if (!res.error) {
         toast({ 
-          title: publishNow ? "Published Successfully!" : "Entry Updated",
-          className: "bg-muted border border-border text-foreground rounded-none shadow-none"
+          title: publishNow ? "Entri Berhasil Dipublikasikan!" : "Perubahan Tersimpan",
+          description: "Data konten berhasil diperbarui di database."
         })
         router.push(`/dashboard/${tenantSlug}/cms/content/${contentTypeSlug}`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Error Menyimpan", description: res.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Error Menyimpan Data" })
     } finally {
       setSaving(false)
     }
@@ -237,8 +266,10 @@ export default function CMSEditEntryPage() {
     }
 
     const renderLabelWithAI = () => (
-      <div className="flex items-center justify-between mb-2">
-        <Label className="text-sm font-bold text-foreground">{field.name} {field.required && "*"}</Label>
+      <div className="flex items-center justify-between mb-1.5">
+        <Label className="text-xs font-bold text-foreground">
+          {field.name} {field.required && <span className="text-primary">*</span>}
+        </Label>
         {(field.type === "text" || field.type === "textarea" || field.type === "richText") && (
           <AIAssistantDialog
             tenantSlug={tenantSlug}
@@ -257,9 +288,9 @@ export default function CMSEditEntryPage() {
 
       case "text":
         if (['hashtag', 'hastag', 'tags'].includes(field.slug.toLowerCase())) {
-          return <div className="space-y-2">{renderLabelWithAI()}<TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
+          return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
         }
-        return <div className="space-y-2">{renderLabelWithAI()}<TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={field.name} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} placeholder={`Masukkan ${field.name.toLowerCase()}...`} /></div>
       
       case "slug":
       case "uid":
@@ -267,7 +298,7 @@ export default function CMSEditEntryPage() {
         const sourceValue = sourceFieldName ? (formData[sourceFieldName] as string) : ""
         
         return (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             <SlugField 
               label={renderLabelWithAI()}
               value={value as string} 
@@ -281,44 +312,44 @@ export default function CMSEditEntryPage() {
         )
       
       case "textarea":
-        return <div className="space-y-2">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "date":
       case "datetime":
-        return <div className="space-y-2">{renderLabelWithAI()}<DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "dateRange":
-        return <div className="space-y-2">{renderLabelWithAI()}<DateRangeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateRangeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "markdown":
-        return <div className="space-y-2">{renderLabelWithAI()}<MarkdownField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MarkdownField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "richText":
-        return <div className="space-y-2">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} documentId={entryId} fieldSlug={field.slug} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} documentId={entryId} fieldSlug={field.slug} tenantSlug={tenantSlug} /></div>
       
       case "number":
       case "integer":
-        return <div className="space-y-2">{renderLabelWithAI()}<NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<NumberField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "currency":
-        return <div className="space-y-2">{renderLabelWithAI()}<CurrencyField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<CurrencyField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "boolean":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><BooleanField value={value as boolean} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "select":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
       
       case "tags":
       case "hashtags":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><TagsField value={value as any} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "media":
       case "file":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><MediaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
       
       case "mediaMultiple":
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><MediaMultipleField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":
         let relOpts: any = {}
@@ -329,7 +360,7 @@ export default function CMSEditEntryPage() {
         }
         const isMultiple = relOpts?.relationType === 'oneToMany' || relOpts?.relationType === 'manyToMany'
         return (
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {renderLabelWithAI()}
             <RelationSelectField 
               value={value as any} 
@@ -345,236 +376,314 @@ export default function CMSEditEntryPage() {
       case "json":
       case "color":
       case "location":
-        return <div className="space-y-2">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "password":
-        return <div className="space-y-2">{renderLabelWithAI()}<PasswordField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PasswordField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "component":
         let compOpts: any = {}
         try { compOpts = typeof field.options === 'string' ? JSON.parse(field.options) : field.options } catch { compOpts = {} }
-        return <div className="space-y-2">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ComponentField label={null} tenantSlug={tenantSlug} componentSlug={compOpts?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} repeatable={compOpts?.repeatable} /></div>
 
       case "repeater":
-        return <div className="space-y-2">{renderLabelWithAI()}<DynamicZoneField label={null} tenantSlug={tenantSlug} value={value as any[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DynamicZoneField label={null} tenantSlug={tenantSlug} value={value as any[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "url":
-        return <div className="space-y-2">{renderLabelWithAI()}<UrlField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<UrlField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "phone":
-        return <div className="space-y-2">{renderLabelWithAI()}<PhoneField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PhoneField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "multiselect":
-        return <div className="space-y-2">{renderLabelWithAI()}<MultiSelectField value={value as any} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MultiSelectField value={value as any} onChange={v => handleFieldChange(field.slug, v)} options={options} required={field.required} /></div>
 
       case "rating":
-        return <div className="space-y-2">{renderLabelWithAI()}<RatingField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<RatingField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "button":
-        return <div className="space-y-2">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       default:
-        return <div className="space-y-2"><Label className="text-sm font-bold">{field.name}</Label><Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>
+        return <div className="space-y-1.5"><Label className="text-xs font-bold text-foreground">{field.name}</Label><Input className="h-9 rounded-xl text-xs bg-background border-border/80" value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} /></div>
     }
   }
 
-  if (loading) return <div className="flex min-h-screen items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-orange-500" /></div>
+  if (loading) {
+    return (
+      <div className="flex flex-1 items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   const statusCfg = STATUS_CONFIG[entryStatus] || STATUS_CONFIG.DRAFT
+  const StatusIcon = statusCfg.icon
 
   return (
-    <div className="min-h-screen bg-muted/10">
-      <main className="p-6 lg:p-10 max-w-7xl mx-auto space-y-8">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-none hover:bg-muted"><ArrowLeft className="h-5 w-5" /></Button>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-3xl font-black tracking-tight text-slate-900 dark:text-zinc-50">Edit Entry</h1>
-                <Badge className={cn("text-[10px] font-black uppercase px-2 py-0.5 shadow-none border", statusCfg.color)}>
-                  {statusCfg.label}
-                </Badge>
+    <div className="flex flex-1 flex-col w-full">
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+
+          {/* Top Bar Navigation & Actions */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${contentTypeSlug}`)}
+                className="h-9 w-9 rounded-xl border-border/80 hover:bg-muted shrink-0"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+
+              <div>
+                <div className="flex items-center gap-2">
+                  <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">
+                    Edit {contentType?.name || "Entri"}
+                  </h1>
+                  <Badge variant="outline" className={cn("text-[10px] font-bold px-2.5 py-0.5 rounded-full border shadow-none flex items-center gap-1", statusCfg.color)}>
+                    <StatusIcon className="h-3 w-3" />
+                    {statusCfg.label}
+                  </Badge>
+                </div>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  ID: <code className="font-mono text-[11px] bg-muted/40 px-1 py-0.5 rounded text-foreground">{entryId}</code> &middot; Koleksi: <span className="font-semibold text-foreground">{contentTypeSlug}</span>
+                </p>
               </div>
-              <p className="text-muted-foreground font-medium">{contentType?.name} &middot; {entryId.substring(0, 8)}</p>
             </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <Select value={entryStatus} onValueChange={setEntryStatus}>
-              <SelectTrigger className="w-40 bg-card font-bold text-xs uppercase rounded-none border border-border h-11">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                {availableStatuses.map((val) => {
-                  const cfg = STATUS_CONFIG[val]
-                  return (
-                  <SelectItem key={val} value={val} className="text-xs font-bold uppercase rounded-none hover:bg-muted">
-                    <div className="flex items-center gap-2">
-                      <cfg.icon className="h-3.5 w-3.5" />
-                      {cfg.label}
-                    </div>
-                  </SelectItem>
-                  )
-                })}
-              </SelectContent>
-            </Select>
 
-            <ContentHistorySidebar 
-              tenantSlug={tenantSlug}
-              contentTypeSlug={contentTypeSlug}
-              entryId={entryId}
-              currentData={formData}
-              onRestoreSuccess={(newData) => setFormData(newData)}
-            />
+            {/* Top Right Actions */}
+            <div className="flex items-center gap-2 flex-wrap">
+              {/* Status Switcher Dropdown */}
+              <Select value={entryStatus} onValueChange={setEntryStatus}>
+                <SelectTrigger className="w-36 h-9 bg-card font-bold text-xs rounded-xl border-border/80 shadow-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-xl border-border bg-card shadow-xs">
+                  {availableStatuses.map((val) => {
+                    const cfg = STATUS_CONFIG[val] || STATUS_CONFIG.DRAFT
+                    const Icon = cfg.icon
+                    return (
+                      <SelectItem key={val} value={val} className="text-xs font-bold rounded-lg cursor-pointer">
+                        <div className="flex items-center gap-2">
+                          <Icon className="h-3.5 w-3.5" />
+                          {cfg.label}
+                        </div>
+                      </SelectItem>
+                    )
+                  })}
+                </SelectContent>
+              </Select>
 
-            {canPublish ? (
+              {/* Version History Sidebar */}
+              <ContentHistorySidebar 
+                tenantSlug={tenantSlug}
+                contentTypeSlug={contentTypeSlug}
+                entryId={entryId}
+                currentData={formData}
+                onRestoreSuccess={(newData) => setFormData(newData)}
+              />
+
+              {/* Save Draft Action */}
               <Button
-                onClick={() => handleSave(true)} 
-                disabled={saving} 
-                className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Check className="h-4 w-4 mr-2" />}
-                Save & Publish
-                <kbd className="ml-2 text-[10px] bg-zinc-800/50 dark:bg-zinc-200/50 px-1.5 py-0.5 rounded font-mono">⌘⇧P</kbd>
-              </Button>
-            ) : availableStatuses.includes("IN_REVIEW") ? (
-              <Button
-                onClick={() => handleSave(false, "IN_REVIEW")} 
-                disabled={saving} 
-                className="bg-amber-600 hover:bg-amber-700 text-white rounded-none h-11 px-6 font-bold transition-colors"
-              >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                Submit for Review
-              </Button>
-            ) : (
-              <Button
+                variant="outline"
                 onClick={() => handleSave(false)} 
                 disabled={saving} 
-                className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white rounded-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 font-bold transition-colors"
+                className="h-9 px-3.5 rounded-xl text-xs font-bold border-border/80 hover:bg-muted transition-all"
               >
-                {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                Save Changes
+                {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                Simpan Draft
               </Button>
-            )}
-          </div>
-        </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2 space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="border-b border-border bg-muted/30 p-6">
-                <CardTitle className="text-lg font-bold flex items-center gap-2">
-                  <FileText className="h-5 w-5 text-orange-500" /> Content Editor
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-8 space-y-10">
-                {contentType?.fields.map(field => (
-                  <div key={field.id} className="relative group">
-                    <div className="absolute -left-4 top-0 bottom-0 w-1 bg-orange-500 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    {renderField(field)}
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-          </div>
-          
-          <div className="space-y-6">
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
-              <CardHeader className="p-6 pb-2"><CardTitle className="text-base font-bold flex items-center gap-2"><Plus className="h-4 w-4 text-orange-500" /> Options</CardTitle></CardHeader>
-              <CardContent className="p-6 pt-2 space-y-6">
-                {canSchedule && <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Scheduled Publication</Label>
-                  <Popover>
-                    <PopoverTrigger asChild>
-                      <Button
-                        variant={"outline"}
-                        className={cn(
-                          "w-full justify-start text-left font-bold rounded-none border border-border bg-muted/30 h-11 hover:border-orange-500 transition-colors",
-                          !scheduledAt && "text-muted-foreground font-normal"
-                        )}
-                      >
-                        <CalendarIcon className="mr-2 h-4 w-4" />
-                        {scheduledAt ? format(scheduledAt, "PPP") : <span>Set publish date...</span>}
-                      </Button>
-                    </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0 rounded-none overflow-hidden shadow-none border border-border bg-card" align="start">
-                      <Calendar
-                        mode="single"
-                        selected={scheduledAt}
-                        onSelect={setScheduledAt}
-                        initialFocus
-                        disabled={(date) => date < new Date()}
-                      />
-                      {scheduledAt && (
-                        <div className="p-3 border-t bg-muted/10 flex justify-between">
-                          <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-[10px] uppercase font-black rounded-none hover:bg-muted">Clear</Button>
-                          <span className="text-[10px] text-muted-foreground italic pt-2">Will set to SCHEDULED</span>
-                        </div>
-                      )}
-                    </PopoverContent>
-                  </Popover>
-                </div>}
-
-                {canSchedule && <Separator className="opacity-50" />}
-
-                <div className="space-y-3">
-                  <Label className="text-[10px] font-black uppercase text-muted-foreground tracking-widest pl-1">Localization</Label>
-                  <Select value={locale} onValueChange={setLocale}>
-                    <SelectTrigger className="bg-muted/30 border border-border h-11 rounded-none font-bold focus:ring-orange-500"><SelectValue /></SelectTrigger>
-                    <SelectContent className="rounded-none border border-border bg-card shadow-none">
-                      {availableLocales.map(l => (
-                        <SelectItem key={l.locale} value={l.locale} className="font-bold rounded-none">{l.name} ({l.locale.toUpperCase()})</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <Separator className="opacity-50" />
-
-                <Button 
-                  variant="outline" 
-                  onClick={() => handleSave(false)} 
+              {/* Primary Action Button */}
+              {canPublish ? (
+                <Button
+                  onClick={() => handleSave(true)} 
                   disabled={saving} 
-                  className="w-full bg-transparent text-foreground hover:bg-muted border border-border h-11 rounded-none font-bold transition-colors hover:border-orange-500"
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 px-4 rounded-xl text-xs font-bold shadow-xs transition-all"
                 >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-                  Update Entry
-                  <kbd className="ml-2 text-[10px] bg-muted/50 px-1.5 py-0.5 rounded font-mono">⌘S</kbd>
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Check className="h-3.5 w-3.5 mr-1.5" />}
+                  Simpan & Publish
                 </Button>
-              </CardContent>
-            </Card>
-
-            <ReviewerAssignment
-              tenantSlug={tenantSlug}
-              entryId={entryId}
-              entryStatus={persistedStatus}
-              onDecisionComplete={fetchData}
-            />
-
-            <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden bg-gradient-to-br from-orange-500/5 to-transparent">
-              <CardHeader className="p-6 pb-2">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-4 w-4 text-orange-500" />
-                  <CardTitle className="text-base font-bold">Timeline</CardTitle>
-                </div>
-              </CardHeader>
-              <CardContent className="p-6 pt-2 space-y-4">
-                 <div className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className="h-2 w-2 rounded-none bg-orange-500 mt-1.5" />
-                      <div className="w-0.5 flex-1 bg-muted my-1" />
-                    </div>
-                    <div className="pb-4">
-                      <p className="text-[11px] font-black uppercase text-muted-foreground">Status</p>
-                      <p className="text-xs font-bold text-orange-600 dark:text-orange-400">{statusCfg.label}</p>
-                    </div>
-                 </div>
-              </CardContent>
-            </Card>
+              ) : availableStatuses.includes("IN_REVIEW") ? (
+                <Button
+                  onClick={() => handleSave(false, "IN_REVIEW")} 
+                  disabled={saving} 
+                  className="bg-amber-600 hover:bg-amber-700 text-white h-9 px-4 rounded-xl text-xs font-bold shadow-xs transition-all"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                  Ajukan Review
+                </Button>
+              ) : null}
+            </div>
           </div>
+
+          {/* Main 2-Column Content Layout */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            {/* Left Column: Form Fields Editor (8 cols) */}
+            <div className="lg:col-span-8 space-y-6">
+              <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <div>
+                      <CardTitle className="text-sm font-bold text-foreground">Form Editor Konten</CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Isi nilai atribut field untuk entri model {contentType?.name}.
+                      </CardDescription>
+                    </div>
+                  </div>
+                  <Badge variant="outline" className="text-[10px] font-mono rounded-md font-semibold">
+                    {contentType?.fields.length || 0} Fields
+                  </Badge>
+                </CardHeader>
+
+                <CardContent className="p-6 space-y-6">
+                  {contentType?.fields.map((field, idx) => (
+                    <div key={field.id} className="space-y-1.5">
+                      {idx > 0 && <Separator className="my-5 border-border/60" />}
+                      {renderField(field)}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Right Column: Settings, Localization & Workflow Sidebar (4 cols) */}
+            <div className="lg:col-span-4 space-y-5">
+              
+              {/* Publication Settings Card */}
+              <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <Globe className="h-4 w-4 text-primary" />
+                    Pengaturan Publikasi
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Lokalisasi bahasa dan penjadwalan rilis konten.
+                  </CardDescription>
+                </CardHeader>
+
+                <CardContent className="p-5 space-y-4">
+                  {/* Localization */}
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-foreground">Bahasa (Locale)</Label>
+                    <Select value={locale} onValueChange={setLocale}>
+                      <SelectTrigger className="bg-background border-border/80 h-9 rounded-xl text-xs font-medium">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border bg-card">
+                        {availableLocales.map((l) => (
+                          <SelectItem key={l.locale} value={l.locale} className="text-xs font-medium">
+                            {l.name} ({l.locale.toUpperCase()})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {/* Scheduled Publish */}
+                  {canSchedule && (
+                    <div className="space-y-1.5 pt-1">
+                      <Label className="text-xs font-semibold text-foreground">Jadwal Rilis Otomatis</Label>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              "w-full justify-start text-left font-medium rounded-xl border-border/80 bg-background h-9 text-xs",
+                              !scheduledAt && "text-muted-foreground font-normal"
+                            )}
+                          >
+                            <CalendarIcon className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                            {scheduledAt ? format(scheduledAt, "PPP") : "Pilih tanggal rilis..."}
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-auto p-0 rounded-2xl overflow-hidden shadow-xs border-border bg-card" align="start">
+                          <Calendar
+                            mode="single"
+                            selected={scheduledAt}
+                            onSelect={setScheduledAt}
+                            initialFocus
+                            disabled={(date) => date < new Date()}
+                          />
+                          {scheduledAt && (
+                            <div className="p-3 border-t border-border bg-muted/20 flex items-center justify-between">
+                              <Button variant="ghost" size="sm" onClick={() => setScheduledAt(undefined)} className="text-xs h-7 rounded-lg">
+                                Reset Tanggal
+                              </Button>
+                              <span className="text-[10px] text-muted-foreground font-medium">Status: SCHEDULED</span>
+                            </div>
+                          )}
+                        </PopoverContent>
+                      </Popover>
+                    </div>
+                  )}
+
+                  <Separator className="border-border/60" />
+
+                  {/* Update Button in Sidebar */}
+                  <Button 
+                    variant="secondary"
+                    onClick={() => handleSave(false)} 
+                    disabled={saving} 
+                    className="w-full h-9 rounded-xl text-xs font-bold gap-2"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Simpan Perubahan
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Reviewer Assignment if applicable */}
+              <ReviewerAssignment
+                tenantSlug={tenantSlug}
+                entryId={entryId}
+                entryStatus={persistedStatus}
+                onDecisionComplete={fetchData}
+              />
+
+              {/* Entry Metadata Card */}
+              <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-primary" />
+                  <h3 className="text-xs font-bold text-foreground">Metadata Entri</h3>
+                </div>
+                <div className="space-y-2 text-xs">
+                  <div className="flex items-center justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Status Alur Kerja</span>
+                    <Badge variant="outline" className={cn("text-[9px] font-bold uppercase rounded-md", statusCfg.color)}>
+                      {statusCfg.label}
+                    </Badge>
+                  </div>
+                  <div className="flex items-center justify-between py-1 border-b border-border/40">
+                    <span className="text-muted-foreground">Koleksi Model</span>
+                    <span className="font-mono font-medium text-foreground">{contentTypeSlug}</span>
+                  </div>
+                  <div className="flex items-center justify-between py-1">
+                    <span className="text-muted-foreground">ID Dokumen</span>
+                    <button 
+                      onClick={() => {
+                        navigator.clipboard.writeText(entryId)
+                        toast({ title: "ID Disalin!", description: entryId })
+                      }}
+                      className="font-mono text-[11px] text-primary hover:underline flex items-center gap-1"
+                    >
+                      {entryId.substring(0, 12)}...
+                      <Copy className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </Card>
+
+            </div>
+
+          </div>
+
         </div>
-      </main>
+      </div>
     </div>
   )
 }
-
-

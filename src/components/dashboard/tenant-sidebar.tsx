@@ -39,7 +39,6 @@ import {
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
 import { signOut } from "next-auth/react"
-import { WorkspaceSelector } from "./workspace-selector"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
 
 interface TenantSidebarProps {

@@ -116,15 +116,15 @@ export default function CMSSingleTypeDetailPage() {
     if (!singleType) return
     setSaving(true)
     try {
-      const res = await saveSingleTypeDataAction(tenantSlug, singleType.slug, formData, locale, publish)
-      if (res.success) {
+      const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, formData, publish)
+      if (res && !res.error) {
         toast({ 
           title: publish ? "Halaman Diterbitkan" : "Draft Disimpan", 
           description: publish ? "Perubahan halaman kini live di API publik" : "Draft perubahan konten berhasil disimpan" 
         })
         fetchData()
       } else {
-        toast({ variant: "destructive", title: "Gagal Menyimpan", description: res.error || "Terjadi kesalahan saat menyimpan konten" })
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description: res?.error || "Terjadi kesalahan saat menyimpan konten" })
       }
     } catch (error) {
       console.error(error)
@@ -144,10 +144,11 @@ export default function CMSSingleTypeDetailPage() {
         </Label>
         {["text", "rich_text", "textarea"].includes(field.type) && (
           <AIAssistantDialog 
-            field={field} 
+            fieldName={field.name}
+            contentTypeSlug={singleType?.slug || ""} 
             tenantSlug={tenantSlug} 
             currentValue={value as string || ""} 
-            onGenerated={val => handleFieldChange(field.slug, val)} 
+            onApply={val => handleFieldChange(field.slug, val)} 
           />
         )}
       </div>
@@ -155,42 +156,42 @@ export default function CMSSingleTypeDetailPage() {
 
     switch (field.type) {
       case "text":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<TextField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
       case "slug":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<SlugField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SlugField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "textarea":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "rich_text":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "number":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<NumberField label={null} value={value as number || 0} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<NumberField label="" value={value as number || 0} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "boolean":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<BooleanField label={null} value={value as boolean || false} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<BooleanField label="" value={value as boolean || false} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "date":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<DateField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "datetime":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label={null} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "select":
         let opts: string[] = []
         try { opts = typeof field.options === 'string' ? JSON.parse(field.options) : (field.options?.options || []) } catch { opts = [] }
-        return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField label={null} options={opts} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField label="" options={opts} value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "tags":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField label={null} value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "media":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label={null} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label="" value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "media_multiple":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaMultipleField label={null} value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaMultipleField label="" value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":
         let relOpts: any = {}
@@ -199,10 +200,10 @@ export default function CMSSingleTypeDetailPage() {
           <div className="space-y-1.5">
             {renderLabelWithAI()}
             <RelationSelectField 
-              label={null} 
+              label="" 
               tenantSlug={tenantSlug} 
-              targetSlug={field.relationSlug || relOpts?.targetContentType} 
-              relationType={relOpts?.relationType || "oneToOne"} 
+              targetSlug={field.relationSlug || relOpts?.targetContentType || ""} 
+              multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany"} 
               value={value as any} 
               onChange={v => handleFieldChange(field.slug, v)} 
             />

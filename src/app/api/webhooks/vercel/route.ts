@@ -23,34 +23,32 @@ export async function POST(req: NextRequest) {
 
       console.log(`[Vercel Webhook] Deployment ${deploymentId} changed to ${status}`)
 
-      // Update the FrontendBuild in the database
-      const build = await db.frontendBuild.findFirst({
-        where: { deploymentId }
+      // Update the SiteDeployment in the database
+      const deployment = await db.siteDeployment.findFirst({
+        where: { url: url || undefined }
       })
 
-      if (build) {
-        let deploymentError: string | null = null
+      if (deployment) {
+        let deploymentLogs: string | null = null
         if (status === "failed") {
           try {
-            // Import dynamically to avoid circular dependency issues if any
-            const { checkVercelDeploymentStatus } = await import("@/lib/ai-engine")
-            const vercelData = await checkVercelDeploymentStatus(deploymentId)
-            deploymentError = vercelData.error || `Build failed on Vercel. Check logs here: ${vercelData.inspectorUrl}`
+            const { getDeploymentStatus } = await import("@/lib/vercel-client")
+            const vercelData = await getDeploymentStatus(deploymentId)
+            deploymentLogs = `Build failed on Vercel (State: ${vercelData.state}).`
           } catch (e) {
-            deploymentError = "Deployment failed on Vercel."
+            deploymentLogs = "Deployment failed on Vercel."
           }
         }
 
-        await db.frontendBuild.update({
-          where: { id: build.id },
+        await db.siteDeployment.update({
+          where: { id: deployment.id },
           data: {
-            deploymentStatus: status,
-            status: status === "building" ? "deploying" : status,
-            deploymentUrl: url || build.deploymentUrl,
-            deploymentError: deploymentError
+            status: status === "deployed" ? "ready" : (status === "failed" ? "error" : "building"),
+            url: url || deployment.url,
+            logs: deploymentLogs || deployment.logs
           }
         })
-        console.log(`[Vercel Webhook] Successfully updated build ${build.id}`)
+        console.log(`[Vercel Webhook] Successfully updated deployment ${deployment.id}`)
       }
     }
 

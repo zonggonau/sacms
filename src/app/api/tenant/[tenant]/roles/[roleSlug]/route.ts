@@ -101,7 +101,7 @@ export async function PATCH(
           if (permId) {
             await tx.rolePermission.upsert({
               where: {
-                tenantId_roleId_permissionId: {
+                roleId_permissionId_tenantId: {
                   tenantId: access.tenantId,
                   roleId: roleSlug,
                   permissionId: permId

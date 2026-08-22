@@ -20,7 +20,7 @@ export async function PUT(
     const body = await request.json()
     const { name, description } = body
 
-    const role = await db.systemRole.update({
+    const role = await db.tenantRole.update({
       where: { id },
       data: { name, description }
     })
@@ -46,7 +46,7 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    await db.systemRole.delete({
+    await db.tenantRole.delete({
       where: { id }
     })
 

@@ -14,10 +14,13 @@ import { Tenant } from "@/hooks/admin/use-admin-tenants"
 
 interface TenantDeleteModalProps {
   isOpen: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
   tenant: Tenant | null
-  confirmationText: string
-  setConfirmationText: (text: string) => void
+  confirmationText?: string
+  confirmation?: string
+  setConfirmationText?: (text: string) => void
+  setConfirmation?: (text: string) => void
   onConfirm: () => void
   isSubmitting: boolean
 }
@@ -25,16 +28,34 @@ interface TenantDeleteModalProps {
 export function TenantDeleteModal({
   isOpen,
   onOpenChange,
+  onClose,
   tenant,
   confirmationText,
+  confirmation,
   setConfirmationText,
+  setConfirmation,
   onConfirm,
   isSubmitting
 }: TenantDeleteModalProps) {
   if (!tenant) return null
 
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      if (onClose) onClose()
+      if (onOpenChange) onOpenChange(false)
+    } else {
+      if (onOpenChange) onOpenChange(true)
+    }
+  }
+
+  const currentText = confirmationText ?? confirmation ?? ""
+  const handleTextChange = (val: string) => {
+    if (setConfirmationText) setConfirmationText(val)
+    if (setConfirmation) setConfirmation(val)
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle className="text-destructive">Delete Workspace</DialogTitle>
@@ -52,28 +73,34 @@ export function TenantDeleteModal({
           
           <div className="space-y-2">
             <Label>
-              Type <strong className="font-mono bg-muted px-1 py-0.5 rounded select-all">{tenant.id}</strong> to confirm
+              Ketik nama workspace <strong className="font-mono bg-muted px-1.5 py-0.5 rounded select-all text-foreground">{tenant.name}</strong> atau ID <strong className="font-mono bg-muted px-1.5 py-0.5 rounded select-all text-foreground text-xs">{tenant.id}</strong> untuk konfirmasi:
             </Label>
             <Input
-              value={confirmationText}
-              onChange={(e) => setConfirmationText(e.target.value)}
-              placeholder="Paste ID here"
+              value={currentText}
+              onChange={(e) => handleTextChange(e.target.value)}
+              placeholder={`Ketik "${tenant.name}" atau ID di sini`}
               className="font-mono text-sm"
             />
           </div>
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
-            Cancel
+          <Button variant="outline" onClick={() => handleClose(false)}>
+            Batal
           </Button>
           <Button 
             variant="destructive" 
             onClick={onConfirm}
-            disabled={confirmationText !== tenant.id || isSubmitting}
+            disabled={
+              !currentText ||
+              (currentText.trim().toLowerCase() !== tenant.name.trim().toLowerCase() &&
+               currentText.trim().toLowerCase() !== tenant.id.trim().toLowerCase() &&
+               currentText.trim().toLowerCase() !== (tenant.slug || "").trim().toLowerCase()) ||
+              isSubmitting
+            }
           >
             {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-            Yes, delete workspace
+            Ya, Hapus Workspace
           </Button>
         </DialogFooter>
       </DialogContent>

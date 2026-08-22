@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Progress } from "@/components/ui/progress"
-import { Loader2, Activity, Database, FileText, Globe } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Loader2, Activity, Database, FileText, Globe, CheckCircle2, AlertTriangle } from "lucide-react"
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 
 interface UsageTabProps {
@@ -32,9 +33,9 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
 
   if (loading) {
     return (
-      <Card>
+      <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
         <CardContent className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+          <Loader2 className="h-6 w-6 animate-spin text-primary" />
         </CardContent>
       </Card>
     )
@@ -42,9 +43,9 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
 
   if (!data || data.error) {
     return (
-      <Card>
-        <CardContent className="flex items-center justify-center py-20 text-destructive">
-          Failed to load usage data.
+      <Card className="rounded-2xl border border-destructive/40 shadow-xs bg-card">
+        <CardContent className="flex items-center justify-center py-20 text-destructive text-xs font-bold">
+          Gagal memuat data penggunaan kuota resource workspace.
         </CardContent>
       </Card>
     )
@@ -58,65 +59,98 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
 
   return (
     <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Usage & Limits</CardTitle>
-          <CardDescription>Monitor your workspace resource usage</CardDescription>
+      {/* Resource Quota Progress */}
+      <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+        <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+              <Activity className="h-4 w-4 text-primary" />
+              Kuota Resource & Penggunaan ({plan.name || "Free"})
+            </CardTitle>
+            <CardDescription className="text-xs text-muted-foreground mt-0.5">
+              Pantau pemakaian kapasitas API request, penyimpanan media, dan model konten aktif.
+            </CardDescription>
+          </div>
+          <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full bg-primary/10 text-primary border-primary/20">
+            {plan.name || "Plan"}
+          </Badge>
         </CardHeader>
-        <CardContent className="space-y-8">
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center font-medium">
-                <Globe className="mr-2 h-4 w-4 text-muted-foreground" />
-                API Calls (Last 30 Days)
+
+        <CardContent className="p-5 space-y-6">
+          {/* API Calls */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center font-bold text-foreground">
+                <Globe className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                API Request (30 Hari Terakhir)
               </div>
-              <span className="text-muted-foreground">
-                {usage.apiCalls.toLocaleString()} / {plan.max_api_calls >= 999999 ? "Unlimited" : plan.max_api_calls.toLocaleString()}
+              <span className="font-mono text-muted-foreground text-[11px]">
+                <strong className="text-foreground">{usage.apiCalls.toLocaleString()}</strong> / {plan.max_api_calls >= 999999 ? "Unlimited" : plan.max_api_calls.toLocaleString()}
               </span>
             </div>
-            <Progress value={apiPercentage} className={apiPercentage > 90 ? "bg-destructive/20" : ""} />
-            {apiPercentage > 90 && <p className="text-xs text-destructive">Approaching limit</p>}
+            <Progress value={apiPercentage} className="h-2 rounded-full" />
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>{apiPercentage}% kuota terpakai</span>
+              {apiPercentage > 90 && (
+                <span className="text-rose-500 font-bold flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" /> Mendekati batas maksimum
+                </span>
+              )}
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center font-medium">
-                <Database className="mr-2 h-4 w-4 text-muted-foreground" />
-                Media Storage
+          {/* Media Storage */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center font-bold text-foreground">
+                <Database className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                Kapasitas Media Storage
               </div>
-              <span className="text-muted-foreground">
-                {usage.storageMB} MB / {plan.max_storage >= 999999 ? "Unlimited" : `${plan.max_storage} MB`}
+              <span className="font-mono text-muted-foreground text-[11px]">
+                <strong className="text-foreground">{usage.storageMB} MB</strong> / {plan.max_storage >= 999999 ? "Unlimited" : `${plan.max_storage} MB`}
               </span>
             </div>
-            <Progress value={storagePercentage} className={storagePercentage > 90 ? "bg-destructive/20" : ""} />
+            <Progress value={storagePercentage} className="h-2 rounded-full" />
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>{storagePercentage}% kuota penyimpanan terpakai</span>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <div className="flex items-center justify-between text-sm">
-              <div className="flex items-center font-medium">
-                <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
-                Content Types
+          {/* Content Types */}
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-xs">
+              <div className="flex items-center font-bold text-foreground">
+                <FileText className="mr-1.5 h-3.5 w-3.5 text-primary" />
+                Model Konten (Content Types)
               </div>
-              <span className="text-muted-foreground">
-                {usage.contentTypes} / {plan.max_content_types >= 999999 ? "Unlimited" : plan.max_content_types}
+              <span className="font-mono text-muted-foreground text-[11px]">
+                <strong className="text-foreground">{usage.contentTypes}</strong> / {plan.max_content_types >= 999999 ? "Unlimited" : plan.max_content_types}
               </span>
             </div>
-            <Progress value={ctPercentage} className={ctPercentage > 90 ? "bg-destructive/20" : ""} />
+            <Progress value={ctPercentage} className="h-2 rounded-full" />
+            <div className="flex justify-between items-center text-[10px] text-muted-foreground">
+              <span>{ctPercentage}% kapasitas model terpakai</span>
+            </div>
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Activity className="h-4 w-4" /> API Traffic (Last 30 Days)
+      {/* API Traffic Chart */}
+      <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+        <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+          <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+            <Activity className="h-4 w-4 text-primary" /> 
+            Grafik Trafik API Request (30 Hari Terakhir)
           </CardTitle>
+          <CardDescription className="text-xs text-muted-foreground mt-0.5">
+            Volume pemanggilan endpoint REST dan GraphQL harian.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="h-[300px] w-full mt-4">
+        <CardContent className="p-5">
+          <div className="h-[260px] w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={charts.apiUsage} margin={{ top: 5, right: 5, bottom: 5, left: -20 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+              <LineChart data={charts?.apiUsage || []} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.6} />
                 <XAxis 
                   dataKey="date" 
                   tickFormatter={(val) => {
@@ -124,18 +158,24 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
                     return `${d.getDate()}/${d.getMonth()+1}`
                   }}
                   stroke="hsl(var(--muted-foreground))"
-                  fontSize={12}
+                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
                 />
                 <YAxis 
                   stroke="hsl(var(--muted-foreground))" 
-                  fontSize={12}
+                  fontSize={11}
                   tickLine={false}
                   axisLine={false}
                 />
                 <Tooltip 
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '6px' }}
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    borderColor: 'hsl(var(--border))', 
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)'
+                  }}
                   itemStyle={{ color: 'hsl(var(--foreground))' }}
                 />
                 <Line 
@@ -143,9 +183,9 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
                   dataKey="calls" 
                   name="API Requests" 
                   stroke="hsl(var(--primary))" 
-                  strokeWidth={2}
+                  strokeWidth={2.5}
                   dot={false}
-                  activeDot={{ r: 4 }}
+                  activeDot={{ r: 5 }}
                 />
               </LineChart>
             </ResponsiveContainer>

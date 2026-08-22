@@ -4,6 +4,7 @@
  */
 import { NextRequest, NextResponse } from "next/server"
 import { parseLicenseKey, isLicenseExpired, upsertLicenseCache } from "@/lib/license"
+import { db } from "@/lib/database"
 
 export const dynamic = "force-dynamic"
 

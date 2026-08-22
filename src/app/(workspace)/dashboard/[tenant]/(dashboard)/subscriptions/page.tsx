@@ -487,19 +487,6 @@ export default function TenantSubscriptionsPage() {
                   const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
                   const label = billingInterval === 'year' ? '/tahun' : '/bulan'
 
-                  const formatStorage = (mb?: number) => {
-                    if (!mb) return "100 MB"
-                    if (mb >= 1024) return `${(mb / 1024).toFixed(0)} GB`
-                    return `${mb} MB`
-                  }
-
-                  const formatApiCalls = (calls?: number) => {
-                    if (!calls) return "1.000"
-                    if (calls >= 1000000) return `${(calls / 1000000).toLocaleString()}M`
-                    if (calls >= 1000) return `${(calls / 1000).toLocaleString()}K`
-                    return calls.toLocaleString()
-                  }
-
                   return (
                     <Card key={plan.id} className={cn(
                       "border rounded-2xl bg-card shadow-xs relative flex flex-col transition-all duration-200 hover:shadow-md",
@@ -542,36 +529,8 @@ export default function TenantSubscriptionsPage() {
                       </CardHeader>
 
                       <CardContent className="p-4 pt-0 space-y-3.5 flex-1 flex flex-col justify-between">
-                        {/* Compact Resource Limit Badges Grid */}
-                        <div className="grid grid-cols-2 gap-2 p-2 rounded-xl bg-muted/40 border border-border/60 text-[11px]">
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">Tipe Konten</span>
-                            <p className="font-bold text-foreground">{plan.maxContentTypes || "Unlimited"}</p>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">Entri Konten</span>
-                            <p className="font-bold text-foreground">{plan.maxContentEntries?.toLocaleString() || "500"}</p>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">Storage</span>
-                            <p className="font-bold text-foreground">{formatStorage(plan.maxStorage)}</p>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">Anggota Tim</span>
-                            <p className="font-bold text-foreground">{plan.maxTeamMembers > 50 ? "Unlimited" : plan.maxTeamMembers}</p>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">API Request</span>
-                            <p className="font-bold text-foreground">{formatApiCalls(plan.maxApiCalls)}/bln</p>
-                          </div>
-                          <div className="space-y-0.5">
-                            <span className="text-[10px] text-muted-foreground">Bahasa</span>
-                            <p className="font-bold text-foreground">{plan.maxLocales || 1} Bahasa</p>
-                          </div>
-                        </div>
-
                         {/* Features List */}
-                        <ul className="space-y-1.5 flex-1 pt-0.5">
+                        <ul className="space-y-2 flex-1 pt-2">
                           {plan.features && plan.features.map((feature: string) => (
                             <li key={feature} className="flex items-start gap-2 text-xs text-foreground/80 leading-snug">
                               <Check className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" strokeWidth={2.5} />

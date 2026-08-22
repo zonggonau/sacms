@@ -1,9 +1,18 @@
+"use client"
+
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { CtaData } from "../types"
+import { useSession } from "next-auth/react"
+import { LayoutDashboard } from "lucide-react"
 
 export function CtaBanner({ cta }: { cta: CtaData | null }) {
+  const { data: session, status } = useSession()
   if (!cta) return null
+
+  const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
+  const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
+  const isAuthenticated = status === "authenticated" && session?.user
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-background">
@@ -21,16 +30,25 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-black text-white mb-6 tracking-tight leading-[1.1]">
               {cta.title}
             </h2>
-              <div 
-                className="text-lg md:text-xl text-primary-foreground/90 font-medium mb-10 leading-relaxed max-w-2xl mx-auto [&>p]:mb-0 [&_p]:mb-0"
-                dangerouslySetInnerHTML={{ __html: cta.description || "" }}
-              />
+            <div 
+              className="text-lg md:text-xl text-primary-foreground/90 font-medium mb-10 leading-relaxed max-w-2xl mx-auto [&>p]:mb-0 [&_p]:mb-0"
+              dangerouslySetInnerHTML={{ __html: cta.description || "" }}
+            />
             <div className="flex flex-col sm:flex-row gap-5 justify-center">
-              <Link href="/register">
-                <Button size="lg" className="w-full sm:w-auto h-14 px-10 bg-white text-primary hover:bg-white/90 rounded-full font-black text-lg shadow-xl shadow-black/10 transition-all hover:scale-105">
-                  {cta.button_primary_text || "Mulai Gratis Sekarang"}
-                </Button>
-              </Link>
+              {isAuthenticated ? (
+                <Link href={dashboardUrl}>
+                  <Button size="lg" className="w-full sm:w-auto h-14 px-10 bg-white text-primary hover:bg-white/90 rounded-full font-black text-lg shadow-xl shadow-black/10 transition-all hover:scale-105 gap-2">
+                    <LayoutDashboard className="w-5 h-5" />
+                    Buka Dashboard
+                  </Button>
+                </Link>
+              ) : (
+                <Link href="/register">
+                  <Button size="lg" className="w-full sm:w-auto h-14 px-10 bg-white text-primary hover:bg-white/90 rounded-full font-black text-lg shadow-xl shadow-black/10 transition-all hover:scale-105">
+                    {cta.button_primary_text || "Mulai Gratis Sekarang"}
+                  </Button>
+                </Link>
+              )}
               <Link href="/docs">
                 <Button size="lg" variant="outline" className="w-full sm:w-auto h-14 px-10 rounded-full border-white/30 text-white bg-white/10 backdrop-blur-md hover:bg-white/20 hover:border-white/50 font-bold text-lg transition-all hover:scale-105">
                   {cta.button_secondary_text || "Baca Dokumentasi"}

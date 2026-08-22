@@ -234,7 +234,7 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 
     const documentId = baseEntry.documentId || baseEntry.id
 
-    let entry = null
+    let entry: typeof baseEntry | null = null
     let isNewTranslation = false
 
     if (baseEntry.locale === locale) {
@@ -590,7 +590,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
     if (!baseEntry) return { error: "Entry not found" }
 
     const documentId = baseEntry.documentId || baseEntry.id
-    let existingLocaleEntry = null
+    let existingLocaleEntry: typeof baseEntry | null = null
 
     if (baseEntry.locale === targetLocale) {
       existingLocaleEntry = baseEntry

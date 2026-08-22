@@ -61,6 +61,25 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
     }
   }
 
+  // Also fallback to ApiKey (plain key)
+  const apiKey = await db.apiKey.findUnique({
+    where: { key: clean },
+    include: { tenant: true },
+  })
+
+  if (apiKey?.tenant) {
+    db.apiKey.update({
+      where: { id: apiKey.id },
+      data: { lastUsed: new Date() },
+    }).catch(() => {})
+
+    return {
+      tenantId: apiKey.tenant.id,
+      tenantSlug: apiKey.tenant.slug,
+      tenantName: apiKey.tenant.name,
+    }
+  }
+
   return null
 }
 

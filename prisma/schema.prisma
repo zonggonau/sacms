@@ -933,3 +933,5 @@ model SiteMessage {
   @@map("site_messages")
 }
 
+
+

@@ -7,10 +7,6 @@ import { createV0Chat, getV0Preview } from "@/lib/v0-client"
 import { deployToVercel } from "@/lib/vercel-client"
 import { randomBytes, createHash } from "crypto"
 import { McpClientBridge } from "@/lib/mcp/mcp-client-bridge"
-import { computeSchemaDiff, applySchemaPlan } from "@/lib/ai/schema-engine"
-
-import { generateSystemSchema } from "@/lib/ai-schema-generator"
-import type { SchemaPlan } from "@/lib/ai/schema-engine"
 
 export async function POST(
   req: NextRequest,
@@ -50,49 +46,11 @@ export async function POST(
     const tenant = access.tenant
     const bridge = new McpClientBridge(tenant.id, tenant.slug, session.user.id)
 
-    // 1. Inspect existing schema via MCP
-    const currentSchema = await bridge.getFullSchema()
-
-    // 2. Synthesize complete, intelligent multi-collection schema using SaCMS AI
-    // generateSystemSchema has built-in 3-tier fallback: DeepSeek → OpenAI → Heuristic
-    const generated = await generateSystemSchema(prompt, tenant.id, session.user.id)
-    const schemaPlan: SchemaPlan = {
-      summary: `Arsitektur Website: ${prompt.slice(0, 80)}`,
-      contentTypes: (generated.contentTypes || []).map(ct => ({
-        name: ct.name,
-        slug: ct.slug,
-        description: ct.description,
-        fields: ct.fields,
-        mockEntries: ct.dummyData || []
-      })),
-      singleTypes: (generated.singleTypes || []).map(st => ({
-        name: st.name,
-        slug: st.slug,
-        description: st.description,
-        fields: st.fields,
-        initialData: st.dummyData?.[0] || {}
-      })),
-      components: (generated.components || []).map(c => ({
-        name: c.name,
-        slug: c.slug,
-        description: c.description,
-        category: "general",
-        fields: c.fields
-      }))
-    }
-
-    const schemaDiff = computeSchemaDiff(currentSchema, schemaPlan)
-
-    let createdTypesCount = 0
-    if (schemaDiff.creates.length > 0) {
-      const applyResult = await applySchemaPlan(bridge, schemaPlan)
-      createdTypesCount = applyResult.createdContentTypes.length + applyResult.createdSingleTypes.length
-    }
-
-    // 3. Fetch latest active schema and sample dataset from SaCMS
+    // 1. Inspect existing workspace schema via MCP
     const activeSchema = await bridge.getFullSchema()
     const tenantDb = await getTenantDb(tenant.id)
 
+    // 2. Fetch existing sample records from database (if available)
     const sampleCollections: Record<string, any[]> = {}
     for (const ct of activeSchema.contentTypes || []) {
       const entries = await tenantDb.contentEntry.findMany({
@@ -113,7 +71,7 @@ export async function POST(
       }
     }
 
-    // 4. Auto-generate API token
+    // 3. Auto-generate API token for v0.dev integration
     const plainToken = `cf_${randomBytes(32).toString("hex")}`
     const hashedToken = createHash("sha256").update(plainToken).digest("hex")
     
@@ -129,43 +87,38 @@ export async function POST(
       },
     })
 
-    // 5. Build super prompt with schema + initial data + API instructions
+    // 4. Build prompt directly for v0.dev with SaCMS MCP & API instructions
     const finalApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/public/${tenant.slug}`
+    const mcpServerUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/mcp`
     
     const superPrompt = `User Request: ${prompt}
 
-HEADLESS CMS COMPLETE SCHEMA & DATA (from SaCMS):
-Schema Definition (Collections, Single Types, and Components):
-${JSON.stringify(activeSchema, null, 2)}
-
-Active Dataset (Live Sample Records from Database):
-${JSON.stringify({ collections: sampleCollections, singleTypes: sampleSingleTypes }, null, 2)}
-
-API INTEGRATION:
-- Base URL: ${finalApiUrl}
-- Token: ${plainToken}
-- Header: Authorization: Bearer ${plainToken}
+SaCMS HEADLESS CMS & MCP SERVER INTEGRATION:
+- SaCMS Public REST API: ${finalApiUrl}
+- SaCMS MCP Server: ${mcpServerUrl}
+- Auth Header: Authorization: Bearer ${plainToken}
 - List Collection: GET ${finalApiUrl}/content/{collectionSlug}
 - Single Type: GET ${finalApiUrl}/single/{singleTypeSlug}
 - Filter: GET ${finalApiUrl}/content/{slug}?filters[fieldName][$eq]=value
 - Populate: GET ${finalApiUrl}/content/{slug}?populate=relationField
 
+EXISTING WORKSPACE SCHEMA (from SaCMS MCP):
+${JSON.stringify(activeSchema, null, 2)}
+
+EXISTING DATASET (Live Records from Database):
+${JSON.stringify({ collections: sampleCollections, singleTypes: sampleSingleTypes }, null, 2)}
+
 CRITICAL ARCHITECTURE & UI REQUIREMENTS:
-1. Multi-Collection UI: Carefully analyze ALL collections in the schema above (e.g., Rooms, Products, Facilities, Doctors, Services, Reviews, Categories, Bookings, etc.). Build responsive UI sections, cards, carousels, tables, and detail modals for EACH collection—do not just build a single generic article list!
-2. Rich Field Type Rendering:
-   - 'currency': Format prices properly (e.g., "Rp 1.250.000 / malam" or "Rp 350.000").
-   - 'rating': Render visual star ratings (e.g., ⭐️⭐️⭐️⭐️⭐️ 4.9/5).
-   - 'tags' / 'multiselect': Render as modern rounded badges/pills.
-   - 'media' / 'mediaMultiple': Render responsive images with fallback Unsplash/Pexels imagery if empty.
-   - 'boolean': Render clear status badges (e.g., "Tersedia / Booking", "Aktif", "Populer").
-   - 'richText' / 'markdown': Render clean typography with headers, lists, and paragraphs.
-   - 'date' / 'datetime' / 'dateRange': Render formatted localized dates (e.g., "17 Agustus 2026").
-   - 'button': Render distinct Call-To-Action buttons with active onClick/href handlers.
-3. Single Type Configuration: Use data from Single Types (e.g., store-info, hotel-settings, site-config) for Navbar branding, Hero title/subtitle, and Footer contact/social info.
-4. Seamless Fallback & Live Connectivity:
-   - Initialize all components with the provided 'Active Dataset' so the live sandbox preview renders rich data immediately with zero blank states.
-   - Perform client-side/server-side fetch with Bearer token to keep data live-synced.
-5. Tech Stack: Next.js 16 App Router, TypeScript, Tailwind CSS, Lucide-React icons, responsive mobile-friendly layouts.`
+1. Requirements Analysis: Analyze the user request thoroughly and design a comprehensive Next.js 16 App Router website with modern UI components, interactive states, and responsive layouts.
+2. Dynamic Data & CMS Connectivity:
+   - Connect components to the SaCMS Public Content API and MCP Server.
+   - If collections exist in the schema, query and display them dynamically.
+   - If new collections/fields are needed for the user's request, define typed TypeScript interfaces and sample datasets so the website renders complete, pixel-perfect UI.
+3. Multi-Section Layouts: Include Navbar branding, Hero section, Feature/Catalog cards, detail modals/views, reviews/testimonials, and Footer with contact information.
+4. Rich Field Rendering: Format currency (e.g. "Rp 1.500.000"), ratings (stars), badges, dates, and action buttons cleanly.
+5. Tech Stack: Next.js 16 App Router, TypeScript, Tailwind CSS, Lucide-React icons.
+
+Initialize all components with rich fallback sample data so the live sandbox preview renders instantly with zero blank states.`
 
     // 6. Generate frontend with AI Engine
     const v0Result = await createV0Chat(superPrompt, model)

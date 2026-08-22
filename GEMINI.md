@@ -253,3 +253,15 @@ SaCMS secara ekstensif memanfaatkan fitur-fitur mutakhir dari Next.js 16 (App Ro
 - **Phase 1 (selesai):** Content workflow, R2 media, filtering, security
 - **Phase 2 (selesai):** i18n, GraphQL mutations, FTS, SDK (WIP), scheduled publish, sync hooks
 - **Phase 3 (selesai):** Tests ≥50%, CI/CD, API docs, Docker, performance
+
+## gstack
+- Use the `/browse` skill from gstack for all web browsing tasks and actions. Never use default browser tools.
+- Available skills:
+  - `/office-hours`: Brainstorming, scoping, and shaping new features or ideas.
+  - `/plan-ceo-review`: Strategic and executive review of product plans.
+  - `/plan-eng-review`: Engineering architecture and technical design review.
+  - `/review`: In-depth code review against standards and checklists.
+  - `/ship`: Release branch, deployment, and pull request workflow.
+  - `/qa`: Automated browser QA testing.
+  - `/retro`: Retrospective and post-mortem review.
+

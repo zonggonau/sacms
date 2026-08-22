@@ -3,6 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 
+import { getGlobalWorkspaceId } from "@/lib/settings"
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
@@ -10,7 +12,8 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
-    const roles = await db.systemRole.findMany({
+    const roles = await db.tenantRole.findMany({
+      where: { isSystem: true },
       orderBy: { createdAt: 'desc' }
     })
 
@@ -38,16 +41,20 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Name and slug are required" }, { status: 400 })
     }
 
-    const existing = await db.systemRole.findUnique({ where: { slug } })
+    const globalTenantId = await getGlobalWorkspaceId()
+
+    const existing = await db.tenantRole.findFirst({ where: { tenantId: globalTenantId, slug } })
     if (existing) {
       return NextResponse.json({ error: "Role with this slug already exists" }, { status: 400 })
     }
 
-    const role = await db.systemRole.create({
+    const role = await db.tenantRole.create({
       data: {
+        tenantId: globalTenantId,
         name,
         slug,
-        description
+        description,
+        isSystem: true
       }
     })
 

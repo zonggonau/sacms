@@ -11,10 +11,12 @@ import {
 import { 
   Sparkles, Rocket, Loader2, Globe,
   Monitor, ExternalLink, RefreshCw, Send, Bot, Database, AlertCircle, Zap,
-  Tablet, Smartphone, ArrowRight, CheckCircle2, Cpu, Trash2
+  Tablet, Smartphone, ArrowRight, CheckCircle2, Cpu, Trash2, Download,
+  ShieldCheck, Layers, FileText, Check, LayoutGrid, Key, Shield, Terminal
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
+import type { DomainBlueprint } from "@/lib/ai/domain-knowledge-types"
 
 interface WebsiteBuilderClientProps {
   tenantId: string
@@ -76,22 +78,37 @@ export const AI_MODELS: AiModelOption[] = [
   },
 ]
 
-const QUICK_PROMPT_SUGGESTIONS = [
+export const QUICK_PROMPT_INSPIRATIONS = [
   {
-    title: "Website Hotel & Resor Nabire",
-    desc: "Katalog tipe kamar, harga per malam, fasilitas resor, galeri, dan formulir booking.",
-    prompt: "Buat website modern untuk Grand Resort Nabire dengan halaman Beranda, Pilihan Kamar (Deluxe, Suite, Villa), Fasilitas Kolam Renang & Resto Seafood, Galeri, dan Form Reservasi Booking."
+    icon: "🏖️",
+    label: "Resor & Pariwisata",
+    prompt: "Buat website modern untuk Grand Resort & Pariwisata dengan katalog tipe kamar (Deluxe, Ocean Villa), paket wisata bahari/diving, fasilitas resto seafood, galeri foto, dan formulir booking reservasi online.",
   },
   {
-    title: "Toko Online Kerajinan Papua",
-    desc: "Katalog produk Noken kulit kayu, kopi Moanemani, kerajinan ukir, dan keranjang belanja.",
-    prompt: "Buat website e-commerce modern untuk Papua Craft Store menjual Noken asli kulit kayu Nabire, Kopi Arabika Moanemani, dan Batik Cenderawasih lengkap dengan keranjang belanja dan checkout."
+    icon: "☕",
+    label: "Toko Online UMKM",
+    prompt: "Buat website toko online e-commerce untuk UMKM produk kopi dan kerajinan tangan, dengan katalog produk filterable, varian berat/ukuran, harga diskon, ulasan bintang, dan checkout WhatsApp instan.",
   },
   {
-    title: "Portal Berita & Media Digital",
-    desc: "Artikel berita terkini, kategori berita, profil jurnalis, ulasan, dan langganan newsletter.",
-    prompt: "Buat portal berita digital modern Nabire News Network dengan kategori Otomotif, Politik, Budaya, showcase artikel unggulan, dan form newsletter."
-  }
+    icon: "📰",
+    label: "Portal Berita & Media",
+    prompt: "Rancang portal media berita digital modern dengan kategori topik (Politik, Ekonomi, Budaya, Daerah), artikel kaya teks, headline breaking news, profil jurnalis, dan feed pengumuman publik.",
+  },
+  {
+    icon: "🏥",
+    label: "Klinik & Jadwal Dokter",
+    prompt: "Buat website profil klinik kesehatan modern dengan jadwal praktik dokter spesialis, direktori layanan medis & poliklinik, artikel kesehatan, dan formulir pendaftaran janji temu pasien.",
+  },
+  {
+    icon: "🎓",
+    label: "Sekolah & PPDB Online",
+    prompt: "Rancang website institusi sekolah / kejuruan modern dengan profil sekolah, direktori jurusan/program keahlian, pengumuman akademik, galeri prestasi siswa, dan formulir pendaftaran PPDB online.",
+  },
+  {
+    icon: "💼",
+    label: "Agensi & Portofolio",
+    prompt: "Buat website portofolio agensi digital kreatif ultra-modern sleek dark mode dengan showcase studi kasus proyek (Web, App, Branding), testimoni klien, paket pricing harga, dan formulir konsultasi proyek.",
+  },
 ]
 
 export function WebsiteBuilderClient({
@@ -107,12 +124,19 @@ export function WebsiteBuilderClient({
   const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "v0-pro")
   const currentModelConfig = AI_MODELS.find(m => m.id === selectedModel) || AI_MODELS[1]
 
+  // Generation Mode: 'instant' | 'safe' (Two-Stage Recommendation 1)
+  const [generationMode, setGenerationMode] = useState<"instant" | "safe">("safe")
+  const [schemaPlan, setSchemaPlan] = useState<any | null>(null)
+  const [isPlanModalOpen, setIsPlanModalOpen] = useState(false)
+  const [isPlanning, setIsPlanning] = useState(false)
+
   // Loading state & step
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState<string>("")
   
   // Prompt Input state
   const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   
   // Project & Draft State
   const [v0ChatId, setV0ChatId] = useState(initialProject?.v0ChatId || null)
@@ -147,6 +171,39 @@ export function WebsiteBuilderClient({
   }, [creditsRemaining, isUnlimited, toast])
 
   // ────────────────────────────────────────────────────────────────────────────
+  // Plan Schema (Two-Stage Safe Mode Handler)
+  // ────────────────────────────────────────────────────────────────────────────
+  const handlePlanSchema = async (customPrompt?: string, templateId?: string) => {
+    const prompt = (customPrompt || mainPrompt).trim()
+    if (!prompt && !templateId) return
+
+    setIsPlanning(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/plan-schema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt, templateId })
+      })
+
+      const data = await res.json()
+      if (res.ok && data.plan) {
+        setSchemaPlan(data.plan)
+        setIsPlanModalOpen(true)
+      } else {
+        throw new Error(data?.error || "Gagal merencanakan skema.")
+      }
+    } catch (err: any) {
+      toast({
+        title: "Gagal Merencanakan Skema",
+        description: err.message,
+        variant: "destructive"
+      })
+    } finally {
+      setIsPlanning(false)
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
   // Unified Generate Website Handler
   // ────────────────────────────────────────────────────────────────────────────
   const handleGenerateWebsite = async (promptToUse?: string) => {
@@ -164,6 +221,8 @@ export function WebsiteBuilderClient({
       return
     }
 
+    // Close plan modal if open
+    setIsPlanModalOpen(false)
     setLoading(true)
     setLoadingStep("Menginspeksi SaCMS MCP & membuat skema database...")
 
@@ -223,6 +282,22 @@ export function WebsiteBuilderClient({
     } finally {
       setLoading(false)
       setLoadingStep("")
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Select Pre-baked Template (Domain Knowledge Library)
+  // ────────────────────────────────────────────────────────────────────────────
+  const handleSelectTemplate = (template: DomainBlueprint) => {
+    setSelectedTemplateId(template.id)
+    setMainPrompt(template.prompt)
+    if (generationMode === "safe") {
+      handlePlanSchema(template.prompt, template.id)
+    } else {
+      toast({
+        title: `Template "${template.name}" Dipilih`,
+        description: "Tekan tombol 'Bangun Website' untuk mengeksekusi.",
+      })
     }
   }
 
@@ -363,7 +438,7 @@ export function WebsiteBuilderClient({
             </div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">AI Website Builder</h1>
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
-              SaCMS AI Engine
+              SaCMS AI Studio
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
@@ -484,6 +559,17 @@ export function WebsiteBuilderClient({
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" onClick={() => setPreviewUrl(p => p + "#r")} className="gap-1.5 h-8 text-xs rounded-xl border-border/80">
                 <RefreshCw className="h-3 w-3" /> Refresh
+              </Button>
+
+              {/* Download Starter ZIP Action (Recommendation 3) */}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => window.open(`/api/tenant/${tenantSlug}/ai-builder/export-starter`, '_blank')}
+                className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
+                title="Unduh Source Code Next.js 16 siap jalan"
+              >
+                <Download className="h-3.5 w-3.5 text-primary" /> Unduh ZIP
               </Button>
 
               {/* Hapus Draft / Project Action */}
@@ -609,33 +695,126 @@ export function WebsiteBuilderClient({
           </div>
         </div>
       ) : (
-        /* ── UNIFIED AI STUDIO PROMPT INTERFACE ── */
+        /* ── UNIFIED PROMPT-DRIVEN AI ARCHITECTURE STUDIO ── */
         <div className="flex flex-col gap-6">
+
+          {/* ── MAIN PROMPT & ARCHITECTURE STUDIO CARD ── */}
           <div className="rounded-3xl bg-card border border-border/80 shadow-xs p-6 md:p-8 space-y-6">
-            <div className="space-y-2">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary">
-                <Database className="h-3.5 w-3.5" />
-                SaCMS MCP Server + Autonomous AI Architecture Engine
+            
+            {/* Header Title & Safe Mode Toggle */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="space-y-1.5">
+                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary">
+                  <Database className="h-3.5 w-3.5" />
+                  SaCMS MCP Server + Autonomous AI Architecture Engine
+                </div>
+                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
+                  Jelaskan Ide Website Anda
+                </h2>
+                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
+                  Ketik ide atau kebutuhan sistem website Anda. SaCMS MCP Server akan secara otomatis merancang skema database (koleksi Content Types & Single Types), mengisi dummy data, dan mengompilasi kode frontend Next.js App Router.
+                </p>
               </div>
-              <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-                Apa website yang ingin Anda bangun hari ini?
-              </h2>
-              <p className="text-xs md:text-sm text-muted-foreground max-w-3xl leading-relaxed">
-                Jelaskan konsep website Anda. AI akan otomatis memeriksa skema database SaCMS melalui MCP Tools, membuat tabel yang belum ada, dan langsung meng-generate aplikasi Next.js interaktif.
-              </p>
+
+              {/* Safe Mode Toggle */}
+              <div className="flex items-center gap-1.5 bg-muted/60 p-1.5 rounded-xl border border-border/80 self-start md:self-auto shrink-0">
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("safe")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    generationMode === "safe" 
+                      ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                  Mode Aman (Tinjau Skema)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setGenerationMode("instant")}
+                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                    generationMode === "instant" 
+                      ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <Zap className="h-3.5 w-3.5 text-primary" />
+                  Mode Instan
+                </button>
+              </div>
+            </div>
+
+            {/* ── API TOKEN PERMISSION SCOPE INFO BANNER ── */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 p-4 rounded-2xl bg-muted/30 border border-border text-xs">
+              <div className="flex items-start gap-2.5">
+                <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 border border-primary/20">
+                  <Globe className="h-3.5 w-3.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-foreground font-bold text-[11px]">API Token: Read-Only</strong>
+                    <Badge variant="orange" className="text-[9px] px-1.5 py-0 h-4">Frontend Publik</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    AI mengompilasi website frontend publik berkecepatan tinggi dengan data fetching dinamis dari Public Content API.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-start gap-2.5 border-t md:border-t-0 md:border-l border-border pt-2.5 md:pt-0 md:pl-3">
+                <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center shrink-0 mt-0.5 border border-primary/20">
+                  <Key className="h-3.5 w-3.5" />
+                </div>
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5">
+                    <strong className="text-foreground font-bold text-[11px]">API Token: Read & Write</strong>
+                    <Badge variant="orange" className="text-[9px] px-1.5 py-0 h-4">Frontend + CMS CRUD</Badge>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-relaxed">
+                    AI mengompilasi website publik sekaligus antarmuka CMS / form CRUD terpisah untuk pengelolaan konten langsung.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Prompt Textarea */}
-            <div className="space-y-4">
-              <Textarea 
-                placeholder="Contoh: Buat website modern untuk Grand Resort Nabire dengan katalog kamar (Deluxe, Suite), fasilitas resor, galeri foto, dan formulir reservasi booking kamar..."
-                className="resize-none min-h-[160px] text-xs md:text-sm rounded-2xl border-border/80 bg-background p-4 focus-visible:ring-primary leading-relaxed shadow-xs"
-                value={mainPrompt}
-                onChange={e => setMainPrompt(e.target.value)}
-              />
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-foreground">Instruksi / Prompt Kebutuhan Website:</span>
+                  <span className="text-[11px] text-muted-foreground">Ketik ide kustom bebas atau pilih contoh kilat di bawah</span>
+                </div>
+                <Textarea 
+                  placeholder="Contoh: Buat website resort pariwisata modern dengan katalog tipe kamar (Deluxe, Ocean Villa), paket diving wisata bahari, fasilitas restoran seafood, galeri foto, dan formulir reservasi online..."
+                  className="resize-none min-h-[140px] text-xs md:text-sm rounded-2xl border-border/80 bg-background p-4 focus-visible:ring-primary leading-relaxed shadow-xs"
+                  value={mainPrompt}
+                  onChange={e => setMainPrompt(e.target.value)}
+                />
+              </div>
+
+              {/* Quick Inspiration Chips */}
+              <div className="space-y-1.5 pt-0.5">
+                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-primary" /> Ide Cepat (Klik untuk menyalin):
+                </span>
+                <div className="flex flex-wrap items-center gap-1.5">
+                  {QUICK_PROMPT_INSPIRATIONS.map((item, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setMainPrompt(item.prompt)}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium bg-muted/40 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-border/60 transition-all text-muted-foreground cursor-pointer"
+                    >
+                      <span>{item.icon}</span>
+                      <span>{item.label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {/* ── MODEL SELECTION SELECTOR ── */}
-              <div className="space-y-2 pt-1">
+              <div className="space-y-2 pt-2">
                 <div className="flex items-center gap-2 text-xs font-bold text-foreground">
                   <Cpu className="h-3.5 w-3.5 text-primary" />
                   <span>Pilih Model AI Engine:</span>
@@ -680,53 +859,196 @@ export function WebsiteBuilderClient({
               </div>
 
               {/* Bottom Action Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/60">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>MCP Server Aktif: Otomatis membuat Content Types & Mock Data</span>
+                  <span>
+                    {generationMode === "safe" 
+                      ? "Mode Aman: Verifikasi skema database sebelum generasi kode frontend"
+                      : "Mode Instan: Otomatis eksekusi skema & bangun frontend langsung"}
+                  </span>
                 </div>
 
                 <Button 
                   size="lg"
                   className="gap-2 font-bold text-xs md:text-sm rounded-xl bg-primary text-primary-foreground shadow-xs h-11 px-6"
-                  onClick={() => handleGenerateWebsite()} 
-                  disabled={loading || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
+                  onClick={() => {
+                    if (generationMode === "safe") {
+                      handlePlanSchema(mainPrompt)
+                    } else {
+                      handleGenerateWebsite()
+                    }
+                  }} 
+                  disabled={loading || isPlanning || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
                 >
-                  <Rocket className="h-4 w-4" /> Bangun Website dengan {currentModelConfig.name} (-{currentModelConfig.credits} Credits)
+                  {isPlanning ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" /> Merancang Skema Database...
+                    </>
+                  ) : generationMode === "safe" ? (
+                    <>
+                      <ShieldCheck className="h-4 w-4" /> Tinjau Skema & Bangun (-{currentModelConfig.credits} Credits)
+                    </>
+                  ) : (
+                    <>
+                      <Rocket className="h-4 w-4" /> Bangun Instan (-{currentModelConfig.credits} Credits)
+                    </>
+                  )}
                 </Button>
               </div>
             </div>
           </div>
-
-          {/* Quick Prompt Ideas */}
-          <div className="space-y-3">
-            <h3 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
-              Ide Cepat / Template Prompt
-            </h3>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {QUICK_PROMPT_SUGGESTIONS.map((item, idx) => (
-                <div 
-                  key={idx}
-                  onClick={() => {
-                    setMainPrompt(item.prompt)
-                  }}
-                  className="p-5 rounded-2xl border border-border/80 bg-card hover:border-primary/50 hover:shadow-xs transition-all cursor-pointer space-y-2.5 group flex flex-col justify-between"
-                >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <h4 className="text-xs font-bold text-foreground group-hover:text-primary transition-colors">{item.title}</h4>
-                      <ArrowRight className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                    <p className="text-[11px] text-muted-foreground leading-relaxed">{item.desc}</p>
-                  </div>
-                  <span className="text-[10px] font-mono text-primary font-semibold">Klik untuk gunakan &rarr;</span>
-                </div>
-              ))}
-            </div>
-          </div>
         </div>
       )}
+
+      {/* ── TWO-STAGE SCHEMA PLAN REVIEW MODAL ── */}
+      <Dialog open={isPlanModalOpen} onOpenChange={setIsPlanModalOpen}>
+        <DialogContent className="sm:max-w-[720px] w-[95vw] max-h-[88vh] flex flex-col rounded-2xl border border-border bg-card p-0 gap-0 overflow-hidden shadow-2xl">
+          
+          {/* Fixed Header */}
+          <DialogHeader className="p-6 pb-4 border-b border-border/80 shrink-0 text-left">
+            <div className="flex items-center gap-2 text-primary font-bold text-xs">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+              <span>Verifikasi Rencana Skema Database (Safe Mode)</span>
+            </div>
+            <DialogTitle className="text-xl font-black text-foreground pt-1">
+              {schemaPlan?.title || "Perencanaan Skema AI"}
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              {schemaPlan?.summary || "Periksa struktur koleksi, relasi, dan field sebelum AI mengompilasi kode frontend ke database."}
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Smooth Scrollable Body */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 max-h-[calc(88vh-160px)]">
+            
+            {/* Content Types List */}
+            {schemaPlan?.contentTypes?.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                    <Layers className="h-4 w-4 text-primary" />
+                    <span>Koleksi Data (Content Types)</span>
+                  </div>
+                  <Badge variant="orange" className="text-[10px]">
+                    {schemaPlan.contentTypes.length} Koleksi
+                  </Badge>
+                </div>
+
+                <div className="space-y-3">
+                  {schemaPlan.contentTypes.map((ct: any, idx: number) => (
+                    <div key={idx} className="p-4 rounded-xl bg-muted/30 border border-border space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-foreground">{ct.name}</span>
+                          <code className="text-[11px] font-mono bg-muted px-2 py-0.5 rounded-md text-muted-foreground border border-border/40">
+                            {ct.slug}
+                          </code>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-semibold">
+                          {ct.fields?.length || 0} Fields
+                        </Badge>
+                      </div>
+
+                      {ct.description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">{ct.description}</p>
+                      )}
+
+                      {/* Fields Tags */}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Daftar Fields:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {ct.fields?.map((f: any, fIdx: number) => (
+                            <span key={fIdx} className="text-xs font-mono bg-background border border-border/80 px-2.5 py-1 rounded-lg text-foreground inline-flex items-center gap-1.5 shadow-2xs">
+                              <span className="font-semibold">{f.name}</span>
+                              <span className="text-[10px] text-primary font-bold">({f.type})</span>
+                              {f.required && <span className="text-[9px] text-destructive font-black" title="Wajib">*</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Single Types List */}
+            {schemaPlan?.singleTypes?.length > 0 && (
+              <div className="space-y-3 pt-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-foreground">
+                    <FileText className="h-4 w-4 text-primary" />
+                    <span>Single Types (Halaman Tunggal)</span>
+                  </div>
+                  <Badge variant="orange" className="text-[10px]">
+                    {schemaPlan.singleTypes.length} Single
+                  </Badge>
+                </div>
+
+                <div className="space-y-3">
+                  {schemaPlan.singleTypes.map((st: any, idx: number) => (
+                    <div key={idx} className="p-4 rounded-xl bg-muted/30 border border-border space-y-3 shadow-xs">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="flex items-center gap-2">
+                          <span className="font-bold text-sm text-foreground">{st.name}</span>
+                          <code className="text-[11px] font-mono bg-muted px-2 py-0.5 rounded-md text-muted-foreground border border-border/40">
+                            {st.slug}
+                          </code>
+                        </div>
+                        <Badge variant="outline" className="text-[10px] font-semibold">
+                          {st.fields?.length || 0} Fields
+                        </Badge>
+                      </div>
+
+                      {st.description && (
+                        <p className="text-xs text-muted-foreground leading-relaxed">{st.description}</p>
+                      )}
+
+                      {/* Fields Tags */}
+                      <div className="space-y-1.5 pt-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Daftar Fields:</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {st.fields?.map((f: any, fIdx: number) => (
+                            <span key={fIdx} className="text-xs font-mono bg-background border border-border/80 px-2.5 py-1 rounded-lg text-foreground inline-flex items-center gap-1.5 shadow-2xs">
+                              <span className="font-semibold">{f.name}</span>
+                              <span className="text-[10px] text-primary font-bold">({f.type})</span>
+                              {f.required && <span className="text-[9px] text-destructive font-black" title="Wajib">*</span>}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+          </div>
+
+          {/* Fixed Footer */}
+          <DialogFooter className="p-4 px-6 border-t border-border/80 bg-muted/20 shrink-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPlanModalOpen(false)}
+              className="h-10 text-xs rounded-xl cursor-pointer"
+            >
+              Ubah / Koreksi Prompt
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => handleGenerateWebsite(schemaPlan?.frontendPrompt || mainPrompt)}
+              disabled={loading}
+              className="h-10 text-xs font-bold rounded-xl gap-2 bg-primary text-primary-foreground shadow-xs cursor-pointer"
+            >
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+              Setujui & Bangun Website (-{currentModelConfig.credits} Credits)
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── DELETE DRAFT / PROJECT CONFIRMATION DIALOG ── */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>

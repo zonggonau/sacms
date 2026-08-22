@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
         name: true,
         _count: {
           select: {
-            contentEntries: {
+            entries: {
               where: { status: "PUBLISHED" }
             }
           }
@@ -35,7 +35,7 @@ export async function GET(request: NextRequest) {
       contentTypes: contentTypes.map(ct => ({
         slug: ct.slug,
         name: ct.name,
-        publishedEntries: ct._count.contentEntries
+        publishedEntries: ct._count.entries
       }))
     })
   } catch (err: any) {

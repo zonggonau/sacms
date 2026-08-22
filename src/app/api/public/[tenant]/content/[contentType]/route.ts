@@ -90,10 +90,15 @@ export async function GET(
       apiTokenId = apiKey.id
       isApiKey = true
     } else {
-      // Fallback to ApiToken (hashed)
+      // Fallback to ApiToken (hashed or direct token value)
       const hashedToken = createHash("sha256").update(token).digest("hex")
-      const apiToken = await db.apiToken.findUnique({
-        where: { token: hashedToken },
+      const apiToken = await db.apiToken.findFirst({
+        where: {
+          OR: [
+            { token: hashedToken },
+            { token: token },
+          ],
+        },
         include: { tenant: true },
       })
 

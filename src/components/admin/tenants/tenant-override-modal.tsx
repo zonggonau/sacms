@@ -15,7 +15,8 @@ import { Tenant } from "@/hooks/admin/use-admin-tenants"
 
 interface TenantOverrideModalProps {
   isOpen: boolean
-  onOpenChange: (open: boolean) => void
+  onOpenChange?: (open: boolean) => void
+  onClose?: () => void
   tenant: Tenant | null
   formData: {
     maxContentTypes: string
@@ -28,24 +29,38 @@ interface TenantOverrideModalProps {
   }
   setFormData: (data: any) => void
   onSubmit: (e: React.FormEvent) => void
-  isSubmitting: boolean
-  onReset: () => void
+  isSubmitting?: boolean
+  loading?: boolean
+  onReset?: () => void
 }
 
 export function TenantOverrideModal({
   isOpen,
   onOpenChange,
+  onClose,
   tenant,
   formData,
   setFormData,
   onSubmit,
   isSubmitting,
+  loading,
   onReset
 }: TenantOverrideModalProps) {
   if (!tenant) return null
 
+  const isBusy = isSubmitting || loading || false
+
+  const handleClose = (open: boolean) => {
+    if (!open) {
+      if (onClose) onClose()
+      if (onOpenChange) onOpenChange(false)
+    } else {
+      if (onOpenChange) onOpenChange(true)
+    }
+  }
+
   return (
-    <Dialog open={isOpen} onOpenChange={onOpenChange}>
+    <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Override Tenant Limits</DialogTitle>
@@ -121,15 +136,17 @@ export function TenantOverrideModal({
           </div>
 
           <DialogFooter className="pt-4 flex flex-col sm:flex-row gap-2 sm:justify-between items-center w-full">
-            <Button type="button" variant="ghost" onClick={onReset} className="text-destructive w-full sm:w-auto">
-              Clear Overrides
-            </Button>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Button type="button" variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
+            {onReset && (
+              <Button type="button" variant="ghost" onClick={onReset} className="text-destructive w-full sm:w-auto">
+                Clear Overrides
+              </Button>
+            )}
+            <div className="flex items-center gap-2 w-full sm:w-auto ml-auto">
+              <Button type="button" variant="outline" onClick={() => handleClose(false)} className="w-full sm:w-auto">
                 Cancel
               </Button>
-              <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              <Button type="submit" disabled={isBusy} className="w-full sm:w-auto">
+                {isBusy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Save Overrides
               </Button>
             </div>

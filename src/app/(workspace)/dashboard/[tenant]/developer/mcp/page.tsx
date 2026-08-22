@@ -15,13 +15,19 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   const tenant = access.tenant
 
-  // Fetch existing API tokens for this tenant (both read-only and full-access for CRUD)
-  const tokens = await db.apiToken.findMany({
-    where: { tenantId: tenant.id },
-    select: { id: true, name: true, description: true, type: true, createdAt: true },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  })
+  // Fetch existing tokens and keys for this tenant
+  const [tokens, apiKeys] = await Promise.all([
+    db.apiToken.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true, name: true, description: true, type: true, token: true, createdAt: true, lastUsedAt: true },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.apiKey.findMany({
+      where: { tenantId: tenant.id },
+      select: { id: true, name: true, key: true, createdAt: true, lastUsed: true },
+      orderBy: { createdAt: "desc" },
+    })
+  ])
 
   return (
     <MCPDashboardClient
@@ -31,8 +37,17 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
         id: t.id, 
         name: t.name, 
         type: t.type,
+        token: t.token,
         description: t.description, 
-        createdAt: t.createdAt.toISOString() 
+        createdAt: t.createdAt.toISOString(),
+        lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
+      }))}
+      existingApiKeys={apiKeys.map(k => ({
+        id: k.id,
+        name: k.name || "API Key",
+        key: k.key,
+        createdAt: k.createdAt.toISOString(),
+        lastUsed: k.lastUsed ? k.lastUsed.toISOString() : null,
       }))}
     />
   )
