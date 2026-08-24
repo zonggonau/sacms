@@ -916,6 +916,39 @@ export function DocsClient() {
                     Single Types API
                   </a>
                 </li>
+                <li>
+                  <a
+                    href="#graphql"
+                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                  >
+                    GraphQL API Reference
+                  </a>
+                </li>
+              </ul>
+            </div>
+
+            {/* Enterprise & Infrastructure Nav */}
+            <div>
+              <h4 className="font-bold text-xs tracking-wider text-zinc-500 uppercase mb-2.5 px-2">
+                Infrastructure & DB
+              </h4>
+              <ul className="space-y-1 text-sm">
+                <li>
+                  <a
+                    href="#byodb"
+                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                  >
+                    Bring Your Own DB (BYODB)
+                  </a>
+                </li>
+                <li>
+                  <a
+                    href="#domains"
+                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                  >
+                    Custom Domains & DNS
+                  </a>
+                </li>
               </ul>
             </div>
           </div>
@@ -1417,31 +1450,69 @@ export function DocsClient() {
               <div className="bg-emerald-100 dark:bg-emerald-500/20 p-2 rounded-lg text-emerald-600 dark:text-emerald-400">
                 <Terminal className="w-5 h-5" />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">TypeScript SDK</h2>
+              <h2 className="text-2xl font-bold tracking-tight">TypeScript SDK (@sacms/sdk)</h2>
             </div>
             <p className="text-sm text-zinc-600 dark:text-zinc-400">
-              The official SaCMS TypeScript SDK provides a fluent query builder and built-in rate-limit handling. It's the recommended way to fetch data in Next.js, React, or Node.js.
+              The official SaCMS TypeScript SDK provides a fluent query builder, built-in rate-limit retries, and strongly-typed content models for Next.js 16 (App Router), React, and Node.js.
             </p>
-            <CodeBlock
-              code={`import { SaCMS } from '@sacms/sdk'
 
-// Initialize client
-const sacms = new SaCMS({
-  baseUrl: '${origin}',
-  tenant: 'your-tenant-slug',
-  token: 'your-api-key'
+            <div className="space-y-3">
+              <h3 className="text-sm font-bold text-foreground">1. Install Package</h3>
+              <CodeBlock
+                code="npm install @sacms/sdk\n# or with Bun:\nbun add @sacms/sdk"
+                language="bash"
+                filename="Terminal"
+              />
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-bold text-foreground">2. Generate TypeScript Definitions CLI</h3>
+              <p className="text-xs text-muted-foreground">Download your workspace schema and generate strongly-typed interfaces automatically:</p>
+              <CodeBlock
+                code={`npx @sacms/sdk generate --url ${origin} --tenant my-workspace --token YOUR_API_KEY --out src/types/sacms.d.ts`}
+                language="bash"
+                filename="Terminal CLI"
+              />
+            </div>
+
+            <div className="space-y-3 pt-2">
+              <h3 className="text-sm font-bold text-foreground">3. Next.js 16 App Router Server Component Example</h3>
+              <CodeBlock
+                code={`import { SaCMS } from '@sacms/sdk'
+
+// Initialize client (lib/cms.ts)
+export const sacms = new SaCMS({
+  baseUrl: process.env.NEXT_PUBLIC_CMS_URL || '${origin}',
+  tenant: process.env.CMS_TENANT || 'my-workspace',
+  token: process.env.CMS_API_KEY || 'YOUR_API_KEY'
 })
 
-// Fluent Query Builder
-const response = await sacms.collection('articles')
-  .query()
-  .where('status', 'eq', 'PUBLISHED')
-  .populate(['author'])
-  .limit(10)
-  .fetch()`}
-              language="typescript"
-              filename="example.ts"
-            />
+// app/articles/page.tsx (Server Component)
+export default async function ArticlesPage() {
+  const { data: articles } = await sacms.collection('articles').findMany({
+    page: 1,
+    pageSize: 10,
+    sort: 'createdAt:desc',
+  })
+
+  return (
+    <main className="max-w-4xl mx-auto py-12">
+      <h1 className="text-3xl font-bold mb-6">Latest Articles</h1>
+      <div className="grid gap-4">
+        {articles.map((article: any) => (
+          <article key={article.id} className="p-4 border rounded-xl">
+            <h2 className="text-xl font-bold">{article.title}</h2>
+            <p className="text-sm text-gray-500 mt-1">{new Date(article.createdAt).toLocaleDateString()}</p>
+          </article>
+        ))}
+      </div>
+    </main>
+  )
+}`}
+                language="typescript"
+                filename="app/articles/page.tsx"
+              />
+            </div>
           </section>
 
           {/* CONTENT API */}
@@ -1535,6 +1606,114 @@ const response = await sacms.collection('articles')
                 language="typescript"
                 filename="Example Request"
               />
+            </div>
+          </section>
+
+          {/* GRAPHQL API */}
+          <section id="graphql" className="scroll-mt-24 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-pink-100 dark:bg-pink-500/20 p-2 rounded-lg text-pink-600 dark:text-pink-400">
+                <Code2 className="w-5 h-5" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">GraphQL API Reference</h2>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Execute dynamic GraphQL queries and mutations with full field selection, pagination, and relational populate.
+            </p>
+
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="px-2 py-0.5 text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-400 rounded">
+                  POST
+                </span>
+                <code className="text-sm font-semibold font-mono">
+                  /api/public/[tenant]/graphql
+                </code>
+              </div>
+
+              <CodeBlock
+                code={`query GetArticles {
+  articles(limit: 5, sort: "createdAt:desc") {
+    data {
+      id
+      title
+      slug
+      publishedAt
+    }
+    meta {
+      pagination {
+        total
+        page
+        pageSize
+      }
+    }
+  }
+}`}
+                language="graphql"
+                filename="Query Example"
+              />
+            </div>
+          </section>
+
+          {/* BRING YOUR OWN DATABASE (BYODB) */}
+          <section id="byodb" className="scroll-mt-24 space-y-6">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-amber-100 dark:bg-amber-500/20 p-2 rounded-lg text-amber-600 dark:text-amber-400">
+                <Database className="w-5 h-5" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Bring Your Own Database (BYODB)</h2>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Enterprise and Pro workspaces can connect dedicated external PostgreSQL databases and S3 object storage buckets for absolute data isolation and compliance.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 rounded-xl border bg-card space-y-2">
+                <div className="font-bold text-sm text-emerald-600">⚡ Supabase</div>
+                <p className="text-muted-foreground">Gunakan Connection Pooling URI pada port 6543 atau 5432 direct connection.</p>
+                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
+                  postgresql://postgres.xxx:[PASS]@aws-0-ap-southeast-1.pooler.supabase.com:6543/postgres
+                </code>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-card space-y-2">
+                <div className="font-bold text-sm text-blue-600">🌊 Neon DB</div>
+                <p className="text-muted-foreground">Serverless Postgres URL dengan SSL mode require.</p>
+                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
+                  postgresql://[USER]:[PASS]@ep-xxx.ap-southeast-1.aws.neon.tech/neondb?sslmode=require
+                </code>
+              </div>
+
+              <div className="p-4 rounded-xl border bg-card space-y-2">
+                <div className="font-bold text-sm text-amber-600">📦 AWS RDS / S3</div>
+                <p className="text-muted-foreground">PostgreSQL RDS instance dan S3 bucket dengan AWS Access Keys.</p>
+                <code className="block p-2 bg-muted rounded font-mono text-[11px] break-all">
+                  postgresql://root:[PASS]@mydb.c123.ap-southeast-1.rds.amazonaws.com:5432/sacms
+                </code>
+              </div>
+            </div>
+          </section>
+
+          {/* CUSTOM DOMAINS & DNS */}
+          <section id="domains" className="scroll-mt-24 space-y-4">
+            <div className="flex items-center gap-2.5">
+              <div className="bg-cyan-100 dark:bg-cyan-500/20 p-2 rounded-lg text-cyan-600 dark:text-cyan-400">
+                <Globe className="w-5 h-5" />
+              </div>
+              <h2 className="text-2xl font-bold tracking-tight">Custom Domains & Cloudflare DNS</h2>
+            </div>
+            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              Arahkan domain atau subdomain kustom Anda (misal: <code>cms.perusahaan.com</code>) ke SaCMS Cloud untuk white-labeling dashboard dan API endpoint.
+            </p>
+
+            <div className="p-4 rounded-xl border bg-muted/40 space-y-3 text-xs">
+              <div className="font-bold text-foreground">Langkah Konfigurasi DNS:</div>
+              <ol className="list-decimal pl-5 space-y-1.5 text-muted-foreground">
+                <li>Buka DNS Management di registrar atau Cloudflare Anda.</li>
+                <li>Tambahkan record <strong>CNAME</strong> dengan nama subdomain (misal: <code>cms</code>) dan arahkan target ke <code>sacms.cloud</code>.</li>
+                <li>Masuk ke <strong>Dashboard Workspace → Settings → Domains</strong> dan klik <strong>"Verify Domain"</strong>.</li>
+                <li>Sertifikat SSL Let's Encrypt / Cloudflare SSL akan otomatis aktif dalam 1-2 menit.</li>
+              </ol>
             </div>
           </section>
         </main>

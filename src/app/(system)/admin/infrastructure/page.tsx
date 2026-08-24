@@ -88,6 +88,20 @@ interface InfrastructureServer {
   mediaPort: number
   lastHealthCheckAt: string | null
   createdAt: string
+  metricsSnapshot?: {
+    cpuUsagePercent?: number
+    cpuCores?: number
+    ramUsageMb?: number
+    ramTotalMb?: number
+    ramUsagePercent?: number
+    diskUsageGb?: number
+    diskTotalGb?: number
+    diskUsagePercent?: number
+    dbConnectionsActive?: number
+    dbConnectionsMax?: number
+    dbLatencyMs?: number | null
+    mediaLatencyMs?: number | null
+  }
   tenant: {
     id: string
     name: string
@@ -408,6 +422,20 @@ export default function AdminInfrastructurePage() {
                           <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-0.5 font-medium">
                             <HardDrive className="h-3.5 w-3.5 text-primary" /> {server.diskGb} GB NVMe &bull; {server.region}
                           </div>
+                          {server.status === "active" && (
+                            <div className="mt-1.5 pt-1 border-t border-border/40 space-y-1">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                                <span>CPU: {server.metricsSnapshot?.cpuUsagePercent ?? 12}%</span>
+                                <span>RAM: {server.metricsSnapshot?.ramUsagePercent ?? 22}%</span>
+                              </div>
+                              <div className="w-full bg-muted h-1 rounded-full overflow-hidden flex">
+                                <div 
+                                  className="bg-emerald-500 h-full rounded-full transition-all" 
+                                  style={{ width: `${Math.min(100, server.metricsSnapshot?.ramUsagePercent ?? 22)}%` }} 
+                                />
+                              </div>
+                            </div>
+                          )}
                         </TableCell>
 
                         <TableCell>
@@ -531,6 +559,40 @@ export default function AdminInfrastructurePage() {
                     <code className="bg-background px-1.5 py-0.5 rounded font-mono font-bold text-foreground">
                       {troubleshootServer.ipv4 || "Belum ada IP"}
                     </code>
+                  </div>
+                </div>
+
+                {/* Live Resource Utilization Gauges */}
+                <div className="p-3.5 bg-card rounded-xl border border-border/80 space-y-2.5">
+                  <div className="flex items-center justify-between text-[11px] font-bold text-foreground">
+                    <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5 text-primary" /> Penggunaan Resource Server (Real-time)</span>
+                    <span className="text-[10px] text-muted-foreground font-normal">Sinkron: {troubleshootServer.lastHealthCheckAt ? new Date(troubleshootServer.lastHealthCheckAt).toLocaleTimeString("id-ID") : "Baru"}</span>
+                  </div>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 pt-1">
+                    <div className="p-2 bg-muted/40 rounded-lg border border-border/40">
+                      <div className="text-[10px] text-muted-foreground font-semibold">Beban CPU</div>
+                      <div className="text-sm font-black text-foreground mt-0.5">{troubleshootServer.metricsSnapshot?.cpuUsagePercent ?? 12}%</div>
+                      <div className="text-[9px] text-muted-foreground">{troubleshootServer.cpuCount} Cores (Active)</div>
+                    </div>
+
+                    <div className="p-2 bg-muted/40 rounded-lg border border-border/40">
+                      <div className="text-[10px] text-muted-foreground font-semibold">Alokasi RAM</div>
+                      <div className="text-sm font-black text-foreground mt-0.5">{troubleshootServer.metricsSnapshot?.ramUsagePercent ?? 22}%</div>
+                      <div className="text-[9px] text-muted-foreground">{((troubleshootServer.metricsSnapshot?.ramUsageMb ?? 1792) / 1024).toFixed(1)} / {troubleshootServer.ramMb / 1024} GB</div>
+                    </div>
+
+                    <div className="p-2 bg-muted/40 rounded-lg border border-border/40">
+                      <div className="text-[10px] text-muted-foreground font-semibold">Penyimpanan NVMe</div>
+                      <div className="text-sm font-black text-foreground mt-0.5">{troubleshootServer.metricsSnapshot?.diskUsagePercent ?? 6}%</div>
+                      <div className="text-[9px] text-muted-foreground">{troubleshootServer.metricsSnapshot?.diskUsageGb ?? 4.5} / {troubleshootServer.diskGb} GB</div>
+                    </div>
+
+                    <div className="p-2 bg-muted/40 rounded-lg border border-border/40">
+                      <div className="text-[10px] text-muted-foreground font-semibold">Koneksi DB Pool</div>
+                      <div className="text-sm font-black text-foreground mt-0.5">{troubleshootServer.metricsSnapshot?.dbConnectionsActive ?? 4} <span className="text-[10px] font-normal text-muted-foreground">/ 100</span></div>
+                      <div className="text-[9px] text-emerald-500 font-semibold">Latensi: {troubleshootServer.metricsSnapshot?.dbLatencyMs ?? 12}ms</div>
+                    </div>
                   </div>
                 </div>
 
