@@ -35,7 +35,7 @@ export function RichTextField({
           {required && <span className="text-destructive ml-1">*</span>}
         </Label>
       )}
-      <div className={`border rounded-none overflow-hidden ${error ? "border-destructive" : ""}`}>
+      <div className={`border border-border/80 rounded-2xl overflow-hidden shadow-xs ${error ? "border-destructive" : ""}`}>
         <RichTextEditor
           value={value || ""}
           onChange={onChange}

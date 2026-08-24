@@ -761,6 +761,50 @@ exports.Prisma.SiteMessageScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.InfrastructureServerScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  subscriptionId: 'subscriptionId',
+  provider: 'provider',
+  providerServerId: 'providerServerId',
+  name: 'name',
+  hostname: 'hostname',
+  ipv4: 'ipv4',
+  ipv6: 'ipv6',
+  region: 'region',
+  plan: 'plan',
+  diskGb: 'diskGb',
+  ramMb: 'ramMb',
+  cpuCount: 'cpuCount',
+  status: 'status',
+  errorMessage: 'errorMessage',
+  dbHost: 'dbHost',
+  dbPort: 'dbPort',
+  mediaHost: 'mediaHost',
+  mediaPort: 'mediaPort',
+  lastHealthCheckAt: 'lastHealthCheckAt',
+  healthStatus: 'healthStatus',
+  metricsSnapshot: 'metricsSnapshot',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.InfrastructureCredentialScalarFieldEnum = {
+  id: 'id',
+  serverId: 'serverId',
+  databaseName: 'databaseName',
+  dbUser: 'dbUser',
+  dbPasswordEncrypted: 'dbPasswordEncrypted',
+  minioUser: 'minioUser',
+  minioSecretEncrypted: 'minioSecretEncrypted',
+  connectionStringEncrypted: 'connectionStringEncrypted',
+  s3Endpoint: 's3Endpoint',
+  s3Bucket: 's3Bucket',
+  s3PublicUrl: 's3PublicUrl',
+  createdAt: 'createdAt',
+  rotatedAt: 'rotatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -850,7 +894,9 @@ exports.Prisma.ModelName = {
   SiteVersion: 'SiteVersion',
   SiteDeployment: 'SiteDeployment',
   SiteConversation: 'SiteConversation',
-  SiteMessage: 'SiteMessage'
+  SiteMessage: 'SiteMessage',
+  InfrastructureServer: 'InfrastructureServer',
+  InfrastructureCredential: 'InfrastructureCredential'
 };
 
 /**

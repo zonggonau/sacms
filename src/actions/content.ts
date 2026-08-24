@@ -13,6 +13,7 @@ import { logAudit, AuditAction } from "@/lib/audit-log"
 import { canUserTransition, assignReviewers, submitReview } from "@/lib/content-workflow"
 import { ContentStatus } from "@prisma/client"
 import { isWorkflowStatus, type WorkflowStatus } from "@/lib/content-workflow-rules"
+import { parseSchemaFieldOptions, validateScheduledPublicationDate } from "./content-pipeline"
 
 async function getWorkflowContext(
   tenantId: string,
@@ -30,16 +31,6 @@ async function getWorkflowContext(
   return { role: member.role, customPermissions: null }
 }
 
-function validateScheduledDate(status: WorkflowStatus, scheduledAt?: Date | null) {
-  if (status !== "SCHEDULED") return null
-  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
-    return "A valid scheduled publication date is required"
-  }
-  if (scheduledAt.getTime() <= Date.now()) {
-    return "Scheduled publication date must be in the future"
-  }
-  return null
-}
 
 /**
  * Get all entries for a content type with pagination and filtering
@@ -80,13 +71,7 @@ export async function getEntriesAction(
 
     const contentType = {
       ...contentTypeRecord,
-      fields: contentTypeRecord.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentTypeRecord.schemaFields),
     }
 
     const page = Math.max(1, params.page || 1)
@@ -194,13 +179,7 @@ export async function getEntryAction(tenantSlug: string, contentTypeSlug: string
 
     const contentType = {
       ...contentTypeRecord,
-      fields: contentTypeRecord.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentTypeRecord.schemaFields),
     }
 
     // If no entryId provided (like for single types where we might search by content type)
@@ -358,7 +337,7 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
       return { error: `You do not have permission to create content as ${status}` }
     }
 
-    const scheduleError = validateScheduledDate(status, normalizedScheduledAt)
+    const scheduleError = validateScheduledPublicationDate(status, normalizedScheduledAt)
     if (scheduleError) return { error: scheduleError }
 
     const contentType = await tenantDb.contentType.findFirst({
@@ -377,13 +356,7 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
 
     const mappedContentType = {
       ...contentType,
-      fields: contentType.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentType.schemaFields),
     }
 
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
@@ -568,13 +541,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
 
     const mappedContentType = {
       ...contentType,
-      fields: contentType.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentType.schemaFields),
     }
 
     const baseEntry = await tenantDb.contentEntry.findFirst({
@@ -635,7 +602,7 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         ? new Date(scheduledAt as unknown as string)
         : null
     const effectiveScheduledAt = normalizedScheduledAt || existingLocaleEntry?.scheduledAt || null
-    const scheduleError = validateScheduledDate(targetStatus, effectiveScheduledAt)
+    const scheduleError = validateScheduledPublicationDate(targetStatus, effectiveScheduledAt)
     if (scheduleError) return { error: scheduleError }
 
     if (data) {

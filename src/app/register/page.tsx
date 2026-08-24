@@ -11,7 +11,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Crown, Eye, EyeOff, CheckCircle2 } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
-import { registerUser } from "@/app/actions/auth"
+import { registerUser } from "@/actions/auth"
 
 export default function RegisterPage() {
   const router = useRouter()

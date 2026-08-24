@@ -24,7 +24,7 @@ export default function CheckoutPage() {
   
   const tenantSlug = params?.tenant as string
   const planId = searchParams.get("plan")
-  const interval = (searchParams.get("interval") as 'month' | 'year') || 'month'
+  const interval = (searchParams.get("interval") as 'month' | 'year') || 'year'
 
   const [plan, setPlan] = useState<any>(null)
   const [proration, setProration] = useState<any>(null)
@@ -34,6 +34,7 @@ export default function CheckoutPage() {
   const [snapToken, setSnapToken] = useState<string | null>(null)
   const [liveTenants, setLiveTenants] = useState<any[]>([])
   const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
+  const [usage, setUsage] = useState<any[]>([])
 
   useEffect(() => {
     async function fetchLiveTenants() {
@@ -82,23 +83,33 @@ export default function CheckoutPage() {
     async function fetchData() {
       if (!tenantSlug || !planId) return
       try {
-        const plansRes = await fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`)
-        const plansData = await plansRes.json()
-        
-        const selectedPlan = plansData.plans?.find((p: any) => p.id === planId || p.slug === planId)
-        setPlan(selectedPlan)
+        const [plansRes, prorateRes, usageRes, globalId] = await Promise.all([
+          fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`),
+          fetch(`/api/tenant/${tenantSlug}/subscription/prorate`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ newPlan: planId })
+          }),
+          fetch(`/api/tenant/${tenantSlug}/billing/usage`),
+          getGlobalWorkspaceIdAction(),
+        ])
 
-        const prorateRes = await fetch(`/api/tenant/${tenantSlug}/subscription/prorate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newPlan: planId })
-        })
+        if (plansRes.ok) {
+          const plansData = await plansRes.json()
+          const selectedPlan = plansData.plans?.find((p: any) => p.id === planId || p.slug === planId)
+          setPlan(selectedPlan)
+        }
+        
         if (prorateRes.ok) {
           const prorateData = await prorateRes.json()
           setProration(prorateData)
         }
 
-        const globalId = await getGlobalWorkspaceIdAction()
+        if (usageRes.ok) {
+          const usageData = await usageRes.json()
+          setUsage(usageData.usage || [])
+        }
+
         setGlobalTenantId(globalId)
       } catch (error) {
         console.error("Failed to fetch checkout data", error)
@@ -201,7 +212,7 @@ export default function CheckoutPage() {
     )
   }
 
-  const basePrice = interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
+  const basePrice = interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10) : plan.price
   const credit = proration?.credit || 0
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)
@@ -232,6 +243,29 @@ export default function CheckoutPage() {
             
             {/* Left: Order Review */}
             <div className="lg:col-span-2 space-y-4">
+              {/* Downgrade / Capacity Warning Banner if applicable */}
+              {(() => {
+                const entriesUsage = usage.find((u) => u.unit === "entries")?.current || 0
+                const schemasUsage = usage.find((u) => u.unit === "schemas")?.current || 0
+                const isEntriesOver = plan.maxContentEntries && entriesUsage > plan.maxContentEntries
+                const isSchemasOver = plan.maxContentTypes && schemasUsage > plan.maxContentTypes
+
+                if (isEntriesOver || isSchemasOver) {
+                  return (
+                    <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-xs text-amber-800 dark:text-amber-300 animate-in fade-in duration-200">
+                      <AlertCircle className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                      <div className="space-y-1">
+                        <p className="font-bold">Peringatan Kapasitas Paket Terpilih</p>
+                        <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-300/90">
+                          Penggunaan Anda saat ini ({entriesUsage.toLocaleString()} entri / {schemasUsage} model) melebihi batas kuota paket ini ({plan.maxContentEntries?.toLocaleString()} entri / {plan.maxContentTypes} model). Data yang sudah ada tetap aman dan dapat diakses, namun Anda tidak dapat menambah konten baru sampai batas kuota disesuaikan.
+                        </p>
+                      </div>
+                    </div>
+                  )
+                }
+                return null
+              })()}
+
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
                 <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">

@@ -66,8 +66,8 @@ export function DateRangeField({
               id="date"
               variant={"outline"}
               className={cn(
-                "w-full justify-start text-left font-normal rounded-none",
-                !date && "text-muted-foreground",
+                "w-full justify-start text-left font-medium rounded-xl h-10 border-border/80 bg-background text-xs cursor-pointer",
+                !date && "text-muted-foreground font-normal",
                 error ? "border-destructive focus-visible:ring-destructive" : ""
               )}
             >
@@ -82,11 +82,11 @@ export function DateRangeField({
                   format(date.from, "LLL dd, y")
                 )
               ) : (
-                <span>Pick a date range</span>
+                <span>Pilih rentang tanggal...</span>
               )}
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-auto p-0 rounded-none border-border" align="start">
+          <PopoverContent className="w-auto p-0 rounded-2xl border-border bg-card shadow-xl overflow-hidden" align="start">
             <Calendar
               initialFocus
               mode="range"

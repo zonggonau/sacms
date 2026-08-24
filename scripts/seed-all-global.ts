@@ -342,25 +342,112 @@ const SEED_DATA: Record<string, any> = {
 
   // ───── WORKSPACE PRICING (Collection) ─────
   "sacms-workspace-pricing": [
+    // ─── 1. SaCMS Cloud Multi-Tenant (Ekonomis) ───
     { 
-      name: "Workspace Gratis", plan_slug: "free", price: 0, yearly_price: 0, period: "selamanya", description: "Kapasitas dasar untuk memulai.", 
+      name: "SaCMS Free Forever", plan_slug: "free", price: 0, yearly_price: 0, period: "selamanya", description: "Kapasitas dasar gratis untuk belajar dan prototype.", 
       max_content_types: 3, max_content_entries: 500, max_team_members: 1, max_storage: 100, max_locales: 1, max_api_calls: 1000,
       features: ["3 Tipe Konten", "1.000 Request API/bulan", "100MB Penyimpanan", "1 Anggota Tim"]
     },
     { 
-      name: "Workspace Pemula", plan_slug: "starter", price: 99000, yearly_price: 990000, period: "bulan", description: "Kapasitas lebih untuk satu workspace.", 
+      name: "SaCMS Cloud Starter", plan_slug: "starter", price: 49000, yearly_price: 490000, period: "bulan", description: "Paket ekonomis untuk UMKM, blog, dan portfolio pribadi.", 
       max_content_types: 5, max_content_entries: 5000, max_team_members: 3, max_storage: 1024, max_locales: 2, max_api_calls: 10000,
       features: ["5 Tipe Konten", "10.000 Request API/bulan", "1GB Penyimpanan", "3 Anggota Tim", "2 Bahasa"]
     },
     { 
-      name: "Workspace Profesional", plan_slug: "pro", price: 299000, yearly_price: 2990000, period: "bulan", description: "Performa tinggi untuk instansi.", 
+      name: "SaCMS Cloud Pro", plan_slug: "pro", price: 149000, yearly_price: 1490000, period: "bulan", description: "Performa tinggi ekonomis untuk agensi dan startup berkembang.", 
       max_content_types: 10, max_content_entries: 10000, max_team_members: 10, max_storage: 5120, max_locales: 5, max_api_calls: 100000,
-      features: ["10 Tipe Konten", "100.000 Request API/bulan", "5GB Penyimpanan", "10 Anggota Tim", "5 Bahasa"]
+      features: ["10 Tipe Konten", "100.000 Request API/bulan", "5GB Penyimpanan", "10 Anggota Tim", "5 Bahasa", "Prioritas Support"]
     },
     { 
-      name: "Workspace Pemerintah", plan_slug: "enterprise", price: 999000, yearly_price: 9990000, period: "bulan", description: "Workspace dedikasi untuk pemerintah.", 
+      name: "SaCMS Cloud Enterprise", plan_slug: "enterprise", price: 399000, yearly_price: 3990000, period: "bulan", description: "Multi-tenant cloud kapasitas besar untuk tim korporat.", 
       max_content_types: 20, max_content_entries: 20000, max_team_members: 20, max_storage: 10240, max_locales: 20, max_api_calls: 1000000,
-      features: ["20 Tipe Konten", "1.000.000 Request API/bulan", "10GB Penyimpanan", "Tim Unlimited", "Bahasa Unlimited"]
+      features: ["20 Tipe Konten", "1.000.000 Request API/bulan", "10GB Penyimpanan", "20 Anggota Tim", "24/7 Support"]
+    },
+
+    // ─── 2. SaCMS Dedicated Business VPS (Skala Bisnis & Portal Media) ───
+    { 
+      name: "SaCMS Business VPS S", plan_slug: "vps-s", price: 1250000, yearly_price: 12500000, period: "bulan", 
+      description: "Dedicated Cloud Server (4 vCPU, 8 GB RAM, 75 GB NVMe) + PostgreSQL 17 + MinIO S3 terisolasi penuh.", 
+      max_content_types: 999999, max_content_entries: 500000, max_team_members: 50, max_storage: 76800, max_locales: 50, max_api_calls: 10000000,
+      features: [
+        "Dedicated Cloud VPS (4 vCPU, 8 GB RAM, 75 GB NVMe)",
+        "Dedicated PostgreSQL 17 Database Server",
+        "Dedicated MinIO S3 Object Storage (75 GB)",
+        "Auto Let's Encrypt SSL & Reverse Proxy",
+        "500.000 Entri Konten & Unlimited Schemas",
+        "50 Anggota Tim & 365 Hari Audit Retention",
+        "Prioritas 24/7 Support & SLA 99.9%"
+      ]
+    },
+    { 
+      name: "SaCMS Business VPS M", plan_slug: "vps-m", price: 2450000, yearly_price: 24500000, period: "bulan", 
+      description: "Dedicated Cloud Server (6 vCPU, 16 GB RAM, 150 GB NVMe) untuk portal media & traffic tinggi.", 
+      max_content_types: 999999, max_content_entries: 1000000, max_team_members: 75, max_storage: 153600, max_locales: 75, max_api_calls: 25000000,
+      features: [
+        "Dedicated Cloud VPS (6 vCPU, 16 GB RAM, 150 GB NVMe)",
+        "Dedicated PostgreSQL 17 + MinIO S3 (150 GB)",
+        "Port Bandwidth 400 Mbps",
+        "1.000.000 Entri Konten & Unlimited Schemas",
+        "75 Anggota Tim & 365 Hari Audit Retention",
+        "Prioritas 24/7 Support & SLA 99.9%"
+      ]
+    },
+    { 
+      name: "SaCMS Business VPS L", plan_slug: "vps-l", price: 3450000, yearly_price: 34500000, period: "bulan", 
+      description: "Dedicated Cloud Server (8 vCPU, 24 GB RAM, 300 GB NVMe) untuk platform e-commerce & konten masif.", 
+      max_content_types: 999999, max_content_entries: 2000000, max_team_members: 100, max_storage: 307200, max_locales: 100, max_api_calls: 50000000,
+      features: [
+        "Dedicated Cloud VPS (8 vCPU, 24 GB RAM, 300 GB NVMe)",
+        "Dedicated PostgreSQL 17 + MinIO S3 (300 GB)",
+        "Port Bandwidth 600 Mbps",
+        "2.000.000 Entri Konten & Unlimited Schemas",
+        "100 Anggota Tim & 365 Hari Audit Retention",
+        "Prioritas 24/7 Support & SLA 99.9%"
+      ]
+    },
+
+    // ─── 3. SaCMS Dedicated Gov & Enterprise VDS (100% Dedicated Physical Cores) ───
+    { 
+      name: "SaCMS Gov VDS S (Dedicated CPU)", plan_slug: "vds-s", price: 4500000, yearly_price: 45000000, period: "bulan", 
+      description: "Dedicated Enterprise VDS dengan 3 Dedicated Physical Cores (No Noisy Neighbor) untuk Instansi Pemerintah & Fintech.", 
+      max_content_types: 999999, max_content_entries: 3000000, max_team_members: 150, max_storage: 184320, max_locales: 150, max_api_calls: 75000000,
+      features: [
+        "Dedicated VDS (3 Dedicated Cores, 24 GB RAM, 180 GB NVMe)",
+        "100% Dedicated Physical CPU Lock (No Noisy Neighbor)",
+        "Dedicated PostgreSQL 17 + MinIO S3 (180 GB)",
+        "Port Bandwidth 250 Mbps Dedicated",
+        "Pilihan Region Datacenter Terisolasi",
+        "3.000.000 Entri Konten & Unlimited Schemas",
+        "Dedicated DevOps Support & SLA 99.99%"
+      ]
+    },
+    { 
+      name: "SaCMS Gov VDS M (Dedicated CPU)", plan_slug: "vds-m", price: 6500000, yearly_price: 65000000, period: "bulan", 
+      description: "Dedicated Enterprise VDS dengan 4 Dedicated Physical Cores (32 GB RAM, 240 GB NVMe) untuk beban transaksi kritis nasional.", 
+      max_content_types: 999999, max_content_entries: 5000000, max_team_members: 200, max_storage: 245760, max_locales: 200, max_api_calls: 100000000,
+      features: [
+        "Dedicated VDS (4 Dedicated Cores, 32 GB RAM, 240 GB NVMe)",
+        "100% Dedicated CPU Lock & High IOPS NVMe",
+        "Dedicated PostgreSQL 17 + MinIO S3 (240 GB)",
+        "Port Bandwidth 500 Mbps Dedicated",
+        "5.000.000 Entri Konten & Unlimited Schemas",
+        "200 Anggota Tim & 730 Hari Audit Retention",
+        "Dedicated DevOps Support & SLA 99.99%"
+      ]
+    },
+    { 
+      name: "SaCMS Gov VDS L (Dedicated CPU)", plan_slug: "vds-l", price: 9500000, yearly_price: 95000000, period: "bulan", 
+      description: "Dedicated Enterprise VDS dengan 6 Dedicated Physical Cores (48 GB RAM, 360 GB NVMe) untuk performa ekstrim skala kementerian/BUMN.", 
+      max_content_types: 999999, max_content_entries: 10000000, max_team_members: 500, max_storage: 368640, max_locales: 500, max_api_calls: 200000000,
+      features: [
+        "Dedicated VDS (6 Dedicated Cores, 48 GB RAM, 360 GB NVMe)",
+        "100% Dedicated Physical Cores & Extreme Throughput",
+        "Dedicated PostgreSQL 17 + MinIO S3 (360 GB)",
+        "Port Bandwidth 750 Mbps Dedicated",
+        "10.000.000 Entri Konten & Unlimited Schemas",
+        "500 Anggota Tim & 730 Hari Audit Retention",
+        "Dedicated DevOps Support & SLA 99.99%"
+      ]
     },
   ],
 

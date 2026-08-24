@@ -85,7 +85,7 @@ export function FieldConfigModal({
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg sm:max-w-lg max-h-[90vh] rounded-2xl border border-border/80 shadow-xl overflow-hidden p-0 flex flex-col bg-card text-card-foreground">
-        <DialogHeader className="p-5 bg-card border-b border-border/60 shrink-0 flex flex-row items-center gap-3.5">
+        <DialogHeader className="p-5 pr-12 bg-card border-b border-border/60 shrink-0 flex flex-row items-center gap-3.5">
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shrink-0">
             {Icon && <Icon className="h-5 w-5" />}
           </div>

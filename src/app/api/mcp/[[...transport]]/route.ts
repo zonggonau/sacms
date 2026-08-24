@@ -24,6 +24,8 @@ interface AuthContext {
   tenantId: string
   tenantSlug: string
   tenantName: string
+  permissions: string[]
+  isSuperAdmin?: boolean
 }
 
 const authContext = new AsyncLocalStorage<AuthContext>()
@@ -43,6 +45,7 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
     },
     select: { 
       tenantId: true, 
+      permissions: true,
       tenant: { select: { id: true, slug: true, name: true } } 
     },
   })
@@ -54,10 +57,13 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
       data: { lastUsedAt: new Date() }
     }).catch(() => {})
 
+    const perms = Array.isArray(token.permissions) ? (token.permissions as string[]) : ["read", "write", "delete"]
     return {
       tenantId: token.tenant.id,
       tenantSlug: token.tenant.slug,
       tenantName: token.tenant.name,
+      permissions: perms,
+      isSuperAdmin: false,
     }
   }
 
@@ -73,10 +79,13 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
       data: { lastUsed: new Date() },
     }).catch(() => {})
 
+    const perms = Array.isArray(apiKey.permissions) ? (apiKey.permissions as string[]) : ["read", "write", "delete"]
     return {
       tenantId: apiKey.tenant.id,
       tenantSlug: apiKey.tenant.slug,
       tenantName: apiKey.tenant.name,
+      permissions: perms,
+      isSuperAdmin: false,
     }
   }
 
@@ -1290,8 +1299,52 @@ const handler = createMcpHandler(
     )
 
     // =========================================================================
-    // 7. API INFORMATION & DOCS GUIDE
+    // 7. API INFORMATION & CAPABILITY INSPECTOR
     // =========================================================================
+
+    // ── inspect_api_capabilities ─────────────────────────────────────────────
+    server.registerTool(
+      "inspect_api_capabilities",
+      {
+        title: "Inspect API Capabilities & Permissions",
+        description: "Inspect active API key permissions (read, write, delete, schema, webhooks) to determine whether to build read-only or interactive dynamic components.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const permissions = auth.permissions || []
+        const canRead = permissions.includes("read") || permissions.includes("full_access") || auth.isSuperAdmin
+        const canWrite = permissions.includes("write") || permissions.includes("full_access") || auth.isSuperAdmin
+        const canDelete = permissions.includes("delete") || permissions.includes("full_access") || auth.isSuperAdmin
+        const canModifySchema = permissions.includes("schema") || permissions.includes("full_access") || auth.isSuperAdmin
+        const canManageWebhooks = permissions.includes("webhooks") || permissions.includes("full_access") || auth.isSuperAdmin
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              tenantId: auth.tenantId,
+              tenantSlug: auth.tenantSlug,
+              tenantName: auth.tenantName,
+              permissions,
+              capabilities: {
+                canRead,
+                canWrite,
+                canDelete,
+                canModifySchema,
+                canManageWebhooks,
+              },
+              recommendedMode: canWrite ? "interactive_fullstack" : "public_consumer",
+              description: canWrite 
+                ? "Token has write permissions: AI can generate interactive forms, data submissions, and mutations."
+                : "Token has read-only permissions: AI should generate public catalog and reading interfaces."
+            }, null, 2)
+          }]
+        }
+      }
+    )
 
     // ── get_api_info ─────────────────────────────────────────────────────────
     server.registerTool(

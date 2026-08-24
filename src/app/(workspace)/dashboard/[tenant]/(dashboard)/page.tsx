@@ -167,6 +167,25 @@ export default async function TenantDashboardPage({
     }
   ]
 
+  // Fetch Single Types
+  const availableSingleTypes = await tenantDb.singleType.findMany({
+    where: {
+      OR: [
+        { tenantId: tenantId },
+        { tenants: { some: { tenantId: tenantId, enabled: true } } }
+      ]
+    },
+    include: { schemaFields: { orderBy: { order: "asc" } } },
+    orderBy: { updatedAt: "desc" },
+  })
+
+  const serializedSingleTypes = availableSingleTypes.map(st => ({
+    ...st,
+    fields: st.schemaFields,
+    createdAt: st.createdAt.toISOString(),
+    updatedAt: st.updatedAt.toISOString(),
+  }))
+
   // Fix updatedAt date types
   const serializedContentTypes = contentTypes.map(ct => ({
     ...ct,
@@ -178,6 +197,7 @@ export default async function TenantDashboardPage({
     <TenantDashboardClient 
       tenantId={tenantId}
       contentTypes={serializedContentTypes as any}
+      singleTypes={serializedSingleTypes as any}
       stats={stats}
       usage={usage}
       session={session}

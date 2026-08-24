@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label"
 import { Loader2, CheckCircle2, Eye, EyeOff } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
-import { resetPassword } from "@/app/actions/auth"
+import { resetPassword } from "@/actions/auth"
 
 function ResetPasswordForm() {
   const router = useRouter()

@@ -34,7 +34,8 @@ import {
   Puzzle,
   Shield,
   Code,
-  Globe
+  Globe,
+  Server,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -184,6 +185,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       label: "SETTINGS",
       items: [
         ...(isAdmin ? [
+          { title: "Infrastruktur Dedicated", href: "/settings?tab=infrastructure", icon: Server },
           { title: "Developer", href: "/developer", icon: Code, matchPrefix: true },
           { title: "Workspace Settings", href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
@@ -414,7 +416,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-background/80 backdrop-blur border shadow-none rounded-none"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-background/80 backdrop-blur border shadow-xs rounded-xl"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

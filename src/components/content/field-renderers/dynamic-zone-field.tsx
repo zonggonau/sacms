@@ -102,20 +102,20 @@ export function DynamicZoneField({
             </p>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="rounded-none h-8">
+                <Button variant="outline" size="sm" className="rounded-xl h-8 text-xs font-semibold cursor-pointer">
                   <Plus className="h-3.5 w-3.5 mr-1" />
-                  Add Component
+                  Tambah Komponen
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="center" className="w-56 rounded-none">
+              <DropdownMenuContent align="center" className="w-56 rounded-xl">
                 {components.length === 0 ? (
-                  <div className="p-2 text-xs text-muted-foreground text-center">No components available</div>
+                  <div className="p-2 text-xs text-muted-foreground text-center">Komponen tidak tersedia</div>
                 ) : (
                   components.map(comp => (
                     <DropdownMenuItem 
                       key={comp.id} 
                       onClick={() => handleAddComponent(comp.slug)}
-                      className="cursor-pointer rounded-none text-sm"
+                      className="cursor-pointer rounded-lg text-xs font-medium"
                     >
                       {comp.name}
                     </DropdownMenuItem>
@@ -137,12 +137,12 @@ export function DynamicZoneField({
                       <GripVertical className="h-4 w-4" />
                     </Button>
                   </div>
-                  <div className="flex-1 border border-primary/20 rounded-lg overflow-hidden bg-white dark:bg-zinc-950 shadow-sm relative">
+                  <div className="flex-1 border border-border/80 rounded-2xl overflow-hidden bg-card shadow-xs relative">
                     <div className="absolute top-2 right-2 z-10">
                        <Button 
                         variant="destructive" 
                         size="icon" 
-                        className="h-7 w-7 rounded-md opacity-0 group-hover:opacity-100 transition-opacity"
+                        className="h-7 w-7 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
                         onClick={() => handleRemoveComponent(index)}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -154,7 +154,7 @@ export function DynamicZoneField({
                       value={item} 
                       onChange={(v) => handleItemChange(index, v)} 
                       label={
-                        <div className="flex items-center text-primary/80">
+                        <div className="flex items-center text-primary">
                           <span className="uppercase text-[10px] tracking-wider font-bold">{compName}</span>
                         </div>
                       }
@@ -168,20 +168,20 @@ export function DynamicZoneField({
             <div className="flex justify-center pt-2">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full border-dashed border-border bg-muted/10 hover:bg-muted/30 rounded-lg py-6">
+                  <Button variant="outline" className="w-full border-dashed border-border/80 bg-muted/10 hover:bg-muted/30 rounded-2xl py-6 cursor-pointer">
                     <Plus className="h-4 w-4 mr-2 text-muted-foreground" />
-                    <span className="text-muted-foreground">Add to Dynamic Zone</span>
+                    <span className="text-muted-foreground font-semibold text-xs">Tambah ke Dynamic Zone</span>
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="center" className="w-64 rounded-none">
+                <DropdownMenuContent align="center" className="w-64 rounded-xl">
                   {components.length === 0 ? (
-                    <div className="p-2 text-xs text-muted-foreground text-center">No components available</div>
+                    <div className="p-2 text-xs text-muted-foreground text-center">Komponen tidak tersedia</div>
                   ) : (
                     components.map(comp => (
                       <DropdownMenuItem 
                         key={comp.id} 
                         onClick={() => handleAddComponent(comp.slug)}
-                        className="cursor-pointer rounded-none"
+                        className="cursor-pointer rounded-lg text-xs font-medium"
                       >
                         {comp.name}
                       </DropdownMenuItem>

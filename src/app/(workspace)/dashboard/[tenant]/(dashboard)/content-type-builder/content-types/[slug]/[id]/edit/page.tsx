@@ -49,6 +49,10 @@ import { RelationSelectField } from "@/components/content/field-renderers/relati
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
+import { PercentField } from "@/components/content/field-renderers/percent-field"
+import { IconField } from "@/components/content/field-renderers/icon-field"
+import { SeoField } from "@/components/content/field-renderers/seo-field"
+import { CodeField } from "@/components/content/field-renderers/code-field"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { getEntryAction, updateEntryAction } from "@/actions/content"
@@ -301,6 +305,14 @@ export default function EditEntryPage() {
         return <AdvancedField type="color" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
       case "location":
         return <AdvancedField type="location" value={value} onChange={v => handleFieldChange(field.slug, v)}  required={field.required} />
+      case "percent":
+        return <PercentField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "icon":
+        return <IconField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "seo":
+        return <SeoField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "code":
+        return <CodeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       default:
         return <Input value={value as string || ""} onChange={e => handleFieldChange(field.slug, e.target.value)} />
     }

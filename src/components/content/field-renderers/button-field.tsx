@@ -60,25 +60,25 @@ export function ButtonField({
         </div>
       )}
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-none bg-muted/30 border border-dashed border-muted-foreground/20">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-2xl bg-muted/20 border border-dashed border-border/80">
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
-            Button Label
+          <Label className="text-xs font-semibold text-muted-foreground pl-1">
+            Label Tombol
           </Label>
           <div className="relative">
             <MousePointer2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
             <Input
               value={initialValue.text}
               onChange={(e) => handleChange({ text: e.target.value })}
-              placeholder="e.g. Learn More"
-              className="pl-9 h-9 bg-background border-none shadow-none focus-visible:ring-primary"
+              placeholder="Contoh: Pelajari Selengkapnya"
+              className="pl-9 h-9 bg-background border border-border/70 rounded-xl text-xs"
             />
           </div>
         </div>
 
         <div className="space-y-1.5">
-          <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground pl-1">
-            Redirect URL
+          <Label className="text-xs font-semibold text-muted-foreground pl-1">
+            URL Tautan
           </Label>
           <div className="relative">
             <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground opacity-50" />
@@ -86,7 +86,7 @@ export function ButtonField({
               value={initialValue.url}
               onChange={(e) => handleChange({ url: e.target.value })}
               placeholder="https://..."
-              className="pl-9 h-9 bg-background border-none shadow-none focus-visible:ring-primary"
+              className="pl-9 h-9 bg-background border border-border/70 rounded-xl text-xs"
             />
           </div>
         </div>
@@ -96,12 +96,12 @@ export function ButtonField({
             <input
               type="checkbox"
               id="target-blank"
-              className="h-3.5 w-3.5 rounded-none border-gray-300 text-primary focus:ring-primary"
+              className="h-4 w-4 rounded-md border-border text-primary focus:ring-primary cursor-pointer"
               checked={initialValue.target === "_blank"}
               onChange={(e) => handleChange({ target: e.target.checked ? "_blank" : "_self" })}
             />
-            <Label htmlFor="target-blank" className="text-[10px] font-bold uppercase text-muted-foreground cursor-pointer flex items-center gap-1">
-              Open in new tab <ExternalLink className="h-2.5 w-2.5" />
+            <Label htmlFor="target-blank" className="text-xs text-muted-foreground cursor-pointer flex items-center gap-1">
+              Buka di tab baru <ExternalLink className="h-3 w-3" />
             </Label>
           </div>
         </div>

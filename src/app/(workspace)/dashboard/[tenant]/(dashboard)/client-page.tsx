@@ -74,19 +74,31 @@ const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; ic
   rejected:  { label: "Rejected",   dot: "bg-red-500",     bg: "bg-red-50 text-red-700 dark:bg-red-900/30 dark:text-red-300",             icon: XCircle },
 }
 
-export default function TenantDashboardClient({
-  tenantId: initialTenantId,
-  contentTypes: initialContentTypes,
-  stats: initialStats,
-  usage: initialUsage,
-  session: initialSession,
-}: {
+interface AssignedSingleType {
+  id: string
+  name: string
+  slug: string
+  description?: string
+  fields: Array<{ id: string; name: string; type: string }>
+}
+
+interface TenantDashboardClientProps {
   tenantId: string
   contentTypes: AssignedContentType[]
+  singleTypes?: AssignedSingleType[]
   stats: TenantStats
   usage: any[]
   session?: any
-}) {
+}
+
+export default function TenantDashboardClient({
+  tenantId: initialTenantId,
+  contentTypes: initialContentTypes,
+  singleTypes: initialSingleTypes = [],
+  stats: initialStats,
+  usage: initialUsage,
+  session: initialSession,
+}: TenantDashboardClientProps) {
   const { data: sessionData, status } = useSession()
   const session = sessionData || initialSession
   const router = useRouter()
@@ -94,6 +106,8 @@ export default function TenantDashboardClient({
   const tenantId = (params?.tenant as string) || initialTenantId
 
   const [contentTypes, setContentTypes] = useState<AssignedContentType[]>(initialContentTypes)
+  const [singleTypes, setSingleTypes] = useState<AssignedSingleType[]>(initialSingleTypes)
+  const [schemaView, setSchemaView] = useState<"collections" | "single_types">("collections")
   const [stats, setStats] = useState<TenantStats>(initialStats)
   const [usage, setUsage] = useState<any[]>(initialUsage)
   const [loading, setLoading] = useState(false)
@@ -164,8 +178,8 @@ export default function TenantDashboardClient({
 
   if (status === "loading" || !stats) {
     return (
-      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-orange-500" />
+      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     )
   }
@@ -180,30 +194,70 @@ export default function TenantDashboardClient({
               {currentTenant?.name || tenantId}
             </h1>
             <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Aktif
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" /> Workspace Aktif
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Selamat datang di workspace konten <strong>{currentTenant?.name || "Anda"}</strong>.
+            Pusat kendali konten, database skema, dan integrasi frontend workspace <strong>{currentTenant?.name || "Anda"}</strong>.
           </p>
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
-          <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
-            <Link href={`/dashboard/${tenantId}/cms`}>
+          <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
+            <Link href={`/dashboard/${tenantId}/content-type-builder/overview`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-              CMS Content Studio
+              AI Website Studio
             </Link>
           </Button>
 
-          <Button variant="outline" asChild className="h-9 px-3 text-xs font-semibold rounded-xl border-border/80 bg-card hover:bg-muted/50">
+          <Button variant="outline" asChild className="h-9 px-3 text-xs font-semibold rounded-xl border-border/80 bg-card hover:bg-muted/50 cursor-pointer">
+            <Link href={`/dashboard/${tenantId}/cms`}>
+              <PenTool className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+              CMS Studio
+            </Link>
+          </Button>
+
+          <Button variant="outline" asChild className="h-9 px-3 text-xs font-semibold rounded-xl border-border/80 bg-card hover:bg-muted/50 cursor-pointer">
             <Link href={`/dashboard/${tenantId}/media`}>
               <Upload className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
-              Upload Media
+              Pustaka Media
             </Link>
           </Button>
         </div>
       </div>
+
+      {/* AI Spotlight Hero Card */}
+      <Card className="relative overflow-hidden border-border/80 bg-gradient-to-br from-primary/10 via-purple-500/5 to-background rounded-2xl p-5 md:p-6 shadow-xs border">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">
+          <div className="space-y-1.5 max-w-xl">
+            <div className="inline-flex items-center gap-2 px-2.5 py-0.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-[10px] font-bold">
+              <Sparkles className="h-3 w-3" />
+              <span>AI Frontend Builder & Vercel Cockpit</span>
+            </div>
+            <h2 className="text-lg md:text-xl font-black tracking-tight text-foreground">
+              Bangun Website Modern Berbasis Prompt
+            </h2>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Ketik deskripsi ide website, AI secara otomatis membuat skema koleksi di PostgreSQL, mengisi data via MCP, dan mengompilasi frontend interaktif siap deploy ke Vercel.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
+              <Link href={`/dashboard/${tenantId}/content-type-builder/overview`}>
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                Buka AI Studio
+              </Link>
+            </Button>
+            <Button variant="outline" asChild className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 bg-card hover:bg-muted/60 cursor-pointer">
+              <Link href={`/dashboard/${tenantId}/developer/api`}>
+                <Zap className="h-3.5 w-3.5 mr-1.5 text-muted-foreground" />
+                API Docs
+              </Link>
+            </Button>
+          </div>
+        </div>
+      </Card>
 
       {/* Quota Usage Alerts */}
       {usageAlerts.length > 0 && (
@@ -219,7 +273,7 @@ export default function TenantDashboardClient({
               </p>
             </div>
           </div>
-          <Button asChild size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl h-8 px-4">
+          <Button asChild size="sm" className="bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl h-8 px-4 cursor-pointer">
             <Link href={`/dashboard/${tenantId}/subscriptions`}>
               Upgrade Paket
             </Link>
@@ -311,7 +365,7 @@ export default function TenantDashboardClient({
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         
-        {/* Left: Content Pipeline & Collections */}
+        {/* Left: Content Pipeline & Schema Explorer */}
         <div className="lg:col-span-2 space-y-6">
           
           {/* Pipeline Overview */}
@@ -357,47 +411,114 @@ export default function TenantDashboardClient({
             </CardContent>
           </Card>
 
-          {/* Collections Grid */}
+          {/* Schema Explorer: Collections vs Single Types */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-bold tracking-tight text-foreground">Koleksi Tipe Konten</h2>
-              <Link href={`/dashboard/${tenantId}/content-type-builder/content-types`} className="text-xs font-semibold text-primary hover:underline">
-                Kelola Skema &rarr;
+              <div className="flex items-center gap-2 bg-muted/40 p-1 rounded-xl border border-border/80">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSchemaView("collections")}
+                  className={cn(
+                    "h-7 text-xs font-bold px-3 rounded-lg cursor-pointer transition-all",
+                    schemaView === "collections" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <Database className="h-3.5 w-3.5 mr-1.5" />
+                  Koleksi ({contentTypes.length})
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setSchemaView("single_types")}
+                  className={cn(
+                    "h-7 text-xs font-bold px-3 rounded-lg cursor-pointer transition-all",
+                    schemaView === "single_types" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                  )}
+                >
+                  <FileText className="h-3.5 w-3.5 mr-1.5" />
+                  Single Types ({singleTypes.length})
+                </Button>
+              </div>
+
+              <Link 
+                href={schemaView === "collections" ? `/dashboard/${tenantId}/content-type-builder/content-types` : `/dashboard/${tenantId}/content-type-builder/single-types`} 
+                className="text-xs font-semibold text-primary hover:underline"
+              >
+                Kelola Semua &rarr;
               </Link>
             </div>
-            {contentTypes.length === 0 ? (
-              <Card className="border-dashed border-border/80 rounded-2xl bg-card/60">
-                <CardContent className="py-12 text-center space-y-2">
-                  <PenTool className="h-8 w-8 mx-auto text-muted-foreground/30" />
-                  <p className="text-xs font-bold text-foreground">Belum ada tipe konten yang dibuat</p>
-                  <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                    Buat skema tipe konten pertama Anda di Content Studio atau gunakan Schema Builder.
-                  </p>
-                </CardContent>
-              </Card>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {contentTypes.map((ct) => (
-                  <Link key={ct.id} href={`/dashboard/${tenantId}/content/${ct.slug}`}>
-                    <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group bg-card border border-border/80 rounded-2xl shadow-xs">
-                      <CardContent className="p-4">
-                        <div className="flex items-center justify-between gap-3">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0">
-                              <Database className="h-5 w-5" />
+
+            {schemaView === "collections" ? (
+              contentTypes.length === 0 ? (
+                <Card className="border-dashed border-border/80 rounded-2xl bg-card/60">
+                  <CardContent className="py-12 text-center space-y-2">
+                    <PenTool className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                    <p className="text-xs font-bold text-foreground">Belum ada tipe koleksi yang dibuat</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                      Buat skema tipe konten pertama Anda di Content Studio atau gunakan AI Schema Builder.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {contentTypes.map((ct) => (
+                    <Link key={ct.id} href={`/dashboard/${tenantId}/cms/content/${ct.slug}`}>
+                      <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group bg-card border border-border/80 rounded-2xl shadow-xs">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary group-hover:scale-105 transition-transform shrink-0">
+                                <Database className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">{ct.name}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{ct._count?.entries ?? 0} entri &middot; {ct.fields?.length ?? 0} field</p>
+                              </div>
                             </div>
-                            <div className="min-w-0">
-                              <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">{ct.name}</p>
-                              <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{ct._count?.entries ?? 0} entri &middot; {ct.fields?.length ?? 0} field</p>
-                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
                           </div>
-                          <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-                        </div>
-                      </CardContent>
-                    </Card>
-                  </Link>
-                ))}
-              </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )
+            ) : (
+              singleTypes.length === 0 ? (
+                <Card className="border-dashed border-border/80 rounded-2xl bg-card/60">
+                  <CardContent className="py-12 text-center space-y-2">
+                    <FileText className="h-8 w-8 mx-auto text-muted-foreground/30" />
+                    <p className="text-xs font-bold text-foreground">Belum ada single type</p>
+                    <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
+                      Buat skema Single Type untuk profil perusahaan, beranda, atau konfigurasi umum.
+                    </p>
+                  </CardContent>
+                </Card>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {singleTypes.map((st) => (
+                    <Link key={st.id} href={`/dashboard/${tenantId}/cms/single-types/${st.slug}`}>
+                      <Card className="hover:border-primary/40 hover:shadow-md transition-all cursor-pointer group bg-card border border-border/80 rounded-2xl shadow-xs">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-10 h-10 rounded-xl bg-purple-500/10 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-105 transition-transform shrink-0">
+                                <FileText className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0">
+                                <p className="text-xs font-bold text-foreground truncate group-hover:text-primary transition-colors">{st.name}</p>
+                                <p className="text-[11px] text-muted-foreground mt-0.5 font-mono">{st.fields?.length ?? 0} field konfigurasi</p>
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </Link>
+                  ))}
+                </div>
+              )
             )}
           </div>
         </div>

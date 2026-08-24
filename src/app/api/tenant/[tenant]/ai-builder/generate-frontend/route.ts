@@ -46,9 +46,30 @@ export async function POST(
     const tenant = access.tenant
     const bridge = new McpClientBridge(tenant.id, tenant.slug, session.user.id)
 
-    // 1. Inspect existing workspace schema via MCP
-    const activeSchema = await bridge.getFullSchema()
+    // 1. Inspect existing workspace schema & capabilities via MCP
+    // 1. Inspect existing workspace schema & capabilities via MCP
+    let [activeSchema, capabilities] = await Promise.all([
+      bridge.getFullSchema(),
+      bridge.inspectApiCapabilities(),
+    ])
     const tenantDb = await getTenantDb(tenant.id)
+
+    // 1b. If workspace has no schema (no content types and no single types),
+    // automatically generate and bootstrap the entire schema using MCP bridge!
+    if ((!activeSchema.contentTypes || activeSchema.contentTypes.length === 0) &&
+        (!activeSchema.singleTypes || activeSchema.singleTypes.length === 0)) {
+      try {
+        const { generateSystemSchema } = await import("@/lib/ai-schema-generator")
+        const generatedSchema = await generateSystemSchema(prompt, tenant.id, session.user.id)
+        if (generatedSchema) {
+          await bridge.applyGeneratedSchema(generatedSchema)
+          // Refresh active schema after MCP bootstrapping
+          activeSchema = await bridge.getFullSchema()
+        }
+      } catch (schemaErr: any) {
+        console.warn("Could not auto-generate schema via MCP:", schemaErr.message)
+      }
+    }
 
     // 2. Fetch existing sample records from database (if available)
     const sampleCollections: Record<string, any[]> = {}
@@ -81,8 +102,8 @@ export async function POST(
         name: `V0 Frontend Token - ${new Date().toLocaleDateString()}`,
         description: `Auto-generated for V0.dev frontend build`,
         token: hashedToken,
-        type: "read-only",
-        permissions: [],
+        type: capabilities.canWrite ? "service" : "read-only",
+        permissions: capabilities.permissions,
         createdBy: session.user.id,
       },
     })
@@ -97,6 +118,8 @@ SaCMS HEADLESS CMS & MCP SERVER INTEGRATION:
 - SaCMS Public REST API: ${finalApiUrl}
 - SaCMS MCP Server: ${mcpServerUrl}
 - Auth Header: Authorization: Bearer ${plainToken}
+- API Capabilities: ${capabilities.mode} (canRead: ${capabilities.canRead}, canWrite: ${capabilities.canWrite}, canDelete: ${capabilities.canDelete})
+- Mode Guidance: ${capabilities.canWrite ? "Build full interactive workflows (forms, mutations, booking, reviews, cart)" : "Build high-performance consumer view (catalogs, article feeds, portfolios)"}
 - List Collection: GET ${finalApiUrl}/content/{collectionSlug}
 - Single Type: GET ${finalApiUrl}/single/{singleTypeSlug}
 - Filter: GET ${finalApiUrl}/content/{slug}?filters[fieldName][$eq]=value
@@ -112,11 +135,14 @@ CRITICAL ARCHITECTURE & UI REQUIREMENTS:
 1. Requirements Analysis: Analyze the user request thoroughly and design a comprehensive Next.js 16 App Router website with modern UI components, interactive states, and responsive layouts.
 2. Dynamic Data & CMS Connectivity:
    - Connect components to the SaCMS Public Content API and MCP Server.
-   - If collections exist in the schema, query and display them dynamically.
-   - If new collections/fields are needed for the user's request, define typed TypeScript interfaces and sample datasets so the website renders complete, pixel-perfect UI.
-3. Multi-Section Layouts: Include Navbar branding, Hero section, Feature/Catalog cards, detail modals/views, reviews/testimonials, and Footer with contact information.
-4. Rich Field Rendering: Format currency (e.g. "Rp 1.500.000"), ratings (stars), badges, dates, and action buttons cleanly.
-5. Tech Stack: Next.js 16 App Router, TypeScript, Tailwind CSS, Lucide-React icons.
+   - Query collections and single types dynamically from the endpoints above.
+   - Always define strict TypeScript interfaces for all CMS responses.
+3. High-Quality Media & Mock Images:
+   - For all image/media fields, always use valid, high-resolution Unsplash URLs (e.g. 'https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=1200&q=80') tailored to the domain.
+   - Never leave <img src=""> empty or with broken placeholders.
+4. Multi-Section Layouts: Include Navbar branding, Hero section, Feature/Catalog cards, detail modals/views, reviews/testimonials, and Footer with contact information.
+5. Rich Field Rendering: Format currency (e.g. "Rp 1.500.000"), ratings (stars), badges, dates, and action buttons cleanly.
+6. Tech Stack: Next.js 16 App Router, TypeScript, Tailwind CSS, Lucide-React icons.
 
 Initialize all components with rich fallback sample data so the live sandbox preview renders instantly with zero blank states.`
 

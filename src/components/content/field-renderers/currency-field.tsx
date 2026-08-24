@@ -91,7 +91,7 @@ export function CurrencyField({
           placeholder={placeholder}
           required={required}
           className={cn(
-            "pl-12 rounded-none",
+            "pl-12 rounded-xl h-10 border-border/80 text-xs font-medium",
             error ? "border-destructive focus-visible:ring-destructive" : ""
           )}
         />

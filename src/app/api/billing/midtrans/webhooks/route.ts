@@ -81,10 +81,31 @@ export async function POST(request: NextRequest) {
       // If it starts with ADD, it's an addon purchase
       // If it starts with ACC, it's an account upgrade
       if (orderId.startsWith("SUB")) {
+        const tenantId = transaction.subscription!.tenantId!
+        const planName = transaction.subscription!.plan
         await db.tenant.update({
-          where: { id: transaction.subscription!.tenantId! },
-          data: { plan: transaction.subscription!.plan },
+          where: { id: tenantId },
+          data: { plan: planName },
         })
+
+        // Auto-provision dedicated VPS/VDS if plan is Enterprise, VPS, or VDS
+        if (
+          planName.toLowerCase().includes("enterprise") || 
+          planName.toLowerCase().includes("vps") || 
+          planName.toLowerCase().includes("vds") || 
+          planName.toLowerCase().includes("postgres")
+        ) {
+          const { provisionTenantInfrastructure } = await import("@/lib/infrastructure/provisioner")
+          // Run provisioning asynchronously so webhook responds immediately
+          provisionTenantInfrastructure(tenantId, {
+            plan: planName,
+            subscriptionId: transaction.subscriptionId!,
+          }).then(res => {
+            console.log(`[Webhook] Auto-provisioned VPS/VDS for tenant ${tenantId}:`, res.status)
+          }).catch(err => {
+            console.error(`[Webhook] Failed auto-provisioning VPS/VDS for tenant ${tenantId}:`, err)
+          })
+        }
       } else if (orderId.startsWith("ACC")) {
         await db.user.update({
           where: { id: transaction.subscription!.userId },

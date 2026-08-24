@@ -34,7 +34,7 @@ export default async function AdminLayout({
   return (
     <div className="flex h-screen overflow-hidden bg-background">
       <GlobalAdminSidebar />
-      <div className="flex-1 flex flex-col w-full h-full overflow-y-auto text-foreground relative">
+      <div className="flex-1 flex flex-col w-full h-full overflow-y-auto text-foreground relative pt-14 md:pt-0">
         {children}
       </div>
     </div>

@@ -1,16 +1,18 @@
 "use client"
 
-import { useEffect, useState } from "react"
-import { useRouter } from "next/navigation"
+import { useEffect, useState, Suspense } from "react"
+import { useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { RbacMatrixView } from "@/components/admin/rbac-matrix-view"
 import {
   Loader2, Users, Search, Plus, Shield, Mail, Building2,
   MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle,
-  ChevronLeft, ChevronRight, Sliders
+  ChevronLeft, ChevronRight, Sliders, ShieldCheck
 } from "lucide-react"
 import Link from "next/link"
 import {
@@ -67,10 +69,19 @@ interface User {
   }>
 }
 
-export default function AdminUsersPage() {
+function AdminUsersContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const searchParams = useSearchParams()
+  const tabParam = searchParams?.get("tab")
+  const [activeTab, setActiveTab] = useState(tabParam === "rbac" ? "rbac" : "users")
+
+  useEffect(() => {
+    if (tabParam === "rbac") {
+      setActiveTab("rbac")
+    }
+  }, [tabParam])
   
   const isAdmin = session?.user?.role === "super_admin" || session?.user?.role === "admin"
 
@@ -408,63 +419,79 @@ export default function AdminUsersPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <div className="flex items-center gap-2">
-                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Pemilik Akun Platform</h1>
+                <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Identitas & Hak Akses (IAM)</h1>
                 <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-primary/20 rounded-full">
-                  Account Owners
+                  Users & RBAC
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-                Kelola akun utama platform dan hak akses Super Admin. Anggota tim internal workspace dikelola langsung di dalam masing-masing workspace.
+                Kelola akun pengguna platform, batas limit khusus, dan konfigurasi matriks perizinan RBAC tingkat platform.
               </p>
             </div>
             
-            <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-              <DialogTrigger asChild>
-                <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs shrink-0">
-                  <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Tambah Akun Baru
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="rounded-2xl border-border/80 shadow-xl bg-card sm:max-w-[480px]">
-                <DialogHeader>
-                  <DialogTitle className="text-base font-bold">Tambah Akun Owner Baru</DialogTitle>
-                  <DialogDescription className="text-xs">
-                    Buat akun pemilik platform baru secara manual.
-                  </DialogDescription>
-                </DialogHeader>
-                <form onSubmit={handleCreate} className="space-y-3 py-2">
-                  <div className="space-y-1">
-                    <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Lengkap</Label>
-                    <Input id="name" placeholder="Budi Santoso" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat Email</Label>
-                    <Input id="email" type="email" placeholder="budi@domain.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kata Sandi</Label>
-                    <Input id="password" type="password" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
-                  </div>
-                  <div className="space-y-1">
-                    <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Platform</Label>
-                    <Select value={formData.role || "owner"} onValueChange={val => setFormData({...formData, role: val})}>
-                      <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-border bg-card">
-                        <SelectItem value="owner" className="text-xs rounded-lg">Account Owner (Pemilik Workspace)</SelectItem>
-                        <SelectItem value="super_admin" className="text-xs rounded-lg">Super Admin (Kontrol Penuh Platform)</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <DialogFooter className="gap-2 sm:gap-0 pt-2">
-                    <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-xl text-xs font-bold h-9">Batal</Button>
-                    <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
-                      {isSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
-                      Buat Akun
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </DialogContent>
-            </Dialog>
+            {activeTab === "users" && (
+              <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+                <DialogTrigger asChild>
+                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs shrink-0">
+                    <UserPlus className="mr-1.5 h-3.5 w-3.5" /> Tambah Akun Baru
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="rounded-2xl border-border/80 shadow-xl bg-card sm:max-w-[480px]">
+                  <DialogHeader>
+                    <DialogTitle className="text-base font-bold">Tambah Akun Owner Baru</DialogTitle>
+                    <DialogDescription className="text-xs">
+                      Buat akun pemilik platform baru secara manual.
+                    </DialogDescription>
+                  </DialogHeader>
+                  <form onSubmit={handleCreate} className="space-y-3 py-2">
+                    <div className="space-y-1">
+                      <Label htmlFor="name" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Lengkap</Label>
+                      <Input id="name" placeholder="Budi Santoso" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="email" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Alamat Email</Label>
+                      <Input id="email" type="email" placeholder="budi@domain.com" value={formData.email} onChange={e => setFormData({...formData, email: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="password" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kata Sandi</Label>
+                      <Input id="password" type="password" placeholder="••••••••" value={formData.password} onChange={e => setFormData({...formData, password: e.target.value})} required className="h-9 rounded-xl text-xs bg-muted/20 border-border/80" />
+                    </div>
+                    <div className="space-y-1">
+                      <Label htmlFor="role" className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Platform</Label>
+                      <Select value={formData.role || "owner"} onValueChange={val => setFormData({...formData, role: val})}>
+                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="owner" className="text-xs rounded-lg font-medium">Account Owner (Pemilik Workspace)</SelectItem>
+                          <SelectItem value="super_admin" className="text-xs rounded-lg font-medium">Super Admin (Platform Master)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                      <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)} className="rounded-xl text-xs font-bold h-9">Batal</Button>
+                      <Button type="submit" disabled={isSubmitting} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs">
+                        {isSubmitting && <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />}
+                        Buat Akun
+                      </Button>
+                    </DialogFooter>
+                  </form>
+                </DialogContent>
+              </Dialog>
+            )}
           </div>
+
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl">
+              <TabsTrigger value="users" className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2">
+                <Users className="w-3.5 h-3.5" />
+                Pengguna Platform ({totalUsersCount})
+              </TabsTrigger>
+              <TabsTrigger value="rbac" className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2">
+                <ShieldCheck className="w-3.5 h-3.5" />
+                Matriks RBAC & Peran Sistem
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="users" className="space-y-6">
 
           {/* Stats Cards */}
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -683,7 +710,6 @@ export default function AdminUsersPage() {
               </div>
             )}
           </Card>
-        </div>
 
         {/* Edit Dialog */}
         <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
@@ -978,7 +1004,27 @@ export default function AdminUsersPage() {
           </AlertDialogContent>
         </AlertDialog>
 
+            </TabsContent>
+
+            <TabsContent value="rbac">
+              <RbacMatrixView />
+            </TabsContent>
+          </Tabs>
+
+        </div>
       </div>
     </div>
+  )
+}
+
+export default function AdminUsersPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex flex-1 min-h-[80vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <AdminUsersContent />
+    </Suspense>
   )
 }

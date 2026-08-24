@@ -7,6 +7,7 @@ import { getTenantDb } from "@/lib/database"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createComponentSchema, updateComponentSchema } from "@/lib/validations"
 import { revalidatePath } from "next/cache"
+import { parseSchemaFieldOptions } from "./content-pipeline"
 
 export async function getComponentsAction(tenantSlug: string) {
   try {
@@ -63,13 +64,7 @@ export async function getComponentsAction(tenantSlug: string) {
     })
 
     const componentsWithFlag = components.map(component => {
-      const formattedFields = component.schemaFields.map(field => {
-        let parsedOptions = field.options
-        if (typeof field.options === 'string') {
-          try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-        }
-        return { ...field, options: parsedOptions || {} }
-      })
+      const formattedFields = parseSchemaFieldOptions(component.schemaFields)
 
       // Calculate usedByCount
       const usedByCount = allFields.filter(f => {
@@ -134,13 +129,7 @@ export async function getComponentBySlugAction(tenantSlug: string, slug: string)
     const componentWithParsedOptions = {
       ...component,
       isGlobal: component.tenantId === null,
-      fields: component.schemaFields.map((field: any) => {
-        let parsedOptions = field.options
-        if (typeof field.options === 'string') {
-          try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-        }
-        return { ...field, options: parsedOptions || {} }
-      }),
+      fields: parseSchemaFieldOptions(component.schemaFields),
     }
 
     return { component: componentWithParsedOptions }
@@ -294,13 +283,7 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
     revalidatePath(`/dashboard/${tenantSlug}/components`)
     
     // Format response to match UI expectations
-    const formattedFields = updatedComponent.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(updatedComponent.schemaFields)
 
     return { component: { ...updatedComponent, fields: formattedFields } }
   } catch (error) {

@@ -59,6 +59,10 @@ import { CurrencyField } from "@/components/content/field-renderers/currency-fie
 import { DateRangeField } from "@/components/content/field-renderers/date-range-field"
 import { DynamicZoneField } from "@/components/content/field-renderers/dynamic-zone-field"
 import { PasswordField } from "@/components/content/field-renderers/password-field"
+import { PercentField } from "@/components/content/field-renderers/percent-field"
+import { IconField } from "@/components/content/field-renderers/icon-field"
+import { SeoField } from "@/components/content/field-renderers/seo-field"
+import { CodeField } from "@/components/content/field-renderers/code-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
@@ -137,6 +141,7 @@ export default function CMSCreateEntryPage() {
   const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
   const [isLimitReached, setIsLimitReached] = useState(false)
   const [entriesLimit, setEntriesLimit] = useState(0)
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null)
 
   const tenantMembership = session?.user?.tenants?.find((tenant) => tenant.slug === tenantSlug || tenant.id === tenantSlug)
   const effectiveRole = session?.user?.role === "super_admin" ? "owner" : (tenantMembership?.role || "viewer")
@@ -155,10 +160,11 @@ export default function CMSCreateEntryPage() {
     if (!tenantSlug || !contentTypeSlug) return
     try {
       setLoading(true)
-      const [ctData, locRes, limitRes] = await Promise.all([
+      const [ctData, locRes, limitRes, settingsRes] = await Promise.all([
         getContentTypeBySlugAction(tenantSlug, contentTypeSlug),
         fetch(`/api/tenant/${tenantSlug}/locales`),
-        fetch(`/api/tenant/${tenantSlug}/subscription/limit-check?feature=content_entries`)
+        fetch(`/api/tenant/${tenantSlug}/subscription/limit-check?feature=content_entries`),
+        fetch(`/api/tenant/${tenantSlug}/settings`),
       ])
       
       if (ctData?.error) {
@@ -176,6 +182,11 @@ export default function CMSCreateEntryPage() {
         const data = await limitRes.json()
         setIsLimitReached(!data.allowed)
         setEntriesLimit(data.max || 0)
+      }
+
+      if (settingsRes.ok) {
+        const data = await settingsRes.json()
+        if (data.settings?.previewUrl) setPreviewUrl(data.settings.previewUrl)
       }
     } catch (err) {
       toast({ variant: "destructive", title: "Error Memuat Data" })
@@ -231,6 +242,20 @@ export default function CMSCreateEntryPage() {
   const handleAISmartFill = (filledData: Record<string, unknown>) => {
     setFormData(prev => ({ ...prev, ...filledData }))
     toast({ title: "Formulir Diisi Otomatis oleh AI!", description: "Tinjau dan sesuaikan data sebelum mempublikasikan." })
+  }
+
+  const handleLivePreview = () => {
+    if (!previewUrl) {
+      toast({
+        title: "Preview URL Belum Dikonfigurasi",
+        description: "Buka menu Settings Workspace untuk mengatur URL Frontend Preview Anda.",
+      })
+      return
+    }
+    const slugValue = formData.slug || formData.slug_berita || "draft-preview"
+    const sep = previewUrl.includes("?") ? "&" : "?"
+    const fullUrl = `${previewUrl}${sep}contentType=${contentTypeSlug}&slug=${encodeURIComponent(String(slugValue))}&locale=${locale}&preview=true`
+    window.open(fullUrl, "_blank")
   }
 
   const renderField = (field: Field) => {
@@ -383,6 +408,18 @@ export default function CMSCreateEntryPage() {
       case "rating":
         return <div className="space-y-1.5">{renderLabelWithAI()}<RatingField value={value as number} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
+      case "percent":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PercentField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "icon":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<IconField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "seo":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SeoField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "code":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<CodeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
       case "button":
         return <div className="space-y-1.5">{renderLabelWithAI()}<ButtonField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
       
@@ -464,6 +501,18 @@ export default function CMSCreateEntryPage() {
                   })}
                 </SelectContent>
               </Select>
+
+              {/* Live Preview Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleLivePreview}
+                className="h-9 px-3 rounded-xl text-xs font-bold border-border/80 hover:bg-muted transition-all text-muted-foreground hover:text-foreground cursor-pointer"
+                title="Buka Live Preview di tab baru"
+              >
+                <Eye className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                Live Preview
+              </Button>
 
               {/* Save Draft Action */}
               <Button

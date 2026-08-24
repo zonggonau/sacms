@@ -1,0 +1,100 @@
+import { db } from "@/lib/database"
+import { logAudit, AuditAction } from "@/lib/audit-log"
+import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
+import { validateDynamicContent } from "@/lib/validations/dynamic-validator"
+import type { WorkflowStatus } from "@/lib/content-workflow-rules"
+import type { PrismaClient } from "../../prisma/generated-client"
+
+/**
+ * Normalizes schemaField options from JSON string or object
+ */
+export function parseSchemaFieldOptions(schemaFields: any[] = []) {
+  return schemaFields.map((f) => {
+    let parsedOptions = f.options
+    if (typeof f.options === "string") {
+      try {
+        parsedOptions = JSON.parse(f.options)
+      } catch {
+        parsedOptions = {}
+      }
+    }
+    return { ...f, options: parsedOptions || {} }
+  })
+}
+
+/**
+ * Validates scheduled publication date
+ */
+export function validateScheduledPublicationDate(
+  status: WorkflowStatus | string,
+  scheduledAt?: Date | null
+): string | null {
+  if (status !== "SCHEDULED") return null
+  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
+    return "A valid scheduled publication date is required"
+  }
+  if (scheduledAt.getTime() <= Date.now()) {
+    return "Scheduled publication date must be in the future"
+  }
+  return null
+}
+
+/**
+ * Executes dynamic schema validation for entry data
+ */
+export async function executeContentValidation(params: {
+  contentTypeId: string
+  tenantId: string
+  data: Record<string, any>
+  entryId?: string
+  isUpdate?: boolean
+  client?: PrismaClient
+}): Promise<{ success: boolean; errors?: Record<string, string> }> {
+  return await validateDynamicContent(
+    params.contentTypeId,
+    params.tenantId,
+    params.data,
+    params.entryId,
+    {
+      enforceRequired: !params.isUpdate,
+      client: params.client || db,
+    }
+  )
+}
+
+/**
+ * Dispatches content webhooks safely in the background
+ */
+export function dispatchContentWebhook(params: {
+  tenantId: string
+  event: string
+  payload: Record<string, any>
+}) {
+  triggerWebhooks(params.tenantId, params.event, params.payload).catch((err) => {
+    console.error(`[Webhook Dispatch Error] ${params.event} on tenant ${params.tenantId}:`, err)
+  })
+}
+
+/**
+ * Standardized content audit logging
+ */
+export async function recordContentAuditLog(params: {
+  tenantId?: string | null
+  userId: string
+  action: string
+  entityId: string
+  data: Record<string, any>
+}) {
+  try {
+    await logAudit({
+      tenantId: params.tenantId || undefined,
+      userId: params.userId,
+      action: params.action,
+      entity: "ContentEntry",
+      entityId: params.entityId,
+      data: params.data,
+    })
+  } catch (err) {
+    console.error("[Audit Log Error]:", err)
+  }
+}

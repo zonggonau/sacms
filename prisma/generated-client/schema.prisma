@@ -121,6 +121,7 @@ model Tenant {
   oauthTokens            OAuthToken[]
   roles                  TenantRole[]
   sites                  Site[]
+  infrastructureServers  InfrastructureServer[]
 
   @@map("tenants")
 }
@@ -927,4 +928,59 @@ model SiteMessage {
 
   @@index([conversationId])
   @@map("site_messages")
+}
+
+// ─── Enterprise Dedicated Infrastructure (Contabo VPS + PG + MinIO) ───
+
+model InfrastructureServer {
+  id                String                    @id @default(cuid())
+  tenantId          String
+  subscriptionId    String?
+  provider          String                    @default("contabo") // contabo | custom
+  providerServerId  String?
+  name              String?
+  hostname          String?
+  ipv4              String?
+  ipv6              String?
+  region            String                    @default("EU") // EU | US-central | SIN
+  plan              String                    @default("vps-s")
+  diskGb            Int                       @default(75)
+  ramMb             Int                       @default(8192)
+  cpuCount          Int                       @default(4)
+  status            String                    @default("pending") // pending | provisioning | configuring | active | suspended | error | destroying | destroyed
+  errorMessage      String?                   @db.Text
+  dbHost            String?
+  dbPort            Int                       @default(5432)
+  mediaHost         String?
+  mediaPort         Int                       @default(443)
+  lastHealthCheckAt DateTime?
+  healthStatus      String                    @default("unknown") // healthy | degraded | unhealthy | unknown
+  metricsSnapshot   Json?
+  createdAt         DateTime                  @default(now())
+  updatedAt         DateTime                  @updatedAt
+  tenant            Tenant                    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  credentials       InfrastructureCredential?
+
+  @@index([tenantId])
+  @@index([status])
+  @@map("infrastructure_servers")
+}
+
+model InfrastructureCredential {
+  id                        String               @id @default(cuid())
+  serverId                  String               @unique
+  databaseName              String               @default("sacms_db")
+  dbUser                    String               @default("sacms_user")
+  dbPasswordEncrypted       String               @db.Text
+  minioUser                 String               @default("sacms_storage")
+  minioSecretEncrypted      String               @db.Text
+  connectionStringEncrypted String               @db.Text
+  s3Endpoint                String
+  s3Bucket                  String               @default("sacms-media")
+  s3PublicUrl               String?
+  createdAt                 DateTime             @default(now())
+  rotatedAt                 DateTime?
+  server                    InfrastructureServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
+
+  @@map("infrastructure_credentials")
 }

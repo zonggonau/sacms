@@ -11,7 +11,8 @@ import {
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
-  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles
+  HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles,
+  Server, Layers
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -43,30 +44,15 @@ export default function TenantSubscriptionsPage() {
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
 
-  const DEFAULT_FREE_PLAN = {
-    id: 'free',
-    name: 'Free Forever',
-    type: 'workspace',
-    price: 0,
-    yearlyPrice: 0,
-    features: ['3 Content Schemas', '100 Content Entries', '3 Team Members', '10.000 API Calls'],
-    popular: false,
-    maxContentTypes: 3,
-    maxContentEntries: 100,
-    maxTeamMembers: 3,
-    maxApiCalls: 10000,
-    maxStorage: 100,
-    maxLocales: 1,
-  }
-
   const [subscription, setSubscription] = useState<Subscription>({ id: '', plan: 'free', status: 'active', currentPeriodEnd: null })
   const [activeAddons, setActiveAddons] = useState<string[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
-  const [plans, setPlans] = useState<any[]>([DEFAULT_FREE_PLAN])
+  const [plans, setPlans] = useState<any[]>([])
   const [usage, setUsage] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
+  const [planCategory, setPlanCategory] = useState<'all' | 'cloud' | 'business_vps' | 'gov_vds'>('all')
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
@@ -147,10 +133,7 @@ export default function TenantSubscriptionsPage() {
       }
       if (plansRes.ok) {
         const data = await plansRes.json()
-        const fetchedPlans = data.plans || []
-        // Always ensure free plan exists
-        const hasFree = fetchedPlans.some((p: any) => p.id === 'free')
-        setPlans(hasFree ? fetchedPlans : [DEFAULT_FREE_PLAN, ...fetchedPlans])
+        setPlans(data.plans || [])
       }
       if (usageRes.ok) {
         const data = await usageRes.json()
@@ -449,49 +432,89 @@ export default function TenantSubscriptionsPage() {
           {/* Main Plans Grid */}
           {!isEnterpriseMode && (
             <div className="space-y-4">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <h2 className="text-base font-bold tracking-tight text-foreground">Paket Langganan Workspace</h2>
-                  <p className="text-xs text-muted-foreground">Pilih paket yang sesuai dengan skala konten dan traffic workspace Anda.</p>
+                  <p className="text-xs text-muted-foreground">Pilih paket SaCMS Cloud Ekonomis, SaCMS Dedicated Business VPS, atau SaCMS Gov Enterprise VDS terisolasi penuh.</p>
                 </div>
                 
-                <div className="flex items-center p-1 bg-muted/40 rounded-xl border border-border/80 w-fit">
-                  <Button 
-                    variant="ghost"
-                    size="sm" 
-                    className={cn(
-                      "rounded-lg px-4 font-bold h-7 text-xs border-none transition-all", 
-                      billingInterval === 'month' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => setBillingInterval('month')}
-                  >
-                    Bulanan
-                  </Button>
-                  <Button 
-                    variant="ghost" 
-                    size="sm" 
-                    className={cn(
-                      "rounded-lg px-4 font-bold h-7 text-xs border-none transition-all", 
-                      billingInterval === 'year' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                    )}
-                    onClick={() => setBillingInterval('year')}
-                  >
-                    Tahunan <Badge className="ml-1.5 bg-emerald-600 text-white border-none text-[8px] h-3.5 px-1 rounded font-black">-15%</Badge>
-                  </Button>
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Category Switcher */}
+                  <div className="flex flex-wrap items-center p-1 bg-muted/40 rounded-xl border border-border/80 w-fit gap-1">
+                    <Button 
+                      variant="ghost"
+                      size="sm" 
+                      className={cn(
+                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all", 
+                        planCategory === 'all' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => setPlanCategory('all')}
+                    >
+                      Semua ({mainPlans.length})
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      size="sm" 
+                      className={cn(
+                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all", 
+                        planCategory === 'cloud' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => setPlanCategory('cloud')}
+                    >
+                      Cloud Ekonomis
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      size="sm" 
+                      className={cn(
+                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all gap-1.5", 
+                        planCategory === 'business_vps' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => setPlanCategory('business_vps')}
+                    >
+                      <Server className="h-3.5 w-3.5 text-primary" /> Business VPS
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      size="sm" 
+                      className={cn(
+                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all gap-1.5", 
+                        planCategory === 'gov_vds' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => setPlanCategory('gov_vds')}
+                    >
+                      <Zap className="h-3.5 w-3.5 text-amber-500" /> Gov & Enterprise VDS
+                    </Button>
+                  </div>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-                {mainPlans.map((plan) => {
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+                {mainPlans
+                  .filter((plan) => {
+                    const isVps = plan.id.toLowerCase().includes('vps')
+                    const isVds = plan.id.toLowerCase().includes('vds')
+                    const isCloud = !isVps && !isVds
+                    if (planCategory === 'cloud') return isCloud
+                    if (planCategory === 'business_vps') return isVps
+                    if (planCategory === 'gov_vds') return isVds
+                    return true
+                  })
+                  .map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
-                  const displayPrice = billingInterval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 12) : plan.price
-                  const label = billingInterval === 'year' ? '/tahun' : '/bulan'
+                  const displayPrice = plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10
+                  const isVpsPlan = plan.id.toLowerCase().includes('vps')
+                  const isVdsPlan = plan.id.toLowerCase().includes('vds')
 
                   return (
                     <Card key={plan.id} className={cn(
                       "border rounded-2xl bg-card shadow-xs relative flex flex-col transition-all duration-200 hover:shadow-md",
                       isCurrent
                         ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
+                        : isVdsPlan
+                        ? "border-amber-500/40 hover:border-amber-500 bg-gradient-to-b from-card to-amber-500/[0.02]"
+                        : isVpsPlan
+                        ? "border-primary/40 hover:border-primary bg-gradient-to-b from-card to-primary/[0.02]"
                         : plan.popular
                         ? "border-primary/50 hover:border-primary"
                         : "border-border hover:border-muted-foreground/40"
@@ -501,6 +524,14 @@ export default function TenantSubscriptionsPage() {
                         <div className="absolute top-3.5 right-3.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
                           <Check className="h-3 w-3 stroke-[3]" /> Aktif
                         </div>
+                      ) : isVdsPlan ? (
+                        <div className="absolute top-3.5 right-3.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Zap className="h-3 w-3" /> 100% Dedicated CPU
+                        </div>
+                      ) : isVpsPlan ? (
+                        <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Server className="h-3 w-3" /> Dedicated Business VPS
+                        </div>
                       ) : plan.popular ? (
                         <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Sparkles className="h-3 w-3" /> Populer
@@ -509,20 +540,22 @@ export default function TenantSubscriptionsPage() {
 
                       <CardHeader className="p-4 pb-2 space-y-2">
                         <div>
-                          <h3 className="text-base font-bold tracking-tight text-foreground">{plan.name}</h3>
+                          <div className="flex items-center gap-2">
+                            <h3 className="text-base font-bold tracking-tight text-foreground">{plan.name}</h3>
+                          </div>
                           {plan.description && (
-                            <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">{plan.description}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5">{plan.description}</p>
                           )}
                         </div>
 
                         <div className="pt-1">
                           <div className="flex items-baseline gap-1">
                             <span className="text-2xl font-black text-foreground">{formatPrice(displayPrice)}</span>
-                            <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+                            <span className="text-xs font-semibold text-muted-foreground">/tahun</span>
                           </div>
-                          {billingInterval === 'year' && plan.price > 0 && (
+                          {plan.price > 0 && (
                             <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                              Setara {formatPrice(plan.price)}/bln
+                              Setara {formatPrice(plan.price)}/bln (Tagihan Tahunan)
                             </p>
                           )}
                         </div>
@@ -547,12 +580,12 @@ export default function TenantSubscriptionsPage() {
                                 ? "bg-primary/10 text-primary cursor-default border border-primary/30 hover:bg-primary/10" 
                                 : "bg-primary hover:bg-primary/90 text-primary-foreground"
                             )}
-                            onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=${billingInterval}`)}
+                            onClick={() => !isCurrent && router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan.id}&interval=year`)}
                             disabled={isCurrent}
                           >
                             {isCurrent
                               ? <span className="flex items-center gap-1.5"><Check className="h-3.5 w-3.5" strokeWidth={3} /> Paket Aktif</span>
-                              : `Pilih ${plan.name}`
+                              : `Langganan Tahunan`
                             }
                           </Button>
                         </div>

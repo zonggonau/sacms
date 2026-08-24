@@ -29,7 +29,7 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
 
   return (
     <div className="w-64 border-r border-border/80 bg-card h-full flex flex-col shrink-0">
-      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/content-type-builder/content-types`} />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/content-type-builder/content-types`} portalBadge="Builder" />
       <div className="p-3 space-y-1">
         <p className="px-3 mb-2 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">
           Skema & Arsitektur

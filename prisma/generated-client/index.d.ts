@@ -263,6 +263,16 @@ export type SiteConversation = $Result.DefaultSelection<Prisma.$SiteConversation
  * 
  */
 export type SiteMessage = $Result.DefaultSelection<Prisma.$SiteMessagePayload>
+/**
+ * Model InfrastructureServer
+ * 
+ */
+export type InfrastructureServer = $Result.DefaultSelection<Prisma.$InfrastructureServerPayload>
+/**
+ * Model InfrastructureCredential
+ * 
+ */
+export type InfrastructureCredential = $Result.DefaultSelection<Prisma.$InfrastructureCredentialPayload>
 
 /**
  * Enums
@@ -903,6 +913,26 @@ export class PrismaClient<
     * ```
     */
   get siteMessage(): Prisma.SiteMessageDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.infrastructureServer`: Exposes CRUD operations for the **InfrastructureServer** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more InfrastructureServers
+    * const infrastructureServers = await prisma.infrastructureServer.findMany()
+    * ```
+    */
+  get infrastructureServer(): Prisma.InfrastructureServerDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.infrastructureCredential`: Exposes CRUD operations for the **InfrastructureCredential** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more InfrastructureCredentials
+    * const infrastructureCredentials = await prisma.infrastructureCredential.findMany()
+    * ```
+    */
+  get infrastructureCredential(): Prisma.InfrastructureCredentialDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1393,7 +1423,9 @@ export namespace Prisma {
     SiteVersion: 'SiteVersion',
     SiteDeployment: 'SiteDeployment',
     SiteConversation: 'SiteConversation',
-    SiteMessage: 'SiteMessage'
+    SiteMessage: 'SiteMessage',
+    InfrastructureServer: 'InfrastructureServer',
+    InfrastructureCredential: 'InfrastructureCredential'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1412,7 +1444,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage"
+      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage" | "infrastructureServer" | "infrastructureCredential"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -5116,6 +5148,154 @@ export namespace Prisma {
           }
         }
       }
+      InfrastructureServer: {
+        payload: Prisma.$InfrastructureServerPayload<ExtArgs>
+        fields: Prisma.InfrastructureServerFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.InfrastructureServerFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.InfrastructureServerFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          findFirst: {
+            args: Prisma.InfrastructureServerFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.InfrastructureServerFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          findMany: {
+            args: Prisma.InfrastructureServerFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>[]
+          }
+          create: {
+            args: Prisma.InfrastructureServerCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          createMany: {
+            args: Prisma.InfrastructureServerCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.InfrastructureServerCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>[]
+          }
+          delete: {
+            args: Prisma.InfrastructureServerDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          update: {
+            args: Prisma.InfrastructureServerUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          deleteMany: {
+            args: Prisma.InfrastructureServerDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.InfrastructureServerUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.InfrastructureServerUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>[]
+          }
+          upsert: {
+            args: Prisma.InfrastructureServerUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureServerPayload>
+          }
+          aggregate: {
+            args: Prisma.InfrastructureServerAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateInfrastructureServer>
+          }
+          groupBy: {
+            args: Prisma.InfrastructureServerGroupByArgs<ExtArgs>
+            result: $Utils.Optional<InfrastructureServerGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.InfrastructureServerCountArgs<ExtArgs>
+            result: $Utils.Optional<InfrastructureServerCountAggregateOutputType> | number
+          }
+        }
+      }
+      InfrastructureCredential: {
+        payload: Prisma.$InfrastructureCredentialPayload<ExtArgs>
+        fields: Prisma.InfrastructureCredentialFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.InfrastructureCredentialFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.InfrastructureCredentialFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          findFirst: {
+            args: Prisma.InfrastructureCredentialFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.InfrastructureCredentialFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          findMany: {
+            args: Prisma.InfrastructureCredentialFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>[]
+          }
+          create: {
+            args: Prisma.InfrastructureCredentialCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          createMany: {
+            args: Prisma.InfrastructureCredentialCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.InfrastructureCredentialCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>[]
+          }
+          delete: {
+            args: Prisma.InfrastructureCredentialDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          update: {
+            args: Prisma.InfrastructureCredentialUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          deleteMany: {
+            args: Prisma.InfrastructureCredentialDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.InfrastructureCredentialUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.InfrastructureCredentialUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>[]
+          }
+          upsert: {
+            args: Prisma.InfrastructureCredentialUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$InfrastructureCredentialPayload>
+          }
+          aggregate: {
+            args: Prisma.InfrastructureCredentialAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateInfrastructureCredential>
+          }
+          groupBy: {
+            args: Prisma.InfrastructureCredentialGroupByArgs<ExtArgs>
+            result: $Utils.Optional<InfrastructureCredentialGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.InfrastructureCredentialCountArgs<ExtArgs>
+            result: $Utils.Optional<InfrastructureCredentialCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -5262,6 +5442,8 @@ export namespace Prisma {
     siteDeployment?: SiteDeploymentOmit
     siteConversation?: SiteConversationOmit
     siteMessage?: SiteMessageOmit
+    infrastructureServer?: InfrastructureServerOmit
+    infrastructureCredential?: InfrastructureCredentialOmit
   }
 
   /* Types for Logging */
@@ -5434,6 +5616,7 @@ export namespace Prisma {
     oauthTokens: number
     roles: number
     sites: number
+    infrastructureServers: number
   }
 
   export type TenantCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5462,6 +5645,7 @@ export namespace Prisma {
     oauthTokens?: boolean | TenantCountOutputTypeCountOauthTokensArgs
     roles?: boolean | TenantCountOutputTypeCountRolesArgs
     sites?: boolean | TenantCountOutputTypeCountSitesArgs
+    infrastructureServers?: boolean | TenantCountOutputTypeCountInfrastructureServersArgs
   }
 
   // Custom InputTypes
@@ -5648,6 +5832,13 @@ export namespace Prisma {
    */
   export type TenantCountOutputTypeCountSitesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SiteWhereInput
+  }
+
+  /**
+   * TenantCountOutputType without action
+   */
+  export type TenantCountOutputTypeCountInfrastructureServersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: InfrastructureServerWhereInput
   }
 
 
@@ -10995,6 +11186,7 @@ export namespace Prisma {
     oauthTokens?: boolean | Tenant$oauthTokensArgs<ExtArgs>
     roles?: boolean | Tenant$rolesArgs<ExtArgs>
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
+    infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenant"]>
 
@@ -11106,6 +11298,7 @@ export namespace Prisma {
     oauthTokens?: boolean | Tenant$oauthTokensArgs<ExtArgs>
     roles?: boolean | Tenant$rolesArgs<ExtArgs>
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
+    infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TenantIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -11139,6 +11332,7 @@ export namespace Prisma {
       oauthTokens: Prisma.$OAuthTokenPayload<ExtArgs>[]
       roles: Prisma.$TenantRolePayload<ExtArgs>[]
       sites: Prisma.$SitePayload<ExtArgs>[]
+      infrastructureServers: Prisma.$InfrastructureServerPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11584,6 +11778,7 @@ export namespace Prisma {
     oauthTokens<T extends Tenant$oauthTokensArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$oauthTokensArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$OAuthTokenPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     roles<T extends Tenant$rolesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$rolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     sites<T extends Tenant$sitesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$sitesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SitePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    infrastructureServers<T extends Tenant$infrastructureServersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$infrastructureServersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -12622,6 +12817,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: SiteScalarFieldEnum | SiteScalarFieldEnum[]
+  }
+
+  /**
+   * Tenant.infrastructureServers
+   */
+  export type Tenant$infrastructureServersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    where?: InfrastructureServerWhereInput
+    orderBy?: InfrastructureServerOrderByWithRelationInput | InfrastructureServerOrderByWithRelationInput[]
+    cursor?: InfrastructureServerWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: InfrastructureServerScalarFieldEnum | InfrastructureServerScalarFieldEnum[]
   }
 
   /**
@@ -64449,6 +64668,2555 @@ export namespace Prisma {
 
 
   /**
+   * Model InfrastructureServer
+   */
+
+  export type AggregateInfrastructureServer = {
+    _count: InfrastructureServerCountAggregateOutputType | null
+    _avg: InfrastructureServerAvgAggregateOutputType | null
+    _sum: InfrastructureServerSumAggregateOutputType | null
+    _min: InfrastructureServerMinAggregateOutputType | null
+    _max: InfrastructureServerMaxAggregateOutputType | null
+  }
+
+  export type InfrastructureServerAvgAggregateOutputType = {
+    diskGb: number | null
+    ramMb: number | null
+    cpuCount: number | null
+    dbPort: number | null
+    mediaPort: number | null
+  }
+
+  export type InfrastructureServerSumAggregateOutputType = {
+    diskGb: number | null
+    ramMb: number | null
+    cpuCount: number | null
+    dbPort: number | null
+    mediaPort: number | null
+  }
+
+  export type InfrastructureServerMinAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    subscriptionId: string | null
+    provider: string | null
+    providerServerId: string | null
+    name: string | null
+    hostname: string | null
+    ipv4: string | null
+    ipv6: string | null
+    region: string | null
+    plan: string | null
+    diskGb: number | null
+    ramMb: number | null
+    cpuCount: number | null
+    status: string | null
+    errorMessage: string | null
+    dbHost: string | null
+    dbPort: number | null
+    mediaHost: string | null
+    mediaPort: number | null
+    lastHealthCheckAt: Date | null
+    healthStatus: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type InfrastructureServerMaxAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    subscriptionId: string | null
+    provider: string | null
+    providerServerId: string | null
+    name: string | null
+    hostname: string | null
+    ipv4: string | null
+    ipv6: string | null
+    region: string | null
+    plan: string | null
+    diskGb: number | null
+    ramMb: number | null
+    cpuCount: number | null
+    status: string | null
+    errorMessage: string | null
+    dbHost: string | null
+    dbPort: number | null
+    mediaHost: string | null
+    mediaPort: number | null
+    lastHealthCheckAt: Date | null
+    healthStatus: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type InfrastructureServerCountAggregateOutputType = {
+    id: number
+    tenantId: number
+    subscriptionId: number
+    provider: number
+    providerServerId: number
+    name: number
+    hostname: number
+    ipv4: number
+    ipv6: number
+    region: number
+    plan: number
+    diskGb: number
+    ramMb: number
+    cpuCount: number
+    status: number
+    errorMessage: number
+    dbHost: number
+    dbPort: number
+    mediaHost: number
+    mediaPort: number
+    lastHealthCheckAt: number
+    healthStatus: number
+    metricsSnapshot: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type InfrastructureServerAvgAggregateInputType = {
+    diskGb?: true
+    ramMb?: true
+    cpuCount?: true
+    dbPort?: true
+    mediaPort?: true
+  }
+
+  export type InfrastructureServerSumAggregateInputType = {
+    diskGb?: true
+    ramMb?: true
+    cpuCount?: true
+    dbPort?: true
+    mediaPort?: true
+  }
+
+  export type InfrastructureServerMinAggregateInputType = {
+    id?: true
+    tenantId?: true
+    subscriptionId?: true
+    provider?: true
+    providerServerId?: true
+    name?: true
+    hostname?: true
+    ipv4?: true
+    ipv6?: true
+    region?: true
+    plan?: true
+    diskGb?: true
+    ramMb?: true
+    cpuCount?: true
+    status?: true
+    errorMessage?: true
+    dbHost?: true
+    dbPort?: true
+    mediaHost?: true
+    mediaPort?: true
+    lastHealthCheckAt?: true
+    healthStatus?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type InfrastructureServerMaxAggregateInputType = {
+    id?: true
+    tenantId?: true
+    subscriptionId?: true
+    provider?: true
+    providerServerId?: true
+    name?: true
+    hostname?: true
+    ipv4?: true
+    ipv6?: true
+    region?: true
+    plan?: true
+    diskGb?: true
+    ramMb?: true
+    cpuCount?: true
+    status?: true
+    errorMessage?: true
+    dbHost?: true
+    dbPort?: true
+    mediaHost?: true
+    mediaPort?: true
+    lastHealthCheckAt?: true
+    healthStatus?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type InfrastructureServerCountAggregateInputType = {
+    id?: true
+    tenantId?: true
+    subscriptionId?: true
+    provider?: true
+    providerServerId?: true
+    name?: true
+    hostname?: true
+    ipv4?: true
+    ipv6?: true
+    region?: true
+    plan?: true
+    diskGb?: true
+    ramMb?: true
+    cpuCount?: true
+    status?: true
+    errorMessage?: true
+    dbHost?: true
+    dbPort?: true
+    mediaHost?: true
+    mediaPort?: true
+    lastHealthCheckAt?: true
+    healthStatus?: true
+    metricsSnapshot?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type InfrastructureServerAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which InfrastructureServer to aggregate.
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureServers to fetch.
+     */
+    orderBy?: InfrastructureServerOrderByWithRelationInput | InfrastructureServerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: InfrastructureServerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureServers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureServers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned InfrastructureServers
+    **/
+    _count?: true | InfrastructureServerCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: InfrastructureServerAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: InfrastructureServerSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: InfrastructureServerMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: InfrastructureServerMaxAggregateInputType
+  }
+
+  export type GetInfrastructureServerAggregateType<T extends InfrastructureServerAggregateArgs> = {
+        [P in keyof T & keyof AggregateInfrastructureServer]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateInfrastructureServer[P]>
+      : GetScalarType<T[P], AggregateInfrastructureServer[P]>
+  }
+
+
+
+
+  export type InfrastructureServerGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: InfrastructureServerWhereInput
+    orderBy?: InfrastructureServerOrderByWithAggregationInput | InfrastructureServerOrderByWithAggregationInput[]
+    by: InfrastructureServerScalarFieldEnum[] | InfrastructureServerScalarFieldEnum
+    having?: InfrastructureServerScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: InfrastructureServerCountAggregateInputType | true
+    _avg?: InfrastructureServerAvgAggregateInputType
+    _sum?: InfrastructureServerSumAggregateInputType
+    _min?: InfrastructureServerMinAggregateInputType
+    _max?: InfrastructureServerMaxAggregateInputType
+  }
+
+  export type InfrastructureServerGroupByOutputType = {
+    id: string
+    tenantId: string
+    subscriptionId: string | null
+    provider: string
+    providerServerId: string | null
+    name: string | null
+    hostname: string | null
+    ipv4: string | null
+    ipv6: string | null
+    region: string
+    plan: string
+    diskGb: number
+    ramMb: number
+    cpuCount: number
+    status: string
+    errorMessage: string | null
+    dbHost: string | null
+    dbPort: number
+    mediaHost: string | null
+    mediaPort: number
+    lastHealthCheckAt: Date | null
+    healthStatus: string
+    metricsSnapshot: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    _count: InfrastructureServerCountAggregateOutputType | null
+    _avg: InfrastructureServerAvgAggregateOutputType | null
+    _sum: InfrastructureServerSumAggregateOutputType | null
+    _min: InfrastructureServerMinAggregateOutputType | null
+    _max: InfrastructureServerMaxAggregateOutputType | null
+  }
+
+  type GetInfrastructureServerGroupByPayload<T extends InfrastructureServerGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<InfrastructureServerGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof InfrastructureServerGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], InfrastructureServerGroupByOutputType[P]>
+            : GetScalarType<T[P], InfrastructureServerGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type InfrastructureServerSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    subscriptionId?: boolean
+    provider?: boolean
+    providerServerId?: boolean
+    name?: boolean
+    hostname?: boolean
+    ipv4?: boolean
+    ipv6?: boolean
+    region?: boolean
+    plan?: boolean
+    diskGb?: boolean
+    ramMb?: boolean
+    cpuCount?: boolean
+    status?: boolean
+    errorMessage?: boolean
+    dbHost?: boolean
+    dbPort?: boolean
+    mediaHost?: boolean
+    mediaPort?: boolean
+    lastHealthCheckAt?: boolean
+    healthStatus?: boolean
+    metricsSnapshot?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    credentials?: boolean | InfrastructureServer$credentialsArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureServer"]>
+
+  export type InfrastructureServerSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    subscriptionId?: boolean
+    provider?: boolean
+    providerServerId?: boolean
+    name?: boolean
+    hostname?: boolean
+    ipv4?: boolean
+    ipv6?: boolean
+    region?: boolean
+    plan?: boolean
+    diskGb?: boolean
+    ramMb?: boolean
+    cpuCount?: boolean
+    status?: boolean
+    errorMessage?: boolean
+    dbHost?: boolean
+    dbPort?: boolean
+    mediaHost?: boolean
+    mediaPort?: boolean
+    lastHealthCheckAt?: boolean
+    healthStatus?: boolean
+    metricsSnapshot?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureServer"]>
+
+  export type InfrastructureServerSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    subscriptionId?: boolean
+    provider?: boolean
+    providerServerId?: boolean
+    name?: boolean
+    hostname?: boolean
+    ipv4?: boolean
+    ipv6?: boolean
+    region?: boolean
+    plan?: boolean
+    diskGb?: boolean
+    ramMb?: boolean
+    cpuCount?: boolean
+    status?: boolean
+    errorMessage?: boolean
+    dbHost?: boolean
+    dbPort?: boolean
+    mediaHost?: boolean
+    mediaPort?: boolean
+    lastHealthCheckAt?: boolean
+    healthStatus?: boolean
+    metricsSnapshot?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureServer"]>
+
+  export type InfrastructureServerSelectScalar = {
+    id?: boolean
+    tenantId?: boolean
+    subscriptionId?: boolean
+    provider?: boolean
+    providerServerId?: boolean
+    name?: boolean
+    hostname?: boolean
+    ipv4?: boolean
+    ipv6?: boolean
+    region?: boolean
+    plan?: boolean
+    diskGb?: boolean
+    ramMb?: boolean
+    cpuCount?: boolean
+    status?: boolean
+    errorMessage?: boolean
+    dbHost?: boolean
+    dbPort?: boolean
+    mediaHost?: boolean
+    mediaPort?: boolean
+    lastHealthCheckAt?: boolean
+    healthStatus?: boolean
+    metricsSnapshot?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type InfrastructureServerOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "subscriptionId" | "provider" | "providerServerId" | "name" | "hostname" | "ipv4" | "ipv6" | "region" | "plan" | "diskGb" | "ramMb" | "cpuCount" | "status" | "errorMessage" | "dbHost" | "dbPort" | "mediaHost" | "mediaPort" | "lastHealthCheckAt" | "healthStatus" | "metricsSnapshot" | "createdAt" | "updatedAt", ExtArgs["result"]["infrastructureServer"]>
+  export type InfrastructureServerInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    credentials?: boolean | InfrastructureServer$credentialsArgs<ExtArgs>
+  }
+  export type InfrastructureServerIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type InfrastructureServerIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+
+  export type $InfrastructureServerPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "InfrastructureServer"
+    objects: {
+      tenant: Prisma.$TenantPayload<ExtArgs>
+      credentials: Prisma.$InfrastructureCredentialPayload<ExtArgs> | null
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      tenantId: string
+      subscriptionId: string | null
+      provider: string
+      providerServerId: string | null
+      name: string | null
+      hostname: string | null
+      ipv4: string | null
+      ipv6: string | null
+      region: string
+      plan: string
+      diskGb: number
+      ramMb: number
+      cpuCount: number
+      status: string
+      errorMessage: string | null
+      dbHost: string | null
+      dbPort: number
+      mediaHost: string | null
+      mediaPort: number
+      lastHealthCheckAt: Date | null
+      healthStatus: string
+      metricsSnapshot: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["infrastructureServer"]>
+    composites: {}
+  }
+
+  type InfrastructureServerGetPayload<S extends boolean | null | undefined | InfrastructureServerDefaultArgs> = $Result.GetResult<Prisma.$InfrastructureServerPayload, S>
+
+  type InfrastructureServerCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<InfrastructureServerFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: InfrastructureServerCountAggregateInputType | true
+    }
+
+  export interface InfrastructureServerDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['InfrastructureServer'], meta: { name: 'InfrastructureServer' } }
+    /**
+     * Find zero or one InfrastructureServer that matches the filter.
+     * @param {InfrastructureServerFindUniqueArgs} args - Arguments to find a InfrastructureServer
+     * @example
+     * // Get one InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends InfrastructureServerFindUniqueArgs>(args: SelectSubset<T, InfrastructureServerFindUniqueArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one InfrastructureServer that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {InfrastructureServerFindUniqueOrThrowArgs} args - Arguments to find a InfrastructureServer
+     * @example
+     * // Get one InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends InfrastructureServerFindUniqueOrThrowArgs>(args: SelectSubset<T, InfrastructureServerFindUniqueOrThrowArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first InfrastructureServer that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerFindFirstArgs} args - Arguments to find a InfrastructureServer
+     * @example
+     * // Get one InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends InfrastructureServerFindFirstArgs>(args?: SelectSubset<T, InfrastructureServerFindFirstArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first InfrastructureServer that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerFindFirstOrThrowArgs} args - Arguments to find a InfrastructureServer
+     * @example
+     * // Get one InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends InfrastructureServerFindFirstOrThrowArgs>(args?: SelectSubset<T, InfrastructureServerFindFirstOrThrowArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more InfrastructureServers that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all InfrastructureServers
+     * const infrastructureServers = await prisma.infrastructureServer.findMany()
+     * 
+     * // Get first 10 InfrastructureServers
+     * const infrastructureServers = await prisma.infrastructureServer.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const infrastructureServerWithIdOnly = await prisma.infrastructureServer.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends InfrastructureServerFindManyArgs>(args?: SelectSubset<T, InfrastructureServerFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a InfrastructureServer.
+     * @param {InfrastructureServerCreateArgs} args - Arguments to create a InfrastructureServer.
+     * @example
+     * // Create one InfrastructureServer
+     * const InfrastructureServer = await prisma.infrastructureServer.create({
+     *   data: {
+     *     // ... data to create a InfrastructureServer
+     *   }
+     * })
+     * 
+     */
+    create<T extends InfrastructureServerCreateArgs>(args: SelectSubset<T, InfrastructureServerCreateArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many InfrastructureServers.
+     * @param {InfrastructureServerCreateManyArgs} args - Arguments to create many InfrastructureServers.
+     * @example
+     * // Create many InfrastructureServers
+     * const infrastructureServer = await prisma.infrastructureServer.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends InfrastructureServerCreateManyArgs>(args?: SelectSubset<T, InfrastructureServerCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many InfrastructureServers and returns the data saved in the database.
+     * @param {InfrastructureServerCreateManyAndReturnArgs} args - Arguments to create many InfrastructureServers.
+     * @example
+     * // Create many InfrastructureServers
+     * const infrastructureServer = await prisma.infrastructureServer.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many InfrastructureServers and only return the `id`
+     * const infrastructureServerWithIdOnly = await prisma.infrastructureServer.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends InfrastructureServerCreateManyAndReturnArgs>(args?: SelectSubset<T, InfrastructureServerCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a InfrastructureServer.
+     * @param {InfrastructureServerDeleteArgs} args - Arguments to delete one InfrastructureServer.
+     * @example
+     * // Delete one InfrastructureServer
+     * const InfrastructureServer = await prisma.infrastructureServer.delete({
+     *   where: {
+     *     // ... filter to delete one InfrastructureServer
+     *   }
+     * })
+     * 
+     */
+    delete<T extends InfrastructureServerDeleteArgs>(args: SelectSubset<T, InfrastructureServerDeleteArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one InfrastructureServer.
+     * @param {InfrastructureServerUpdateArgs} args - Arguments to update one InfrastructureServer.
+     * @example
+     * // Update one InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends InfrastructureServerUpdateArgs>(args: SelectSubset<T, InfrastructureServerUpdateArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more InfrastructureServers.
+     * @param {InfrastructureServerDeleteManyArgs} args - Arguments to filter InfrastructureServers to delete.
+     * @example
+     * // Delete a few InfrastructureServers
+     * const { count } = await prisma.infrastructureServer.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends InfrastructureServerDeleteManyArgs>(args?: SelectSubset<T, InfrastructureServerDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more InfrastructureServers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many InfrastructureServers
+     * const infrastructureServer = await prisma.infrastructureServer.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends InfrastructureServerUpdateManyArgs>(args: SelectSubset<T, InfrastructureServerUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more InfrastructureServers and returns the data updated in the database.
+     * @param {InfrastructureServerUpdateManyAndReturnArgs} args - Arguments to update many InfrastructureServers.
+     * @example
+     * // Update many InfrastructureServers
+     * const infrastructureServer = await prisma.infrastructureServer.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more InfrastructureServers and only return the `id`
+     * const infrastructureServerWithIdOnly = await prisma.infrastructureServer.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends InfrastructureServerUpdateManyAndReturnArgs>(args: SelectSubset<T, InfrastructureServerUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one InfrastructureServer.
+     * @param {InfrastructureServerUpsertArgs} args - Arguments to update or create a InfrastructureServer.
+     * @example
+     * // Update or create a InfrastructureServer
+     * const infrastructureServer = await prisma.infrastructureServer.upsert({
+     *   create: {
+     *     // ... data to create a InfrastructureServer
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the InfrastructureServer we want to update
+     *   }
+     * })
+     */
+    upsert<T extends InfrastructureServerUpsertArgs>(args: SelectSubset<T, InfrastructureServerUpsertArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of InfrastructureServers.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerCountArgs} args - Arguments to filter InfrastructureServers to count.
+     * @example
+     * // Count the number of InfrastructureServers
+     * const count = await prisma.infrastructureServer.count({
+     *   where: {
+     *     // ... the filter for the InfrastructureServers we want to count
+     *   }
+     * })
+    **/
+    count<T extends InfrastructureServerCountArgs>(
+      args?: Subset<T, InfrastructureServerCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], InfrastructureServerCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a InfrastructureServer.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends InfrastructureServerAggregateArgs>(args: Subset<T, InfrastructureServerAggregateArgs>): Prisma.PrismaPromise<GetInfrastructureServerAggregateType<T>>
+
+    /**
+     * Group by InfrastructureServer.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureServerGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends InfrastructureServerGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: InfrastructureServerGroupByArgs['orderBy'] }
+        : { orderBy?: InfrastructureServerGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, InfrastructureServerGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetInfrastructureServerGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the InfrastructureServer model
+   */
+  readonly fields: InfrastructureServerFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for InfrastructureServer.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__InfrastructureServerClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    credentials<T extends InfrastructureServer$credentialsArgs<ExtArgs> = {}>(args?: Subset<T, InfrastructureServer$credentialsArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the InfrastructureServer model
+   */
+  interface InfrastructureServerFieldRefs {
+    readonly id: FieldRef<"InfrastructureServer", 'String'>
+    readonly tenantId: FieldRef<"InfrastructureServer", 'String'>
+    readonly subscriptionId: FieldRef<"InfrastructureServer", 'String'>
+    readonly provider: FieldRef<"InfrastructureServer", 'String'>
+    readonly providerServerId: FieldRef<"InfrastructureServer", 'String'>
+    readonly name: FieldRef<"InfrastructureServer", 'String'>
+    readonly hostname: FieldRef<"InfrastructureServer", 'String'>
+    readonly ipv4: FieldRef<"InfrastructureServer", 'String'>
+    readonly ipv6: FieldRef<"InfrastructureServer", 'String'>
+    readonly region: FieldRef<"InfrastructureServer", 'String'>
+    readonly plan: FieldRef<"InfrastructureServer", 'String'>
+    readonly diskGb: FieldRef<"InfrastructureServer", 'Int'>
+    readonly ramMb: FieldRef<"InfrastructureServer", 'Int'>
+    readonly cpuCount: FieldRef<"InfrastructureServer", 'Int'>
+    readonly status: FieldRef<"InfrastructureServer", 'String'>
+    readonly errorMessage: FieldRef<"InfrastructureServer", 'String'>
+    readonly dbHost: FieldRef<"InfrastructureServer", 'String'>
+    readonly dbPort: FieldRef<"InfrastructureServer", 'Int'>
+    readonly mediaHost: FieldRef<"InfrastructureServer", 'String'>
+    readonly mediaPort: FieldRef<"InfrastructureServer", 'Int'>
+    readonly lastHealthCheckAt: FieldRef<"InfrastructureServer", 'DateTime'>
+    readonly healthStatus: FieldRef<"InfrastructureServer", 'String'>
+    readonly metricsSnapshot: FieldRef<"InfrastructureServer", 'Json'>
+    readonly createdAt: FieldRef<"InfrastructureServer", 'DateTime'>
+    readonly updatedAt: FieldRef<"InfrastructureServer", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * InfrastructureServer findUnique
+   */
+  export type InfrastructureServerFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureServer to fetch.
+     */
+    where: InfrastructureServerWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureServer findUniqueOrThrow
+   */
+  export type InfrastructureServerFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureServer to fetch.
+     */
+    where: InfrastructureServerWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureServer findFirst
+   */
+  export type InfrastructureServerFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureServer to fetch.
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureServers to fetch.
+     */
+    orderBy?: InfrastructureServerOrderByWithRelationInput | InfrastructureServerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for InfrastructureServers.
+     */
+    cursor?: InfrastructureServerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureServers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureServers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of InfrastructureServers.
+     */
+    distinct?: InfrastructureServerScalarFieldEnum | InfrastructureServerScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureServer findFirstOrThrow
+   */
+  export type InfrastructureServerFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureServer to fetch.
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureServers to fetch.
+     */
+    orderBy?: InfrastructureServerOrderByWithRelationInput | InfrastructureServerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for InfrastructureServers.
+     */
+    cursor?: InfrastructureServerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureServers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureServers.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of InfrastructureServers.
+     */
+    distinct?: InfrastructureServerScalarFieldEnum | InfrastructureServerScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureServer findMany
+   */
+  export type InfrastructureServerFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureServers to fetch.
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureServers to fetch.
+     */
+    orderBy?: InfrastructureServerOrderByWithRelationInput | InfrastructureServerOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing InfrastructureServers.
+     */
+    cursor?: InfrastructureServerWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureServers from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureServers.
+     */
+    skip?: number
+    distinct?: InfrastructureServerScalarFieldEnum | InfrastructureServerScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureServer create
+   */
+  export type InfrastructureServerCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * The data needed to create a InfrastructureServer.
+     */
+    data: XOR<InfrastructureServerCreateInput, InfrastructureServerUncheckedCreateInput>
+  }
+
+  /**
+   * InfrastructureServer createMany
+   */
+  export type InfrastructureServerCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many InfrastructureServers.
+     */
+    data: InfrastructureServerCreateManyInput | InfrastructureServerCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * InfrastructureServer createManyAndReturn
+   */
+  export type InfrastructureServerCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * The data used to create many InfrastructureServers.
+     */
+    data: InfrastructureServerCreateManyInput | InfrastructureServerCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * InfrastructureServer update
+   */
+  export type InfrastructureServerUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * The data needed to update a InfrastructureServer.
+     */
+    data: XOR<InfrastructureServerUpdateInput, InfrastructureServerUncheckedUpdateInput>
+    /**
+     * Choose, which InfrastructureServer to update.
+     */
+    where: InfrastructureServerWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureServer updateMany
+   */
+  export type InfrastructureServerUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update InfrastructureServers.
+     */
+    data: XOR<InfrastructureServerUpdateManyMutationInput, InfrastructureServerUncheckedUpdateManyInput>
+    /**
+     * Filter which InfrastructureServers to update
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * Limit how many InfrastructureServers to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * InfrastructureServer updateManyAndReturn
+   */
+  export type InfrastructureServerUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * The data used to update InfrastructureServers.
+     */
+    data: XOR<InfrastructureServerUpdateManyMutationInput, InfrastructureServerUncheckedUpdateManyInput>
+    /**
+     * Filter which InfrastructureServers to update
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * Limit how many InfrastructureServers to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * InfrastructureServer upsert
+   */
+  export type InfrastructureServerUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * The filter to search for the InfrastructureServer to update in case it exists.
+     */
+    where: InfrastructureServerWhereUniqueInput
+    /**
+     * In case the InfrastructureServer found by the `where` argument doesn't exist, create a new InfrastructureServer with this data.
+     */
+    create: XOR<InfrastructureServerCreateInput, InfrastructureServerUncheckedCreateInput>
+    /**
+     * In case the InfrastructureServer was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<InfrastructureServerUpdateInput, InfrastructureServerUncheckedUpdateInput>
+  }
+
+  /**
+   * InfrastructureServer delete
+   */
+  export type InfrastructureServerDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+    /**
+     * Filter which InfrastructureServer to delete.
+     */
+    where: InfrastructureServerWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureServer deleteMany
+   */
+  export type InfrastructureServerDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which InfrastructureServers to delete
+     */
+    where?: InfrastructureServerWhereInput
+    /**
+     * Limit how many InfrastructureServers to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * InfrastructureServer.credentials
+   */
+  export type InfrastructureServer$credentialsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    where?: InfrastructureCredentialWhereInput
+  }
+
+  /**
+   * InfrastructureServer without action
+   */
+  export type InfrastructureServerDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureServer
+     */
+    select?: InfrastructureServerSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureServer
+     */
+    omit?: InfrastructureServerOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureServerInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model InfrastructureCredential
+   */
+
+  export type AggregateInfrastructureCredential = {
+    _count: InfrastructureCredentialCountAggregateOutputType | null
+    _min: InfrastructureCredentialMinAggregateOutputType | null
+    _max: InfrastructureCredentialMaxAggregateOutputType | null
+  }
+
+  export type InfrastructureCredentialMinAggregateOutputType = {
+    id: string | null
+    serverId: string | null
+    databaseName: string | null
+    dbUser: string | null
+    dbPasswordEncrypted: string | null
+    minioUser: string | null
+    minioSecretEncrypted: string | null
+    connectionStringEncrypted: string | null
+    s3Endpoint: string | null
+    s3Bucket: string | null
+    s3PublicUrl: string | null
+    createdAt: Date | null
+    rotatedAt: Date | null
+  }
+
+  export type InfrastructureCredentialMaxAggregateOutputType = {
+    id: string | null
+    serverId: string | null
+    databaseName: string | null
+    dbUser: string | null
+    dbPasswordEncrypted: string | null
+    minioUser: string | null
+    minioSecretEncrypted: string | null
+    connectionStringEncrypted: string | null
+    s3Endpoint: string | null
+    s3Bucket: string | null
+    s3PublicUrl: string | null
+    createdAt: Date | null
+    rotatedAt: Date | null
+  }
+
+  export type InfrastructureCredentialCountAggregateOutputType = {
+    id: number
+    serverId: number
+    databaseName: number
+    dbUser: number
+    dbPasswordEncrypted: number
+    minioUser: number
+    minioSecretEncrypted: number
+    connectionStringEncrypted: number
+    s3Endpoint: number
+    s3Bucket: number
+    s3PublicUrl: number
+    createdAt: number
+    rotatedAt: number
+    _all: number
+  }
+
+
+  export type InfrastructureCredentialMinAggregateInputType = {
+    id?: true
+    serverId?: true
+    databaseName?: true
+    dbUser?: true
+    dbPasswordEncrypted?: true
+    minioUser?: true
+    minioSecretEncrypted?: true
+    connectionStringEncrypted?: true
+    s3Endpoint?: true
+    s3Bucket?: true
+    s3PublicUrl?: true
+    createdAt?: true
+    rotatedAt?: true
+  }
+
+  export type InfrastructureCredentialMaxAggregateInputType = {
+    id?: true
+    serverId?: true
+    databaseName?: true
+    dbUser?: true
+    dbPasswordEncrypted?: true
+    minioUser?: true
+    minioSecretEncrypted?: true
+    connectionStringEncrypted?: true
+    s3Endpoint?: true
+    s3Bucket?: true
+    s3PublicUrl?: true
+    createdAt?: true
+    rotatedAt?: true
+  }
+
+  export type InfrastructureCredentialCountAggregateInputType = {
+    id?: true
+    serverId?: true
+    databaseName?: true
+    dbUser?: true
+    dbPasswordEncrypted?: true
+    minioUser?: true
+    minioSecretEncrypted?: true
+    connectionStringEncrypted?: true
+    s3Endpoint?: true
+    s3Bucket?: true
+    s3PublicUrl?: true
+    createdAt?: true
+    rotatedAt?: true
+    _all?: true
+  }
+
+  export type InfrastructureCredentialAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which InfrastructureCredential to aggregate.
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureCredentials to fetch.
+     */
+    orderBy?: InfrastructureCredentialOrderByWithRelationInput | InfrastructureCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: InfrastructureCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned InfrastructureCredentials
+    **/
+    _count?: true | InfrastructureCredentialCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: InfrastructureCredentialMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: InfrastructureCredentialMaxAggregateInputType
+  }
+
+  export type GetInfrastructureCredentialAggregateType<T extends InfrastructureCredentialAggregateArgs> = {
+        [P in keyof T & keyof AggregateInfrastructureCredential]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateInfrastructureCredential[P]>
+      : GetScalarType<T[P], AggregateInfrastructureCredential[P]>
+  }
+
+
+
+
+  export type InfrastructureCredentialGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: InfrastructureCredentialWhereInput
+    orderBy?: InfrastructureCredentialOrderByWithAggregationInput | InfrastructureCredentialOrderByWithAggregationInput[]
+    by: InfrastructureCredentialScalarFieldEnum[] | InfrastructureCredentialScalarFieldEnum
+    having?: InfrastructureCredentialScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: InfrastructureCredentialCountAggregateInputType | true
+    _min?: InfrastructureCredentialMinAggregateInputType
+    _max?: InfrastructureCredentialMaxAggregateInputType
+  }
+
+  export type InfrastructureCredentialGroupByOutputType = {
+    id: string
+    serverId: string
+    databaseName: string
+    dbUser: string
+    dbPasswordEncrypted: string
+    minioUser: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket: string
+    s3PublicUrl: string | null
+    createdAt: Date
+    rotatedAt: Date | null
+    _count: InfrastructureCredentialCountAggregateOutputType | null
+    _min: InfrastructureCredentialMinAggregateOutputType | null
+    _max: InfrastructureCredentialMaxAggregateOutputType | null
+  }
+
+  type GetInfrastructureCredentialGroupByPayload<T extends InfrastructureCredentialGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<InfrastructureCredentialGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof InfrastructureCredentialGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], InfrastructureCredentialGroupByOutputType[P]>
+            : GetScalarType<T[P], InfrastructureCredentialGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type InfrastructureCredentialSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    serverId?: boolean
+    databaseName?: boolean
+    dbUser?: boolean
+    dbPasswordEncrypted?: boolean
+    minioUser?: boolean
+    minioSecretEncrypted?: boolean
+    connectionStringEncrypted?: boolean
+    s3Endpoint?: boolean
+    s3Bucket?: boolean
+    s3PublicUrl?: boolean
+    createdAt?: boolean
+    rotatedAt?: boolean
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureCredential"]>
+
+  export type InfrastructureCredentialSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    serverId?: boolean
+    databaseName?: boolean
+    dbUser?: boolean
+    dbPasswordEncrypted?: boolean
+    minioUser?: boolean
+    minioSecretEncrypted?: boolean
+    connectionStringEncrypted?: boolean
+    s3Endpoint?: boolean
+    s3Bucket?: boolean
+    s3PublicUrl?: boolean
+    createdAt?: boolean
+    rotatedAt?: boolean
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureCredential"]>
+
+  export type InfrastructureCredentialSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    serverId?: boolean
+    databaseName?: boolean
+    dbUser?: boolean
+    dbPasswordEncrypted?: boolean
+    minioUser?: boolean
+    minioSecretEncrypted?: boolean
+    connectionStringEncrypted?: boolean
+    s3Endpoint?: boolean
+    s3Bucket?: boolean
+    s3PublicUrl?: boolean
+    createdAt?: boolean
+    rotatedAt?: boolean
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["infrastructureCredential"]>
+
+  export type InfrastructureCredentialSelectScalar = {
+    id?: boolean
+    serverId?: boolean
+    databaseName?: boolean
+    dbUser?: boolean
+    dbPasswordEncrypted?: boolean
+    minioUser?: boolean
+    minioSecretEncrypted?: boolean
+    connectionStringEncrypted?: boolean
+    s3Endpoint?: boolean
+    s3Bucket?: boolean
+    s3PublicUrl?: boolean
+    createdAt?: boolean
+    rotatedAt?: boolean
+  }
+
+  export type InfrastructureCredentialOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "serverId" | "databaseName" | "dbUser" | "dbPasswordEncrypted" | "minioUser" | "minioSecretEncrypted" | "connectionStringEncrypted" | "s3Endpoint" | "s3Bucket" | "s3PublicUrl" | "createdAt" | "rotatedAt", ExtArgs["result"]["infrastructureCredential"]>
+  export type InfrastructureCredentialInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }
+  export type InfrastructureCredentialIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }
+  export type InfrastructureCredentialIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    server?: boolean | InfrastructureServerDefaultArgs<ExtArgs>
+  }
+
+  export type $InfrastructureCredentialPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "InfrastructureCredential"
+    objects: {
+      server: Prisma.$InfrastructureServerPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      serverId: string
+      databaseName: string
+      dbUser: string
+      dbPasswordEncrypted: string
+      minioUser: string
+      minioSecretEncrypted: string
+      connectionStringEncrypted: string
+      s3Endpoint: string
+      s3Bucket: string
+      s3PublicUrl: string | null
+      createdAt: Date
+      rotatedAt: Date | null
+    }, ExtArgs["result"]["infrastructureCredential"]>
+    composites: {}
+  }
+
+  type InfrastructureCredentialGetPayload<S extends boolean | null | undefined | InfrastructureCredentialDefaultArgs> = $Result.GetResult<Prisma.$InfrastructureCredentialPayload, S>
+
+  type InfrastructureCredentialCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<InfrastructureCredentialFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: InfrastructureCredentialCountAggregateInputType | true
+    }
+
+  export interface InfrastructureCredentialDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['InfrastructureCredential'], meta: { name: 'InfrastructureCredential' } }
+    /**
+     * Find zero or one InfrastructureCredential that matches the filter.
+     * @param {InfrastructureCredentialFindUniqueArgs} args - Arguments to find a InfrastructureCredential
+     * @example
+     * // Get one InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends InfrastructureCredentialFindUniqueArgs>(args: SelectSubset<T, InfrastructureCredentialFindUniqueArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one InfrastructureCredential that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {InfrastructureCredentialFindUniqueOrThrowArgs} args - Arguments to find a InfrastructureCredential
+     * @example
+     * // Get one InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends InfrastructureCredentialFindUniqueOrThrowArgs>(args: SelectSubset<T, InfrastructureCredentialFindUniqueOrThrowArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first InfrastructureCredential that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialFindFirstArgs} args - Arguments to find a InfrastructureCredential
+     * @example
+     * // Get one InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends InfrastructureCredentialFindFirstArgs>(args?: SelectSubset<T, InfrastructureCredentialFindFirstArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first InfrastructureCredential that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialFindFirstOrThrowArgs} args - Arguments to find a InfrastructureCredential
+     * @example
+     * // Get one InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends InfrastructureCredentialFindFirstOrThrowArgs>(args?: SelectSubset<T, InfrastructureCredentialFindFirstOrThrowArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more InfrastructureCredentials that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all InfrastructureCredentials
+     * const infrastructureCredentials = await prisma.infrastructureCredential.findMany()
+     * 
+     * // Get first 10 InfrastructureCredentials
+     * const infrastructureCredentials = await prisma.infrastructureCredential.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const infrastructureCredentialWithIdOnly = await prisma.infrastructureCredential.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends InfrastructureCredentialFindManyArgs>(args?: SelectSubset<T, InfrastructureCredentialFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a InfrastructureCredential.
+     * @param {InfrastructureCredentialCreateArgs} args - Arguments to create a InfrastructureCredential.
+     * @example
+     * // Create one InfrastructureCredential
+     * const InfrastructureCredential = await prisma.infrastructureCredential.create({
+     *   data: {
+     *     // ... data to create a InfrastructureCredential
+     *   }
+     * })
+     * 
+     */
+    create<T extends InfrastructureCredentialCreateArgs>(args: SelectSubset<T, InfrastructureCredentialCreateArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many InfrastructureCredentials.
+     * @param {InfrastructureCredentialCreateManyArgs} args - Arguments to create many InfrastructureCredentials.
+     * @example
+     * // Create many InfrastructureCredentials
+     * const infrastructureCredential = await prisma.infrastructureCredential.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends InfrastructureCredentialCreateManyArgs>(args?: SelectSubset<T, InfrastructureCredentialCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many InfrastructureCredentials and returns the data saved in the database.
+     * @param {InfrastructureCredentialCreateManyAndReturnArgs} args - Arguments to create many InfrastructureCredentials.
+     * @example
+     * // Create many InfrastructureCredentials
+     * const infrastructureCredential = await prisma.infrastructureCredential.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many InfrastructureCredentials and only return the `id`
+     * const infrastructureCredentialWithIdOnly = await prisma.infrastructureCredential.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends InfrastructureCredentialCreateManyAndReturnArgs>(args?: SelectSubset<T, InfrastructureCredentialCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a InfrastructureCredential.
+     * @param {InfrastructureCredentialDeleteArgs} args - Arguments to delete one InfrastructureCredential.
+     * @example
+     * // Delete one InfrastructureCredential
+     * const InfrastructureCredential = await prisma.infrastructureCredential.delete({
+     *   where: {
+     *     // ... filter to delete one InfrastructureCredential
+     *   }
+     * })
+     * 
+     */
+    delete<T extends InfrastructureCredentialDeleteArgs>(args: SelectSubset<T, InfrastructureCredentialDeleteArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one InfrastructureCredential.
+     * @param {InfrastructureCredentialUpdateArgs} args - Arguments to update one InfrastructureCredential.
+     * @example
+     * // Update one InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends InfrastructureCredentialUpdateArgs>(args: SelectSubset<T, InfrastructureCredentialUpdateArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more InfrastructureCredentials.
+     * @param {InfrastructureCredentialDeleteManyArgs} args - Arguments to filter InfrastructureCredentials to delete.
+     * @example
+     * // Delete a few InfrastructureCredentials
+     * const { count } = await prisma.infrastructureCredential.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends InfrastructureCredentialDeleteManyArgs>(args?: SelectSubset<T, InfrastructureCredentialDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more InfrastructureCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many InfrastructureCredentials
+     * const infrastructureCredential = await prisma.infrastructureCredential.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends InfrastructureCredentialUpdateManyArgs>(args: SelectSubset<T, InfrastructureCredentialUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more InfrastructureCredentials and returns the data updated in the database.
+     * @param {InfrastructureCredentialUpdateManyAndReturnArgs} args - Arguments to update many InfrastructureCredentials.
+     * @example
+     * // Update many InfrastructureCredentials
+     * const infrastructureCredential = await prisma.infrastructureCredential.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more InfrastructureCredentials and only return the `id`
+     * const infrastructureCredentialWithIdOnly = await prisma.infrastructureCredential.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends InfrastructureCredentialUpdateManyAndReturnArgs>(args: SelectSubset<T, InfrastructureCredentialUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one InfrastructureCredential.
+     * @param {InfrastructureCredentialUpsertArgs} args - Arguments to update or create a InfrastructureCredential.
+     * @example
+     * // Update or create a InfrastructureCredential
+     * const infrastructureCredential = await prisma.infrastructureCredential.upsert({
+     *   create: {
+     *     // ... data to create a InfrastructureCredential
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the InfrastructureCredential we want to update
+     *   }
+     * })
+     */
+    upsert<T extends InfrastructureCredentialUpsertArgs>(args: SelectSubset<T, InfrastructureCredentialUpsertArgs<ExtArgs>>): Prisma__InfrastructureCredentialClient<$Result.GetResult<Prisma.$InfrastructureCredentialPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of InfrastructureCredentials.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialCountArgs} args - Arguments to filter InfrastructureCredentials to count.
+     * @example
+     * // Count the number of InfrastructureCredentials
+     * const count = await prisma.infrastructureCredential.count({
+     *   where: {
+     *     // ... the filter for the InfrastructureCredentials we want to count
+     *   }
+     * })
+    **/
+    count<T extends InfrastructureCredentialCountArgs>(
+      args?: Subset<T, InfrastructureCredentialCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], InfrastructureCredentialCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a InfrastructureCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends InfrastructureCredentialAggregateArgs>(args: Subset<T, InfrastructureCredentialAggregateArgs>): Prisma.PrismaPromise<GetInfrastructureCredentialAggregateType<T>>
+
+    /**
+     * Group by InfrastructureCredential.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {InfrastructureCredentialGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends InfrastructureCredentialGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: InfrastructureCredentialGroupByArgs['orderBy'] }
+        : { orderBy?: InfrastructureCredentialGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, InfrastructureCredentialGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetInfrastructureCredentialGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the InfrastructureCredential model
+   */
+  readonly fields: InfrastructureCredentialFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for InfrastructureCredential.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__InfrastructureCredentialClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    server<T extends InfrastructureServerDefaultArgs<ExtArgs> = {}>(args?: Subset<T, InfrastructureServerDefaultArgs<ExtArgs>>): Prisma__InfrastructureServerClient<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the InfrastructureCredential model
+   */
+  interface InfrastructureCredentialFieldRefs {
+    readonly id: FieldRef<"InfrastructureCredential", 'String'>
+    readonly serverId: FieldRef<"InfrastructureCredential", 'String'>
+    readonly databaseName: FieldRef<"InfrastructureCredential", 'String'>
+    readonly dbUser: FieldRef<"InfrastructureCredential", 'String'>
+    readonly dbPasswordEncrypted: FieldRef<"InfrastructureCredential", 'String'>
+    readonly minioUser: FieldRef<"InfrastructureCredential", 'String'>
+    readonly minioSecretEncrypted: FieldRef<"InfrastructureCredential", 'String'>
+    readonly connectionStringEncrypted: FieldRef<"InfrastructureCredential", 'String'>
+    readonly s3Endpoint: FieldRef<"InfrastructureCredential", 'String'>
+    readonly s3Bucket: FieldRef<"InfrastructureCredential", 'String'>
+    readonly s3PublicUrl: FieldRef<"InfrastructureCredential", 'String'>
+    readonly createdAt: FieldRef<"InfrastructureCredential", 'DateTime'>
+    readonly rotatedAt: FieldRef<"InfrastructureCredential", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * InfrastructureCredential findUnique
+   */
+  export type InfrastructureCredentialFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureCredential to fetch.
+     */
+    where: InfrastructureCredentialWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureCredential findUniqueOrThrow
+   */
+  export type InfrastructureCredentialFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureCredential to fetch.
+     */
+    where: InfrastructureCredentialWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureCredential findFirst
+   */
+  export type InfrastructureCredentialFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureCredential to fetch.
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureCredentials to fetch.
+     */
+    orderBy?: InfrastructureCredentialOrderByWithRelationInput | InfrastructureCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for InfrastructureCredentials.
+     */
+    cursor?: InfrastructureCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of InfrastructureCredentials.
+     */
+    distinct?: InfrastructureCredentialScalarFieldEnum | InfrastructureCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureCredential findFirstOrThrow
+   */
+  export type InfrastructureCredentialFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureCredential to fetch.
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureCredentials to fetch.
+     */
+    orderBy?: InfrastructureCredentialOrderByWithRelationInput | InfrastructureCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for InfrastructureCredentials.
+     */
+    cursor?: InfrastructureCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureCredentials.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of InfrastructureCredentials.
+     */
+    distinct?: InfrastructureCredentialScalarFieldEnum | InfrastructureCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureCredential findMany
+   */
+  export type InfrastructureCredentialFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter, which InfrastructureCredentials to fetch.
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of InfrastructureCredentials to fetch.
+     */
+    orderBy?: InfrastructureCredentialOrderByWithRelationInput | InfrastructureCredentialOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing InfrastructureCredentials.
+     */
+    cursor?: InfrastructureCredentialWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` InfrastructureCredentials from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` InfrastructureCredentials.
+     */
+    skip?: number
+    distinct?: InfrastructureCredentialScalarFieldEnum | InfrastructureCredentialScalarFieldEnum[]
+  }
+
+  /**
+   * InfrastructureCredential create
+   */
+  export type InfrastructureCredentialCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * The data needed to create a InfrastructureCredential.
+     */
+    data: XOR<InfrastructureCredentialCreateInput, InfrastructureCredentialUncheckedCreateInput>
+  }
+
+  /**
+   * InfrastructureCredential createMany
+   */
+  export type InfrastructureCredentialCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many InfrastructureCredentials.
+     */
+    data: InfrastructureCredentialCreateManyInput | InfrastructureCredentialCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * InfrastructureCredential createManyAndReturn
+   */
+  export type InfrastructureCredentialCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * The data used to create many InfrastructureCredentials.
+     */
+    data: InfrastructureCredentialCreateManyInput | InfrastructureCredentialCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * InfrastructureCredential update
+   */
+  export type InfrastructureCredentialUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * The data needed to update a InfrastructureCredential.
+     */
+    data: XOR<InfrastructureCredentialUpdateInput, InfrastructureCredentialUncheckedUpdateInput>
+    /**
+     * Choose, which InfrastructureCredential to update.
+     */
+    where: InfrastructureCredentialWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureCredential updateMany
+   */
+  export type InfrastructureCredentialUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update InfrastructureCredentials.
+     */
+    data: XOR<InfrastructureCredentialUpdateManyMutationInput, InfrastructureCredentialUncheckedUpdateManyInput>
+    /**
+     * Filter which InfrastructureCredentials to update
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * Limit how many InfrastructureCredentials to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * InfrastructureCredential updateManyAndReturn
+   */
+  export type InfrastructureCredentialUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * The data used to update InfrastructureCredentials.
+     */
+    data: XOR<InfrastructureCredentialUpdateManyMutationInput, InfrastructureCredentialUncheckedUpdateManyInput>
+    /**
+     * Filter which InfrastructureCredentials to update
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * Limit how many InfrastructureCredentials to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * InfrastructureCredential upsert
+   */
+  export type InfrastructureCredentialUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * The filter to search for the InfrastructureCredential to update in case it exists.
+     */
+    where: InfrastructureCredentialWhereUniqueInput
+    /**
+     * In case the InfrastructureCredential found by the `where` argument doesn't exist, create a new InfrastructureCredential with this data.
+     */
+    create: XOR<InfrastructureCredentialCreateInput, InfrastructureCredentialUncheckedCreateInput>
+    /**
+     * In case the InfrastructureCredential was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<InfrastructureCredentialUpdateInput, InfrastructureCredentialUncheckedUpdateInput>
+  }
+
+  /**
+   * InfrastructureCredential delete
+   */
+  export type InfrastructureCredentialDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+    /**
+     * Filter which InfrastructureCredential to delete.
+     */
+    where: InfrastructureCredentialWhereUniqueInput
+  }
+
+  /**
+   * InfrastructureCredential deleteMany
+   */
+  export type InfrastructureCredentialDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which InfrastructureCredentials to delete
+     */
+    where?: InfrastructureCredentialWhereInput
+    /**
+     * Limit how many InfrastructureCredentials to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * InfrastructureCredential without action
+   */
+  export type InfrastructureCredentialDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the InfrastructureCredential
+     */
+    select?: InfrastructureCredentialSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the InfrastructureCredential
+     */
+    omit?: InfrastructureCredentialOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: InfrastructureCredentialInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -65252,6 +68020,56 @@ export namespace Prisma {
   export type SiteMessageScalarFieldEnum = (typeof SiteMessageScalarFieldEnum)[keyof typeof SiteMessageScalarFieldEnum]
 
 
+  export const InfrastructureServerScalarFieldEnum: {
+    id: 'id',
+    tenantId: 'tenantId',
+    subscriptionId: 'subscriptionId',
+    provider: 'provider',
+    providerServerId: 'providerServerId',
+    name: 'name',
+    hostname: 'hostname',
+    ipv4: 'ipv4',
+    ipv6: 'ipv6',
+    region: 'region',
+    plan: 'plan',
+    diskGb: 'diskGb',
+    ramMb: 'ramMb',
+    cpuCount: 'cpuCount',
+    status: 'status',
+    errorMessage: 'errorMessage',
+    dbHost: 'dbHost',
+    dbPort: 'dbPort',
+    mediaHost: 'mediaHost',
+    mediaPort: 'mediaPort',
+    lastHealthCheckAt: 'lastHealthCheckAt',
+    healthStatus: 'healthStatus',
+    metricsSnapshot: 'metricsSnapshot',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type InfrastructureServerScalarFieldEnum = (typeof InfrastructureServerScalarFieldEnum)[keyof typeof InfrastructureServerScalarFieldEnum]
+
+
+  export const InfrastructureCredentialScalarFieldEnum: {
+    id: 'id',
+    serverId: 'serverId',
+    databaseName: 'databaseName',
+    dbUser: 'dbUser',
+    dbPasswordEncrypted: 'dbPasswordEncrypted',
+    minioUser: 'minioUser',
+    minioSecretEncrypted: 'minioSecretEncrypted',
+    connectionStringEncrypted: 'connectionStringEncrypted',
+    s3Endpoint: 's3Endpoint',
+    s3Bucket: 's3Bucket',
+    s3PublicUrl: 's3PublicUrl',
+    createdAt: 'createdAt',
+    rotatedAt: 'rotatedAt'
+  };
+
+  export type InfrastructureCredentialScalarFieldEnum = (typeof InfrastructureCredentialScalarFieldEnum)[keyof typeof InfrastructureCredentialScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -65766,6 +68584,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenListRelationFilter
     roles?: TenantRoleListRelationFilter
     sites?: SiteListRelationFilter
+    infrastructureServers?: InfrastructureServerListRelationFilter
   }
 
   export type TenantOrderByWithRelationInput = {
@@ -65818,6 +68637,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenOrderByRelationAggregateInput
     roles?: TenantRoleOrderByRelationAggregateInput
     sites?: SiteOrderByRelationAggregateInput
+    infrastructureServers?: InfrastructureServerOrderByRelationAggregateInput
   }
 
   export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -65873,6 +68693,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenListRelationFilter
     roles?: TenantRoleListRelationFilter
     sites?: SiteListRelationFilter
+    infrastructureServers?: InfrastructureServerListRelationFilter
   }, "id" | "slug" | "customDomain" | "licenseKey">
 
   export type TenantOrderByWithAggregationInput = {
@@ -69598,6 +72419,261 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"SiteMessage"> | Date | string
   }
 
+  export type InfrastructureServerWhereInput = {
+    AND?: InfrastructureServerWhereInput | InfrastructureServerWhereInput[]
+    OR?: InfrastructureServerWhereInput[]
+    NOT?: InfrastructureServerWhereInput | InfrastructureServerWhereInput[]
+    id?: StringFilter<"InfrastructureServer"> | string
+    tenantId?: StringFilter<"InfrastructureServer"> | string
+    subscriptionId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    provider?: StringFilter<"InfrastructureServer"> | string
+    providerServerId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    name?: StringNullableFilter<"InfrastructureServer"> | string | null
+    hostname?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv4?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv6?: StringNullableFilter<"InfrastructureServer"> | string | null
+    region?: StringFilter<"InfrastructureServer"> | string
+    plan?: StringFilter<"InfrastructureServer"> | string
+    diskGb?: IntFilter<"InfrastructureServer"> | number
+    ramMb?: IntFilter<"InfrastructureServer"> | number
+    cpuCount?: IntFilter<"InfrastructureServer"> | number
+    status?: StringFilter<"InfrastructureServer"> | string
+    errorMessage?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbPort?: IntFilter<"InfrastructureServer"> | number
+    mediaHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    mediaPort?: IntFilter<"InfrastructureServer"> | number
+    lastHealthCheckAt?: DateTimeNullableFilter<"InfrastructureServer"> | Date | string | null
+    healthStatus?: StringFilter<"InfrastructureServer"> | string
+    metricsSnapshot?: JsonNullableFilter<"InfrastructureServer">
+    createdAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+    updatedAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    credentials?: XOR<InfrastructureCredentialNullableScalarRelationFilter, InfrastructureCredentialWhereInput> | null
+  }
+
+  export type InfrastructureServerOrderByWithRelationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    subscriptionId?: SortOrderInput | SortOrder
+    provider?: SortOrder
+    providerServerId?: SortOrderInput | SortOrder
+    name?: SortOrderInput | SortOrder
+    hostname?: SortOrderInput | SortOrder
+    ipv4?: SortOrderInput | SortOrder
+    ipv6?: SortOrderInput | SortOrder
+    region?: SortOrder
+    plan?: SortOrder
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    status?: SortOrder
+    errorMessage?: SortOrderInput | SortOrder
+    dbHost?: SortOrderInput | SortOrder
+    dbPort?: SortOrder
+    mediaHost?: SortOrderInput | SortOrder
+    mediaPort?: SortOrder
+    lastHealthCheckAt?: SortOrderInput | SortOrder
+    healthStatus?: SortOrder
+    metricsSnapshot?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    tenant?: TenantOrderByWithRelationInput
+    credentials?: InfrastructureCredentialOrderByWithRelationInput
+  }
+
+  export type InfrastructureServerWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: InfrastructureServerWhereInput | InfrastructureServerWhereInput[]
+    OR?: InfrastructureServerWhereInput[]
+    NOT?: InfrastructureServerWhereInput | InfrastructureServerWhereInput[]
+    tenantId?: StringFilter<"InfrastructureServer"> | string
+    subscriptionId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    provider?: StringFilter<"InfrastructureServer"> | string
+    providerServerId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    name?: StringNullableFilter<"InfrastructureServer"> | string | null
+    hostname?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv4?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv6?: StringNullableFilter<"InfrastructureServer"> | string | null
+    region?: StringFilter<"InfrastructureServer"> | string
+    plan?: StringFilter<"InfrastructureServer"> | string
+    diskGb?: IntFilter<"InfrastructureServer"> | number
+    ramMb?: IntFilter<"InfrastructureServer"> | number
+    cpuCount?: IntFilter<"InfrastructureServer"> | number
+    status?: StringFilter<"InfrastructureServer"> | string
+    errorMessage?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbPort?: IntFilter<"InfrastructureServer"> | number
+    mediaHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    mediaPort?: IntFilter<"InfrastructureServer"> | number
+    lastHealthCheckAt?: DateTimeNullableFilter<"InfrastructureServer"> | Date | string | null
+    healthStatus?: StringFilter<"InfrastructureServer"> | string
+    metricsSnapshot?: JsonNullableFilter<"InfrastructureServer">
+    createdAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+    updatedAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    credentials?: XOR<InfrastructureCredentialNullableScalarRelationFilter, InfrastructureCredentialWhereInput> | null
+  }, "id">
+
+  export type InfrastructureServerOrderByWithAggregationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    subscriptionId?: SortOrderInput | SortOrder
+    provider?: SortOrder
+    providerServerId?: SortOrderInput | SortOrder
+    name?: SortOrderInput | SortOrder
+    hostname?: SortOrderInput | SortOrder
+    ipv4?: SortOrderInput | SortOrder
+    ipv6?: SortOrderInput | SortOrder
+    region?: SortOrder
+    plan?: SortOrder
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    status?: SortOrder
+    errorMessage?: SortOrderInput | SortOrder
+    dbHost?: SortOrderInput | SortOrder
+    dbPort?: SortOrder
+    mediaHost?: SortOrderInput | SortOrder
+    mediaPort?: SortOrder
+    lastHealthCheckAt?: SortOrderInput | SortOrder
+    healthStatus?: SortOrder
+    metricsSnapshot?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: InfrastructureServerCountOrderByAggregateInput
+    _avg?: InfrastructureServerAvgOrderByAggregateInput
+    _max?: InfrastructureServerMaxOrderByAggregateInput
+    _min?: InfrastructureServerMinOrderByAggregateInput
+    _sum?: InfrastructureServerSumOrderByAggregateInput
+  }
+
+  export type InfrastructureServerScalarWhereWithAggregatesInput = {
+    AND?: InfrastructureServerScalarWhereWithAggregatesInput | InfrastructureServerScalarWhereWithAggregatesInput[]
+    OR?: InfrastructureServerScalarWhereWithAggregatesInput[]
+    NOT?: InfrastructureServerScalarWhereWithAggregatesInput | InfrastructureServerScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    tenantId?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    subscriptionId?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    provider?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    providerServerId?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    name?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    hostname?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    ipv4?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    ipv6?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    region?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    plan?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    diskGb?: IntWithAggregatesFilter<"InfrastructureServer"> | number
+    ramMb?: IntWithAggregatesFilter<"InfrastructureServer"> | number
+    cpuCount?: IntWithAggregatesFilter<"InfrastructureServer"> | number
+    status?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    errorMessage?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    dbHost?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    dbPort?: IntWithAggregatesFilter<"InfrastructureServer"> | number
+    mediaHost?: StringNullableWithAggregatesFilter<"InfrastructureServer"> | string | null
+    mediaPort?: IntWithAggregatesFilter<"InfrastructureServer"> | number
+    lastHealthCheckAt?: DateTimeNullableWithAggregatesFilter<"InfrastructureServer"> | Date | string | null
+    healthStatus?: StringWithAggregatesFilter<"InfrastructureServer"> | string
+    metricsSnapshot?: JsonNullableWithAggregatesFilter<"InfrastructureServer">
+    createdAt?: DateTimeWithAggregatesFilter<"InfrastructureServer"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"InfrastructureServer"> | Date | string
+  }
+
+  export type InfrastructureCredentialWhereInput = {
+    AND?: InfrastructureCredentialWhereInput | InfrastructureCredentialWhereInput[]
+    OR?: InfrastructureCredentialWhereInput[]
+    NOT?: InfrastructureCredentialWhereInput | InfrastructureCredentialWhereInput[]
+    id?: StringFilter<"InfrastructureCredential"> | string
+    serverId?: StringFilter<"InfrastructureCredential"> | string
+    databaseName?: StringFilter<"InfrastructureCredential"> | string
+    dbUser?: StringFilter<"InfrastructureCredential"> | string
+    dbPasswordEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    minioUser?: StringFilter<"InfrastructureCredential"> | string
+    minioSecretEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    connectionStringEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    s3Endpoint?: StringFilter<"InfrastructureCredential"> | string
+    s3Bucket?: StringFilter<"InfrastructureCredential"> | string
+    s3PublicUrl?: StringNullableFilter<"InfrastructureCredential"> | string | null
+    createdAt?: DateTimeFilter<"InfrastructureCredential"> | Date | string
+    rotatedAt?: DateTimeNullableFilter<"InfrastructureCredential"> | Date | string | null
+    server?: XOR<InfrastructureServerScalarRelationFilter, InfrastructureServerWhereInput>
+  }
+
+  export type InfrastructureCredentialOrderByWithRelationInput = {
+    id?: SortOrder
+    serverId?: SortOrder
+    databaseName?: SortOrder
+    dbUser?: SortOrder
+    dbPasswordEncrypted?: SortOrder
+    minioUser?: SortOrder
+    minioSecretEncrypted?: SortOrder
+    connectionStringEncrypted?: SortOrder
+    s3Endpoint?: SortOrder
+    s3Bucket?: SortOrder
+    s3PublicUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    rotatedAt?: SortOrderInput | SortOrder
+    server?: InfrastructureServerOrderByWithRelationInput
+  }
+
+  export type InfrastructureCredentialWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    serverId?: string
+    AND?: InfrastructureCredentialWhereInput | InfrastructureCredentialWhereInput[]
+    OR?: InfrastructureCredentialWhereInput[]
+    NOT?: InfrastructureCredentialWhereInput | InfrastructureCredentialWhereInput[]
+    databaseName?: StringFilter<"InfrastructureCredential"> | string
+    dbUser?: StringFilter<"InfrastructureCredential"> | string
+    dbPasswordEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    minioUser?: StringFilter<"InfrastructureCredential"> | string
+    minioSecretEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    connectionStringEncrypted?: StringFilter<"InfrastructureCredential"> | string
+    s3Endpoint?: StringFilter<"InfrastructureCredential"> | string
+    s3Bucket?: StringFilter<"InfrastructureCredential"> | string
+    s3PublicUrl?: StringNullableFilter<"InfrastructureCredential"> | string | null
+    createdAt?: DateTimeFilter<"InfrastructureCredential"> | Date | string
+    rotatedAt?: DateTimeNullableFilter<"InfrastructureCredential"> | Date | string | null
+    server?: XOR<InfrastructureServerScalarRelationFilter, InfrastructureServerWhereInput>
+  }, "id" | "serverId">
+
+  export type InfrastructureCredentialOrderByWithAggregationInput = {
+    id?: SortOrder
+    serverId?: SortOrder
+    databaseName?: SortOrder
+    dbUser?: SortOrder
+    dbPasswordEncrypted?: SortOrder
+    minioUser?: SortOrder
+    minioSecretEncrypted?: SortOrder
+    connectionStringEncrypted?: SortOrder
+    s3Endpoint?: SortOrder
+    s3Bucket?: SortOrder
+    s3PublicUrl?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    rotatedAt?: SortOrderInput | SortOrder
+    _count?: InfrastructureCredentialCountOrderByAggregateInput
+    _max?: InfrastructureCredentialMaxOrderByAggregateInput
+    _min?: InfrastructureCredentialMinOrderByAggregateInput
+  }
+
+  export type InfrastructureCredentialScalarWhereWithAggregatesInput = {
+    AND?: InfrastructureCredentialScalarWhereWithAggregatesInput | InfrastructureCredentialScalarWhereWithAggregatesInput[]
+    OR?: InfrastructureCredentialScalarWhereWithAggregatesInput[]
+    NOT?: InfrastructureCredentialScalarWhereWithAggregatesInput | InfrastructureCredentialScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    serverId?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    databaseName?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    dbUser?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    dbPasswordEncrypted?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    minioUser?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    minioSecretEncrypted?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    connectionStringEncrypted?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    s3Endpoint?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    s3Bucket?: StringWithAggregatesFilter<"InfrastructureCredential"> | string
+    s3PublicUrl?: StringNullableWithAggregatesFilter<"InfrastructureCredential"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"InfrastructureCredential"> | Date | string
+    rotatedAt?: DateTimeNullableWithAggregatesFilter<"InfrastructureCredential"> | Date | string | null
+  }
+
   export type UserCreateInput = {
     id?: string
     email: string
@@ -69981,6 +73057,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateInput = {
@@ -70033,6 +73110,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUpdateInput = {
@@ -70085,6 +73163,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateInput = {
@@ -70137,6 +73216,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateManyInput = {
@@ -74237,6 +77317,316 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type InfrastructureServerCreateInput = {
+    id?: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutInfrastructureServersInput
+    credentials?: InfrastructureCredentialCreateNestedOneWithoutServerInput
+  }
+
+  export type InfrastructureServerUncheckedCreateInput = {
+    id?: string
+    tenantId: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    credentials?: InfrastructureCredentialUncheckedCreateNestedOneWithoutServerInput
+  }
+
+  export type InfrastructureServerUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutInfrastructureServersNestedInput
+    credentials?: InfrastructureCredentialUpdateOneWithoutServerNestedInput
+  }
+
+  export type InfrastructureServerUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    credentials?: InfrastructureCredentialUncheckedUpdateOneWithoutServerNestedInput
+  }
+
+  export type InfrastructureServerCreateManyInput = {
+    id?: string
+    tenantId: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type InfrastructureServerUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type InfrastructureServerUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type InfrastructureCredentialCreateInput = {
+    id?: string
+    databaseName?: string
+    dbUser?: string
+    dbPasswordEncrypted: string
+    minioUser?: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket?: string
+    s3PublicUrl?: string | null
+    createdAt?: Date | string
+    rotatedAt?: Date | string | null
+    server: InfrastructureServerCreateNestedOneWithoutCredentialsInput
+  }
+
+  export type InfrastructureCredentialUncheckedCreateInput = {
+    id?: string
+    serverId: string
+    databaseName?: string
+    dbUser?: string
+    dbPasswordEncrypted: string
+    minioUser?: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket?: string
+    s3PublicUrl?: string | null
+    createdAt?: Date | string
+    rotatedAt?: Date | string | null
+  }
+
+  export type InfrastructureCredentialUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    server?: InfrastructureServerUpdateOneRequiredWithoutCredentialsNestedInput
+  }
+
+  export type InfrastructureCredentialUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    serverId?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type InfrastructureCredentialCreateManyInput = {
+    id?: string
+    serverId: string
+    databaseName?: string
+    dbUser?: string
+    dbPasswordEncrypted: string
+    minioUser?: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket?: string
+    s3PublicUrl?: string | null
+    createdAt?: Date | string
+    rotatedAt?: Date | string | null
+  }
+
+  export type InfrastructureCredentialUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type InfrastructureCredentialUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    serverId?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -74820,6 +78210,12 @@ export namespace Prisma {
     none?: SiteWhereInput
   }
 
+  export type InfrastructureServerListRelationFilter = {
+    every?: InfrastructureServerWhereInput
+    some?: InfrastructureServerWhereInput
+    none?: InfrastructureServerWhereInput
+  }
+
   export type ApiKeyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -74905,6 +78301,10 @@ export namespace Prisma {
   }
 
   export type SiteOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type InfrastructureServerOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -77311,6 +80711,162 @@ export namespace Prisma {
     creditsUsed?: SortOrder
   }
 
+  export type InfrastructureCredentialNullableScalarRelationFilter = {
+    is?: InfrastructureCredentialWhereInput | null
+    isNot?: InfrastructureCredentialWhereInput | null
+  }
+
+  export type InfrastructureServerCountOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    subscriptionId?: SortOrder
+    provider?: SortOrder
+    providerServerId?: SortOrder
+    name?: SortOrder
+    hostname?: SortOrder
+    ipv4?: SortOrder
+    ipv6?: SortOrder
+    region?: SortOrder
+    plan?: SortOrder
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    status?: SortOrder
+    errorMessage?: SortOrder
+    dbHost?: SortOrder
+    dbPort?: SortOrder
+    mediaHost?: SortOrder
+    mediaPort?: SortOrder
+    lastHealthCheckAt?: SortOrder
+    healthStatus?: SortOrder
+    metricsSnapshot?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type InfrastructureServerAvgOrderByAggregateInput = {
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    dbPort?: SortOrder
+    mediaPort?: SortOrder
+  }
+
+  export type InfrastructureServerMaxOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    subscriptionId?: SortOrder
+    provider?: SortOrder
+    providerServerId?: SortOrder
+    name?: SortOrder
+    hostname?: SortOrder
+    ipv4?: SortOrder
+    ipv6?: SortOrder
+    region?: SortOrder
+    plan?: SortOrder
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    status?: SortOrder
+    errorMessage?: SortOrder
+    dbHost?: SortOrder
+    dbPort?: SortOrder
+    mediaHost?: SortOrder
+    mediaPort?: SortOrder
+    lastHealthCheckAt?: SortOrder
+    healthStatus?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type InfrastructureServerMinOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    subscriptionId?: SortOrder
+    provider?: SortOrder
+    providerServerId?: SortOrder
+    name?: SortOrder
+    hostname?: SortOrder
+    ipv4?: SortOrder
+    ipv6?: SortOrder
+    region?: SortOrder
+    plan?: SortOrder
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    status?: SortOrder
+    errorMessage?: SortOrder
+    dbHost?: SortOrder
+    dbPort?: SortOrder
+    mediaHost?: SortOrder
+    mediaPort?: SortOrder
+    lastHealthCheckAt?: SortOrder
+    healthStatus?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type InfrastructureServerSumOrderByAggregateInput = {
+    diskGb?: SortOrder
+    ramMb?: SortOrder
+    cpuCount?: SortOrder
+    dbPort?: SortOrder
+    mediaPort?: SortOrder
+  }
+
+  export type InfrastructureServerScalarRelationFilter = {
+    is?: InfrastructureServerWhereInput
+    isNot?: InfrastructureServerWhereInput
+  }
+
+  export type InfrastructureCredentialCountOrderByAggregateInput = {
+    id?: SortOrder
+    serverId?: SortOrder
+    databaseName?: SortOrder
+    dbUser?: SortOrder
+    dbPasswordEncrypted?: SortOrder
+    minioUser?: SortOrder
+    minioSecretEncrypted?: SortOrder
+    connectionStringEncrypted?: SortOrder
+    s3Endpoint?: SortOrder
+    s3Bucket?: SortOrder
+    s3PublicUrl?: SortOrder
+    createdAt?: SortOrder
+    rotatedAt?: SortOrder
+  }
+
+  export type InfrastructureCredentialMaxOrderByAggregateInput = {
+    id?: SortOrder
+    serverId?: SortOrder
+    databaseName?: SortOrder
+    dbUser?: SortOrder
+    dbPasswordEncrypted?: SortOrder
+    minioUser?: SortOrder
+    minioSecretEncrypted?: SortOrder
+    connectionStringEncrypted?: SortOrder
+    s3Endpoint?: SortOrder
+    s3Bucket?: SortOrder
+    s3PublicUrl?: SortOrder
+    createdAt?: SortOrder
+    rotatedAt?: SortOrder
+  }
+
+  export type InfrastructureCredentialMinOrderByAggregateInput = {
+    id?: SortOrder
+    serverId?: SortOrder
+    databaseName?: SortOrder
+    dbUser?: SortOrder
+    dbPasswordEncrypted?: SortOrder
+    minioUser?: SortOrder
+    minioSecretEncrypted?: SortOrder
+    connectionStringEncrypted?: SortOrder
+    s3Endpoint?: SortOrder
+    s3Bucket?: SortOrder
+    s3PublicUrl?: SortOrder
+    createdAt?: SortOrder
+    rotatedAt?: SortOrder
+  }
+
   export type AccountCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -77756,6 +81312,13 @@ export namespace Prisma {
     connect?: SiteWhereUniqueInput | SiteWhereUniqueInput[]
   }
 
+  export type InfrastructureServerCreateNestedManyWithoutTenantInput = {
+    create?: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput> | InfrastructureServerCreateWithoutTenantInput[] | InfrastructureServerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutTenantInput | InfrastructureServerCreateOrConnectWithoutTenantInput[]
+    createMany?: InfrastructureServerCreateManyTenantInputEnvelope
+    connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+  }
+
   export type ApiKeyUncheckedCreateNestedManyWithoutTenantInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -77929,6 +81492,13 @@ export namespace Prisma {
     connectOrCreate?: SiteCreateOrConnectWithoutTenantInput | SiteCreateOrConnectWithoutTenantInput[]
     createMany?: SiteCreateManyTenantInputEnvelope
     connect?: SiteWhereUniqueInput | SiteWhereUniqueInput[]
+  }
+
+  export type InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput = {
+    create?: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput> | InfrastructureServerCreateWithoutTenantInput[] | InfrastructureServerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutTenantInput | InfrastructureServerCreateOrConnectWithoutTenantInput[]
+    createMany?: InfrastructureServerCreateManyTenantInputEnvelope
+    connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
   }
 
   export type BigIntFieldUpdateOperationsInput = {
@@ -78289,6 +81859,20 @@ export namespace Prisma {
     deleteMany?: SiteScalarWhereInput | SiteScalarWhereInput[]
   }
 
+  export type InfrastructureServerUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput> | InfrastructureServerCreateWithoutTenantInput[] | InfrastructureServerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutTenantInput | InfrastructureServerCreateOrConnectWithoutTenantInput[]
+    upsert?: InfrastructureServerUpsertWithWhereUniqueWithoutTenantInput | InfrastructureServerUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: InfrastructureServerCreateManyTenantInputEnvelope
+    set?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    disconnect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    delete?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    update?: InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput | InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: InfrastructureServerUpdateManyWithWhereWithoutTenantInput | InfrastructureServerUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
+  }
+
   export type ApiKeyUncheckedUpdateManyWithoutTenantNestedInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -78637,6 +82221,20 @@ export namespace Prisma {
     update?: SiteUpdateWithWhereUniqueWithoutTenantInput | SiteUpdateWithWhereUniqueWithoutTenantInput[]
     updateMany?: SiteUpdateManyWithWhereWithoutTenantInput | SiteUpdateManyWithWhereWithoutTenantInput[]
     deleteMany?: SiteScalarWhereInput | SiteScalarWhereInput[]
+  }
+
+  export type InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput> | InfrastructureServerCreateWithoutTenantInput[] | InfrastructureServerUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutTenantInput | InfrastructureServerCreateOrConnectWithoutTenantInput[]
+    upsert?: InfrastructureServerUpsertWithWhereUniqueWithoutTenantInput | InfrastructureServerUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: InfrastructureServerCreateManyTenantInputEnvelope
+    set?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    disconnect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    delete?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+    update?: InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput | InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: InfrastructureServerUpdateManyWithWhereWithoutTenantInput | InfrastructureServerUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
   }
 
   export type TenantCreateNestedOneWithoutMembersInput = {
@@ -80386,6 +83984,66 @@ export namespace Prisma {
     update?: XOR<XOR<SiteConversationUpdateToOneWithWhereWithoutMessagesInput, SiteConversationUpdateWithoutMessagesInput>, SiteConversationUncheckedUpdateWithoutMessagesInput>
   }
 
+  export type TenantCreateNestedOneWithoutInfrastructureServersInput = {
+    create?: XOR<TenantCreateWithoutInfrastructureServersInput, TenantUncheckedCreateWithoutInfrastructureServersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutInfrastructureServersInput
+    connect?: TenantWhereUniqueInput
+  }
+
+  export type InfrastructureCredentialCreateNestedOneWithoutServerInput = {
+    create?: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+    connectOrCreate?: InfrastructureCredentialCreateOrConnectWithoutServerInput
+    connect?: InfrastructureCredentialWhereUniqueInput
+  }
+
+  export type InfrastructureCredentialUncheckedCreateNestedOneWithoutServerInput = {
+    create?: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+    connectOrCreate?: InfrastructureCredentialCreateOrConnectWithoutServerInput
+    connect?: InfrastructureCredentialWhereUniqueInput
+  }
+
+  export type TenantUpdateOneRequiredWithoutInfrastructureServersNestedInput = {
+    create?: XOR<TenantCreateWithoutInfrastructureServersInput, TenantUncheckedCreateWithoutInfrastructureServersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutInfrastructureServersInput
+    upsert?: TenantUpsertWithoutInfrastructureServersInput
+    connect?: TenantWhereUniqueInput
+    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutInfrastructureServersInput, TenantUpdateWithoutInfrastructureServersInput>, TenantUncheckedUpdateWithoutInfrastructureServersInput>
+  }
+
+  export type InfrastructureCredentialUpdateOneWithoutServerNestedInput = {
+    create?: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+    connectOrCreate?: InfrastructureCredentialCreateOrConnectWithoutServerInput
+    upsert?: InfrastructureCredentialUpsertWithoutServerInput
+    disconnect?: InfrastructureCredentialWhereInput | boolean
+    delete?: InfrastructureCredentialWhereInput | boolean
+    connect?: InfrastructureCredentialWhereUniqueInput
+    update?: XOR<XOR<InfrastructureCredentialUpdateToOneWithWhereWithoutServerInput, InfrastructureCredentialUpdateWithoutServerInput>, InfrastructureCredentialUncheckedUpdateWithoutServerInput>
+  }
+
+  export type InfrastructureCredentialUncheckedUpdateOneWithoutServerNestedInput = {
+    create?: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+    connectOrCreate?: InfrastructureCredentialCreateOrConnectWithoutServerInput
+    upsert?: InfrastructureCredentialUpsertWithoutServerInput
+    disconnect?: InfrastructureCredentialWhereInput | boolean
+    delete?: InfrastructureCredentialWhereInput | boolean
+    connect?: InfrastructureCredentialWhereUniqueInput
+    update?: XOR<XOR<InfrastructureCredentialUpdateToOneWithWhereWithoutServerInput, InfrastructureCredentialUpdateWithoutServerInput>, InfrastructureCredentialUncheckedUpdateWithoutServerInput>
+  }
+
+  export type InfrastructureServerCreateNestedOneWithoutCredentialsInput = {
+    create?: XOR<InfrastructureServerCreateWithoutCredentialsInput, InfrastructureServerUncheckedCreateWithoutCredentialsInput>
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutCredentialsInput
+    connect?: InfrastructureServerWhereUniqueInput
+  }
+
+  export type InfrastructureServerUpdateOneRequiredWithoutCredentialsNestedInput = {
+    create?: XOR<InfrastructureServerCreateWithoutCredentialsInput, InfrastructureServerUncheckedCreateWithoutCredentialsInput>
+    connectOrCreate?: InfrastructureServerCreateOrConnectWithoutCredentialsInput
+    upsert?: InfrastructureServerUpsertWithoutCredentialsInput
+    connect?: InfrastructureServerWhereUniqueInput
+    update?: XOR<XOR<InfrastructureServerUpdateToOneWithWhereWithoutCredentialsInput, InfrastructureServerUpdateWithoutCredentialsInput>, InfrastructureServerUncheckedUpdateWithoutCredentialsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -82064,6 +85722,72 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type InfrastructureServerCreateWithoutTenantInput = {
+    id?: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    credentials?: InfrastructureCredentialCreateNestedOneWithoutServerInput
+  }
+
+  export type InfrastructureServerUncheckedCreateWithoutTenantInput = {
+    id?: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    credentials?: InfrastructureCredentialUncheckedCreateNestedOneWithoutServerInput
+  }
+
+  export type InfrastructureServerCreateOrConnectWithoutTenantInput = {
+    where: InfrastructureServerWhereUniqueInput
+    create: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput>
+  }
+
+  export type InfrastructureServerCreateManyTenantInputEnvelope = {
+    data: InfrastructureServerCreateManyTenantInput | InfrastructureServerCreateManyTenantInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ApiKeyUpsertWithWhereUniqueWithoutTenantInput = {
     where: ApiKeyWhereUniqueInput
     update: XOR<ApiKeyUpdateWithoutTenantInput, ApiKeyUncheckedUpdateWithoutTenantInput>
@@ -82802,6 +86526,53 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"Site"> | Date | string
   }
 
+  export type InfrastructureServerUpsertWithWhereUniqueWithoutTenantInput = {
+    where: InfrastructureServerWhereUniqueInput
+    update: XOR<InfrastructureServerUpdateWithoutTenantInput, InfrastructureServerUncheckedUpdateWithoutTenantInput>
+    create: XOR<InfrastructureServerCreateWithoutTenantInput, InfrastructureServerUncheckedCreateWithoutTenantInput>
+  }
+
+  export type InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput = {
+    where: InfrastructureServerWhereUniqueInput
+    data: XOR<InfrastructureServerUpdateWithoutTenantInput, InfrastructureServerUncheckedUpdateWithoutTenantInput>
+  }
+
+  export type InfrastructureServerUpdateManyWithWhereWithoutTenantInput = {
+    where: InfrastructureServerScalarWhereInput
+    data: XOR<InfrastructureServerUpdateManyMutationInput, InfrastructureServerUncheckedUpdateManyWithoutTenantInput>
+  }
+
+  export type InfrastructureServerScalarWhereInput = {
+    AND?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
+    OR?: InfrastructureServerScalarWhereInput[]
+    NOT?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
+    id?: StringFilter<"InfrastructureServer"> | string
+    tenantId?: StringFilter<"InfrastructureServer"> | string
+    subscriptionId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    provider?: StringFilter<"InfrastructureServer"> | string
+    providerServerId?: StringNullableFilter<"InfrastructureServer"> | string | null
+    name?: StringNullableFilter<"InfrastructureServer"> | string | null
+    hostname?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv4?: StringNullableFilter<"InfrastructureServer"> | string | null
+    ipv6?: StringNullableFilter<"InfrastructureServer"> | string | null
+    region?: StringFilter<"InfrastructureServer"> | string
+    plan?: StringFilter<"InfrastructureServer"> | string
+    diskGb?: IntFilter<"InfrastructureServer"> | number
+    ramMb?: IntFilter<"InfrastructureServer"> | number
+    cpuCount?: IntFilter<"InfrastructureServer"> | number
+    status?: StringFilter<"InfrastructureServer"> | string
+    errorMessage?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    dbPort?: IntFilter<"InfrastructureServer"> | number
+    mediaHost?: StringNullableFilter<"InfrastructureServer"> | string | null
+    mediaPort?: IntFilter<"InfrastructureServer"> | number
+    lastHealthCheckAt?: DateTimeNullableFilter<"InfrastructureServer"> | Date | string | null
+    healthStatus?: StringFilter<"InfrastructureServer"> | string
+    metricsSnapshot?: JsonNullableFilter<"InfrastructureServer">
+    createdAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+    updatedAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
+  }
+
   export type TenantCreateWithoutMembersInput = {
     id?: string
     name: string
@@ -82851,6 +86622,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMembersInput = {
@@ -82902,6 +86674,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMembersInput = {
@@ -83016,6 +86789,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -83067,6 +86841,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutTenantsInput = {
@@ -83261,6 +87036,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypesInput = {
@@ -83312,6 +87088,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypesInput = {
@@ -83455,6 +87232,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypesInput = {
@@ -83506,6 +87284,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantContentTypeAssignmentUpsertWithWhereUniqueWithoutContentTypeInput = {
@@ -83789,6 +87568,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAiQuotaLedgersInput = {
@@ -83840,6 +87620,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAiQuotaLedgersInput = {
@@ -83954,6 +87735,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAiQuotaLedgersInput = {
@@ -84005,6 +87787,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutAiQuotaLedgersInput = {
@@ -84144,6 +87927,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypeAssignmentsInput = {
@@ -84195,6 +87979,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypeAssignmentsInput = {
@@ -84303,6 +88088,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypeAssignmentsInput = {
@@ -84354,6 +88140,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentTypeCreateWithoutEntriesInput = {
@@ -84440,6 +88227,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentEntriesInput = {
@@ -84491,6 +88279,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentEntriesInput = {
@@ -84667,6 +88456,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentEntriesInput = {
@@ -84718,6 +88508,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentReviewAssignmentUpsertWithWhereUniqueWithoutContentEntryInput = {
@@ -85097,6 +88888,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypesInput = {
@@ -85148,6 +88940,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypesInput = {
@@ -85297,6 +89090,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypesInput = {
@@ -85348,6 +89142,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantSingleTypeAssignmentUpsertWithWhereUniqueWithoutSingleTypeInput = {
@@ -85520,6 +89315,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypeAssignmentsInput = {
@@ -85571,6 +89367,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypeAssignmentsInput = {
@@ -85677,6 +89474,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypeAssignmentsInput = {
@@ -85728,6 +89526,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ComponentFieldCreateWithoutComponentInput = {
@@ -85859,6 +89658,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentsInput = {
@@ -85910,6 +89710,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentsInput = {
@@ -86051,6 +89852,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentsInput = {
@@ -86102,6 +89904,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantComponentAssignmentUpsertWithWhereUniqueWithoutComponentInput = {
@@ -86268,6 +90071,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentAssignmentsInput = {
@@ -86319,6 +90123,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentAssignmentsInput = {
@@ -86423,6 +90228,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentAssignmentsInput = {
@@ -86474,6 +90280,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiKeysInput = {
@@ -86525,6 +90332,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiKeysInput = {
@@ -86576,6 +90384,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiKeysInput = {
@@ -86643,6 +90452,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiKeysInput = {
@@ -86694,6 +90504,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InvoiceCreateWithoutSubscriptionInput = {
@@ -86817,6 +90628,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSubscriptionsInput = {
@@ -86868,6 +90680,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSubscriptionsInput = {
@@ -87048,6 +90861,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSubscriptionsInput = {
@@ -87099,6 +90913,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutSubscriptionsInput = {
@@ -87363,6 +91178,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAuditLogsInput = {
@@ -87414,6 +91230,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAuditLogsInput = {
@@ -87481,6 +91298,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAuditLogsInput = {
@@ -87532,6 +91350,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSettingsInput = {
@@ -87583,6 +91402,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSettingsInput = {
@@ -87634,6 +91454,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSettingsInput = {
@@ -87701,6 +91522,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSettingsInput = {
@@ -87752,6 +91574,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiRequestsInput = {
@@ -87803,6 +91626,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiRequestsInput = {
@@ -87854,6 +91678,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiRequestsInput = {
@@ -87921,6 +91746,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiRequestsInput = {
@@ -87972,6 +91798,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaCreateWithoutFolderInput = {
@@ -88136,6 +91963,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaFoldersInput = {
@@ -88187,6 +92015,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaFoldersInput = {
@@ -88319,6 +92148,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaFoldersInput = {
@@ -88370,6 +92200,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaFolderCreateWithoutMediaInput = {
@@ -88448,6 +92279,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaInput = {
@@ -88499,6 +92331,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaInput = {
@@ -88599,6 +92432,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaInput = {
@@ -88650,6 +92484,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiTokensInput = {
@@ -88701,6 +92536,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiTokensInput = {
@@ -88752,6 +92588,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiTokensInput = {
@@ -88819,6 +92656,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiTokensInput = {
@@ -88870,6 +92708,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookDeadLetterCreateWithoutWebhookInput = {
@@ -88991,6 +92830,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutWebhooksInput = {
@@ -89042,6 +92882,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutWebhooksInput = {
@@ -89174,6 +93015,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutWebhooksInput = {
@@ -89225,6 +93067,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookCreateWithoutLogsInput = {
@@ -89444,6 +93287,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutLocalesInput = {
@@ -89495,6 +93339,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutLocalesInput = {
@@ -89562,6 +93407,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutLocalesInput = {
@@ -89613,6 +93459,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutCustomDomainsInput = {
@@ -89664,6 +93511,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutCustomDomainsInput = {
@@ -89715,6 +93563,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutCustomDomainsInput = {
@@ -89782,6 +93631,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutCustomDomainsInput = {
@@ -89833,6 +93683,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthClientsInput = {
@@ -89884,6 +93735,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthClientsInput = {
@@ -89935,6 +93787,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthClientsInput = {
@@ -90002,6 +93855,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthClientsInput = {
@@ -90053,6 +93907,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthCodesInput = {
@@ -90104,6 +93959,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthCodesInput = {
@@ -90155,6 +94011,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthCodesInput = {
@@ -90222,6 +94079,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthCodesInput = {
@@ -90273,6 +94131,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthTokensInput = {
@@ -90324,6 +94183,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthTokensInput = {
@@ -90375,6 +94235,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthTokensInput = {
@@ -90442,6 +94303,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthTokensInput = {
@@ -90493,6 +94355,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type RolePermissionCreateWithoutPermissionInput = {
@@ -90650,6 +94513,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutRolesInput = {
@@ -90701,6 +94565,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutRolesInput = {
@@ -90768,6 +94633,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutRolesInput = {
@@ -90819,6 +94685,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSitesInput = {
@@ -90870,6 +94737,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSitesInput = {
@@ -90921,6 +94789,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSitesInput = {
@@ -91098,6 +94967,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSitesInput = {
@@ -91149,6 +95019,7 @@ export namespace Prisma {
     oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type SiteFileUpsertWithWhereUniqueWithoutSiteInput = {
@@ -91779,6 +95650,434 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TenantCreateWithoutInfrastructureServersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
+    components?: ComponentCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
+    media?: MediaCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
+    settings?: SettingCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
+    members?: TenantMemberCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleCreateNestedManyWithoutTenantInput
+    sites?: SiteCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantUncheckedCreateWithoutInfrastructureServersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
+    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
+    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
+    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
+    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientUncheckedCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantCreateOrConnectWithoutInfrastructureServersInput = {
+    where: TenantWhereUniqueInput
+    create: XOR<TenantCreateWithoutInfrastructureServersInput, TenantUncheckedCreateWithoutInfrastructureServersInput>
+  }
+
+  export type InfrastructureCredentialCreateWithoutServerInput = {
+    id?: string
+    databaseName?: string
+    dbUser?: string
+    dbPasswordEncrypted: string
+    minioUser?: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket?: string
+    s3PublicUrl?: string | null
+    createdAt?: Date | string
+    rotatedAt?: Date | string | null
+  }
+
+  export type InfrastructureCredentialUncheckedCreateWithoutServerInput = {
+    id?: string
+    databaseName?: string
+    dbUser?: string
+    dbPasswordEncrypted: string
+    minioUser?: string
+    minioSecretEncrypted: string
+    connectionStringEncrypted: string
+    s3Endpoint: string
+    s3Bucket?: string
+    s3PublicUrl?: string | null
+    createdAt?: Date | string
+    rotatedAt?: Date | string | null
+  }
+
+  export type InfrastructureCredentialCreateOrConnectWithoutServerInput = {
+    where: InfrastructureCredentialWhereUniqueInput
+    create: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+  }
+
+  export type TenantUpsertWithoutInfrastructureServersInput = {
+    update: XOR<TenantUpdateWithoutInfrastructureServersInput, TenantUncheckedUpdateWithoutInfrastructureServersInput>
+    create: XOR<TenantCreateWithoutInfrastructureServersInput, TenantUncheckedCreateWithoutInfrastructureServersInput>
+    where?: TenantWhereInput
+  }
+
+  export type TenantUpdateToOneWithWhereWithoutInfrastructureServersInput = {
+    where?: TenantWhereInput
+    data: XOR<TenantUpdateWithoutInfrastructureServersInput, TenantUncheckedUpdateWithoutInfrastructureServersInput>
+  }
+
+  export type TenantUpdateWithoutInfrastructureServersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
+    components?: ComponentUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
+    media?: MediaUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
+    settings?: SettingUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    sites?: SiteUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantUncheckedUpdateWithoutInfrastructureServersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
+    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
+    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
+    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUncheckedUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+  }
+
+  export type InfrastructureCredentialUpsertWithoutServerInput = {
+    update: XOR<InfrastructureCredentialUpdateWithoutServerInput, InfrastructureCredentialUncheckedUpdateWithoutServerInput>
+    create: XOR<InfrastructureCredentialCreateWithoutServerInput, InfrastructureCredentialUncheckedCreateWithoutServerInput>
+    where?: InfrastructureCredentialWhereInput
+  }
+
+  export type InfrastructureCredentialUpdateToOneWithWhereWithoutServerInput = {
+    where?: InfrastructureCredentialWhereInput
+    data: XOR<InfrastructureCredentialUpdateWithoutServerInput, InfrastructureCredentialUncheckedUpdateWithoutServerInput>
+  }
+
+  export type InfrastructureCredentialUpdateWithoutServerInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type InfrastructureCredentialUncheckedUpdateWithoutServerInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    databaseName?: StringFieldUpdateOperationsInput | string
+    dbUser?: StringFieldUpdateOperationsInput | string
+    dbPasswordEncrypted?: StringFieldUpdateOperationsInput | string
+    minioUser?: StringFieldUpdateOperationsInput | string
+    minioSecretEncrypted?: StringFieldUpdateOperationsInput | string
+    connectionStringEncrypted?: StringFieldUpdateOperationsInput | string
+    s3Endpoint?: StringFieldUpdateOperationsInput | string
+    s3Bucket?: StringFieldUpdateOperationsInput | string
+    s3PublicUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type InfrastructureServerCreateWithoutCredentialsInput = {
+    id?: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant: TenantCreateNestedOneWithoutInfrastructureServersInput
+  }
+
+  export type InfrastructureServerUncheckedCreateWithoutCredentialsInput = {
+    id?: string
+    tenantId: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type InfrastructureServerCreateOrConnectWithoutCredentialsInput = {
+    where: InfrastructureServerWhereUniqueInput
+    create: XOR<InfrastructureServerCreateWithoutCredentialsInput, InfrastructureServerUncheckedCreateWithoutCredentialsInput>
+  }
+
+  export type InfrastructureServerUpsertWithoutCredentialsInput = {
+    update: XOR<InfrastructureServerUpdateWithoutCredentialsInput, InfrastructureServerUncheckedUpdateWithoutCredentialsInput>
+    create: XOR<InfrastructureServerCreateWithoutCredentialsInput, InfrastructureServerUncheckedCreateWithoutCredentialsInput>
+    where?: InfrastructureServerWhereInput
+  }
+
+  export type InfrastructureServerUpdateToOneWithWhereWithoutCredentialsInput = {
+    where?: InfrastructureServerWhereInput
+    data: XOR<InfrastructureServerUpdateWithoutCredentialsInput, InfrastructureServerUncheckedUpdateWithoutCredentialsInput>
+  }
+
+  export type InfrastructureServerUpdateWithoutCredentialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneRequiredWithoutInfrastructureServersNestedInput
+  }
+
+  export type InfrastructureServerUncheckedUpdateWithoutCredentialsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type AccountCreateManyUserInput = {
     id?: string
     type: string
@@ -92274,6 +96573,33 @@ export namespace Prisma {
     thumbnailUrl?: string | null
     activeVersion?: number
     settings?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type InfrastructureServerCreateManyTenantInput = {
+    id?: string
+    subscriptionId?: string | null
+    provider?: string
+    providerServerId?: string | null
+    name?: string | null
+    hostname?: string | null
+    ipv4?: string | null
+    ipv6?: string | null
+    region?: string
+    plan?: string
+    diskGb?: number
+    ramMb?: number
+    cpuCount?: number
+    status?: string
+    errorMessage?: string | null
+    dbHost?: string | null
+    dbPort?: number
+    mediaHost?: string | null
+    mediaPort?: number
+    lastHealthCheckAt?: Date | string | null
+    healthStatus?: string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -93165,6 +97491,89 @@ export namespace Prisma {
     thumbnailUrl?: NullableStringFieldUpdateOperationsInput | string | null
     activeVersion?: IntFieldUpdateOperationsInput | number
     settings?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type InfrastructureServerUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    credentials?: InfrastructureCredentialUpdateOneWithoutServerNestedInput
+  }
+
+  export type InfrastructureServerUncheckedUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    credentials?: InfrastructureCredentialUncheckedUpdateOneWithoutServerNestedInput
+  }
+
+  export type InfrastructureServerUncheckedUpdateManyWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subscriptionId?: NullableStringFieldUpdateOperationsInput | string | null
+    provider?: StringFieldUpdateOperationsInput | string
+    providerServerId?: NullableStringFieldUpdateOperationsInput | string | null
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    hostname?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv4?: NullableStringFieldUpdateOperationsInput | string | null
+    ipv6?: NullableStringFieldUpdateOperationsInput | string | null
+    region?: StringFieldUpdateOperationsInput | string
+    plan?: StringFieldUpdateOperationsInput | string
+    diskGb?: IntFieldUpdateOperationsInput | number
+    ramMb?: IntFieldUpdateOperationsInput | number
+    cpuCount?: IntFieldUpdateOperationsInput | number
+    status?: StringFieldUpdateOperationsInput | string
+    errorMessage?: NullableStringFieldUpdateOperationsInput | string | null
+    dbHost?: NullableStringFieldUpdateOperationsInput | string | null
+    dbPort?: IntFieldUpdateOperationsInput | number
+    mediaHost?: NullableStringFieldUpdateOperationsInput | string | null
+    mediaPort?: IntFieldUpdateOperationsInput | number
+    lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    healthStatus?: StringFieldUpdateOperationsInput | string
+    metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

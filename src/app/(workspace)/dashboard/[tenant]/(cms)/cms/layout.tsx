@@ -121,7 +121,7 @@ export default async function CMSLayout({
         user={session.user}
         userRole={access.role}
       />
-      <main className="flex-1 overflow-auto bg-muted/10">
+      <main className="flex-1 overflow-auto bg-muted/10 pt-14 md:pt-0">
         {children}
       </main>
     </div>

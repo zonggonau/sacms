@@ -24,7 +24,7 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
 
   return (
     <div className="w-64 border-r border-border/80 bg-card shrink-0 hidden md:block h-full">
-      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/developer`} />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/developer`} portalBadge="Developer" />
       <nav className="p-3 space-y-1">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)

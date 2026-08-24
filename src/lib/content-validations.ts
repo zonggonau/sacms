@@ -33,6 +33,7 @@ export function generateContentSchema(
       case "uid":
       case "url":
       case "phone":
+      case "icon":
         fieldSchema = z.string(requiredParams)
         if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
         if (isRequired) {
@@ -51,6 +52,7 @@ export function generateContentSchema(
       case "integer":
       case "currency":
       case "rating":
+      case "percent":
         fieldSchema = z.preprocess(
           (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
           isRequired
@@ -84,6 +86,10 @@ export function generateContentSchema(
       case "repeater":
       case "multiselect":
       case "button":
+      case "location":
+      case "seo":
+      case "code":
+      case "document_template":
         fieldSchema = z.any()
         break
 
@@ -93,7 +99,7 @@ export function generateContentSchema(
 
     // Post-processing for requirement
     if (isRequired) {
-      const basicTypes = ["text", "textarea", "richText", "select", "slug", "uid", "url", "phone", "email", "number", "integer", "currency", "rating", "boolean", "date", "datetime"]
+      const basicTypes = ["text", "textarea", "richText", "select", "slug", "uid", "url", "phone", "email", "number", "integer", "currency", "rating", "percent", "icon", "boolean", "date", "datetime"]
 
       if (!basicTypes.includes(field.type)) {
         // For non-basic types (JSON, relations, etc.), check for null/undefined/empty
@@ -108,7 +114,7 @@ export function generateContentSchema(
         })
       }
     } else {
-      if (!["number", "integer", "currency", "rating", "date", "datetime"].includes(field.type)) {
+      if (!["number", "integer", "currency", "rating", "percent", "date", "datetime"].includes(field.type)) {
         fieldSchema = fieldSchema.optional().nullable()
       }
     }

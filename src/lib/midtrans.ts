@@ -161,6 +161,8 @@ export const PLAN_PRICES: Record<string, number> = {
   starter: 99000,
   pro: 299000,
   enterprise: 999000,
+  "enterprise-vps": 1250000,
+  "enterprise-vds": 4500000,
   standard: 149000, // Legacy fallback
   professional: 449000, // Legacy fallback
   business: 949000, // Legacy fallback
@@ -212,9 +214,17 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
   
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
-    starter: { monthly: 99000, yearly: 990000 },
-    pro: { monthly: 299000, yearly: 2990000 },
-    enterprise: { monthly: 999000, yearly: 9990000 },
+    starter: { monthly: 49000, yearly: 490000 },
+    pro: { monthly: 149000, yearly: 1490000 },
+    enterprise: { monthly: 399000, yearly: 3990000 },
+    "enterprise-vps": { monthly: 1250000, yearly: 12500000 },
+    "vps-s": { monthly: 1250000, yearly: 12500000 },
+    "vps-m": { monthly: 2450000, yearly: 24500000 },
+    "vps-l": { monthly: 3450000, yearly: 34500000 },
+    "enterprise-vds": { monthly: 4500000, yearly: 45000000 },
+    "vds-s": { monthly: 4500000, yearly: 45000000 },
+    "vds-m": { monthly: 6500000, yearly: 65000000 },
+    "vds-l": { monthly: 9500000, yearly: 95000000 },
   }
   return fallbackPrices
 }
@@ -259,9 +269,17 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
   
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
-    starter: { monthly: 99000, yearly: 990000 },
-    pro: { monthly: 299000, yearly: 2990000 },
-    enterprise: { monthly: 999000, yearly: 9990000 },
+    starter: { monthly: 49000, yearly: 490000 },
+    pro: { monthly: 149000, yearly: 1490000 },
+    enterprise: { monthly: 399000, yearly: 3990000 },
+    "enterprise-vps": { monthly: 1250000, yearly: 12500000 },
+    "vps-s": { monthly: 1250000, yearly: 12500000 },
+    "vps-m": { monthly: 2450000, yearly: 24500000 },
+    "vps-l": { monthly: 3450000, yearly: 34500000 },
+    "enterprise-vds": { monthly: 4500000, yearly: 45000000 },
+    "vds-s": { monthly: 4500000, yearly: 45000000 },
+    "vds-m": { monthly: 6500000, yearly: 65000000 },
+    "vds-l": { monthly: 9500000, yearly: 95000000 },
   }
   return fallbackPrices
 }

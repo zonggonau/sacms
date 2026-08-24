@@ -17,6 +17,7 @@ import {
   Sun,
   Shield,
   Sparkles,
+  BookOpen,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -50,12 +51,13 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
+    { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
   ]
 
   // Add SaaS admin panel for super_admin
   if (session?.user?.role === "super_admin") {
     navItems.push({
-      title: "Global Admin",
+      title: "Super Admin Panel",
       href: "/admin",
       icon: Shield,
     })
@@ -152,7 +154,7 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-background/80 backdrop-blur border shadow-none rounded-none"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/90 backdrop-blur border border-border shadow-xs rounded-xl"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

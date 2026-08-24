@@ -50,7 +50,23 @@ export async function getLandingData() {
 
     // Pricing dan addons masih berbentuk collections
     const pricingAccounts = collectionsData?.["sacms-account-pricing"] || [];
-    const pricingWorkspaces = collectionsData?.["sacms-workspace-pricing"] || [];
+    const PLAN_ORDER: Record<string, number> = { 
+      free: 1, 
+      starter: 2, 
+      pro: 3, 
+      enterprise: 4, 
+      "vps-s": 5, 
+      "vps-m": 6, 
+      "vps-l": 7, 
+      "vds-s": 8, 
+      "vds-m": 9, 
+      "vds-l": 10
+    }
+    const pricingWorkspaces = (collectionsData?.["sacms-workspace-pricing"] || []).sort((a: any, b: any) => {
+      const slugA = (a.plan_slug || a.id || "").toLowerCase()
+      const slugB = (b.plan_slug || b.id || "").toLowerCase()
+      return (PLAN_ORDER[slugA] || 99) - (PLAN_ORDER[slugB] || 99) || (Number(a.price) || 0) - (Number(b.price) || 0)
+    });
     const addons = collectionsData?.["sacms-addons"] || [];
 
     return {

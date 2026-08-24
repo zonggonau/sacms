@@ -4,7 +4,8 @@ import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import type { HeroData } from "../types"
 import { useSession } from "next-auth/react"
-import { LayoutDashboard, ArrowRight } from "lucide-react"
+import { LayoutDashboard } from "lucide-react"
+import { useLanguage } from "@/lib/i18n/context"
 
 function HighlightedHeadline({ text }: { text: string }) {
   const words = (text || "").split(" ")
@@ -20,11 +21,17 @@ function HighlightedHeadline({ text }: { text: string }) {
 
 export function HeroSection({ data }: { data: HeroData | null }) {
   const { data: session, status } = useSession()
-  const hero = data || { headline: "Loading API Data..." }
+  const { dict, locale } = useLanguage()
 
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
   const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
+
+  const badgeText = locale === "en" ? dict.hero.badge : (data?.badge_text || dict.hero.badge)
+  const headlineText = locale === "en" ? dict.hero.title : (data?.headline || dict.hero.title)
+  const subheadlineText = locale === "en" ? dict.hero.subtitle : (data?.subheadline || dict.hero.subtitle)
+  const ctaPrimary = locale === "en" ? dict.hero.ctaPrimary : (data?.cta_primary || dict.hero.ctaPrimary)
+  const ctaSecondary = locale === "en" ? dict.hero.ctaSecondary : (data?.cta_secondary || dict.hero.ctaSecondary)
 
   return (
     <section className="min-h-[75vh] flex items-center justify-center pt-24 pb-16 relative overflow-hidden">
@@ -34,22 +41,22 @@ export function HeroSection({ data }: { data: HeroData | null }) {
       </div>
 
       <div className="container px-6 max-w-5xl mx-auto text-center space-y-8 relative z-10">
-        {hero.badge_text && (
+        {badgeText && (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-700">
             <span className="inline-flex items-center px-4 py-1.5 bg-primary/10 border border-primary/20 text-primary text-xs font-bold tracking-widest uppercase rounded-full backdrop-blur-md shadow-sm shadow-primary/20">
               <span className="w-2 h-2 rounded-full bg-primary mr-2 animate-pulse" />
-              {hero.badge_text}
+              {badgeText}
             </span>
           </div>
         )}
 
-        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-[1.1] text-foreground animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150 fill-mode-both">
-          <HighlightedHeadline text={hero.headline} />
+        <h1 className="text-3xl md:text-4xl lg:text-5xl font-black tracking-tight leading-[1.15] text-foreground animate-in fade-in slide-in-from-bottom-6 duration-700 delay-150 fill-mode-both">
+          <HighlightedHeadline text={headlineText} />
         </h1>
 
         <div 
           className="text-base md:text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed font-medium animate-in fade-in slide-in-from-bottom-8 duration-700 delay-300 fill-mode-both [&>p]:mb-0 [&_p]:mb-0"
-          dangerouslySetInnerHTML={{ __html: hero.subheadline || "" }}
+          dangerouslySetInnerHTML={{ __html: subheadlineText }}
         />
 
         <div className="flex flex-col sm:flex-row items-center justify-center gap-4 pt-4 animate-in fade-in slide-in-from-bottom-10 duration-700 delay-500 fill-mode-both">
@@ -57,19 +64,19 @@ export function HeroSection({ data }: { data: HeroData | null }) {
             <Link href={dashboardUrl}>
               <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40 gap-2">
                 <LayoutDashboard className="w-4 h-4" />
-                Buka Dashboard
+                {dict.nav.dashboard}
               </Button>
             </Link>
           ) : (
-            <Link href={hero.cta_href || "/register"}>
+            <Link href={data?.cta_href || "/register"}>
               <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40">
-                {hero.cta_primary || "Mulai Gratis"}
+                {ctaPrimary}
               </Button>
             </Link>
           )}
           <Link href="/docs">
             <Button size="lg" variant="outline" className="h-11 px-8 rounded-full border-border/50 bg-background/50 backdrop-blur-md font-bold text-sm hover:bg-muted/50 hover:border-border transition-all hover:scale-105">
-              {hero.cta_secondary || "Lihat Demo"}
+              {ctaSecondary}
             </Button>
           </Link>
         </div>

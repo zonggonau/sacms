@@ -52,7 +52,7 @@ export default async function TenantDashboardLayout({
     return (
       <div className="flex h-screen overflow-hidden bg-muted/20">
         <TenantSidebar tenantSlug="account" session={session} />
-        <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
+        <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative pt-14 md:pt-0">
           {children}
         </div>
       </div>

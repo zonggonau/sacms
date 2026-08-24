@@ -9,7 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Loader2, Database, ArrowRight, ArrowUpRight, FileText,
   Building2, Users, DollarSign, TrendingUp, ImageIcon,
-  Puzzle, CreditCard, Trophy
+  Puzzle, CreditCard, Trophy, ClipboardList
 } from "lucide-react"
 import Link from "next/link"
 import { formatRupiah } from "@/lib/utils"
@@ -149,12 +149,12 @@ export default function GlobalAdminDashboard() {
             ))}
           </div>
 
-          {/* Schema Counters */}
+          {/* Platform Operations Counters */}
           <div className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-4 gap-3.5">
             {[
-              { label: "Tipe Konten", value: stats.contentTypes, icon: Database, href: "/admin/content-types" },
-              { label: "Halaman Statis", value: stats.singleTypes, icon: FileText, href: "/admin/single-types" },
-              { label: "Komponen", value: stats.components, icon: Puzzle, href: "/admin/component" },
+              { label: "Workspace Aktif", value: stats.activeTenants, icon: Building2, href: "/admin/tenants" },
+              { label: "Pengguna Platform", value: stats.users, icon: Users, href: "/admin/users" },
+              { label: "Audit & Log", value: stats.mediaCount || 0, icon: ClipboardList, href: "/admin/audit-logs" },
               { label: "Langganan Aktif", value: stats.activeSubscriptions, icon: CreditCard, href: "/admin/billing" },
             ].map((s) => (
               <Link key={s.label} href={s.href} className="group">

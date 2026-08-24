@@ -45,6 +45,7 @@ import {
   Layers,
   UserCheck,
   Zap,
+  ExternalLink,
 } from "lucide-react"
 import { toast } from "sonner"
 import { UsageTab } from "@/components/dashboard/usage-tab"
@@ -86,6 +87,7 @@ export default function TenantSettingsPage() {
   const [requestsPerMinute, setRequestsPerMinute] = useState("60")
   const [burstLimit, setBurstLimit] = useState("100")
   const [corsOrigins, setCorsOrigins] = useState("")
+  const [previewUrl, setPreviewUrl] = useState("")
 
   // Security settings
   const [twoFactorRequired, setTwoFactorRequired] = useState(false)
@@ -101,6 +103,8 @@ export default function TenantSettingsPage() {
   const [storageSecretKey, setStorageSecretKey] = useState("")
   const [storageBucket, setStorageBucket] = useState("")
   const [storagePublicUrl, setStoragePublicUrl] = useState("")
+  const [infraServer, setInfraServer] = useState<any>(null)
+  const [testingInfraHealth, setTestingInfraHealth] = useState(false)
 
   // Email settings
   const [smtpHost, setSmtpHost] = useState("")
@@ -150,6 +154,7 @@ export default function TenantSettingsPage() {
           setRequestsPerMinute(String(settings.requestsPerMinute || 60))
           setBurstLimit(String(settings.burstLimit || 100))
           setCorsOrigins(settings.corsOrigins || "")
+          setPreviewUrl(settings.previewUrl || "")
           setTwoFactorRequired(settings.twoFactorRequired || false)
           setIpWhitelist(settings.ipWhitelist || false)
           setAllowedIps(settings.allowedIps || "")
@@ -172,6 +177,15 @@ export default function TenantSettingsPage() {
           setFromEmail(settings.fromEmail || "")
           setFromName(settings.fromName || "")
         }
+
+        // Fetch dedicated infrastructure server status
+        try {
+          const infraRes = await fetch(`/api/tenant/${tenantSlug}/infrastructure`)
+          if (infraRes.ok) {
+            const infraData = await infraRes.json()
+            setInfraServer(infraData.server)
+          }
+        } catch {}
       } catch (error) {
         console.error("Failed to fetch settings:", error)
         toast.error("Gagal memuat pengaturan workspace")
@@ -199,6 +213,7 @@ export default function TenantSettingsPage() {
           requestsPerMinute: parseInt(requestsPerMinute) || 60,
           burstLimit: parseInt(burstLimit) || 100,
           corsOrigins,
+          previewUrl,
           twoFactorRequired,
           ipWhitelist,
           allowedIps,
@@ -452,12 +467,10 @@ export default function TenantSettingsPage() {
                 Penggunaan (Usage)
               </TabsTrigger>
 
-              {isEnterprise && (
-                <TabsTrigger value="infrastructure" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
-                  <Server className="h-3.5 w-3.5 mr-1.5" />
-                  Infrastruktur Dedicated
-                </TabsTrigger>
-              )}
+              <TabsTrigger value="infrastructure" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+                <Server className="h-3.5 w-3.5 mr-1.5" />
+                Infrastruktur Dedicated
+              </TabsTrigger>
 
               <TabsTrigger value="danger" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs text-rose-600 dark:text-rose-400">
                 <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
@@ -543,6 +556,34 @@ export default function TenantSettingsPage() {
                         </Badge>
                       </div>
                     </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Card: Live Preview URL */}
+              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                    <ExternalLink className="h-4 w-4 text-primary" />
+                    Frontend Preview & Live Draft URL
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Tentukan URL website frontend untuk tombol &quot;Live Preview&quot; saat tim editorial mengedit draf konten.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-5 space-y-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="preview-url" className="text-xs font-semibold text-foreground">Preview Base URL</Label>
+                    <Input
+                      id="preview-url"
+                      placeholder="http://localhost:3001/api/preview atau https://mywebsite.com/api/preview"
+                      value={previewUrl}
+                      onChange={(e) => setPreviewUrl(e.target.value)}
+                      className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
+                    />
+                    <p className="text-[10px] text-muted-foreground">
+                      CMS akan memicu URL ini saat tombol Live Preview diklik di editor konten.
+                    </p>
                   </div>
                 </CardContent>
               </Card>
@@ -706,17 +747,159 @@ export default function TenantSettingsPage() {
               <UsageTab tenantSlug={tenantSlug} />
             </TabsContent>
 
-            {/* TAB: INFRASTRUCTURE (Enterprise Mode) */}
-            {isEnterprise && (
-              <TabsContent value="infrastructure" className="space-y-6">
+            {/* TAB: INFRASTRUCTURE */}
+            <TabsContent value="infrastructure" className="space-y-6">
+              {!infraServer && (
+                <Card className="rounded-2xl border border-primary/20 shadow-xs bg-gradient-to-br from-card via-card to-primary/5 overflow-hidden">
+                  <CardHeader className="p-5 pb-3">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                        <Server className="h-4 w-4 text-primary" />
+                        SaCMS Dedicated Managed Appliance (Cloud VPS & VDS)
+                      </CardTitle>
+                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
+                        Enterprise Infrastructure
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Otomatisasi Dedicated PostgreSQL 17 + MinIO S3 Object Storage + Auto Let's Encrypt SSL terisolasi penuh untuk workspace Anda.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 pt-2 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Spesifikasi Server</span>
+                        <p className="text-xs font-semibold text-foreground">4-6 vCPU / 3-6 Core Fisik</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">NVMe Storage</span>
+                        <p className="text-xs font-semibold text-foreground">75 GB - 360 GB Dedicated</p>
+                      </div>
+                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Keamanan & SSL</span>
+                        <p className="text-xs font-semibold text-foreground">Auto HTTPS + TLS 1.3</p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
+                      <p className="text-xs text-muted-foreground">
+                        Belum ada Server Dedicated terpasang untuk workspace ini. Anda dapat mengaktifkannya via paket Business VPS / Gov VDS atau memasukkan PostgreSQL sendiri di bawah (BYODB).
+                      </p>
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                        className="rounded-xl font-bold text-xs h-8 gap-1.5 shrink-0"
+                      >
+                        <Zap className="h-3.5 w-3.5" /> Lihat Paket Dedicated
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+                {infraServer && (
+                  <Card className="rounded-2xl border border-primary/30 shadow-xs bg-card overflow-hidden">
+                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-primary/5">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Server className="h-4 w-4 text-primary" />
+                          SaCMS Dedicated Managed Appliance ({infraServer.plan?.toUpperCase()})
+                        </CardTitle>
+                        <div className="flex items-center gap-2">
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "capitalize font-bold text-[10px]",
+                              infraServer.status === "active" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
+                              infraServer.status === "provisioning" && "bg-amber-500/10 text-amber-600 border-amber-500/30",
+                              infraServer.status === "error" && "bg-rose-500/10 text-rose-600 border-rose-500/30"
+                            )}
+                          >
+                            {infraServer.status}
+                          </Badge>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            disabled={testingInfraHealth}
+                            onClick={async () => {
+                              setTestingInfraHealth(true)
+                              try {
+                                const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, { method: "POST" })
+                                const data = await res.json()
+                                if (res.ok) {
+                                  toast.success(data.healthy ? "Semua service (PostgreSQL & MinIO) aktif normal!" : data.message)
+                                  const infraRes = await fetch(`/api/tenant/${tenantSlug}/infrastructure`)
+                                  if (infraRes.ok) {
+                                    const infraData = await infraRes.json()
+                                    setInfraServer(infraData.server)
+                                  }
+                                } else {
+                                  toast.error(data.error || "Gagal mengetes status server")
+                                }
+                              } catch {
+                                toast.error("Terjadi kesalahan jaringan")
+                              } finally {
+                                setTestingInfraHealth(false)
+                              }
+                            }}
+                            className="rounded-xl h-7 text-xs font-bold gap-1.5"
+                          >
+                            <Activity className={cn("h-3.5 w-3.5 text-primary", testingInfraHealth && "animate-spin")} />
+                            {testingInfraHealth ? "Checking..." : "Test Health"}
+                          </Button>
+                        </div>
+                      </div>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Infrastruktur terisolasi penuh: Dedicated PostgreSQL 17 + MinIO S3 Object Storage + Caddy Auto-SSL.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Spesifikasi VPS</span>
+                          <p className="text-xs font-semibold text-foreground">{infraServer.cpuCount} vCPU &bull; {infraServer.ramMb / 1024} GB RAM</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Storage NVMe</span>
+                          <p className="text-xs font-semibold text-foreground">{infraServer.diskGb} GB Dedicated</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Region Datacenter</span>
+                          <p className="text-xs font-semibold text-foreground">{infraServer.region}</p>
+                        </div>
+                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
+                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Health Status</span>
+                          <div className="flex items-center gap-1.5 pt-0.5">
+                            <div className={cn(
+                              "h-2 w-2 rounded-full",
+                              infraServer.healthStatus === "healthy" ? "bg-emerald-500" : "bg-amber-500"
+                            )} />
+                            <span className="text-xs font-semibold capitalize">{infraServer.healthStatus}</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">PostgreSQL Host Endpoint</Label>
+                          <Input readOnly value={`${infraServer.dbHost || "Configuring"}:${infraServer.dbPort || 5432}`} className="font-mono text-xs bg-muted/40 h-8 rounded-xl" />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[11px] text-muted-foreground">MinIO S3 Media Endpoint</Label>
+                          <Input readOnly value={`https://${infraServer.mediaHost || "Configuring"}`} className="font-mono text-xs bg-muted/40 h-8 rounded-xl" />
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                       <Server className="h-4 w-4 text-primary" />
-                      Bring Your Own Infrastructure (Dedicated)
+                      Bring Your Own Infrastructure (Custom Connection)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Gunakan database PostgreSQL terdedikasi dan storage S3/R2 khusus untuk workspace ini.
+                      Hubungkan database PostgreSQL eksternal (Supabase, Neon, AWS RDS) atau custom S3 bucket.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-5">
@@ -787,10 +970,25 @@ export default function TenantSettingsPage() {
                         </div>
                       </div>
                     </div>
+
+                    <Separator />
+
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
+                      <p className="text-[11px] text-muted-foreground">
+                        Pastikan PostgreSQL dan S3 dapat diakses dari server SaCMS sebelum menyimpan.
+                      </p>
+                      <Button
+                        onClick={handleSave}
+                        disabled={saving}
+                        className="rounded-xl font-bold text-xs h-8 gap-1.5 shrink-0"
+                      >
+                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                        Simpan Konfigurasi Infrastruktur
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               </TabsContent>
-            )}
 
             {/* TAB: DANGER ZONE */}
             <TabsContent value="danger" className="space-y-6">

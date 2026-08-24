@@ -61,7 +61,7 @@ export function TagsField({
           onKeyDown={handleKeyDown}
           onBlur={addTag}
           placeholder={tags.length === 0 ? placeholder : "Add more..."}
-          className="pl-9 h-11 rounded-none bg-muted/30 border-none focus-visible:ring-primary/20 font-medium"
+          className="pl-9 h-10 rounded-xl bg-background border border-border/80 focus-visible:ring-primary/20 text-xs font-medium"
         />
       </div>
       
@@ -71,13 +71,13 @@ export function TagsField({
             <Badge 
               key={`${tag}-${index}`}
               variant="secondary"
-              className="pl-2 pr-1 py-1 h-7 rounded-none bg-primary/10 text-primary hover:bg-primary/20 border-none flex items-center gap-1 group transition-all"
+              className="pl-2.5 pr-1.5 py-1 h-7 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 border border-primary/20 flex items-center gap-1 group transition-all"
             >
               <span className="text-[11px] font-bold">#{tag}</span>
               <button
                 type="button"
                 onClick={() => removeTag(index)}
-                className="rounded-none p-0.5 hover:bg-primary/20 text-primary/50 hover:text-primary transition-colors"
+                className="rounded-full p-0.5 hover:bg-primary/20 text-primary/70 hover:text-primary transition-colors cursor-pointer"
               >
                 <X className="h-3 w-3" />
               </button>
@@ -87,7 +87,7 @@ export function TagsField({
       )}
       
       <p className="text-[10px] text-muted-foreground italic ml-1">
-        Press <span className="font-bold bg-muted px-1 rounded-none text-foreground">Enter</span> or <span className="font-bold bg-muted px-1 rounded-none text-foreground">Comma</span> to add tags.
+        Tekan <span className="font-bold bg-muted px-1.5 py-0.5 rounded-md text-foreground">Enter</span> atau <span className="font-bold bg-muted px-1.5 py-0.5 rounded-md text-foreground">Koma</span> untuk menambahkan tag.
       </p>
     </div>
   )

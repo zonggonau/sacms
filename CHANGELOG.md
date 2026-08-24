@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.3.0] - 2026-08-24
+
+### Added
+- **Dedicated Multi-Tenant Infrastructure & BYODB**: Automated Zero-Touch provisioning for Cloud VPS & VDS instances with PostgreSQL 17, MinIO S3 object storage, and automated Cloudflare DNS subdomains (`src/lib/infrastructure/`).
+- **Dynamic 10-Tier Pricing Catalog**: Full segmentation across Cloud Ekonomis (4 tiers), Business VPS (3 tiers), and Gov & Enterprise VDS (3 tiers) powered 100% dynamically from Global CMS without hardcoding (`src/app/api/tenant/[tenant]/subscriptions/plans/route.ts`).
+- **Dual-Language i18n System (ID & EN)**: Complete bilingual dictionary and reactive `LanguageSwitcher` pill with `localStorage`/cookie persistence across the entire public frontend (`src/lib/i18n/`, `src/components/ui/language-switcher.tsx`).
+- **Infrastructure Health & Troubleshooting Hub**: Live 30-second monitoring dashboard with interactive remediation tools (Live Ping, DB query test, Schema Sync, DNS Sync, VPS Reboot, and Credential decryption) in `src/app/(system)/admin/infrastructure/page.tsx`.
+
+### Changed
+- **Direct Yearly Billing**: Locked subscription intervals to yearly billing with automated 2-month discount formulas and Midtrans Snap integration.
+- **SaCMS Brand Unification**: Consolidated vendor identity to SaCMS brand across all public landing sections and tenant dashboards.
+
 ## [1.2.1.0] - 2026-08-23
 
 ### Added

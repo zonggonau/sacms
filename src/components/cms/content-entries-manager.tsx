@@ -6,8 +6,9 @@ import {
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, Search, Filter,
   CheckSquare, Square, Download, MoreHorizontal, ImageIcon, AlertCircle,
-  Check, Layers, Sparkles
+  Check, Layers, Sparkles, Code2
 } from "lucide-react"
+import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -80,6 +81,7 @@ export function ContentEntriesManager({
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>(["DRAFT", "PUBLISHED", "IN_REVIEW", "ARCHIVED", "APPROVED", "SCHEDULED", "REJECTED"])
+  const [isApiSnippetOpen, setIsApiSnippetOpen] = useState(false)
 
   const filteredEntries = useMemo(() => {
     return initialEntries.filter(entry => {
@@ -100,23 +102,29 @@ export function ContentEntriesManager({
   }
 
   const handleToggleSelect = (id: string) => {
-    setSelectedIds(prev => prev.includes(id) ? prev.filter(i => i !== id) : [...prev, id])
+    if (selectedIds.includes(id)) {
+      setSelectedIds(selectedIds.filter(item => item !== id))
+    } else {
+      setSelectedIds([...selectedIds, id])
+    }
   }
 
-  const handleBulkAction = async (action: string) => {
+  const handleBulkAction = async (action: "publish" | "draft" | "archive" | "delete") => {
     if (selectedIds.length === 0) return
-    if (action === 'delete' && !confirm(`Hapus permanen ${selectedIds.length} entri yang dipilih?`)) return
-    
+    if (action === "delete" && !confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} entri terpilih secara permanen?`)) {
+      return
+    }
+
     try {
       const res = await bulkContentAction(tenantSlug, contentTypeSlug, selectedIds, action)
       if (res.success) {
-        toast({ title: "Aksi Massal Berhasil", description: `${selectedIds.length} entri diperbarui.` })
+        toast({ title: "Aksi Massal Berhasil", description: `${selectedIds.length} entri telah diproses.` })
         setSelectedIds([])
       } else {
-        toast({ variant: "destructive", title: "Aksi Gagal", description: res.error })
+        toast({ variant: "destructive", title: "Gagal", description: res.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat memproses aksi massal." })
+      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
     }
   }
 
@@ -152,6 +160,14 @@ export function ContentEntriesManager({
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      <ApiSnippetDialog 
+        open={isApiSnippetOpen} 
+        onOpenChange={setIsApiSnippetOpen} 
+        tenantSlug={tenantSlug} 
+        contentTypeSlug={contentTypeSlug} 
+        contentTypeName={contentType?.name}
+        fields={contentType?.fields}
+      />
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
@@ -181,15 +197,26 @@ export function ContentEntriesManager({
               </div>
             </div>
 
-            {canCreateEntry && (
-              <Button 
-                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0" 
-                onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
-                disabled={isLimitReached}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsApiSnippetOpen(true)}
+                className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80 text-muted-foreground hover:text-foreground"
               >
-                <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Entri Baru
+                <Code2 className="mr-1.5 h-3.5 w-3.5 text-primary" /> API Snippet
               </Button>
-            )}
+
+              {canCreateEntry && (
+                <Button 
+                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0" 
+                  onClick={() => router.push(`${navBasePath}/content/${contentTypeSlug}/new`)}
+                  disabled={isLimitReached}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Entri Baru
+                </Button>
+              )}
+            </div>
           </div>
 
           {/* Limit Reached Warning Banner */}
@@ -259,7 +286,7 @@ export function ContentEntriesManager({
                     size="sm" 
                     variant="ghost" 
                     className="h-7 text-xs font-bold rounded-lg" 
-                    onClick={() => handleBulkAction('unpublish')}
+                    onClick={() => handleBulkAction('draft')}
                   >
                     <FileText className="h-3 w-3 mr-1 text-muted-foreground" /> Draft
                   </Button>

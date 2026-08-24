@@ -66,20 +66,20 @@ export function LocaleSwitcher({ tenantSlug, currentLocale, onLocaleChange, comp
   }
 
   return (
-    <div className="flex items-center gap-1 rounded-none border p-1 bg-muted/30">
+    <div className="flex items-center gap-1 rounded-xl border border-border/80 p-1 bg-muted/20">
       {locales.map((loc) => (
         <Button
           key={loc.id}
           variant={currentLocale === loc.locale ? "default" : "ghost"}
           size="sm"
-          className={`h-7 px-3 text-xs ${currentLocale === loc.locale
-            ? "bg-emerald-600 hover:bg-emerald-700 text-white"
-            : "text-muted-foreground"
+          className={`h-7 px-3 text-xs rounded-lg font-bold cursor-pointer ${currentLocale === loc.locale
+            ? "bg-primary hover:bg-primary/90 text-primary-foreground"
+            : "text-muted-foreground hover:text-foreground"
           }`}
           onClick={() => onLocaleChange(loc.locale)}
         >
           {loc.locale.toUpperCase()}
-          {loc.isDefault && <Badge variant="outline" className="ml-1 text-[8px] h-3 px-1">DEFAULT</Badge>}
+          {loc.isDefault && <Badge variant="outline" className="ml-1 text-[8px] h-3 px-1 rounded-sm">DEFAULT</Badge>}
         </Button>
       ))}
     </div>

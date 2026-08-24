@@ -142,8 +142,8 @@ export function RelationSelectField({
 
   if (!targetSlug) {
     return (
-      <div className="p-3 bg-red-50 border border-red-100 rounded-none flex items-center gap-2 text-red-600 text-[10px] font-black uppercase tracking-tighter">
-        <AlertCircle className="h-4 w-4" /> Missing target configuration.
+      <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-xl flex items-center gap-2 text-red-600 dark:text-red-400 text-xs font-semibold">
+        <AlertCircle className="h-4 w-4 shrink-0" /> Target relasi belum dikonfigurasi.
       </div>
     )
   }
@@ -153,7 +153,7 @@ export function RelationSelectField({
       {(label || loading) && (
         <div className={cn("flex items-center", label ? "justify-between" : "justify-end")}>
           {label && (
-            <Label className="text-xs font-bold text-slate-700">
+            <Label className="text-xs font-bold text-foreground">
               {label} {required && <span className="text-destructive">*</span>}
             </Label>
           )}
@@ -164,19 +164,19 @@ export function RelationSelectField({
       <div className="space-y-2">
         {/* Selected Items Tags */}
         {multiple && selectedIds.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-2.5 bg-muted/20 rounded-none border border-dashed border-muted">
+          <div className="flex flex-wrap gap-2 p-2.5 bg-muted/20 rounded-xl border border-dashed border-border/80">
             {selectedIds.map((id) => {
               const entry = entries.find((e) => e.id === id)
               return (
                 <Badge 
                   key={id} 
                   variant="secondary" 
-                  className="rounded-none py-1 pl-3 pr-1.5 flex items-center gap-1.5 bg-card border shadow-none"
+                  className="rounded-lg py-1 pl-3 pr-1.5 flex items-center gap-1.5 bg-card border border-border/80 shadow-xs"
                 >
-                  <span className="text-[11px] font-bold text-slate-800">{entry ? getEntryLabel(entry) : id.substring(0, 8)}</span>
+                  <span className="text-xs font-bold text-foreground">{entry ? getEntryLabel(entry) : id.substring(0, 8)}</span>
                   <button 
                     onClick={(e) => removeSelected(id, e)}
-                    className="h-4 w-4 rounded-none hover:bg-red-50 hover:text-red-500 transition-colors"
+                    className="h-4 w-4 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -193,8 +193,8 @@ export function RelationSelectField({
               role="combobox"
               aria-expanded={open}
               className={cn(
-                "w-full justify-between bg-muted/30 border-none h-11 rounded-none font-bold px-4 hover:bg-muted/40 transition-all",
-                !multiple && selectedIds.length > 0 && "text-slate-900",
+                "w-full justify-between bg-background border-border/80 h-10 rounded-xl font-medium px-3.5 hover:bg-muted/40 transition-all text-xs cursor-pointer",
+                !multiple && selectedIds.length > 0 && "text-foreground font-bold",
                 selectedIds.length === 0 && "text-muted-foreground font-normal"
               )}
             >
@@ -203,68 +203,67 @@ export function RelationSelectField({
                    <span className="truncate">{getEntryLabel(entries.find(e => e.id === selectedIds[0]))}</span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    <Search className="h-4 w-4 opacity-50" />
-                    {placeholder || `Search ${label || targetSlug}...`}
+                    <Search className="h-3.5 w-3.5 opacity-50" />
+                    {placeholder || `Pilih ${label || targetSlug}...`}
                   </span>
                 )}
               </div>
-              <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+              <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0 border border-border bg-popover shadow-none rounded-none overflow-hidden" align="start">
-            <Command className="rounded-none border-none">
+          <PopoverContent className="w-[400px] p-0 border border-border bg-popover shadow-xl rounded-2xl overflow-hidden" align="start">
+            <Command className="rounded-2xl border-none">
               <CommandInput 
-                placeholder={`Search ${targetSlug}...`} 
+                placeholder={`Cari ${targetSlug}...`} 
                 onValueChange={(val) => {
                   setSearchTerm(val)
-                  // Optional: Fetch on type if data is large
                 }}
-                className="h-12 border-none font-bold"
+                className="h-10 border-none text-xs"
               />
-              <CommandList className="max-h-[300px]">
+              <CommandList className="max-h-[280px]">
                 <CommandEmpty className="p-6 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Search className="h-8 w-8 text-muted-foreground/30" />
-                    <p className="text-xs font-bold text-muted-foreground">No entries found for "{searchTerm}"</p>
+                    <p className="text-xs font-bold text-muted-foreground">Tidak ada entri untuk "{searchTerm}"</p>
                   </div>
                 </CommandEmpty>
-                <CommandGroup className="p-2">
+                <CommandGroup className="p-1.5">
                   {entries.map((entry) => (
                     <CommandItem
                       key={entry.id}
                       value={entry.id}
                       onSelect={() => handleSelect(entry.id)}
-                      className="rounded-none p-3 font-bold cursor-pointer transition-colors"
+                      className="rounded-lg p-2.5 font-medium cursor-pointer transition-colors"
                     >
-                      <div className="flex items-center gap-3 w-full">
+                      <div className="flex items-center gap-2.5 w-full">
                         <div className={cn(
-                          "h-5 w-5 rounded-none border-2 flex items-center justify-center transition-all",
+                          "h-4 w-4 rounded-md border flex items-center justify-center transition-all shrink-0",
                           selectedIds.includes(entry.id) 
                             ? "bg-primary border-primary" 
-                            : "border-muted-foreground/20 bg-transparent"
+                            : "border-muted-foreground/30 bg-transparent"
                         )}>
                           <Check className={cn(
-                            "h-3.5 w-3.5 text-white transition-opacity",
+                            "h-3 w-3 text-primary-foreground transition-opacity",
                             selectedIds.includes(entry.id) ? "opacity-100" : "opacity-0"
                           )} />
                         </div>
-                        <div className="flex flex-col">
-                          <span className="text-sm">{getEntryLabel(entry)}</span>
-                          <span className="text-[10px] font-normal text-muted-foreground opacity-60 font-mono">{entry.id}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="text-xs font-bold truncate text-foreground">{getEntryLabel(entry)}</span>
+                          <span className="text-[10px] text-muted-foreground font-mono truncate">{entry.id}</span>
                         </div>
                       </div>
                     </CommandItem>
                   ))}
                 </CommandGroup>
               </CommandList>
-              <div className="p-3 border-t bg-muted/5 flex justify-between items-center">
-                 <p className="text-[10px] font-black uppercase text-muted-foreground tracking-tighter">
-                   Relating to {targetSlug}
+              <div className="p-2.5 border-t border-border bg-muted/20 flex justify-between items-center">
+                 <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
+                   Target: {targetSlug}
                  </p>
                  <Button 
                    variant="ghost" 
                    size="sm" 
-                   className="h-7 text-[10px] uppercase font-black px-3 rounded-none"
+                   className="h-6 text-[10px] font-bold px-2 rounded-lg cursor-pointer"
                    onClick={() => fetchEntries(searchTerm)}
                  >
                    Refresh
@@ -276,8 +275,8 @@ export function RelationSelectField({
       </div>
 
       {error && (
-        <p className="text-[10px] text-red-500 font-bold bg-red-50 p-2 rounded-none flex items-center gap-2">
-          <AlertCircle className="h-3 w-3" /> {error}
+        <p className="text-xs text-red-500 font-medium bg-red-500/10 p-2 rounded-xl flex items-center gap-2">
+          <AlertCircle className="h-3.5 w-3.5 shrink-0" /> {error}
         </p>
       )}
     </div>

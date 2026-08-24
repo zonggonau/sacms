@@ -10,6 +10,7 @@ import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createSingleTypeSchema, updateSingleTypeSchema, saveSingleTypeDataSchema } from "@/lib/validations"
 import { processAutoSlugs } from "@/lib/slug"
 import { revalidatePath } from "next/cache"
+import { parseSchemaFieldOptions } from "./content-pipeline"
 
 export async function getSingleTypesAction(tenantSlug: string) {
   try {
@@ -59,13 +60,7 @@ export async function getSingleTypesAction(tenantSlug: string) {
         } catch { parsedData = {} }
       }
 
-      const formattedFields = st.schemaFields.map(field => {
-        let parsedOptions = field.options
-        if (typeof field.options === 'string') {
-          try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-        }
-        return { ...field, options: parsedOptions || {} }
-      })
+      const formattedFields = parseSchemaFieldOptions(st.schemaFields)
 
       const mappedSt = {
         ...st,
@@ -132,13 +127,7 @@ export async function getSingleTypeBySlugAction(tenantSlug: string, slug: string
       } catch { parsedData = {} }
     }
 
-    const formattedFields = singleType.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(singleType.schemaFields)
 
     return { 
       singleType: {
@@ -293,13 +282,7 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
       })
     })
 
-    const formattedFields = updatedSingleType.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(updatedSingleType.schemaFields)
 
     revalidatePath(`/dashboard/${tenantSlug}/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/single-types/${updatedSingleType.slug}`)

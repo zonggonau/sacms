@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label"
 import { Loader2, Mail } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
-import { forgotPassword } from "@/app/actions/auth"
+import { forgotPassword } from "@/actions/auth"
 
 export default function ForgotPasswordPage() {
   const { toast } = useToast()

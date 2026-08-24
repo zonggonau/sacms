@@ -32,6 +32,10 @@ import { MarkdownField } from "./markdown-field"
 import { CurrencyField } from "./currency-field"
 import { DateRangeField } from "./date-range-field"
 import { DynamicZoneField } from "./dynamic-zone-field"
+import { PercentField } from "./percent-field"
+import { IconField } from "./icon-field"
+import { SeoField } from "./seo-field"
+import { CodeField } from "./code-field"
 
 interface FieldDefinition {
   id: string
@@ -151,6 +155,14 @@ export function ComponentField({
         return <NumberField value={fieldValue as any} onChange={onFieldChange} required={field.required} type={field.type as any} />
       case "currency":
         return <CurrencyField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
+      case "percent":
+        return <PercentField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
+      case "icon":
+        return <IconField value={fieldValue as string} onChange={onFieldChange} required={field.required} />
+      case "seo":
+        return <SeoField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
+      case "code":
+        return <CodeField value={fieldValue as any} onChange={onFieldChange} required={field.required} />
       case "boolean": 
         return <BooleanField value={fieldValue as boolean} onChange={onFieldChange} required={field.required} />
       case "date": 
@@ -241,13 +253,13 @@ export function ComponentField({
         </div>
       )}
 
-      <div className="bg-muted/30 rounded-none p-4 border border-dashed border-muted-foreground/20">
+      <div className="bg-muted/20 rounded-2xl p-4 border border-dashed border-border/80">
         {!repeatable ? (
           renderInnerFields(value)
         ) : (
           <div className="space-y-3">
             {(Array.isArray(value) ? value : []).map((item, idx) => (
-              <Card key={idx} className="border-none shadow-none overflow-hidden bg-card">
+              <Card key={idx} className="border border-border/70 shadow-xs overflow-hidden bg-card rounded-xl">
                 <div 
                   className="flex items-center justify-between px-4 py-2 bg-muted/20 cursor-pointer hover:bg-muted/40 transition-colors"
                   onClick={() => toggleExpand(idx)}
@@ -262,12 +274,12 @@ export function ComponentField({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-7 w-7 text-destructive hover:bg-destructive/10" 
+                      className="h-7 w-7 text-destructive hover:bg-destructive/10 rounded-lg cursor-pointer" 
                       onClick={(e) => { e.stopPropagation(); handleRemoveField(idx) }}
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg cursor-pointer">
                       {expandedIndices.has(idx) ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
                   </div>
@@ -281,11 +293,11 @@ export function ComponentField({
             ))}
             <Button 
               variant="outline" 
-              className="w-full border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 text-muted-foreground hover:text-primary transition-all rounded-none h-10"
+              className="w-full border-dashed border-2 hover:bg-primary/5 hover:border-primary/50 text-muted-foreground hover:text-primary transition-all rounded-xl h-10 cursor-pointer text-xs font-semibold"
               onClick={handleAddField}
             >
               <Plus className="h-4 w-4 mr-2" />
-              Add to {definition.name}
+              Tambah ke {definition.name}
             </Button>
           </div>
         )}

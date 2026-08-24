@@ -60,15 +60,15 @@ export function DateField({
           <Button
             type="button"
             variant="outline"
-            className={`w-full justify-start text-left font-normal h-10 bg-card ${
-              !value && "text-muted-foreground"
+            className={`w-full justify-start text-left font-medium rounded-xl h-10 bg-background border-border/80 text-xs cursor-pointer ${
+              !value && "text-muted-foreground font-normal"
             } ${error ? "border-destructive" : ""}`}
           >
             <Calendar className="mr-2 h-4 w-4" />
             {formatDate(value)}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-none border border-border bg-popover shadow-none" align="start">
+        <PopoverContent className="w-auto p-0 rounded-2xl border border-border bg-card shadow-xl overflow-hidden" align="start">
           <CalendarComponent
             mode="single"
             selected={value && value !== "" ? new Date(value) : undefined}

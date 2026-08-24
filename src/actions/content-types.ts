@@ -8,6 +8,7 @@ import { getTenantDb } from "@/lib/database"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { createContentTypeSchema, updateContentTypeSchema } from "@/lib/validations/admin"
 import { revalidatePath } from "next/cache"
+import { parseSchemaFieldOptions } from "./content-pipeline"
 
 export async function getContentTypesAction(tenantSlug: string) {
   try {
@@ -57,20 +58,7 @@ export async function getContentTypesAction(tenantSlug: string) {
           },
         })
 
-        const formattedFields = contentType.schemaFields.map(field => {
-          let parsedOptions = field.options
-          if (typeof field.options === 'string') {
-            try {
-              parsedOptions = JSON.parse(field.options)
-            } catch (e) {
-              parsedOptions = {}
-            }
-          }
-          return {
-            ...field,
-            options: parsedOptions || {}
-          }
-        })
+        const formattedFields = parseSchemaFieldOptions(contentType.schemaFields)
 
         return {
           ...contentType,
@@ -120,13 +108,7 @@ export async function getContentTypeAction(tenantSlug: string, id: string) {
 
     if (!contentType) return { error: "Content type not found" }
 
-    const formattedFields = contentType.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(contentType.schemaFields)
 
     return { contentType: { ...contentType, fields: formattedFields } }
   } catch (error) {
@@ -167,13 +149,7 @@ export async function getContentTypeBySlugAction(tenantSlug: string, slug: strin
 
     if (!contentType) return { error: "Content type not found" }
 
-    const formattedFields = contentType.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(contentType.schemaFields)
 
     return { contentType: { ...contentType, fields: formattedFields } }
   } catch (error) {
@@ -323,13 +299,7 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
       })
     })
 
-    const formattedFields = updatedContentType.schemaFields.map(field => {
-      let parsedOptions = field.options
-      if (typeof field.options === 'string') {
-        try { parsedOptions = JSON.parse(field.options) } catch { parsedOptions = {} }
-      }
-      return { ...field, options: parsedOptions || {} }
-    })
+    const formattedFields = parseSchemaFieldOptions(updatedContentType.schemaFields)
 
     revalidatePath(`/dashboard/${tenantSlug}/content-types`)
     revalidatePath(`/dashboard/${tenantSlug}/content-types/${updatedContentType.slug}`)

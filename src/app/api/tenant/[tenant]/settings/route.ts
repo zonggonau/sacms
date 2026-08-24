@@ -74,6 +74,10 @@ export async function GET(
     const settingsMap: Record<string, string> = {}
     settings.forEach((s) => {
       settingsMap[s.key] = s.value
+      if (s.key.startsWith(`${tenant.id}_`)) {
+        const rawKey = s.key.slice(`${tenant.id}_`.length)
+        settingsMap[rawKey] = s.value
+      }
     })
 
     const sub = tenant.subscriptions[0]
@@ -89,6 +93,20 @@ export async function GET(
     let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
     if (!isEnterprise) {
       isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
+    }
+
+    // Also consider enterprise if plan is enterprise/postgres, user is super admin, or custom DB is configured
+    if (!isEnterprise) {
+      const planLower = (tenant.plan || "").toLowerCase()
+      if (
+        planLower.includes("enterprise") ||
+        planLower.includes("vps") ||
+        planLower.includes("postgres") ||
+        session.user.role === "super_admin" ||
+        !!tenant.databaseUrl
+      ) {
+        isEnterprise = true
+      }
     }
 
     return NextResponse.json({
@@ -111,6 +129,7 @@ export async function GET(
         requestsPerMinute: parseInt(settingsMap.requestsPerMinute || "60"),
         burstLimit: parseInt(settingsMap.burstLimit || "100"),
         corsOrigins: settingsMap.corsOrigins || "",
+        previewUrl: settingsMap.previewUrl || "",
         // Email settings
         smtpHost: settingsMap.smtpHost || "",
         smtpPort: settingsMap.smtpPort || "",
@@ -196,52 +215,75 @@ export async function PUT(
       fromEmail,
       fromName,
       storageConfig,
+      previewUrl,
     } = body
 
-    if ((databaseUrl !== undefined && databaseUrl !== tenant.databaseUrl) || 
-        (storageConfig !== undefined && JSON.stringify(storageConfig) !== JSON.stringify(tenant.storageConfig))) {
+    const normalizedNewDbUrl = (databaseUrl || "").trim()
+    const normalizedOldDbUrl = (tenant.databaseUrl || "").trim()
+    const isDbUrlChanging = databaseUrl !== undefined && normalizedNewDbUrl !== normalizedOldDbUrl
+    
+    const hasCustomStorage = storageConfig && typeof storageConfig === "object" && Boolean(storageConfig.bucket || storageConfig.endpoint)
+    const oldStorageConfig = tenant.storageConfig && typeof tenant.storageConfig === "object" ? tenant.storageConfig : null
+    const isStorageChanging = storageConfig !== undefined && JSON.stringify(storageConfig || null) !== JSON.stringify(oldStorageConfig)
+
+    // Only require Enterprise license/plan if user is configuring or changing to a non-empty custom infrastructure
+    if ((isDbUrlChanging && normalizedNewDbUrl !== "") || (isStorageChanging && hasCustomStorage)) {
       const { getGlobalWorkspaceId } = await import("@/lib/settings");
-    const globalId = await getGlobalWorkspaceId();
-    let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
+      const globalId = await getGlobalWorkspaceId();
+      let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
       if (!isEnterprise) {
         isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
       }
       if (!isEnterprise) {
-        return NextResponse.json({ error: "Enterprise license required for custom infrastructure" }, { status: 403 })
+        const planLower = (tenant.plan || "").toLowerCase()
+        if (
+          planLower.includes("enterprise") ||
+          planLower.includes("vps") ||
+          planLower.includes("vds") ||
+          planLower.includes("postgres") ||
+          session.user.role === "super_admin"
+        ) {
+          isEnterprise = true
+        }
+      }
+      if (!isEnterprise) {
+        return NextResponse.json({ error: "Paket Enterprise / Lisensi Dedicated diperlukan untuk konfigurasi infrastruktur kustom" }, { status: 403 })
       }
     }
 
     // Update tenant basic info and custom infrastructure
-    if (name !== undefined || description !== undefined || databaseUrl !== undefined || storageConfig !== undefined) {
+    const tenantUpdateData: Record<string, any> = {}
+    if (name !== undefined && name.trim() !== "") tenantUpdateData.name = name.trim()
+    if (description !== undefined) tenantUpdateData.description = description || null
+    if (databaseUrl !== undefined) tenantUpdateData.databaseUrl = normalizedNewDbUrl === "" ? null : normalizedNewDbUrl
+    if (storageConfig !== undefined) tenantUpdateData.storageConfig = !hasCustomStorage ? Prisma.JsonNull : storageConfig
+
+    if (Object.keys(tenantUpdateData).length > 0) {
       await db.tenant.update({
         where: { id: tenant.id },
-        data: {
-          ...(name !== undefined && { name }),
-          ...(description !== undefined && { description }),
-          ...(databaseUrl !== undefined && { databaseUrl: databaseUrl === "" ? null : databaseUrl }),
-          ...(storageConfig !== undefined && { storageConfig: storageConfig === null ? Prisma.JsonNull : storageConfig }),
-        },
+        data: tenantUpdateData,
       })
     }
 
     // Update settings in Setting model
-    const settingsToUpdate: Record<string, string | number | boolean> = {}
+    const settingsToUpdate: Record<string, string> = {}
     
-    if (apiVersion !== undefined) settingsToUpdate.apiVersion = apiVersion
+    if (apiVersion !== undefined) settingsToUpdate.apiVersion = String(apiVersion || "v1")
     if (rateLimiting !== undefined) settingsToUpdate.rateLimiting = String(rateLimiting)
     if (requestsPerMinute !== undefined) settingsToUpdate.requestsPerMinute = String(requestsPerMinute)
     if (burstLimit !== undefined) settingsToUpdate.burstLimit = String(burstLimit)
-    if (corsOrigins !== undefined) settingsToUpdate.corsOrigins = corsOrigins
+    if (corsOrigins !== undefined) settingsToUpdate.corsOrigins = String(corsOrigins || "")
+    if (previewUrl !== undefined) settingsToUpdate.previewUrl = String(previewUrl || "")
     if (twoFactorRequired !== undefined) settingsToUpdate.twoFactorRequired = String(twoFactorRequired)
     if (ipWhitelist !== undefined) settingsToUpdate.ipWhitelist = String(ipWhitelist)
-    if (allowedIps !== undefined) settingsToUpdate.allowedIps = allowedIps
+    if (allowedIps !== undefined) settingsToUpdate.allowedIps = String(allowedIps || "")
     if (auditLogging !== undefined) settingsToUpdate.auditLogging = String(auditLogging)
-    if (smtpHost !== undefined) settingsToUpdate.smtpHost = smtpHost
-    if (smtpPort !== undefined) settingsToUpdate.smtpPort = smtpPort
-    if (smtpUser !== undefined) settingsToUpdate.smtpUser = smtpUser
-    if (smtpPassword !== undefined) settingsToUpdate.smtpPassword = smtpPassword
-    if (fromEmail !== undefined) settingsToUpdate.fromEmail = fromEmail
-    if (fromName !== undefined) settingsToUpdate.fromName = fromName
+    if (smtpHost !== undefined) settingsToUpdate.smtpHost = String(smtpHost || "")
+    if (smtpPort !== undefined) settingsToUpdate.smtpPort = String(smtpPort || "")
+    if (smtpUser !== undefined) settingsToUpdate.smtpUser = String(smtpUser || "")
+    if (smtpPassword !== undefined) settingsToUpdate.smtpPassword = String(smtpPassword || "")
+    if (fromEmail !== undefined) settingsToUpdate.fromEmail = String(fromEmail || "")
+    if (fromName !== undefined) settingsToUpdate.fromName = String(fromName || "")
 
     // Upsert each setting
     for (const [key, value] of Object.entries(settingsToUpdate)) {

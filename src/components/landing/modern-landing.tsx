@@ -44,18 +44,16 @@ export function ModernLanding({ data }: { data: LandingData }) {
       <FadeIn delay={100}>
         <PricingGrid 
           plans={pricingWorkspaces} 
-          label="Paket Workspace" 
-          title="Harga Transparan untuk Semua Kebutuhan" 
         />
       </FadeIn>
-      <FadeIn delay={100}>
-        <PricingGrid 
-          plans={pricingAccounts} 
-          label="Paket Akun" 
-          title="Pilih Paket Sesuai Kebutuhan Anda" 
-          bgClass="bg-card" 
-        />
-      </FadeIn>
+      {pricingAccounts.length > 0 && (
+        <FadeIn delay={100}>
+          <PricingGrid 
+            plans={pricingAccounts} 
+            bgClass="bg-card" 
+          />
+        </FadeIn>
+      )}
       <FadeIn delay={100}><AddonsSection addons={addons} /></FadeIn>
       <FadeIn delay={100}><TestimonialsSection testimonials={testimonials} /></FadeIn>
       <FadeIn delay={100}><AboutSection about={about} /></FadeIn>

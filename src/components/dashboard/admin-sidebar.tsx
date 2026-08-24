@@ -251,7 +251,7 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
       <Button
         variant="ghost"
         size="icon"
-        className="fixed top-4 left-4 z-50 md:hidden"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/90 backdrop-blur border border-border shadow-xs rounded-xl"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

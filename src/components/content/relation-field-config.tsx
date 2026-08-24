@@ -94,7 +94,7 @@ export function RelationFieldConfig({
   const targetList = targetModel === "content-type" ? contentTypes : singleTypes
 
   return (
-    <div className="space-y-3 border rounded-none p-3 bg-muted/30">
+    <div className="space-y-3 border border-border/80 rounded-xl p-3.5 bg-muted/20 shadow-xs">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Konfigurasi Relasi</p>
 
       <div className="grid grid-cols-2 gap-3">
@@ -228,7 +228,7 @@ export function ComponentFieldConfig({
   }, [components, excludeSlug])
 
   return (
-    <div className="space-y-3 border rounded-none p-3 bg-muted/30">
+    <div className="space-y-3 border border-border/80 rounded-xl p-3.5 bg-muted/20 shadow-xs">
       <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Konfigurasi Component</p>
 
       <div className="space-y-1">

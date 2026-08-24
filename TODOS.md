@@ -9,6 +9,9 @@
 ## Core Engine & Performance
 - [ ] Benchmark Redis Edge cache latency under 10k req/sec load
   - **Priority:** P2
+- [ ] Configure automated ESLint / Dependency-Cruiser domain boundary rules for src/lib/ isolation
+  - **Priority:** P3
+
 
 ## Completed
 - [x] AI Schema Engine & Blueprint Domain Generator for Agency workflows

@@ -55,9 +55,12 @@ export class AgentOrchestrator {
       return { success: false, updatedFiles: [], creditsUsed: 0, summary: "", error: creditCheck.error }
     }
 
-    // ── STEP 1: Inspect existing workspace schema via MCP ────────────────────
-    onStep?.({ step: "mcp_inspect", message: "Menginspeksi skema SaCMS melalui MCP (get_full_schema)..." })
-    const currentSchema = await this.bridge.getFullSchema()
+    // ── STEP 1: Inspect existing workspace schema & API capabilities via MCP ──
+    onStep?.({ step: "mcp_inspect", message: "Menginspeksi hak akses & skema SaCMS melalui MCP (inspect_api_capabilities, get_full_schema)..." })
+    const [capabilities, currentSchema] = await Promise.all([
+      this.bridge.inspectApiCapabilities(),
+      this.bridge.getFullSchema(),
+    ])
 
     // ── STEP 2: Generate Schema Plan based on prompt ─────────────────────────
     onStep?.({ step: "schema_plan", message: "Merancang arsitektur Content Types & Components..." })
@@ -87,6 +90,10 @@ export class AgentOrchestrator {
 
 Headless CMS Schema (SaCMS):
 ${JSON.stringify(schemaPlan, null, 2)}
+
+SaCMS Capabilities (via MCP):
+- Permissions: ${Array.isArray(capabilities.permissions) ? (capabilities.permissions as string[]).join(", ") : "read, write"}
+- Mode: ${capabilities.canWrite ? "Interactive Full-Stack (include forms & mutations)" : "Public Consumer (read-only presentation)"}
 
 SaCMS Content API:
 - Base URL: http://localhost:3000/api/public/${this.tenantSlug}
@@ -249,26 +256,32 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
             slug: "products",
             description: "Katalog produk dan stok",
             fields: [
-              { name: "Nama Produk", slug: "name", type: "text", required: true },
+              { name: "Judul Produk", slug: "title", type: "text", required: true },
+              { name: "Sub-judul / Asal", slug: "subtitle", type: "text" },
               { name: "Harga (Rp)", slug: "price", type: "number", required: true },
               { name: "Kategori", slug: "category", type: "text" },
-              { name: "Deskripsi", slug: "description", type: "richText" },
+              { name: "Foto Cover", slug: "cover_image", type: "media" },
+              { name: "Deskripsi Produk", slug: "content", type: "richText" },
               { name: "Stok", slug: "stock", type: "number" },
             ],
             mockEntries: [
-              { name: "Noken Asli Kulit Kayu Nabire", price: 350000, category: "Kerajinan", stock: 15 },
-              { name: "Kopi Arabika Moanemani 250g", price: 85000, category: "Kuliner", stock: 50 },
-              { name: "Batik Papua Motif Cenderawasih", price: 275000, category: "Pakaian", stock: 20 },
+              { title: "Noken Asli Kulit Kayu Nabire", subtitle: "Serat Kayu Alami", price: 350000, category: "Kerajinan", stock: 15, cover_image: "https://images.unsplash.com/photo-1590874103328-eac38a683ce7?auto=format&fit=crop&w=1200&q=80", content: "<p>Noken anyaman tangan tradisional.</p>" },
+              { title: "Kopi Arabika Moanemani 250g", subtitle: "Single Origin 1.800 mdpl", price: 85000, category: "Kuliner", stock: 50, cover_image: "https://images.unsplash.com/photo-1559056199-641a0ac8b55e?auto=format&fit=crop&w=1200&q=80", content: "<p>Kopi arabika organik pegunungan tengah.</p>" },
+              { title: "Batik Papua Motif Cenderawasih", subtitle: "Batik Sutra Halus", price: 275000, category: "Pakaian", stock: 20, cover_image: "https://images.unsplash.com/photo-1558769132-cb1aea458c5e?auto=format&fit=crop&w=1200&q=80", content: "<p>Kain batik khas Papua motif cenderawasih.</p>" },
             ],
           },
         ],
         singleTypes: [
           {
-            name: "Store Info",
-            slug: "store-info",
+            name: "Store Settings",
+            slug: "store-settings",
             fields: [
-              { name: "Nama Toko", slug: "storeName", type: "text" },
-              { name: "Kontak CS", slug: "contactPhone", type: "text" },
+              { name: "Judul Utama (Hero Title)", slug: "hero_title", type: "text" },
+              { name: "Sub-judul (Hero Subtitle)", slug: "hero_subtitle", type: "text" },
+              { name: "Deskripsi Toko", slug: "content", type: "richText" },
+              { name: "Nomor WhatsApp", slug: "whatsapp", type: "text" },
+              { name: "Email Toko", slug: "email", type: "text" },
+              { name: "Alamat Toko", slug: "address", type: "text" },
             ],
           },
         ],
@@ -285,24 +298,29 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
           slug: "articles",
           description: "Artikel berita, blog, dan publikasi",
           fields: [
-            { name: "Judul", slug: "title", type: "text", required: true },
-            { name: "Ringkasan", slug: "excerpt", type: "text" },
-            { name: "Konten", slug: "content", type: "richText" },
+            { name: "Judul Berita", slug: "title", type: "text", required: true },
+            { name: "Sub-judul / Ringkasan", slug: "subtitle", type: "text" },
+            { name: "Foto Cover", slug: "cover_image", type: "media" },
+            { name: "Isi Konten Lengkap", slug: "content", type: "richText" },
             { name: "Penulis", slug: "author", type: "text" },
           ],
           mockEntries: [
-            { title: "Transformasi Digital dan Inovasi Terbaru", excerpt: "Membangun ekosistem web modern berbasis SaCMS Headless CMS.", author: "Admin" },
-            { title: "Peluncuran Layanan Terbaru Tahun Ini", excerpt: "Peningkatan kualitas infrastruktur digital terdesentralisasi.", author: "Tim Editor" },
+            { title: "Transformasi Digital dan Inovasi Terbaru", subtitle: "Membangun ekosistem web modern berbasis SaCMS", cover_image: "https://images.unsplash.com/photo-1541888946425-d0fbb18086f6?auto=format&fit=crop&w=1200&q=80", content: "<p>Membangun ekosistem web modern berbasis SaCMS Headless CMS.</p>", author: "Admin" },
+            { title: "Peluncuran Layanan Terbaru Tahun Ini", subtitle: "Peningkatan kualitas infrastruktur digital", cover_image: "https://images.unsplash.com/photo-1460925895917-afdab827c52f?auto=format&fit=crop&w=1200&q=80", content: "<p>Peningkatan kualitas infrastruktur digital terdesentralisasi.</p>", author: "Tim Editor" },
           ],
         },
       ],
       singleTypes: [
         {
-          name: "Homepage Config",
-          slug: "homepage-config",
+          name: "Company Settings",
+          slug: "company-settings",
           fields: [
-            { name: "Headline", slug: "headline", type: "text" },
-            { name: "Subheadline", slug: "subheadline", type: "text" },
+            { name: "Judul Utama (Hero Title)", slug: "hero_title", type: "text" },
+            { name: "Sub-judul (Hero Subtitle)", slug: "hero_subtitle", type: "text" },
+            { name: "Deskripsi Perusahaan", slug: "content", type: "richText" },
+            { name: "Nomor WhatsApp", slug: "whatsapp", type: "text" },
+            { name: "Email Resmi", slug: "email", type: "text" },
+            { name: "Alamat Kantor", slug: "address", type: "text" },
           ],
         },
       ],

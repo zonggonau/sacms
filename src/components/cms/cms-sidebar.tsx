@@ -59,7 +59,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border shadow-none">
       {/* CMS Header */}
-      <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} showBackBtn={canGoBack} />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={href("")} showBackBtn={canGoBack} portalBadge="Studio" />
 
       <ScrollArea className="flex-1 py-4">
         <div className="px-3 space-y-6">
@@ -199,7 +199,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
       <Button
         variant="outline"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card border-border rounded-none text-foreground"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/80 backdrop-blur border-border rounded-xl shadow-xs text-foreground"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

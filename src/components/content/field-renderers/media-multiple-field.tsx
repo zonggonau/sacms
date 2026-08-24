@@ -46,14 +46,14 @@ export function MediaMultipleField({
       
       <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
         {value && value.length > 0 && value.map((mediaUrl, index) => (
-          <Card key={index} className="relative group border-none shadow-none overflow-hidden rounded-none bg-muted/20 aspect-square">
+          <Card key={index} className="relative group border border-border/80 shadow-xs overflow-hidden rounded-2xl bg-muted/20 aspect-square">
             <CardContent className="p-0 h-full w-full">
               <div className="h-full w-full relative group">
                 {mediaUrl && (
                   <img
                     src={mediaUrl}
                     alt={`Media ${index + 1}`}
-                    className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
                   />
                 )}
                 {!mediaUrl && (
@@ -66,7 +66,7 @@ export function MediaMultipleField({
                     type="button"
                     variant="destructive"
                     size="icon"
-                    className="h-8 w-8 rounded-none shadow-none"
+                    className="h-8 w-8 rounded-xl shadow-md cursor-pointer"
                     onClick={() => handleRemove(index)}
                   >
                     <X className="h-4 w-4" />
@@ -81,12 +81,12 @@ export function MediaMultipleField({
           type="button"
           variant="outline"
           onClick={() => setShowMediaLibrary(true)}
-          className="aspect-square flex flex-col items-center justify-center gap-2 border-2 border-dashed border-muted-foreground/20 hover:border-primary/50 hover:bg-primary/5 rounded-none transition-all h-full w-full"
+          className="aspect-square flex flex-col items-center justify-center gap-2 border-2 border-dashed border-border/80 hover:border-primary/50 hover:bg-primary/5 rounded-2xl transition-all h-full w-full cursor-pointer"
         >
-          <div className="w-10 h-10 rounded-none bg-primary/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
             <Plus className="h-5 w-5 text-primary" />
           </div>
-          <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Add Media</span>
+          <span className="text-[11px] font-bold text-muted-foreground">Tambah Media</span>
         </Button>
       </div>
 

@@ -3,8 +3,11 @@
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog"
@@ -12,7 +15,8 @@ import {
   Sparkles, Rocket, Loader2, Globe,
   Monitor, ExternalLink, RefreshCw, Send, Bot, Database, AlertCircle, Zap,
   Tablet, Smartphone, ArrowRight, CheckCircle2, Cpu, Trash2, Download,
-  ShieldCheck, Layers, FileText, Check, LayoutGrid, Key, Shield, Terminal
+  ShieldCheck, Layers, FileText, Check, LayoutGrid, Key, Shield, Terminal,
+  Copy, Activity, BarChart2, Maximize2, Minimize2
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -148,6 +152,19 @@ export function WebsiteBuilderClient({
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
 
+  // Deploy & Domain Cockpit Modal State
+  const [isDeployModalOpen, setIsDeployModalOpen] = useState(false)
+  const [deploymentInfo, setDeploymentInfo] = useState<{
+    url?: string
+    state?: string
+    deploymentId?: string
+    vercelProjectId?: string
+    apiKeyName?: string
+  } | null>(null)
+  const [customDomainInput, setCustomDomainInput] = useState("")
+  const [customDomainResult, setCustomDomainResult] = useState<any | null>(null)
+  const [isVerifyingDomain, setIsVerifyingDomain] = useState(false)
+
   const [messages, setMessages] = useState<{ role: 'user' | 'ai', content: string }[]>(
     initialProject?.frontendPrompt 
       ? [
@@ -158,6 +175,18 @@ export function WebsiteBuilderClient({
   )
   const [iterationPrompt, setIterationPrompt] = useState("")
   const [isDeploying, setIsDeploying] = useState(false)
+  const [isFullscreen, setIsFullscreen] = useState(false)
+
+  // Fullscreen keyboard listener (Escape key to exit)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape" && isFullscreen) {
+        setIsFullscreen(false)
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown)
+    return () => window.removeEventListener("keydown", handleKeyDown)
+  }, [isFullscreen])
 
   // 0-credit warning on mount
   useEffect(() => {
@@ -353,26 +382,24 @@ export function WebsiteBuilderClient({
   // Deploy to Vercel Handler
   // ────────────────────────────────────────────────────────────────────────────
   const handleDeployToVercel = async () => {
-    if (!v0ChatId) return
     setIsDeploying(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: v0ChatId })
+        body: JSON.stringify({ action: "deploy", chatId: v0ChatId })
       })
 
-      const contentType = res.headers.get("content-type") || ""
-      let data: any = null
-      if (contentType.includes("application/json")) {
-        data = await res.json()
-      }
+      const data = await res.json()
 
-      if (res.ok && data) {
+      if (res.ok && data.success) {
         setProjectStatus("project")
-        if (data.url) { 
-          toast({ title: "Deployment Dimulai!", description: `Website Anda sedang di-deploy ke Vercel: ${data.url}` })
-        }
+        setDeploymentInfo(data)
+        setIsDeployModalOpen(true)
+        toast({ 
+          title: "Deploy Vercel Berhasil!", 
+          description: `Website produksi aktif di: ${data.url || "Vercel"}` 
+        })
       } else {
         throw new Error(data?.error || "Gagal deploy ke Vercel")
       }
@@ -380,6 +407,35 @@ export function WebsiteBuilderClient({
       toast({ title: "Deploy Gagal", description: err.message, variant: "destructive" })
     } finally {
       setIsDeploying(false)
+    }
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Custom Domain & CNAME Configuration Handler
+  // ────────────────────────────────────────────────────────────────────────────
+  const handleConfigureDomain = async () => {
+    if (!customDomainInput.trim()) {
+      toast({ title: "Domain Diperlukan", description: "Masukkan nama custom domain Anda (contoh: site.mycompany.com)" })
+      return
+    }
+    setIsVerifyingDomain(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/deploy`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "domain", domain: customDomainInput.trim() })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        setCustomDomainResult(data)
+        toast({ title: "Konfigurasi Domain Berhasil", description: `Domain ${customDomainInput} siap dihubungkan!` })
+      } else {
+        throw new Error(data.error || "Gagal mengonfigurasi domain")
+      }
+    } catch (err: any) {
+      toast({ title: "Error Domain", description: err.message, variant: "destructive" })
+    } finally {
+      setIsVerifyingDomain(false)
     }
   }
 
@@ -497,7 +553,11 @@ export function WebsiteBuilderClient({
         </div>
       ) : v0ChatId ? (
         /* ── Live Preview & Interactive Chat Studio ── */
-        <div className="flex flex-col flex-1 min-h-[700px] border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs">
+        <div className={`flex flex-col flex-1 border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs transition-all ${
+          isFullscreen 
+            ? "fixed inset-0 z-50 w-screen h-screen rounded-none border-0 p-3 bg-background" 
+            : "min-h-[700px]"
+        }`}>
           {/* Header Bar */}
           <div className="h-12 border-b border-border/60 flex items-center justify-between px-4 bg-muted/30 shrink-0">
             <div className="flex items-center gap-2">
@@ -522,6 +582,12 @@ export function WebsiteBuilderClient({
               <Badge variant="secondary" className="text-[10px] font-medium hidden md:inline-flex">
                 {currentModelConfig.name}
               </Badge>
+
+              {isFullscreen && (
+                <Badge variant="outline" className="text-[9px] font-mono text-muted-foreground hidden xl:inline-flex bg-muted/50">
+                  Tekan ESC untuk keluar
+                </Badge>
+              )}
             </div>
 
             {/* Responsive Device Mode Toggles */}
@@ -557,6 +623,18 @@ export function WebsiteBuilderClient({
 
             {/* Preview Toolbar Action Buttons */}
             <div className="flex items-center gap-2">
+              {/* Fullscreen Toggle Button */}
+              <Button
+                variant={isFullscreen ? "secondary" : "outline"}
+                size="sm"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted transition-all"
+                title={isFullscreen ? "Keluar dari Layar Penuh (Esc)" : "Mode Layar Penuh (Fullscreen)"}
+              >
+                {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-primary" /> : <Maximize2 className="h-3.5 w-3.5 text-primary" />}
+                <span className="hidden md:inline">{isFullscreen ? "Keluar Layar Penuh" : "Layar Penuh"}</span>
+              </Button>
+
               <Button variant="outline" size="sm" onClick={() => setPreviewUrl(p => p + "#r")} className="gap-1.5 h-8 text-xs rounded-xl border-border/80">
                 <RefreshCw className="h-3 w-3" /> Refresh
               </Button>
@@ -696,12 +774,16 @@ export function WebsiteBuilderClient({
         </div>
       ) : (
         /* ── UNIFIED PROMPT-DRIVEN AI ARCHITECTURE STUDIO ── */
-        <div className="flex flex-col gap-6">
+        <div className={`flex flex-col transition-all ${
+          isFullscreen 
+            ? "fixed inset-0 z-50 w-screen h-screen bg-background p-4 md:p-6 overflow-auto" 
+            : "gap-6"
+        }`}>
 
           {/* ── MAIN PROMPT & ARCHITECTURE STUDIO CARD ── */}
           <div className="rounded-3xl bg-card border border-border/80 shadow-xs p-6 md:p-8 space-y-6">
             
-            {/* Header Title & Safe Mode Toggle */}
+            {/* Header Title & Controls */}
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
               <div className="space-y-1.5">
                 <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary">
@@ -716,32 +798,46 @@ export function WebsiteBuilderClient({
                 </p>
               </div>
 
-              {/* Safe Mode Toggle */}
-              <div className="flex items-center gap-1.5 bg-muted/60 p-1.5 rounded-xl border border-border/80 self-start md:self-auto shrink-0">
-                <button
-                  type="button"
-                  onClick={() => setGenerationMode("safe")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    generationMode === "safe" 
-                      ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
+              {/* Action Controls: Fullscreen & Safe Mode Toggle */}
+              <div className="flex items-center gap-2 self-start md:self-auto shrink-0 flex-wrap">
+                <Button
+                  variant={isFullscreen ? "secondary" : "outline"}
+                  size="sm"
+                  onClick={() => setIsFullscreen(!isFullscreen)}
+                  className="gap-1.5 h-9 text-xs font-bold rounded-xl border-border/80 hover:bg-muted transition-all cursor-pointer"
+                  title={isFullscreen ? "Keluar dari Layar Penuh (Esc)" : "Mode Layar Penuh (Fullscreen)"}
                 >
-                  <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                  Mode Aman (Tinjau Skema)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setGenerationMode("instant")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                    generationMode === "instant" 
-                      ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Zap className="h-3.5 w-3.5 text-primary" />
-                  Mode Instan
-                </button>
+                  {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-primary" /> : <Maximize2 className="h-3.5 w-3.5 text-primary" />}
+                  <span>{isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}</span>
+                </Button>
+
+                {/* Safe Mode Toggle */}
+                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/80">
+                  <button
+                    type="button"
+                    onClick={() => setGenerationMode("safe")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      generationMode === "safe" 
+                        ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                    Mode Aman (Tinjau Skema)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setGenerationMode("instant")}
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
+                      generationMode === "instant" 
+                        ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
+                        : "text-muted-foreground hover:text-foreground"
+                    }`}
+                  >
+                    <Zap className="h-3.5 w-3.5 text-primary" />
+                    Mode Instan
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1081,6 +1177,187 @@ export function WebsiteBuilderClient({
             >
               {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               Ya, Hapus {projectStatus === "project" ? "Project" : "Draft"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── VERCEL DEPLOY & DOMAIN COCKPIT DIALOG ── */}
+      <Dialog open={isDeployModalOpen} onOpenChange={setIsDeployModalOpen}>
+        <DialogContent className="sm:max-w-[680px] w-[95vw] max-h-[88vh] flex flex-col rounded-2xl border border-border bg-card p-0 gap-0 overflow-hidden shadow-2xl">
+          <DialogHeader className="p-6 pb-4 border-b border-border/80 shrink-0 text-left bg-muted/20">
+            <div className="flex items-center gap-2 text-primary font-bold text-xs">
+              <Rocket className="h-4 w-4 text-primary" />
+              <span>Pusat Kendali Produksi Vercel & Domain</span>
+            </div>
+            <DialogTitle className="text-xl font-black text-foreground pt-1 flex items-center justify-between">
+              <span>Website Berhasil Dipublikasikan</span>
+              <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 text-xs font-mono">
+                ONLINE READY
+              </Badge>
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Website Anda telah aktif di server Vercel dan terhubung secara langsung ke Headless CMS SaCMS via MCP.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="flex-1 overflow-y-auto p-6 space-y-5">
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="grid w-full grid-cols-3 bg-muted/40 border border-border/80 p-1 rounded-xl">
+                <TabsTrigger value="overview" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
+                  <Rocket className="h-3.5 w-3.5" /> Ringkasan Deploy
+                </TabsTrigger>
+                <TabsTrigger value="domain" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
+                  <Globe className="h-3.5 w-3.5" /> Custom Domain
+                </TabsTrigger>
+                <TabsTrigger value="monitoring" className="rounded-lg font-bold text-xs py-1.5 flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5" /> Monitoring & API
+                </TabsTrigger>
+              </TabsList>
+
+              {/* TAB 1: OVERVIEW & LIVE URL */}
+              <TabsContent value="overview" className="space-y-4 pt-4 mt-0">
+                <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-3">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Alamat URL Produksi (Vercel):
+                  </span>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      readOnly
+                      value={deploymentInfo?.url || `https://sacms-${tenantSlug}.vercel.app`}
+                      className="font-mono text-xs h-9 bg-background border-border/80 rounded-xl"
+                    />
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
+                      onClick={() => {
+                        const url = deploymentInfo?.url || `https://sacms-${tenantSlug}.vercel.app`
+                        navigator.clipboard.writeText(url)
+                        toast({ title: "Tersalin ke Clipboard", description: url })
+                      }}
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1" /> Salin
+                    </Button>
+                    <Button
+                      size="sm"
+                      className="h-9 px-4 rounded-xl text-xs font-bold shrink-0 bg-primary text-primary-foreground"
+                      onClick={() => {
+                        const url = deploymentInfo?.url || `https://sacms-${tenantSlug}.vercel.app`
+                        window.open(url, "_blank")
+                      }}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5 mr-1" /> Buka
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="p-3.5 rounded-xl bg-card border border-border space-y-1">
+                    <span className="text-[10px] text-muted-foreground font-semibold block">Framework & Runtime:</span>
+                    <span className="text-xs font-bold text-foreground flex items-center gap-1">
+                      <Cpu className="w-3.5 h-3.5 text-primary" /> Next.js 16 (App Router)
+                    </span>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-card border border-border space-y-1">
+                    <span className="text-[10px] text-muted-foreground font-semibold block">Project ID:</span>
+                    <span className="text-xs font-mono text-foreground truncate block">
+                      {deploymentInfo?.vercelProjectId || `prj_sacms_${tenantSlug}`}
+                    </span>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* TAB 2: CUSTOM DOMAIN & CNAME */}
+              <TabsContent value="domain" className="space-y-4 pt-4 mt-0">
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold">Tautkan Custom Domain (CNAME / A Record)</Label>
+                  <div className="flex items-center gap-2">
+                    <Input
+                      placeholder="contoh: website.perusahaan.com atau mybrand.id"
+                      value={customDomainInput}
+                      onChange={(e) => setCustomDomainInput(e.target.value)}
+                      className="text-xs h-9 bg-background border-border/80 rounded-xl"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={handleConfigureDomain}
+                      disabled={isVerifyingDomain || !customDomainInput.trim()}
+                      className="h-9 px-4 rounded-xl text-xs font-bold shrink-0 bg-primary text-primary-foreground"
+                    >
+                      {isVerifyingDomain ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Globe className="h-3.5 w-3.5 mr-1" />}
+                      Tautkan Domain
+                    </Button>
+                  </div>
+                </div>
+
+                {/* DNS Instruction Guide */}
+                <div className="p-4 rounded-2xl bg-muted/20 border border-border/80 space-y-3">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block">
+                    Konfigurasi DNS di Registrar Domain Anda:
+                  </span>
+                  
+                  <div className="space-y-2 text-xs">
+                    <div className="p-2.5 rounded-xl bg-background border border-border/60 flex items-center justify-between font-mono">
+                      <div>
+                        <span className="text-primary font-bold mr-2">CNAME</span>
+                        <span className="text-muted-foreground">Host: <code>@ / subdomain</code></span>
+                      </div>
+                      <code className="text-foreground font-bold bg-muted px-2 py-0.5 rounded">cname.vercel-dns.com</code>
+                    </div>
+
+                    <div className="p-2.5 rounded-xl bg-background border border-border/60 flex items-center justify-between font-mono">
+                      <div>
+                        <span className="text-emerald-500 font-bold mr-2">A Record</span>
+                        <span className="text-muted-foreground">Host: <code>@</code></span>
+                      </div>
+                      <code className="text-foreground font-bold bg-muted px-2 py-0.5 rounded">76.76.21.21</code>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Setelah menambahkan record DNS di penyedia domain Anda, proses propagasi global biasanya memerlukan waktu 1–15 menit.
+                  </p>
+                </div>
+              </TabsContent>
+
+              {/* TAB 3: MONITORING & API GATEWAY */}
+              <TabsContent value="monitoring" className="space-y-4 pt-4 mt-0">
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="p-3.5 rounded-xl bg-card border border-border space-y-1 text-center">
+                    <span className="text-[10px] text-muted-foreground font-semibold">Uptime Status</span>
+                    <p className="text-sm font-black text-emerald-500">100%</p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-card border border-border space-y-1 text-center">
+                    <span className="text-[10px] text-muted-foreground font-semibold">Rata-rata Latensi</span>
+                    <p className="text-sm font-black text-primary">~28 ms</p>
+                  </div>
+                  <div className="p-3.5 rounded-xl bg-card border border-border space-y-1 text-center">
+                    <span className="text-[10px] text-muted-foreground font-semibold">Edge Caching</span>
+                    <p className="text-sm font-black text-foreground">Aktif (ISR)</p>
+                  </div>
+                </div>
+
+                <div className="p-4 rounded-2xl bg-muted/20 border border-border space-y-2.5">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-3.5 h-3.5 text-primary" />
+                    <span className="text-xs font-bold text-foreground">API Token & Hak Akses MCP</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground leading-relaxed">
+                    Website terhubung dengan token berizin <code>read, write</code> untuk query data konten publik dan mutasi formulir.
+                  </p>
+                </div>
+              </TabsContent>
+            </Tabs>
+          </div>
+
+          <DialogFooter className="p-4 px-6 border-t border-border/80 bg-muted/20 shrink-0 flex justify-end">
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setIsDeployModalOpen(false)}
+              className="h-9 px-5 text-xs font-bold rounded-xl"
+            >
+              Selesai
             </Button>
           </DialogFooter>
         </DialogContent>

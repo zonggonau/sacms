@@ -11,24 +11,21 @@ import {
   LayoutDashboard,
   Users,
   Shield,
-  DatabaseIcon,
   Moon,
   Sun,
   LogOut,
   Building2,
-  Box,
   Menu,
   X,
   Settings,
-  ImageIcon,
   Activity,
   Database,
-  FileText,
-  Puzzle,
   CreditCard,
   ClipboardList,
   Globe,
   Gem,
+  Webhook,
+  Server,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -53,30 +50,37 @@ const adminNavSections: NavSection[] = [
     label: "OPERATIONS",
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
-      { title: "Tenants", href: "/admin/tenants", icon: Building2 },
+      { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
     ],
   },
-
   {
-    label: "ADMINISTRATION",
+    label: "IDENTITY & ACCESS",
     items: [
-      { title: "Users & Roles", href: "/admin/users", icon: Users },
-      { title: "RBAC Security", href: "/admin/rbac", icon: Shield },
+      { title: "Users & Access", href: "/admin/users", icon: Users },
     ],
   },
   {
-    label: "SYSTEM",
+    label: "INFRASTRUCTURE",
+    items: [
+      { title: "Custom Domains", href: "/admin/domains", icon: Globe },
+      { title: "Webhooks & DLQ", href: "/admin/webhooks", icon: Webhook },
+      { title: "Databases & Routing", href: "/admin/databases", icon: Database },
+    ],
+  },
+  {
+    label: "SYSTEM & AUDIT",
     items: [
       { title: "Monitoring", href: "/admin/monitoring", icon: Activity },
       { title: "Audit Logs", href: "/admin/audit-logs", icon: ClipboardList },
-      { title: "Settings", href: "/admin/settings", icon: Settings },
+      { title: "Platform Settings", href: "/admin/settings", icon: Settings },
     ],
   },
   {
     label: "ENTERPRISE",
     items: [
-      { title: "Licenses", href: "/admin/enterprise/licenses", icon: Gem },
+      { title: "Dedicated VPS Infra", href: "/admin/infrastructure", icon: Server },
+      { title: "Enterprise Licenses", href: "/admin/enterprise/licenses", icon: Gem },
     ],
   },
 ]
@@ -149,10 +153,16 @@ export function GlobalAdminSidebar() {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Header */}
-      <div className="border-b border-border px-4 py-4">
-        <Link href="/admin" className="flex items-center gap-3">
+      <div className="border-b border-border px-4 py-3.5 flex items-center justify-between">
+        <Link href="/admin" className="flex items-center gap-2.5">
           <Logo iconSize="md" showText={true} />
         </Link>
+        <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg border border-border/50">
+          <Link href="/dashboard" title="Kembali ke Workspace Hub">
+            <LayoutDashboard className="h-3 w-3 mr-1 text-primary" />
+            Workspace
+          </Link>
+        </Button>
       </div>
 
       {/* Navigation */}
@@ -245,7 +255,7 @@ export function GlobalAdminSidebar() {
       <Button
         variant="outline"
         size="icon"
-        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card border-border rounded-none text-foreground"
+        className="fixed top-3 left-3 z-50 md:hidden h-10 w-10 bg-card/90 backdrop-blur border border-border shadow-xs rounded-xl text-foreground"
         onClick={() => setMobileOpen(!mobileOpen)}
       >
         {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}

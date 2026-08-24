@@ -33,6 +33,10 @@ import { ComponentField } from "@/components/content/field-renderers/component-f
 import { TagsField } from "@/components/content/field-renderers/tags-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
 import { SlugField } from "@/components/content/field-renderers/slug-field"
+import { PercentField } from "@/components/content/field-renderers/percent-field"
+import { IconField } from "@/components/content/field-renderers/icon-field"
+import { SeoField } from "@/components/content/field-renderers/seo-field"
+import { CodeField } from "@/components/content/field-renderers/code-field"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
 interface Field {
@@ -214,6 +218,18 @@ export default function CMSSingleTypeDetailPage() {
       case "color":
       case "location":
         return <div className="space-y-1.5">{renderLabelWithAI()}<AdvancedField type={field.type as any} value={value} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "percent":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<PercentField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "icon":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<IconField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "seo":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<SeoField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+
+      case "code":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<CodeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "component":
         let compOpts: any = {}

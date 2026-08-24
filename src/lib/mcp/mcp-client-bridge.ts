@@ -311,12 +311,188 @@ export class McpClientBridge {
   }
 
   /**
-   * 7. Generic MCP Tool Dispatcher
+   * 7. Inspect API Key & Token Permissions / Capabilities
    */
-  async executeTool(toolName: string, args: Record<string, any>) {
+  async inspectApiCapabilities(apiKey?: string) {
+    const tenantDb = await this.getDb()
+    if (!apiKey) {
+      // Default generated token capability for the AI Builder
+      return {
+        mode: "full_access",
+        permissions: ["read", "write", "delete", "schema", "webhooks", "mcp"],
+        canRead: true,
+        canWrite: true,
+        canDelete: true,
+        canModifySchema: true,
+        description: "Full read-write-delete access for AI-generated dynamic components and interactive workflows",
+      }
+    }
+
+    const token = await tenantDb.apiToken.findFirst({
+      where: {
+        tenantId: this.tenantId,
+        token: apiKey,
+      }
+    })
+
+    if (!token) {
+      return {
+        mode: "read_only",
+        permissions: ["read"],
+        canRead: true,
+        canWrite: false,
+        canDelete: false,
+        canModifySchema: false,
+        description: "Public read-only consumer access",
+      }
+    }
+
+    const perms: string[] = Array.isArray(token.permissions) ? (token.permissions as string[]) : []
+    return {
+      tokenId: token.id,
+      name: token.name,
+      permissions: perms,
+      canRead: perms.includes("read") || perms.includes("full_access"),
+      canWrite: perms.includes("write") || perms.includes("full_access"),
+      canDelete: perms.includes("delete") || perms.includes("full_access"),
+      canModifySchema: perms.includes("schema") || perms.includes("full_access"),
+      description: `Token with permissions: ${perms.join(", ")}`,
+    }
+  }
+
+  /**
+   * 8. Get complete project context for AI Website Generator
+   */
+  async getProjectContext() {
+    const tenantDb = await this.getDb()
+    const [tenant, schema, defaultLocale] = await Promise.all([
+      tenantDb.tenant.findUnique({
+        where: { id: this.tenantId },
+        select: { id: true, name: true, slug: true, brandName: true, brandLogo: true, primaryColor: true }
+      }),
+      this.getFullSchema(),
+      this.getDefaultLocale(),
+    ])
+
+    return {
+      tenant,
+      schema,
+      defaultLocale,
+      apiBaseUrl: `/api/public/${this.tenantSlug}`,
+      mcpBaseUrl: `/api/mcp`,
+    }
+  }
+
+  /**
+   * 9. Apply full generated schema (Content Types, Single Types, Components, and Dummy Data)
+   */
+  async applyGeneratedSchema(schema: {
+    contentTypes?: Array<{
+      name: string
+      slug: string
+      description?: string
+      fields: Array<{ name: string; slug: string; type: string; required?: boolean; unique?: boolean; relationSlug?: string; componentSlug?: string; options?: any }>
+      dummyData?: Record<string, any>[]
+    }>
+    singleTypes?: Array<{
+      name: string
+      slug: string
+      description?: string
+      fields: Array<{ name: string; slug: string; type: string; required?: boolean; unique?: boolean; relationSlug?: string; componentSlug?: string; options?: any }>
+      dummyData?: Record<string, any>
+    }>
+    components?: Array<{
+      name: string
+      slug: string
+      description?: string
+      category?: string
+      fields: Array<{ name: string; slug: string; type: string; required?: boolean; unique?: boolean }>
+    }>
+  }) {
+    const tenantDb = await this.getDb()
+    const results = {
+      contentTypesCreated: 0,
+      singleTypesCreated: 0,
+      componentsCreated: 0,
+      entriesCreated: 0,
+    }
+
+    // 1. Create Components
+    for (const comp of schema.components || []) {
+      const res = await this.createComponent({
+        name: comp.name,
+        slug: comp.slug,
+        description: comp.description,
+        category: comp.category,
+        fields: comp.fields,
+      })
+      if (res.success) results.componentsCreated++
+    }
+
+    // 2. Create Content Types and seed dummyData
+    for (const ct of schema.contentTypes || []) {
+      const res = await this.createContentType({
+        name: ct.name,
+        slug: ct.slug,
+        description: ct.description,
+        fields: ct.fields,
+      })
+      if (res.success) {
+        results.contentTypesCreated++
+        // Seed dummy entries
+        if (Array.isArray(ct.dummyData) && ct.dummyData.length > 0) {
+          for (const item of ct.dummyData) {
+            await this.createContentEntry({
+              contentTypeSlug: ct.slug,
+              data: item,
+              status: "PUBLISHED",
+            })
+            results.entriesCreated++
+          }
+        }
+      }
+    }
+
+    // 3. Create Single Types and seed dummyData
+    const resolvedLocale = await this.getDefaultLocale()
+    for (const st of schema.singleTypes || []) {
+      const res = await this.createSingleType({
+        name: st.name,
+        slug: st.slug,
+        description: st.description,
+        fields: st.fields,
+      })
+      if (res.success) {
+        results.singleTypesCreated++
+        // Seed initial single type data assignment
+        const singleData = Array.isArray(st.dummyData) ? st.dummyData[0] : st.dummyData
+        if (singleData && typeof singleData === "object" && res.item) {
+          const singleTypeId = (res.item as any).id
+          await tenantDb.tenantSingleTypeAssignment.upsert({
+            where: { tenantId_singleTypeId_locale: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale } },
+            create: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale, data: singleData, enabled: true },
+            update: { data: singleData },
+          })
+        }
+      }
+    }
+
+    return results
+  }
+
+  /**
+   * 10. Generic MCP Tool Dispatcher
+   */
+  async executeTool(toolName: string, args: Record<string, any> = {}) {
     switch (toolName) {
       case "get_full_schema":
         return await this.getFullSchema()
+      case "inspect_api_capabilities":
+        return await this.inspectApiCapabilities(args?.apiKey)
+      case "get_project_context":
+        return await this.getProjectContext()
+      case "apply_generated_schema":
+        return await this.applyGeneratedSchema(args?.schema || args)
       case "create_content_type":
         return await this.createContentType(args as ContentTypeInput)
       case "create_single_type":

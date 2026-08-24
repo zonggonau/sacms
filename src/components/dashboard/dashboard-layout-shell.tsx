@@ -18,7 +18,7 @@ export function DashboardLayoutShell({
   return (
     <div className="flex h-screen overflow-hidden bg-muted/20">
       {sidebar}
-      <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative">
+      <div className="flex-1 overflow-y-auto flex flex-col bg-background text-foreground relative pt-14 md:pt-0">
         {subscriptionGate}
       </div>
     </div>

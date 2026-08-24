@@ -17,6 +17,8 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   };
 }
 
+import { LanguageProvider } from "@/lib/i18n/context"
+
 export function Providers({ 
   children,
   session 
@@ -32,7 +34,9 @@ export function Providers({
       disableTransitionOnChange
     >
       <NextAuthSessionProvider session={session ?? null} refetchOnWindowFocus={false}>
-        {children}
+        <LanguageProvider>
+          {children}
+        </LanguageProvider>
       </NextAuthSessionProvider>
     </ThemeProvider>
   )

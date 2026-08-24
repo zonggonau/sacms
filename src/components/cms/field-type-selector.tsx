@@ -60,18 +60,18 @@ export function FieldTypeSelector({
       <DialogContent className="max-w-3xl sm:max-w-3xl max-h-[85vh] overflow-hidden flex flex-col p-0 border border-border/80 shadow-lg rounded-2xl bg-card text-foreground">
         
         {/* Header */}
-        <DialogHeader className="px-6 py-5 bg-card border-b border-border/60 shrink-0 flex flex-row items-center justify-between gap-4">
-          <div className="flex flex-col gap-0.5">
-            <DialogTitle className="text-base font-bold text-foreground">{title}</DialogTitle>
+        <DialogHeader className="px-6 py-4.5 bg-card border-b border-border/60 shrink-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 pr-12">
+          <div className="flex flex-col gap-0.5 min-w-0">
+            <DialogTitle className="text-base font-bold text-foreground truncate">{title}</DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">{description}</DialogDescription>
           </div>
-          <div className="relative w-60">
+          <div className="relative w-full sm:w-64 shrink-0">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               placeholder="Cari tipe field..." 
               value={search} 
               onChange={e => setSearch(e.target.value)}
-              className="pl-9 h-8 bg-background border border-input rounded-xl text-xs"
+              className="pl-9 pr-3 h-8.5 bg-muted/40 border-border/80 rounded-xl text-xs focus-visible:ring-1 focus-visible:ring-primary"
             />
           </div>
         </DialogHeader>

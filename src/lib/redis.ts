@@ -3,7 +3,7 @@ import { Redis } from "@upstash/redis"
 const UPSTASH_REDIS_REST_URL = process.env.UPSTASH_REDIS_REST_URL || ""
 const UPSTASH_REDIS_REST_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN || ""
 
-let redis: Redis | null = null
+let _redisInstance: Redis | null = null
 
 /**
  * Get Upstash Redis client singleton (Edge compatible).
@@ -14,14 +14,14 @@ export function getRedis(): Redis | null {
     return null
   }
 
-  if (!redis) {
-    redis = new Redis({
+  if (!_redisInstance) {
+    _redisInstance = new Redis({
       url: UPSTASH_REDIS_REST_URL,
       token: UPSTASH_REDIS_REST_TOKEN,
     })
   }
 
-  return redis
+  return _redisInstance
 }
 
 /**
@@ -30,3 +30,10 @@ export function getRedis(): Redis | null {
 export function isRedisAvailable(): boolean {
   return !!(UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN)
 }
+
+/**
+ * Convenience export for redis singleton
+ */
+export const redis = (UPSTASH_REDIS_REST_URL && UPSTASH_REDIS_REST_TOKEN)
+  ? getRedis()
+  : null

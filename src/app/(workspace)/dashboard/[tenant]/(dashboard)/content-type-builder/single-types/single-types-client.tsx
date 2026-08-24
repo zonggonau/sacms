@@ -133,21 +133,16 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
           
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <Button variant="ghost" size="icon" onClick={() => router.back()} className="rounded-xl h-9 w-9 hover:bg-muted/60">
-                <ArrowLeft className="h-4 w-4" />
-              </Button>
-              <div>
-                <div className="flex items-center gap-2.5">
-                  <h1 className="text-2xl font-black tracking-tight text-foreground">Single Types</h1>
-                  <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
-                    {initialSingleTypes.length}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Kelola struktur skema konten tunggal (seperti Beranda, Pengaturan Global, atau Tentang Kami).
-                </p>
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl font-black tracking-tight text-foreground">Single Types</h1>
+                <Badge variant="secondary" className="text-xs font-bold px-2 py-0.5 rounded-full">
+                  {initialSingleTypes.length}
+                </Badge>
               </div>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Kelola struktur skema konten tunggal (seperti Beranda, Pengaturan Global, atau Tentang Kami).
+              </p>
             </div>
             <div className="flex items-center gap-3">
               <Button 

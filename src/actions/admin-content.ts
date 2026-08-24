@@ -7,17 +7,7 @@ import { revalidatePath } from "next/cache"
 import { validateContentEntry } from "@/lib/content-validations"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { isWorkflowStatus, type WorkflowStatus } from "@/lib/content-workflow-rules"
-
-function validateScheduledDate(status: WorkflowStatus, scheduledAt?: Date | null) {
-  if (status !== "SCHEDULED") return null
-  if (!scheduledAt || Number.isNaN(scheduledAt.getTime())) {
-    return "A valid scheduled publication date is required"
-  }
-  if (scheduledAt.getTime() <= Date.now()) {
-    return "Scheduled publication date must be in the future"
-  }
-  return null
-}
+import { parseSchemaFieldOptions, validateScheduledPublicationDate } from "./content-pipeline"
 
 /**
  * Get all entries for a global content type with pagination and filtering
@@ -202,11 +192,11 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
     const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
     const targetLocale = locale || "en"
 
-    const scheduleError = validateScheduledDate(status, normalizedScheduledAt)
+    const scheduleError = validateScheduledPublicationDate(status, normalizedScheduledAt)
     if (scheduleError) return { error: scheduleError }
 
     const contentType = await db.contentType.findFirst({
-      where: { slug: contentTypeSlug, tenantId: undefined },
+      where: { slug: contentTypeSlug, tenantId: null },
       include: { schemaFields: true },
     })
 
@@ -214,13 +204,7 @@ export async function createAdminEntryAction(contentTypeSlug: string, payload: {
 
     const mappedContentType = {
       ...contentType,
-      fields: contentType.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentType.schemaFields),
     }
 
     const schemaValidation = await validateContentEntry(
@@ -308,13 +292,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
 
     const mappedContentType = {
       ...contentType,
-      fields: contentType.schemaFields.map(f => {
-        let parsedOptions = f.options
-        if (typeof f.options === 'string') {
-          try { parsedOptions = JSON.parse(f.options) } catch { parsedOptions = {} }
-        }
-        return { ...f, options: parsedOptions || {} }
-      })
+      fields: parseSchemaFieldOptions(contentType.schemaFields),
     }
 
     const baseEntry = await db.contentEntry.findFirst({
@@ -336,7 +314,7 @@ export async function updateAdminEntryAction(contentTypeSlug: string, entryId: s
 
     const normalizedScheduledAt = scheduledAt instanceof Date ? scheduledAt : scheduledAt ? new Date(scheduledAt as unknown as string) : null
     const effectiveScheduledAt = normalizedScheduledAt || existingLocaleEntry?.scheduledAt || null
-    const scheduleError = validateScheduledDate(targetStatus, effectiveScheduledAt)
+    const scheduleError = validateScheduledPublicationDate(targetStatus, effectiveScheduledAt)
     if (scheduleError) return { error: scheduleError }
 
     if (data) {

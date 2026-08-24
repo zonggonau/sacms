@@ -1,8 +1,20 @@
+"use client"
+
 import { getIcon } from "../icon-map"
 import type { WorkflowStep } from "../types"
+import { useLanguage } from "@/lib/i18n/context"
 
 export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }) {
-  if (!workflow || workflow.length === 0) return null
+  const { dict, locale } = useLanguage()
+
+  const defaultSteps: WorkflowStep[] = dict.workflow.steps.map((s, idx) => ({
+    step: s.step,
+    title: s.title,
+    description: s.desc,
+    icon: idx === 0 ? "FolderPlus" : idx === 1 ? "FileEdit" : idx === 2 ? "Send" : "BarChart3",
+  }))
+
+  const activeSteps = locale === "en" || workflow.length === 0 ? defaultSteps : workflow
 
   return (
     <section id="workflow" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">
@@ -12,15 +24,15 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
       </div>
 
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
-        <div className="text-center mb-16">
-          <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            Cara Kerja
+        <div className="text-center mb-16 space-y-3">
+          <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
+            {dict.workflow.badge}
           </div>
-          <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 tracking-tight">
-            Dari Ide ke Realita dalam <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Hitungan Menit</span>
+          <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
+            {dict.workflow.title}
           </h2>
-          <p className="text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            Proses onboarding yang dirancang untuk kecepatan agensi. Tanpa ribet, langsung online.
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
+            {dict.workflow.subtitle}
           </p>
         </div>
 
@@ -28,7 +40,7 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
           {/* Connector Line (Desktop only) */}
           <div className="hidden lg:block absolute top-[3rem] left-[10%] right-[10%] h-px bg-gradient-to-r from-primary/10 via-primary/30 to-primary/10 z-0" />
 
-          {workflow.map((step, i) => {
+          {activeSteps.map((step, i) => {
             const Icon = getIcon(step.icon)
             return (
               <div key={i} className="group relative z-10">
@@ -48,7 +60,7 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
                     <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center mb-4 mx-auto lg:mx-0 group-hover:scale-110 group-hover:bg-primary/20 transition-all duration-300">
                       <Icon className="w-4 h-4 text-primary" />
                     </div>
-                    <h3 className="text-lg font-bold text-foreground mb-2">{step.title}</h3>
+                    <h3 className="text-base font-bold text-foreground mb-2">{step.title}</h3>
                     <div className="text-xs text-muted-foreground leading-relaxed font-medium [&>p]:mb-0 [&_p]:mb-0" dangerouslySetInnerHTML={{ __html: step.description || '' }} />
                   </div>
                 </div>

@@ -25,6 +25,11 @@ import {
   CalendarRange,
   Layers,
   KeyRound,
+  Percent,
+  Shapes,
+  MapPin,
+  SearchCheck,
+  Code2,
 } from "lucide-react"
 
 // ==================== REFACTORED FIELD TYPES ====================
@@ -42,6 +47,7 @@ export const FIELD_TYPES = [
   // Number Types
   { type: "number", label: "Number", icon: Hash, description: "Integer or decimal values", category: "Number" },
   { type: "currency", label: "Currency", icon: Banknote, description: "Nilai uang (contoh: Rp, USD)", category: "Number" },
+  { type: "percent", label: "Percentage / Progress", icon: Percent, description: "Nilai persentase 0-100% atau progres bar", category: "Number" },
 
   // Date & Time
   { type: "date", label: "Date", icon: Calendar, description: "Date picker", category: "Date & Time" },
@@ -49,10 +55,11 @@ export const FIELD_TYPES = [
   { type: "time", label: "Time", icon: Clock, description: "Time picker", category: "Date & Time" },
   { type: "dateRange", label: "Date Range", icon: CalendarRange, description: "Rentang waktu (Mulai & Selesai)", category: "Date & Time" },
 
-  // Selection
+  // Selection & Visual
   { type: "select", label: "Select", icon: List, description: "Dropdown or radio selection", category: "Selection" },
   { type: "multiselect", label: "Multi Select", icon: ListChecks, description: "Pilih banyak opsi sekaligus", category: "Selection" },
   { type: "tags", label: "Tags", icon: Tags, description: "Array of strings", category: "Selection" },
+  { type: "icon", label: "Icon Picker", icon: Shapes, description: "Pilih ikon visual (Lucide / Web Icons)", category: "Selection" },
 
   // Boolean
   { type: "boolean", label: "Boolean", icon: ToggleLeft, description: "True/False toggle", category: "Boolean" },
@@ -74,7 +81,10 @@ export const FIELD_TYPES = [
   { type: "component", label: "Component", icon: Box, description: "Reusable field group", category: "Relations" },
   { type: "repeater", label: "Dynamic Zone / Repeater", icon: Layers, description: "Array of multiple components (Polymorphic)", category: "Relations" },
 
-  // Advanced
+  // Advanced & Composite
+  { type: "location", label: "Location / Map", icon: MapPin, description: "Koordinat peta (Latitude, Longitude) dan alamat", category: "Advanced" },
+  { type: "seo", label: "SEO Metadata", icon: SearchCheck, description: "Meta title, description, keywords, & OG image", category: "Advanced" },
+  { type: "code", label: "Code Snippet", icon: Code2, description: "Editor potongan kode pemrograman multi-bahasa", category: "Advanced" },
   { type: "json", label: "JSON", icon: Code, description: "Custom JSON structure", category: "Advanced" },
   { type: "color", label: "Color", icon: Palette, description: "Color hex picker", category: "Advanced" },
   { type: "rating", label: "Rating", icon: Star, description: "Bintang 1-5 untuk review & penilaian", category: "Advanced" },

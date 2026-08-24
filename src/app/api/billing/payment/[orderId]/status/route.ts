@@ -85,6 +85,20 @@ export async function GET(
                   where: { id: sub.tenantId },
                   data: { plan: sub.plan },
                 })
+
+                // Auto-provision dedicated VPS/VDS if plan is Enterprise
+                const planLower = (sub.plan || "").toLowerCase()
+                if (planLower.includes("enterprise") || planLower.includes("vps") || planLower.includes("vds") || planLower.includes("postgres")) {
+                  const { provisionTenantInfrastructure } = await import("@/lib/infrastructure/provisioner")
+                  provisionTenantInfrastructure(sub.tenantId, {
+                    plan: sub.plan,
+                    subscriptionId: sub.id,
+                  }).then(res => {
+                    console.log(`[PaymentStatus] Auto-provisioned infrastructure for tenant ${sub.tenantId}:`, res.status)
+                  }).catch(err => {
+                    console.error(`[PaymentStatus] Failed auto-provisioning infrastructure for tenant ${sub.tenantId}:`, err)
+                  })
+                }
               } else if (orderId.startsWith("ACC") && sub.userId) {
                 await db.user.update({
                   where: { id: sub.userId },

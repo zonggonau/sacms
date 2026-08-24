@@ -1,9 +1,37 @@
-import { Landmark } from "lucide-react"
+"use client"
+
+import { Landmark, Store, Newspaper, ShoppingCart, ShieldCheck } from "lucide-react"
 import { getIcon } from "../icon-map"
 import type { SectorItem } from "../types"
+import { useLanguage } from "@/lib/i18n/context"
 
 export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
-  if (!sectors || sectors.length === 0) return null
+  const { dict, locale } = useLanguage()
+
+  const defaultSectors = [
+    {
+      icon: "Store",
+      label: dict.sectors.items.umkm.title,
+      desc: dict.sectors.items.umkm.desc,
+    },
+    {
+      icon: "Newspaper",
+      label: dict.sectors.items.media.title,
+      desc: dict.sectors.items.media.desc,
+    },
+    {
+      icon: "ShoppingCart",
+      label: dict.sectors.items.ecommerce.title,
+      desc: dict.sectors.items.ecommerce.desc,
+    },
+    {
+      icon: "ShieldCheck",
+      label: dict.sectors.items.gov.title,
+      desc: dict.sectors.items.gov.desc,
+    },
+  ]
+
+  const activeSectors = locale === "en" || sectors.length === 0 ? defaultSectors : sectors
 
   return (
     <section id="sektor" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">
@@ -13,19 +41,20 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
       </div>
 
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
-        <div className="flex flex-col md:flex-row items-start justify-between gap-6 mb-12">
-          <div className="max-w-2xl">
-            <h2 className="text-3xl md:text-4xl font-black text-foreground mb-4 tracking-tight">
-              Siap Membantu <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary to-blue-500">Model Bisnis Anda</span>
-            </h2>
-            <p className="text-base text-muted-foreground max-w-2xl font-medium">
-              Dari Solo Developer hingga Digital Agency, CMS ini menyesuaikan dengan klien Anda.
-            </p>
+        <div className="text-center mb-12 space-y-3">
+          <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
+            {dict.sectors.badge}
           </div>
+          <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
+            {dict.sectors.title}
+          </h2>
+          <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
+            {dict.sectors.subtitle}
+          </p>
         </div>
         
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          {sectors.map((item, i) => {
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {activeSectors.map((item, i) => {
             const Icon = getIcon(item.icon, Landmark)
             return (
               <div 

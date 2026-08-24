@@ -40,6 +40,10 @@ import { MediaField } from "@/components/content/field-renderers/media-field"
 import { RichTextField } from "@/components/content/field-renderers/rich-text-field"
 import { ComponentField } from "@/components/content/field-renderers/component-field"
 import { AdvancedField } from "@/components/content/field-renderers/advanced-fields"
+import { PercentField } from "@/components/content/field-renderers/percent-field"
+import { IconField } from "@/components/content/field-renderers/icon-field"
+import { SeoField } from "@/components/content/field-renderers/seo-field"
+import { CodeField } from "@/components/content/field-renderers/code-field"
 import { cn } from "@/lib/utils"
 import { getSingleTypeBySlugAction, saveSingleTypeDataAction } from "@/actions/single-types"
 
@@ -202,6 +206,14 @@ export default function SingleTypeDetailClient({
       case "color":
       case "location":
         return <AdvancedField value={value} onChange={v => handleFieldChange(field.slug, v)} type={field.type} required={field.required} label={field.name} />
+      case "percent":
+        return <PercentField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "icon":
+        return <IconField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "seo":
+        return <SeoField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+      case "code":
+        return <CodeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
       case "component":
         let compOpts: any = {}
         try {

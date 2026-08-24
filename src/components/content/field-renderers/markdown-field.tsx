@@ -40,25 +40,25 @@ export function MarkdownField({
         ) : label
       )}
       <div className={cn(
-        "border rounded-none overflow-hidden bg-card focus-within:ring-1 focus-within:ring-primary focus-within:border-primary transition-shadow",
-        error ? "border-destructive focus-within:ring-destructive focus-within:border-destructive" : "border-input"
+        "border border-border/80 rounded-xl overflow-hidden bg-card shadow-xs focus-within:ring-2 focus-within:ring-primary/20 focus-within:border-primary transition-all",
+        error ? "border-destructive focus-within:ring-destructive focus-within:border-destructive" : ""
       )}>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <div className="bg-muted/30 border-b flex items-center justify-between px-2 py-1">
+          <div className="bg-muted/30 border-b border-border/60 flex items-center justify-between px-2 py-1">
             <TabsList className="h-8 bg-transparent p-0">
               <TabsTrigger 
                 value="write" 
-                className="rounded-none h-7 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="rounded-lg h-7 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-xs cursor-pointer font-bold"
               >
                 <Edit3 className="h-3.5 w-3.5 mr-1.5" />
-                Write
+                Tulis
               </TabsTrigger>
               <TabsTrigger 
                 value="preview" 
-                className="rounded-none h-7 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                className="rounded-lg h-7 px-3 text-xs data-[state=active]:bg-background data-[state=active]:shadow-xs cursor-pointer font-bold"
               >
                 <Eye className="h-3.5 w-3.5 mr-1.5" />
-                Preview
+                Pratinjau
               </TabsTrigger>
             </TabsList>
             <div className="text-[10px] text-muted-foreground font-mono px-2">
