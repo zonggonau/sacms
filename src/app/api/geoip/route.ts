@@ -30,7 +30,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ results: map })
     }
 
-    return NextResponse.json({ error: "Missing ip or ips query parameter" }, { status: 400 })
+    // Fallback: detect client requester IP
+    const clientIp = request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || 
+                     request.headers.get("x-real-ip") || 
+                     "127.0.0.1"
+    const result = await lookupGeoIp(clientIp)
+    return NextResponse.json(result)
   } catch (error) {
     console.error("GeoIP API error:", error)
     return NextResponse.json({ error: "Failed to resolve IP location" }, { status: 500 })
