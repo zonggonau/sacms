@@ -11,3 +11,7 @@ pnpm-lock.yaml
 test
 *.log
 local-*
+.env
+.env.*
+prisma/generated-client
+.prisma

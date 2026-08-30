@@ -3,21 +3,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 :80 {
-	reverse_proxy app:3000 {
-		header_up Host {host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Real-IP {remote_host}
-	}
-}
-
-:443 {
-	reverse_proxy app:3000 {
-		header_up Host {host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Real-IP {remote_host}
-	}
+	reverse_proxy app:3000
 }
 
 :81 {
@@ -26,32 +12,10 @@
 	}
 
 	handle @transform_port_query {
-		reverse_proxy app:{query.XTransformPort} {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-		}
+		reverse_proxy app:{query.XTransformPort}
 	}
 
 	handle {
-		reverse_proxy app:3000 {
-			header_up Host {host}
-			header_up X-Forwarded-For {remote_host}
-			header_up X-Forwarded-Proto {scheme}
-			header_up X-Real-IP {remote_host}
-		}
-	}
-}
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Custom Domain Support (Tenant White-Label & Subdomains)
-# ─────────────────────────────────────────────────────────────────────────────
-{$CUSTOM_DOMAIN_HOST:} {
-	reverse_proxy app:3000 {
-		header_up Host {host}
-		header_up X-Forwarded-For {remote_host}
-		header_up X-Forwarded-Proto {scheme}
-		header_up X-Real-IP {remote_host}
+		reverse_proxy app:3000
 	}
 }
