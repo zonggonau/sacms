@@ -1,6 +1,8 @@
 import { vi } from "vitest"
 
 // Ensure unit tests run in offline / simulation mode by default
+process.env.NEXTAUTH_SECRET = process.env.NEXTAUTH_SECRET || "test-secret-key-must-be-long-enough-32-chars-long"
+process.env.INFRA_ENCRYPTION_KEY = process.env.INFRA_ENCRYPTION_KEY || "test-infra-encryption-key-32-characters"
 process.env.CONTABO_CLIENT_ID = ""
 process.env.CONTABO_CLIENT_SECRET = ""
 process.env.CONTABO_API_USER = ""

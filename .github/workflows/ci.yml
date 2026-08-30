@@ -43,6 +43,11 @@ jobs:
   test:
     name: Automated Unit Tests
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
+      NEXTAUTH_SECRET: "ci-secret-placeholder-must-be-long-enough-32char"
+      INFRA_ENCRYPTION_KEY: "ci-infra-key-placeholder-32-characters-key"
+      NEXTAUTH_URL: "http://localhost:3000"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
