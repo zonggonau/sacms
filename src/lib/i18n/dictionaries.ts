@@ -19,7 +19,7 @@ export const DICTIONARY = {
       features: "Fitur",
       pricing: "Harga",
       about: "Tentang",
-      docs: "Dokumentasi",
+      docs: "Docs",
       blog: "Blog",
       login: "Masuk",
       getStarted: "Mulai Gratis",
