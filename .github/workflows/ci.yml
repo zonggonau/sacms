@@ -143,9 +143,9 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             mkdir -p /opt/sacms/db/backups
@@ -156,9 +156,9 @@ jobs:
         uses: appleboy/scp-action@v0.1.7
         with:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "docker-compose.yml,Caddyfile"
           target: "/opt/sacms"
@@ -167,9 +167,9 @@ jobs:
         uses: appleboy/ssh-action@v1.0.3
         with:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
-          username: ${{ secrets.SERVER_USER || 'root' }}
-          key: ${{ secrets.SERVER_SSH_KEY }}
-          password: ${{ secrets.SERVER_PASSWORD }}
+          username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
+          key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
