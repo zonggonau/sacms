@@ -47,10 +47,10 @@ export default function ForgotPasswordPage() {
     <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4">
       <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl p-8 shadow-xs">
         <div className="flex flex-col items-center mb-8">
-          <Link href="/" className="flex items-center gap-2 mb-6">
-            <Logo iconSize="md" showText={true} useOrange={true} />
+          <Link href="/" className="flex items-center gap-2 mb-4">
+            <Logo iconSize="md" showText={true} showDetail={true} useOrange={true} />
           </Link>
-          <h1 className="text-2xl font-bold mb-1">Lupa Kata Sandi</h1>
+          <h1 className="text-xl font-bold mb-1">Lupa Kata Sandi</h1>
           <p className="text-xs text-muted-foreground text-center">
             Masukkan email Anda dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
           </p>

@@ -162,12 +162,15 @@ export default function RegisterPage() {
       <div className="w-full max-w-md relative z-10">
         <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-primary/5">
           <div className="flex flex-col items-center mb-8">
-            <Link href="/" className="inline-block mb-6">
-              <Logo iconSize="lg" showText={true} useOrange={true} />
+            <Link href="/" className="inline-block mb-4">
+              <Logo iconSize="lg" showText={true} showDetail={true} useOrange={true} />
             </Link>
-            <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-1.5">Buat Akun Baru</h1>
+            <div className="inline-flex items-center px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold rounded-full mb-3">
+              Build smarter. Manage easier. Scale faster.
+            </div>
+            <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Buat Akun Baru</h1>
             <p className="text-xs sm:text-sm font-medium text-muted-foreground text-center">
-              {isFirstUser ? "Inisialisasi akun Super Admin platform Anda" : "Mulai bangun dan kelola konten digital dengan SaCMS"}
+              {isFirstUser ? "Inisialisasi akun Super Admin SaCMS" : "Mulai bangun dan kelola konten digital dengan SaCMS"}
             </p>
           </div>
 

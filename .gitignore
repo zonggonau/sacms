@@ -52,3 +52,6 @@ server.log
 
 # public
 /public/keys/
+
+# prisma generated
+/prisma/generated-client/

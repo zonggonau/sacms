@@ -1,7 +1,18 @@
 export type Locale = "id" | "en"
 
+export const BRAND = {
+  name: "SaCMS",
+  detail: "Smart Content Management System",
+  slogan: "Build smarter. Manage easier. Scale faster.",
+}
+
 export const DICTIONARY = {
   id: {
+    brand: {
+      name: "SaCMS",
+      detail: "Smart Content Management System",
+      slogan: "Build smarter. Manage easier. Scale faster.",
+    },
     // Header & Navigation
     nav: {
       home: "Beranda",
@@ -16,9 +27,9 @@ export const DICTIONARY = {
     },
     // Hero Section
     hero: {
-      badge: "🚀 Next.js 16 Multi-Tenant Headless Engine",
-      title: "Hentikan Kerumitan Mengelola Puluhan CMS & Server Terpisah",
-      subtitle: "Platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+      badge: "✨ SaCMS — Smart Content Management System",
+      title: "Build smarter. Manage easier. Scale faster.",
+      subtitle: "Platform Smart Content Management System (SaCMS) modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
       ctaPrimary: "Coba Gratis Sekarang",
       ctaSecondary: "Dokumentasi API",
       trustedBy: "Dipercaya oleh berbagai agensi, software house, media berita, dan instansi di seluruh Indonesia",
@@ -154,8 +165,8 @@ export const DICTIONARY = {
     // About
     about: {
       badge: "Tentang SaCMS",
-      title: "Menghubungkan Indonesia Melalui Transformasi Digital",
-      desc1: "SaCMS lahir dengan misi mendemokratisasi teknologi enterprise-grade untuk seluruh lapisan masyarakat, dari pengusaha UMKM hingga instansi pemerintah.",
+      title: "Smart Content Management System",
+      desc1: "SaCMS (Smart Content Management System) lahir dengan misi: 'Build smarter. Manage easier. Scale faster.' Kami mendemokratisasi teknologi enterprise-grade untuk seluruh pengembang, bisnis, dan instansi.",
       desc2: "Dibangun dengan arsitektur headless modern, kami memastikan setiap data terkelola dengan aman, terisolasi, dan berkinerja maksimal.",
     },
     // Team
@@ -171,8 +182,8 @@ export const DICTIONARY = {
       subtitle: "Pertanyaan yang sering diajukan seputar platform, keamanan, dan metode pembayaran.",
       items: [
         {
-          q: "Apa itu Headless CMS?",
-          a: "Headless CMS adalah sistem manajemen konten berbasis API yang memisahkan tempat penyimpanan konten dari tampilan frontend. Ini memberi Anda kebebasan menampilkan konten di website Next.js, aplikasi mobile, jam tangan pintar, atau platform apa pun.",
+          q: "Apa itu SaCMS (Smart Content Management System)?",
+          a: "SaCMS adalah Smart Content Management System headless multi-tenant modern berbasis Next.js 16 dan PostgreSQL 17. SaCMS memisahkan penyimpanan data dari frontend untuk memberikan kebebasan penuh dalam mendistribusikan konten.",
         },
         {
           q: "Bagaimana cara kerja Dedicated VPS/VDS?",
@@ -190,14 +201,15 @@ export const DICTIONARY = {
     },
     // CTA Banner
     cta: {
-      title: "Siap Memulai Transformasi Digital Anda?",
-      description: "Daftar sekarang dan nikmati kemudahan mengelola konten multi-tenant dengan teknologi kelas dunia.",
+      title: "Build smarter. Manage easier. Scale faster.",
+      description: "Daftar sekarang di SaCMS (Smart Content Management System) dan nikmati kemudahan mengelola konten multi-tenant dengan teknologi kelas dunia.",
       buttonPrimary: "Mulai Gratis Sekarang",
       buttonSecondary: "Hubungi Penjualan",
     },
     // Footer
     footer: {
-      brandDesc: "Platform SaaS Headless CMS Multi-Tenant terdepan untuk transformasi digital Indonesia.",
+      brandDesc: "SaCMS — Smart Content Management System. Build smarter. Manage easier. Scale faster. Platform SaaS Headless CMS terdepan untuk transformasi digital.",
+      rights: "Hak cipta dilindungi undang-undang. Smart Content Management System.",
       sections: {
         product: "Produk",
         resources: "Sumber Daya",
@@ -217,9 +229,213 @@ export const DICTIONARY = {
       },
     },
   },
-  en: {} as any,
+  en: {
+    brand: {
+      name: "SaCMS",
+      detail: "Smart Content Management System",
+      slogan: "Build smarter. Manage easier. Scale faster.",
+    },
+    nav: {
+      home: "Home",
+      features: "Features",
+      pricing: "Pricing",
+      about: "About",
+      docs: "Docs",
+      blog: "Blog",
+      login: "Sign In",
+      getStarted: "Get Started Free",
+      dashboard: "Open Dashboard",
+    },
+    hero: {
+      badge: "✨ SaCMS — Smart Content Management System",
+      title: "Build smarter. Manage easier. Scale faster.",
+      subtitle: "SaCMS (Smart Content Management System) is an enterprise-grade multi-tenant Headless CMS with Dedicated PostgreSQL 17 Appliance, AI Website Builder, Edge Custom DNS, and Dynamic GraphQL.",
+      ctaPrimary: "Get Started Free",
+      ctaSecondary: "API Documentation",
+      trustedBy: "Trusted by top digital agencies, software houses, news media, and government agencies",
+    },
+    features: {
+      badge: "Platform Capabilities",
+      title: "Built for Maximum Scalability, Speed & Security",
+      subtitle: "Modern API-first headless architecture giving you complete freedom to distribute content everywhere.",
+      items: {
+        multiTenancy: {
+          title: "Hybrid Multi-Tenancy & Dedicated Appliance",
+          desc: "From shared multi-tenant clusters to dedicated PostgreSQL 17 + MinIO appliances for absolute privacy.",
+        },
+        aiBuilder: {
+          title: "1-Prompt AI Fullstack Website Engine",
+          desc: "Generate Next.js websites and landing pages with AI prompt, live interactive preview, and 1-click edge deploy.",
+        },
+        apiFirst: {
+          title: "Dynamic GraphQL, REST API & MCP",
+          desc: "Auto-generated schemas, Strapi-style filtering, and Model Context Protocol (MCP) bridge for AI agents.",
+        },
+        customDns: {
+          title: "Vercel-Style Custom DNS & Registrar",
+          desc: "Instant custom domain verification with automatic A-Record Apex, CNAME Subdomain, and SSL certificates.",
+        },
+        billing: {
+          title: "Automated Billing & Subscriptions",
+          desc: "Automated billing with Midtrans (QRIS, VA, Cards) and integrated quota credit system.",
+        },
+        workflow: {
+          title: "Enterprise RBAC & 7-Stage Workflow",
+          desc: "Granular role-based permissions and structured publishing workflow with comprehensive audit logging.",
+        },
+      },
+    },
+    sectors: {
+      badge: "Sector Solutions",
+      title: "Tailored for Every Industry Requirement",
+      subtitle: "From solo builders and digital agencies to modern e-commerce and enterprise government portals.",
+      items: {
+        agency: {
+          title: "Digital Agency & Software House",
+          desc: "Manage multiple client sites from one white-label dashboard without server management overhead.",
+        },
+        gov: {
+          title: "Government & Enterprise",
+          desc: "Isolated dedicated database, local data sovereignty compliance, and comprehensive audit logs.",
+        },
+        ecommerce: {
+          title: "E-Commerce & Startup",
+          desc: "Dynamic product catalogs, lightning-fast APIs, and modern headless storefront integrations.",
+        },
+        solo: {
+          title: "Solo Builders & Developers",
+          desc: "Ship MVPs in hours with visual schema builder, starter kits, and AI website generation.",
+        },
+      },
+    },
+    pricing: {
+      badge: "Workspace Plans",
+      title: "Transparent & Flexible Pricing",
+      subtitle: "From affordable cloud tiers to 100% dedicated VPS and VDS servers for enterprises.",
+      tabs: {
+        all: "All",
+        cloud: "Cloud SaaS",
+        vps: "Cloud VPS",
+        storage: "VPS Storage",
+        vds: "Cloud VDS",
+      },
+      badges: {
+        popular: "Most Popular",
+        dedicatedVps: "Dedicated VPS",
+        dedicatedStorage: "Dedicated MinIO Storage",
+        dedicatedVds: "100% Dedicated CPU",
+      },
+      period: {
+        yearly: "/year",
+        monthly: "/month",
+        freeForever: "Free",
+        monthlyEquivalent: "Equiv.",
+        yearlyBilling: "(Billed Annually)",
+      },
+      cta: {
+        free: "Start Free",
+        paid: "Subscribe Now",
+        current: "Current Plan",
+      },
+    },
+    workflow: {
+      badge: "How It Works",
+      title: "Fast Workflow in 4 Simple Steps",
+      subtitle: "Design and publish content from idea to live production in minutes.",
+      steps: [
+        {
+          step: 1,
+          title: "Create Workspace & Content Schema",
+          desc: "Define your data structure visually with our drag-and-drop schema builder.",
+        },
+        {
+          step: 2,
+          title: "Author & Collaborate with Team",
+          desc: "Create articles, products, or pages with AI Content Generator assistance.",
+        },
+        {
+          step: 3,
+          title: "Publish via Multi-Channel API",
+          desc: "Deliver content to Next.js web apps, mobile apps, or IoT devices in realtime.",
+        },
+        {
+          step: 4,
+          title: "Monitor Traffic & Analytics",
+          desc: "Track API latency, usage quotas, and security audit logs in one central hub.",
+        },
+      ],
+    },
+    addons: {
+      badge: "Addons & Boosters",
+      title: "Expand Capacity On-Demand",
+      subtitle: "Top-up AI credits, S3 storage, and API rate limits without upgrading tiers.",
+      cta: "Top Up Now",
+    },
+    testimonials: {
+      badge: "Testimonials",
+      title: "What Developers & Businesses Say",
+      subtitle: "Real stories from teams accelerating production delivery with SaCMS.",
+    },
+    about: {
+      badge: "About SaCMS",
+      title: "Smart Content Management System",
+      desc1: "SaCMS (Smart Content Management System) is built on the motto: 'Build smarter. Manage easier. Scale faster.' We democratize enterprise headless technology for everyone.",
+      desc2: "Engineered with modern headless architecture, ensuring your data is secure, isolated, and highly performant.",
+    },
+    team: {
+      badge: "Engineering Team",
+      title: "Built with Dedication",
+      subtitle: "Software engineers and cloud architects committed to building world-class digital infrastructure.",
+    },
+    faq: {
+      badge: "FAQ",
+      title: "Frequently Asked Questions",
+      subtitle: "Common answers regarding our platform, architecture, and security.",
+      items: [
+        {
+          q: "What is SaCMS (Smart Content Management System)?",
+          a: "SaCMS is a modern, AI-native multi-tenant Headless CMS built on Next.js 16 and PostgreSQL 17. It decouples content storage from frontend presentation.",
+        },
+        {
+          q: "How does Dedicated VPS/VDS appliance work?",
+          a: "When subscribing to Cloud VPS or Gov VDS, our infrastructure orchestrator provisions an isolated cloud instance with PostgreSQL 17, MinIO S3, and Next.js hosting for your workspace.",
+        },
+        {
+          q: "What payment methods are supported?",
+          a: "We support major payment methods including QRIS, e-Wallets, Bank Transfer (VA), and Credit Cards.",
+        },
+        {
+          q: "Can I bring my own PostgreSQL database (BYODB)?",
+          a: "Yes! You can connect your external PostgreSQL instance (e.g. Supabase, Neon, AWS RDS) directly in Workspace Settings.",
+        },
+      ],
+    },
+    cta: {
+      title: "Build smarter. Manage easier. Scale faster.",
+      description: "Sign up today on SaCMS (Smart Content Management System) and experience modern multi-tenant content delivery.",
+      buttonPrimary: "Get Started Free",
+      buttonSecondary: "Contact Sales",
+    },
+    footer: {
+      brandDesc: "SaCMS — Smart Content Management System. Build smarter. Manage easier. Scale faster. The leading enterprise Headless CMS.",
+      rights: "All rights reserved. Smart Content Management System.",
+      sections: {
+        product: "Product",
+        resources: "Resources",
+        company: "Company",
+        legal: "Legal",
+      },
+      links: {
+        features: "Features",
+        pricing: "Pricing",
+        docs: "API Docs",
+        status: "System Status",
+        blog: "Blog & Insights",
+        about: "About Us",
+        privacy: "Privacy Policy",
+        terms: "Terms of Service",
+        security: "Security",
+      },
+    },
+  },
 }
-
-// Fallback EN to ID for safety
-DICTIONARY.en = DICTIONARY.id
-

@@ -181,8 +181,8 @@ export function GlobalAdminSidebar() {
     <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Header */}
       <div className="border-b border-border px-4 py-3.5 flex items-center justify-between">
-        <Link href="/admin" className="flex items-center gap-2.5">
-          <Logo iconSize="md" showText={true} />
+        <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
+          <Logo iconSize="sm" showText={true} showDetail={true} />
         </Link>
         <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg border border-border/50">
           <Link href="/dashboard" title="Kembali ke Workspace Hub">

@@ -2,6 +2,9 @@ import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
 
 export interface PlatformSettings {
+  siteName: string
+  siteDetail: string
+  siteTagline: string
   globalTenantId: string
   registrationMode: "open" | "invite_only" | "closed"
   defaultUserPlan: string
@@ -29,6 +32,9 @@ export interface PlatformSettings {
 }
 
 export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
+  siteName: "SaCMS",
+  siteDetail: "Smart Content Management System",
+  siteTagline: "Build smarter. Manage easier. Scale faster.",
   globalTenantId: "sacms-global",
   registrationMode: "open",
   defaultUserPlan: "free",

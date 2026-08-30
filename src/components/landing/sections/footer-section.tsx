@@ -21,7 +21,7 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-12 lg:gap-8 mb-16">
           <div className="space-y-4">
             <Link href="/" className="inline-block">
-              <Logo iconSize="lg" showText={true} useOrange={true} />
+              <Logo iconSize="md" showText={true} showDetail={true} useOrange={true} />
             </Link>
             <p className="text-xs sm:text-sm text-muted-foreground leading-relaxed max-w-sm font-medium">
               {brandDesc}

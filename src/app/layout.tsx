@@ -17,17 +17,17 @@ const geistMono = Geist_Mono({
 })
 
 export const metadata: Metadata = {
-  title: "SaCMS - Headless CMS Platform",
-  description: "Modern Headless CMS Platform. Build, manage, and deliver content anywhere with our powerful and flexible content management system.",
-  keywords: ["Headless CMS", "Content Management", "API", "Next.js", "TypeScript", "SaaS"],
+  title: "SaCMS — Smart Content Management System | Build smarter. Manage easier. Scale faster.",
+  description: "SaCMS (Smart Content Management System) — Build smarter. Manage easier. Scale faster. Modern AI-native multi-tenant headless CMS with Dedicated PostgreSQL Appliance, AI website generation, and custom domain management.",
+  keywords: ["SaCMS", "Smart Content Management System", "Headless CMS", "Content Management System", "Next.js", "TypeScript", "Multi-tenant CMS", "SaaS"],
   authors: [{ name: "SaCMS Team" }],
   icons: {
     icon: "/logo.svg",
   },
   openGraph: {
-    title: "SaCMS - Headless CMS Platform",
-    description: "Build, manage, and deliver content anywhere",
-    siteName: "SaCMS",
+    title: "SaCMS — Smart Content Management System",
+    description: "Build smarter. Manage easier. Scale faster.",
+    siteName: "SaCMS — Smart Content Management System",
     type: "website",
   },
 }

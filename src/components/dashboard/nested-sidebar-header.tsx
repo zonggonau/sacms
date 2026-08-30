@@ -36,7 +36,7 @@ export function NestedSidebarHeader({
           </Link>
         )}
         <Link href={actualLogoHref} className="flex items-center gap-2.5 min-w-0">
-          <Logo iconSize="sm" showText={true} />
+          <Logo iconSize="sm" showText={true} showDetail={true} />
         </Link>
       </div>
 

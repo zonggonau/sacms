@@ -46,7 +46,7 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
       <div className="container px-4 sm:px-6 max-w-7xl mx-auto flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Link href="/" className="flex items-center gap-3 group">
-            <Logo iconSize="lg" showText={true} useOrange={true} customName={brandName} />
+            <Logo iconSize="md" showText={true} showDetail={true} useOrange={true} customName={brandName} />
           </Link>
         </div>
 
