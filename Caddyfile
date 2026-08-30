@@ -1,7 +1,22 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# SaCMS Caddy Configuration — Reverse Proxy & Dynamic SSL Edge
+# SaCMS Caddy Configuration — Reverse Proxy & Automatic SSL / HTTPS Edge
 # ─────────────────────────────────────────────────────────────────────────────
 
+{
+	email admin@sacms.cloud
+}
+
+# Main SaCMS Domain (Automatic Let's Encrypt HTTPS & HTTP->HTTPS Redirect)
+sacms.cloud, www.sacms.cloud {
+	reverse_proxy app:3000
+}
+
+# Direct IP fallback for port 80 HTTP
+http://164.68.116.79, http://localhost {
+	reverse_proxy app:3000
+}
+
+# Fallback for all other tenant subdomains / custom domains
 :80 {
 	reverse_proxy app:3000
 }
