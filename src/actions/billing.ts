@@ -38,20 +38,50 @@ export async function getTransactionHistoryAction() {
     const session = await getServerSession(authOptions)
     if (!session?.user?.id) return []
 
-    // Fetch subscriptions belonging to this user
-    const subscriptions = await db.subscription.findMany({
+    // Fetch user memberships to also get tenant subscriptions
+    const memberships = await db.tenantMember.findMany({
       where: { userId: session.user.id },
+      select: { tenantId: true }
+    })
+    const tenantIds = memberships.map(m => m.tenantId).filter(Boolean) as string[]
+
+    const subscriptions = await db.subscription.findMany({
+      where: {
+        OR: [
+          { userId: session.user.id },
+          ...(tenantIds.length > 0 ? [{ tenantId: { in: tenantIds } }] : [])
+        ]
+      },
       select: { id: true }
     })
     
-    if (subscriptions.length === 0) return []
-
     const subIds = subscriptions.map(s => s.id)
 
     const transactions = await db.paymentTransaction.findMany({
-      where: { subscriptionId: { in: subIds } },
+      where: {
+        OR: [
+          ...(subIds.length > 0 ? [{ subscriptionId: { in: subIds } }] : []),
+          { subscription: { userId: session.user.id } },
+          ...(tenantIds.length > 0 ? [{ subscription: { tenantId: { in: tenantIds } } }] : [])
+        ]
+      },
+      include: {
+        subscription: {
+          select: {
+            plan: true,
+            status: true,
+            tenantId: true,
+            tenant: {
+              select: {
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
+      },
       orderBy: { createdAt: 'desc' },
-      take: 20
+      take: 50
     })
 
     return transactions

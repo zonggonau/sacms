@@ -121,7 +121,19 @@ export async function getTransactionStatus(orderId: string) {
   try {
     const transaction = await midtransClient.transaction.status(orderId)
     return transaction
-  } catch (error) {
+  } catch (error: any) {
+    if (
+      error?.httpStatusCode === '404' || 
+      error?.ApiResponse?.status_code === '404' || 
+      error?.message?.includes("doesn't exist") || 
+      error?.message?.includes('404')
+    ) {
+      return {
+        transaction_status: 'pending',
+        status_code: '201',
+        status_message: 'Transaction is pending or not yet completed by customer.'
+      }
+    }
     console.error('Error getting transaction status:', error)
     throw new Error('Failed to get transaction status')
   }
@@ -161,6 +173,16 @@ export const PLAN_PRICES: Record<string, number> = {
   starter: 99000,
   pro: 299000,
   enterprise: 999000,
+  "vps-4": 750000,
+  "vps-6": 1150000,
+  "vps-8": 1650000,
+  "vps-12": 2450000,
+  "vps-16": 3250000,
+  "vps-18": 4500000,
+  "vds-3": 4500000,
+  "vds-4": 6500000,
+  "vds-6": 9500000,
+  "vds-8": 13500000,
   "enterprise-vps": 1250000,
   "enterprise-vds": 4500000,
   standard: 149000, // Legacy fallback
@@ -214,9 +236,19 @@ export async function getDynamicAccountPrices(): Promise<Record<string, { monthl
   
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
-    starter: { monthly: 49000, yearly: 490000 },
-    pro: { monthly: 149000, yearly: 1490000 },
-    enterprise: { monthly: 399000, yearly: 3990000 },
+    starter: { monthly: 49000, yearly: 390000 },
+    pro: { monthly: 129000, yearly: 990000 },
+    enterprise: { monthly: 299000, yearly: 2490000 },
+    "vps-4": { monthly: 750000, yearly: 7500000 },
+    "vps-6": { monthly: 1150000, yearly: 11500000 },
+    "vps-8": { monthly: 1650000, yearly: 16500000 },
+    "vps-12": { monthly: 2450000, yearly: 24500000 },
+    "vps-16": { monthly: 3250000, yearly: 32500000 },
+    "vps-18": { monthly: 4500000, yearly: 45000000 },
+    "vds-3": { monthly: 4500000, yearly: 45000000 },
+    "vds-4": { monthly: 6500000, yearly: 65000000 },
+    "vds-6": { monthly: 9500000, yearly: 95000000 },
+    "vds-8": { monthly: 13500000, yearly: 135000000 },
     "enterprise-vps": { monthly: 1250000, yearly: 12500000 },
     "vps-s": { monthly: 1250000, yearly: 12500000 },
     "vps-m": { monthly: 2450000, yearly: 24500000 },
@@ -269,17 +301,16 @@ export async function getDynamicWorkspacePrices(): Promise<Record<string, { mont
   
   const fallbackPrices: Record<string, { monthly: number, yearly: number }> = {
     free: { monthly: 0, yearly: 0 },
-    starter: { monthly: 49000, yearly: 490000 },
-    pro: { monthly: 149000, yearly: 1490000 },
-    enterprise: { monthly: 399000, yearly: 3990000 },
-    "enterprise-vps": { monthly: 1250000, yearly: 12500000 },
-    "vps-s": { monthly: 1250000, yearly: 12500000 },
-    "vps-m": { monthly: 2450000, yearly: 24500000 },
-    "vps-l": { monthly: 3450000, yearly: 34500000 },
-    "enterprise-vds": { monthly: 4500000, yearly: 45000000 },
-    "vds-s": { monthly: 4500000, yearly: 45000000 },
-    "vds-m": { monthly: 6500000, yearly: 65000000 },
-    "vds-l": { monthly: 9500000, yearly: 95000000 },
+    pro: { monthly: 249000, yearly: 1490000 },
+    enterprise: { monthly: 490000, yearly: 3900000 },
+    "vps-s": { monthly: 599000, yearly: 5990000 },
+    "enterprise-vps": { monthly: 1050000, yearly: 10500000 },
+    "vps-m": { monthly: 1050000, yearly: 10500000 },
+    "vps-l": { monthly: 1790000, yearly: 17900000 },
+    "vds-s": { monthly: 3800000, yearly: 38000000 },
+    "enterprise-vds": { monthly: 5800000, yearly: 58000000 },
+    "vds-m": { monthly: 5800000, yearly: 58000000 },
+    "vds-l": { monthly: 9800000, yearly: 98000000 },
   }
   return fallbackPrices
 }

@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
@@ -111,7 +112,7 @@ export default function TenantAuditLogsPage() {
       }
     } catch (err) {
       console.error("Failed to fetch audit logs:", err)
-      toast({ variant: "destructive", title: "Error", description: "Gagal memuat log aktivitas" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat log aktivitas" })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -156,8 +157,49 @@ export default function TenantAuditLogsPage() {
   if (status === "loading" || loadingTenants || (loading && !refreshing)) {
     return (
       <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 flex items-center justify-center flex-col w-full">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-8 h-8 rounded-xl shrink-0" />
+                <div className="space-y-1.5">
+                  <Skeleton className="h-7 w-56 rounded-lg" />
+                  <Skeleton className="h-3.5 w-80 rounded-md" />
+                </div>
+              </div>
+              <Skeleton className="h-9 w-28 rounded-xl" />
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <Card key={i} className="border border-border/80 shadow-xs bg-card rounded-2xl p-4 space-y-2">
+                  <Skeleton className="h-3 w-20 rounded-md" />
+                  <Skeleton className="h-6 w-12 rounded-lg" />
+                </Card>
+              ))}
+            </div>
+
+            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+              <CardHeader className="p-4 border-b border-border/60 flex flex-row items-center justify-between">
+                <Skeleton className="h-5 w-36 rounded-md" />
+                <Skeleton className="h-8 w-24 rounded-lg" />
+              </CardHeader>
+              <CardContent className="p-0 divide-y divide-border/50">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="p-4 flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                      <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+                      <div className="space-y-1.5 flex-1 min-w-0">
+                        <Skeleton className="h-4 w-48 max-w-full rounded-md" />
+                        <Skeleton className="h-3 w-64 rounded-md" />
+                      </div>
+                    </div>
+                    <Skeleton className="h-4 w-28 rounded-md shrink-0" />
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </div>
     )

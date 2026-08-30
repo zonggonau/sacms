@@ -92,6 +92,17 @@ export function isR2Configured(): boolean {
 }
 
 /**
+ * Check if storage is configured for a specific tenant (Custom S3, Dedicated MinIO VPS, or Global R2).
+ */
+export async function isTenantStorageConfigured(tenantSlug?: string): Promise<boolean> {
+  if (tenantSlug) {
+    const customConfig = await getTenantStorageConfig(tenantSlug)
+    if (customConfig) return true
+  }
+  return isR2Configured()
+}
+
+/**
  * Generate a storage key for a file.
  */
 function generateStorageKey(tenantSlug: string, filename: string): string {

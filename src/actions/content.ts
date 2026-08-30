@@ -140,7 +140,20 @@ export async function getEntriesAction(
       total = count
     }
 
-    return { entries, meta: { pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } } }
+    // Batch fetch human-readable relation labels
+    const { batchFetchRelationLabels } = await import("@/lib/relation-labels")
+    const relationLabels = await batchFetchRelationLabels(
+      tenantDb,
+      access.tenantId,
+      entries,
+      contentType.fields
+    )
+
+    return { 
+      entries, 
+      relationLabels,
+      meta: { pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) } } 
+    }
   } catch (error: any) {
     console.error("Error fetching entries:", error)
     return { error: error.message || "Internal server error" }
@@ -369,6 +382,7 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
       { enforceRequired: status !== "DRAFT" }
     )
     if (!schemaValidation.success) {
+      console.error("[createEntryAction] Schema validation failed:", schemaValidation.errors)
       return { error: "Validation failed", details: schemaValidation.errors }
     }
     Object.assign(data, schemaValidation.data || {})
@@ -381,7 +395,10 @@ export async function createEntryAction(tenantSlug: string, contentTypeSlug: str
       undefined,
       { enforceRequired: status !== "DRAFT", client: tenantDb }
     )
-    if (!dynamicValidation.success) return { error: "Validation failed", details: dynamicValidation.errors }
+    if (!dynamicValidation.success) {
+      console.error("[createEntryAction] Dynamic validation failed:", dynamicValidation.errors)
+      return { error: "Validation failed", details: dynamicValidation.errors }
+    }
 
     const dataWithSlugs = await processAutoSlugs(tenantId, contentType.id, mappedContentType.fields, data as Record<string, any>, undefined, 'content', tenantDb)
 
@@ -632,8 +649,8 @@ export async function updateEntryAction(tenantSlug: string, contentTypeSlug: str
         { enforceRequired: targetStatus !== "DRAFT", client: tenantDb }
       )
       if (!dynamicValidation.success) {
-        const errorMsg = dynamicValidation.errors ? Object.entries(dynamicValidation.errors).map(([k, v]) => `${k}: ${v}`).join(", ") : "Validation failed"
-        return { error: `Validation failed: ${errorMsg}`, details: dynamicValidation.errors }
+        console.error("[updateEntryAction] Dynamic validation failed:", dynamicValidation.errors)
+        return { error: "Validation failed", details: dynamicValidation.errors }
       }
     }
 

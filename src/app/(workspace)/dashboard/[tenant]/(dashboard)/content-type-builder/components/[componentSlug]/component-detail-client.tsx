@@ -92,13 +92,13 @@ export default function ComponentDetailClient({
       const response = await deleteComponentAction(tenantSlug, component.id)
       
       if (!response.error) {
-        toast({ title: "Deleted", description: "Component removed successfully" })
+        toast({ title: "Berhasil Dihapus", description: "Komponen berhasil dihapus" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: response.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: response.error })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menghapus komponen" })
     }
   }
 

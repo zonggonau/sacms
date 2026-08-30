@@ -50,23 +50,19 @@ export default async function CMSLayout({
   const enterprise = await isEnterpriseTenant(tenantId, session.user.id)
   
   if (!enterprise) {
-    const tenantData = await db.tenant.findUnique({
-      where: { id: tenantId },
-      select: { status: true }
-    })
-    
-    if (tenantData?.status === 'suspended') {
-      redirect(`/dashboard/${tenantId}/subscriptions?suspended=true`)
-    }
-
-    if (tenant.plan === 'trial') {
-      const sub = await db.subscription.findFirst({
+    const [tenantData, sub] = await Promise.all([
+      db.tenant.findUnique({
+        where: { id: tenantId },
+        select: { status: true }
+      }),
+      db.subscription.findFirst({
         where: { tenantId: tenantId },
         orderBy: { currentPeriodEnd: "desc" }
       })
-      if (!sub || (sub.currentPeriodEnd && new Date(sub.currentPeriodEnd).getTime() <= Date.now())) {
-        redirect(`/dashboard/${tenantId}/subscriptions?expired=true`)
-      }
+    ])
+    
+    if (tenantData?.status === 'suspended' || (sub?.currentPeriodEnd && new Date(sub.currentPeriodEnd).getTime() <= Date.now())) {
+      redirect(`/dashboard/${tenantId}/subscriptions?expired=true`)
     }
   }
 

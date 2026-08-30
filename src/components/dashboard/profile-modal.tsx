@@ -149,7 +149,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
     } catch (err) {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Terjadi Kesalahan",
         description: "Gagal menghapus foto profil.",
       })
     } finally {
@@ -207,7 +207,7 @@ export function ProfileModal({ open, onOpenChange, userRole }: ProfileModalProps
         }
       } catch (error) {
         toast({
-          title: "Error",
+          title: "Terjadi Kesalahan",
           description: "Terjadi kesalahan saat menyimpan profil.",
           variant: "destructive",
         })

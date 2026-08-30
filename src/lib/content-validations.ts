@@ -21,31 +21,59 @@ export function generateContentSchema(
   fields.forEach((field) => {
     let fieldSchema: z.ZodTypeAny
     const isRequired = enforceRequired && field.required
-
     const requiredParams = isRequired ? { message: `${field.name} is required` } : undefined
 
     switch (field.type) {
       case "text":
       case "textarea":
       case "richText":
+      case "richtext":
       case "select":
       case "slug":
       case "uid":
       case "url":
-      case "phone":
       case "icon":
-        fieldSchema = z.string(requiredParams)
-        if (field.type === "text") fieldSchema = (fieldSchema as z.ZodString).max(255)
+        fieldSchema = z.preprocess(
+          (val) => (val === "" || val === null || val === undefined ? undefined : String(val)),
+          isRequired
+            ? z.string(requiredParams).min(1, { message: `${field.name} is required` })
+            : z.string().optional().nullable()
+        )
+        break
+
+      case "phone":
+        fieldSchema = z.preprocess(
+          (val) => {
+            if (val === "" || val === null || val === undefined) return undefined
+            return val
+          },
+          z.union([
+            z.string(),
+            z.number(),
+            z.record(z.string(), z.any()),
+          ]).optional().nullable()
+        )
         if (isRequired) {
-          fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
+          fieldSchema = fieldSchema.refine((val) => {
+            if (!val) return false
+            if (typeof val === "string") return val.trim().length > 0
+            if (typeof val === "number") return true
+            if (typeof val === "object" && val !== null) {
+              const num = (val as any).number ?? (val as any).phone
+              return num !== undefined && num !== null && String(num).trim().length > 0
+            }
+            return true
+          }, { message: `${field.name} is required` })
         }
         break
 
       case "email":
-        fieldSchema = z.string(requiredParams).email({ message: `Invalid email format in ${field.name}` })
-        if (isRequired) {
-          fieldSchema = (fieldSchema as z.ZodString).min(1, { message: `${field.name} is required` })
-        }
+        fieldSchema = z.preprocess(
+          (val) => (val === "" || val === null || val === undefined ? undefined : String(val)),
+          isRequired
+            ? z.string(requiredParams).email({ message: `Invalid email format in ${field.name}` })
+            : z.string().email().optional().nullable()
+        )
         break
 
       case "number":
@@ -54,7 +82,11 @@ export function generateContentSchema(
       case "rating":
       case "percent":
         fieldSchema = z.preprocess(
-          (val) => (val === "" || val === null || val === undefined ? undefined : Number(val)),
+          (val) => {
+            if (val === "" || val === null || val === undefined) return undefined
+            const n = Number(val)
+            return isNaN(n) ? val : n
+          },
           isRequired
             ? z.number({ message: `${field.name} must be a number` })
             : z.number({ message: `${field.name} must be a number` }).optional().nullable()
@@ -62,18 +94,26 @@ export function generateContentSchema(
         break
 
       case "boolean":
-        fieldSchema = z.boolean(requiredParams)
+        fieldSchema = z.preprocess(
+          (val) => (val === "" || val === null || val === undefined ? undefined : Boolean(val)),
+          isRequired ? z.boolean(requiredParams) : z.boolean().optional().nullable()
+        )
         break
 
       case "date":
       case "datetime":
       case "dateRange":
+      case "daterange":
         fieldSchema = z.preprocess(
-          (val) => (val === "" ? undefined : val),
+          (val) => (val === "" || val === null || val === undefined ? undefined : val),
           isRequired
-            ? z.string(requiredParams).or(z.date())
-            : z.string().or(z.date()).optional().nullable()
+            ? z.string(requiredParams).or(z.date()).or(z.record(z.string(), z.any()))
+            : z.string().or(z.date()).or(z.record(z.string(), z.any())).optional().nullable()
         )
+        break
+
+      case "document_template":
+        fieldSchema = z.any().optional().nullable()
         break
 
       case "json":
@@ -81,6 +121,7 @@ export function generateContentSchema(
       case "component":
       case "media":
       case "mediaMultiple":
+      case "media_multiple":
       case "tags":
       case "file":
       case "repeater":
@@ -89,40 +130,32 @@ export function generateContentSchema(
       case "location":
       case "seo":
       case "code":
-      case "document_template":
-        fieldSchema = z.any()
+        fieldSchema = z.any().optional().nullable()
+        if (isRequired) {
+          fieldSchema = fieldSchema.refine((val) => {
+            if (val === null || val === undefined) return false
+            if (typeof val === 'string' && val.trim() === "") return false
+            if (Array.isArray(val) && val.length === 0) return false
+            if (typeof val === 'object' && Object.keys(val).length === 0 && !(val instanceof Date)) return false
+            return true
+          }, {
+            message: `${field.name} is required`,
+          })
+        }
         break
 
       default:
-        fieldSchema = z.any()
+        fieldSchema = z.any().optional().nullable()
     }
 
-    // Post-processing for requirement
-    if (isRequired) {
-      const basicTypes = ["text", "textarea", "richText", "select", "slug", "uid", "url", "phone", "email", "number", "integer", "currency", "rating", "percent", "icon", "boolean", "date", "datetime"]
-
-      if (!basicTypes.includes(field.type)) {
-        // For non-basic types (JSON, relations, etc.), check for null/undefined/empty
-        fieldSchema = fieldSchema.refine((val) => {
-          if (val === null || val === undefined) return false
-          if (typeof val === 'string' && val.trim() === "") return false
-          if (Array.isArray(val) && val.length === 0) return false
-          if (typeof val === 'object' && Object.keys(val).length === 0 && !(val instanceof Date)) return false
-          return true
-        }, {
-          message: `${field.name} is required`,
-        })
-      }
-    } else {
-      if (!["number", "integer", "currency", "rating", "percent", "date", "datetime"].includes(field.type)) {
-        fieldSchema = fieldSchema.optional().nullable()
-      }
+    if (!isRequired) {
+      fieldSchema = fieldSchema.optional().nullable()
     }
 
     schemaShape[field.slug] = fieldSchema
   })
 
-  return z.object(schemaShape)
+  return z.object(schemaShape).passthrough()
 }
 
 /**
@@ -135,7 +168,7 @@ export async function validateContentEntry(
 ) {
   const schema = generateContentSchema(fields, options)
   try {
-    const validatedData = await schema.parseAsync(data)
+    const validatedData = await schema.parseAsync(data || {})
     return { success: true, data: validatedData, errors: null }
   } catch (error) {
     if (error instanceof z.ZodError) {

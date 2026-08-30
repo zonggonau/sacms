@@ -223,15 +223,15 @@ export default function SdkDocsPage() {
           {/* Main Tabs */}
           <Tabs defaultValue="sdk" className="space-y-6">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-3 max-w-lg h-auto gap-1">
-              <TabsTrigger value="sdk" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="sdk" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Package className="h-3.5 w-3.5 mr-1.5" />
                 TypeScript SDK
               </TabsTrigger>
-              <TabsTrigger value="rest" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="rest" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Terminal className="h-3.5 w-3.5 mr-1.5" />
                 REST API HTTP
               </TabsTrigger>
-              <TabsTrigger value="types" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="types" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <FileCode className="h-3.5 w-3.5 mr-1.5" />
                 TypeScript Types
               </TabsTrigger>
@@ -300,7 +300,7 @@ export const cms = new SaCMS({
   baseUrl: '${origin}',
   tenant: '${tenantSlug}',
   token: process.env.SACMS_API_KEY || 'cf_your_api_key_here',
-  locale: 'en', // default locale
+  locale: 'id', // default locale
 })`} 
                   />
                 </CardContent>
@@ -366,7 +366,7 @@ console.log(article.data.title)`}
                       id="single" 
                       code={`// Ambil konfigurasi halaman utama
 const homepage = await cms.single('homepage-config').find({
-  locale: 'en',
+  locale: 'id',
 })
 
 console.log(homepage.data)`} 
@@ -503,7 +503,7 @@ await cms.collection('articles').delete(newArticle.data.id)`}
                     title: "GET Data Single Type",
                     desc: "Mengambil data konten halaman tunggal (Homepage / Settings)",
                     code: `GET /api/public/${tenantSlug}/single/homepage-config
-  ?locale=en`,
+  ?locale=id`,
                   },
                 ].map((sample, idx) => (
                   <Card key={idx} className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">

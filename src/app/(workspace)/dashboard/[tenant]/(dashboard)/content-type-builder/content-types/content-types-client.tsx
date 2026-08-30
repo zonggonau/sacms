@@ -90,16 +90,16 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
   const handleDelete = () => {
     if (!deleteDialog.contentType) return
     if (deleteConfirmName !== deleteDialog.contentType.name) {
-      toast({ variant: "destructive", title: "Error", description: "Verification name does not match" })
+      toast({ variant: "destructive", title: "Verifikasi Gagal", description: "Nama verifikasi tidak cocok" })
       return
     }
 
     startTransition(async () => {
       const res = await deleteContentTypeAction(tenantSlug, deleteDialog.contentType!.id)
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
-        toast({ title: "Success", description: "Content type removed" })
+        toast({ title: "Berhasil", description: "Content type berhasil dihapus" })
         setDeleteDialog({ open: false, contentType: null })
       }
     })
@@ -121,7 +121,17 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">Kelola struktur skema koleksi multi-entri (seperti Artikel, Produk, atau Pengguna).</p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="outline"
+                className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted shadow-xs transition-all flex items-center gap-1.5"
+                onClick={() => router.push(`/dashboard/${tenantSlug}/cms`)}
+                title="Buka CMS Studio untuk mengelola konten dan entri data"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Buka CMS Studio</span>
+              </Button>
+
               <Button
                 className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
@@ -256,29 +266,42 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                             )}
                           </TableCell>
                           <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
-                                  <MoreVertical className="h-3.5 w-3.5" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end" className="w-48 rounded-xl">
-                                <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
-                                  <Edit className="mr-2 h-3.5 w-3.5" /> Edit Skema
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
-                                  <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
-                                </DropdownMenuItem>
-                                {(!ct.isGlobal || isGlobalTenant) && (
-                                  <>
-                                    <DropdownMenuSeparator />
-                                    <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">
-                                      <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Skema
-                                    </DropdownMenuItem>
-                                  </>
-                                )}
-                              </DropdownMenuContent>
-                            </DropdownMenu>
+                            <div className="flex items-center justify-end gap-1.5">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
+                                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)}
+                                title={`Buka entri ${ct.name} di CMS Studio`}
+                              >
+                                <FileText className="h-3 w-3 text-primary" />
+                                <span>Kelola Konten</span>
+                              </Button>
+
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
+                                    <MoreVertical className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
+                                    <Edit className="mr-2 h-3.5 w-3.5" /> Edit Skema
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${ct.slug}`)} className="text-xs cursor-pointer rounded-lg">
+                                    <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
+                                  </DropdownMenuItem>
+                                  {(!ct.isGlobal || isGlobalTenant) && (
+                                    <>
+                                      <DropdownMenuSeparator />
+                                      <DropdownMenuItem onClick={() => handleDeleteClick(ct)} className="text-destructive focus:bg-destructive focus:text-destructive-foreground text-xs cursor-pointer rounded-lg">
+                                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Hapus Skema
+                                      </DropdownMenuItem>
+                                    </>
+                                  )}
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}

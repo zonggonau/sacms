@@ -19,7 +19,13 @@ export async function POST(
     }
 
     const { tenant: tenantSlug } = await params
-    const { prompt, model = "v0-pro", apiBaseUrl = "http://localhost:3000", deployToVercelAfter = false } = await req.json()
+    const { 
+      prompt, 
+      model = "v0-pro", 
+      apiBaseUrl = "http://localhost:3000", 
+      deployToVercelAfter = false,
+      plannedSchema = null 
+    } = await req.json()
     
     if (!prompt) {
       return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
@@ -46,30 +52,31 @@ export async function POST(
     const tenant = access.tenant
     const bridge = new McpClientBridge(tenant.id, tenant.slug, session.user.id)
 
-    // 1. Inspect existing workspace schema & capabilities via MCP
-    // 1. Inspect existing workspace schema & capabilities via MCP
-    let [activeSchema, capabilities] = await Promise.all([
+    // ── PHASE 1: AI Schema Architect via SaCMS MCP Bridge ─────────────────────────
+    // Always synthesize and apply Content Types, Single Types, and Components
+    // tailored to the user's prompt and domain.
+    try {
+      if (plannedSchema && (plannedSchema.contentTypes?.length || plannedSchema.singleTypes?.length)) {
+        // User confirmed a planned schema
+        await bridge.applyGeneratedSchema(plannedSchema)
+      } else {
+        // Auto-generate domain schema based on the prompt
+        const { generateSystemSchema } = await import("@/lib/ai-schema-generator")
+        const generatedSchema = await generateSystemSchema(prompt, tenant.id, session.user.id)
+        if (generatedSchema && (generatedSchema.contentTypes?.length || generatedSchema.singleTypes?.length)) {
+          await bridge.applyGeneratedSchema(generatedSchema)
+        }
+      }
+    } catch (schemaErr: any) {
+      console.warn("[AI_BUILDER_MCP_SCHEMA_WARNING]: Could not auto-apply schema via MCP:", schemaErr.message)
+    }
+
+    // Inspect the freshly updated workspace schema & capabilities via MCP
+    const [activeSchema, capabilities] = await Promise.all([
       bridge.getFullSchema(),
       bridge.inspectApiCapabilities(),
     ])
     const tenantDb = await getTenantDb(tenant.id)
-
-    // 1b. If workspace has no schema (no content types and no single types),
-    // automatically generate and bootstrap the entire schema using MCP bridge!
-    if ((!activeSchema.contentTypes || activeSchema.contentTypes.length === 0) &&
-        (!activeSchema.singleTypes || activeSchema.singleTypes.length === 0)) {
-      try {
-        const { generateSystemSchema } = await import("@/lib/ai-schema-generator")
-        const generatedSchema = await generateSystemSchema(prompt, tenant.id, session.user.id)
-        if (generatedSchema) {
-          await bridge.applyGeneratedSchema(generatedSchema)
-          // Refresh active schema after MCP bootstrapping
-          activeSchema = await bridge.getFullSchema()
-        }
-      } catch (schemaErr: any) {
-        console.warn("Could not auto-generate schema via MCP:", schemaErr.message)
-      }
-    }
 
     // 2. Fetch existing sample records from database (if available)
     const sampleCollections: Record<string, any[]> = {}
@@ -99,8 +106,8 @@ export async function POST(
     await db.apiToken.create({
       data: {
         tenantId: tenant.id,
-        name: `V0 Frontend Token - ${new Date().toLocaleDateString()}`,
-        description: `Auto-generated for V0.dev frontend build`,
+        name: `SaCMS Frontend Token - ${new Date().toLocaleDateString()}`,
+        description: `Auto-generated for SaCMS AI Website Builder`,
         token: hashedToken,
         type: capabilities.canWrite ? "service" : "read-only",
         permissions: capabilities.permissions,
@@ -225,7 +232,8 @@ Initialize all components with rich fallback sample data so the live sandbox pre
       v0ChatId: v0Result.chatId, 
       previewUrl,
       vercelProjectId,
-      filesGenerated: v0Result.files?.length || 0
+      filesGenerated: v0Result.files?.length || 0,
+      files: v0Result.files || [],
     })
   } catch (error: any) {
     console.error("Frontend generation failed:", error)

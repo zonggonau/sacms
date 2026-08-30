@@ -161,7 +161,7 @@ export default function NewComponentClient({
 
   const handleSave = async () => {
     if (!name || !slug) {
-      toast({ variant: "destructive", title: "Error", description: "Name and slug are required" })
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Nama dan slug wajib diisi" })
       return
     }
     setSaving(true)
@@ -177,13 +177,13 @@ export default function NewComponentClient({
         })),
       })
       if (!res.error) {
-        toast({ title: "Success", description: "Component created" })
+        toast({ title: "Berhasil", description: "Komponen berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error || "Gagal membuat komponen" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan komponen" })
     } finally {
       setSaving(false)
     }

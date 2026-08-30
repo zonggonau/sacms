@@ -74,14 +74,14 @@ export function RelationSelectField({
     try {
       const result = await getEntriesAction(tenantSlug, targetSlug, { 
         page: 1, 
-        pageSize: 50, 
+        pageSize: 100, 
         search 
       })
       
       if (result.error) {
         // Fallback to Single Type
         const stResult = await getSingleTypeBySlugAction(tenantSlug, targetSlug)
-        if (stResult.error || !stResult.singleType) throw new Error(result.error) // throw original error
+        if (stResult.error || !stResult.singleType) throw new Error(result.error)
         
         // Mock a single entry from the single type
         setEntries([{
@@ -109,14 +109,124 @@ export function RelationSelectField({
     fetchEntries()
   }, [fetchEntries])
 
-  const getEntryLabel = (entry: Entry | undefined) => {
+  /**
+   * Intelligently resolves the best human-readable label from an entry's data
+   */
+  const getEntryLabel = (entry: Entry | undefined): string => {
     if (!entry) return "Unknown"
-    const d = entry.data || {}
-    const labelCandidates = [
-      d.name, d.nama, d.title, d.judul, d.subject, 
-      d.fullName, d.namaLengkap, d.label, d.slug
+    let d = entry.data || {}
+    if (typeof d === "string") {
+      try {
+        d = JSON.parse(d)
+      } catch {
+        return d
+      }
+    }
+
+    // 1. Direct prioritized field keys (including Indonesian governance & enterprise terms)
+    const priorityKeys = [
+      "nama_pejabat", "namaPejabat", "pejabat",
+      "nama_pegawai", "namaPegawai", "pegawai",
+      "nama_lengkap", "namaLengkap", "fullName",
+      "name", "nama", "title", "judul", "subject", "label",
+      "nama_kategori", "namaKategori", "kategori",
+      "nama_instansi", "namaInstansi", "instansi",
+      "nama_dinas", "namaDinas", "dinas",
+      "nama_perusahaan", "namaPerusahaan", "perusahaan",
+      "nama_barang", "namaBarang", "nama_produk", "namaProduk",
+      "perihal", "nomor_surat", "nomorSurat", "no_surat",
+      "username", "email", "slug"
     ]
-    return labelCandidates.find(val => val && typeof val === 'string' && val.trim() !== "") || entry.id.substring(0, 8)
+
+    for (const key of priorityKeys) {
+      const val = d[key]
+      if (typeof val === "string" && val.trim().length > 0) {
+        return val.trim()
+      }
+    }
+
+    // 2. Scan all keys for any key containing "nama", "name", "title", "judul", "pejabat", "label", "subject"
+    const keys = Object.keys(d)
+    for (const k of keys) {
+      const lowerKey = k.toLowerCase()
+      if (
+        lowerKey.includes("nama") ||
+        lowerKey.includes("name") ||
+        lowerKey.includes("title") ||
+        lowerKey.includes("judul") ||
+        lowerKey.includes("pejabat") ||
+        lowerKey.includes("label") ||
+        lowerKey.includes("subject")
+      ) {
+        const val = d[k]
+        if (typeof val === "string" && val.trim().length > 0) {
+          return val.trim()
+        }
+      }
+    }
+
+    // 3. Fallback to any string property in entry.data (excluding internal/IDs/dates/URLs)
+    for (const k of keys) {
+      const lower = k.toLowerCase()
+      if (["id", "tenantid", "createdat", "updatedat", "locale", "status", "documentid"].includes(lower)) continue
+      const val = d[k]
+      if (typeof val === "string" && val.trim().length > 0 && val.length < 120 && !val.startsWith("http") && !val.startsWith("data:")) {
+        return val.trim()
+      }
+    }
+
+    return entry.id.substring(0, 8)
+  }
+
+  /**
+   * Intelligently resolves secondary details (e.g. Jabatan, NIP, Instansi, Email) for subtitles
+   */
+  const getEntrySubtitle = (entry: Entry | undefined): string => {
+    if (!entry) return ""
+    let d = entry.data || {}
+    if (typeof d === "string") {
+      try {
+        d = JSON.parse(d)
+      } catch {
+        return ""
+      }
+    }
+
+    const mainLabel = getEntryLabel(entry)
+
+    const subtitleKeys = [
+      "jabatan", "pangkat", "golongan", "nip", "nik",
+      "instansi", "dinas", "unit_kerja", "organisasi",
+      "email", "phone", "nomor_telepon", "telepon",
+      "kategori", "kode", "kode_surat", "nomor_surat",
+      "role", "deskripsi", "keterangan"
+    ]
+
+    for (const key of subtitleKeys) {
+      const val = d[key]
+      if (typeof val === "string" && val.trim().length > 0 && val.trim() !== mainLabel) {
+        return val.trim()
+      }
+    }
+
+    const keys = Object.keys(d)
+    for (const k of keys) {
+      const lower = k.toLowerCase()
+      if (
+        lower.includes("jabatan") ||
+        lower.includes("nip") ||
+        lower.includes("instansi") ||
+        lower.includes("email") ||
+        lower.includes("pangkat")
+      ) {
+        const val = d[k]
+        if (typeof val === "string" && val.trim().length > 0 && val.trim() !== mainLabel) {
+          return val.trim()
+        }
+      }
+    }
+
+    return ""
   }
 
   const handleSelect = (id: string) => {
@@ -162,21 +272,28 @@ export function RelationSelectField({
       )}
 
       <div className="space-y-2">
-        {/* Selected Items Tags */}
+        {/* Selected Items Tags (Multi-select) */}
         {multiple && selectedIds.length > 0 && (
           <div className="flex flex-wrap gap-2 p-2.5 bg-muted/20 rounded-xl border border-dashed border-border/80">
             {selectedIds.map((id) => {
               const entry = entries.find((e) => e.id === id)
+              const entryName = entry ? getEntryLabel(entry) : id.substring(0, 8)
+              const entrySub = entry ? getEntrySubtitle(entry) : ""
+
               return (
                 <Badge 
                   key={id} 
                   variant="secondary" 
                   className="rounded-lg py-1 pl-3 pr-1.5 flex items-center gap-1.5 bg-card border border-border/80 shadow-xs"
                 >
-                  <span className="text-xs font-bold text-foreground">{entry ? getEntryLabel(entry) : id.substring(0, 8)}</span>
+                  <span className="text-xs font-bold text-foreground">
+                    {entryName}
+                    {entrySub && <span className="text-[10px] text-muted-foreground font-normal ml-1">({entrySub})</span>}
+                  </span>
                   <button 
+                    type="button"
                     onClick={(e) => removeSelected(id, e)}
-                    className="h-4 w-4 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer"
+                    className="h-4 w-4 rounded-md hover:bg-red-500/10 hover:text-red-500 transition-colors cursor-pointer flex items-center justify-center"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -200,9 +317,19 @@ export function RelationSelectField({
             >
               <div className="flex items-center gap-2 overflow-hidden">
                 {!multiple && selectedIds.length > 0 ? (
-                   <span className="truncate">{getEntryLabel(entries.find(e => e.id === selectedIds[0]))}</span>
+                  (() => {
+                    const selectedEntry = entries.find(e => e.id === selectedIds[0])
+                    const label = selectedEntry ? getEntryLabel(selectedEntry) : (loading ? "Memuat..." : selectedIds[0].substring(0, 8))
+                    const sub = selectedEntry ? getEntrySubtitle(selectedEntry) : ""
+                    return (
+                      <span className="truncate flex items-center gap-1.5">
+                        <span className="font-bold text-foreground">{label}</span>
+                        {sub && <span className="text-[11px] text-muted-foreground font-normal">• {sub}</span>}
+                      </span>
+                    )
+                  })()
                 ) : (
-                  <span className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-muted-foreground">
                     <Search className="h-3.5 w-3.5 opacity-50" />
                     {placeholder || `Pilih ${label || targetSlug}...`}
                   </span>
@@ -211,10 +338,10 @@ export function RelationSelectField({
               <ChevronsUpDown className="ml-2 h-3.5 w-3.5 shrink-0 opacity-50" />
             </Button>
           </PopoverTrigger>
-          <PopoverContent className="w-[400px] p-0 border border-border bg-popover shadow-xl rounded-2xl overflow-hidden" align="start">
+          <PopoverContent className="w-[420px] p-0 border border-border bg-popover shadow-xl rounded-2xl overflow-hidden" align="start">
             <Command className="rounded-2xl border-none">
               <CommandInput 
-                placeholder={`Cari ${targetSlug}...`} 
+                placeholder={`Cari data ${targetSlug}...`} 
                 onValueChange={(val) => {
                   setSearchTerm(val)
                 }}
@@ -228,45 +355,55 @@ export function RelationSelectField({
                   </div>
                 </CommandEmpty>
                 <CommandGroup className="p-1.5">
-                  {entries.map((entry) => (
-                    <CommandItem
-                      key={entry.id}
-                      value={entry.id}
-                      onSelect={() => handleSelect(entry.id)}
-                      className="rounded-lg p-2.5 font-medium cursor-pointer transition-colors"
-                    >
-                      <div className="flex items-center gap-2.5 w-full">
-                        <div className={cn(
-                          "h-4 w-4 rounded-md border flex items-center justify-center transition-all shrink-0",
-                          selectedIds.includes(entry.id) 
-                            ? "bg-primary border-primary" 
-                            : "border-muted-foreground/30 bg-transparent"
-                        )}>
-                          <Check className={cn(
-                            "h-3 w-3 text-primary-foreground transition-opacity",
-                            selectedIds.includes(entry.id) ? "opacity-100" : "opacity-0"
-                          )} />
+                  {entries.map((entry) => {
+                    const entryLabel = getEntryLabel(entry)
+                    const entrySub = getEntrySubtitle(entry)
+                    const isSelected = selectedIds.includes(entry.id)
+
+                    return (
+                      <CommandItem
+                        key={entry.id}
+                        value={`${entryLabel} ${entrySub} ${entry.id}`}
+                        onSelect={() => handleSelect(entry.id)}
+                        className="rounded-lg p-2.5 font-medium cursor-pointer transition-colors"
+                      >
+                        <div className="flex items-center gap-2.5 w-full">
+                          <div className={cn(
+                            "h-4 w-4 rounded-md border flex items-center justify-center transition-all shrink-0",
+                            isSelected
+                              ? "bg-primary border-primary" 
+                              : "border-muted-foreground/30 bg-transparent"
+                          )}>
+                            <Check className={cn(
+                              "h-3 w-3 text-primary-foreground transition-opacity",
+                              isSelected ? "opacity-100" : "opacity-0"
+                            )} />
+                          </div>
+                          <div className="flex flex-col min-w-0 flex-1">
+                            <span className="text-xs font-bold truncate text-foreground">{entryLabel}</span>
+                            {entrySub ? (
+                              <span className="text-[10px] text-muted-foreground truncate font-normal mt-0.5">{entrySub}</span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground/60 font-mono truncate mt-0.5">{entry.id}</span>
+                            )}
+                          </div>
                         </div>
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs font-bold truncate text-foreground">{getEntryLabel(entry)}</span>
-                          <span className="text-[10px] text-muted-foreground font-mono truncate">{entry.id}</span>
-                        </div>
-                      </div>
-                    </CommandItem>
-                  ))}
+                      </CommandItem>
+                    )
+                  })}
                 </CommandGroup>
               </CommandList>
               <div className="p-2.5 border-t border-border bg-muted/20 flex justify-between items-center">
                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-wider">
-                   Target: {targetSlug}
+                   Koleksi Target: <span className="font-mono">{targetSlug}</span>
                  </p>
                  <Button 
                    variant="ghost" 
                    size="sm" 
-                   className="h-6 text-[10px] font-bold px-2 rounded-lg cursor-pointer"
+                   className="h-6 text-[10px] font-bold px-2 rounded-lg cursor-pointer hover:bg-muted"
                    onClick={() => fetchEntries(searchTerm)}
                  >
-                   Refresh
+                   Refresh Data
                  </Button>
               </div>
             </Command>

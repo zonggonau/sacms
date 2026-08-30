@@ -5,7 +5,7 @@ import { contentStatusSchema, cuidSchema } from "./common"
 export const createEntrySchema = z.object({
   data: z.record(z.string(), z.unknown()),
   status: contentStatusSchema.optional().default("DRAFT"),
-  locale: z.string().optional().default("en"),
+  locale: z.string().optional().default("id"),
   scheduledAt: z.coerce.date().optional(),
 })
 

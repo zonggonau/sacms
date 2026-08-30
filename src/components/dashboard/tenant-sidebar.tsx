@@ -36,9 +36,11 @@ import {
   Code,
   Globe,
   Server,
+  Lock,
+  Headphones,
 } from "lucide-react"
 import { useTheme } from "next-themes"
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 import { signOut } from "next-auth/react"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
 
@@ -47,6 +49,8 @@ interface TenantSidebarProps {
   tenantSlug?: string
   tenants?: Array<{ id: string; slug: string; name: string; role: string }>
   isEnterpriseMode?: boolean
+  isExpired?: boolean
+  hasDedicatedInfra?: boolean
   session?: any
 }
 
@@ -71,7 +75,7 @@ interface NavSection {
   items: NavItem[]
 }
 
-export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, session }: TenantSidebarProps) {
+export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpriseMode, isExpired, hasDedicatedInfra, session }: TenantSidebarProps) {
   const tenantId = propId || tenantSlug
   const pathname = usePathname()
   const router = useRouter()
@@ -83,6 +87,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const [openMenus, setOpenMenus] = useState<Record<string, boolean>>({})
   const [liveTenants, setLiveTenants] = useState<any[]>([])
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0)
 
   const handleSwitchWorkspace = async (targetTenantId?: string) => {
     if (targetTenantId && targetTenantId === tenantId) {
@@ -97,13 +102,27 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       setMobileOpen(false)
       router.push(res.redirectUrl)
     } else if (res.error) {
-      toast({ variant: "destructive", title: "Access Denied", description: res.error })
+      toast({ variant: "destructive", title: "Akses Ditolak", description: res.error })
     }
   }
 
   useEffect(() => {
     setMounted(true)
-  }, [])
+
+    const fetchUnread = async () => {
+      if (!tenantId) return
+      try {
+        const res = await fetch(`/api/support/unread-count?tenant=${tenantId}`)
+        if (res.ok) {
+          const data = await res.json()
+          setUnreadSupportCount(data.unreadCount || 0)
+        }
+      } catch {}
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 8000)
+    return () => clearInterval(interval)
+  }, [tenantId])
 
   const currentTenant = liveTenants.length > 0 
     ? liveTenants.find((t) => t.id === tenantId || t.slug === tenantId) 
@@ -114,11 +133,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         t.tenant?.id === tenantId ||
         t.tenant?.slug === tenantId
       )
-
-  // Map role securely from raw Prisma session format if needed
-  if (currentTenant && !currentTenant.role && currentTenant.tenant?.id) {
-    currentTenant.role = currentTenant.role || 'subscriber'
-  }
 
   const href = (path: string) => {
     if (path === "/cms-redirect") return `/dashboard/${tenantId}/cms`
@@ -158,63 +172,80 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const isAdmin = userRole === "admin" || userRole === "owner" || isSuperAdmin
   const isEditor = userRole === "editor" || isAdmin
 
-  const navSections: NavSection[] = [
+  const effectiveHasDedicatedInfra = hasDedicatedInfra ?? Boolean(
+    currentTenant?.hasDedicatedInfra ||
+    currentTenant?.databaseUrl ||
+    currentTenant?.plan?.toLowerCase().includes("vps") ||
+    currentTenant?.plan?.toLowerCase().includes("dedicated") ||
+    currentTenant?.plan?.toLowerCase().includes("enterprise") ||
+    isEnterpriseMode
+  )
+
+  const navSections: NavSection[] = useMemo(() => [
     {
       label: "",
       items: [
-        { title: "Overview", href: "", icon: LayoutDashboard },
+        { title: "Ringkasan", href: "", icon: LayoutDashboard },
       ],
     },
     {
-      label: "CONTENT",
+      label: "KONTEN",
       items: [
-        { title: "Content Studio", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        ...(isAdmin ? [{ title: "Content-Type Builder", href: "/content-type-builder", icon: DatabaseIcon, matchPrefix: true }] : []),
-        ...(isEditor || userRole === "author" ? [{ title: "Media Library", href: "/media", icon: ImageIcon }] : []),
+        { title: "CMS Studio Konten", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
+        ...(isAdmin ? [{ 
+          title: "Content-Type Builder", 
+          href: isExpired ? "/content-type-builder" : "/content-type-builder/content-types", 
+          icon: DatabaseIcon, 
+          matchPrefix: true 
+        }] : []),
+        ...(isEditor || userRole === "author" ? [{ title: "Pustaka Media", href: "/media", icon: ImageIcon }] : []),
       ],
     },
     {
-      label: "MANAGEMENT",
+      label: "MANAJEMEN",
       items: [
-        ...(isAdmin ? [{ title: "Team Members", href: "/users", icon: Users }] : []),
-        ...(isAdmin || isEditor ? [{ title: "Activity Logs", href: "/system/audit", icon: ClipboardList }] : []),
-        ...(isAdmin && !isEnterpriseMode ? [{ title: "Billing & Plans", href: "/subscriptions", icon: CreditCard, matchPrefix: true }] : []),
+        { 
+          title: "Bantuan & IT Support", 
+          href: "/support", 
+          icon: Headphones, 
+          matchPrefix: true,
+          badge: unreadSupportCount > 0 ? `${unreadSupportCount} BARU` : undefined
+        },
+        ...(isAdmin ? [{ title: "Anggota Tim", href: "/users", icon: Users }] : []),
+        ...(isAdmin || isEditor ? [{ title: "Log Aktivitas", href: "/system/audit", icon: ClipboardList }] : []),
+        ...(isAdmin && !isEnterpriseMode ? [{ 
+          title: "Paket & Langganan", 
+          href: "/subscriptions", 
+          icon: CreditCard, 
+          matchPrefix: true,
+          badge: isExpired ? "AKTIFKAN" : undefined
+        }] : []),
       ],
     },
     {
-      label: "SETTINGS",
+      label: "PENGATURAN",
       items: [
         ...(isAdmin ? [
-          { title: "Infrastruktur Dedicated", href: "/settings?tab=infrastructure", icon: Server },
-          { title: "Developer", href: "/developer", icon: Code, matchPrefix: true },
-          { title: "Workspace Settings", href: "/settings", icon: Settings, matchPrefix: true },
+          { title: "Domain Kustom", href: "/domains", icon: Globe, matchPrefix: true },
+          { 
+            title: "Infrastruktur & DB", 
+            href: "/infrastructure", 
+            icon: Server, 
+            matchPrefix: true,
+            badge: effectiveHasDedicatedInfra ? "VPS" : undefined
+          },
+          { title: "Developer & API", href: "/developer", icon: Code, matchPrefix: true },
+          { title: "Pengaturan Workspace", href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
       ],
     },
-  ].filter(section => section.items.length > 0)
-
-  useEffect(() => {
-    if (!mounted) return;
-    navSections.forEach(section => {
-      section.items.forEach(item => {
-        if (item.children) {
-          const isAnyChildActive = item.children.some(child => isActive(child));
-          if (isAnyChildActive) {
-            setOpenMenus(prev => {
-              if (prev[item.title]) return prev;
-              return { ...prev, [item.title]: true };
-            });
-          }
-        }
-      })
-    })
-  }, [pathname, tenantId, mounted])
+  ].filter(section => section.items.length > 0), [isAdmin, isEditor, isEnterpriseMode, isExpired, userRole, effectiveHasDedicatedInfra])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
   }
 
-  if (pathname?.includes("/content-type-builder")) {
+  if (!isExpired && pathname?.includes("/content-type-builder")) {
     return null
   }
 
@@ -226,15 +257,24 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
           onClick={() => setWorkspaceSwitcherOpen(!workspaceSwitcherOpen)}
           className="flex w-full items-center gap-3 px-4 py-3 text-left transition-colors hover:bg-muted/50 cursor-pointer"
         >
-          <div className="w-8 h-8 shrink-0 rounded-none bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center text-white text-xs font-bold shadow-none">
-            {(currentTenant?.name || "W")[0].toUpperCase()}
+          <div className={cn(
+            "w-8 h-8 shrink-0 flex items-center justify-center text-white text-xs font-bold",
+            isExpired ? "bg-amber-500" : "bg-gradient-to-br from-emerald-500 to-teal-600"
+          )}>
+            {isExpired ? <Lock className="h-4 w-4" /> : (currentTenant?.name || "W")[0].toUpperCase()}
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5">
               <span className="text-sm font-bold truncate">{currentTenant?.name || "Workspace"}</span>
-              <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 capitalize shrink-0 font-bold border-primary/20 text-primary">
-                {currentTenant?.role || "member"}
-              </Badge>
+              {isExpired ? (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 shrink-0 font-bold border-amber-500/40 bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center gap-0.5">
+                  <Lock className="w-2 h-2" /> Terkunci
+                </Badge>
+              ) : (
+                <Badge variant="outline" className="text-[9px] px-1 py-0 h-3.5 capitalize shrink-0 font-bold border-primary/20 text-primary">
+                  {currentTenant?.role || "member"}
+                </Badge>
+              )}
             </div>
             <span className="text-[10px] text-muted-foreground font-mono">/{currentTenant?.slug || tenantId}</span>
           </div>

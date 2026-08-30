@@ -30,8 +30,8 @@ export async function GET(
     const mediaSizeSum = await tenantDb.media.aggregate({
       where: { tenantId },
       _sum: { size: true }
-    })
-    const mediaSizeVal = Number(mediaSizeSum._sum?.size || 0)
+    }).catch(() => ({ _sum: { size: 0 } }))
+    const mediaSizeVal = Number((mediaSizeSum as any)?._sum?.size || 0)
 
     const tenantData = await db.tenant.findUnique({
       where: { id: tenantId },

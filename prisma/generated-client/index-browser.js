@@ -187,6 +187,10 @@ exports.Prisma.TenantScalarFieldEnum = {
   faviconUrl: 'faviconUrl',
   primaryColor: 'primaryColor',
   storageConfig: 'storageConfig',
+  hostingStatus: 'hostingStatus',
+  hostingExpiresAt: 'hostingExpiresAt',
+  vercelProjectId: 'vercelProjectId',
+  vercelDeploymentUrl: 'vercelDeploymentUrl',
   aiTokensUsed: 'aiTokensUsed',
   aiCreditsExtra: 'aiCreditsExtra',
   storageExtraBytes: 'storageExtraBytes',
@@ -805,6 +809,29 @@ exports.Prisma.InfrastructureCredentialScalarFieldEnum = {
   rotatedAt: 'rotatedAt'
 };
 
+exports.Prisma.SupportTicketScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  userId: 'userId',
+  subject: 'subject',
+  category: 'category',
+  priority: 'priority',
+  status: 'status',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
+exports.Prisma.SupportMessageScalarFieldEnum = {
+  id: 'id',
+  ticketId: 'ticketId',
+  senderId: 'senderId',
+  senderRole: 'senderRole',
+  message: 'message',
+  attachments: 'attachments',
+  isRead: 'isRead',
+  createdAt: 'createdAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -896,7 +923,9 @@ exports.Prisma.ModelName = {
   SiteConversation: 'SiteConversation',
   SiteMessage: 'SiteMessage',
   InfrastructureServer: 'InfrastructureServer',
-  InfrastructureCredential: 'InfrastructureCredential'
+  InfrastructureCredential: 'InfrastructureCredential',
+  SupportTicket: 'SupportTicket',
+  SupportMessage: 'SupportMessage'
 };
 
 /**

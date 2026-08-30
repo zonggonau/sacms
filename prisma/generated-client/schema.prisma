@@ -29,6 +29,7 @@ model User {
   subscriptions       Subscription[]
   tenants             TenantMember[]
   aiQuotaLedgers      AiQuotaLedger[]
+  supportTickets      SupportTicket[]
 
   @@map("users")
 }
@@ -92,6 +93,10 @@ model Tenant {
   faviconUrl             String?
   primaryColor           String?
   storageConfig          Json?
+  hostingStatus          String?                       @default("trial")
+  hostingExpiresAt       DateTime?
+  vercelProjectId        String?
+  vercelDeploymentUrl    String?
   aiTokensUsed           Int                           @default(0)
   aiCreditsExtra         Int                           @default(0)
   storageExtraBytes      BigInt                        @default(0)
@@ -122,6 +127,7 @@ model Tenant {
   roles                  TenantRole[]
   sites                  Site[]
   infrastructureServers  InfrastructureServer[]
+  supportTickets         SupportTicket[]
 
   @@map("tenants")
 }
@@ -253,7 +259,7 @@ model ContentEntry {
   createdAt         DateTime                  @default(now())
   updatedAt         DateTime                  @updatedAt
   archivedAt        DateTime?
-  locale            String                    @default("en")
+  locale            String                    @default("id")
   reviewComment     String?
   scheduledAt       DateTime?
   status            ContentStatus             @default(DRAFT)
@@ -355,7 +361,7 @@ model TenantSingleTypeAssignment {
   publishedAt  DateTime?
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
-  locale       String     @default("en")
+  locale       String     @default("id")
   data         Json?
   singleType   SingleType @relation(fields: [singleTypeId], references: [id], onDelete: Cascade)
   tenant       Tenant?    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -983,4 +989,42 @@ model InfrastructureCredential {
   server                    InfrastructureServer @relation(fields: [serverId], references: [id], onDelete: Cascade)
 
   @@map("infrastructure_credentials")
+}
+
+// ─── Customer Support & IT Helpdesk ───────────────────────────────────
+
+model SupportTicket {
+  id        String   @id @default(cuid())
+  tenantId  String?
+  userId    String
+  subject   String
+  category  String   @default("general") // general | billing | technical | infrastructure | domain
+  priority  String   @default("normal") // low | normal | high | urgent
+  status    String   @default("open") // open | in_progress | resolved | closed
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tenant   Tenant?          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  messages SupportMessage[]
+
+  @@index([tenantId, status])
+  @@index([userId])
+  @@map("support_tickets")
+}
+
+model SupportMessage {
+  id          String   @id @default(cuid())
+  ticketId    String
+  senderId    String
+  senderRole  String   @default("user") // user | admin | system
+  message     String   @db.Text
+  attachments Json? // Array of file metadata or URLs
+  isRead      Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  ticket SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId])
+  @@map("support_messages")
 }

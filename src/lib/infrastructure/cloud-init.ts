@@ -8,12 +8,15 @@ export interface CloudInitConfig {
   minioBucket: string
   dbDomain: string
   mediaDomain: string
+  webDomain?: string
   adminEmail?: string
+  allowedManagementIps?: string[]
 }
 
 /**
  * Generate a production-ready Cloud-Init configuration (#cloud-config)
- * for deploying PostgreSQL 17 + MinIO S3 + Caddy on a Contabo VPS.
+ * for deploying PostgreSQL 17 + MinIO S3 + Next.js Frontend + Caddy on a Contabo VPS.
+ * Hardened with UFW firewall rules that whitelist PostgreSQL 5432 strictly for SaCMS app servers.
  */
 export function generateCloudInitScript(config: CloudInitConfig): string {
   const {
@@ -25,8 +28,21 @@ export function generateCloudInitScript(config: CloudInitConfig): string {
     minioPassword,
     minioBucket,
     mediaDomain,
+    webDomain,
     adminEmail = 'admin@sacms.cloud',
+    allowedManagementIps = [],
   } = config
+
+  // Extract SaCMS server IPs for firewall whitelist
+  const sacmsServerIps = (process.env.SACMS_SERVER_IPS || process.env.SERVER_IPV4 || '')
+    .split(',')
+    .map(ip => ip.trim())
+    .filter(Boolean)
+
+  const allWhitelistedIps = Array.from(new Set([...sacmsServerIps, ...allowedManagementIps]))
+  const ufwPostgresRules = allWhitelistedIps.length > 0
+    ? allWhitelistedIps.map(ip => `      ufw allow from ${ip} to any port 5432 proto tcp`).join('\n')
+    : '      ufw allow 5432/tcp # Note: Set SACMS_SERVER_IPS for strict IP restriction'
 
   const dockerComposeContent = `
 services:
@@ -100,6 +116,22 @@ services:
     networks:
       - sacms_network
 
+  frontend:
+    image: node:20-alpine
+    container_name: sacms_frontend
+    restart: always
+    working_dir: /app
+    volumes:
+      - ./site:/app
+    command: /bin/sh -c "if [ -f server.js ]; then node server.js; elif [ -f package.json ]; then npm run start 2>/dev/null || node -e 'require(\\"http\\").createServer((req, res) => { res.writeHead(200, {\"Content-Type\": \"text/html\"}); res.end(\"<h1>SaCMS Frontend Initializing...</h1>\"); }).listen(3000)'; else node -e 'require(\"http\").createServer((req, res) => { res.writeHead(200, {\"Content-Type\": \"text/html\"}); res.end(\"<div style=\\\"font-family:sans-serif;text-align:center;padding:50px;background:#090d16;color:#f8fafc;min-height:100vh\\\"><h1>🚀 SaCMS Dedicated VPS Ready</h1><p style=\\\"color:#94a3b8\\\">Website frontend is active and ready to receive deployments from SaCMS AI Studio.</p></div>\"); }).listen(3000);'; fi"
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+    networks:
+      - sacms_network
+
 networks:
   sacms_network:
     driver: bridge
@@ -116,8 +148,8 @@ volumes:
     email ${adminEmail}
 }
 
+# Media Storage Subdomain
 ${mediaDomain} {
-    # Health probe
     handle /healthz {
         respond "OK" 200
     }
@@ -130,6 +162,17 @@ ${mediaDomain} {
     # MinIO S3 API & public downloads
     handle {
         reverse_proxy minio:9000
+    }
+}
+
+# Next.js Frontend Website
+${webDomain ? `${webDomain}` : ':80'} {
+    handle /healthz {
+        respond "OK" 200
+    }
+
+    handle {
+        reverse_proxy frontend:3000
     }
 }
 `.trim()
@@ -161,14 +204,17 @@ ${caddyfileContent.split('\n').map(line => '      ' + line).join('\n')}
     content: |
       #!/bin/bash
       set -e
-      echo "[SaCMS] Starting firewall configuration..."
+      echo "[SaCMS] Starting hardened firewall configuration..."
       ufw default deny incoming
       ufw default allow outgoing
       ufw allow 22/tcp
       ufw allow 80/tcp
       ufw allow 443/tcp
-      ufw allow 5432/tcp
+${ufwPostgresRules}
       ufw --force enable
+
+      echo "[SaCMS] Initializing frontend site directory..."
+      mkdir -p /opt/sacms/site
 
       echo "[SaCMS] Starting Docker containers..."
       cd /opt/sacms

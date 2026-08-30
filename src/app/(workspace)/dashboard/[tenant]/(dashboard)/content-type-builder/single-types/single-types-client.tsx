@@ -92,11 +92,11 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
     startTransition(async () => {
       const res = await saveSingleTypeDataAction(tenantSlug, singleType.id, singleType.data, publish)
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({
-          title: publish ? "Published!" : "Unpublished",
-          description: `${singleType.name} is now ${publish ? 'live' : 'draft'}.`,
+          title: publish ? "Berhasil Diterbitkan!" : "Draf Disimpan",
+          description: `${singleType.name} kini berstatus ${publish ? 'terbit' : 'draf'}.`,
           className: publish ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
         })
       }
@@ -111,16 +111,16 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
   const handleDelete = () => {
     if (!deleteDialog.singleType) return
     if (deleteConfirmName !== deleteDialog.singleType.name) {
-      toast({ variant: "destructive", title: "Error", description: "Verification name does not match" })
+      toast({ variant: "destructive", title: "Verifikasi Gagal", description: "Nama konfirmasi tidak sesuai" })
       return
     }
 
     startTransition(async () => {
       const res = await deleteSingleTypeAction(tenantSlug, deleteDialog.singleType!.id)
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
-        toast({ title: "Deleted", description: `${deleteDialog.singleType!.name} has been removed.` })
+        toast({ title: "Berhasil Dihapus", description: `${deleteDialog.singleType!.name} telah berhasil dihapus.` })
         setDeleteDialog({ open: false, singleType: null })
       }
     })
@@ -144,7 +144,17 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                 Kelola struktur skema konten tunggal (seperti Beranda, Pengaturan Global, atau Tentang Kami).
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2.5">
+              <Button
+                variant="outline"
+                className="h-9 px-3.5 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted shadow-xs transition-all flex items-center gap-1.5"
+                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types`)}
+                title="Buka CMS Studio untuk mengelola konten Halaman Tunggal"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                <span>Buka di CMS Studio</span>
+              </Button>
+
               <Button 
                 className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all"
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/new`)}
@@ -296,6 +306,17 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                           </TableCell>
                           <TableCell className="text-right pr-6 py-3" onClick={(e) => e.stopPropagation()}>
                             <div className="flex justify-end gap-1.5 items-center">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="h-7 px-2.5 text-[11px] font-bold rounded-lg gap-1.5 border-border/80 text-foreground hover:bg-muted shadow-xs"
+                                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types/${st.slug}`)}
+                                title={`Buka entri ${st.name} di CMS Studio`}
+                              >
+                                <FileText className="h-3 w-3 text-primary" />
+                                <span>Kelola Konten</span>
+                              </Button>
+
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground">
@@ -303,9 +324,12 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                                   </Button>
                                 </DropdownMenuTrigger>
                                 <DropdownMenuContent align="end" className="w-48 rounded-xl">
+                                  <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/cms/single-types/${st.slug}`)} className="text-xs cursor-pointer rounded-lg">
+                                    <Layout className="mr-2 h-3.5 w-3.5" /> Buka Entri CMS
+                                  </DropdownMenuItem>
                                   {(!st.isGlobal || isGlobalTenant) && (
                                     <DropdownMenuItem onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types/${st.slug}/edit`)} className="text-xs cursor-pointer rounded-lg">
-                                      <Layout className="mr-2 h-3.5 w-3.5" /> Edit Skema
+                                      <Edit2 className="mr-2 h-3.5 w-3.5" /> Edit Skema
                                     </DropdownMenuItem>
                                   )}
                                   {(!st.isGlobal || isGlobalTenant) && (

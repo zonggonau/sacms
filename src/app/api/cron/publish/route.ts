@@ -51,9 +51,15 @@ export async function GET(request: Request) {
 
         let publishedInTenant = 0
         for (const entry of entries) {
-          // Resolve content type slug (lookup from Master DB)
-          const contentType = await db.contentType.findUnique({
-            where: { id: entry.contentTypeId },
+          // Resolve content type slug (lookup from Master DB, scoped to this tenant)
+          const contentType = await db.contentType.findFirst({
+            where: { 
+              id: entry.contentTypeId,
+              OR: [
+                { tenantId: tenant.id },
+                { tenantId: null }, // global content types
+              ]
+            },
             select: { slug: true }
           })
 

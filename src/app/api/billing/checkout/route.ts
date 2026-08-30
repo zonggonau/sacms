@@ -86,6 +86,8 @@ export async function POST(request: NextRequest) {
         topup_ai_2m: { name: "AI Power Pack (2M Tokens)", price: 75000, quotaType: "ai_tokens", amountUnits: 2000000 },
         topup_storage_10gb: { name: "Extra Storage (10 GB)", price: 35000, quotaType: "storage", amountUnits: 10 * 1024 * 1024 * 1024 },
         topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
+        hosting_annual_1yr: { name: "Cloud Edge Hosting (1 Tahun)", price: 650000, quotaType: "hosting_annual", amountUnits: 1 },
+        hosting_bundle_domain_1yr: { name: "Cloud Edge Hosting + Domain .com (1 Tahun)", price: 850000, quotaType: "hosting_bundle", amountUnits: 1 },
       }
 
       if (BUILTIN_TOPUPS[planId]) {

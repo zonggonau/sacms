@@ -36,7 +36,7 @@ describe("Auth Server Actions", () => {
   describe("registerUser", () => {
     it("should return error when required fields are missing", async () => {
       const result = await registerUser({ name: "", email: "", password: "" })
-      expect(result.error).toBe("Missing required fields")
+      expect(result.error).toBe("Semua kolom wajib diisi")
     })
 
     it("should reject weak password", async () => {
@@ -45,7 +45,7 @@ describe("Auth Server Actions", () => {
         email: "john@example.com",
         password: "123",
       })
-      expect(result.error).toBe("Password is too weak. Please ensure it is at least 'Kuat'.")
+      expect(result.error).toBe("Kata sandi terlalu lemah. Pastikan minimal berstatus 'Kuat'.")
     })
 
     it("should successfully register first user as super_admin", async () => {
@@ -81,7 +81,7 @@ describe("Auth Server Actions", () => {
   describe("forgotPassword", () => {
     it("should return error if email is missing", async () => {
       const result = await forgotPassword("")
-      expect(result.error).toBe("Email is required")
+      expect(result.error).toBe("Email wajib diisi")
     })
 
     it("should return success even if user does not exist (prevent enumeration)", async () => {
@@ -106,7 +106,7 @@ describe("Auth Server Actions", () => {
   describe("resetPassword", () => {
     it("should return error when token or password is missing", async () => {
       const result = await resetPassword({ token: "", password: "" })
-      expect(result.error).toBe("Token and password are required")
+      expect(result.error).toBe("Token dan kata sandi baru wajib diisi")
     })
 
     it("should return error for invalid or expired token", async () => {
@@ -116,7 +116,7 @@ describe("Auth Server Actions", () => {
         token: "invalid-token",
         password: "NewPassword123!",
       })
-      expect(result.error).toBe("Invalid or expired token")
+      expect(result.error).toBe("Tautan tidak valid atau sudah kadaluarsa")
     })
   })
 })

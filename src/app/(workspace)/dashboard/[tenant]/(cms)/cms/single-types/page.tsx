@@ -45,11 +45,11 @@ export default function CMSSingleTypesPage() {
       if (response.singleTypes) {
         setSingleTypes(response.singleTypes)
       } else if (response.error) {
-        toast({ variant: "destructive", title: "Error", description: response.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: response.error })
       }
     } catch (error) {
       console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "Gagal memuat daftar halaman" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat daftar halaman" })
     } finally {
       setLoading(false)
     }

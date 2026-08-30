@@ -159,9 +159,9 @@ export function RichTextEditor({
       onChange(newValue)
       setIsAiOpen(false)
       setAiPrompt("")
-      toast({ title: "AI Content Generated!" })
+      toast({ title: "Konten AI Berhasil Dibuat!" })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "AI Error", description: err.message })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat konten dengan AI" })
     } finally {
       setIsGenerating(false)
     }
@@ -173,34 +173,34 @@ export function RichTextEditor({
         <div className="absolute top-2 right-2 z-10 opacity-0 group-hover:opacity-100 transition-opacity">
           <Dialog open={isAiOpen} onOpenChange={setIsAiOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" variant="outline" className="h-8 bg-white border-orange-500 text-orange-600 font-bold hover:bg-orange-50">
-                <Sparkles className="w-3.5 h-3.5 mr-1" /> Ask AI
+              <Button size="sm" variant="outline" className="h-8 rounded-xl border-primary/30 text-primary font-bold hover:bg-primary/10">
+                <Sparkles className="w-3.5 h-3.5 mr-1" /> Tanya AI
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px] rounded-none shadow-none border-border">
+            <DialogContent className="sm:max-w-[425px] rounded-2xl border-border/80 bg-card shadow-xl">
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Sparkles className="w-5 h-5 text-orange-500" /> Generate with AI
+                <DialogTitle className="flex items-center gap-2 text-base font-bold">
+                  <Sparkles className="w-4 h-4 text-primary" /> Buat Konten dengan AI
                 </DialogTitle>
               </DialogHeader>
               <div className="py-4">
                 <Textarea 
-                  placeholder="What would you like me to write? (e.g., 'Write a 2 paragraph introduction about space exploration')"
+                  placeholder="Apa yang ingin Anda tulis? (Contoh: 'Tulis 2 paragraf pengantar tentang strategi headless CMS')"
                   value={aiPrompt}
                   onChange={(e) => setAiPrompt(e.target.value)}
                   rows={4}
-                  className="resize-none focus-visible:ring-orange-500 rounded-none border-border"
+                  className="resize-none rounded-xl border-border/80 text-xs leading-relaxed"
                 />
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsAiOpen(false)} className="rounded-none font-bold">Cancel</Button>
+                <Button variant="outline" onClick={() => setIsAiOpen(false)} className="rounded-xl text-xs font-semibold">Batal</Button>
                 <Button 
                   onClick={handleGenerateAI} 
                   disabled={!aiPrompt.trim() || isGenerating}
-                  className="bg-orange-500 hover:bg-orange-600 rounded-none font-bold"
+                  className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                 >
-                  {isGenerating ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                  Generate
+                  {isGenerating ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-2" />}
+                  Generate Konten
                 </Button>
               </DialogFooter>
             </DialogContent>

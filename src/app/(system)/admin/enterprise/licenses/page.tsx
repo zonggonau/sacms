@@ -183,7 +183,7 @@ export default function EnterpriseLicensesPage() {
       }
     } catch (err) {
       toast({
-        title: "Error",
+        title: "Terjadi Kesalahan",
         description: "Gagal membuat lisensi",
         variant: "destructive",
       })
@@ -216,7 +216,7 @@ export default function EnterpriseLicensesPage() {
       }
     } catch (err) {
       toast({
-        title: "Error",
+        title: "Terjadi Kesalahan",
         description: "Gagal menghapus lisensi",
         variant: "destructive",
       })

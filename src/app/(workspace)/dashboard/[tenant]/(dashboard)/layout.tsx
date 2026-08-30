@@ -80,15 +80,21 @@ export default async function TenantDashboardLayout({
     redirect(`/dashboard/${access.tenant.slug || access.tenant.id}/cms`)
   }
 
-  // Check trial / subscription expiration and suspension status
-  const [subscription, tenantData] = await Promise.all([
+  // Check trial / subscription expiration and suspension status, plus dedicated infrastructure availability
+  const [subscription, tenantData, infraServer] = await Promise.all([
     db.subscription.findFirst({
       where: { tenantId: access.tenantId },
       orderBy: { currentPeriodEnd: "desc" }
     }),
     db.tenant.findUnique({
       where: { id: access.tenantId },
-      select: { status: true }
+      select: { status: true, databaseUrl: true, plan: true }
+    }),
+    db.infrastructureServer.findFirst({
+      where: {
+        tenantId: access.tenantId,
+        status: { in: ["active", "provisioning", "configuring", "suspended", "error"] }
+      }
     })
   ])
 
@@ -98,11 +104,26 @@ export default async function TenantDashboardLayout({
     tenantData?.status === "suspended" || 
     (subscription?.currentPeriodEnd ? new Date() > subscription.currentPeriodEnd : false)
   );
+
+  const hasDedicatedInfra = Boolean(
+    tenantData?.databaseUrl ||
+    infraServer ||
+    tenantData?.plan?.toLowerCase().includes("vps") ||
+    tenantData?.plan?.toLowerCase().includes("dedicated") ||
+    tenantData?.plan?.toLowerCase().includes("enterprise") ||
+    enterprise
+  )
   
   return (
     <DashboardLayoutShell
       sidebar={
-        <TenantSidebar tenantSlug={resolvedParams.tenant} isEnterpriseMode={enterprise} session={session} />
+        <TenantSidebar 
+          tenantSlug={resolvedParams.tenant} 
+          isEnterpriseMode={enterprise} 
+          isExpired={isExpired}
+          hasDedicatedInfra={hasDedicatedInfra}
+          session={session} 
+        />
       }
       subscriptionGate={
         <SubscriptionGate isExpired={isExpired} tenantId={access.tenantId}>

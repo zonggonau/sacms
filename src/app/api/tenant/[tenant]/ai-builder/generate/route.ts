@@ -52,8 +52,12 @@ export async function POST(
                 required: f.required, 
                 unique: f.unique, 
                 order: i, 
-                relationSlug: f.type === 'relation' ? f.relationSlug : null,
-                options: f.type === 'component' ? { componentSlug: f.componentSlug } : undefined
+                relationSlug: f.type === 'relation' ? (f.relationSlug || null) : null,
+                options: f.type === 'relation'
+                  ? { relationType: "manyToOne", targetModel: "content-type", targetSlug: f.relationSlug || "", multiple: false }
+                  : f.type === 'component'
+                  ? { componentSlug: f.componentSlug || "", repeatable: false }
+                  : undefined
               }))
             },
             tenants: { create: { tenantId: tenant.id } }
@@ -128,8 +132,12 @@ export async function POST(
                 required: f.required, 
                 unique: f.unique, 
                 order: i, 
-                relationSlug: f.type === 'relation' ? f.relationSlug : null,
-                options: f.type === 'component' ? { componentSlug: f.componentSlug } : undefined
+                relationSlug: f.type === 'relation' ? (f.relationSlug || null) : null,
+                options: f.type === 'relation'
+                  ? { relationType: "manyToOne", targetModel: "content-type", targetSlug: f.relationSlug || "", multiple: false }
+                  : f.type === 'component'
+                  ? { componentSlug: f.componentSlug || "", repeatable: false }
+                  : undefined
               }))
             },
             tenants: { create: { tenantId: tenant.id, data: Object.keys(dummyData).length > 0 ? dummyData : undefined } }
@@ -176,8 +184,8 @@ export async function POST(
     await db.apiToken.create({
       data: {
         tenantId: tenant.id,
-        name: `V0 Auto-Generated Token`,
-        description: `Token generated automatically for V0.dev Website Builder on ${new Date().toISOString()}`,
+        name: `SaCMS AI Generator Token`,
+        description: `Token generated automatically for SaCMS AI Website Builder on ${new Date().toISOString()}`,
         token: hashedToken,
         type: "read-only",
         permissions: [],
@@ -185,7 +193,7 @@ export async function POST(
       },
     })
 
-    // 4. Create Super Prompt for V0
+    // 4. Create Super Prompt
     const finalApiUrl = `${apiBaseUrl.replace(/\/$/, '')}/api/public/${tenant.slug}`
     
     const superPrompt = `You are an expert Next.js frontend developer. Build a modern, highly aesthetic, and responsive website based on the following requirements and Headless CMS schema.
@@ -203,7 +211,7 @@ API INTEGRATION GUIDE:
 - Fetch Collection Data: \`GET \${Base API URL}/content/[contentTypeSlug]\`. Returns: \`{ data: [{ id, ...fields }] }\`
 - Fetch Single Page Data: \`GET \${Base API URL}/single/[singleTypeSlug]\`. Returns: \`{ data: { ...fields } }\`
 
-REQUIREMENTS FOR v0.dev:
+REQUIREMENTS FOR NEXT.JS 16 APP ROUTER:
 1. Use Next.js 14/15 App Router with Tailwind CSS.
 2. Build a highly polished, premium, and dynamic UI (use Lucide React icons, smooth hover effects, modern typography).
 3. Create the necessary pages and components to display the data defined in the schema.

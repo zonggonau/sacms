@@ -168,7 +168,7 @@ export async function GET(
       where: { tenantId: tenantId, isDefault: true },
       select: { locale: true },
     })
-    const defaultLocale = tenantDefaultLocale?.locale ?? "en"
+    const defaultLocale = tenantDefaultLocale?.locale ?? "id"
     const locale = requestedLocale ?? defaultLocale
 
     // 8. Cache check

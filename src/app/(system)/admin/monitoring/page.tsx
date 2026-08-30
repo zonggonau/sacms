@@ -22,6 +22,7 @@ import {
 import { Switch } from "@/components/ui/switch"
 import { Label } from "@/components/ui/label"
 import { cn } from "@/lib/utils"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 
 interface SystemMetric {
   type: string
@@ -135,9 +136,7 @@ export default function AdminMonitoringPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminPageSkeleton layout="table" cardsCount={4} />
       </div>
     )
   }

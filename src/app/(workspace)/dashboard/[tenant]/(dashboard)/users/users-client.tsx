@@ -43,17 +43,9 @@ import {
   BookOpen,
   Info
 } from "lucide-react"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { createMemberAction, updateMemberAction, deleteMemberAction } from "@/actions/users"
-import { Checkbox } from "@/components/ui/checkbox"
 import Link from "next/link"
 
 export const WORKFLOW_PERMISSION_OPTIONS = [
@@ -71,7 +63,10 @@ export const WORKFLOW_PERMISSION_OPTIONS = [
   { key: "workflow.rejected_to_draft", label: "Revisi Draf Ditolak (REJECTED → DRAFT)", desc: "Mengizinkan pengeditan konten yang ditolak kembali ke draf" },
 ]
 
+export type WorkspaceRole = "owner" | "admin" | "editor" | "author" | "contributor" | "viewer" | "subscriber"
+
 export const ROLE_LABELS: Record<string, string> = {
+  owner: "Owner (Pemilik Workspace)",
   admin: "Administrator (Kontrol Penuh Workspace)",
   editor: "Editor (Review, Setujui & Terbitkan)",
   author: "Author (Terbitkan Konten Sendiri)",
@@ -133,20 +128,21 @@ interface UsersClientProps {
 }
 
 const PermissionsMatrix = React.memo(function PermissionsMatrix({
-  permissions,
+  permissions = [],
   onTogglePermission,
   onToggleAll,
 }: {
-  permissions: string[]
+  permissions?: string[]
   onTogglePermission: (key: string) => void
   onToggleAll: () => void
 }) {
-  const isAllSelected = permissions.length === WORKFLOW_PERMISSION_OPTIONS.length
+  const safePermissions = Array.isArray(permissions) ? permissions : []
+  const isAllSelected = safePermissions.length === WORKFLOW_PERMISSION_OPTIONS.length
   return (
     <div className="space-y-2.5 pt-1">
       <div className="flex items-center justify-between">
         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-          Izin Transisi Workflow ({permissions.length}/{WORKFLOW_PERMISSION_OPTIONS.length})
+          Izin Transisi Workflow ({safePermissions.length}/{WORKFLOW_PERMISSION_OPTIONS.length})
         </Label>
         <button
           type="button"
@@ -159,7 +155,7 @@ const PermissionsMatrix = React.memo(function PermissionsMatrix({
 
       <div className="border border-border/80 rounded-xl p-3 max-h-52 overflow-y-auto space-y-2 bg-muted/20">
         {WORKFLOW_PERMISSION_OPTIONS.map((opt) => {
-          const checked = permissions.includes(opt.key)
+          const checked = safePermissions.includes(opt.key)
           return (
             <div 
               key={opt.key} 
@@ -169,10 +165,12 @@ const PermissionsMatrix = React.memo(function PermissionsMatrix({
                 onTogglePermission(opt.key)
               }}
             >
-              <Checkbox
-                checked={checked}
-                className="mt-0.5 pointer-events-none"
-              />
+              <div className={cn(
+                "w-4 h-4 rounded-[4px] border flex items-center justify-center transition-colors shrink-0 mt-0.5",
+                checked ? "bg-primary border-primary text-primary-foreground" : "border-input bg-transparent"
+              )}>
+                {checked && <Check className="w-3 h-3 stroke-[3]" />}
+              </div>
               <div className="space-y-0.5 min-w-0 flex-1">
                 <p className="text-xs font-bold text-foreground leading-none">{opt.label}</p>
                 <p className="text-[10px] text-muted-foreground">{opt.desc}</p>
@@ -196,13 +194,18 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   const [isPasswordOpen, setIsPasswordOpen] = useState(false)
   const [isDeleteOpen, setIsDeleteOpen] = useState(false)
   const [isLimitModalOpen, setIsLimitModalOpen] = useState(false)
-  
+
   const [selectedMember, setSelectedMember] = useState<Member | null>(null)
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null)
-  const [newRole, setNewRole] = useState("")
+  const [newRole, setNewRole] = useState<WorkspaceRole>("viewer")
   const [newPassword, setNewPassword] = useState("")
 
-  const [newMember, setNewMember] = useState({
+  const [newMember, setNewMember] = useState<{
+    email: string
+    role: WorkspaceRole
+    name: string
+    password: string
+  }>({
     email: "",
     role: "viewer",
     name: "",
@@ -210,7 +213,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   })
   
   const [createPermissions, setCreatePermissions] = useState<string[]>(
-    ROLE_DEFAULT_PERMISSIONS["viewer"] || []
+    ROLE_DEFAULT_PERMISSIONS["viewer"] ? [...ROLE_DEFAULT_PERMISSIONS["viewer"]] : []
   )
   const [editPermissions, setEditPermissions] = useState<string[]>([])
 
@@ -220,8 +223,9 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   const isLimitReached = current >= limit
 
   const handleCreateRoleChange = useCallback((role: string) => {
-    setNewMember(prev => ({ ...prev, role }))
-    setCreatePermissions(ROLE_DEFAULT_PERMISSIONS[role] || [])
+    const r = role as WorkspaceRole
+    setNewMember(prev => ({ ...prev, role: r }))
+    setCreatePermissions(ROLE_DEFAULT_PERMISSIONS[r] ? [...ROLE_DEFAULT_PERMISSIONS[r]] : [])
   }, [])
 
   const handleToggleCreatePermission = useCallback((key: string) => {
@@ -239,8 +243,9 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
   }, [])
 
   const handleEditRoleChange = useCallback((role: string) => {
-    setNewRole(role)
-    setEditPermissions(ROLE_DEFAULT_PERMISSIONS[role] || [])
+    const r = role as WorkspaceRole
+    setNewRole(r)
+    setEditPermissions(ROLE_DEFAULT_PERMISSIONS[r] ? [...ROLE_DEFAULT_PERMISSIONS[r]] : [])
   }, [])
 
   const handleToggleEditPermission = useCallback((key: string) => {
@@ -259,9 +264,12 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
 
   const openEditRoleModal = (member: Member) => {
     setSelectedMember(member)
-    const roleVal = member.role || "viewer"
+    const roleVal = (member.role as WorkspaceRole) || "viewer"
     setNewRole(roleVal)
-    setEditPermissions(member.customPermissions || ROLE_DEFAULT_PERMISSIONS[roleVal] || [])
+    const initialPerms = Array.isArray(member.customPermissions)
+      ? [...member.customPermissions]
+      : (ROLE_DEFAULT_PERMISSIONS[roleVal] ? [...ROLE_DEFAULT_PERMISSIONS[roleVal]] : [])
+    setEditPermissions(initialPerms)
     setIsRoleOpen(true)
   }
 
@@ -329,9 +337,8 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
 
   const filteredMembers = initialMembers.filter(
     (m) =>
-      m.role !== "owner" &&
-      (m.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (m.user.name && m.user.name.toLowerCase().includes(searchQuery.toLowerCase())))
+      m.user.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (m.user.name && m.user.name.toLowerCase().includes(searchQuery.toLowerCase()))
   )
 
   const getRoleBadge = (role: string) => {
@@ -546,19 +553,17 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
           <div className="py-2 space-y-4">
             <div className="space-y-1.5">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Preset Peran Workspace</Label>
-              <Select value={newRole || "viewer"} onValueChange={handleEditRoleChange}>
-                <SelectTrigger className="h-9 bg-muted/20 border-border/80 rounded-xl text-xs">
-                  <SelectValue>{ROLE_LABELS[newRole || "viewer"]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-card">
-                  <SelectItem value="admin" className="text-xs rounded-lg">Administrator (Kontrol Penuh Workspace)</SelectItem>
-                  <SelectItem value="editor" className="text-xs rounded-lg">Editor (Review, Setujui & Terbitkan)</SelectItem>
-                  <SelectItem value="author" className="text-xs rounded-lg">Author (Terbitkan Konten Sendiri)</SelectItem>
-                  <SelectItem value="contributor" className="text-xs rounded-lg">Contributor (Kirim Draf untuk Review)</SelectItem>
-                  <SelectItem value="viewer" className="text-xs rounded-lg">Viewer (Hanya Baca Konten)</SelectItem>
-                  <SelectItem value="subscriber" className="text-xs rounded-lg">Subscriber (Baca Publik)</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={newRole || "viewer"}
+                onChange={(e) => handleEditRoleChange(e.target.value)}
+                className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
+              >
+                {Object.entries(ROLE_LABELS).map(([rKey, rLabel]) => (
+                  <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
+                    {rLabel}
+                  </option>
+                ))}
+              </select>
             </div>
 
             <PermissionsMatrix
@@ -701,19 +706,17 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
             </div>
             <div className="space-y-1">
               <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Peran Workspace</Label>
-              <Select value={newMember.role || "viewer"} onValueChange={handleCreateRoleChange}>
-                <SelectTrigger className="bg-muted/20 border-border/80 rounded-xl h-9 text-xs">
-                  <SelectValue>{ROLE_LABELS[newMember.role || "viewer"]}</SelectValue>
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border bg-card">
-                  <SelectItem value="admin" className="text-xs rounded-lg">Administrator (Kontrol Penuh Workspace)</SelectItem>
-                  <SelectItem value="editor" className="text-xs rounded-lg">Editor (Review, Setujui & Terbitkan)</SelectItem>
-                  <SelectItem value="author" className="text-xs rounded-lg">Author (Terbitkan Konten Sendiri)</SelectItem>
-                  <SelectItem value="contributor" className="text-xs rounded-lg">Contributor (Kirim Draf untuk Review)</SelectItem>
-                  <SelectItem value="viewer" className="text-xs rounded-lg">Viewer (Hanya Baca Konten)</SelectItem>
-                  <SelectItem value="subscriber" className="text-xs rounded-lg">Subscriber (Baca Publik)</SelectItem>
-                </SelectContent>
-              </Select>
+              <select
+                value={newMember.role || "viewer"}
+                onChange={(e) => handleCreateRoleChange(e.target.value)}
+                className="w-full h-9 bg-muted/20 border border-border/80 rounded-xl px-3 text-xs text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary cursor-pointer font-medium"
+              >
+                {Object.entries(ROLE_LABELS).map(([rKey, rLabel]) => (
+                  <option key={rKey} value={rKey} className="bg-card text-foreground py-1">
+                    {rLabel}
+                  </option>
+                ))}
+              </select>
             </div>
             <PermissionsMatrix
               permissions={createPermissions}

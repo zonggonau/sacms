@@ -307,10 +307,10 @@ export default function EditComponentClient({
         toast({ title: "Berhasil", description: "Komponen berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/components`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error || "Gagal memperbarui komponen" })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error || "Gagal memperbarui komponen" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Gagal menyimpan skema" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan skema" })
     } finally {
       setSaving(false)
     }

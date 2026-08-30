@@ -52,10 +52,10 @@ export async function GET(request: NextRequest, context: Context) {
       }),
       tenantDb.mediaFolder.findMany({
         where: { tenantId },
-      }),
+      }).catch(() => []),
       tenantDb.media.findMany({
         where: { tenantId },
-      }),
+      }).catch(() => []),
     ])
 
     const contentTypes = contentTypesRaw.map(ct => ({ ...ct, fields: ct.schemaFields }))

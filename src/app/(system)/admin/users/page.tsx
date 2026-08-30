@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { RbacMatrixView } from "@/components/admin/rbac-matrix-view"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import {
   Loader2, Users, Search, Plus, Shield, Mail, Building2,
   MoreVertical, Edit, Trash2, Key, UserPlus, AlertCircle, CheckCircle,
@@ -180,7 +181,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal membuat pengguna" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -209,7 +210,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui pengguna" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -239,7 +240,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui sandi" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -291,7 +292,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal Menghapus", description: err.error || "Gagal menghapus pengguna" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menghapus pengguna" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat menghapus pengguna" })
     } finally {
       setIsSubmitting(false)
     }
@@ -346,7 +347,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menyimpan limit" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -369,7 +370,7 @@ function AdminUsersContent() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menghapus limit" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -395,9 +396,7 @@ function AdminUsersContent() {
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminPageSkeleton layout="table" cardsCount={0} />
       </div>
     )
   }
@@ -481,11 +480,17 @@ function AdminUsersContent() {
 
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl">
-              <TabsTrigger value="users" className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2">
+              <TabsTrigger 
+                value="users" 
+                className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <Users className="w-3.5 h-3.5" />
                 Pengguna Platform ({totalUsersCount})
               </TabsTrigger>
-              <TabsTrigger value="rbac" className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2">
+              <TabsTrigger 
+                value="rbac" 
+                className="rounded-xl font-bold text-xs px-5 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <ShieldCheck className="w-3.5 h-3.5" />
                 Matriks RBAC & Peran Sistem
               </TabsTrigger>

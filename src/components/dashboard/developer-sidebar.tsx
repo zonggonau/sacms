@@ -14,17 +14,17 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
   const pathname = usePathname()
 
   const navItems = [
-    { title: "API Keys", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
+    { title: "Kunci API", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
     { title: "Webhooks", href: `/dashboard/${tenantId}/developer/webhooks`, icon: Webhook },
     { title: "REST API", href: `/dashboard/${tenantId}/developer/api`, icon: Play },
     { title: "GraphQL Explorer", href: `/dashboard/${tenantId}/developer/graphql`, icon: Play },
-    { title: "SDK & Docs", href: `/dashboard/${tenantId}/developer/sdk`, icon: BookOpen },
-    { title: "MCP Server", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug },
+    { title: "SDK & Dokumentasi", href: `/dashboard/${tenantId}/developer/sdk`, icon: BookOpen },
+    { title: "Server MCP", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug },
   ]
 
   return (
     <div className="w-64 border-r border-border/80 bg-card shrink-0 hidden md:block h-full">
-      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/developer`} portalBadge="Developer" />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/developer`} portalBadge="Pengembang" />
       <nav className="p-3 space-y-1">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)

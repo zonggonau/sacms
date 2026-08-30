@@ -231,6 +231,41 @@ describe("SaCMS SDK", () => {
     })
   })
 
+  describe("collection().query()", () => {
+    it("chains query methods and executes fetch", async () => {
+      mockFetch.mockResolvedValueOnce({
+        ok: true,
+        json: () => Promise.resolve({ data: [{ id: "1", title: "Chained" }], meta: { pagination: { total: 1 } } }),
+      })
+
+      const res = await cf
+        .collection("articles")
+        .query()
+        .where("category", "eq", "tech")
+        .select(["title", "slug"])
+        .populate(["author"])
+        .sort("createdAt:desc")
+        .search("framework")
+        .locale("id")
+        .status("PUBLISHED")
+        .page(2)
+        .limit(15)
+        .fetch()
+
+      const calledUrl = mockFetch.mock.calls[0][0] as string
+      expect(calledUrl).toContain("filters[category][$eq]=tech")
+      expect(calledUrl).toContain("fields=title,slug")
+      expect(calledUrl).toContain("populate=author")
+      expect(calledUrl).toContain("sort=createdAt%3Adesc")
+      expect(calledUrl).toContain("search=framework")
+      expect(calledUrl).toContain("locale=id")
+      expect(calledUrl).toContain("status=PUBLISHED")
+      expect(calledUrl).toContain("pagination[page]=2")
+      expect(calledUrl).toContain("pagination[pageSize]=15")
+      expect(res.data.length).toBe(1)
+    })
+  })
+
   describe("error handling", () => {
     it("throws SaCMSError on non-ok response", async () => {
       mockFetch.mockResolvedValueOnce({

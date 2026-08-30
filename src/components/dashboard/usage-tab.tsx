@@ -147,8 +147,8 @@ export function UsageTab({ tenantSlug }: UsageTabProps) {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-5">
-          <div className="h-[260px] w-full pt-2">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[260px] min-h-[260px] w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%" minWidth={100} minHeight={200}>
               <LineChart data={charts?.apiUsage || []} margin={{ top: 5, right: 10, bottom: 5, left: -20 }}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" opacity={0.6} />
                 <XAxis 

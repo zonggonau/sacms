@@ -6,11 +6,11 @@ import { z } from "zod/v4"
 
 const provisionSchema = z.object({
   tenantId: z.string().min(1),
-  plan: z.string().optional().default("vps-s"),
-  region: z.string().optional().default("EU"),
-  diskGb: z.number().optional().default(75),
-  ramMb: z.number().optional().default(8192),
-  cpuCount: z.number().optional().default(4),
+  plan: z.string().optional().default("vps-4"),
+  region: z.string().optional().default("SIN"),
+  diskGb: z.number().optional(),
+  ramMb: z.number().optional(),
+  cpuCount: z.number().optional(),
   subscriptionId: z.string().optional(),
 })
 

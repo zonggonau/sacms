@@ -1,12 +1,16 @@
+import { getRedis } from '../redis'
+
 export interface ContaboPlanDefinition {
   id: string
   name: string
   productId: string
-  type: 'VPS' | 'VDS'
+  type: 'VPS' | 'VDS' | 'Storage'
+  series: 'Cloud VPS' | 'Cloud VPS Plus' | 'VPS Storage' | 'Cloud VDS'
   cpuCores: number
   isDedicatedCpu: boolean
   ramMb: number
   diskGb: number
+  diskType: 'SSD' | 'NVMe'
   bandwidthMbps: number
   monthlyPriceEur: number
   monthlyPriceIdr: number
@@ -15,160 +19,395 @@ export interface ContaboPlanDefinition {
 }
 
 export const CONTABO_PLANS: Record<string, ContaboPlanDefinition> = {
-  // ─── Cloud VPS (Shared Burstable Cores) ───
-  "vps-s": {
-    id: "vps-s",
-    name: "Cloud VPS S",
-    productId: "V4",
+  // ─── 1. Cloud VPS Series (Cost-Effective SSD: 12jt - 52jt / thn) ───
+  "vps-4": {
+    id: "vps-4",
+    name: "Cloud VPS 4",
+    productId: "V153",
     type: "VPS",
+    series: "Cloud VPS",
     cpuCores: 4,
     isDedicatedCpu: false,
     ramMb: 8192,
-    diskGb: 75,
+    diskGb: 100,
+    diskType: "SSD",
     bandwidthMbps: 200,
-    monthlyPriceEur: 5.50,
-    monthlyPriceIdr: 750000,
-    description: "4 vCPU, 8 GB RAM, 75 GB NVMe (Shared Cores, Cost-Effective)",
+    monthlyPriceEur: 4.50,
+    monthlyPriceIdr: 1200000,
+    description: "4 vCPU, 8 GB RAM, 100 GB SSD (Entry Level Dedicated DB & Storage)",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
   },
-  "vps-m": {
-    id: "vps-m",
-    name: "Cloud VPS M",
-    productId: "V8",
+  "vps-6": {
+    id: "vps-6",
+    name: "Cloud VPS 6",
+    productId: "V154",
     type: "VPS",
+    series: "Cloud VPS",
     cpuCores: 6,
     isDedicatedCpu: false,
-    ramMb: 16384,
-    diskGb: 150,
+    ramMb: 12288,
+    diskGb: 200,
+    diskType: "SSD",
     bandwidthMbps: 400,
-    monthlyPriceEur: 10.50,
-    monthlyPriceIdr: 1450000,
-    description: "6 vCPU, 16 GB RAM, 150 GB NVMe (High-traffic Content)",
+    monthlyPriceEur: 8.50,
+    monthlyPriceIdr: 1800000,
+    description: "6 vCPU, 12 GB RAM, 200 GB SSD (Mid-range Dedicated DB)",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
   },
-  "vps-l": {
-    id: "vps-l",
-    name: "Cloud VPS L",
-    productId: "V16",
+  "vps-8": {
+    id: "vps-8",
+    name: "Cloud VPS 8",
+    productId: "V155",
     type: "VPS",
+    series: "Cloud VPS",
     cpuCores: 8,
     isDedicatedCpu: false,
-    ramMb: 24576,
+    ramMb: 16384,
     diskGb: 300,
+    diskType: "SSD",
     bandwidthMbps: 600,
-    monthlyPriceEur: 17.50,
-    monthlyPriceIdr: 2450000,
-    description: "8 vCPU, 24 GB RAM, 300 GB NVMe (Large Media & Content)",
+    monthlyPriceEur: 14.50,
+    monthlyPriceIdr: 2500000,
+    description: "8 vCPU, 16 GB RAM, 300 GB SSD (High Content DB)",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
   },
-  "vps-xl": {
-    id: "vps-xl",
-    name: "Cloud VPS XL",
-    productId: "V32",
+  "vps-12": {
+    id: "vps-12",
+    name: "Cloud VPS 12",
+    productId: "V156",
     type: "VPS",
-    cpuCores: 10,
-    isDedicatedCpu: false,
-    ramMb: 32768,
-    diskGb: 400,
-    bandwidthMbps: 800,
-    monthlyPriceEur: 29.00,
-    monthlyPriceIdr: 3950000,
-    description: "10 vCPU, 32 GB RAM, 400 GB NVMe (Enterprise Scalability)",
-    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
-  },
-  "vps-xxl": {
-    id: "vps-xxl",
-    name: "Cloud VPS XXL",
-    productId: "V64",
-    type: "VPS",
+    series: "Cloud VPS",
     cpuCores: 12,
     isDedicatedCpu: false,
-    ramMb: 65536,
-    diskGb: 600,
+    ramMb: 24576,
+    diskGb: 400,
+    diskType: "SSD",
+    bandwidthMbps: 800,
+    monthlyPriceEur: 22.50,
+    monthlyPriceIdr: 3400000,
+    description: "12 vCPU, 24 GB RAM, 400 GB SSD (Scale-out Production)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-16": {
+    id: "vps-16",
+    name: "Cloud VPS 16",
+    productId: "V157",
+    type: "VPS",
+    series: "Cloud VPS",
+    cpuCores: 16,
+    isDedicatedCpu: false,
+    ramMb: 32768,
+    diskGb: 500,
+    diskType: "SSD",
     bandwidthMbps: 1000,
-    monthlyPriceEur: 49.00,
-    monthlyPriceIdr: 5950000,
-    description: "12 vCPU, 64 GB RAM, 600 GB NVMe (Maximum Compute VPS)",
+    monthlyPriceEur: 32.50,
+    monthlyPriceIdr: 4300000,
+    description: "16 vCPU, 32 GB RAM, 500 GB SSD (Enterprise Traffic)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-18": {
+    id: "vps-18",
+    name: "Cloud VPS 18",
+    productId: "V158",
+    type: "VPS",
+    series: "Cloud VPS",
+    cpuCores: 18,
+    isDedicatedCpu: false,
+    ramMb: 49152,
+    diskGb: 600,
+    diskType: "SSD",
+    bandwidthMbps: 1000,
+    monthlyPriceEur: 45.00,
+    monthlyPriceIdr: 5200000,
+    description: "18 vCPU, 48 GB RAM, 600 GB SSD (Maximum Capacity VPS)",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
   },
 
-  // ─── Cloud VDS (100% Dedicated Physical Cores) ───
+  // ─── 2. Cloud VPS Plus Series (Extreme Performance NVMe: 15jt - 80jt / thn) ───
+  "vps-plus-4": {
+    id: "vps-plus-4",
+    name: "Cloud VPS Plus 4",
+    productId: "V159",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 4,
+    isDedicatedCpu: false,
+    ramMb: 8192,
+    diskGb: 150,
+    diskType: "NVMe",
+    bandwidthMbps: 250,
+    monthlyPriceEur: 6.50,
+    monthlyPriceIdr: 1500000,
+    description: "4 vCPU, 8 GB RAM, 150 GB NVMe (High IOPS Database)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-plus-6": {
+    id: "vps-plus-6",
+    name: "Cloud VPS Plus 6",
+    productId: "V160",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 6,
+    isDedicatedCpu: false,
+    ramMb: 16384,
+    diskGb: 300,
+    diskType: "NVMe",
+    bandwidthMbps: 500,
+    monthlyPriceEur: 11.50,
+    monthlyPriceIdr: 2200000,
+    description: "6 vCPU, 16 GB RAM, 300 GB NVMe (High-traffic Portal)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-plus-8": {
+    id: "vps-plus-8",
+    name: "Cloud VPS Plus 8",
+    productId: "V161",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 8,
+    isDedicatedCpu: false,
+    ramMb: 24576,
+    diskGb: 450,
+    diskType: "NVMe",
+    bandwidthMbps: 750,
+    monthlyPriceEur: 18.50,
+    monthlyPriceIdr: 3200000,
+    description: "8 vCPU, 24 GB RAM, 450 GB NVMe (E-Commerce & High Read/Write)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-plus-12": {
+    id: "vps-plus-12",
+    name: "Cloud VPS Plus 12",
+    productId: "V162",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 12,
+    isDedicatedCpu: false,
+    ramMb: 32768,
+    diskGb: 600,
+    diskType: "NVMe",
+    bandwidthMbps: 1000,
+    monthlyPriceEur: 29.50,
+    monthlyPriceIdr: 4500000,
+    description: "12 vCPU, 32 GB RAM, 600 GB NVMe (Massive Read/Write Engine)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-plus-16": {
+    id: "vps-plus-16",
+    name: "Cloud VPS Plus 16",
+    productId: "V163",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 16,
+    isDedicatedCpu: false,
+    ramMb: 49152,
+    diskGb: 750,
+    diskType: "NVMe",
+    bandwidthMbps: 1000,
+    monthlyPriceEur: 42.50,
+    monthlyPriceIdr: 6200000,
+    description: "16 vCPU, 48 GB RAM, 750 GB NVMe (Extreme Throughput)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+  "vps-plus-18": {
+    id: "vps-plus-18",
+    name: "Cloud VPS Plus 18",
+    productId: "V164",
+    type: "VPS",
+    series: "Cloud VPS Plus",
+    cpuCores: 18,
+    isDedicatedCpu: false,
+    ramMb: 65536,
+    diskGb: 900,
+    diskType: "NVMe",
+    bandwidthMbps: 1000,
+    monthlyPriceEur: 59.50,
+    monthlyPriceIdr: 8000000,
+    description: "18 vCPU, 64 GB RAM, 900 GB NVMe (Top-tier High IOPS)",
+    regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "US-west", "UK", "JPN", "AUS"],
+  },
+
+  // ─── 3. VPS Storage Series (Large Media & Archive: 15jt - 58jt / thn) ───
+  "vps-storage-10": {
+    id: "vps-storage-10",
+    name: "VPS 10 Storage",
+    productId: "V93",
+    type: "Storage",
+    series: "VPS Storage",
+    cpuCores: 4,
+    isDedicatedCpu: false,
+    ramMb: 8192,
+    diskGb: 300,
+    diskType: "SSD",
+    bandwidthMbps: 200,
+    monthlyPriceEur: 7.50,
+    monthlyPriceIdr: 1500000,
+    description: "4 vCPU, 8 GB RAM, 300 GB SSD (Document & Media Storage)",
+    regions: ["EU (Germany)", "US-central", "SIN (Singapore)"],
+  },
+  "vps-storage-20": {
+    id: "vps-storage-20",
+    name: "VPS 20 Storage",
+    productId: "V94",
+    type: "Storage",
+    series: "VPS Storage",
+    cpuCores: 6,
+    isDedicatedCpu: false,
+    ramMb: 16384,
+    diskGb: 600,
+    diskType: "SSD",
+    bandwidthMbps: 400,
+    monthlyPriceEur: 13.50,
+    monthlyPriceIdr: 2400000,
+    description: "6 vCPU, 16 GB RAM, 600 GB SSD (High Content Archiving)",
+    regions: ["EU (Germany)", "US-central", "SIN (Singapore)"],
+  },
+  "vps-storage-30": {
+    id: "vps-storage-30",
+    name: "VPS 30 Storage",
+    productId: "V95",
+    type: "Storage",
+    series: "VPS Storage",
+    cpuCores: 8,
+    isDedicatedCpu: false,
+    ramMb: 24576,
+    diskGb: 900,
+    diskType: "SSD",
+    bandwidthMbps: 600,
+    monthlyPriceEur: 22.50,
+    monthlyPriceIdr: 3500000,
+    description: "8 vCPU, 24 GB RAM, 900 GB SSD (Big Data Portal Storage)",
+    regions: ["EU (Germany)", "US-central", "SIN (Singapore)"],
+  },
+  "vps-storage-40": {
+    id: "vps-storage-40",
+    name: "VPS 40 Storage",
+    productId: "V96",
+    type: "Storage",
+    series: "VPS Storage",
+    cpuCores: 10,
+    isDedicatedCpu: false,
+    ramMb: 32768,
+    diskGb: 1200,
+    diskType: "SSD",
+    bandwidthMbps: 800,
+    monthlyPriceEur: 32.50,
+    monthlyPriceIdr: 4600000,
+    description: "10 vCPU, 32 GB RAM, 1.2 TB SSD (Enterprise Backup & Storage)",
+    regions: ["EU (Germany)", "US-central", "SIN (Singapore)"],
+  },
+  "vps-storage-50": {
+    id: "vps-storage-50",
+    name: "VPS 50 Storage",
+    productId: "V97",
+    type: "Storage",
+    series: "VPS Storage",
+    cpuCores: 12,
+    isDedicatedCpu: false,
+    ramMb: 49152,
+    diskGb: 1500,
+    diskType: "SSD",
+    bandwidthMbps: 1000,
+    monthlyPriceEur: 42.50,
+    monthlyPriceIdr: 5800000,
+    description: "12 vCPU, 48 GB RAM, 1.5 TB SSD (Massive Archive Storage)",
+    regions: ["EU (Germany)", "US-central", "SIN (Singapore)"],
+  },
+
+  // ─── 4. Cloud VDS Series (100% Dedicated Physical Cores: 100jt - 250jt / thn) ───
   "vds-s": {
     id: "vds-s",
-    name: "Cloud VDS S (100% Dedicated CPU)",
-    productId: "DS3",
+    name: "Cloud VDS S (Dedicated CPU)",
+    productId: "V8",
     type: "VDS",
+    series: "Cloud VDS",
     cpuCores: 3,
     isDedicatedCpu: true,
     ramMb: 24576,
     diskGb: 180,
+    diskType: "NVMe",
     bandwidthMbps: 250,
     monthlyPriceEur: 37.00,
-    monthlyPriceIdr: 3950000,
+    monthlyPriceIdr: 10000000,
     description: "3 Dedicated Physical Cores (No Noisy Neighbor), 24 GB RAM, 180 GB NVMe, 250 Mbps",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "UK"],
   },
   "vds-m": {
     id: "vds-m",
-    name: "Cloud VDS M (100% Dedicated CPU)",
-    productId: "DS4",
+    name: "Cloud VDS M (Dedicated CPU)",
+    productId: "V9",
     type: "VDS",
+    series: "Cloud VDS",
     cpuCores: 4,
     isDedicatedCpu: true,
     ramMb: 32768,
     diskGb: 240,
+    diskType: "NVMe",
     bandwidthMbps: 500,
     monthlyPriceEur: 49.00,
-    monthlyPriceIdr: 5450000,
+    monthlyPriceIdr: 13500000,
     description: "4 Dedicated Physical Cores (100% CPU lock), 32 GB RAM, 240 GB NVMe, 500 Mbps",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "UK"],
   },
   "vds-l": {
     id: "vds-l",
-    name: "Cloud VDS L (100% Dedicated CPU)",
-    productId: "DS6",
+    name: "Cloud VDS L (Dedicated CPU)",
+    productId: "V10",
     type: "VDS",
+    series: "Cloud VDS",
     cpuCores: 6,
     isDedicatedCpu: true,
     ramMb: 49152,
     diskGb: 360,
+    diskType: "NVMe",
     bandwidthMbps: 750,
     monthlyPriceEur: 69.00,
-    monthlyPriceIdr: 7950000,
+    monthlyPriceIdr: 17500000,
     description: "6 Dedicated Physical Cores, 48 GB RAM, 360 GB NVMe, 750 Mbps Port",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "UK"],
   },
   "vds-xl": {
     id: "vds-xl",
-    name: "Cloud VDS XL (100% Dedicated CPU)",
-    productId: "DS8",
+    name: "Cloud VDS XL (Dedicated CPU)",
+    productId: "V11",
     type: "VDS",
+    series: "Cloud VDS",
     cpuCores: 8,
     isDedicatedCpu: true,
     ramMb: 65536,
     diskGb: 480,
+    diskType: "NVMe",
     bandwidthMbps: 1000,
     monthlyPriceEur: 89.00,
-    monthlyPriceIdr: 9950000,
+    monthlyPriceIdr: 21500000,
     description: "8 Dedicated Physical Cores, 64 GB RAM, 480 GB NVMe, 1 Gbps Port",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "UK"],
   },
   "vds-xxl": {
     id: "vds-xxl",
-    name: "Cloud VDS XXL (100% Dedicated CPU)",
-    productId: "DS12",
+    name: "Cloud VDS XXL (Dedicated CPU)",
+    productId: "V16",
     type: "VDS",
+    series: "Cloud VDS",
     cpuCores: 12,
     isDedicatedCpu: true,
     ramMb: 98304,
     diskGb: 720,
+    diskType: "NVMe",
     bandwidthMbps: 1000,
     monthlyPriceEur: 149.00,
-    monthlyPriceIdr: 16500000,
+    monthlyPriceIdr: 25000000,
     description: "12 Dedicated Physical Cores, 96 GB RAM, 720 GB NVMe, 1 Gbps Port",
     regions: ["EU (Germany)", "SIN (Singapore)", "US-central", "US-east", "UK"],
   },
 }
+
+// Backward-compatibility aliases
+CONTABO_PLANS["vps-s"] = CONTABO_PLANS["vps-plus-4"]
+CONTABO_PLANS["vps-m"] = CONTABO_PLANS["vps-plus-6"]
+CONTABO_PLANS["vps-l"] = CONTABO_PLANS["vps-plus-8"]
+CONTABO_PLANS["vps-xl"] = CONTABO_PLANS["vps-plus-12"]
+CONTABO_PLANS["vps-xxl"] = CONTABO_PLANS["vps-plus-18"]
 
 /**
  * Get full list of available Contabo VPS & VDS plans
@@ -177,21 +416,55 @@ export function getContaboPlansList(): ContaboPlanDefinition[] {
   return Object.values(CONTABO_PLANS)
 }
 
+/**
+ * Standard Available Contabo Regions
+ */
+export interface ContaboRegionOption {
+  id: string
+  name: string
+  code: string
+  flag: string
+  isDefault?: boolean
+}
+
+export const CONTABO_REGIONS: ContaboRegionOption[] = [
+  { id: "SIN", code: "SIN", name: "Singapore (Asia Pacific)", flag: "🇸🇬", isDefault: true },
+  { id: "JPN", code: "JPN", name: "Tokyo (Japan / East Asia)", flag: "🇯🇵" },
+  { id: "EU", code: "EU", name: "Frankfurt (Germany / Europe)", flag: "🇩🇪" },
+  { id: "US-central", code: "US-central", name: "St. Louis (US Central)", flag: "🇺🇸" },
+  { id: "US-east", code: "US-east", name: "New York (US East)", flag: "🇺🇸" },
+  { id: "US-west", code: "US-west", name: "Seattle (US West)", flag: "🇺🇸" },
+  { id: "UK", code: "UK", name: "London (United Kingdom)", flag: "🇬🇧" },
+  { id: "AUS", code: "AUS", name: "Sydney (Australia)", flag: "🇦🇺" },
+]
+
+export const DEFAULT_CONTABO_REGION = "SIN"
+export const DEFAULT_CONTABO_IMAGE = "ubuntu-24.04"
+
+export const CONTABO_STANDARD_IMAGES: Record<string, string> = {
+  'ubuntu-24.04': 'd64d5c6c-9dda-4e38-8174-0ee282474d8a',
+  'ubuntu-22.04': 'afecbb85-e2fc-46f0-9684-b46b1faf00bb',
+  'ubuntu-20.04': '7445024d-c44f-4f8a-a6c6-f5913274cb13',
+  'debian-12': '4efbc0ba-2313-4fe1-842a-516f8652e729',
+  'debian-11': '66abf39a-ba8b-425e-a385-8eb347ceac10',
+}
+
 export interface ContaboConfig {
   clientId: string
   clientSecret: string
   apiUser: string
   apiPassword: string
-  authUrl?: string
-  apiUrl?: string
+  authUrl: string
+  apiUrl: string
+  baseApiUrl: string
 }
 
 export interface CreateInstanceParams {
   displayName: string
   userData: string // Cloud-init script
-  productId?: string // e.g. "V4" for VPS S, "V8" for VPS M, "DS3" for VDS S
-  region?: string // "EU", "US-central", "SIN"
-  imageId?: string // "ubuntu-24.04"
+  productId?: string // e.g. "V153" for Cloud VPS 4
+  region?: string // "SIN", "JPN", "EU", "US-central", etc. Default "SIN" (Asia)
+  imageId?: string // "ubuntu-24.04" (Default)
   period?: number // 1 month
 }
 
@@ -207,16 +480,51 @@ export interface ContaboInstanceResponse {
   region: string
 }
 
+// ─── Contabo Cloud Firewall Types & Models ───
+
+export interface ContaboFirewallRule {
+  protocol: 'tcp' | 'udp' | 'icmp' | ''
+  destPorts: string[]
+  srcCidr: {
+    ipv4?: string[]
+    ipv6?: string[]
+  }
+  action: 'accept' | 'drop'
+  status: 'active' | 'inactive'
+  displayName?: string
+}
+
+export interface CreateFirewallParams {
+  name: string
+  description?: string
+  status?: 'active' | 'inactive'
+  rules: ContaboFirewallRule[]
+}
+
+export interface ContaboFirewallResponse {
+  firewallId: string
+  name: string
+  description?: string
+  status: string
+  rules?: {
+    inbound: ContaboFirewallRule[]
+  }
+  createdDate?: string
+  updatedDate?: string
+}
+
 let cachedToken: { token: string; expiresAt: number } | null = null
 
 function getContaboCredentials(): ContaboConfig {
+  const baseApiUrl = process.env.CONTABO_BASE_API_URL || 'https://api.contabo.com/v1'
   return {
     clientId: process.env.CONTABO_CLIENT_ID || '',
     clientSecret: process.env.CONTABO_CLIENT_SECRET || '',
     apiUser: process.env.CONTABO_API_USER || '',
     apiPassword: process.env.CONTABO_API_PASSWORD || '',
     authUrl: process.env.CONTABO_AUTH_URL || 'https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token',
-    apiUrl: process.env.CONTABO_API_URL || 'https://api.contabo.com/v1/compute/instances',
+    apiUrl: process.env.CONTABO_API_URL || `${baseApiUrl}/compute/instances`,
+    baseApiUrl,
   }
 }
 
@@ -229,19 +537,37 @@ export function isContaboConfigured(): boolean {
 }
 
 /**
- * Retrieve or refresh Contabo OAuth2 access token
+ * Retrieve or refresh Contabo OAuth2 access token with Upstash Redis cache (TTL 25m) and in-memory fallback.
  */
-async function getAccessToken(): Promise<string> {
+export async function getAccessToken(): Promise<string> {
   const now = Date.now()
-  if (cachedToken && cachedToken.expiresAt > now + 30000) {
-    return cachedToken.token
-  }
-
   const creds = getContaboCredentials()
+
   if (!isContaboConfigured()) {
     throw new Error('Contabo API credentials are not configured in environment variables.')
   }
 
+  // 1. Try Redis cache first (if available)
+  const redis = getRedis()
+  const redisKey = `contabo:oauth_token:${creds.clientId}`
+  
+  if (redis) {
+    try {
+      const cached = await redis.get<string>(redisKey)
+      if (cached) {
+        return cached
+      }
+    } catch (err) {
+      console.warn('[Contabo API] Redis token read error, falling back to in-memory cache:', err)
+    }
+  }
+
+  // 2. Fallback to in-memory cache
+  if (cachedToken && cachedToken.expiresAt > now + 30000) {
+    return cachedToken.token
+  }
+
+  // 3. Fetch new token from Contabo OAuth2 Server
   const bodyParams = new URLSearchParams({
     client_id: creds.clientId,
     client_secret: creds.clientSecret,
@@ -250,7 +576,7 @@ async function getAccessToken(): Promise<string> {
     grant_type: 'password',
   })
 
-  const res = await fetch(creds.authUrl!, {
+  const res = await fetch(creds.authUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: bodyParams.toString(),
@@ -262,12 +588,26 @@ async function getAccessToken(): Promise<string> {
   }
 
   const data = await res.json()
+  const token = data.access_token as string
+  const expiresInSeconds = Number(data.expires_in) || 300
+
+  // Update in-memory cache
   cachedToken = {
-    token: data.access_token,
-    expiresAt: now + (data.expires_in || 300) * 1000,
+    token,
+    expiresAt: now + expiresInSeconds * 1000,
   }
 
-  return cachedToken.token
+  // Update Redis cache (with safety margin: expire 30s before token expiration, max 25 mins)
+  if (redis) {
+    try {
+      const ttl = Math.max(60, Math.min(expiresInSeconds - 30, 1500))
+      await redis.set(redisKey, token, { ex: ttl })
+    } catch (err) {
+      console.warn('[Contabo API] Redis token write error:', err)
+    }
+  }
+
+  return token
 }
 
 function getRequestHeaders(token: string) {
@@ -279,6 +619,10 @@ function getRequestHeaders(token: string) {
     'Content-Type': 'application/json',
   }
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── COMPUTE INSTANCES API (Contabo openapi.json: /v1/compute/*) ───
+// ══════════════════════════════════════════════════════════════════════
 
 /**
  * Order & Create a new VPS instance on Contabo
@@ -298,23 +642,33 @@ export async function createContaboInstance(params: CreateInstanceParams): Promi
       cpuCores: planObj ? planObj.cpuCores : 4,
       ramMb: planObj ? planObj.ramMb : 8192,
       diskGb: planObj ? planObj.diskGb : 75,
-      region: params.region || 'EU',
+      region: params.region || DEFAULT_CONTABO_REGION,
     }
   }
 
   const token = await getAccessToken()
   const creds = getContaboCredentials()
 
+  const resolvedImageId =
+    (params.imageId && CONTABO_STANDARD_IMAGES[params.imageId.toLowerCase()]) ||
+    params.imageId ||
+    CONTABO_STANDARD_IMAGES[DEFAULT_CONTABO_IMAGE]
+
+  const sanitizedDisplayName = (params.displayName || 'sacms-vps')
+    .replace(/[^a-zA-Z0-9 -]/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 255)
+
   const payload = {
-    imageId: params.imageId || 'ubuntu-24.04',
-    productId: params.productId || 'V4', // VPS S
-    region: params.region || 'EU',
+    imageId: resolvedImageId,
+    productId: params.productId || 'V153', // Default to Cloud VPS 4 (V153)
+    region: params.region || DEFAULT_CONTABO_REGION,
     period: params.period || 1,
-    displayName: params.displayName,
+    displayName: sanitizedDisplayName,
     userData: Buffer.from(params.userData).toString('base64'),
   }
 
-  const res = await fetch(creds.apiUrl!, {
+  const res = await fetch(creds.apiUrl, {
     method: 'POST',
     headers: getRequestHeaders(token),
     body: JSON.stringify(payload),
@@ -337,7 +691,7 @@ export async function createContaboInstance(params: CreateInstanceParams): Promi
     cpuCores: instance.cpuCores || 4,
     ramMb: instance.ramMb || 8192,
     diskGb: Math.round((instance.diskMb || 76800) / 1024),
-    region: instance.region || params.region || 'EU',
+    region: instance.region || params.region || DEFAULT_CONTABO_REGION,
   }
 }
 
@@ -354,7 +708,7 @@ export async function getContaboInstance(instanceId: string | number): Promise<C
       cpuCores: 4,
       ramMb: 8192,
       diskGb: 75,
-      region: 'EU',
+      region: DEFAULT_CONTABO_REGION,
     }
   }
 
@@ -383,7 +737,7 @@ export async function getContaboInstance(instanceId: string | number): Promise<C
     cpuCores: instance.cpuCores || 4,
     ramMb: instance.ramMb || 8192,
     diskGb: Math.round((instance.diskMb || 76800) / 1024),
-    region: instance.region || 'EU',
+    region: instance.region || DEFAULT_CONTABO_REGION,
   }
 }
 
@@ -443,3 +797,515 @@ export async function deleteContaboInstance(instanceId: string | number): Promis
 
   return res.ok
 }
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── CLOUD FIREWALL API (Contabo openapi.json: /v1/firewalls/*) ─────
+// ══════════════════════════════════════════════════════════════════════
+
+/**
+ * Build standard SaCMS hardened firewall rules:
+ * 1. Port 5432 (PostgreSQL): Whitelisted only for SaCMS server IP addresses.
+ * 2. Ports 443 & 80 (HTTPS/HTTP): Open for Caddy / Media reverse proxy.
+ * 3. Port 22 (SSH): Restricted to management IPs (or localhost if none provided).
+ */
+export function buildSacmsDefaultFirewallRules(allowedManagementIps: string[] = []): ContaboFirewallRule[] {
+  const sacmsServerIps = (process.env.SACMS_SERVER_IPS || process.env.SERVER_IPV4 || '')
+    .split(',')
+    .map(ip => ip.trim())
+    .filter(Boolean)
+
+  const managementIpv4s = Array.from(new Set([...sacmsServerIps, ...allowedManagementIps]))
+  
+  const postgresSrcIps = managementIpv4s.length > 0 
+    ? managementIpv4s.map(ip => ip.includes('/') ? ip : `${ip}/32`)
+    : ['127.0.0.1/32']
+
+  return [
+    // 1. PostgreSQL 5432 — Strict SaCMS Whitelist
+    {
+      protocol: 'tcp',
+      destPorts: ['5432'],
+      srcCidr: {
+        ipv4: postgresSrcIps,
+      },
+      action: 'accept',
+      status: 'active',
+      displayName: 'Allow PostgreSQL from SaCMS App Servers',
+    },
+    // 2. HTTPS & HTTP (443, 80) — Public Web & Media CDN
+    {
+      protocol: 'tcp',
+      destPorts: ['80', '443'],
+      srcCidr: {
+        ipv4: ['AnyIPv4'],
+        ipv6: ['AnyIPv6'],
+      },
+      action: 'accept',
+      status: 'active',
+      displayName: 'Allow HTTPS & HTTP for Caddy Reverse Proxy',
+    },
+    // 3. SSH (22) — Restricted to SaCMS Management
+    {
+      protocol: 'tcp',
+      destPorts: ['22'],
+      srcCidr: {
+        ipv4: postgresSrcIps,
+      },
+      action: 'accept',
+      status: 'active',
+      displayName: 'Allow SSH Management from SaCMS',
+    },
+  ]
+}
+
+/**
+ * Create a new Cloud Firewall in Contabo
+ */
+export async function createContaboFirewall(params: CreateFirewallParams): Promise<ContaboFirewallResponse> {
+  if (!isContaboConfigured()) {
+    console.warn('[Contabo API] createContaboFirewall running in SIMULATION mode.')
+    return {
+      firewallId: `sim-fw-${Math.floor(10000 + Math.random() * 90000)}`,
+      name: params.name,
+      description: params.description,
+      status: params.status || 'active',
+      rules: { inbound: params.rules },
+      createdDate: new Date().toISOString(),
+      updatedDate: new Date().toISOString(),
+    }
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const payload = {
+    name: params.name,
+    description: params.description || 'Managed Cloud Firewall for SaCMS Dedicated Instance',
+    status: params.status || 'active',
+    rules: {
+      inbound: params.rules,
+    },
+  }
+
+  const res = await fetch(`${creds.baseApiUrl}/firewalls`, {
+    method: 'POST',
+    headers: getRequestHeaders(token),
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Contabo firewall creation failed (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const fw = result.data?.[0] || result.data || result
+
+  return {
+    firewallId: fw.firewallId || fw.id,
+    name: fw.name,
+    description: fw.description,
+    status: fw.status || 'active',
+    rules: fw.rules,
+    createdDate: fw.createdDate,
+    updatedDate: fw.updatedDate,
+  }
+}
+
+/**
+ * List all Cloud Firewalls in Contabo
+ */
+export async function listContaboFirewalls(nameFilter?: string): Promise<ContaboFirewallResponse[]> {
+  if (!isContaboConfigured()) {
+    return [
+      {
+        firewallId: 'sim-fw-default',
+        name: nameFilter || 'sacms-default-firewall',
+        description: 'Simulated SaCMS Firewall',
+        status: 'active',
+      }
+    ]
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const url = new URL(`${creds.baseApiUrl}/firewalls`)
+  if (nameFilter) {
+    url.searchParams.set('name', nameFilter)
+  }
+
+  const res = await fetch(url.toString(), {
+    method: 'GET',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Failed to list Contabo firewalls (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const data = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : [])
+
+  return data.map((fw: any) => ({
+    firewallId: fw.firewallId || fw.id,
+    name: fw.name,
+    description: fw.description,
+    status: fw.status,
+    rules: fw.rules,
+    createdDate: fw.createdDate,
+    updatedDate: fw.updatedDate,
+  }))
+}
+
+/**
+ * Retrieve firewall details by ID
+ */
+export async function getContaboFirewall(firewallId: string): Promise<ContaboFirewallResponse> {
+  if (firewallId.startsWith('sim-')) {
+    return {
+      firewallId,
+      name: 'Simulated Firewall',
+      status: 'active',
+    }
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/firewalls/${firewallId}`, {
+    method: 'GET',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Failed to get Contabo firewall ${firewallId} (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const fw = result.data?.[0] || result.data || result
+
+  return {
+    firewallId: fw.firewallId || fw.id,
+    name: fw.name,
+    description: fw.description,
+    status: fw.status,
+    rules: fw.rules,
+    createdDate: fw.createdDate,
+    updatedDate: fw.updatedDate,
+  }
+}
+
+/**
+ * Assign a Cloud Firewall to a Compute Instance (POST /v1/firewalls/{firewallId}/instances/{instanceId})
+ */
+export async function assignFirewallToInstance(
+  firewallId: string,
+  instanceId: string | number
+): Promise<boolean> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/firewalls/${firewallId}/instances/${instanceId}`, {
+    method: 'POST',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    console.error(`[Contabo API] Failed to assign firewall ${firewallId} to instance ${instanceId}:`, errText)
+    throw new Error(`Failed to assign Contabo firewall to instance (${res.status}): ${errText}`)
+  }
+
+  return res.ok
+}
+
+/**
+ * Remove a Cloud Firewall from a Compute Instance (DELETE /v1/firewalls/{firewallId}/instances/{instanceId})
+ */
+export async function removeFirewallFromInstance(
+  firewallId: string,
+  instanceId: string | number
+): Promise<boolean> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/firewalls/${firewallId}/instances/${instanceId}`, {
+    method: 'DELETE',
+    headers: getRequestHeaders(token),
+  })
+
+  return res.ok
+}
+
+/**
+ * Delete a Cloud Firewall
+ */
+export async function deleteContaboFirewall(firewallId: string): Promise<boolean> {
+  if (firewallId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/firewalls/${firewallId}`, {
+    method: 'DELETE',
+    headers: getRequestHeaders(token),
+  })
+
+  return res.ok
+}
+
+/**
+ * Helper to find an existing SaCMS default firewall or create a new one automatically
+ */
+export async function findOrCreateSacmsFirewall(
+  name: string = 'sacms-enterprise-firewall',
+  allowedManagementIps: string[] = []
+): Promise<string> {
+  try {
+    const existing = await listContaboFirewalls()
+    const matched = existing.find(f => f.name === name)
+    if (matched && matched.firewallId) {
+      return matched.firewallId
+    }
+  } catch (err) {
+    console.warn('[Contabo API] listFirewalls error in findOrCreate, attempting creation:', err)
+  }
+
+  try {
+    const rules = buildSacmsDefaultFirewallRules(allowedManagementIps)
+    const created = await createContaboFirewall({
+      name,
+      description: 'Automated hardened firewall rule for SaCMS dedicated instances',
+      status: 'active',
+      rules,
+    })
+    return created.firewallId
+  } catch (err: any) {
+    // If conflict (e.g. 409 already exists), try to find the existing firewall ID
+    if (err?.message?.includes('409') || err?.message?.includes('not unique')) {
+      const allFirewalls = await listContaboFirewalls().catch(() => [])
+      const matched = allFirewalls.find(f => f.name === name)
+      if (matched && matched.firewallId) {
+        return matched.firewallId
+      }
+    }
+    throw err
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════
+// ─── SNAPSHOTS & DISASTER RECOVERY (openapi.json: /v1/compute/instances/{id}/snapshots) ───
+// ══════════════════════════════════════════════════════════════════════
+
+export interface ContaboSnapshotResponse {
+  snapshotId: string
+  name: string
+  description?: string
+  instanceId: string | number
+  createdDate?: string
+  autoDeleteDate?: string
+  imageId?: string
+}
+
+/**
+ * Create a new Snapshot for a VPS/VDS instance
+ */
+export async function createContaboSnapshot(
+  instanceId: string | number,
+  name: string,
+  description?: string
+): Promise<ContaboSnapshotResponse> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    const mockSnapId = `snap-${Date.now()}`
+    return {
+      snapshotId: mockSnapId,
+      name,
+      description: description || 'Simulated snapshot',
+      instanceId,
+      createdDate: new Date().toISOString(),
+    }
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const payload = {
+    name,
+    description: description || `SaCMS Automated Snapshot for instance ${instanceId}`,
+  }
+
+  const res = await fetch(`${creds.baseApiUrl}/compute/instances/${instanceId}/snapshots`, {
+    method: 'POST',
+    headers: getRequestHeaders(token),
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Failed to create Contabo snapshot on instance ${instanceId} (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const snap = result.data?.[0] || result.data || result
+
+  return {
+    snapshotId: snap.snapshotId || snap.id,
+    name: snap.name || name,
+    description: snap.description || description,
+    instanceId: snap.instanceId || instanceId,
+    createdDate: snap.createdDate || new Date().toISOString(),
+    autoDeleteDate: snap.autoDeleteDate,
+    imageId: snap.imageId,
+  }
+}
+
+/**
+ * List all snapshots for an instance
+ */
+export async function listContaboSnapshots(
+  instanceId: string | number
+): Promise<ContaboSnapshotResponse[]> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return [
+      {
+        snapshotId: 'sim-snap-initial',
+        name: 'Initial Golden Snapshot',
+        description: 'Simulated initial snapshot',
+        instanceId,
+        createdDate: new Date().toISOString(),
+      },
+    ]
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/compute/instances/${instanceId}/snapshots`, {
+    method: 'GET',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Failed to list Contabo snapshots for instance ${instanceId} (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const data = Array.isArray(result.data) ? result.data : (result.data ? [result.data] : [])
+
+  return data.map((snap: any) => ({
+    snapshotId: snap.snapshotId || snap.id,
+    name: snap.name,
+    description: snap.description,
+    instanceId: snap.instanceId || instanceId,
+    createdDate: snap.createdDate,
+    autoDeleteDate: snap.autoDeleteDate,
+    imageId: snap.imageId,
+  }))
+}
+
+/**
+ * Get snapshot details by ID
+ */
+export async function getContaboSnapshot(
+  instanceId: string | number,
+  snapshotId: string
+): Promise<ContaboSnapshotResponse> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return {
+      snapshotId,
+      name: 'Simulated Snapshot',
+      instanceId,
+      createdDate: new Date().toISOString(),
+    }
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/compute/instances/${instanceId}/snapshots/${snapshotId}`, {
+    method: 'GET',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Failed to get Contabo snapshot ${snapshotId} (${res.status}): ${errText}`)
+  }
+
+  const result = await res.json()
+  const snap = result.data?.[0] || result.data || result
+
+  return {
+    snapshotId: snap.snapshotId || snap.id,
+    name: snap.name,
+    description: snap.description,
+    instanceId: snap.instanceId || instanceId,
+    createdDate: snap.createdDate,
+    autoDeleteDate: snap.autoDeleteDate,
+    imageId: snap.imageId,
+  }
+}
+
+/**
+ * 1-Click Rollback: Revert instance state to a specific snapshot
+ */
+export async function rollbackContaboSnapshot(
+  instanceId: string | number,
+  snapshotId: string
+): Promise<boolean> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/compute/instances/${instanceId}/snapshots/${snapshotId}/rollback`, {
+    method: 'POST',
+    headers: getRequestHeaders(token),
+  })
+
+  if (!res.ok) {
+    const errText = await res.text()
+    throw new Error(`Contabo snapshot rollback failed for ${snapshotId} on instance ${instanceId} (${res.status}): ${errText}`)
+  }
+
+  return res.ok
+}
+
+/**
+ * Delete a snapshot from Contabo
+ */
+export async function deleteContaboSnapshot(
+  instanceId: string | number,
+  snapshotId: string
+): Promise<boolean> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.baseApiUrl}/compute/instances/${instanceId}/snapshots/${snapshotId}`, {
+    method: 'DELETE',
+    headers: getRequestHeaders(token),
+  })
+
+  return res.ok
+}
+

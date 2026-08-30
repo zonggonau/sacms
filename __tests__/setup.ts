@@ -1,5 +1,11 @@
 import { vi } from "vitest"
 
+// Ensure unit tests run in offline / simulation mode by default
+process.env.CONTABO_CLIENT_ID = ""
+process.env.CONTABO_CLIENT_SECRET = ""
+process.env.CONTABO_API_USER = ""
+process.env.CONTABO_API_PASSWORD = ""
+
 // Mock Prisma
 vi.mock("@/lib/database", () => ({
   db: {

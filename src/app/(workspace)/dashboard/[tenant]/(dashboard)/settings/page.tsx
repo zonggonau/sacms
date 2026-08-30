@@ -1,9 +1,8 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { useRouter, useParams, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
-import { cn } from "@/lib/utils"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -13,6 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Textarea } from "@/components/ui/textarea"
 import { Separator } from "@/components/ui/separator"
 import { Badge } from "@/components/ui/badge"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Select,
   SelectContent,
@@ -32,20 +32,26 @@ import {
   Loader2,
   Save,
   Building2,
-  Database,
   Shield,
   Download,
   Trash2,
   AlertTriangle,
   CheckCircle2,
   Activity,
-  Server,
   Mail,
   Upload,
   Layers,
   UserCheck,
   Zap,
   ExternalLink,
+  Sparkles,
+  Eye,
+  Globe,
+  Send,
+  Plus,
+  Image as ImageIcon,
+  KeyRound,
+  Lock,
 } from "lucide-react"
 import { toast } from "sonner"
 import { UsageTab } from "@/components/dashboard/usage-tab"
@@ -59,18 +65,36 @@ export default function TenantSettingsPage() {
   const tenantSlug = params?.tenant as string
 
   const defaultTabParam = searchParams?.get("tab") || "general"
-  const [activeTab, setActiveTab] = useState(defaultTabParam)
+  const [activeTab, setActiveTab] = useState(
+    defaultTabParam === "domains" || defaultTabParam === "infrastructure" ? "general" : defaultTabParam
+  )
 
   useEffect(() => {
     const tab = searchParams?.get("tab")
-    if (tab) setActiveTab(tab)
-  }, [searchParams])
+    if (tab === "domains") {
+      router.replace(`/dashboard/${tenantSlug}/domains`)
+    } else if (tab === "infrastructure") {
+      router.replace(`/dashboard/${tenantSlug}/infrastructure`)
+    } else if (tab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams, tenantSlug, router])
 
   const [contentTypes, setContentTypes] = useState<Array<{ id: string; name: string; slug: string }>>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  
+  // Modals state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState("")
+  const [showPurgeDialog, setShowPurgeDialog] = useState(false)
+  const [purgeConfirm, setPurgeConfirm] = useState("")
+  const [purging, setPurging] = useState(false)
+
+  // Test Email state
+  const [showTestEmailDialog, setShowTestEmailDialog] = useState(false)
+  const [testEmailRecipient, setTestEmailRecipient] = useState("")
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
 
   // Tenant settings state
   const [tenantId, setTenantId] = useState("")
@@ -80,13 +104,6 @@ export default function TenantSettingsPage() {
   const [tenantStatus, setTenantStatus] = useState("active")
   const [subscriptionStatus, setSubscriptionStatus] = useState<string | null>(null)
   const [daysRemaining, setDaysRemaining] = useState<number | null>(null)
-
-  // API settings
-  const [apiVersion, setApiVersion] = useState("v1")
-  const [rateLimiting, setRateLimiting] = useState(true)
-  const [requestsPerMinute, setRequestsPerMinute] = useState("60")
-  const [burstLimit, setBurstLimit] = useState("100")
-  const [corsOrigins, setCorsOrigins] = useState("")
   const [previewUrl, setPreviewUrl] = useState("")
 
   // Security settings
@@ -94,17 +111,7 @@ export default function TenantSettingsPage() {
   const [ipWhitelist, setIpWhitelist] = useState(false)
   const [allowedIps, setAllowedIps] = useState("")
   const [auditLogging, setAuditLogging] = useState(true)
-  const [isEnterprise, setIsEnterprise] = useState(false)
-
-  // Infrastructure settings
-  const [databaseUrl, setDatabaseUrl] = useState("")
-  const [storageEndpoint, setStorageEndpoint] = useState("")
-  const [storageAccessKey, setStorageAccessKey] = useState("")
-  const [storageSecretKey, setStorageSecretKey] = useState("")
-  const [storageBucket, setStorageBucket] = useState("")
-  const [storagePublicUrl, setStoragePublicUrl] = useState("")
-  const [infraServer, setInfraServer] = useState<any>(null)
-  const [testingInfraHealth, setTestingInfraHealth] = useState(false)
+  const [detectedIp, setDetectedIp] = useState<string | null>(null)
 
   // Email settings
   const [smtpHost, setSmtpHost] = useState("")
@@ -113,6 +120,18 @@ export default function TenantSettingsPage() {
   const [smtpPassword, setSmtpPassword] = useState("")
   const [fromEmail, setFromEmail] = useState("")
   const [fromName, setFromName] = useState("")
+
+  // White-Label Branding state
+  const [brandName, setBrandName] = useState("")
+  const [brandLogo, setBrandLogo] = useState("")
+  const [primaryColor, setPrimaryColor] = useState("#3B82F6")
+  const [customEmailSender, setCustomEmailSender] = useState("")
+  const [faviconUrl, setFaviconUrl] = useState("")
+  const [uploadingLogo, setUploadingLogo] = useState(false)
+  const [uploadingFavicon, setUploadingFavicon] = useState(false)
+
+  const logoFileInputRef = useRef<HTMLInputElement>(null)
+  const faviconFileInputRef = useRef<HTMLInputElement>(null)
 
   const tenants = useMemo(() => {
     return session?.user?.tenants || []
@@ -128,20 +147,36 @@ export default function TenantSettingsPage() {
     }
   }, [status, router])
 
+  // Try to detect user client IP for IP whitelist helper
+  useEffect(() => {
+    fetch("https://api.ipify.org?format=json")
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.ip) setDetectedIp(data.ip)
+      })
+      .catch(() => {
+        // Silently ignore if offline / ad-blocked
+      })
+  }, [])
+
   useEffect(() => {
     async function fetchData() {
       if (!tenantSlug || !session?.user) return
 
       try {
-        const ctData = await getContentTypesAction(tenantSlug)
-        if (ctData && !ctData.error) {
+        const [ctData, settingsRes, wlRes] = await Promise.all([
+          getContentTypesAction(tenantSlug).catch(() => ({ contentTypes: [] })),
+          fetch(`/api/tenant/${tenantSlug}/settings`),
+          fetch(`/api/tenant/${tenantSlug}/white-label`).catch(() => null),
+        ])
+
+        if (ctData && !("error" in ctData)) {
           setContentTypes(ctData.contentTypes || [])
         }
 
-        const settingsRes = await fetch(`/api/tenant/${tenantSlug}/settings`)
         if (settingsRes.ok) {
           const data = await settingsRes.json()
-          const settings = data.settings
+          const settings = data.settings || {}
           setTenantId(settings.id || "")
           setName(settings.name || "")
           setDescription(settings.description || "")
@@ -149,26 +184,11 @@ export default function TenantSettingsPage() {
           setTenantStatus(settings.status || "active")
           setSubscriptionStatus(settings.subscriptionStatus || null)
           setDaysRemaining(settings.daysRemaining ?? null)
-          setApiVersion(settings.apiVersion || "v1")
-          setRateLimiting(settings.rateLimiting ?? true)
-          setRequestsPerMinute(String(settings.requestsPerMinute || 60))
-          setBurstLimit(String(settings.burstLimit || 100))
-          setCorsOrigins(settings.corsOrigins || "")
           setPreviewUrl(settings.previewUrl || "")
           setTwoFactorRequired(settings.twoFactorRequired || false)
           setIpWhitelist(settings.ipWhitelist || false)
           setAllowedIps(settings.allowedIps || "")
           setAuditLogging(settings.auditLogging ?? true)
-          setIsEnterprise(settings.isEnterprise || false)
-          setDatabaseUrl(settings.databaseUrl || "")
-          
-          if (settings.storageConfig) {
-            setStorageEndpoint(settings.storageConfig.endpoint || "")
-            setStorageAccessKey(settings.storageConfig.accessKey || "")
-            setStorageSecretKey(settings.storageConfig.secretKey || "")
-            setStorageBucket(settings.storageConfig.bucket || "")
-            setStoragePublicUrl(settings.storageConfig.publicUrl || "")
-          }
 
           setSmtpHost(settings.smtpHost || "")
           setSmtpPort(settings.smtpPort || "")
@@ -178,14 +198,14 @@ export default function TenantSettingsPage() {
           setFromName(settings.fromName || "")
         }
 
-        // Fetch dedicated infrastructure server status
-        try {
-          const infraRes = await fetch(`/api/tenant/${tenantSlug}/infrastructure`)
-          if (infraRes.ok) {
-            const infraData = await infraRes.json()
-            setInfraServer(infraData.server)
-          }
-        } catch {}
+        if (wlRes && wlRes.ok) {
+          const wlData = await wlRes.json()
+          setBrandName(wlData.brandName || "")
+          setBrandLogo(wlData.brandLogo || "")
+          setPrimaryColor(wlData.primaryColor || "#3B82F6")
+          setCustomEmailSender(wlData.customEmailSender || "")
+          setFaviconUrl(wlData.faviconUrl || "")
+        }
       } catch (error) {
         console.error("Failed to fetch settings:", error)
         toast.error("Gagal memuat pengaturan workspace")
@@ -199,53 +219,154 @@ export default function TenantSettingsPage() {
     }
   }, [tenantSlug, session])
 
+  // Unified Save: Saves both general settings and branding simultaneously
   const handleSave = async () => {
     setSaving(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/settings`, {
-        method: "PUT",
+      const [settingsRes, brandRes] = await Promise.all([
+        fetch(`/api/tenant/${tenantSlug}/settings`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name,
+            description,
+            previewUrl,
+            twoFactorRequired,
+            ipWhitelist,
+            allowedIps,
+            auditLogging,
+            smtpHost,
+            smtpPort,
+            smtpUser,
+            smtpPassword,
+            fromEmail,
+            fromName,
+          }),
+        }),
+        fetch(`/api/tenant/${tenantSlug}/white-label`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            brandName,
+            brandLogo,
+            primaryColor,
+            customEmailSender,
+            faviconUrl,
+          }),
+        }),
+      ])
+
+      if (settingsRes.ok && brandRes.ok) {
+        toast.success("Seluruh pengaturan workspace dan branding berhasil disimpan!")
+      } else {
+        const sData = await settingsRes.json().catch(() => ({}))
+        const bData = await brandRes.json().catch(() => ({}))
+        toast.error(sData.error || bData.error || "Gagal menyimpan sebagian pengaturan")
+      }
+    } catch (error) {
+      console.error("Failed to save:", error)
+      toast.error("Terjadi kesalahan saat menghubungi server")
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  // Handle direct file upload for Logo or Favicon
+  const handleFileUpload = async (file: File, type: "logo" | "favicon") => {
+    if (!file) return
+
+    const isLogo = type === "logo"
+    if (isLogo) setUploadingLogo(true)
+    else setUploadingFavicon(true)
+
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+
+      const res = await fetch(`/api/tenant/${tenantSlug}/media`, {
+        method: "POST",
+        body: formData,
+      })
+
+      if (res.ok) {
+        const data = await res.json()
+        const uploadedFile = data.media?.[0] || data.file
+        if (uploadedFile?.url) {
+          if (isLogo) {
+            setBrandLogo(uploadedFile.url)
+            toast.success("Logo berhasil diunggah ke storage!")
+          } else {
+            setFaviconUrl(uploadedFile.url)
+            toast.success("Favicon berhasil diunggah ke storage!")
+          }
+        } else {
+          toast.error("Gagal mendapatkan URL berkas yang diunggah")
+        }
+      } else {
+        const data = await res.json()
+        toast.error(data.error || "Gagal mengunggah berkas gambar")
+      }
+    } catch (err) {
+      console.error("Upload error:", err)
+      toast.error("Terjadi kesalahan koneksi saat mengunggah berkas")
+    } finally {
+      if (isLogo) setUploadingLogo(false)
+      else setUploadingFavicon(false)
+    }
+  }
+
+  // Handle Test Email
+  const handleSendTestEmail = async () => {
+    if (!testEmailRecipient.trim()) {
+      toast.error("Silakan masukkan alamat email penerima uji coba")
+      return
+    }
+
+    if (!smtpHost.trim() || !smtpUser.trim() || !smtpPassword.trim()) {
+      toast.error("Lengkapi terlebih dahulu SMTP Host, Username, dan Password pada form")
+      return
+    }
+
+    setSendingTestEmail(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/email/test`, {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name,
-          description,
-          apiVersion,
-          rateLimiting,
-          requestsPerMinute: parseInt(requestsPerMinute) || 60,
-          burstLimit: parseInt(burstLimit) || 100,
-          corsOrigins,
-          previewUrl,
-          twoFactorRequired,
-          ipWhitelist,
-          allowedIps,
-          auditLogging,
-          databaseUrl,
+          toEmail: testEmailRecipient.trim(),
           smtpHost,
-          smtpPort,
+          smtpPort: smtpPort || "587",
           smtpUser,
           smtpPassword,
           fromEmail,
           fromName,
-          storageConfig: storageEndpoint && storageAccessKey && storageSecretKey && storageBucket ? {
-            endpoint: storageEndpoint,
-            accessKey: storageAccessKey,
-            secretKey: storageSecretKey,
-            bucket: storageBucket,
-            publicUrl: storagePublicUrl,
-          } : null,
         }),
       })
 
+      const data = await res.json()
       if (res.ok) {
-        toast.success("Pengaturan workspace berhasil disimpan!")
+        toast.success(data.message || `Email uji coba berhasil dikirim ke ${testEmailRecipient}`)
+        setShowTestEmailDialog(false)
       } else {
-        const data = await res.json()
-        toast.error(data.error || "Gagal menyimpan pengaturan")
+        toast.error(data.error || "Gagal mengirim email uji coba")
       }
-    } catch (error) {
-      console.error("Failed to save:", error)
-      toast.error("Terjadi kesalahan saat menyimpan pengaturan")
+    } catch {
+      toast.error("Terjadi kesalahan saat mencoba mengirim email")
     } finally {
-      setSaving(false)
+      setSendingTestEmail(false)
+    }
+  }
+
+  // Handle Add Detected IP to Whitelist
+  const handleAddCurrentIp = () => {
+    if (!detectedIp) return
+    const lines = allowedIps.split("\n").map((l) => l.trim()).filter(Boolean)
+    if (!lines.includes(detectedIp)) {
+      lines.push(detectedIp)
+      setAllowedIps(lines.join("\n"))
+      toast.success(`Alamat IP ${detectedIp} ditambahkan ke daftar whitelist.`)
+    } else {
+      toast.info(`IP ${detectedIp} sudah ada dalam daftar.`)
     }
   }
 
@@ -304,22 +425,31 @@ export default function TenantSettingsPage() {
     }
   }
 
-  const handleDeleteContent = async () => {
-    if (!confirm("Apakah Anda yakin ingin menghapus SEMUA entri konten? Tindakan ini tidak dapat dibatalkan.")) return
+  const handlePurgeAllContent = async () => {
+    if (purgeConfirm !== "KOSONGKAN") {
+      toast.error("Silakan ketik KOSONGKAN untuk mengonfirmasi")
+      return
+    }
 
+    setPurging(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/content`, {
         method: "DELETE",
       })
 
+      const data = await res.json()
       if (res.ok) {
-        toast.success("Seluruh entri konten berhasil dihapus")
+        toast.success(data.message || "Seluruh entri konten berhasil dikosongkan.")
+        setShowPurgeDialog(false)
+        setPurgeConfirm("")
       } else {
-        toast.error("Gagal menghapus entri konten")
+        toast.error(data.error || "Gagal mengosongkan entri konten")
       }
     } catch (error) {
-      console.error("Delete failed:", error)
+      console.error("Purge failed:", error)
       toast.error("Gagal menghubungi server")
+    } finally {
+      setPurging(false)
     }
   }
 
@@ -354,8 +484,44 @@ export default function TenantSettingsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+            <div className="space-y-1.5 pb-2 border-b border-border/60">
+              <Skeleton className="h-8 w-56 rounded-xl" />
+              <Skeleton className="h-3.5 w-80 max-w-full rounded-md" />
+            </div>
+
+            <div className="flex gap-2 border-b border-border/60 pb-2 overflow-x-auto">
+              <Skeleton className="h-9 w-28 rounded-xl shrink-0" />
+              <Skeleton className="h-9 w-28 rounded-xl shrink-0" />
+              <Skeleton className="h-9 w-32 rounded-xl shrink-0" />
+              <Skeleton className="h-9 w-32 rounded-xl shrink-0" />
+            </div>
+
+            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-6 space-y-6">
+              <div className="space-y-1.5 border-b border-border/60 pb-4">
+                <Skeleton className="h-5 w-40 rounded-md" />
+                <Skeleton className="h-3.5 w-64 rounded-md" />
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-28 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+                <div className="space-y-2">
+                  <Skeleton className="h-4 w-32 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </div>
+              </div>
+
+              <div className="pt-4 border-t border-border/60 flex justify-end">
+                <Skeleton className="h-10 w-32 rounded-xl" />
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     )
   }
@@ -380,7 +546,7 @@ export default function TenantSettingsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Kelola informasi umum workspace, kredensial SMTP email, kebijakan keamanan akun, dan konfigurasi infrastruktur.
+                Kelola informasi umum workspace, branding kustom, kredensial SMTP, kebijakan keamanan, dan kuota pemakaian.
               </p>
             </div>
 
@@ -446,33 +612,51 @@ export default function TenantSettingsPage() {
 
           {/* Settings Tabs */}
           <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl flex flex-wrap max-w-full h-auto gap-1">
-              <TabsTrigger value="general" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+            <TabsList className="bg-muted/40 border border-border/80 p-1.5 rounded-2xl flex flex-wrap max-w-full h-auto gap-1.5">
+              <TabsTrigger 
+                value="general" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              >
                 <Building2 className="h-3.5 w-3.5 mr-1.5" />
                 General
               </TabsTrigger>
 
-              <TabsTrigger value="email" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+              <TabsTrigger 
+                value="white-label" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              >
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                White-Label & Branding
+              </TabsTrigger>
+
+              <TabsTrigger 
+                value="email" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              >
                 <Mail className="h-3.5 w-3.5 mr-1.5" />
                 Email SMTP
               </TabsTrigger>
 
-              <TabsTrigger value="security" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+              <TabsTrigger 
+                value="security" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              >
                 <Shield className="h-3.5 w-3.5 mr-1.5" />
                 Keamanan
               </TabsTrigger>
 
-              <TabsTrigger value="usage" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
+              <TabsTrigger 
+                value="usage" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs"
+              >
                 <Activity className="h-3.5 w-3.5 mr-1.5" />
                 Penggunaan (Usage)
               </TabsTrigger>
 
-              <TabsTrigger value="infrastructure" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs">
-                <Server className="h-3.5 w-3.5 mr-1.5" />
-                Infrastruktur Dedicated
-              </TabsTrigger>
-
-              <TabsTrigger value="danger" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-background data-[state=active]:shadow-xs text-rose-600 dark:text-rose-400">
+              <TabsTrigger 
+                value="danger" 
+                className="rounded-xl font-bold text-xs py-2 px-3.5 transition-all text-rose-600 dark:text-rose-400 hover:bg-rose-500/10 data-[state=active]:bg-rose-600 data-[state=active]:text-white data-[state=active]:shadow-xs"
+              >
                 <AlertTriangle className="h-3.5 w-3.5 mr-1.5" />
                 Danger Zone
               </TabsTrigger>
@@ -589,17 +773,255 @@ export default function TenantSettingsPage() {
               </Card>
             </TabsContent>
 
+            {/* TAB: WHITE-LABEL & BRANDING */}
+            <TabsContent value="white-label" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                
+                {/* Brand Configuration Form */}
+                <div className="lg:col-span-2 space-y-6">
+                  <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                          <Sparkles className="h-4 w-4 text-primary" />
+                          Kustomisasi Branding & Identitas Perusahaan
+                        </CardTitle>
+                        <Badge variant="outline" className="text-[10px] font-bold border-primary/20 bg-primary/10 text-primary">
+                          White-Label
+                        </Badge>
+                      </div>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Ganti logo, warna tema, dan identitas SaCMS dengan brand perusahaan Anda.
+                      </CardDescription>
+                    </CardHeader>
+                    
+                    <CardContent className="p-5 space-y-4">
+                      <div className="grid gap-4 sm:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label htmlFor="brandName" className="text-xs font-semibold text-foreground">Nama Brand / Perusahaan</Label>
+                          <Input
+                            id="brandName"
+                            placeholder="Contoh: DELVIA / Acme Corp"
+                            value={brandName}
+                            onChange={(e) => setBrandName(e.target.value)}
+                            className="rounded-xl h-9 text-xs bg-background border-border/80"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <Label htmlFor="primaryColor" className="text-xs font-semibold text-foreground">Warna Primer Tema</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              id="primaryColor"
+                              placeholder="#3B82F6"
+                              value={primaryColor}
+                              onChange={(e) => setPrimaryColor(e.target.value)}
+                              className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
+                            />
+                            <input
+                              type="color"
+                              value={primaryColor || "#3B82F6"}
+                              onChange={(e) => setPrimaryColor(e.target.value)}
+                              className="h-9 w-9 cursor-pointer rounded-xl border border-border/80 p-0.5 bg-background shrink-0"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Logo URL + Direct Upload */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="brandLogo" className="text-xs font-semibold text-foreground">Logo Perusahaan</Label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => logoFileInputRef.current?.click()}
+                            disabled={uploadingLogo}
+                            className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary/90"
+                          >
+                            {uploadingLogo ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                            Unggah Gambar Logo
+                          </Button>
+                          <input
+                            ref={logoFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) handleFileUpload(f, "logo")
+                            }}
+                            className="hidden"
+                          />
+                        </div>
+                        <Input
+                          id="brandLogo"
+                          type="url"
+                          placeholder="https://acme.com/logo.png atau unggah langsung"
+                          value={brandLogo}
+                          onChange={(e) => setBrandLogo(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
+                        />
+                      </div>
+
+                      {/* Favicon URL + Direct Upload */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label htmlFor="faviconUrl" className="text-xs font-semibold text-foreground">Favicon Browser</Label>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => faviconFileInputRef.current?.click()}
+                            disabled={uploadingFavicon}
+                            className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary/90"
+                          >
+                            {uploadingFavicon ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Upload className="h-3 w-3 mr-1" />}
+                            Unggah Favicon (.ico / .png)
+                          </Button>
+                          <input
+                            ref={faviconFileInputRef}
+                            type="file"
+                            accept="image/*,.ico"
+                            onChange={(e) => {
+                              const f = e.target.files?.[0]
+                              if (f) handleFileUpload(f, "favicon")
+                            }}
+                            className="hidden"
+                          />
+                        </div>
+                        <Input
+                          id="faviconUrl"
+                          type="url"
+                          placeholder="https://acme.com/favicon.ico atau unggah langsung"
+                          value={faviconUrl}
+                          onChange={(e) => setFaviconUrl(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80 font-mono"
+                        />
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label htmlFor="customEmailSender" className="text-xs font-semibold text-foreground">
+                          Alamat Email Pengirim Kustom <span className="text-muted-foreground font-normal text-[11px]">(opsional)</span>
+                        </Label>
+                        <Input
+                          id="customEmailSender"
+                          type="email"
+                          placeholder="noreply@acme.com"
+                          value={customEmailSender}
+                          onChange={(e) => setCustomEmailSender(e.target.value)}
+                          className="rounded-xl h-9 text-xs bg-background border-border/80"
+                        />
+                      </div>
+
+                      <div className="flex justify-end pt-3 border-t border-border/60">
+                        <Button 
+                          onClick={handleSave} 
+                          disabled={saving} 
+                          className="rounded-xl h-9 text-xs font-bold bg-primary text-primary-foreground shadow-xs px-4"
+                        >
+                          {saving ? (
+                            <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                          ) : (
+                            <Save className="mr-1.5 h-3.5 w-3.5" />
+                          )}
+                          Simpan Branding
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Live Brand Preview Card */}
+                <div className="space-y-6">
+                  <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                      <CardTitle className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                        <Eye className="h-3.5 w-3.5 text-primary" />
+                        Live Preview Tampilan Brand
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <div className="p-4 rounded-xl border border-border/80 bg-background/80 space-y-3">
+                        <div className="flex items-center justify-between gap-3 pb-3 border-b border-border/50">
+                          <div className="flex items-center gap-2">
+                            {brandLogo ? (
+                              <img src={brandLogo} alt="Logo" className="h-7 w-auto max-w-[100px] object-contain rounded" />
+                            ) : (
+                              <div className="h-7 w-7 rounded-lg bg-primary/20 flex items-center justify-center text-primary font-bold text-xs">
+                                {(brandName || name || "B")[0].toUpperCase()}
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-foreground truncate max-w-[120px]">
+                              {brandName || name || "Brand Anda"}
+                            </span>
+                          </div>
+
+                          <div 
+                            className="px-2.5 py-1 rounded-lg text-[10px] font-bold text-white shadow-xs"
+                            style={{ backgroundColor: primaryColor || "#3B82F6" }}
+                          >
+                            Aksen Tombol
+                          </div>
+                        </div>
+
+                        <div className="space-y-1.5 text-[11px] text-muted-foreground">
+                          <div className="flex justify-between">
+                            <span>Favicon Tab:</span>
+                            <span className="font-mono text-foreground font-semibold truncate max-w-[130px]">
+                              {faviconUrl ? "Kustom Aktif" : "Default"}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span>Email Sender:</span>
+                            <span className="font-mono text-foreground font-semibold truncate max-w-[130px]">
+                              {customEmailSender || "noreply@sacms.cloud"}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5 text-[11px] text-muted-foreground">
+                        <p className="font-bold text-foreground flex items-center gap-1">
+                          <Globe className="h-3 w-3 text-primary" /> Public Brand API Endpoint
+                        </p>
+                        <code className="block bg-background px-2 py-1 rounded font-mono text-[10px] border border-border/80 break-all">
+                          GET /api/public/{tenantSlug}/brand
+                        </code>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+              </div>
+            </TabsContent>
+
             {/* TAB: EMAIL (SMTP) */}
             <TabsContent value="email" className="space-y-6">
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                  <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-primary" />
-                    Konfigurasi Pengiriman Email (SMTP)
-                  </CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Gunakan server SMTP khusus untuk mengirimkan undangan anggota dan notifikasi workspace.
-                  </CardDescription>
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-primary" />
+                      Konfigurasi Pengiriman Email (SMTP)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Gunakan server SMTP khusus untuk mengirimkan undangan anggota dan notifikasi workspace.
+                    </CardDescription>
+                  </div>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setTestEmailRecipient(session?.user?.email || "")
+                      setShowTestEmailDialog(true)
+                    }}
+                    className="rounded-xl text-xs font-bold h-9 border-border/80 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Send className="h-3.5 w-3.5 text-primary" />
+                    Kirim Email Uji Coba
+                  </Button>
                 </CardHeader>
                 <CardContent className="p-5 space-y-5">
                   <div className="grid gap-4 sm:grid-cols-2">
@@ -714,8 +1136,22 @@ export default function TenantSettingsPage() {
                     </div>
 
                     {ipWhitelist && (
-                      <div className="space-y-1.5 pt-1">
-                        <Label className="text-xs font-semibold text-foreground">Daftar IP yang Diizinkan</Label>
+                      <div className="space-y-2 pt-1">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-xs font-semibold text-foreground">Daftar IP yang Diizinkan</Label>
+                          {detectedIp && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={handleAddCurrentIp}
+                              className="h-6 px-2 text-[11px] font-bold text-primary hover:text-primary/90"
+                            >
+                              <Plus className="h-3 w-3 mr-1" />
+                              Tambahkan IP Saya ({detectedIp})
+                            </Button>
+                          )}
+                        </div>
                         <Textarea
                           placeholder="Masukkan IP atau subnet CIDR per baris:&#10;103.120.10.1&#10;192.168.1.0/24"
                           rows={4}
@@ -747,377 +1183,269 @@ export default function TenantSettingsPage() {
               <UsageTab tenantSlug={tenantSlug} />
             </TabsContent>
 
-            {/* TAB: INFRASTRUCTURE */}
-            <TabsContent value="infrastructure" className="space-y-6">
-              {!infraServer && (
-                <Card className="rounded-2xl border border-primary/20 shadow-xs bg-gradient-to-br from-card via-card to-primary/5 overflow-hidden">
-                  <CardHeader className="p-5 pb-3">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                        <Server className="h-4 w-4 text-primary" />
-                        SaCMS Dedicated Managed Appliance (Cloud VPS & VDS)
-                      </CardTitle>
-                      <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
-                        Enterprise Infrastructure
-                      </Badge>
-                    </div>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Otomatisasi Dedicated PostgreSQL 17 + MinIO S3 Object Storage + Auto Let's Encrypt SSL terisolasi penuh untuk workspace Anda.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 pt-2 space-y-4">
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Spesifikasi Server</span>
-                        <p className="text-xs font-semibold text-foreground">4-6 vCPU / 3-6 Core Fisik</p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">NVMe Storage</span>
-                        <p className="text-xs font-semibold text-foreground">75 GB - 360 GB Dedicated</p>
-                      </div>
-                      <div className="p-3 rounded-xl bg-muted/40 border space-y-1">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Keamanan & SSL</span>
-                        <p className="text-xs font-semibold text-foreground">Auto HTTPS + TLS 1.3</p>
-                      </div>
-                    </div>
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-2">
-                      <p className="text-xs text-muted-foreground">
-                        Belum ada Server Dedicated terpasang untuk workspace ini. Anda dapat mengaktifkannya via paket Business VPS / Gov VDS atau memasukkan PostgreSQL sendiri di bawah (BYODB).
-                      </p>
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
-                        className="rounded-xl font-bold text-xs h-8 gap-1.5 shrink-0"
-                      >
-                        <Zap className="h-3.5 w-3.5" /> Lihat Paket Dedicated
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
-                {infraServer && (
-                  <Card className="rounded-2xl border border-primary/30 shadow-xs bg-card overflow-hidden">
-                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-primary/5">
-                      <div className="flex items-center justify-between">
-                        <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                          <Server className="h-4 w-4 text-primary" />
-                          SaCMS Dedicated Managed Appliance ({infraServer.plan?.toUpperCase()})
-                        </CardTitle>
-                        <div className="flex items-center gap-2">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "capitalize font-bold text-[10px]",
-                              infraServer.status === "active" && "bg-emerald-500/10 text-emerald-600 border-emerald-500/30",
-                              infraServer.status === "provisioning" && "bg-amber-500/10 text-amber-600 border-amber-500/30",
-                              infraServer.status === "error" && "bg-rose-500/10 text-rose-600 border-rose-500/30"
-                            )}
-                          >
-                            {infraServer.status}
-                          </Badge>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            disabled={testingInfraHealth}
-                            onClick={async () => {
-                              setTestingInfraHealth(true)
-                              try {
-                                const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, { method: "POST" })
-                                const data = await res.json()
-                                if (res.ok) {
-                                  toast.success(data.healthy ? "Semua service (PostgreSQL & MinIO) aktif normal!" : data.message)
-                                  const infraRes = await fetch(`/api/tenant/${tenantSlug}/infrastructure`)
-                                  if (infraRes.ok) {
-                                    const infraData = await infraRes.json()
-                                    setInfraServer(infraData.server)
-                                  }
-                                } else {
-                                  toast.error(data.error || "Gagal mengetes status server")
-                                }
-                              } catch {
-                                toast.error("Terjadi kesalahan jaringan")
-                              } finally {
-                                setTestingInfraHealth(false)
-                              }
-                            }}
-                            className="rounded-xl h-7 text-xs font-bold gap-1.5"
-                          >
-                            <Activity className={cn("h-3.5 w-3.5 text-primary", testingInfraHealth && "animate-spin")} />
-                            {testingInfraHealth ? "Checking..." : "Test Health"}
-                          </Button>
-                        </div>
-                      </div>
-                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                        Infrastruktur terisolasi penuh: Dedicated PostgreSQL 17 + MinIO S3 Object Storage + Caddy Auto-SSL.
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="p-5 space-y-4">
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Spesifikasi VPS</span>
-                          <p className="text-xs font-semibold text-foreground">{infraServer.cpuCount} vCPU &bull; {infraServer.ramMb / 1024} GB RAM</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Storage NVMe</span>
-                          <p className="text-xs font-semibold text-foreground">{infraServer.diskGb} GB Dedicated</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Region Datacenter</span>
-                          <p className="text-xs font-semibold text-foreground">{infraServer.region}</p>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border space-y-1">
-                          <span className="text-[10px] uppercase font-bold text-muted-foreground">Health Status</span>
-                          <div className="flex items-center gap-1.5 pt-0.5">
-                            <div className={cn(
-                              "h-2 w-2 rounded-full",
-                              infraServer.healthStatus === "healthy" ? "bg-emerald-500" : "bg-amber-500"
-                            )} />
-                            <span className="text-xs font-semibold capitalize">{infraServer.healthStatus}</span>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">PostgreSQL Host Endpoint</Label>
-                          <Input readOnly value={`${infraServer.dbHost || "Configuring"}:${infraServer.dbPort || 5432}`} className="font-mono text-xs bg-muted/40 h-8 rounded-xl" />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">MinIO S3 Media Endpoint</Label>
-                          <Input readOnly value={`https://${infraServer.mediaHost || "Configuring"}`} className="font-mono text-xs bg-muted/40 h-8 rounded-xl" />
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
-                      <Server className="h-4 w-4 text-primary" />
-                      Bring Your Own Infrastructure (Custom Connection)
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Hubungkan database PostgreSQL eksternal (Supabase, Neon, AWS RDS) atau custom S3 bucket.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-5">
-                    <div className="space-y-2">
-                      <Label htmlFor="dbUrl" className="text-xs font-semibold text-foreground">PostgreSQL Connection URL Dedicated</Label>
-                      <Input
-                        id="dbUrl"
-                        type="password"
-                        placeholder="postgresql://user:pass@host:5432/dbname"
-                        value={databaseUrl}
-                        onChange={(e) => setDatabaseUrl(e.target.value)}
-                        className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                      />
-                      <p className="text-[10px] text-muted-foreground">
-                        Semua entri konten dan skema workspace akan disimpan di database khusus ini.
-                      </p>
-                    </div>
-
-                    <Separator />
-
-                    <div className="space-y-3">
-                      <Label className="text-xs font-semibold text-foreground">Custom S3 / Cloudflare R2 Storage</Label>
-                      <div className="grid gap-3 sm:grid-cols-2">
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">Endpoint URL</Label>
-                          <Input
-                            placeholder="https://s3.ap-southeast-1.amazonaws.com"
-                            value={storageEndpoint}
-                            onChange={(e) => setStorageEndpoint(e.target.value)}
-                            className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">Bucket Name</Label>
-                          <Input
-                            placeholder="my-workspace-media"
-                            value={storageBucket}
-                            onChange={(e) => setStorageBucket(e.target.value)}
-                            className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">Access Key ID</Label>
-                          <Input
-                            type="password"
-                            value={storageAccessKey}
-                            onChange={(e) => setStorageAccessKey(e.target.value)}
-                            className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                          />
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-[11px] text-muted-foreground">Secret Access Key</Label>
-                          <Input
-                            type="password"
-                            value={storageSecretKey}
-                            onChange={(e) => setStorageSecretKey(e.target.value)}
-                            className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                          />
-                        </div>
-                        <div className="space-y-1 sm:col-span-2">
-                          <Label className="text-[11px] text-muted-foreground">Public CDN URL (Opsional)</Label>
-                          <Input
-                            placeholder="https://cdn.myworkspace.com"
-                            value={storagePublicUrl}
-                            onChange={(e) => setStoragePublicUrl(e.target.value)}
-                            className="rounded-xl h-9 text-xs font-mono bg-background border-border/80"
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    <Separator />
-
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-                      <p className="text-[11px] text-muted-foreground">
-                        Pastikan PostgreSQL dan S3 dapat diakses dari server SaCMS sebelum menyimpan.
-                      </p>
-                      <Button
-                        onClick={handleSave}
-                        disabled={saving}
-                        className="rounded-xl font-bold text-xs h-8 gap-1.5 shrink-0"
-                      >
-                        {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                        Simpan Konfigurasi Infrastruktur
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
-              </TabsContent>
-
             {/* TAB: DANGER ZONE */}
             <TabsContent value="danger" className="space-y-6">
-              <Card className="rounded-2xl border-destructive/40 shadow-xs bg-card overflow-hidden">
-                <CardHeader className="p-5 pb-3 border-b border-destructive/20 bg-destructive/5">
-                  <CardTitle className="text-sm font-bold text-destructive flex items-center gap-2">
+              <Card className="rounded-2xl border border-rose-500/30 shadow-xs bg-rose-500/5 overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-rose-500/20 bg-rose-500/10">
+                  <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
                     <AlertTriangle className="h-4 w-4" />
-                    Tindakan Berisiko Tinggi (Danger Zone)
+                    Ekspor & Impor Data Cadangan Workspace
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Operasi berikut bersifat permanen dan memengaruhi seluruh data pada workspace.
+                    Unduh data skema dan entri konten atau pulihkan dari berkas JSON cadangan.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
-                  
-                  {/* Export & Import */}
-                  <div className="p-4 rounded-xl border border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground">Ekspor & Impor Data Workspace</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Unduh salinan JSON skema dan konten atau pulihkan konfigurasi dari berkas ekspor.
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <Button variant="outline" size="sm" onClick={handleExport} className="rounded-xl h-8 text-xs font-bold border-border/80">
-                        <Download className="mr-1.5 h-3.5 w-3.5" /> Ekspor JSON
+                  <div className="flex flex-col sm:flex-row gap-3">
+                    <Button
+                      onClick={handleExport}
+                      variant="outline"
+                      className="rounded-xl h-9 text-xs font-bold border-border/80"
+                    >
+                      <Download className="mr-1.5 h-3.5 w-3.5" />
+                      Ekspor Skema & Konten (.JSON)
+                    </Button>
+
+                    <label className="cursor-pointer">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="rounded-xl h-9 text-xs font-bold border-border/80 pointer-events-none"
+                      >
+                        <Upload className="mr-1.5 h-3.5 w-3.5" />
+                        Impor Data Cadangan (.JSON)
                       </Button>
-                      <div className="relative">
-                        <Input 
-                          type="file" 
-                          accept=".json"
-                          onChange={handleImport}
-                          className="absolute inset-0 opacity-0 cursor-pointer w-full h-full"
-                          disabled={saving}
-                        />
-                        <Button variant="outline" size="sm" disabled={saving} className="rounded-xl h-8 text-xs font-bold border-border/80">
-                          <Upload className="mr-1.5 h-3.5 w-3.5" /> Impor
-                        </Button>
-                      </div>
-                    </div>
+                      <input
+                        type="file"
+                        accept=".json"
+                        onChange={handleImport}
+                        className="hidden"
+                      />
+                    </label>
                   </div>
+                </CardContent>
+              </Card>
 
-                  {/* Delete All Content */}
-                  <div className="p-4 rounded-xl border border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-xs font-bold text-foreground">Kosongkan Seluruh Entri Konten</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Hapus semua entri konten dari database tetapi tetap pertahankan model Content Type.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={handleDeleteContent}
-                      className="rounded-xl h-8 text-xs font-bold text-destructive hover:bg-destructive/10 border-destructive/30"
-                    >
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Kosongkan Konten
-                    </Button>
+              {/* Danger: Purge All Content */}
+              <Card className="rounded-2xl border border-rose-500/30 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                  <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                    <Trash2 className="h-4 w-4" />
+                    Kosongkan Semua Entri Konten
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Menghapus seluruh rekaman entri konten di semua model, tetapi tetap mempertahankan struktur skema tipe konten.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-5 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Tindakan ini permanen dan tidak dapat dibatalkan.</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setPurgeConfirm("")
+                      setShowPurgeDialog(true)
+                    }}
+                    className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 rounded-xl text-xs font-bold h-9"
+                  >
+                    Kosongkan Konten
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Instant Snapshot Backup */}
+              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
+                <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                  <div>
+                    <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                      <Download className="h-4 w-4 text-primary" />
+                      Cadangkan Data Workspace (Instant Snapshot Backup)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Ekspor seluruh skema model konten, entri data JSONB, komponen, dan metadata media ke dalam satu berkas JSON terstruktur.
+                    </CardDescription>
                   </div>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      window.location.href = `/api/tenant/${tenantSlug}/export`
+                      toast.success("Mengunduh Snapshot Backup", {
+                        description: "Berkas cadangan JSON sedang diunduh ke perangkat Anda.",
+                      })
+                    }}
+                    className="rounded-xl text-xs font-bold h-9 border-border/80 flex items-center gap-1.5 shrink-0"
+                  >
+                    <Download className="h-3.5 w-3.5 text-primary" />
+                    Unduh Snapshot Backup
+                  </Button>
+                </CardHeader>
+              </Card>
 
-                  {/* Delete Entire Workspace */}
-                  <div className="p-4 rounded-xl border border-destructive/40 bg-destructive/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div>
-                      <h4 className="text-xs font-bold text-destructive">Hapus Workspace Secara Permanen</h4>
-                      <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Menghapus permanen seluruh data, skema, media, token, dan riwayat webhook.
-                      </p>
-                    </div>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => setShowDeleteDialog(true)}
-                      className="rounded-xl h-8 text-xs font-bold"
-                    >
-                      <Trash2 className="mr-1.5 h-3.5 w-3.5" /> Hapus Workspace
-                    </Button>
-                  </div>
-
+              {/* Danger: Delete Workspace */}
+              <Card className="rounded-2xl border border-rose-500 shadow-xs bg-rose-500/10 overflow-hidden">
+                <CardHeader className="p-5 pb-3">
+                  <CardTitle className="text-sm font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                    <AlertTriangle className="h-4 w-4" />
+                    Hapus Workspace Secara Permanen
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                    Menghapus seluruh database workspace, media storage, token API, dan langganan secara permanen.
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="p-5 pt-0 flex items-center justify-between">
+                  <p className="text-xs text-muted-foreground">Tindakan ini tidak dapat diurungkan kembali.</p>
+                  <Button
+                    variant="destructive"
+                    onClick={() => {
+                      setDeleteConfirm("")
+                      setShowDeleteDialog(true)
+                    }}
+                    className="rounded-xl text-xs font-bold h-9 bg-rose-600 hover:bg-rose-700 text-white"
+                  >
+                    Hapus Workspace Ini
+                  </Button>
                 </CardContent>
               </Card>
             </TabsContent>
+
           </Tabs>
 
-          {/* Bottom Save Action Bar */}
-          <div className="flex justify-end pt-2">
-            <Button 
-              onClick={handleSave} 
-              disabled={saving}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-9 rounded-xl shadow-xs"
-            >
-              {saving ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
-              Simpan Perubahan
-            </Button>
-          </div>
-
-          {/* Delete Workspace Confirmation Dialog */}
-          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
-            <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
+          {/* Test Email SMTP Dialog */}
+          <Dialog open={showTestEmailDialog} onOpenChange={setShowTestEmailDialog}>
+            <DialogContent className="rounded-2xl sm:max-w-md">
               <DialogHeader>
-                <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-1">
-                  <AlertTriangle className="h-5 w-5" />
-                </div>
-                <DialogTitle className="text-base font-bold text-foreground">Hapus Workspace Permanen?</DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Tindakan ini tidak dapat dibatalkan. Seluruh konten, skema field, berkas media, dan pengaturan akan dihapus selamanya.
+                <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+                  <Send className="h-4 w-4 text-primary" />
+                  Kirim Email Uji Coba (Test SMTP)
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                  Kirim email percobaan untuk memverifikasi bahwa konfigurasi server SMTP Anda berfungsi normal.
                 </DialogDescription>
               </DialogHeader>
+
               <div className="space-y-3 py-2">
-                <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-xl text-xs text-destructive">
-                  Ketik <code className="font-mono font-bold bg-background/80 px-1.5 py-0.5 rounded text-foreground">{tenantSlug}</code> di bawah untuk konfirmasi:
-                </div>
+                <Label className="text-xs font-semibold">Alamat Email Penerima Uji Coba:</Label>
                 <Input
-                  placeholder={`Ketik ${tenantSlug} untuk konfirmasi`}
-                  value={deleteConfirm}
-                  onChange={(e) => setDeleteConfirm(e.target.value)}
-                  className="rounded-xl h-9 text-xs font-mono"
+                  type="email"
+                  value={testEmailRecipient}
+                  onChange={(e) => setTestEmailRecipient(e.target.value)}
+                  placeholder="admin@perusahaan.com"
+                  className="rounded-xl text-xs font-mono"
+                />
+                <p className="text-[11px] text-muted-foreground">
+                  Email ini akan dikirim menggunakan kredensial host <strong>{smtpHost || "Belum diisi"}</strong>:{smtpPort || "587"}.
+                </p>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowTestEmailDialog(false)}
+                  className="rounded-xl text-xs font-bold h-9"
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleSendTestEmail}
+                  disabled={sendingTestEmail || !testEmailRecipient.trim()}
+                  className="rounded-xl text-xs font-bold h-9 bg-primary text-primary-foreground"
+                >
+                  {sendingTestEmail ? (
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Send className="mr-1.5 h-3.5 w-3.5" />
+                  )}
+                  Kirim Email Sekarang
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Safe Purge Content Dialog */}
+          <Dialog open={showPurgeDialog} onOpenChange={setShowPurgeDialog}>
+            <DialogContent className="rounded-2xl sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold text-rose-600 dark:text-rose-400 flex items-center gap-2">
+                  <Trash2 className="h-4 w-4" />
+                  Konfirmasi Kosongkan Konten
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                  Tindakan ini akan menghapus <strong>seluruh entri konten</strong> pada semua model di workspace ini secara permanen.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <Label className="text-xs font-semibold">
+                  Ketik <span className="font-mono font-bold text-rose-600 dark:text-rose-400">KOSONGKAN</span> untuk mengonfirmasi:
+                </Label>
+                <Input
+                  value={purgeConfirm}
+                  onChange={(e) => setPurgeConfirm(e.target.value)}
+                  placeholder="KOSONGKAN"
+                  className="rounded-xl text-xs font-mono border-rose-500/40"
                 />
               </div>
-              <DialogFooter className="gap-2 sm:gap-0 pt-2">
-                <Button variant="outline" onClick={() => setShowDeleteDialog(false)} className="rounded-xl text-xs font-bold h-9">
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowPurgeDialog(false)}
+                  className="rounded-xl text-xs font-bold h-9"
+                >
+                  Batal
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handlePurgeAllContent}
+                  disabled={purgeConfirm !== "KOSONGKAN" || purging}
+                  className="rounded-xl text-xs font-bold h-9 bg-rose-600 hover:bg-rose-700"
+                >
+                  {purging ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : null}
+                  Ya, Kosongkan Semua Konten
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+
+          {/* Delete Workspace Dialog */}
+          <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+            <DialogContent className="rounded-2xl sm:max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold text-rose-600 dark:text-rose-400">
+                  Konfirmasi Hapus Workspace
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground mt-1">
+                  Tindakan ini akan menghapus workspace <strong>{name}</strong> beserta seluruh data di dalamnya secara permanen.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-3 py-2">
+                <Label className="text-xs font-semibold">
+                  Ketik slug <span className="font-mono font-bold text-foreground">{tenantSlug}</span> untuk mengonfirmasi:
+                </Label>
+                <Input
+                  value={deleteConfirm}
+                  onChange={(e) => setDeleteConfirm(e.target.value)}
+                  placeholder={tenantSlug}
+                  className="rounded-xl text-xs font-mono"
+                />
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeleteDialog(false)}
+                  className="rounded-xl text-xs font-bold h-9"
+                >
                   Batal
                 </Button>
                 <Button
                   variant="destructive"
                   onClick={handleDeleteWorkspace}
                   disabled={deleteConfirm !== tenantSlug}
-                  className="rounded-xl text-xs font-bold h-9"
+                  className="rounded-xl text-xs font-bold h-9 bg-rose-600 hover:bg-rose-700"
                 >
-                  Ya, Hapus Workspace
+                  Ya, Hapus Permanen
                 </Button>
               </DialogFooter>
             </DialogContent>

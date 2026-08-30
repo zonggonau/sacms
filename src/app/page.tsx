@@ -6,8 +6,8 @@ import { getLandingData } from "@/lib/public-api"
 export const dynamic = "force-dynamic"
 
 export const metadata = {
-  title: "SaCMS — Platform Digital Papua | Website Pemerintah, UMKM & Pariwisata",
-  description: "Platform CMS modern untuk membangun website pemerintah, portal berita, katalog UMKM, dan pariwisata di Papua. Dibangun dengan teknologi enterprise-grade untuk mendukung transformasi digital di Tanah Papua.",
+  title: "SaCMS — Enterprise Multi-Tenant Headless CMS & AI Website Engine",
+  description: "Platform Headless CMS multi-tenant modern dengan dedicated PostgreSQL appliance, AI website generator, edge custom DNS, dynamic GraphQL, dan billing Midtrans terintegrasi.",
 }
 
 export default async function HomePage() {

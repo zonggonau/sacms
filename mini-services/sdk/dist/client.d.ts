@@ -90,9 +90,29 @@ export declare class QueryBuilder<T> {
      */
     where(field: string, operator: string, value: any): this;
     /**
+     * Select specific fields to return. E.g. .select(['title', 'slug', 'cover'])
+     */
+    select(fields: string[]): this;
+    /**
      * Select specific relations to populate. E.g. .populate(['author'])
      */
     populate(fields: string[]): this;
+    /**
+     * Sort results. E.g. .sort('createdAt:desc') or .sort('title:asc')
+     */
+    sort(sortOrder: string): this;
+    /**
+     * Full-text search across content entries. E.g. .search('nextjs tutorial')
+     */
+    search(query: string): this;
+    /**
+     * Target a specific locale. E.g. .locale('id') or .locale('en')
+     */
+    locale(loc: string): this;
+    /**
+     * Filter by status. E.g. .status('PUBLISHED') or .status('DRAFT')
+     */
+    status(st: string): this;
     /**
      * Limit the number of returned entries.
      */

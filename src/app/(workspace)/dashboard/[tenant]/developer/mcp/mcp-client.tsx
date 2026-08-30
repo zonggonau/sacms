@@ -361,7 +361,7 @@ export function MCPDashboardClient({
     } catch {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Gagal Menyalin",
         description: `Gagal menyalin ${label.toLowerCase()}`,
       })
     }
@@ -679,11 +679,11 @@ export function MCPDashboardClient({
           {/* Live Catalog Tools & Recommendations Tabs */}
           <Tabs defaultValue="catalog" className="space-y-4">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
-              <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
                 22 Live Tools MCP Aktif
               </TabsTrigger>
-              <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
                 Rekomendasi MCP Baru 💡
               </TabsTrigger>

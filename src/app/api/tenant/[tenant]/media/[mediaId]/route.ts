@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { deleteFromStorage } from "@/lib/r2"
 
 // PATCH /api/tenant/[tenant]/media/[mediaId] - Update metadata
@@ -33,7 +33,8 @@ export async function PATCH(
     const body = await request.json()
     const { name, alt, caption } = body
 
-    const updated = await db.media.update({
+    const tenantDb = await getTenantDb(tenantSlug)
+    const updated = await tenantDb.media.update({
       where: { id: mediaId, tenantId: tenant.id },
       data: {
         name: name !== undefined ? name : undefined,
@@ -90,8 +91,10 @@ export async function DELETE(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const tenantDb = await getTenantDb(tenantSlug)
+
     // Check if media exists and belongs to tenant
-    const media = await db.media.findFirst({
+    const media = await tenantDb.media.findFirst({
       where: {
         id: mediaId,
         tenantId: tenant.id,
@@ -102,12 +105,12 @@ export async function DELETE(
       return NextResponse.json({ error: "Media not found" }, { status: 404 })
     }
 
-    // Delete from R2 or Local Storage
+    // Delete from R2, S3, MinIO, or Local Storage
     if (media.storageKey) {
       await deleteFromStorage(media.storageKey)
     }
 
-    await db.media.delete({
+    await tenantDb.media.delete({
       where: { id: mediaId },
     })
 
@@ -162,8 +165,10 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
+    const tenantDb = await getTenantDb(tenantSlug)
+
     // Get media
-    const media = await db.media.findFirst({
+    const media = await tenantDb.media.findFirst({
       where: {
         id: mediaId,
         tenantId: tenant.id,

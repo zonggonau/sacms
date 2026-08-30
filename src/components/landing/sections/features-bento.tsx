@@ -11,34 +11,34 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
   // Default localized features fallback
   const defaultFeatures = [
     {
-      icon: "Cpu",
-      title: dict.features.items.apiFirst.title,
-      description: dict.features.items.apiFirst.desc,
-    },
-    {
       icon: "Layers",
-      title: dict.features.items.multiTenancy.title,
-      description: dict.features.items.multiTenancy.desc,
+      title: dict.features?.items?.multiTenancy?.title || "Hybrid Multi-Tenancy & Dedicated Appliance",
+      description: dict.features?.items?.multiTenancy?.desc || "Mulai dari shared multi-tenant hemat biaya hingga PostgreSQL 17 + MinIO Appliance terisolasi penuh.",
     },
     {
-      icon: "LayoutTemplate",
-      title: dict.features.items.visualEditor.title,
-      description: dict.features.items.visualEditor.desc,
+      icon: "Sparkles",
+      title: dict.features?.items?.aiBuilder?.title || "1-Prompt AI Fullstack Website Engine",
+      description: dict.features?.items?.aiBuilder?.desc || "Bangun landing page & website instan berbasis Next.js dengan AI prompt, preview interaktif, dan 1-click edge deploy.",
     },
     {
-      icon: "Server",
-      title: dict.features.items.dedicatedInfra.title,
-      description: dict.features.items.dedicatedInfra.desc,
+      icon: "Database",
+      title: dict.features?.items?.apiFirst?.title || "Dynamic GraphQL, REST API & MCP",
+      description: dict.features?.items?.apiFirst?.desc || "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol.",
     },
     {
-      icon: "HardDrive",
-      title: dict.features.items.mediaStorage.title,
-      description: dict.features.items.mediaStorage.desc,
+      icon: "Globe",
+      title: dict.features?.items?.customDns?.title || "Vercel-Style Custom DNS & Registrar",
+      description: dict.features?.items?.customDns?.desc || "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
     },
     {
       icon: "CreditCard",
-      title: dict.features.items.billing.title,
-      description: dict.features.items.billing.desc,
+      title: dict.features?.items?.billing?.title || "Billing Otomatis QRIS & Midtrans",
+      description: dict.features?.items?.billing?.desc || "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota.",
+    },
+    {
+      icon: "ShieldCheck",
+      title: dict.features?.items?.workflow?.title || "Enterprise RBAC & 7-Stage Workflow",
+      description: dict.features?.items?.workflow?.desc || "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published).",
     },
   ]
 

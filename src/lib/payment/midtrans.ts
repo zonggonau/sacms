@@ -125,13 +125,32 @@ export class MidtransProvider implements PaymentProvider {
   async getTransactionStatus(
     orderId: string
   ): Promise<TransactionStatusResult> {
-    const result = await this.snap.transaction.status(orderId)
-    return {
-      orderId,
-      status: mapMidtransStatus(result.transaction_status),
-      paymentType: result.payment_type,
-      transactionId: result.transaction_id,
-      raw: result,
+    try {
+      const result = await this.snap.transaction.status(orderId)
+      return {
+        orderId,
+        status: mapMidtransStatus(result.transaction_status),
+        paymentType: result.payment_type,
+        transactionId: result.transaction_id,
+        raw: result,
+      }
+    } catch (err: any) {
+      // If 404 or "Transaction doesn't exist", the transaction is created on Snap token but not yet paid/processed by user
+      if (
+        err?.httpStatusCode === '404' || 
+        err?.ApiResponse?.status_code === '404' || 
+        err?.message?.includes("doesn't exist") || 
+        err?.message?.includes('404')
+      ) {
+        return {
+          orderId,
+          status: 'pending',
+          paymentType: 'unselected',
+          transactionId: undefined,
+          raw: err?.ApiResponse || { status_message: "Transaction not yet processed" },
+        }
+      }
+      throw err
     }
   }
 

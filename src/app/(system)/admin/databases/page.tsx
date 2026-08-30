@@ -24,7 +24,9 @@ import {
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 
 export default function AdminDatabasesPage() {
   const { data: session, status } = useSession()
@@ -53,7 +55,7 @@ export default function AdminDatabasesPage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal memuat status database & cache" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -68,8 +70,8 @@ export default function AdminDatabasesPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex flex-1 min-h-[80vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <AdminPageSkeleton layout="dashboard" cardsCount={4} />
       </div>
     )
   }

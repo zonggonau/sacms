@@ -203,7 +203,8 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
       include: { schemaFields: true }
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { singleType }
   } catch (error) {
     console.error("Error creating single type:", error)
@@ -284,8 +285,10 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     const formattedFields = parseSchemaFieldOptions(updatedSingleType.schemaFields)
 
-    revalidatePath(`/dashboard/${tenantSlug}/single-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/single-types/${updatedSingleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types/${updatedSingleType.slug}/edit`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${updatedSingleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return { singleType: { ...updatedSingleType, schemaFields: formattedFields } }
   } catch (error) {
@@ -321,9 +324,30 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
       return { error: "Global single types cannot be deleted by tenant admins" }
     }
 
+    // Relational Dependency Guard: check if any schema field references this single type
+    const referencingFields = await tenantDb.schemaField.findMany({
+      where: {
+        relationSlug: existingSingleType.slug,
+        NOT: { singleTypeId: id }
+      },
+      include: {
+        contentType: true,
+        singleType: true,
+        component: true
+      }
+    })
+
+    if (referencingFields.length > 0) {
+      const parentName = referencingFields[0].contentType?.name || referencingFields[0].singleType?.name || referencingFields[0].component?.name || "skema lain"
+      return { 
+        error: `Tidak dapat menghapus single type "${existingSingleType.name}" karena sedang direferensikan oleh field "${referencingFields[0].name}" pada ${parentName}. Hapus field relasi tersebut terlebih dahulu.` 
+      }
+    }
+
     await tenantDb.singleType.delete({ where: { id } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting single type:", error)
@@ -395,8 +419,9 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
       })
     }
 
-    revalidatePath(`/dashboard/${tenantSlug}/single-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/single-types/${singleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return {
       singleType: {

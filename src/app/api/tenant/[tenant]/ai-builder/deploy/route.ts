@@ -6,6 +6,67 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { deployToVercel, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { randomBytes } from "crypto"
 
+export async function GET(
+  req: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
+
+    const resolvedParams = await params
+    const access = await getTenantAccess(session, resolvedParams.tenant)
+    if (!access) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+    }
+
+    const tenant = access.tenant
+    const tenantId = tenant.id
+
+    const settings = await db.setting.findMany({
+      where: {
+        tenantId,
+        key: { in: [`${tenantId}_hostingStatus`, `${tenantId}_hostingExpiresAt`, `${tenantId}_vercelDeploymentUrl`, `${tenantId}_vercelProjectId`, `${tenantId}_customDomain`] }
+      }
+    })
+
+    const hostingStatusSetting = settings.find(s => s.key === `${tenantId}_hostingStatus`)?.value
+    const hostingExpiresAtSetting = settings.find(s => s.key === `${tenantId}_hostingExpiresAt`)?.value
+    const vercelUrl = settings.find(s => s.key === `${tenantId}_vercelDeploymentUrl`)?.value || (tenant as any).vercelDeploymentUrl || null
+    const customDomain = settings.find(s => s.key === `${tenantId}_customDomain`)?.value || tenant.customDomain || null
+
+    const hostingStatus = (tenant as any).hostingStatus || hostingStatusSetting || "trial"
+    const hostingExpiresAt = (tenant as any).hostingExpiresAt || (hostingExpiresAtSetting ? new Date(hostingExpiresAtSetting) : null)
+
+    const vpsServer = await db.infrastructureServer.findFirst({
+      where: { tenantId, status: { in: ["active", "provisioning", "ready"] } },
+      orderBy: { createdAt: "desc" }
+    })
+    const hasDedicatedVps = Boolean(vpsServer || tenant.databaseUrl || tenant.plan?.toLowerCase().includes("vps") || tenant.plan?.toLowerCase().includes("vds"))
+    const vpsUrl = settings.find(s => s.key === `${tenantId}_vpsDeploymentUrl`)?.value || (vpsServer?.serverIpv4 ? `http://${vpsServer.serverIpv4}` : null)
+
+    const isEnterprise = Boolean(tenant.plan?.toLowerCase().includes("enterprise") || session.user.role === "super_admin")
+    const isHostingActive = hasDedicatedVps || isEnterprise || Boolean(hostingStatus === "active" && hostingExpiresAt && new Date(hostingExpiresAt) > new Date())
+
+    return NextResponse.json({
+      hostingStatus,
+      hostingExpiresAt,
+      isHostingActive,
+      hasDedicatedVps,
+      vpsIp: vpsServer?.serverIpv4 || null,
+      vpsServerName: vpsServer?.name || null,
+      vpsDeploymentUrl: vpsUrl,
+      vercelDeploymentUrl: vercelUrl,
+      customDomain,
+      plan: tenant.plan,
+    })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
+  }
+}
+
 export async function POST(
   req: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
@@ -24,11 +85,23 @@ export async function POST(
     }
 
     const body = await req.json()
-    const { action = "deploy", files = [], domain } = body
+    const { action = "deploy", target = "auto", files = [], domain, chatId } = body
 
     const tenant = access.tenant
     const tenantId = tenant.id
     const tenantSlug = tenant.slug
+
+    // ── ACTION 0: DEPLOY TO DEDICATED VPS (0 EXTRA HOSTING COST) ──────────────
+    const vpsServer = await db.infrastructureServer.findFirst({
+      where: { tenantId, status: { in: ["active", "provisioning", "ready"] } },
+    })
+    const hasDedicatedVps = Boolean(vpsServer || tenant.databaseUrl || tenant.plan?.toLowerCase().includes("vps") || tenant.plan?.toLowerCase().includes("vds"))
+
+    if (action === "deploy" && (target === "vps" || (target === "auto" && hasDedicatedVps))) {
+      const { deployAiWebsiteToVps } = await import("@/lib/infrastructure/vps-deployer")
+      const vpsResult = await deployAiWebsiteToVps(tenantId, { files, domain, chatId })
+      return NextResponse.json(vpsResult)
+    }
 
     // ── ACTION 1: ADD / VERIFY CUSTOM DOMAIN ─────────────────────────────────
     if (action === "domain") {
@@ -145,7 +218,7 @@ export default async function HomePage() {
     <main className="max-w-5xl mx-auto px-6 py-20">
       <header className="text-center space-y-4 mb-16">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-400 text-xs font-semibold border border-emerald-500/20">
-          <Sparkles className="w-3.5 h-3.5" /> Powered by SaCMS & Vercel
+          <Sparkles className="w-3.5 h-3.5" /> Powered by SaCMS Cloud Edge
         </div>
         <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight">${tenant.name}</h1>
         <p className="text-slate-400 max-w-xl mx-auto text-sm md:text-base">Website produksi otomatis terhubung ke SaCMS Headless Content Hub.</p>
@@ -161,7 +234,7 @@ export default async function HomePage() {
           ))
         ) : (
           <div className="col-span-full text-center py-12 border border-dashed border-slate-800 rounded-2xl text-slate-400 text-sm">
-            Website Anda telah online di Vercel! Tambahkan konten pertama Anda di dashboard SaCMS.
+            Website Anda telah online di Cloud Edge! Tambahkan konten pertama Anda di dashboard SaCMS.
           </div>
         )}
       </div>

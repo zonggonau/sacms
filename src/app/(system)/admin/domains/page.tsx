@@ -93,7 +93,7 @@ export default function AdminCustomDomainsPage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal memuat data custom domain" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -126,7 +126,7 @@ export default function AdminCustomDomainsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui status domain" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setActionLoading(null)
     }
@@ -149,7 +149,7 @@ export default function AdminCustomDomainsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menghapus domain" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setActionLoading(null)
     }

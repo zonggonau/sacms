@@ -68,21 +68,21 @@ export default function CustomerLicensePage() {
         setShowActivate(false)
         setLicenseKeyInput("")
         toast({
-          title: "License Activated",
-          description: `Enterprise mode active. ${data.daysRemaining} days remaining.`,
+          title: "Lisensi Berhasil Diaktifkan",
+          description: `Mode Enterprise aktif. Sisa ${data.daysRemaining} hari masa berlaku.`,
         })
         await fetchStatus()
       } else {
         toast({
-          title: "Activation Failed",
-          description: data.error || "Invalid license key",
+          title: "Aktivasi Gagal",
+          description: data.error || "Kunci lisensi tidak valid",
           variant: "destructive",
         })
       }
     } catch {
       toast({
-        title: "Error",
-        description: "Failed to activate license. Please try again.",
+        title: "Terjadi Kesalahan",
+        description: "Gagal mengaktifkan lisensi. Silakan coba kembali.",
         variant: "destructive",
       })
     } finally {

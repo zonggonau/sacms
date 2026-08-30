@@ -71,8 +71,8 @@ export default function CMSSingleTypeDetailPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>({})
-  const [locale, setLocale] = useState<string>("en")
-  const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "en", name: "English" }])
+  const [locale, setLocale] = useState<string>("id")
+  const [availableLocales, setAvailableLocales] = useState<any[]>([{ locale: "id", name: "Bahasa Indonesia" }])
 
   const fetchData = useCallback(async () => {
     if (!tenantSlug || !singleTypeSlug) return
@@ -87,7 +87,7 @@ export default function CMSSingleTypeDetailPage() {
         setSingleType(stRes.singleType as any)
         setFormData(stRes.singleType.data || {})
       } else if (stRes.error) {
-        toast({ variant: "destructive", title: "Error", description: stRes.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: stRes.error })
       }
       if (locRes.ok) {
         try {
@@ -99,7 +99,7 @@ export default function CMSSingleTypeDetailPage() {
       }
     } catch (error) {
       console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "Gagal memuat konten halaman" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat konten halaman" })
     } finally {
       setLoading(false)
     }
@@ -206,8 +206,8 @@ export default function CMSSingleTypeDetailPage() {
             <RelationSelectField 
               label="" 
               tenantSlug={tenantSlug} 
-              targetSlug={field.relationSlug || relOpts?.targetContentType || ""} 
-              multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany"} 
+              targetSlug={field.relationSlug || relOpts?.targetSlug || relOpts?.targetContentType || ""} 
+              multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany" || relOpts?.multiple === true} 
               value={value as any} 
               onChange={v => handleFieldChange(field.slug, v)} 
             />

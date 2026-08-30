@@ -210,7 +210,9 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
                 unique: field.unique || false,
                 options: field.options || {},
                 jsonPath: field.jsonPath || null,
-                relationSlug: field.relationSlug || null,
+                relationSlug: field.type === "relation" 
+                  ? (field.relationSlug || field.targetSlug || (typeof field.options === 'object' ? field.options?.targetSlug : null) || null)
+                  : null,
                 order: index,
               }))
             : undefined,
@@ -226,7 +228,8 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
       },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { contentType }
   } catch (error) {
     console.error("Error creating content type:", error)
@@ -288,7 +291,9 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
               unique: field.unique || false,
               options: field.options || {},
               jsonPath: field.jsonPath || null,
-              relationSlug: field.relationSlug || null,
+              relationSlug: field.type === "relation" 
+                ? (field.relationSlug || field.targetSlug || (typeof field.options === 'object' ? field.options?.targetSlug : null) || null)
+                : null,
               order: index,
             })) || [],
           },
@@ -301,8 +306,10 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const formattedFields = parseSchemaFieldOptions(updatedContentType.schemaFields)
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/content-types/${updatedContentType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${updatedContentType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/content/${updatedContentType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return { contentType: { ...updatedContentType, schemaFields: formattedFields } }
   } catch (error) {
@@ -341,9 +348,30 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
       return { error: "Cross-tenant content types cannot be deleted by tenant admins" }
     }
 
+    // Relational Dependency Guard: check if any schema field references this collection
+    const referencingFields = await tenantDb.schemaField.findMany({
+      where: {
+        relationSlug: existingContentType.slug,
+        NOT: { contentTypeId: id }
+      },
+      include: {
+        contentType: true,
+        singleType: true,
+        component: true
+      }
+    })
+
+    if (referencingFields.length > 0) {
+      const parentName = referencingFields[0].contentType?.name || referencingFields[0].singleType?.name || referencingFields[0].component?.name || "skema lain"
+      return { 
+        error: `Tidak dapat menghapus koleksi "${existingContentType.name}" karena sedang direferensikan oleh field "${referencingFields[0].name}" pada ${parentName}. Hapus field relasi tersebut terlebih dahulu.` 
+      }
+    }
+
     await tenantDb.contentType.delete({ where: { id } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting content type:", error)

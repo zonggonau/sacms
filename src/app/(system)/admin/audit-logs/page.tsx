@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { Label } from "@/components/ui/label"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -121,9 +122,7 @@ export default function AdminAuditLogsPage() {
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminPageSkeleton layout="table" cardsCount={0} />
       </div>
     )
   }

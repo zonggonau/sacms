@@ -11,7 +11,6 @@ import { TeamSection } from "./sections/team-section"
 import { FaqSection } from "./sections/faq-section"
 import { SectorsSection } from "./sections/sectors-section"
 // import { LocalPrideSection } from "./sections/local-pride-section"
-import { CtaBanner } from "./sections/cta-banner"
 import { FooterSection } from "./sections/footer-section"
 import { FadeIn } from "@/components/ui/fade-in"
 import type { LandingData } from "./types"
@@ -30,7 +29,6 @@ export function ModernLanding({ data }: { data: LandingData }) {
     testimonials = [],
     sectors = [],
     localPride = null,
-    cta = null,
     footer = null,
     blogs = [],
   } = data
@@ -60,7 +58,6 @@ export function ModernLanding({ data }: { data: LandingData }) {
       <FadeIn delay={100}><TeamSection owners={owners} /></FadeIn>
       <FadeIn delay={100}><FaqSection faq={faq} /></FadeIn>
       {/* <FadeIn delay={100}><LocalPrideSection localPride={localPride} /></FadeIn> */}
-      <FadeIn delay={100} direction="up"><CtaBanner cta={cta} /></FadeIn>
       <FooterSection footer={footer} />
     </div>
   )

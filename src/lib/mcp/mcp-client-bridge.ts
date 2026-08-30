@@ -69,9 +69,9 @@ export class McpClientBridge {
       const defaultLocale = await tenantDb.tenantLocale.findFirst({
         where: { tenantId: this.tenantId, isDefault: true },
       })
-      return defaultLocale?.locale ?? "en"
+      return defaultLocale?.locale ?? "id"
     } catch {
-      return "en"
+      return "id"
     }
   }
 
@@ -439,8 +439,14 @@ export class McpClientBridge {
       })
       if (res.success) {
         results.contentTypesCreated++
-        // Seed dummy entries
-        if (Array.isArray(ct.dummyData) && ct.dummyData.length > 0) {
+      }
+
+      // Seed dummy entries if provided and collection is empty
+      if (Array.isArray(ct.dummyData) && ct.dummyData.length > 0) {
+        const existingCount = await tenantDb.contentEntry.count({
+          where: { tenantId: this.tenantId, contentType: { slug: ct.slug } },
+        })
+        if (existingCount === 0) {
           for (const item of ct.dummyData) {
             await this.createContentEntry({
               contentTypeSlug: ct.slug,
@@ -464,16 +470,17 @@ export class McpClientBridge {
       })
       if (res.success) {
         results.singleTypesCreated++
-        // Seed initial single type data assignment
-        const singleData = Array.isArray(st.dummyData) ? st.dummyData[0] : st.dummyData
-        if (singleData && typeof singleData === "object" && res.item) {
-          const singleTypeId = (res.item as any).id
-          await tenantDb.tenantSingleTypeAssignment.upsert({
-            where: { tenantId_singleTypeId_locale: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale } },
-            create: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale, data: singleData, enabled: true },
-            update: { data: singleData },
-          })
-        }
+      }
+
+      // Seed initial single type data assignment
+      const singleData = Array.isArray(st.dummyData) ? st.dummyData[0] : st.dummyData
+      const singleTypeId = res.item ? (res.item as any).id : null
+      if (singleData && typeof singleData === "object" && singleTypeId) {
+        await tenantDb.tenantSingleTypeAssignment.upsert({
+          where: { tenantId_singleTypeId_locale: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale } },
+          create: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale, data: singleData, enabled: true },
+          update: { data: singleData },
+        })
       }
     }
 

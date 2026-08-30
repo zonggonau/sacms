@@ -7,18 +7,20 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Check, Loader2, CreditCard, Clock, Calendar, 
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
   HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles,
-  Server, Layers
+  Server, Layers, Download
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { checkEnterpriseModeAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
+import { generateInvoicePDF } from "@/lib/pdf-generator"
 
 interface Subscription {
   id: string
@@ -52,7 +54,7 @@ export default function TenantSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
-  const [planCategory, setPlanCategory] = useState<'all' | 'cloud' | 'business_vps' | 'gov_vds'>('all')
+  const [planCategory, setPlanCategory] = useState<'all' | 'cloud' | 'vps' | 'vds'>('all')
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
@@ -177,14 +179,14 @@ export default function TenantSubscriptionsPage() {
       })
       const data = await res.json()
       if (res.ok) {
-        toast({ title: "Subscription dibatalkan", description: data.message || "Langganan akan berakhir di akhir periode billing." })
+        toast({ title: "Langganan Dibatalkan", description: data.message || "Langganan akan berakhir pada akhir periode penagihan." })
         setShowCancelConfirm(false)
         fetchBillingData()
       } else {
-        toast({ variant: 'destructive', title: "Gagal membatalkan", description: data.error })
+        toast({ variant: 'destructive', title: "Gagal Membatalkan", description: data.error })
       }
     } catch {
-      toast({ variant: 'destructive', title: "Error", description: "Gagal membatalkan langganan" })
+      toast({ variant: 'destructive', title: "Terjadi Kesalahan", description: "Gagal membatalkan langganan" })
     } finally {
       setCancellingSubscription(false)
     }
@@ -209,14 +211,14 @@ export default function TenantSubscriptionsPage() {
         })
       })
       if (res.ok) {
-        toast({ title: "Infrastructure Saved", description: "Workspace infrastructure settings have been updated." })
+        toast({ title: "Infrastruktur Tersimpan", description: "Pengaturan infrastruktur workspace berhasil diperbarui." })
         router.refresh()
       } else {
         const error = await res.json()
-        toast({ variant: "destructive", title: "Error", description: error.error || "Failed to save settings" })
+        toast({ variant: "destructive", title: "Gagal Menyimpan", description: error.error || "Gagal menyimpan pengaturan" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save infrastructure settings." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan pengaturan infrastruktur." })
     } finally {
       setSavingInfra(false)
     }
@@ -236,8 +238,56 @@ export default function TenantSubscriptionsPage() {
 
   if (status === "loading" || loading || loadingTenants) {
     return (
-      <div className="flex items-center justify-center flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-8 animate-in fade-in duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-2.5">
+                  <Skeleton className="h-8 w-56 rounded-xl" />
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+                <Skeleton className="h-3.5 w-72 max-w-full rounded-md" />
+              </div>
+              <Skeleton className="h-9 w-32 rounded-xl" />
+            </div>
+
+            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-6 space-y-5">
+              <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4 border-b border-border/60 pb-4">
+                <div className="space-y-1.5">
+                  <Skeleton className="h-5 w-36 rounded-md" />
+                  <Skeleton className="h-3.5 w-60 rounded-md" />
+                </div>
+                <Skeleton className="h-8 w-28 rounded-lg" />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2">
+                {Array.from({ length: 3 }).map((_, i) => (
+                  <div key={i} className="p-4 border border-border/60 rounded-xl space-y-2">
+                    <div className="flex justify-between">
+                      <Skeleton className="h-3 w-20 rounded-md" />
+                      <Skeleton className="h-3 w-12 rounded-md" />
+                    </div>
+                    <Skeleton className="h-2 w-full rounded-full" />
+                  </div>
+                ))}
+              </div>
+            </Card>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <Card key={i} className="border border-border/80 shadow-xs bg-card rounded-2xl p-6 space-y-5">
+                  <div className="space-y-3">
+                    <Skeleton className="h-6 w-28 rounded-md" />
+                    <Skeleton className="h-8 w-36 rounded-lg" />
+                    <Skeleton className="h-3.5 w-full rounded-md" />
+                  </div>
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                </Card>
+              ))}
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -431,80 +481,114 @@ export default function TenantSubscriptionsPage() {
 
           {/* Main Plans Grid */}
           {!isEnterpriseMode && (
-            <div className="space-y-4">
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-base font-bold tracking-tight text-foreground">Paket Langganan Workspace</h2>
-                  <p className="text-xs text-muted-foreground">Pilih paket SaCMS Cloud Ekonomis, SaCMS Dedicated Business VPS, atau SaCMS Gov Enterprise VDS terisolasi penuh.</p>
-                </div>
-                
-                <div className="flex flex-wrap items-center gap-3">
-                  {/* Category Switcher */}
-                  <div className="flex flex-wrap items-center p-1 bg-muted/40 rounded-xl border border-border/80 w-fit gap-1">
+            <div className="space-y-6">
+              {/* Header Title & Description on Top */}
+              <div className="space-y-1">
+                <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Paket Langganan Workspace</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket SaCMS Cloud Ekonomis, SaCMS Dedicated Business VPS, atau SaCMS Gov Enterprise VDS terisolasi penuh.</p>
+              </div>
+              
+              {/* Category Switcher Tabs Below */}
+              {(() => {
+                const cloudCount = mainPlans.filter((p) => {
+                  const slug = (p.id || p.name || '').toLowerCase()
+                  return !slug.includes('vps') && !slug.includes('vds') && !slug.includes('storage')
+                }).length
+                const vpsCount = mainPlans.filter((p) => {
+                  const slug = (p.id || p.name || '').toLowerCase()
+                  return slug.includes('vps') && !slug.includes('storage') && !slug.includes('vds')
+                }).length
+                const storageCount = mainPlans.filter((p) => {
+                  const slug = (p.id || p.name || '').toLowerCase()
+                  return slug.includes('storage')
+                }).length
+                const vdsCount = mainPlans.filter((p) => {
+                  const slug = (p.id || p.name || '').toLowerCase()
+                  return slug.includes('vds')
+                }).length
+
+                return (
+                  <div className="flex flex-wrap items-center p-1.5 bg-muted/40 rounded-2xl border border-border/80 w-fit max-w-full gap-1 shadow-xs">
                     <Button 
                       variant="ghost"
                       size="sm" 
                       className={cn(
-                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all", 
+                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
                         planCategory === 'all' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                       )}
                       onClick={() => setPlanCategory('all')}
                     >
-                      Semua ({mainPlans.length})
+                      <Layers className="h-3.5 w-3.5" /> Semua ({mainPlans.length})
                     </Button>
                     <Button 
                       variant="ghost"
                       size="sm" 
                       className={cn(
-                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all", 
+                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
                         planCategory === 'cloud' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                       )}
                       onClick={() => setPlanCategory('cloud')}
                     >
-                      Cloud Ekonomis
+                      <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Cloud SaaS ({cloudCount})
                     </Button>
                     <Button 
                       variant="ghost"
                       size="sm" 
                       className={cn(
-                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'business_vps' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
+                        planCategory === 'vps' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                       )}
-                      onClick={() => setPlanCategory('business_vps')}
+                      onClick={() => setPlanCategory('vps')}
                     >
-                      <Server className="h-3.5 w-3.5 text-primary" /> Business VPS
+                      <Server className="h-3.5 w-3.5 text-purple-400" /> Cloud VPS ({vpsCount})
                     </Button>
                     <Button 
                       variant="ghost"
                       size="sm" 
                       className={cn(
-                        "rounded-lg px-3 font-bold h-7 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'gov_vds' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
+                        planCategory === 'storage' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
                       )}
-                      onClick={() => setPlanCategory('gov_vds')}
+                      onClick={() => setPlanCategory('storage')}
                     >
-                      <Zap className="h-3.5 w-3.5 text-amber-500" /> Gov & Enterprise VDS
+                      <Database className="h-3.5 w-3.5 text-emerald-500" /> VPS Storage ({storageCount})
+                    </Button>
+                    <Button 
+                      variant="ghost"
+                      size="sm" 
+                      className={cn(
+                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
+                        planCategory === 'vds' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      )}
+                      onClick={() => setPlanCategory('vds')}
+                    >
+                      <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> Cloud VDS ({vdsCount})
                     </Button>
                   </div>
-                </div>
-              </div>
+                )
+              })()}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
                 {mainPlans
                   .filter((plan) => {
-                    const isVps = plan.id.toLowerCase().includes('vps')
-                    const isVds = plan.id.toLowerCase().includes('vds')
-                    const isCloud = !isVps && !isVds
+                    const slug = (plan.id || plan.name || '').toLowerCase()
+                    const isVds = slug.includes('vds')
+                    const isStorage = slug.includes('storage')
+                    const isVps = slug.includes('vps') && !isVds && !isStorage
+                    const isCloud = !isVps && !isVds && !isStorage
+
                     if (planCategory === 'cloud') return isCloud
-                    if (planCategory === 'business_vps') return isVps
-                    if (planCategory === 'gov_vds') return isVds
+                    if (planCategory === 'vps') return isVps
+                    if (planCategory === 'storage') return isStorage
+                    if (planCategory === 'vds') return isVds
                     return true
                   })
                   .map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10
-                  const isVpsPlan = plan.id.toLowerCase().includes('vps')
+                  const isStoragePlan = plan.id.toLowerCase().includes('storage')
                   const isVdsPlan = plan.id.toLowerCase().includes('vds')
+                  const isVpsPlan = plan.id.toLowerCase().includes('vps') && !isStoragePlan
 
                   return (
                     <Card key={plan.id} className={cn(
@@ -527,6 +611,10 @@ export default function TenantSubscriptionsPage() {
                       ) : isVdsPlan ? (
                         <div className="absolute top-3.5 right-3.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
                           <Zap className="h-3 w-3" /> 100% Dedicated CPU
+                        </div>
+                      ) : isStoragePlan ? (
+                        <div className="absolute top-3.5 right-3.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <Database className="h-3 w-3" /> Dedicated MinIO Storage
                         </div>
                       ) : isVpsPlan ? (
                         <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
@@ -734,8 +822,21 @@ export default function TenantSubscriptionsPage() {
                               Bayar Sekarang
                             </Button>
                           ) : (
-                            <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground">
-                              <ExternalLink className="h-3.5 w-3.5" />
+                            <Button 
+                              variant="ghost" 
+                              size="icon" 
+                              className="h-7 w-7 rounded-lg hover:bg-muted text-muted-foreground"
+                              title="Unduh PDF Faktur"
+                              onClick={() => generateInvoicePDF({
+                                orderId: inv.midtransInvoiceId || inv.id,
+                                amount: inv.amount,
+                                status: inv.status,
+                                date: new Date(inv.createdAt).toLocaleDateString('id-ID'),
+                                customerName: tenant?.name || "Workspace",
+                                description: `Langganan Workspace ${tenant?.name || ""} (${inv.plan || "Pro"})`
+                              })}
+                            >
+                              <Download className="h-3.5 w-3.5" />
                             </Button>
                           )}
                         </div>

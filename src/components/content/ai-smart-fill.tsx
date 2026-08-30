@@ -55,7 +55,7 @@ const QUICK_PROMPTS = [
 export function AISmartFill({
   tenantSlug,
   contentTypeName,
-  schema,
+  schema = [],
   onApply,
 }: AISmartFillProps) {
   const [open, setOpen] = useState(false)
@@ -66,12 +66,14 @@ export function AISmartFill({
   const [generatedData, setGeneratedData] = useState<Record<string, any> | null>(null)
   const { toast } = useToast()
 
+  const safeSchema = Array.isArray(schema) ? schema : []
+
   const handleGenerate = async () => {
     if (!prompt.trim()) return
     setLoading(true)
     setGeneratedData(null)
     try {
-      const aiSchema = schema.map((f) => ({
+      const aiSchema = safeSchema.map((f) => ({
         slug: f.slug,
         name: f.name,
         type: f.type,
@@ -191,7 +193,7 @@ export function AISmartFill({
                   Model: {contentTypeName}
                 </Badge>
                 <Badge variant="secondary" className="text-[10px] font-mono font-semibold rounded-md">
-                  {schema.length} Fields
+                  {safeSchema.length} Fields
                 </Badge>
               </div>
               <DialogDescription className="text-xs text-muted-foreground mt-1">

@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge"
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2, CalendarClock, RefreshCw, Play, Pause,
   CheckCircle2, Clock, AlertTriangle, XCircle,
@@ -142,10 +143,48 @@ export default function SystemJobsPage() {
     if (session?.user?.id) fetchJobs()
   }, [tenantSlug, session?.user?.id])
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex bg-background flex-1 flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/60">
+            <div className="space-y-1.5">
+              <Skeleton className="h-7 w-56 rounded-lg" />
+              <Skeleton className="h-3.5 w-80 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-28 rounded-xl" />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="border border-border/80 shadow-xs bg-card rounded-2xl p-4 space-y-2">
+                <Skeleton className="h-3 w-20 rounded-md" />
+                <Skeleton className="h-6 w-12 rounded-lg" />
+              </Card>
+            ))}
+          </div>
+
+          <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
+            <CardHeader className="p-4 border-b border-border/60 flex flex-row items-center justify-between">
+              <Skeleton className="h-5 w-36 rounded-md" />
+              <Skeleton className="h-8 w-24 rounded-lg" />
+            </CardHeader>
+            <CardContent className="p-0 divide-y divide-border/50">
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="p-4 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3.5 flex-1 min-w-0">
+                    <Skeleton className="h-8 w-8 rounded-lg shrink-0" />
+                    <div className="space-y-1.5 flex-1 min-w-0">
+                      <Skeleton className="h-4 w-44 max-w-full rounded-md" />
+                      <Skeleton className="h-3 w-32 rounded-md" />
+                    </div>
+                  </div>
+                  <Skeleton className="h-5 w-20 rounded-full" />
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
     )
   }

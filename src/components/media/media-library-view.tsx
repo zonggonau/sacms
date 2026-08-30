@@ -16,6 +16,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import {
   Table,
   TableBody,
   TableCell,
@@ -38,6 +48,9 @@ import {
   Search,
   Save,
   AlertTriangle,
+  Server,
+  HardDrive,
+  Eye,
 } from "lucide-react"
 import Link from "next/link"
 import { useToast } from "@/hooks/use-toast"
@@ -88,10 +101,18 @@ export function MediaLibraryView({
   const [storageLimit, setStorageLimit] = useState<number>(0)
   const [currentStorage, setCurrentStorage] = useState<number>(0)
   const [isLimitReached, setIsLimitReached] = useState<boolean>(false)
+  const [storageProvider, setStorageProvider] = useState<string>("Cloudflare R2 (Shared)")
+  const [isDedicatedStorage, setIsDedicatedStorage] = useState<boolean>(false)
 
   // Edit Metadata State
   const [editData, setEditData] = useState({ name: "", alt: "", caption: "" })
   const [savingMetadata, setSavingMetadata] = useState(false)
+
+  // Single & Bulk Delete States
+  const [deleteItem, setDeleteItem] = useState<{ id: string; name: string } | null>(null)
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false)
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false)
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -117,14 +138,32 @@ export function MediaLibraryView({
   const fetchStorageUsage = async () => {
     if (!tenantSlug) return
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/billing/usage`)
-      if (res.ok) {
-        const data = await res.json()
+      const [usageRes, infraRes] = await Promise.all([
+        fetch(`/api/tenant/${tenantSlug}/billing/usage`),
+        fetch(`/api/tenant/${tenantSlug}/infrastructure`),
+      ])
+
+      if (usageRes.ok) {
+        const data = await usageRes.json()
         const storageUsage = data.usage?.find((u: any) => u.label === "Media Storage")
         if (storageUsage) {
           setStorageLimit(storageUsage.limit)
           setCurrentStorage(storageUsage.current)
           setIsLimitReached(storageUsage.current >= storageUsage.limit)
+        }
+      }
+
+      if (infraRes.ok) {
+        const infraData = await infraRes.json()
+        if (infraData.server) {
+          setStorageProvider(`MinIO S3 (${infraData.server.name || "Dedicated VPS"})`)
+          setIsDedicatedStorage(true)
+        } else if (infraData.isCustomStorageConfigured) {
+          setStorageProvider("Custom S3 (BYOS)")
+          setIsDedicatedStorage(true)
+        } else {
+          setStorageProvider("Cloudflare R2 (Shared Cluster)")
+          setIsDedicatedStorage(false)
         }
       }
     } catch (error) {
@@ -180,23 +219,88 @@ export function MediaLibraryView({
     }
   }
 
-  const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus media ini? Tindakan ini tidak dapat dibatalkan.")) return
+  // Single Delete with Toast Notification
+  const confirmDelete = async () => {
+    if (!deleteItem) return
+    setIsDeleting(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/media/${id}`, {
+      const res = await fetch(`/api/tenant/${tenantSlug}/media/${deleteItem.id}`, {
         method: "DELETE",
       })
 
       if (res.ok) {
-        toast({ title: "Media Dihapus", description: "File telah dihapus dari workspace" })
-        setMedia(media.filter((m) => m.id !== id))
-        if (previewMedia?.id === id) setPreviewMedia(null)
+        toast({ 
+          title: "Media Berhasil Dihapus", 
+          description: `Berkas "${deleteItem.name}" telah dihapus dari workspace.` 
+        })
+        setMedia((prev) => prev.filter((m) => m.id !== deleteItem.id))
+        setSelectedMedia((prev) => prev.filter((m) => m.id !== deleteItem.id))
+        if (previewMedia?.id === deleteItem.id) setPreviewMedia(null)
         fetchStorageUsage()
       } else {
-        toast({ variant: "destructive", title: "Gagal Hapus", description: "Tidak dapat menghapus file media" })
+        const data = await res.json().catch(() => ({}))
+        toast({ 
+          variant: "destructive", 
+          title: "Gagal Menghapus Media", 
+          description: data.error || "Tidak dapat menghapus file media dari server." 
+        })
       }
     } catch (error) {
       console.error("Delete error:", error)
+      toast({ 
+        variant: "destructive", 
+        title: "Terjadi Kesalahan", 
+        description: "Gagal menghubungi server saat menghapus media." 
+      })
+    } finally {
+      setIsDeleting(false)
+      setDeleteItem(null)
+    }
+  }
+
+  // Bulk Delete with Toast Notification
+  const confirmBulkDelete = async () => {
+    if (selectedMedia.length === 0) return
+    setIsBulkDeleting(true)
+    try {
+      const ids = selectedMedia.map(m => m.id)
+      let successCount = 0
+
+      await Promise.all(
+        ids.map(async (id) => {
+          const res = await fetch(`/api/tenant/${tenantSlug}/media/${id}`, {
+            method: "DELETE",
+          })
+          if (res.ok) successCount++
+        })
+      )
+
+      if (successCount > 0) {
+        toast({ 
+          title: "Media Berhasil Dihapus", 
+          description: `${successCount} berkas media telah berhasil dihapus dari workspace.` 
+        })
+        setMedia((prev) => prev.filter((m) => !ids.includes(m.id)))
+        setSelectedMedia([])
+        if (previewMedia && ids.includes(previewMedia.id)) setPreviewMedia(null)
+        fetchStorageUsage()
+      } else {
+        toast({ 
+          variant: "destructive", 
+          title: "Gagal Menghapus Media", 
+          description: "Tidak dapat menghapus berkas terpilih." 
+        })
+      }
+    } catch (error) {
+      console.error("Bulk delete error:", error)
+      toast({ 
+        variant: "destructive", 
+        title: "Terjadi Kesalahan", 
+        description: "Gagal memproses penghapusan massal." 
+      })
+    } finally {
+      setIsBulkDeleting(false)
+      setShowBulkDeleteDialog(false)
     }
   }
 
@@ -271,19 +375,29 @@ export function MediaLibraryView({
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-2xl font-black tracking-tight text-foreground">{title}</h1>
               <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold">
                 {media.length} Aset
               </Badge>
+              {storageProvider && (
+                <Badge variant="outline" className={cn(
+                  "text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1",
+                  isDedicatedStorage 
+                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20" 
+                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
+                )}>
+                  <Server className="w-3 h-3" />
+                  {storageProvider}
+                </Badge>
+              )}
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              {description || (
-                storageLimit > 0 ? (
-                  <>Terpakai {formatFileSize(currentStorage)} dari kuota {formatFileSize(storageLimit)}</>
-                ) : (
-                  <>Kelola dan unggah aset gambar, video, dan dokumen workspace.</>
-                )
+            <p className="text-xs text-muted-foreground mt-0.5 flex items-center gap-1.5 flex-wrap">
+              <span>{description || "Kelola dan unggah aset gambar, video, dan dokumen workspace."}</span>
+              {storageLimit > 0 && (
+                <span className="font-semibold text-foreground/80">
+                  &bull; Terpakai {formatFileSize(currentStorage)} dari kuota {formatFileSize(storageLimit)}
+                </span>
               )}
             </p>
           </div>
@@ -308,7 +422,12 @@ export function MediaLibraryView({
             </div>
 
             {selectedMedia.length > 0 && (
-              <Button variant="destructive" size="sm" className="rounded-xl font-bold text-xs h-9" onClick={() => {}}>
+              <Button 
+                variant="destructive" 
+                size="sm" 
+                className="rounded-xl font-bold text-xs h-9 shadow-xs cursor-pointer" 
+                onClick={() => setShowBulkDeleteDialog(true)}
+              >
                 <Trash2 className="mr-1.5 h-3.5 w-3.5" />
                 Hapus ({selectedMedia.length})
               </Button>
@@ -480,7 +599,10 @@ export function MediaLibraryView({
                         variant="secondary"
                         size="icon"
                         className="h-7 w-7 rounded-full hover:text-destructive cursor-pointer"
-                        onClick={(e) => { e.stopPropagation(); handleDelete(item.id) }}
+                        onClick={(e) => { 
+                          e.stopPropagation()
+                          setDeleteItem({ id: item.id, name: item.originalName || item.name }) 
+                        }}
                       >
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
@@ -507,7 +629,8 @@ export function MediaLibraryView({
                   <TableHead className="font-bold text-xs uppercase">Nama File</TableHead>
                   <TableHead className="font-bold text-xs uppercase">Format</TableHead>
                   <TableHead className="font-bold text-xs uppercase">Ukuran</TableHead>
-                  <TableHead className="text-right font-bold text-xs uppercase px-4">Diunggah</TableHead>
+                  <TableHead className="font-bold text-xs uppercase">Diunggah</TableHead>
+                  <TableHead className="text-right font-bold text-xs uppercase px-4">Aksi</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -525,7 +648,29 @@ export function MediaLibraryView({
                     <TableCell className="font-bold text-xs text-foreground">{item.originalName}</TableCell>
                     <TableCell><Badge variant="outline" className="text-[10px] rounded-full">{item.mimeType}</Badge></TableCell>
                     <TableCell className="text-xs text-muted-foreground font-mono">{formatFileSize(item.size)}</TableCell>
-                    <TableCell className="text-right px-4 text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('id-ID')}</TableCell>
+                    <TableCell className="text-xs text-muted-foreground">{new Date(item.createdAt).toLocaleDateString('id-ID')}</TableCell>
+                    <TableCell className="text-right px-4">
+                      <div className="flex items-center justify-end gap-1.5" onClick={(e) => e.stopPropagation()}>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground cursor-pointer"
+                          onClick={() => setPreviewMedia(item)}
+                          title="Lihat Detail"
+                        >
+                          <Eye className="h-3.5 w-3.5" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer"
+                          onClick={() => setDeleteItem({ id: item.id, name: item.originalName || item.name })}
+                          title="Hapus Media"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
@@ -632,7 +777,13 @@ export function MediaLibraryView({
                         <Download className="h-3.5 w-3.5 mr-1.5" /> Unduh
                       </a>
                     </Button>
-                    <Button variant="outline" size="icon" className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer" onClick={() => previewMedia && handleDelete(previewMedia.id)}>
+                    <Button 
+                      variant="outline" 
+                      size="icon" 
+                      className="h-8 w-8 shrink-0 text-destructive hover:bg-destructive/10 rounded-xl cursor-pointer" 
+                      onClick={() => previewMedia && setDeleteItem({ id: previewMedia.id, name: previewMedia.originalName || previewMedia.name })}
+                      title="Hapus Media"
+                    >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
                   </div>
@@ -641,6 +792,79 @@ export function MediaLibraryView({
             </div>
           </DialogContent>
         </Dialog>
+
+        {/* Single Item Delete Confirmation Alert Dialog */}
+        <AlertDialog open={!!deleteItem} onOpenChange={(open) => !open && setDeleteItem(null)}>
+          <AlertDialogContent className="rounded-2xl border-border/80 bg-card max-w-md p-6">
+            <AlertDialogHeader className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-1">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <AlertDialogTitle className="text-base font-bold text-foreground">
+                Hapus Berkas Media?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                Apakah Anda yakin ingin menghapus berkas <strong className="text-foreground font-semibold font-mono">"{deleteItem?.name}"</strong>? File akan dihapus permanen dari penyimpanan workspace dan aksi ini tidak dapat dibatalkan.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="pt-4 gap-2">
+              <AlertDialogCancel 
+                disabled={isDeleting}
+                className="rounded-xl text-xs font-bold h-9 cursor-pointer"
+              >
+                Batal
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  confirmDelete()
+                }}
+                disabled={isDeleting}
+                className="rounded-xl text-xs font-bold h-9 bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-xs cursor-pointer"
+              >
+                {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+                {isDeleting ? "Menghapus..." : "Hapus Media"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        {/* Bulk Delete Confirmation Alert Dialog */}
+        <AlertDialog open={showBulkDeleteDialog} onOpenChange={setShowBulkDeleteDialog}>
+          <AlertDialogContent className="rounded-2xl border-border/80 bg-card max-w-md p-6">
+            <AlertDialogHeader className="space-y-2">
+              <div className="w-10 h-10 rounded-xl bg-destructive/10 text-destructive flex items-center justify-center mb-1">
+                <Trash2 className="h-5 w-5" />
+              </div>
+              <AlertDialogTitle className="text-base font-bold text-foreground">
+                Hapus {selectedMedia.length} Berkas Media Sekaligus?
+              </AlertDialogTitle>
+              <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+                Seluruh {selectedMedia.length} berkas yang Anda pilih akan dihapus secara permanen dari server penyimpanan media workspace.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="pt-4 gap-2">
+              <AlertDialogCancel 
+                disabled={isBulkDeleting}
+                className="rounded-xl text-xs font-bold h-9 cursor-pointer"
+              >
+                Batal
+              </AlertDialogCancel>
+              <AlertDialogAction
+                onClick={(e) => {
+                  e.preventDefault()
+                  confirmBulkDelete()
+                }}
+                disabled={isBulkDeleting}
+                className="rounded-xl text-xs font-bold h-9 bg-destructive hover:bg-destructive/90 text-destructive-foreground shadow-xs cursor-pointer"
+              >
+                {isBulkDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
+                {isBulkDeleting ? "Menghapus..." : `Hapus ${selectedMedia.length} Media`}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
       </div>
     </div>
   </div>

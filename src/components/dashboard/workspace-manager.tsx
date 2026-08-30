@@ -8,7 +8,7 @@ import {
   Loader2, Plus, Building2, Search, Settings, 
   MoreVertical, Trash2, AlertTriangle, Clock,
   ArrowRight, Zap, CheckCircle2, ExternalLink,
-  Crown, LayoutGrid, List, Layers, ShieldCheck, Globe, Copy, Check
+  Crown, LayoutGrid, List, Layers, ShieldCheck, Globe, Copy, Check, Lock
 } from "lucide-react"
 import {
   Dialog,
@@ -55,6 +55,8 @@ interface Tenant {
   expiresAt: string | null
   createdAt: string
   subscriptionStatus: string | null
+  isExpired?: boolean
+  isEnterprise?: boolean
 }
 
 interface WorkspaceManagerProps {
@@ -91,9 +93,10 @@ export function WorkspaceManager({
     t.slug.toLowerCase().includes(searchQuery.toLowerCase())
   )
 
-  const activeWorkspacesCount = initialTenants.filter(t => t.status === 'active' && (t.daysRemaining === null || t.daysRemaining > 0)).length
+  const expiredCount = initialTenants.filter(t => t.isExpired || (t.daysRemaining !== null && t.daysRemaining <= 0 && t.status !== "active")).length
+  const expiringSoonCount = initialTenants.filter(t => !t.isExpired && t.daysRemaining !== null && t.daysRemaining <= 3 && t.daysRemaining > 0).length
+  const activeWorkspacesCount = initialTenants.filter(t => !t.isExpired && t.status === 'active' && (t.daysRemaining === null || t.daysRemaining > 0)).length
   const suspendedCount = initialTenants.length - activeWorkspacesCount
-  const expiringSoonCount = initialTenants.filter(t => t.daysRemaining !== null && t.daysRemaining <= 3 && t.daysRemaining > 0).length
 
   const handleCopySlug = (slug: string, e: React.MouseEvent) => {
     e.stopPropagation()
@@ -117,7 +120,7 @@ export function WorkspaceManager({
         toast({ variant: "destructive", title: "Gagal Menghapus", description: res.error })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menghapus workspace." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat menghapus workspace." })
     } finally {
       setIsDeleting(false)
     }
@@ -207,17 +210,23 @@ export function WorkspaceManager({
         <Card className="border border-border/80 bg-card rounded-2xl shadow-xs">
           <CardContent className="p-4 flex items-center justify-between">
             <div className="space-y-0.5">
-              <p className="text-xs font-semibold text-muted-foreground">Status Sistem</p>
+              <p className="text-xs font-semibold text-muted-foreground">Status Berlangganan</p>
               <p className="text-sm font-bold text-foreground">
-                {expiringSoonCount + suspendedCount > 0 ? (
-                  <span className="text-amber-600 dark:text-amber-400">{expiringSoonCount + suspendedCount} Perlu Perhatian</span>
+                {expiredCount > 0 ? (
+                  <span className="text-amber-600 dark:text-amber-400 font-bold">{expiredCount} Masa Percobaan Berakhir</span>
+                ) : expiringSoonCount > 0 ? (
+                  <span className="text-amber-600 dark:text-amber-400">{expiringSoonCount} Segera Berakhir</span>
                 ) : (
                   <span className="text-emerald-600 dark:text-emerald-400">Semua Berjalan Normal</span>
                 )}
               </p>
             </div>
             <div className="w-10 h-10 rounded-xl bg-muted/80 flex items-center justify-center text-muted-foreground">
-              <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              {expiredCount > 0 ? (
+                <Lock className="h-5 w-5 text-amber-500" />
+              ) : (
+                <ShieldCheck className="h-5 w-5 text-emerald-500" />
+              )}
             </div>
           </CardContent>
         </Card>
@@ -298,6 +307,7 @@ export function WorkspaceManager({
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {filteredTenants.map((tenant) => {
               const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
+              const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
               const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
               const isProvisioning = tenant.status === 'provisioning'
               const isSuspended = tenant.status === 'suspended'
@@ -307,14 +317,24 @@ export function WorkspaceManager({
                   key={tenant.id} 
                   className={cn(
                     "flex flex-col justify-between rounded-2xl border border-border/80 bg-card shadow-xs hover:shadow-md transition-all duration-200 group overflow-hidden",
-                    isSuspended && "border-destructive/40 bg-destructive/[0.02]"
+                    isTenantExpired && "border-amber-500/40 bg-amber-500/[0.02]",
+                    isSuspended && !isTenantExpired && "border-destructive/40 bg-destructive/[0.02]"
                   )}
                 >
                   <CardHeader className="p-4 pb-3 space-y-3">
                     <div className="flex items-start justify-between gap-3">
                       <div className="flex items-center gap-3 min-w-0">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center shrink-0 text-primary font-black text-sm">
-                          {tenant.name.substring(0, 2).toUpperCase()}
+                        <div className={cn(
+                          "w-10 h-10 rounded-xl border flex items-center justify-center shrink-0 font-black text-sm",
+                          isTenantExpired 
+                            ? "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400"
+                            : "bg-primary/10 border-primary/20 text-primary"
+                        )}>
+                          {isTenantExpired ? (
+                            <Lock className="w-4 h-4" />
+                          ) : (
+                            tenant.name.substring(0, 2).toUpperCase()
+                          )}
                         </div>
                         <div className="min-w-0">
                           <Link 
@@ -398,6 +418,10 @@ export function WorkspaceManager({
                         <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full text-blue-500 border-blue-200 bg-blue-50 dark:bg-blue-950/30">
                           <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" /> Setup
                         </Badge>
+                      ) : isTenantExpired ? (
+                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 flex items-center gap-1">
+                          <Lock className="w-2.5 h-2.5" /> Masa Percobaan Berakhir
+                        </Badge>
                       ) : isSuspended ? (
                         <Badge variant="destructive" className="text-[10px] font-bold px-2 py-0.5 rounded-full">
                           Ditangguhkan
@@ -421,16 +445,18 @@ export function WorkspaceManager({
                   <CardContent className="p-4 pt-2 border-t border-border/60">
                     <Button 
                       asChild 
-                      disabled={isProvisioning || isSuspended}
+                      disabled={isProvisioning}
                       className={cn(
                         "w-full h-8 text-xs font-bold rounded-xl transition-all shadow-xs",
-                        isOwnerOrAdmin 
-                          ? "bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground" 
-                          : "bg-primary text-primary-foreground hover:bg-primary/90"
+                        isTenantExpired
+                          ? "bg-amber-500 hover:bg-amber-600 text-white dark:text-black shadow-amber-500/20"
+                          : isOwnerOrAdmin 
+                            ? "bg-secondary text-secondary-foreground hover:bg-primary hover:text-primary-foreground" 
+                            : "bg-primary text-primary-foreground hover:bg-primary/90"
                       )}
                     >
-                      <Link href={targetUrl} onClick={(e) => (isProvisioning || isSuspended) && e.preventDefault()}>
-                        {isOwnerOrAdmin ? "Buka Workspace" : "Buka CMS Studio"}
+                      <Link href={isTenantExpired ? `/dashboard/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
+                        {isTenantExpired ? "Pilih Paket Langganan" : isOwnerOrAdmin ? "Buka Workspace" : "Buka CMS Studio"}
                         <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
                     </Button>
@@ -455,6 +481,7 @@ export function WorkspaceManager({
               <TableBody>
                 {filteredTenants.map((tenant) => {
                   const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
+                  const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
                   const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
                   const isProvisioning = tenant.status === 'provisioning'
                   const isSuspended = tenant.status === 'suspended'
@@ -463,8 +490,17 @@ export function WorkspaceManager({
                     <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors">
                       <TableCell className="py-3">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0 font-bold text-primary text-xs">
-                            {tenant.name.substring(0, 2).toUpperCase()}
+                          <div className={cn(
+                            "w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs",
+                            isTenantExpired 
+                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                              : "bg-primary/10 text-primary"
+                          )}>
+                            {isTenantExpired ? (
+                              <Lock className="w-3.5 h-3.5" />
+                            ) : (
+                              tenant.name.substring(0, 2).toUpperCase()
+                            )}
                           </div>
                           <div>
                             <p className="font-bold text-xs text-foreground line-clamp-1">{tenant.name}</p>
@@ -476,6 +512,10 @@ export function WorkspaceManager({
                         {isProvisioning ? (
                           <Badge variant="outline" className="text-[10px] font-bold text-blue-500 border-blue-200 bg-blue-50">
                             <Loader2 className="h-2.5 w-2.5 animate-spin mr-1" /> Setup
+                          </Badge>
+                        ) : isTenantExpired ? (
+                          <Badge variant="outline" className="text-[10px] font-bold bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 flex items-center gap-1">
+                            <Lock className="w-2.5 h-2.5" /> Masa Percobaan Berakhir
                           </Badge>
                         ) : isSuspended ? (
                           <Badge variant="destructive" className="text-[10px] font-bold">Ditangguhkan</Badge>
@@ -499,13 +539,16 @@ export function WorkspaceManager({
                         <div className="flex items-center justify-end gap-1.5">
                           <Button 
                             size="sm" 
-                            variant="secondary" 
+                            variant={isTenantExpired ? "default" : "secondary"}
                             asChild
-                            disabled={isProvisioning || isSuspended}
-                            className="h-8 px-3 text-xs font-bold rounded-lg"
+                            disabled={isProvisioning}
+                            className={cn(
+                              "h-8 px-3 text-xs font-bold rounded-lg",
+                              isTenantExpired && "bg-amber-500 hover:bg-amber-600 text-white dark:text-black shadow-xs"
+                            )}
                           >
-                            <Link href={targetUrl} onClick={(e) => (isProvisioning || isSuspended) && e.preventDefault()}>
-                              Buka <ArrowRight className="ml-1.5 h-3 w-3" />
+                            <Link href={isTenantExpired ? `/dashboard/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
+                              {isTenantExpired ? "Langganan" : "Buka"} <ArrowRight className="ml-1.5 h-3 w-3" />
                             </Link>
                           </Button>
                           <DropdownMenu>

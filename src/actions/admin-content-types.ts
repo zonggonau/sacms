@@ -97,7 +97,9 @@ export async function createAdminContentTypeAction(data: any) {
             unique: field.unique || false,
             options: field.options || Prisma.JsonNull,
             jsonPath: field.jsonPath || null,
-            relationSlug: field.relationSlug || null,
+            relationSlug: field.type === "relation" 
+              ? (field.relationSlug || field.targetSlug || (typeof field.options === 'object' ? field.options?.targetSlug : null) || null)
+              : null,
             order: index,
           })),
         },
@@ -141,7 +143,9 @@ export async function updateAdminContentTypeAction(id: string, data: any) {
               unique: field.unique || false,
               options: field.options || Prisma.JsonNull,
               jsonPath: field.jsonPath || null,
-              relationSlug: field.relationSlug || null,
+              relationSlug: field.type === "relation" 
+                ? (field.relationSlug || field.targetSlug || (typeof field.options === 'object' ? field.options?.targetSlug : null) || null)
+                : null,
               order: index,
             })) || [],
           },

@@ -80,14 +80,20 @@ export async function GET(
             // Update user or tenant plan / top-ups
             const sub = transaction.subscription
             if (sub) {
-              if (orderId.startsWith("SUB") && sub.tenantId) {
+              if (sub.tenantId && !orderId.startsWith("ACC") && !orderId.startsWith("AIC") && !orderId.startsWith("ADD")) {
+                const planLower = (sub.plan || "").toLowerCase()
+                const hostingExpiry = sub.currentPeriodEnd || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+
                 await db.tenant.update({
                   where: { id: sub.tenantId },
-                  data: { plan: sub.plan },
+                  data: {
+                    plan: sub.plan,
+                    hostingStatus: "active",
+                    hostingExpiresAt: hostingExpiry,
+                  } as any,
                 })
 
-                // Auto-provision dedicated VPS/VDS if plan is Enterprise
-                const planLower = (sub.plan || "").toLowerCase()
+                // Auto-provision dedicated VPS/VDS if plan is Enterprise / VPS / VDS
                 if (planLower.includes("enterprise") || planLower.includes("vps") || planLower.includes("vds") || planLower.includes("postgres")) {
                   const { provisionTenantInfrastructure } = await import("@/lib/infrastructure/provisioner")
                   provisionTenantInfrastructure(sub.tenantId, {
@@ -145,6 +151,80 @@ export async function GET(
                     where: { id: sub.tenantId },
                     data: { apiCallsExtra: { increment: 500000 } } as any
                   })
+                } else if (addonId === "hosting_annual_1yr" || addonId === "hosting_bundle_domain_1yr") {
+                  const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+                  await db.tenant.update({
+                    where: { id: sub.tenantId },
+                    data: {
+                      hostingStatus: "active",
+                      hostingExpiresAt: oneYearFromNow,
+                    } as any
+                  })
+                  await Promise.all([
+                    db.setting.upsert({
+                      where: { key: `${sub.tenantId}_hostingStatus` },
+                      update: { value: "active" },
+                      create: { tenantId: sub.tenantId, key: `${sub.tenantId}_hostingStatus`, value: "active" }
+                    }),
+                    db.setting.upsert({
+                      where: { key: `${sub.tenantId}_hostingExpiresAt` },
+                      update: { value: oneYearFromNow.toISOString() },
+                      create: { tenantId: sub.tenantId, key: `${sub.tenantId}_hostingExpiresAt`, value: oneYearFromNow.toISOString() }
+                    })
+                  ])
+                }
+              }
+            }
+          } else if (orderId.startsWith("DOM")) {
+            const raw = (transaction.rawResponse as any) || {}
+            const tenantId = raw.tenantId
+            const domainName = raw.domainName
+            const expectedPriceUsd = raw.expectedPriceUsd || 14
+            const contactInformation = raw.contactInformation
+
+            if (tenantId && domainName) {
+              const { purchaseDomain } = await import("@/lib/vercel-registrar")
+              const purchaseRes = await purchaseDomain(domainName, {
+                expectedPrice: expectedPriceUsd,
+                years: raw.periodYears || 1,
+                autoRenew: false,
+                contactInformation: contactInformation || {
+                  firstName: "Tenant",
+                  lastName: "Owner",
+                  address1: "Jakarta",
+                  city: "Jakarta",
+                  state: "DKI Jakarta",
+                  postalCode: "10000",
+                  country: "ID",
+                  phone: "+62.812000000",
+                  email: "domain@sacms.local",
+                },
+              })
+
+              if (purchaseRes.success) {
+                const currentCount = await db.customDomain.count({ where: { tenantId } })
+                await db.customDomain.upsert({
+                  where: { domain: domainName },
+                  create: {
+                    tenantId,
+                    domain: domainName,
+                    status: "verified",
+                    verifiedAt: new Date(),
+                    isPrimary: currentCount === 0,
+                  },
+                  update: {
+                    status: "verified",
+                    verifiedAt: new Date(),
+                  },
+                })
+
+                const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } })
+                if (tenant) {
+                  const { getRedis } = await import("@/lib/redis")
+                  const redis = getRedis()
+                  if (redis) {
+                    await redis.set(`domain:${domainName}`, tenant.slug)
+                  }
                 }
               }
             }
@@ -177,6 +257,21 @@ export async function GET(
     } else if (transaction.subscription?.userId) {
       // Account-level plan
       hasAccess = transaction.subscription.userId === session.user.id || isSuperAdmin
+    } else if (orderId.startsWith("DOM")) {
+      const raw = (transaction.rawResponse as any) || {}
+      if (raw.tenantId) {
+        const member = await db.tenantMember.findUnique({
+          where: {
+            tenantId_userId: {
+              tenantId: raw.tenantId,
+              userId: session.user.id,
+            },
+          },
+        })
+        hasAccess = !!member || isSuperAdmin
+      } else {
+        hasAccess = isSuperAdmin
+      }
     } else {
       hasAccess = isSuperAdmin
     }

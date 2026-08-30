@@ -16,23 +16,21 @@ const createTenantSchema = z.object({
 })
 
 /**
- * Generate a unique slug based on name
+ * Generate a unique slug based on name (iterative, max 10 attempts)
  */
 async function generateUniqueSlug(name: string): Promise<string> {
   const baseSlug = slugify(name) || "workspace"
   let slug = baseSlug
   
-  const existing = await db.tenant.findUnique({ where: { slug } })
-  
-  if (existing) {
+  for (let attempt = 0; attempt < 10; attempt++) {
+    const existing = await db.tenant.findUnique({ where: { slug } })
+    if (!existing) return slug
+    
     const suffix = randomBytes(3).toString("hex")
     slug = `${baseSlug}-${suffix}`
-    
-    const secondCheck = await db.tenant.findUnique({ where: { slug } })
-    if (secondCheck) return generateUniqueSlug(name)
   }
   
-  return slug
+  throw new Error(`Could not generate unique slug for "${name}" after 10 attempts`)
 }
 
 export async function GET(request: NextRequest) {

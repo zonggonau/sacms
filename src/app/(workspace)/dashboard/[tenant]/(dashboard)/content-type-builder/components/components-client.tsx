@@ -84,7 +84,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
   const handleDelete = async () => {
     if (!componentToDelete) return
     if (deleteConfirmName !== componentToDelete.name) {
-      toast({ variant: "destructive", title: "Error", description: "Verification name does not match" })
+      toast({ variant: "destructive", title: "Verifikasi Gagal", description: "Nama verifikasi tidak sesuai" })
       return
     }
 
@@ -92,10 +92,10 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
     try {
       const response = await deleteComponentAction(tenantSlug, componentToDelete.id)
       if (response.error) throw new Error(response.error)
-      toast({ title: "Component Removed", description: `${componentToDelete.name} has been deleted.` })
+      toast({ title: "Komponen Dihapus", description: `${componentToDelete.name} telah berhasil dihapus.` })
       router.refresh()
     } catch (error: any) {
-      toast({ variant: "destructive", title: "Error", description: error.message || "Failed to delete component" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal menghapus komponen" })
     } finally {
       setIsDeleting(false)
       setComponentToDelete(null)

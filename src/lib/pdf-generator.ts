@@ -1,13 +1,16 @@
 import jsPDF from "jspdf"
 import autoTable from "jspdf-autotable"
 
-interface InvoiceData {
+export interface InvoiceData {
   orderId: string
   amount: number
-  status: string
+  status: string // 'paid' | 'success' | 'settlement' | 'pending' | 'draft' | 'cancel' | 'cancelled' | 'expire' | 'expired' | 'failed'
   date: string
   customerName?: string
   customerEmail?: string
+  planName?: string
+  description?: string
+  paymentMethod?: string
 }
 
 // ─── Colour palette ────────────────────────────────────────────────────────
@@ -46,9 +49,17 @@ export function generateInvoicePDF(data: InvoiceData) {
   const ppn      = total - subtotal
   const fmt      = (n: number) => `Rp\u00A0${n.toLocaleString('id-ID')}`   // non-breaking space
 
-  const isPaid    = data.status.toLowerCase() === 'success'
-  const isPending = data.status.toLowerCase() === 'pending'
-  const statusLabel = isPaid ? 'LUNAS' : isPending ? 'MENUNGGU' : 'GAGAL'
+  const st = (data.status || '').toLowerCase()
+  const isPaid = st === 'success' || st === 'settlement' || st === 'paid'
+  const isPending = st === 'pending' || st === 'draft' || st === 'unpaid'
+  const isCancelled = st === 'cancel' || st === 'cancelled' || st === 'expire' || st === 'expired' || st === 'deny' || st === 'failed'
+
+  const statusLabel = isPaid 
+    ? 'LUNAS (PAID)' 
+    : isPending 
+    ? 'MENUNGGU (PENDING)' 
+    : 'DIBATALKAN (CANCEL)'
+
   const statusColor = isPaid ? C.green : isPending ? C.amber : C.red
 
   /* ═══════════════════════════════════════════════════════════════════════
@@ -67,7 +78,7 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(180, 190, 210)
-  doc.text('Headless CMS Platform  ·  hello@sacms.com  ·  www.sacms.com', ML, 29)
+  doc.text('Enterprise Headless CMS  ·  billing@sacms.cloud  ·  www.sacms.cloud', ML, 29)
 
   // "INVOICE" — right side, with proper right inset
   rgb(doc, C.white, 'text')
@@ -131,7 +142,7 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   const metaRows: [string, string, boolean][] = [
     ['Tanggal',    data.date,   false],
-    ['Jatuh Tempo', data.date,  false],
+    ['Metode',     data.paymentMethod || 'Midtrans Gateway', false],
     ['Status',     statusLabel, true ],
   ]
   metaRows.forEach(([label, val, isStatus], i) => {
@@ -155,11 +166,9 @@ export function generateInvoicePDF(data: InvoiceData) {
 
   /* ═══════════════════════════════════════════════════════════════════════
      4. ITEMS TABLE
-     Column widths must sum to MR - ML = 180mm
-     #=16, Desc=78, Qty=18, Harga Satuan=36, Jumlah=32  → total = 180 ✓
-     Padding reduced to 4mm each side so narrow cols never wrap.
   ═══════════════════════════════════════════════════════════════════════ */
   const tableY = cardY + cardH + 10
+  const itemDesc = data.description || (data.planName ? `SaCMS — Paket ${data.planName}` : 'SaCMS — Pembayaran / Upgrade Layanan Cloud & AI')
 
   autoTable(doc, {
     startY: tableY,
@@ -167,7 +176,7 @@ export function generateInvoicePDF(data: InvoiceData) {
     body: [
       [
         '01',
-        'SaCMS — Pembayaran / Upgrade Paket Langganan',
+        itemDesc,
         '1',
         fmt(subtotal),
         fmt(subtotal),
@@ -225,7 +234,7 @@ export function generateInvoicePDF(data: InvoiceData) {
   drawSummaryRow('PPN 11%',        fmt(ppn))
 
   // Grand total stripe
-  rgb(doc, C.blue, 'fill')
+  rgb(doc, isPaid ? C.blue : isPending ? C.amber : C.red, 'fill')
   doc.rect(totLX - 5, ty, totBlockW + 5, 13, 'F')
   doc.setFont('helvetica', 'bold')
   doc.setFontSize(10.5)
@@ -247,24 +256,30 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.setFontSize(8.5)
   rgb(doc, C.slate, 'text')
   const notes = [
-    '• Pembayaran diproses melalui gateway Midtrans.',
-    '• Simpan invoice ini sebagai bukti pembayaran yang sah.',
-    '• Pertanyaan tagihan: billing@sacms.com',
+    '• Pembayaran diproses secara otomatis melalui gerbang Midtrans.',
+    '• Simpan dokumen invoice ini sebagai bukti transaksi resmi.',
+    '• Butuh bantuan atau e-Faktur? Hubungi: billing@sacms.cloud',
   ]
   notes.forEach((n, i) => doc.text(n, ML, noteY + 8 + i * 7))
 
   /* ═══════════════════════════════════════════════════════════════════════
-     7. WATERMARK "LUNAS"
+     7. WATERMARK (PAID / DRAFT / CANCEL)
   ═══════════════════════════════════════════════════════════════════════ */
+  doc.saveGraphicsState()
+  doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
+  doc.setFont('helvetica', 'bold')
+  doc.setFontSize(60)
   if (isPaid) {
-    doc.saveGraphicsState()
-    doc.setGState(new (doc as any).GState({ opacity: 0.06 }))
-    doc.setFont('helvetica', 'bold')
-    doc.setFontSize(70)
     doc.setTextColor(21, 128, 61)
     doc.text('LUNAS', W / 2, H / 2, { align: 'center', angle: -35 })
-    doc.restoreGraphicsState()
+  } else if (isCancelled) {
+    doc.setTextColor(185, 28, 28)
+    doc.text('DIBATALKAN', W / 2, H / 2, { align: 'center', angle: -35 })
+  } else {
+    doc.setTextColor(180, 120, 10)
+    doc.text('DRAFT / MENUNGGU', W / 2, H / 2, { align: 'center', angle: -35 })
   }
+  doc.restoreGraphicsState()
 
   /* ═══════════════════════════════════════════════════════════════════════
      8. FOOTER BAR

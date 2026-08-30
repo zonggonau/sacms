@@ -10,7 +10,7 @@ export async function registerUser(formData: any) {
     const { name, email, password } = formData
 
     if (!email || !password || !name) {
-      return { error: "Missing required fields" }
+      return { error: "Semua kolom wajib diisi" }
     }
 
     const getPasswordStrength = (p: string) => {
@@ -23,7 +23,7 @@ export async function registerUser(formData: any) {
     }
 
     if (getPasswordStrength(password) < 3) {
-      return { error: "Password is too weak. Please ensure it is at least 'Kuat'." }
+      return { error: "Kata sandi terlalu lemah. Pastikan minimal berstatus 'Kuat'." }
     }
 
     const existingUser = await db.user.findUnique({
@@ -32,7 +32,7 @@ export async function registerUser(formData: any) {
 
     if (existingUser) {
       if (existingUser.emailVerified) {
-        return { error: "An account with this email already exists and is verified. Please log in." }
+        return { error: "Akun dengan email ini sudah terdaftar dan terverifikasi. Silakan masuk." }
       } else {
         // Generate Verification Token
         const token = crypto.randomBytes(32).toString("hex")
@@ -85,7 +85,7 @@ export async function registerUser(formData: any) {
       return { 
         success: true, 
         isFirstUser: true,
-        message: "Super Admin account created. You can now log in." 
+        message: "Akun Super Admin berhasil dibuat. Silakan masuk." 
       }
     }
 
@@ -107,18 +107,18 @@ export async function registerUser(formData: any) {
 
     return { 
       success: true, 
-      message: "Registration successful. Please check your email to verify your account." 
+      message: "Pendaftaran berhasil. Silakan periksa email Anda untuk verifikasi akun." 
     }
   } catch (error) {
     console.error("Registration Error:", error)
-    return { error: "Internal server error" }
+    return { error: "Terjadi kesalahan pada server" }
   }
 }
 
 export async function forgotPassword(email: string) {
   try {
     if (!email) {
-      return { error: "Email is required" }
+      return { error: "Email wajib diisi" }
     }
 
     const user = await db.user.findUnique({
@@ -129,7 +129,7 @@ export async function forgotPassword(email: string) {
     if (!user) {
       return { 
         success: true, 
-        message: "If an account with that email exists, we sent a password reset link." 
+        message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi." 
       }
     }
 
@@ -152,11 +152,11 @@ export async function forgotPassword(email: string) {
 
     return { 
       success: true, 
-      message: "If an account with that email exists, we sent a password reset link." 
+      message: "Jika akun dengan email tersebut terdaftar, kami telah mengirimkan tautan reset kata sandi." 
     }
   } catch (error) {
     console.error("Forgot Password Error:", error)
-    return { error: "Internal server error" }
+    return { error: "Terjadi kesalahan pada server" }
   }
 }
 
@@ -165,7 +165,7 @@ export async function resetPassword(formData: any) {
     const { token, password } = formData
 
     if (!token || !password) {
-      return { error: "Token and password are required" }
+      return { error: "Token dan kata sandi baru wajib diisi" }
     }
 
     const getPasswordStrength = (p: string) => {
@@ -178,7 +178,7 @@ export async function resetPassword(formData: any) {
     }
 
     if (getPasswordStrength(password) < 3) {
-      return { error: "Password is too weak. Please ensure it is at least 'Kuat'." }
+      return { error: "Kata sandi terlalu lemah. Pastikan minimal berstatus 'Kuat'." }
     }
 
     // Find the token
@@ -187,12 +187,12 @@ export async function resetPassword(formData: any) {
     })
 
     if (!verificationToken || !verificationToken.identifier.startsWith("reset:")) {
-      return { error: "Invalid or expired token" }
+      return { error: "Tautan tidak valid atau sudah kadaluarsa" }
     }
 
     if (new Date() > verificationToken.expires) {
       await db.verificationToken.delete({ where: { token } })
-      return { error: "Token has expired" }
+      return { error: "Tautan verifikasi telah kadaluarsa" }
     }
 
     const email = verificationToken.identifier.replace("reset:", "")
@@ -202,7 +202,7 @@ export async function resetPassword(formData: any) {
     })
 
     if (!user) {
-      return { error: "User not found" }
+      return { error: "Pengguna tidak ditemukan" }
     }
 
     // Hash new password
@@ -223,10 +223,10 @@ export async function resetPassword(formData: any) {
 
     return { 
       success: true, 
-      message: "Password reset successfully. You can now log in with your new password." 
+      message: "Kata sandi berhasil diatur ulang. Silakan masuk dengan kata sandi baru Anda." 
     }
   } catch (error) {
     console.error("Reset Password Error:", error)
-    return { error: "Internal server error" }
+    return { error: "Terjadi kesalahan pada server" }
   }
 }

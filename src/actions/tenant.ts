@@ -169,8 +169,9 @@ export async function applyTemplateAction(tenantIdOrSlug: string, templateId: st
       data: { templateId }
     })
 
-    // Revalidate the CTB overview path
-    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/overview`)
+    // Revalidate the CTB paths
+    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/aiwebsitebuilder`)
+    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/content-types`)
 
     return { success: true }
   } catch (error: any) {

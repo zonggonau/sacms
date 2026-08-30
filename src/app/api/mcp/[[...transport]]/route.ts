@@ -824,7 +824,7 @@ const handler = createMcpHandler(
             tenants: {
               create: {
                 tenantId: auth.tenantId,
-                locale: "en",
+                locale: "id",
                 data: initialData || {},
                 publishedAt: new Date()
               }

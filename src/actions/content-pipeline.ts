@@ -18,7 +18,23 @@ export function parseSchemaFieldOptions(schemaFields: any[] = []) {
         parsedOptions = {}
       }
     }
-    return { ...f, options: parsedOptions || {} }
+    const safeOpts = (typeof parsedOptions === "object" && parsedOptions !== null) ? { ...parsedOptions } : {}
+    const showInCms = safeOpts.showInCms !== false && f.showInCms !== false
+    safeOpts.showInCms = showInCms
+
+    // Normalize relation options & relationSlug
+    if (f.type === "relation") {
+      const relSlug = f.relationSlug || safeOpts.targetSlug || safeOpts.relationSlug || null
+      safeOpts.targetSlug = relSlug || ""
+      safeOpts.relationType = safeOpts.relationType || "manyToOne"
+      safeOpts.targetModel = safeOpts.targetModel || "content-type"
+      if (safeOpts.multiple === undefined) {
+        safeOpts.multiple = safeOpts.relationType === "oneToMany" || safeOpts.relationType === "manyToMany"
+      }
+      return { ...f, relationSlug: relSlug, showInCms, options: safeOpts }
+    }
+
+    return { ...f, showInCms, options: safeOpts }
   })
 }
 

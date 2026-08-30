@@ -173,7 +173,6 @@ export function BlogManager({ landingDataString, onChange }: BlogManagerProps) {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-3">
                       {blog.image_url ? (
-                        // eslint-disable-next-line @next/next/no-img-element
                         <img src={blog.image_url} alt="" className="w-10 h-10 rounded-md object-cover" />
                       ) : (
                         <div className="w-10 h-10 rounded-md bg-muted flex items-center justify-center text-xs">No img</div>
@@ -235,7 +234,6 @@ export function BlogManager({ landingDataString, onChange }: BlogManagerProps) {
                 <Label>Image URL</Label>
                 <Input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="https://..." />
                 {imageUrl && (
-                  // eslint-disable-next-line @next/next/no-img-element
                   <img src={imageUrl} alt="Preview" className="h-32 rounded-lg object-cover mt-2 border" />
                 )}
               </div>

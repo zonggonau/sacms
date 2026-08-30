@@ -1,6 +1,6 @@
 "use client"
 
-import React, { createContext, useContext, useState, useEffect } from "react"
+import React, { createContext, useContext } from "react"
 import { DICTIONARY, Locale } from "./dictionaries"
 
 interface LanguageContextType {
@@ -17,37 +17,11 @@ const LanguageContext = createContext<LanguageContextType>({
   t: (path: string, fallback?: string) => fallback || path,
 })
 
-const STORAGE_KEY = "sacms_lang"
-
 export function LanguageProvider({ children }: { children: React.ReactNode }) {
-  const [locale, setLocaleState] = useState<Locale>("id")
+  const locale: Locale = "id"
+  const setLocale = () => {}
 
-  useEffect(() => {
-    try {
-      const stored = localStorage.getItem(STORAGE_KEY) as Locale | null
-      if (stored === "id" || stored === "en") {
-        setLocaleState(stored)
-      } else {
-        // Check browser language
-        const browserLang = navigator.language.toLowerCase()
-        if (browserLang.startsWith("en")) {
-          setLocaleState("en")
-        }
-      }
-    } catch {
-      // localStorage may be unavailable in some private browsing modes
-    }
-  }, [])
-
-  const setLocale = (newLocale: Locale) => {
-    setLocaleState(newLocale)
-    try {
-      localStorage.setItem(STORAGE_KEY, newLocale)
-      document.cookie = `${STORAGE_KEY}=${newLocale}; path=/; max-age=31536000; SameSite=Lax`
-    } catch {}
-  }
-
-  const dict = DICTIONARY[locale] || DICTIONARY["id"]
+  const dict = DICTIONARY["id"]
 
   // Helper to access nested keys like "hero.title" or "nav.pricing"
   const t = (path: string, fallback?: string): string => {

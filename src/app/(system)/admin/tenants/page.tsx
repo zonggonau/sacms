@@ -80,7 +80,7 @@ export default function AdminTenantsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal membuat workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -105,7 +105,7 @@ export default function AdminTenantsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -131,13 +131,15 @@ export default function AdminTenantsPage() {
       if (res.ok) {
         toast({ title: "Berhasil", description: "Workspace berhasil dihapus" })
         setIsDeleteOpen(false)
+        setTenantToDelete(null)
+        setDeleteConfirmation("")
         refetch()
       } else {
         const err = await res.json()
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menghapus workspace" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menghapus workspace" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat menghapus workspace" })
     } finally {
       setIsSubmitting(false)
     }
@@ -158,7 +160,7 @@ export default function AdminTenantsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal mengubah status" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat mengubah status" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat mengubah status" })
     }
   }
 
@@ -180,7 +182,7 @@ export default function AdminTenantsPage() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal menyimpan limit" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat menyimpan limit" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat menyimpan limit" })
     } finally {
       setOverrideLoading(false)
     }

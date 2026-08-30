@@ -88,7 +88,7 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
 
   const handleAddReviewer = async (member: Member) => {
     if (reviewers.some(r => r.reviewerId === member.userId)) {
-      toast({ title: "Already added", description: "This user is already a reviewer." })
+      toast({ title: "Sudah Ditambahkan", description: "Pengguna ini telah menjadi peninjau." })
       return
     }
 
@@ -111,13 +111,13 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
 
       if (res.ok) {
         setReviewers(updatedReviewers)
-        toast({ title: "Reviewer added" })
+        toast({ title: "Peninjau Ditambahkan" })
       } else {
         const data = await res.json().catch(() => ({}))
-        toast({ variant: "destructive", title: "Failed to add reviewer", description: data.error })
+        toast({ variant: "destructive", title: "Gagal Menambahkan Peninjau", description: data.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Failed to add reviewer" })
+      toast({ variant: "destructive", title: "Gagal Menambahkan Peninjau" })
     } finally {
       setSaving(false)
     }
@@ -137,13 +137,13 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
 
       if (res.ok) {
         setReviewers(updatedReviewers)
-        toast({ title: "Reviewer removed" })
+        toast({ title: "Peninjau Dihapus" })
       } else {
         const data = await res.json().catch(() => ({}))
-        toast({ variant: "destructive", title: "Failed to remove reviewer", description: data.error })
+        toast({ variant: "destructive", title: "Gagal Menghapus Peninjau", description: data.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Failed to remove reviewer" })
+      toast({ variant: "destructive", title: "Gagal Menghapus Peninjau" })
     } finally {
       setSaving(false)
     }
@@ -159,7 +159,7 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
       })
       const data = await res.json()
       if (!res.ok) {
-        toast({ variant: "destructive", title: "Review failed", description: data.error })
+        toast({ variant: "destructive", title: "Gagal Meninjau", description: data.error })
         return
       }
 
@@ -171,10 +171,10 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
         )
       )
       setComment("")
-      toast({ title: decision === "approved" ? "Content approved" : "Changes requested" })
+      toast({ title: decision === "approved" ? "Konten Disetujui" : "Permintaan Perubahan Dikirim" })
       await onDecisionComplete?.()
     } catch {
-      toast({ variant: "destructive", title: "Review failed" })
+      toast({ variant: "destructive", title: "Gagal Meninjau" })
     } finally {
       setSaving(false)
     }
@@ -183,21 +183,21 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
   if (loading) return <div className="p-4 flex justify-center"><Loader2 className="h-4 w-4 animate-spin" /></div>
 
   return (
-    <Card className="border border-border shadow-none bg-card rounded-none overflow-hidden">
+    <Card className="border border-border/80 shadow-xs bg-card rounded-2xl overflow-hidden">
       <CardHeader className="p-4 pb-2">
         <div className="flex items-center justify-between">
           <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-            <Shield className="h-3.5 w-3.5 text-orange-500" /> Review Workflow
+            <Shield className="h-3.5 w-3.5 text-primary" /> Alur Peninjauan (Workflow)
           </CardTitle>
           {canManageReviewers && <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="icon" className="h-6 w-6 rounded-none hover:bg-muted" disabled={saving}>
+              <Button variant="ghost" size="icon" className="h-7 w-7 rounded-xl hover:bg-muted" disabled={saving}>
                 <UserPlus className="h-3.5 w-3.5" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48 rounded-none border border-border bg-card shadow-none">
+            <DropdownMenuContent align="end" className="w-48 rounded-xl border border-border bg-card shadow-lg">
               {members.filter(m => m.role !== 'viewer').map(m => (
-                <DropdownMenuItem key={m.id} onClick={() => handleAddReviewer(m)} className="text-xs font-bold rounded-none hover:bg-muted">
+                <DropdownMenuItem key={m.id} onClick={() => handleAddReviewer(m)} className="text-xs font-semibold rounded-lg hover:bg-muted">
                   {m.user.name || m.user.email}
                 </DropdownMenuItem>
               ))}
@@ -207,29 +207,29 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
       </CardHeader>
       <CardContent className="p-4 pt-2 space-y-3">
         {reviewers.length === 0 ? (
-          <p className="text-[10px] text-muted-foreground italic">No reviewers assigned. direct approval enabled.</p>
+          <p className="text-[10px] text-muted-foreground italic">Belum ada peninjau yang ditugaskan. Persetujuan langsung diizinkan.</p>
         ) : (
           <div className="space-y-2">
             {[...reviewers].sort((a, b) => a.order - b.order).map((r, idx) => (
-              <div key={r.reviewerId} className="flex items-center justify-between gap-2 p-2 bg-muted/30 border border-border group">
+              <div key={r.reviewerId} className="flex items-center justify-between gap-2 p-2 bg-muted/30 border border-border/60 rounded-xl group">
                 <div className="flex items-center gap-2 overflow-hidden">
-                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-orange-500/10 flex items-center justify-center text-[10px] font-black text-orange-600 border border-orange-500/20">
+                  <div className="flex-shrink-0 w-5 h-5 rounded-full bg-primary/10 flex items-center justify-center text-[10px] font-black text-primary border border-primary/20">
                     {idx + 1}
                   </div>
                   <span className="text-[11px] font-bold truncate">{r.reviewerName}</span>
                 </div>
                 <div className="flex items-center gap-1">
                   {r.status === 'approved' ? (
-                    <Check className="h-3 w-3 text-green-500" />
+                    <Check className="h-3 w-3 text-emerald-500" />
                   ) : r.status === 'rejected' ? (
-                    <X className="h-3 w-3 text-red-500" />
+                    <X className="h-3 w-3 text-destructive" />
                   ) : (
                     <Clock className="h-3 w-3 text-muted-foreground" />
                   )}
                   {canManageReviewers && <Button
                     variant="ghost"
                     size="icon"
-                    className="h-5 w-5 rounded-none opacity-0 group-hover:opacity-100 hover:text-red-500 transition-opacity"
+                    className="h-5 w-5 rounded-lg opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
                     onClick={() => handleRemoveReviewer(r.reviewerId)}
                     disabled={saving}
                   >
@@ -242,34 +242,34 @@ export function ReviewerAssignment({ tenantSlug, entryId, entryStatus, onDecisio
         )}
 
         {canReview && (
-          <div className="space-y-2 border-t border-border pt-3">
-            <p className="text-[10px] font-black uppercase tracking-widest text-orange-600">
-              Your review turn
+          <div className="space-y-2 border-t border-border/60 pt-3">
+            <p className="text-[10px] font-black uppercase tracking-widest text-primary">
+              Giliran Peninjauan Anda
             </p>
             <Textarea
               value={comment}
               onChange={(event) => setComment(event.target.value)}
-              placeholder="Optional review note"
+              placeholder="Catatan peninjauan opsional"
               maxLength={2000}
-              className="min-h-20 rounded-none text-xs"
+              className="min-h-20 rounded-xl text-xs"
             />
             <div className="grid grid-cols-2 gap-2">
               <Button
                 type="button"
                 variant="outline"
-                className="rounded-none"
+                className="rounded-xl text-xs font-semibold"
                 disabled={saving}
                 onClick={() => handleDecision("rejected")}
               >
-                <X className="mr-1.5 h-3.5 w-3.5" /> Request changes
+                <X className="mr-1.5 h-3.5 w-3.5 text-destructive" /> Minta Perubahan
               </Button>
               <Button
                 type="button"
-                className="rounded-none"
+                className="rounded-xl text-xs font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                 disabled={saving}
                 onClick={() => handleDecision("approved")}
               >
-                <Check className="mr-1.5 h-3.5 w-3.5" /> Approve
+                <Check className="mr-1.5 h-3.5 w-3.5" /> Setujui
               </Button>
             </div>
           </div>

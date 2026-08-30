@@ -15,7 +15,7 @@ interface NestedSidebarHeaderProps {
 export function NestedSidebarHeader({ 
   tenantId, 
   backHref, 
-  backTooltip = "Kembali ke Workspace Cockpit",
+  backTooltip = "Kembali ke Dashboard Workspace",
   logoHref,
   showBackBtn = true,
   portalBadge

@@ -15,6 +15,44 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
+  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+
+  // ==================== PLATFORM SETTINGS & MAINTENANCE CHECK ====================
+  const redis = getRedis()
+  if (redis) {
+    try {
+      const platformSettings = await redis.get<any>("system:platform-settings")
+      if (platformSettings) {
+        // 1. IP Blacklist check
+        if (platformSettings.ipBlacklist) {
+          const blacklistedIps = platformSettings.ipBlacklist.split(",").map((s: string) => s.trim()).filter(Boolean)
+          if (blacklistedIps.includes(ip)) {
+            return new NextResponse(
+              JSON.stringify({ error: "Forbidden", message: "Your IP address has been blacklisted from accessing this service." }),
+              { status: 403, headers: { "Content-Type": "application/json" } }
+            )
+          }
+        }
+
+        // 2. Maintenance Mode check (only affects non-superadmin and non-whitelisted IPs)
+        if (platformSettings.maintenanceMode === "true" && !pathname.startsWith("/admin") && !pathname.startsWith("/api/auth")) {
+          const whitelist = (platformSettings.maintenanceIpWhitelist || "127.0.0.1").split(",").map((s: string) => s.trim())
+          if (!whitelist.includes(ip) && !whitelist.includes("::1")) {
+            return new NextResponse(
+              JSON.stringify({
+                error: "Service Unavailable",
+                maintenance: true,
+                message: platformSettings.maintenanceMessage || "Platform SaCMS sedang dalam pemeliharaan terjadwal.",
+              }),
+              { status: 503, headers: { "Content-Type": "application/json" } }
+            )
+          }
+        }
+      }
+    } catch {
+      // Redis failover - allow request
+    }
+  }
 
   // ==================== FIRST USER REDIRECT ====================
   // If no users exist, redirect /login and / to /register
@@ -216,11 +254,13 @@ function applySecurityHeaders(response: NextResponse, pathname?: string) {
   )
   response.headers.set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
 
+  const isDev = process.env.NODE_ENV !== "production"
+
   response.headers.set(
     "Content-Security-Policy",
     [
-      "default-src 'self' 'unsafe-inline' 'unsafe-eval' https:",
-      "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://esm.sh https://embeddable-sandbox.cdn.apollographql.com",
+      "default-src 'self' 'unsafe-inline' https:",
+      `script-src 'self' 'unsafe-inline' ${isDev ? "'unsafe-eval' " : ""}https://app.midtrans.com https://app.sandbox.midtrans.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://esm.sh https://embeddable-sandbox.cdn.apollographql.com`,
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://cdn.jsdelivr.net https://unpkg.com https://cdn.tailwindcss.com https://embeddable-sandbox.cdn.apollographql.com",
       "font-src 'self' data: https://fonts.gstatic.com",
       "img-src 'self' data: blob: https:",

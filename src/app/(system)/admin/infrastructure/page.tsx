@@ -66,6 +66,7 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { useToast } from "@/hooks/use-toast"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { cn } from "@/lib/utils"
 
 interface InfrastructureServer {
@@ -152,6 +153,26 @@ export default function AdminInfrastructurePage() {
   const [actionLoadingKey, setActionLoadingKey] = useState<string | null>(null)
   const [copiedKey, setCopiedKey] = useState<string | null>(null)
 
+  // Provision Modal States
+  const [provisionModalOpen, setProvisionModalOpen] = useState(false)
+  const [provisionLoading, setProvisionLoading] = useState(false)
+  const [metaOptions, setMetaOptions] = useState<{
+    plans: any[]
+    regions: any[]
+    defaultRegion: string
+    tenants: any[]
+  }>({
+    plans: [],
+    regions: [],
+    defaultRegion: "SIN",
+    tenants: [],
+  })
+  const [provisionForm, setProvisionForm] = useState({
+    tenantId: "",
+    plan: "vps-4",
+    region: "SIN",
+  })
+
   const isSuperAdmin = session?.user?.role === "super_admin"
 
   const fetchServers = async (silent = false) => {
@@ -166,12 +187,58 @@ export default function AdminInfrastructurePage() {
         const data = await res.json()
         setServers(data.servers || [])
         setSummary(data.summary || {})
+        if (data.meta) {
+          setMetaOptions(data.meta)
+          if (!provisionForm.tenantId && data.meta.tenants?.length > 0) {
+            setProvisionForm(prev => ({
+              ...prev,
+              tenantId: data.meta.tenants[0].id,
+              region: data.meta.defaultRegion || "SIN",
+            }))
+          }
+        }
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Gagal memuat daftar monitoring server." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat daftar monitoring server." })
     } finally {
       setLoading(false)
       setIsRefreshing(false)
+    }
+  }
+
+  const handleProvisionSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!provisionForm.tenantId) {
+      toast({ variant: "destructive", title: "Form Belum Lengkap", description: "Pilih tenant tujuan terlebih dahulu." })
+      return
+    }
+
+    setProvisionLoading(true)
+    try {
+      const res = await fetch("/api/admin/infrastructure/provision", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(provisionForm),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({
+          title: "Provisioning Dimulai!",
+          description: `Server dedicated untuk workspace berhasil dibuat di region ${provisionForm.region} (Ubuntu 24.04).`,
+        })
+        setProvisionModalOpen(false)
+        fetchServers()
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Provisioning Gagal",
+          description: data.error || data.message || "Gagal menginisialisasi server di Contabo.",
+        })
+      }
+    } catch {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Kesalahan jaringan saat melakukan provisioning." })
+    } finally {
+      setProvisionLoading(false)
     }
   }
 
@@ -210,7 +277,7 @@ export default function AdminInfrastructurePage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal memuat kredensial server." })
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan." })
     } finally {
       setLoadingCreds(false)
     }
@@ -236,7 +303,7 @@ export default function AdminInfrastructurePage() {
         toast({ variant: "destructive", title: "Tindakan Gagal", description: data.error || "Operasi gagal dijalankan." })
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat memproses tindakan." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat memproses tindakan." })
     } finally {
       setActionLoadingKey(null)
     }
@@ -258,7 +325,7 @@ export default function AdminInfrastructurePage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal menghapus server." })
       }
     } catch {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan sistem." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan sistem." })
     } finally {
       setIsDeleting(false)
     }
@@ -266,8 +333,8 @@ export default function AdminInfrastructurePage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex flex-1 min-h-[80vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <AdminPageSkeleton layout="grid" cardsCount={4} />
       </div>
     )
   }
@@ -303,6 +370,15 @@ export default function AdminInfrastructurePage() {
             >
               <RefreshCw className={cn("h-3.5 w-3.5", isRefreshing && "animate-spin text-primary")} /> 
               {isRefreshing ? "Memperbarui..." : "Perbarui Data"}
+            </Button>
+
+            <Button
+              size="sm"
+              onClick={() => setProvisionModalOpen(true)}
+              className="gap-2 text-xs h-9 rounded-xl font-bold bg-primary text-primary-foreground shadow-xs"
+            >
+              <Server className="h-3.5 w-3.5" />
+              Provision Dedicated Server
             </Button>
           </div>
         </div>
@@ -805,6 +881,132 @@ export default function AdminInfrastructurePage() {
             <DialogFooter>
               <Button variant="outline" onClick={() => setCredModalOpen(false)}>Tutup</Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Provision Dedicated Server Modal */}
+        <Dialog open={provisionModalOpen} onOpenChange={setProvisionModalOpen}>
+          <DialogContent className="max-w-xl">
+            <form onSubmit={handleProvisionSubmit}>
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-lg font-bold text-foreground">
+                  <Server className="h-5 w-5 text-primary" /> Provision Dedicated Server
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Alokasikan VPS/VDS appliance khusus (PostgreSQL 17 + MinIO S3 + UFW Firewall) di Contabo Cloud.
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-4 py-4 text-xs">
+                {/* Workspace Target */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Workspace / Tenant Tujuan</Label>
+                  <Select
+                    value={provisionForm.tenantId}
+                    onValueChange={(val) => setProvisionForm((prev) => ({ ...prev, tenantId: val }))}
+                  >
+                    <SelectTrigger className="text-xs rounded-xl h-10">
+                      <SelectValue placeholder="Pilih workspace..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metaOptions.tenants?.map((t: any) => (
+                        <SelectItem key={t.id} value={t.id} className="text-xs">
+                          {t.name} ({t.slug}) — Plan {t.plan}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Contabo Plan */}
+                <div className="space-y-1.5">
+                  <Label className="text-xs font-semibold text-foreground">Paket Server Dedicated (Contabo)</Label>
+                  <Select
+                    value={provisionForm.plan}
+                    onValueChange={(val) => setProvisionForm((prev) => ({ ...prev, plan: val }))}
+                  >
+                    <SelectTrigger className="text-xs rounded-xl h-10">
+                      <SelectValue placeholder="Pilih paket VPS/VDS..." />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-60">
+                      {metaOptions.plans?.map((p: any) => (
+                        <SelectItem key={p.id} value={p.id} className="text-xs">
+                          {p.name} — {p.cpuCores} vCPU, {p.ramMb / 1024} GB RAM, {p.diskGb} GB {p.diskType}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Contabo Region Location Selector */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                      <Globe className="h-3.5 w-3.5 text-primary" /> Lokasi Data Center (Region)
+                    </Label>
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                      Default: Singapore (Asia)
+                    </span>
+                  </div>
+                  <Select
+                    value={provisionForm.region}
+                    onValueChange={(val) => setProvisionForm((prev) => ({ ...prev, region: val }))}
+                  >
+                    <SelectTrigger className="text-xs rounded-xl h-10">
+                      <SelectValue placeholder="Pilih Region..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {metaOptions.regions?.map((r: any) => (
+                        <SelectItem key={r.id} value={r.id} className="text-xs">
+                          {r.flag} {r.name} {r.isDefault ? "★ (Rekomendasi Asia)" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">
+                    Lokasi Singapore (SIN) memberikan latensi paling rendah & optimal untuk pengguna di Indonesia.
+                  </p>
+                </div>
+
+                {/* OS System */}
+                <div className="p-3 bg-muted/50 rounded-xl border flex items-center justify-between">
+                  <div>
+                    <div className="font-semibold text-foreground text-xs">Sistem Operasi (OS)</div>
+                    <div className="text-[11px] text-muted-foreground mt-0.5">Ubuntu 24.04 LTS (64-bit Server Standard)</div>
+                  </div>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/30 text-[10px] font-bold">
+                    Default Auto-Config
+                  </Badge>
+                </div>
+              </div>
+
+              <DialogFooter className="gap-2 sm:gap-0">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setProvisionModalOpen(false)}
+                  disabled={provisionLoading}
+                  className="text-xs rounded-xl"
+                >
+                  Batal
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={provisionLoading || !provisionForm.tenantId}
+                  className="text-xs rounded-xl font-bold bg-primary text-primary-foreground gap-2"
+                >
+                  {provisionLoading ? (
+                    <>
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sedang Memesan ke Contabo...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="h-3.5 w-3.5" /> Konfirmasi & Provision Server
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
 

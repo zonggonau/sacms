@@ -71,6 +71,54 @@ export default async function CMSContentTypeEntriesPage({
     }
   })
 
+  // Batch fetch human-readable labels for relations
+  const { batchFetchRelationLabels } = await import("@/lib/relation-labels")
+  const relationLabels = await batchFetchRelationLabels(
+    tenantDb,
+    access.tenantId,
+    parsedEntries,
+    mappedContentType.fields
+  )
+
+  // Load schemas of all related content types for column configurator
+  const relationSlugs = Array.from(
+    new Set(
+      mappedContentType.fields
+        .filter((f) => f.type === "relation" || f.relationSlug)
+        .map((f) => f.relationSlug || (f.options as any)?.targetSlug)
+        .filter(Boolean)
+    )
+  ) as string[]
+
+  let relatedSchemas: Record<string, { name: string; slug: string; fields: any[] }> = {}
+  if (relationSlugs.length > 0) {
+    const relatedTypes = await tenantDb.contentType.findMany({
+      where: {
+        slug: { in: relationSlugs },
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, tenants: { some: { tenantId: access.tenantId, enabled: true } } },
+          ...(access.isGlobal ? [{ tenantId: null }] : [])
+        ]
+      },
+      include: { schemaFields: { orderBy: { order: "asc" } } }
+    })
+
+    for (const rt of relatedTypes) {
+      relatedSchemas[rt.slug] = {
+        name: rt.name,
+        slug: rt.slug,
+        fields: rt.schemaFields.map((f) => ({
+          id: f.id,
+          name: f.name,
+          slug: f.slug,
+          type: f.type,
+          required: f.required
+        }))
+      }
+    }
+  }
+
   // Enforce plan limits for content entries
   const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
   const enforcement = await enforcePlanLimit(access.tenantId, "content_entries", session.user.id)
@@ -82,6 +130,8 @@ export default async function CMSContentTypeEntriesPage({
     <ContentEntriesManager 
       contentType={mappedContentType}
       initialEntries={parsedEntries}
+      initialRelationLabels={relationLabels}
+      relatedSchemas={relatedSchemas}
       tenantSlug={tenantSlug}
       contentTypeSlug={contentTypeSlug}
       isLimitReached={isLimitReached}

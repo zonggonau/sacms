@@ -153,7 +153,7 @@ export function RbacMatrixView() {
         toast({ variant: "destructive", title: "Gagal", description: err.error || "Gagal memperbarui izin" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     }
   }
 
@@ -179,7 +179,7 @@ export function RbacMatrixView() {
         })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Gagal memperbarui izin massal" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memperbarui izin massal" })
     }
   }
 
@@ -202,7 +202,7 @@ export function RbacMatrixView() {
         toast({ variant: "destructive", title: "Gagal", description: err.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -232,7 +232,7 @@ export function RbacMatrixView() {
         toast({ variant: "destructive", title: "Gagal", description: err.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     } finally {
       setIsSubmitting(false)
     }
@@ -250,7 +250,7 @@ export function RbacMatrixView() {
         toast({ variant: "destructive", title: "Gagal", description: err.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan yang tidak terduga" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan yang tidak terduga" })
     }
   }
 

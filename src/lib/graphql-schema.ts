@@ -354,7 +354,7 @@ async function resolveMutationCreate(
       where: { tenantId, isDefault: true },
       select: { locale: true },
     })
-    resolvedLocale = defaultLocale?.locale ?? "en"
+    resolvedLocale = defaultLocale?.locale ?? "id"
   }
 
   // B2 Fix: Execute sync hooks (beforeCreate) before writing
@@ -655,7 +655,7 @@ async function resolveSingleType(
       where: { tenantId, isDefault: true },
       select: { locale: true },
     })
-    resolvedLocale = defaultLocale?.locale ?? "en"
+    resolvedLocale = defaultLocale?.locale ?? "id"
   }
 
   // Try requested locale first, then fall back to "en"
@@ -670,13 +670,13 @@ async function resolveSingleType(
   })
 
   // Fallback to default locale if no data found for requested locale
-  if ((!assignment || !assignment.data) && resolvedLocale !== "en") {
+  if ((!assignment || !assignment.data) && resolvedLocale !== "id") {
     assignment = await _db.tenantSingleTypeAssignment.findUnique({
       where: {
         tenantId_singleTypeId_locale: { 
           tenantId, 
           singleTypeId: singleType.id,
-          locale: "en",
+          locale: "id",
         },
       },
     })

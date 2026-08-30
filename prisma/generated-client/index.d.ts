@@ -273,6 +273,16 @@ export type InfrastructureServer = $Result.DefaultSelection<Prisma.$Infrastructu
  * 
  */
 export type InfrastructureCredential = $Result.DefaultSelection<Prisma.$InfrastructureCredentialPayload>
+/**
+ * Model SupportTicket
+ * 
+ */
+export type SupportTicket = $Result.DefaultSelection<Prisma.$SupportTicketPayload>
+/**
+ * Model SupportMessage
+ * 
+ */
+export type SupportMessage = $Result.DefaultSelection<Prisma.$SupportMessagePayload>
 
 /**
  * Enums
@@ -933,6 +943,26 @@ export class PrismaClient<
     * ```
     */
   get infrastructureCredential(): Prisma.InfrastructureCredentialDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.supportTicket`: Exposes CRUD operations for the **SupportTicket** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SupportTickets
+    * const supportTickets = await prisma.supportTicket.findMany()
+    * ```
+    */
+  get supportTicket(): Prisma.SupportTicketDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.supportMessage`: Exposes CRUD operations for the **SupportMessage** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more SupportMessages
+    * const supportMessages = await prisma.supportMessage.findMany()
+    * ```
+    */
+  get supportMessage(): Prisma.SupportMessageDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1425,7 +1455,9 @@ export namespace Prisma {
     SiteConversation: 'SiteConversation',
     SiteMessage: 'SiteMessage',
     InfrastructureServer: 'InfrastructureServer',
-    InfrastructureCredential: 'InfrastructureCredential'
+    InfrastructureCredential: 'InfrastructureCredential',
+    SupportTicket: 'SupportTicket',
+    SupportMessage: 'SupportMessage'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1444,7 +1476,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage" | "infrastructureServer" | "infrastructureCredential"
+      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage" | "infrastructureServer" | "infrastructureCredential" | "supportTicket" | "supportMessage"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -5296,6 +5328,154 @@ export namespace Prisma {
           }
         }
       }
+      SupportTicket: {
+        payload: Prisma.$SupportTicketPayload<ExtArgs>
+        fields: Prisma.SupportTicketFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SupportTicketFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SupportTicketFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          findFirst: {
+            args: Prisma.SupportTicketFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SupportTicketFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          findMany: {
+            args: Prisma.SupportTicketFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>[]
+          }
+          create: {
+            args: Prisma.SupportTicketCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          createMany: {
+            args: Prisma.SupportTicketCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SupportTicketCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>[]
+          }
+          delete: {
+            args: Prisma.SupportTicketDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          update: {
+            args: Prisma.SupportTicketUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          deleteMany: {
+            args: Prisma.SupportTicketDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SupportTicketUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.SupportTicketUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>[]
+          }
+          upsert: {
+            args: Prisma.SupportTicketUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportTicketPayload>
+          }
+          aggregate: {
+            args: Prisma.SupportTicketAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSupportTicket>
+          }
+          groupBy: {
+            args: Prisma.SupportTicketGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SupportTicketGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SupportTicketCountArgs<ExtArgs>
+            result: $Utils.Optional<SupportTicketCountAggregateOutputType> | number
+          }
+        }
+      }
+      SupportMessage: {
+        payload: Prisma.$SupportMessagePayload<ExtArgs>
+        fields: Prisma.SupportMessageFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.SupportMessageFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.SupportMessageFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          findFirst: {
+            args: Prisma.SupportMessageFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.SupportMessageFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          findMany: {
+            args: Prisma.SupportMessageFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>[]
+          }
+          create: {
+            args: Prisma.SupportMessageCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          createMany: {
+            args: Prisma.SupportMessageCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.SupportMessageCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>[]
+          }
+          delete: {
+            args: Prisma.SupportMessageDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          update: {
+            args: Prisma.SupportMessageUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          deleteMany: {
+            args: Prisma.SupportMessageDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.SupportMessageUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.SupportMessageUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>[]
+          }
+          upsert: {
+            args: Prisma.SupportMessageUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$SupportMessagePayload>
+          }
+          aggregate: {
+            args: Prisma.SupportMessageAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateSupportMessage>
+          }
+          groupBy: {
+            args: Prisma.SupportMessageGroupByArgs<ExtArgs>
+            result: $Utils.Optional<SupportMessageGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.SupportMessageCountArgs<ExtArgs>
+            result: $Utils.Optional<SupportMessageCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -5444,6 +5624,8 @@ export namespace Prisma {
     siteMessage?: SiteMessageOmit
     infrastructureServer?: InfrastructureServerOmit
     infrastructureCredential?: InfrastructureCredentialOmit
+    supportTicket?: SupportTicketOmit
+    supportMessage?: SupportMessageOmit
   }
 
   /* Types for Logging */
@@ -5529,6 +5711,7 @@ export namespace Prisma {
     subscriptions: number
     tenants: number
     aiQuotaLedgers: number
+    supportTickets: number
   }
 
   export type UserCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5537,6 +5720,7 @@ export namespace Prisma {
     subscriptions?: boolean | UserCountOutputTypeCountSubscriptionsArgs
     tenants?: boolean | UserCountOutputTypeCountTenantsArgs
     aiQuotaLedgers?: boolean | UserCountOutputTypeCountAiQuotaLedgersArgs
+    supportTickets?: boolean | UserCountOutputTypeCountSupportTicketsArgs
   }
 
   // Custom InputTypes
@@ -5585,6 +5769,13 @@ export namespace Prisma {
     where?: AiQuotaLedgerWhereInput
   }
 
+  /**
+   * UserCountOutputType without action
+   */
+  export type UserCountOutputTypeCountSupportTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SupportTicketWhereInput
+  }
+
 
   /**
    * Count Type TenantCountOutputType
@@ -5617,6 +5808,7 @@ export namespace Prisma {
     roles: number
     sites: number
     infrastructureServers: number
+    supportTickets: number
   }
 
   export type TenantCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5646,6 +5838,7 @@ export namespace Prisma {
     roles?: boolean | TenantCountOutputTypeCountRolesArgs
     sites?: boolean | TenantCountOutputTypeCountSitesArgs
     infrastructureServers?: boolean | TenantCountOutputTypeCountInfrastructureServersArgs
+    supportTickets?: boolean | TenantCountOutputTypeCountSupportTicketsArgs
   }
 
   // Custom InputTypes
@@ -5839,6 +6032,13 @@ export namespace Prisma {
    */
   export type TenantCountOutputTypeCountInfrastructureServersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: InfrastructureServerWhereInput
+  }
+
+  /**
+   * TenantCountOutputType without action
+   */
+  export type TenantCountOutputTypeCountSupportTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SupportTicketWhereInput
   }
 
 
@@ -6270,6 +6470,37 @@ export namespace Prisma {
 
 
   /**
+   * Count Type SupportTicketCountOutputType
+   */
+
+  export type SupportTicketCountOutputType = {
+    messages: number
+  }
+
+  export type SupportTicketCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    messages?: boolean | SupportTicketCountOutputTypeCountMessagesArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * SupportTicketCountOutputType without action
+   */
+  export type SupportTicketCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicketCountOutputType
+     */
+    select?: SupportTicketCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * SupportTicketCountOutputType without action
+   */
+  export type SupportTicketCountOutputTypeCountMessagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SupportMessageWhereInput
+  }
+
+
+  /**
    * Models
    */
 
@@ -6548,6 +6779,7 @@ export namespace Prisma {
     subscriptions?: boolean | User$subscriptionsArgs<ExtArgs>
     tenants?: boolean | User$tenantsArgs<ExtArgs>
     aiQuotaLedgers?: boolean | User$aiQuotaLedgersArgs<ExtArgs>
+    supportTickets?: boolean | User$supportTicketsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["user"]>
 
@@ -6609,6 +6841,7 @@ export namespace Prisma {
     subscriptions?: boolean | User$subscriptionsArgs<ExtArgs>
     tenants?: boolean | User$tenantsArgs<ExtArgs>
     aiQuotaLedgers?: boolean | User$aiQuotaLedgersArgs<ExtArgs>
+    supportTickets?: boolean | User$supportTicketsArgs<ExtArgs>
     _count?: boolean | UserCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type UserIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -6622,6 +6855,7 @@ export namespace Prisma {
       subscriptions: Prisma.$SubscriptionPayload<ExtArgs>[]
       tenants: Prisma.$TenantMemberPayload<ExtArgs>[]
       aiQuotaLedgers: Prisma.$AiQuotaLedgerPayload<ExtArgs>[]
+      supportTickets: Prisma.$SupportTicketPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -7037,6 +7271,7 @@ export namespace Prisma {
     subscriptions<T extends User$subscriptionsArgs<ExtArgs> = {}>(args?: Subset<T, User$subscriptionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SubscriptionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     tenants<T extends User$tenantsArgs<ExtArgs> = {}>(args?: Subset<T, User$tenantsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantMemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     aiQuotaLedgers<T extends User$aiQuotaLedgersArgs<ExtArgs> = {}>(args?: Subset<T, User$aiQuotaLedgersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$AiQuotaLedgerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    supportTickets<T extends User$supportTicketsArgs<ExtArgs> = {}>(args?: Subset<T, User$supportTicketsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -7585,6 +7820,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: AiQuotaLedgerScalarFieldEnum | AiQuotaLedgerScalarFieldEnum[]
+  }
+
+  /**
+   * User.supportTickets
+   */
+  export type User$supportTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    where?: SupportTicketWhereInput
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    cursor?: SupportTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
   }
 
   /**
@@ -10849,6 +11108,10 @@ export namespace Prisma {
     licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
+    hostingStatus: string | null
+    hostingExpiresAt: Date | null
+    vercelProjectId: string | null
+    vercelDeploymentUrl: string | null
     aiTokensUsed: number | null
     aiCreditsExtra: number | null
     storageExtraBytes: bigint | null
@@ -10875,6 +11138,10 @@ export namespace Prisma {
     licenseKey: string | null
     faviconUrl: string | null
     primaryColor: string | null
+    hostingStatus: string | null
+    hostingExpiresAt: Date | null
+    vercelProjectId: string | null
+    vercelDeploymentUrl: string | null
     aiTokensUsed: number | null
     aiCreditsExtra: number | null
     storageExtraBytes: bigint | null
@@ -10902,6 +11169,10 @@ export namespace Prisma {
     faviconUrl: number
     primaryColor: number
     storageConfig: number
+    hostingStatus: number
+    hostingExpiresAt: number
+    vercelProjectId: number
+    vercelDeploymentUrl: number
     aiTokensUsed: number
     aiCreditsExtra: number
     storageExtraBytes: number
@@ -10944,6 +11215,10 @@ export namespace Prisma {
     licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
+    hostingStatus?: true
+    hostingExpiresAt?: true
+    vercelProjectId?: true
+    vercelDeploymentUrl?: true
     aiTokensUsed?: true
     aiCreditsExtra?: true
     storageExtraBytes?: true
@@ -10970,6 +11245,10 @@ export namespace Prisma {
     licenseKey?: true
     faviconUrl?: true
     primaryColor?: true
+    hostingStatus?: true
+    hostingExpiresAt?: true
+    vercelProjectId?: true
+    vercelDeploymentUrl?: true
     aiTokensUsed?: true
     aiCreditsExtra?: true
     storageExtraBytes?: true
@@ -10997,6 +11276,10 @@ export namespace Prisma {
     faviconUrl?: true
     primaryColor?: true
     storageConfig?: true
+    hostingStatus?: true
+    hostingExpiresAt?: true
+    vercelProjectId?: true
+    vercelDeploymentUrl?: true
     aiTokensUsed?: true
     aiCreditsExtra?: true
     storageExtraBytes?: true
@@ -11111,6 +11394,10 @@ export namespace Prisma {
     faviconUrl: string | null
     primaryColor: string | null
     storageConfig: JsonValue | null
+    hostingStatus: string | null
+    hostingExpiresAt: Date | null
+    vercelProjectId: string | null
+    vercelDeploymentUrl: string | null
     aiTokensUsed: number
     aiCreditsExtra: number
     storageExtraBytes: bigint
@@ -11157,6 +11444,10 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    hostingStatus?: boolean
+    hostingExpiresAt?: boolean
+    vercelProjectId?: boolean
+    vercelDeploymentUrl?: boolean
     aiTokensUsed?: boolean
     aiCreditsExtra?: boolean
     storageExtraBytes?: boolean
@@ -11187,6 +11478,7 @@ export namespace Prisma {
     roles?: boolean | Tenant$rolesArgs<ExtArgs>
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
     infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
+    supportTickets?: boolean | Tenant$supportTicketsArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenant"]>
 
@@ -11211,6 +11503,10 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    hostingStatus?: boolean
+    hostingExpiresAt?: boolean
+    vercelProjectId?: boolean
+    vercelDeploymentUrl?: boolean
     aiTokensUsed?: boolean
     aiCreditsExtra?: boolean
     storageExtraBytes?: boolean
@@ -11238,6 +11534,10 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    hostingStatus?: boolean
+    hostingExpiresAt?: boolean
+    vercelProjectId?: boolean
+    vercelDeploymentUrl?: boolean
     aiTokensUsed?: boolean
     aiCreditsExtra?: boolean
     storageExtraBytes?: boolean
@@ -11265,13 +11565,17 @@ export namespace Prisma {
     faviconUrl?: boolean
     primaryColor?: boolean
     storageConfig?: boolean
+    hostingStatus?: boolean
+    hostingExpiresAt?: boolean
+    vercelProjectId?: boolean
+    vercelDeploymentUrl?: boolean
     aiTokensUsed?: boolean
     aiCreditsExtra?: boolean
     storageExtraBytes?: boolean
     apiCallsExtra?: boolean
   }
 
-  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "licenseKey" | "faviconUrl" | "primaryColor" | "storageConfig" | "aiTokensUsed" | "aiCreditsExtra" | "storageExtraBytes" | "apiCallsExtra", ExtArgs["result"]["tenant"]>
+  export type TenantOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "name" | "slug" | "description" | "logo" | "plan" | "status" | "createdAt" | "updatedAt" | "brandLogo" | "brandName" | "customDomain" | "customDomainStatus" | "customDomainVerifiedAt" | "customEmailSender" | "databaseUrl" | "licenseKey" | "faviconUrl" | "primaryColor" | "storageConfig" | "hostingStatus" | "hostingExpiresAt" | "vercelProjectId" | "vercelDeploymentUrl" | "aiTokensUsed" | "aiCreditsExtra" | "storageExtraBytes" | "apiCallsExtra", ExtArgs["result"]["tenant"]>
   export type TenantInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     apiKeys?: boolean | Tenant$apiKeysArgs<ExtArgs>
     apiRequests?: boolean | Tenant$apiRequestsArgs<ExtArgs>
@@ -11299,6 +11603,7 @@ export namespace Prisma {
     roles?: boolean | Tenant$rolesArgs<ExtArgs>
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
     infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
+    supportTickets?: boolean | Tenant$supportTicketsArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TenantIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -11333,6 +11638,7 @@ export namespace Prisma {
       roles: Prisma.$TenantRolePayload<ExtArgs>[]
       sites: Prisma.$SitePayload<ExtArgs>[]
       infrastructureServers: Prisma.$InfrastructureServerPayload<ExtArgs>[]
+      supportTickets: Prisma.$SupportTicketPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -11355,6 +11661,10 @@ export namespace Prisma {
       faviconUrl: string | null
       primaryColor: string | null
       storageConfig: Prisma.JsonValue | null
+      hostingStatus: string | null
+      hostingExpiresAt: Date | null
+      vercelProjectId: string | null
+      vercelDeploymentUrl: string | null
       aiTokensUsed: number
       aiCreditsExtra: number
       storageExtraBytes: bigint
@@ -11779,6 +12089,7 @@ export namespace Prisma {
     roles<T extends Tenant$rolesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$rolesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$TenantRolePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     sites<T extends Tenant$sitesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$sitesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SitePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     infrastructureServers<T extends Tenant$infrastructureServersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$infrastructureServersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    supportTickets<T extends Tenant$supportTicketsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$supportTicketsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -11828,6 +12139,10 @@ export namespace Prisma {
     readonly faviconUrl: FieldRef<"Tenant", 'String'>
     readonly primaryColor: FieldRef<"Tenant", 'String'>
     readonly storageConfig: FieldRef<"Tenant", 'Json'>
+    readonly hostingStatus: FieldRef<"Tenant", 'String'>
+    readonly hostingExpiresAt: FieldRef<"Tenant", 'DateTime'>
+    readonly vercelProjectId: FieldRef<"Tenant", 'String'>
+    readonly vercelDeploymentUrl: FieldRef<"Tenant", 'String'>
     readonly aiTokensUsed: FieldRef<"Tenant", 'Int'>
     readonly aiCreditsExtra: FieldRef<"Tenant", 'Int'>
     readonly storageExtraBytes: FieldRef<"Tenant", 'BigInt'>
@@ -12841,6 +13156,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: InfrastructureServerScalarFieldEnum | InfrastructureServerScalarFieldEnum[]
+  }
+
+  /**
+   * Tenant.supportTickets
+   */
+  export type Tenant$supportTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    where?: SupportTicketWhereInput
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    cursor?: SupportTicketWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
   }
 
   /**
@@ -67217,6 +67556,2266 @@ export namespace Prisma {
 
 
   /**
+   * Model SupportTicket
+   */
+
+  export type AggregateSupportTicket = {
+    _count: SupportTicketCountAggregateOutputType | null
+    _min: SupportTicketMinAggregateOutputType | null
+    _max: SupportTicketMaxAggregateOutputType | null
+  }
+
+  export type SupportTicketMinAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    userId: string | null
+    subject: string | null
+    category: string | null
+    priority: string | null
+    status: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SupportTicketMaxAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    userId: string | null
+    subject: string | null
+    category: string | null
+    priority: string | null
+    status: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type SupportTicketCountAggregateOutputType = {
+    id: number
+    tenantId: number
+    userId: number
+    subject: number
+    category: number
+    priority: number
+    status: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type SupportTicketMinAggregateInputType = {
+    id?: true
+    tenantId?: true
+    userId?: true
+    subject?: true
+    category?: true
+    priority?: true
+    status?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SupportTicketMaxAggregateInputType = {
+    id?: true
+    tenantId?: true
+    userId?: true
+    subject?: true
+    category?: true
+    priority?: true
+    status?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type SupportTicketCountAggregateInputType = {
+    id?: true
+    tenantId?: true
+    userId?: true
+    subject?: true
+    category?: true
+    priority?: true
+    status?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type SupportTicketAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SupportTicket to aggregate.
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportTickets to fetch.
+     */
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SupportTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SupportTickets
+    **/
+    _count?: true | SupportTicketCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SupportTicketMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SupportTicketMaxAggregateInputType
+  }
+
+  export type GetSupportTicketAggregateType<T extends SupportTicketAggregateArgs> = {
+        [P in keyof T & keyof AggregateSupportTicket]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSupportTicket[P]>
+      : GetScalarType<T[P], AggregateSupportTicket[P]>
+  }
+
+
+
+
+  export type SupportTicketGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SupportTicketWhereInput
+    orderBy?: SupportTicketOrderByWithAggregationInput | SupportTicketOrderByWithAggregationInput[]
+    by: SupportTicketScalarFieldEnum[] | SupportTicketScalarFieldEnum
+    having?: SupportTicketScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SupportTicketCountAggregateInputType | true
+    _min?: SupportTicketMinAggregateInputType
+    _max?: SupportTicketMaxAggregateInputType
+  }
+
+  export type SupportTicketGroupByOutputType = {
+    id: string
+    tenantId: string | null
+    userId: string
+    subject: string
+    category: string
+    priority: string
+    status: string
+    createdAt: Date
+    updatedAt: Date
+    _count: SupportTicketCountAggregateOutputType | null
+    _min: SupportTicketMinAggregateOutputType | null
+    _max: SupportTicketMaxAggregateOutputType | null
+  }
+
+  type GetSupportTicketGroupByPayload<T extends SupportTicketGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SupportTicketGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SupportTicketGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SupportTicketGroupByOutputType[P]>
+            : GetScalarType<T[P], SupportTicketGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SupportTicketSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    userId?: boolean
+    subject?: boolean
+    category?: boolean
+    priority?: boolean
+    status?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    messages?: boolean | SupportTicket$messagesArgs<ExtArgs>
+    _count?: boolean | SupportTicketCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportTicket"]>
+
+  export type SupportTicketSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    userId?: boolean
+    subject?: boolean
+    category?: boolean
+    priority?: boolean
+    status?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportTicket"]>
+
+  export type SupportTicketSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    userId?: boolean
+    subject?: boolean
+    category?: boolean
+    priority?: boolean
+    status?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportTicket"]>
+
+  export type SupportTicketSelectScalar = {
+    id?: boolean
+    tenantId?: boolean
+    userId?: boolean
+    subject?: boolean
+    category?: boolean
+    priority?: boolean
+    status?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type SupportTicketOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "userId" | "subject" | "category" | "priority" | "status" | "createdAt" | "updatedAt", ExtArgs["result"]["supportTicket"]>
+  export type SupportTicketInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+    messages?: boolean | SupportTicket$messagesArgs<ExtArgs>
+    _count?: boolean | SupportTicketCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type SupportTicketIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+  export type SupportTicketIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | SupportTicket$tenantArgs<ExtArgs>
+    user?: boolean | UserDefaultArgs<ExtArgs>
+  }
+
+  export type $SupportTicketPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SupportTicket"
+    objects: {
+      tenant: Prisma.$TenantPayload<ExtArgs> | null
+      user: Prisma.$UserPayload<ExtArgs>
+      messages: Prisma.$SupportMessagePayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      tenantId: string | null
+      userId: string
+      subject: string
+      category: string
+      priority: string
+      status: string
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["supportTicket"]>
+    composites: {}
+  }
+
+  type SupportTicketGetPayload<S extends boolean | null | undefined | SupportTicketDefaultArgs> = $Result.GetResult<Prisma.$SupportTicketPayload, S>
+
+  type SupportTicketCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<SupportTicketFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: SupportTicketCountAggregateInputType | true
+    }
+
+  export interface SupportTicketDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SupportTicket'], meta: { name: 'SupportTicket' } }
+    /**
+     * Find zero or one SupportTicket that matches the filter.
+     * @param {SupportTicketFindUniqueArgs} args - Arguments to find a SupportTicket
+     * @example
+     * // Get one SupportTicket
+     * const supportTicket = await prisma.supportTicket.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SupportTicketFindUniqueArgs>(args: SelectSubset<T, SupportTicketFindUniqueArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one SupportTicket that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {SupportTicketFindUniqueOrThrowArgs} args - Arguments to find a SupportTicket
+     * @example
+     * // Get one SupportTicket
+     * const supportTicket = await prisma.supportTicket.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SupportTicketFindUniqueOrThrowArgs>(args: SelectSubset<T, SupportTicketFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SupportTicket that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketFindFirstArgs} args - Arguments to find a SupportTicket
+     * @example
+     * // Get one SupportTicket
+     * const supportTicket = await prisma.supportTicket.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SupportTicketFindFirstArgs>(args?: SelectSubset<T, SupportTicketFindFirstArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SupportTicket that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketFindFirstOrThrowArgs} args - Arguments to find a SupportTicket
+     * @example
+     * // Get one SupportTicket
+     * const supportTicket = await prisma.supportTicket.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SupportTicketFindFirstOrThrowArgs>(args?: SelectSubset<T, SupportTicketFindFirstOrThrowArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more SupportTickets that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SupportTickets
+     * const supportTickets = await prisma.supportTicket.findMany()
+     * 
+     * // Get first 10 SupportTickets
+     * const supportTickets = await prisma.supportTicket.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const supportTicketWithIdOnly = await prisma.supportTicket.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SupportTicketFindManyArgs>(args?: SelectSubset<T, SupportTicketFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a SupportTicket.
+     * @param {SupportTicketCreateArgs} args - Arguments to create a SupportTicket.
+     * @example
+     * // Create one SupportTicket
+     * const SupportTicket = await prisma.supportTicket.create({
+     *   data: {
+     *     // ... data to create a SupportTicket
+     *   }
+     * })
+     * 
+     */
+    create<T extends SupportTicketCreateArgs>(args: SelectSubset<T, SupportTicketCreateArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many SupportTickets.
+     * @param {SupportTicketCreateManyArgs} args - Arguments to create many SupportTickets.
+     * @example
+     * // Create many SupportTickets
+     * const supportTicket = await prisma.supportTicket.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SupportTicketCreateManyArgs>(args?: SelectSubset<T, SupportTicketCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SupportTickets and returns the data saved in the database.
+     * @param {SupportTicketCreateManyAndReturnArgs} args - Arguments to create many SupportTickets.
+     * @example
+     * // Create many SupportTickets
+     * const supportTicket = await prisma.supportTicket.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SupportTickets and only return the `id`
+     * const supportTicketWithIdOnly = await prisma.supportTicket.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SupportTicketCreateManyAndReturnArgs>(args?: SelectSubset<T, SupportTicketCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a SupportTicket.
+     * @param {SupportTicketDeleteArgs} args - Arguments to delete one SupportTicket.
+     * @example
+     * // Delete one SupportTicket
+     * const SupportTicket = await prisma.supportTicket.delete({
+     *   where: {
+     *     // ... filter to delete one SupportTicket
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SupportTicketDeleteArgs>(args: SelectSubset<T, SupportTicketDeleteArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one SupportTicket.
+     * @param {SupportTicketUpdateArgs} args - Arguments to update one SupportTicket.
+     * @example
+     * // Update one SupportTicket
+     * const supportTicket = await prisma.supportTicket.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SupportTicketUpdateArgs>(args: SelectSubset<T, SupportTicketUpdateArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more SupportTickets.
+     * @param {SupportTicketDeleteManyArgs} args - Arguments to filter SupportTickets to delete.
+     * @example
+     * // Delete a few SupportTickets
+     * const { count } = await prisma.supportTicket.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SupportTicketDeleteManyArgs>(args?: SelectSubset<T, SupportTicketDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SupportTickets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SupportTickets
+     * const supportTicket = await prisma.supportTicket.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SupportTicketUpdateManyArgs>(args: SelectSubset<T, SupportTicketUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SupportTickets and returns the data updated in the database.
+     * @param {SupportTicketUpdateManyAndReturnArgs} args - Arguments to update many SupportTickets.
+     * @example
+     * // Update many SupportTickets
+     * const supportTicket = await prisma.supportTicket.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more SupportTickets and only return the `id`
+     * const supportTicketWithIdOnly = await prisma.supportTicket.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends SupportTicketUpdateManyAndReturnArgs>(args: SelectSubset<T, SupportTicketUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one SupportTicket.
+     * @param {SupportTicketUpsertArgs} args - Arguments to update or create a SupportTicket.
+     * @example
+     * // Update or create a SupportTicket
+     * const supportTicket = await prisma.supportTicket.upsert({
+     *   create: {
+     *     // ... data to create a SupportTicket
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SupportTicket we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SupportTicketUpsertArgs>(args: SelectSubset<T, SupportTicketUpsertArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of SupportTickets.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketCountArgs} args - Arguments to filter SupportTickets to count.
+     * @example
+     * // Count the number of SupportTickets
+     * const count = await prisma.supportTicket.count({
+     *   where: {
+     *     // ... the filter for the SupportTickets we want to count
+     *   }
+     * })
+    **/
+    count<T extends SupportTicketCountArgs>(
+      args?: Subset<T, SupportTicketCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SupportTicketCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SupportTicket.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SupportTicketAggregateArgs>(args: Subset<T, SupportTicketAggregateArgs>): Prisma.PrismaPromise<GetSupportTicketAggregateType<T>>
+
+    /**
+     * Group by SupportTicket.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportTicketGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SupportTicketGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SupportTicketGroupByArgs['orderBy'] }
+        : { orderBy?: SupportTicketGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SupportTicketGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSupportTicketGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SupportTicket model
+   */
+  readonly fields: SupportTicketFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SupportTicket.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SupportTicketClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tenant<T extends SupportTicket$tenantArgs<ExtArgs> = {}>(args?: Subset<T, SupportTicket$tenantArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+    user<T extends UserDefaultArgs<ExtArgs> = {}>(args?: Subset<T, UserDefaultArgs<ExtArgs>>): Prisma__UserClient<$Result.GetResult<Prisma.$UserPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    messages<T extends SupportTicket$messagesArgs<ExtArgs> = {}>(args?: Subset<T, SupportTicket$messagesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SupportTicket model
+   */
+  interface SupportTicketFieldRefs {
+    readonly id: FieldRef<"SupportTicket", 'String'>
+    readonly tenantId: FieldRef<"SupportTicket", 'String'>
+    readonly userId: FieldRef<"SupportTicket", 'String'>
+    readonly subject: FieldRef<"SupportTicket", 'String'>
+    readonly category: FieldRef<"SupportTicket", 'String'>
+    readonly priority: FieldRef<"SupportTicket", 'String'>
+    readonly status: FieldRef<"SupportTicket", 'String'>
+    readonly createdAt: FieldRef<"SupportTicket", 'DateTime'>
+    readonly updatedAt: FieldRef<"SupportTicket", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SupportTicket findUnique
+   */
+  export type SupportTicketFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportTicket to fetch.
+     */
+    where: SupportTicketWhereUniqueInput
+  }
+
+  /**
+   * SupportTicket findUniqueOrThrow
+   */
+  export type SupportTicketFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportTicket to fetch.
+     */
+    where: SupportTicketWhereUniqueInput
+  }
+
+  /**
+   * SupportTicket findFirst
+   */
+  export type SupportTicketFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportTicket to fetch.
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportTickets to fetch.
+     */
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SupportTickets.
+     */
+    cursor?: SupportTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SupportTickets.
+     */
+    distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
+  }
+
+  /**
+   * SupportTicket findFirstOrThrow
+   */
+  export type SupportTicketFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportTicket to fetch.
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportTickets to fetch.
+     */
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SupportTickets.
+     */
+    cursor?: SupportTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportTickets.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SupportTickets.
+     */
+    distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
+  }
+
+  /**
+   * SupportTicket findMany
+   */
+  export type SupportTicketFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportTickets to fetch.
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportTickets to fetch.
+     */
+    orderBy?: SupportTicketOrderByWithRelationInput | SupportTicketOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SupportTickets.
+     */
+    cursor?: SupportTicketWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportTickets from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportTickets.
+     */
+    skip?: number
+    distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
+  }
+
+  /**
+   * SupportTicket create
+   */
+  export type SupportTicketCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * The data needed to create a SupportTicket.
+     */
+    data: XOR<SupportTicketCreateInput, SupportTicketUncheckedCreateInput>
+  }
+
+  /**
+   * SupportTicket createMany
+   */
+  export type SupportTicketCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SupportTickets.
+     */
+    data: SupportTicketCreateManyInput | SupportTicketCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SupportTicket createManyAndReturn
+   */
+  export type SupportTicketCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * The data used to create many SupportTickets.
+     */
+    data: SupportTicketCreateManyInput | SupportTicketCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SupportTicket update
+   */
+  export type SupportTicketUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * The data needed to update a SupportTicket.
+     */
+    data: XOR<SupportTicketUpdateInput, SupportTicketUncheckedUpdateInput>
+    /**
+     * Choose, which SupportTicket to update.
+     */
+    where: SupportTicketWhereUniqueInput
+  }
+
+  /**
+   * SupportTicket updateMany
+   */
+  export type SupportTicketUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SupportTickets.
+     */
+    data: XOR<SupportTicketUpdateManyMutationInput, SupportTicketUncheckedUpdateManyInput>
+    /**
+     * Filter which SupportTickets to update
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * Limit how many SupportTickets to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SupportTicket updateManyAndReturn
+   */
+  export type SupportTicketUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * The data used to update SupportTickets.
+     */
+    data: XOR<SupportTicketUpdateManyMutationInput, SupportTicketUncheckedUpdateManyInput>
+    /**
+     * Filter which SupportTickets to update
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * Limit how many SupportTickets to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SupportTicket upsert
+   */
+  export type SupportTicketUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * The filter to search for the SupportTicket to update in case it exists.
+     */
+    where: SupportTicketWhereUniqueInput
+    /**
+     * In case the SupportTicket found by the `where` argument doesn't exist, create a new SupportTicket with this data.
+     */
+    create: XOR<SupportTicketCreateInput, SupportTicketUncheckedCreateInput>
+    /**
+     * In case the SupportTicket was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SupportTicketUpdateInput, SupportTicketUncheckedUpdateInput>
+  }
+
+  /**
+   * SupportTicket delete
+   */
+  export type SupportTicketDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+    /**
+     * Filter which SupportTicket to delete.
+     */
+    where: SupportTicketWhereUniqueInput
+  }
+
+  /**
+   * SupportTicket deleteMany
+   */
+  export type SupportTicketDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SupportTickets to delete
+     */
+    where?: SupportTicketWhereInput
+    /**
+     * Limit how many SupportTickets to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * SupportTicket.tenant
+   */
+  export type SupportTicket$tenantArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Tenant
+     */
+    select?: TenantSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Tenant
+     */
+    omit?: TenantOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: TenantInclude<ExtArgs> | null
+    where?: TenantWhereInput
+  }
+
+  /**
+   * SupportTicket.messages
+   */
+  export type SupportTicket$messagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    where?: SupportMessageWhereInput
+    orderBy?: SupportMessageOrderByWithRelationInput | SupportMessageOrderByWithRelationInput[]
+    cursor?: SupportMessageWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: SupportMessageScalarFieldEnum | SupportMessageScalarFieldEnum[]
+  }
+
+  /**
+   * SupportTicket without action
+   */
+  export type SupportTicketDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportTicket
+     */
+    select?: SupportTicketSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportTicket
+     */
+    omit?: SupportTicketOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportTicketInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model SupportMessage
+   */
+
+  export type AggregateSupportMessage = {
+    _count: SupportMessageCountAggregateOutputType | null
+    _min: SupportMessageMinAggregateOutputType | null
+    _max: SupportMessageMaxAggregateOutputType | null
+  }
+
+  export type SupportMessageMinAggregateOutputType = {
+    id: string | null
+    ticketId: string | null
+    senderId: string | null
+    senderRole: string | null
+    message: string | null
+    isRead: boolean | null
+    createdAt: Date | null
+  }
+
+  export type SupportMessageMaxAggregateOutputType = {
+    id: string | null
+    ticketId: string | null
+    senderId: string | null
+    senderRole: string | null
+    message: string | null
+    isRead: boolean | null
+    createdAt: Date | null
+  }
+
+  export type SupportMessageCountAggregateOutputType = {
+    id: number
+    ticketId: number
+    senderId: number
+    senderRole: number
+    message: number
+    attachments: number
+    isRead: number
+    createdAt: number
+    _all: number
+  }
+
+
+  export type SupportMessageMinAggregateInputType = {
+    id?: true
+    ticketId?: true
+    senderId?: true
+    senderRole?: true
+    message?: true
+    isRead?: true
+    createdAt?: true
+  }
+
+  export type SupportMessageMaxAggregateInputType = {
+    id?: true
+    ticketId?: true
+    senderId?: true
+    senderRole?: true
+    message?: true
+    isRead?: true
+    createdAt?: true
+  }
+
+  export type SupportMessageCountAggregateInputType = {
+    id?: true
+    ticketId?: true
+    senderId?: true
+    senderRole?: true
+    message?: true
+    attachments?: true
+    isRead?: true
+    createdAt?: true
+    _all?: true
+  }
+
+  export type SupportMessageAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SupportMessage to aggregate.
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportMessages to fetch.
+     */
+    orderBy?: SupportMessageOrderByWithRelationInput | SupportMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: SupportMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned SupportMessages
+    **/
+    _count?: true | SupportMessageCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: SupportMessageMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: SupportMessageMaxAggregateInputType
+  }
+
+  export type GetSupportMessageAggregateType<T extends SupportMessageAggregateArgs> = {
+        [P in keyof T & keyof AggregateSupportMessage]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateSupportMessage[P]>
+      : GetScalarType<T[P], AggregateSupportMessage[P]>
+  }
+
+
+
+
+  export type SupportMessageGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: SupportMessageWhereInput
+    orderBy?: SupportMessageOrderByWithAggregationInput | SupportMessageOrderByWithAggregationInput[]
+    by: SupportMessageScalarFieldEnum[] | SupportMessageScalarFieldEnum
+    having?: SupportMessageScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: SupportMessageCountAggregateInputType | true
+    _min?: SupportMessageMinAggregateInputType
+    _max?: SupportMessageMaxAggregateInputType
+  }
+
+  export type SupportMessageGroupByOutputType = {
+    id: string
+    ticketId: string
+    senderId: string
+    senderRole: string
+    message: string
+    attachments: JsonValue | null
+    isRead: boolean
+    createdAt: Date
+    _count: SupportMessageCountAggregateOutputType | null
+    _min: SupportMessageMinAggregateOutputType | null
+    _max: SupportMessageMaxAggregateOutputType | null
+  }
+
+  type GetSupportMessageGroupByPayload<T extends SupportMessageGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<SupportMessageGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof SupportMessageGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], SupportMessageGroupByOutputType[P]>
+            : GetScalarType<T[P], SupportMessageGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type SupportMessageSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ticketId?: boolean
+    senderId?: boolean
+    senderRole?: boolean
+    message?: boolean
+    attachments?: boolean
+    isRead?: boolean
+    createdAt?: boolean
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportMessage"]>
+
+  export type SupportMessageSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ticketId?: boolean
+    senderId?: boolean
+    senderRole?: boolean
+    message?: boolean
+    attachments?: boolean
+    isRead?: boolean
+    createdAt?: boolean
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportMessage"]>
+
+  export type SupportMessageSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    ticketId?: boolean
+    senderId?: boolean
+    senderRole?: boolean
+    message?: boolean
+    attachments?: boolean
+    isRead?: boolean
+    createdAt?: boolean
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["supportMessage"]>
+
+  export type SupportMessageSelectScalar = {
+    id?: boolean
+    ticketId?: boolean
+    senderId?: boolean
+    senderRole?: boolean
+    message?: boolean
+    attachments?: boolean
+    isRead?: boolean
+    createdAt?: boolean
+  }
+
+  export type SupportMessageOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "ticketId" | "senderId" | "senderRole" | "message" | "attachments" | "isRead" | "createdAt", ExtArgs["result"]["supportMessage"]>
+  export type SupportMessageInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }
+  export type SupportMessageIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }
+  export type SupportMessageIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    ticket?: boolean | SupportTicketDefaultArgs<ExtArgs>
+  }
+
+  export type $SupportMessagePayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "SupportMessage"
+    objects: {
+      ticket: Prisma.$SupportTicketPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      ticketId: string
+      senderId: string
+      senderRole: string
+      message: string
+      attachments: Prisma.JsonValue | null
+      isRead: boolean
+      createdAt: Date
+    }, ExtArgs["result"]["supportMessage"]>
+    composites: {}
+  }
+
+  type SupportMessageGetPayload<S extends boolean | null | undefined | SupportMessageDefaultArgs> = $Result.GetResult<Prisma.$SupportMessagePayload, S>
+
+  type SupportMessageCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<SupportMessageFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: SupportMessageCountAggregateInputType | true
+    }
+
+  export interface SupportMessageDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['SupportMessage'], meta: { name: 'SupportMessage' } }
+    /**
+     * Find zero or one SupportMessage that matches the filter.
+     * @param {SupportMessageFindUniqueArgs} args - Arguments to find a SupportMessage
+     * @example
+     * // Get one SupportMessage
+     * const supportMessage = await prisma.supportMessage.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends SupportMessageFindUniqueArgs>(args: SelectSubset<T, SupportMessageFindUniqueArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one SupportMessage that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {SupportMessageFindUniqueOrThrowArgs} args - Arguments to find a SupportMessage
+     * @example
+     * // Get one SupportMessage
+     * const supportMessage = await prisma.supportMessage.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends SupportMessageFindUniqueOrThrowArgs>(args: SelectSubset<T, SupportMessageFindUniqueOrThrowArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SupportMessage that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageFindFirstArgs} args - Arguments to find a SupportMessage
+     * @example
+     * // Get one SupportMessage
+     * const supportMessage = await prisma.supportMessage.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends SupportMessageFindFirstArgs>(args?: SelectSubset<T, SupportMessageFindFirstArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first SupportMessage that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageFindFirstOrThrowArgs} args - Arguments to find a SupportMessage
+     * @example
+     * // Get one SupportMessage
+     * const supportMessage = await prisma.supportMessage.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends SupportMessageFindFirstOrThrowArgs>(args?: SelectSubset<T, SupportMessageFindFirstOrThrowArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more SupportMessages that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all SupportMessages
+     * const supportMessages = await prisma.supportMessage.findMany()
+     * 
+     * // Get first 10 SupportMessages
+     * const supportMessages = await prisma.supportMessage.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const supportMessageWithIdOnly = await prisma.supportMessage.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends SupportMessageFindManyArgs>(args?: SelectSubset<T, SupportMessageFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a SupportMessage.
+     * @param {SupportMessageCreateArgs} args - Arguments to create a SupportMessage.
+     * @example
+     * // Create one SupportMessage
+     * const SupportMessage = await prisma.supportMessage.create({
+     *   data: {
+     *     // ... data to create a SupportMessage
+     *   }
+     * })
+     * 
+     */
+    create<T extends SupportMessageCreateArgs>(args: SelectSubset<T, SupportMessageCreateArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many SupportMessages.
+     * @param {SupportMessageCreateManyArgs} args - Arguments to create many SupportMessages.
+     * @example
+     * // Create many SupportMessages
+     * const supportMessage = await prisma.supportMessage.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends SupportMessageCreateManyArgs>(args?: SelectSubset<T, SupportMessageCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many SupportMessages and returns the data saved in the database.
+     * @param {SupportMessageCreateManyAndReturnArgs} args - Arguments to create many SupportMessages.
+     * @example
+     * // Create many SupportMessages
+     * const supportMessage = await prisma.supportMessage.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many SupportMessages and only return the `id`
+     * const supportMessageWithIdOnly = await prisma.supportMessage.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends SupportMessageCreateManyAndReturnArgs>(args?: SelectSubset<T, SupportMessageCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a SupportMessage.
+     * @param {SupportMessageDeleteArgs} args - Arguments to delete one SupportMessage.
+     * @example
+     * // Delete one SupportMessage
+     * const SupportMessage = await prisma.supportMessage.delete({
+     *   where: {
+     *     // ... filter to delete one SupportMessage
+     *   }
+     * })
+     * 
+     */
+    delete<T extends SupportMessageDeleteArgs>(args: SelectSubset<T, SupportMessageDeleteArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one SupportMessage.
+     * @param {SupportMessageUpdateArgs} args - Arguments to update one SupportMessage.
+     * @example
+     * // Update one SupportMessage
+     * const supportMessage = await prisma.supportMessage.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends SupportMessageUpdateArgs>(args: SelectSubset<T, SupportMessageUpdateArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more SupportMessages.
+     * @param {SupportMessageDeleteManyArgs} args - Arguments to filter SupportMessages to delete.
+     * @example
+     * // Delete a few SupportMessages
+     * const { count } = await prisma.supportMessage.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends SupportMessageDeleteManyArgs>(args?: SelectSubset<T, SupportMessageDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SupportMessages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many SupportMessages
+     * const supportMessage = await prisma.supportMessage.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends SupportMessageUpdateManyArgs>(args: SelectSubset<T, SupportMessageUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more SupportMessages and returns the data updated in the database.
+     * @param {SupportMessageUpdateManyAndReturnArgs} args - Arguments to update many SupportMessages.
+     * @example
+     * // Update many SupportMessages
+     * const supportMessage = await prisma.supportMessage.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more SupportMessages and only return the `id`
+     * const supportMessageWithIdOnly = await prisma.supportMessage.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends SupportMessageUpdateManyAndReturnArgs>(args: SelectSubset<T, SupportMessageUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one SupportMessage.
+     * @param {SupportMessageUpsertArgs} args - Arguments to update or create a SupportMessage.
+     * @example
+     * // Update or create a SupportMessage
+     * const supportMessage = await prisma.supportMessage.upsert({
+     *   create: {
+     *     // ... data to create a SupportMessage
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the SupportMessage we want to update
+     *   }
+     * })
+     */
+    upsert<T extends SupportMessageUpsertArgs>(args: SelectSubset<T, SupportMessageUpsertArgs<ExtArgs>>): Prisma__SupportMessageClient<$Result.GetResult<Prisma.$SupportMessagePayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of SupportMessages.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageCountArgs} args - Arguments to filter SupportMessages to count.
+     * @example
+     * // Count the number of SupportMessages
+     * const count = await prisma.supportMessage.count({
+     *   where: {
+     *     // ... the filter for the SupportMessages we want to count
+     *   }
+     * })
+    **/
+    count<T extends SupportMessageCountArgs>(
+      args?: Subset<T, SupportMessageCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], SupportMessageCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a SupportMessage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends SupportMessageAggregateArgs>(args: Subset<T, SupportMessageAggregateArgs>): Prisma.PrismaPromise<GetSupportMessageAggregateType<T>>
+
+    /**
+     * Group by SupportMessage.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {SupportMessageGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends SupportMessageGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: SupportMessageGroupByArgs['orderBy'] }
+        : { orderBy?: SupportMessageGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, SupportMessageGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetSupportMessageGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the SupportMessage model
+   */
+  readonly fields: SupportMessageFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for SupportMessage.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__SupportMessageClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    ticket<T extends SupportTicketDefaultArgs<ExtArgs> = {}>(args?: Subset<T, SupportTicketDefaultArgs<ExtArgs>>): Prisma__SupportTicketClient<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the SupportMessage model
+   */
+  interface SupportMessageFieldRefs {
+    readonly id: FieldRef<"SupportMessage", 'String'>
+    readonly ticketId: FieldRef<"SupportMessage", 'String'>
+    readonly senderId: FieldRef<"SupportMessage", 'String'>
+    readonly senderRole: FieldRef<"SupportMessage", 'String'>
+    readonly message: FieldRef<"SupportMessage", 'String'>
+    readonly attachments: FieldRef<"SupportMessage", 'Json'>
+    readonly isRead: FieldRef<"SupportMessage", 'Boolean'>
+    readonly createdAt: FieldRef<"SupportMessage", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * SupportMessage findUnique
+   */
+  export type SupportMessageFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportMessage to fetch.
+     */
+    where: SupportMessageWhereUniqueInput
+  }
+
+  /**
+   * SupportMessage findUniqueOrThrow
+   */
+  export type SupportMessageFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportMessage to fetch.
+     */
+    where: SupportMessageWhereUniqueInput
+  }
+
+  /**
+   * SupportMessage findFirst
+   */
+  export type SupportMessageFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportMessage to fetch.
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportMessages to fetch.
+     */
+    orderBy?: SupportMessageOrderByWithRelationInput | SupportMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SupportMessages.
+     */
+    cursor?: SupportMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SupportMessages.
+     */
+    distinct?: SupportMessageScalarFieldEnum | SupportMessageScalarFieldEnum[]
+  }
+
+  /**
+   * SupportMessage findFirstOrThrow
+   */
+  export type SupportMessageFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportMessage to fetch.
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportMessages to fetch.
+     */
+    orderBy?: SupportMessageOrderByWithRelationInput | SupportMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for SupportMessages.
+     */
+    cursor?: SupportMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportMessages.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SupportMessages.
+     */
+    distinct?: SupportMessageScalarFieldEnum | SupportMessageScalarFieldEnum[]
+  }
+
+  /**
+   * SupportMessage findMany
+   */
+  export type SupportMessageFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter, which SupportMessages to fetch.
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of SupportMessages to fetch.
+     */
+    orderBy?: SupportMessageOrderByWithRelationInput | SupportMessageOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing SupportMessages.
+     */
+    cursor?: SupportMessageWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` SupportMessages from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` SupportMessages.
+     */
+    skip?: number
+    distinct?: SupportMessageScalarFieldEnum | SupportMessageScalarFieldEnum[]
+  }
+
+  /**
+   * SupportMessage create
+   */
+  export type SupportMessageCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * The data needed to create a SupportMessage.
+     */
+    data: XOR<SupportMessageCreateInput, SupportMessageUncheckedCreateInput>
+  }
+
+  /**
+   * SupportMessage createMany
+   */
+  export type SupportMessageCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many SupportMessages.
+     */
+    data: SupportMessageCreateManyInput | SupportMessageCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * SupportMessage createManyAndReturn
+   */
+  export type SupportMessageCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * The data used to create many SupportMessages.
+     */
+    data: SupportMessageCreateManyInput | SupportMessageCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SupportMessage update
+   */
+  export type SupportMessageUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * The data needed to update a SupportMessage.
+     */
+    data: XOR<SupportMessageUpdateInput, SupportMessageUncheckedUpdateInput>
+    /**
+     * Choose, which SupportMessage to update.
+     */
+    where: SupportMessageWhereUniqueInput
+  }
+
+  /**
+   * SupportMessage updateMany
+   */
+  export type SupportMessageUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update SupportMessages.
+     */
+    data: XOR<SupportMessageUpdateManyMutationInput, SupportMessageUncheckedUpdateManyInput>
+    /**
+     * Filter which SupportMessages to update
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * Limit how many SupportMessages to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * SupportMessage updateManyAndReturn
+   */
+  export type SupportMessageUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * The data used to update SupportMessages.
+     */
+    data: XOR<SupportMessageUpdateManyMutationInput, SupportMessageUncheckedUpdateManyInput>
+    /**
+     * Filter which SupportMessages to update
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * Limit how many SupportMessages to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * SupportMessage upsert
+   */
+  export type SupportMessageUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * The filter to search for the SupportMessage to update in case it exists.
+     */
+    where: SupportMessageWhereUniqueInput
+    /**
+     * In case the SupportMessage found by the `where` argument doesn't exist, create a new SupportMessage with this data.
+     */
+    create: XOR<SupportMessageCreateInput, SupportMessageUncheckedCreateInput>
+    /**
+     * In case the SupportMessage was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<SupportMessageUpdateInput, SupportMessageUncheckedUpdateInput>
+  }
+
+  /**
+   * SupportMessage delete
+   */
+  export type SupportMessageDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+    /**
+     * Filter which SupportMessage to delete.
+     */
+    where: SupportMessageWhereUniqueInput
+  }
+
+  /**
+   * SupportMessage deleteMany
+   */
+  export type SupportMessageDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which SupportMessages to delete
+     */
+    where?: SupportMessageWhereInput
+    /**
+     * Limit how many SupportMessages to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * SupportMessage without action
+   */
+  export type SupportMessageDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the SupportMessage
+     */
+    select?: SupportMessageSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the SupportMessage
+     */
+    omit?: SupportMessageOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: SupportMessageInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -67308,6 +69907,10 @@ export namespace Prisma {
     faviconUrl: 'faviconUrl',
     primaryColor: 'primaryColor',
     storageConfig: 'storageConfig',
+    hostingStatus: 'hostingStatus',
+    hostingExpiresAt: 'hostingExpiresAt',
+    vercelProjectId: 'vercelProjectId',
+    vercelDeploymentUrl: 'vercelDeploymentUrl',
     aiTokensUsed: 'aiTokensUsed',
     aiCreditsExtra: 'aiCreditsExtra',
     storageExtraBytes: 'storageExtraBytes',
@@ -68070,6 +70673,35 @@ export namespace Prisma {
   export type InfrastructureCredentialScalarFieldEnum = (typeof InfrastructureCredentialScalarFieldEnum)[keyof typeof InfrastructureCredentialScalarFieldEnum]
 
 
+  export const SupportTicketScalarFieldEnum: {
+    id: 'id',
+    tenantId: 'tenantId',
+    userId: 'userId',
+    subject: 'subject',
+    category: 'category',
+    priority: 'priority',
+    status: 'status',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type SupportTicketScalarFieldEnum = (typeof SupportTicketScalarFieldEnum)[keyof typeof SupportTicketScalarFieldEnum]
+
+
+  export const SupportMessageScalarFieldEnum: {
+    id: 'id',
+    ticketId: 'ticketId',
+    senderId: 'senderId',
+    senderRole: 'senderRole',
+    message: 'message',
+    attachments: 'attachments',
+    isRead: 'isRead',
+    createdAt: 'createdAt'
+  };
+
+  export type SupportMessageScalarFieldEnum = (typeof SupportMessageScalarFieldEnum)[keyof typeof SupportMessageScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -68254,6 +70886,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionListRelationFilter
     tenants?: TenantMemberListRelationFilter
     aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
+    supportTickets?: SupportTicketListRelationFilter
   }
 
   export type UserOrderByWithRelationInput = {
@@ -68276,6 +70909,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionOrderByRelationAggregateInput
     tenants?: TenantMemberOrderByRelationAggregateInput
     aiQuotaLedgers?: AiQuotaLedgerOrderByRelationAggregateInput
+    supportTickets?: SupportTicketOrderByRelationAggregateInput
   }
 
   export type UserWhereUniqueInput = Prisma.AtLeast<{
@@ -68301,6 +70935,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionListRelationFilter
     tenants?: TenantMemberListRelationFilter
     aiQuotaLedgers?: AiQuotaLedgerListRelationFilter
+    supportTickets?: SupportTicketListRelationFilter
   }, "id" | "email">
 
   export type UserOrderByWithAggregationInput = {
@@ -68555,6 +71190,10 @@ export namespace Prisma {
     faviconUrl?: StringNullableFilter<"Tenant"> | string | null
     primaryColor?: StringNullableFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableFilter<"Tenant">
+    hostingStatus?: StringNullableFilter<"Tenant"> | string | null
+    hostingExpiresAt?: DateTimeNullableFilter<"Tenant"> | Date | string | null
+    vercelProjectId?: StringNullableFilter<"Tenant"> | string | null
+    vercelDeploymentUrl?: StringNullableFilter<"Tenant"> | string | null
     aiTokensUsed?: IntFilter<"Tenant"> | number
     aiCreditsExtra?: IntFilter<"Tenant"> | number
     storageExtraBytes?: BigIntFilter<"Tenant"> | bigint | number
@@ -68585,6 +71224,7 @@ export namespace Prisma {
     roles?: TenantRoleListRelationFilter
     sites?: SiteListRelationFilter
     infrastructureServers?: InfrastructureServerListRelationFilter
+    supportTickets?: SupportTicketListRelationFilter
   }
 
   export type TenantOrderByWithRelationInput = {
@@ -68608,6 +71248,10 @@ export namespace Prisma {
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
+    hostingStatus?: SortOrderInput | SortOrder
+    hostingExpiresAt?: SortOrderInput | SortOrder
+    vercelProjectId?: SortOrderInput | SortOrder
+    vercelDeploymentUrl?: SortOrderInput | SortOrder
     aiTokensUsed?: SortOrder
     aiCreditsExtra?: SortOrder
     storageExtraBytes?: SortOrder
@@ -68638,6 +71282,7 @@ export namespace Prisma {
     roles?: TenantRoleOrderByRelationAggregateInput
     sites?: SiteOrderByRelationAggregateInput
     infrastructureServers?: InfrastructureServerOrderByRelationAggregateInput
+    supportTickets?: SupportTicketOrderByRelationAggregateInput
   }
 
   export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -68664,6 +71309,10 @@ export namespace Prisma {
     faviconUrl?: StringNullableFilter<"Tenant"> | string | null
     primaryColor?: StringNullableFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableFilter<"Tenant">
+    hostingStatus?: StringNullableFilter<"Tenant"> | string | null
+    hostingExpiresAt?: DateTimeNullableFilter<"Tenant"> | Date | string | null
+    vercelProjectId?: StringNullableFilter<"Tenant"> | string | null
+    vercelDeploymentUrl?: StringNullableFilter<"Tenant"> | string | null
     aiTokensUsed?: IntFilter<"Tenant"> | number
     aiCreditsExtra?: IntFilter<"Tenant"> | number
     storageExtraBytes?: BigIntFilter<"Tenant"> | bigint | number
@@ -68694,6 +71343,7 @@ export namespace Prisma {
     roles?: TenantRoleListRelationFilter
     sites?: SiteListRelationFilter
     infrastructureServers?: InfrastructureServerListRelationFilter
+    supportTickets?: SupportTicketListRelationFilter
   }, "id" | "slug" | "customDomain" | "licenseKey">
 
   export type TenantOrderByWithAggregationInput = {
@@ -68717,6 +71367,10 @@ export namespace Prisma {
     faviconUrl?: SortOrderInput | SortOrder
     primaryColor?: SortOrderInput | SortOrder
     storageConfig?: SortOrderInput | SortOrder
+    hostingStatus?: SortOrderInput | SortOrder
+    hostingExpiresAt?: SortOrderInput | SortOrder
+    vercelProjectId?: SortOrderInput | SortOrder
+    vercelDeploymentUrl?: SortOrderInput | SortOrder
     aiTokensUsed?: SortOrder
     aiCreditsExtra?: SortOrder
     storageExtraBytes?: SortOrder
@@ -68752,6 +71406,10 @@ export namespace Prisma {
     faviconUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     primaryColor?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     storageConfig?: JsonNullableWithAggregatesFilter<"Tenant">
+    hostingStatus?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
+    hostingExpiresAt?: DateTimeNullableWithAggregatesFilter<"Tenant"> | Date | string | null
+    vercelProjectId?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
+    vercelDeploymentUrl?: StringNullableWithAggregatesFilter<"Tenant"> | string | null
     aiTokensUsed?: IntWithAggregatesFilter<"Tenant"> | number
     aiCreditsExtra?: IntWithAggregatesFilter<"Tenant"> | number
     storageExtraBytes?: BigIntWithAggregatesFilter<"Tenant"> | bigint | number
@@ -72674,6 +75332,157 @@ export namespace Prisma {
     rotatedAt?: DateTimeNullableWithAggregatesFilter<"InfrastructureCredential"> | Date | string | null
   }
 
+  export type SupportTicketWhereInput = {
+    AND?: SupportTicketWhereInput | SupportTicketWhereInput[]
+    OR?: SupportTicketWhereInput[]
+    NOT?: SupportTicketWhereInput | SupportTicketWhereInput[]
+    id?: StringFilter<"SupportTicket"> | string
+    tenantId?: StringNullableFilter<"SupportTicket"> | string | null
+    userId?: StringFilter<"SupportTicket"> | string
+    subject?: StringFilter<"SupportTicket"> | string
+    category?: StringFilter<"SupportTicket"> | string
+    priority?: StringFilter<"SupportTicket"> | string
+    status?: StringFilter<"SupportTicket"> | string
+    createdAt?: DateTimeFilter<"SupportTicket"> | Date | string
+    updatedAt?: DateTimeFilter<"SupportTicket"> | Date | string
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    messages?: SupportMessageListRelationFilter
+  }
+
+  export type SupportTicketOrderByWithRelationInput = {
+    id?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    subject?: SortOrder
+    category?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    tenant?: TenantOrderByWithRelationInput
+    user?: UserOrderByWithRelationInput
+    messages?: SupportMessageOrderByRelationAggregateInput
+  }
+
+  export type SupportTicketWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: SupportTicketWhereInput | SupportTicketWhereInput[]
+    OR?: SupportTicketWhereInput[]
+    NOT?: SupportTicketWhereInput | SupportTicketWhereInput[]
+    tenantId?: StringNullableFilter<"SupportTicket"> | string | null
+    userId?: StringFilter<"SupportTicket"> | string
+    subject?: StringFilter<"SupportTicket"> | string
+    category?: StringFilter<"SupportTicket"> | string
+    priority?: StringFilter<"SupportTicket"> | string
+    status?: StringFilter<"SupportTicket"> | string
+    createdAt?: DateTimeFilter<"SupportTicket"> | Date | string
+    updatedAt?: DateTimeFilter<"SupportTicket"> | Date | string
+    tenant?: XOR<TenantNullableScalarRelationFilter, TenantWhereInput> | null
+    user?: XOR<UserScalarRelationFilter, UserWhereInput>
+    messages?: SupportMessageListRelationFilter
+  }, "id">
+
+  export type SupportTicketOrderByWithAggregationInput = {
+    id?: SortOrder
+    tenantId?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    subject?: SortOrder
+    category?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: SupportTicketCountOrderByAggregateInput
+    _max?: SupportTicketMaxOrderByAggregateInput
+    _min?: SupportTicketMinOrderByAggregateInput
+  }
+
+  export type SupportTicketScalarWhereWithAggregatesInput = {
+    AND?: SupportTicketScalarWhereWithAggregatesInput | SupportTicketScalarWhereWithAggregatesInput[]
+    OR?: SupportTicketScalarWhereWithAggregatesInput[]
+    NOT?: SupportTicketScalarWhereWithAggregatesInput | SupportTicketScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"SupportTicket"> | string
+    tenantId?: StringNullableWithAggregatesFilter<"SupportTicket"> | string | null
+    userId?: StringWithAggregatesFilter<"SupportTicket"> | string
+    subject?: StringWithAggregatesFilter<"SupportTicket"> | string
+    category?: StringWithAggregatesFilter<"SupportTicket"> | string
+    priority?: StringWithAggregatesFilter<"SupportTicket"> | string
+    status?: StringWithAggregatesFilter<"SupportTicket"> | string
+    createdAt?: DateTimeWithAggregatesFilter<"SupportTicket"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"SupportTicket"> | Date | string
+  }
+
+  export type SupportMessageWhereInput = {
+    AND?: SupportMessageWhereInput | SupportMessageWhereInput[]
+    OR?: SupportMessageWhereInput[]
+    NOT?: SupportMessageWhereInput | SupportMessageWhereInput[]
+    id?: StringFilter<"SupportMessage"> | string
+    ticketId?: StringFilter<"SupportMessage"> | string
+    senderId?: StringFilter<"SupportMessage"> | string
+    senderRole?: StringFilter<"SupportMessage"> | string
+    message?: StringFilter<"SupportMessage"> | string
+    attachments?: JsonNullableFilter<"SupportMessage">
+    isRead?: BoolFilter<"SupportMessage"> | boolean
+    createdAt?: DateTimeFilter<"SupportMessage"> | Date | string
+    ticket?: XOR<SupportTicketScalarRelationFilter, SupportTicketWhereInput>
+  }
+
+  export type SupportMessageOrderByWithRelationInput = {
+    id?: SortOrder
+    ticketId?: SortOrder
+    senderId?: SortOrder
+    senderRole?: SortOrder
+    message?: SortOrder
+    attachments?: SortOrderInput | SortOrder
+    isRead?: SortOrder
+    createdAt?: SortOrder
+    ticket?: SupportTicketOrderByWithRelationInput
+  }
+
+  export type SupportMessageWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    AND?: SupportMessageWhereInput | SupportMessageWhereInput[]
+    OR?: SupportMessageWhereInput[]
+    NOT?: SupportMessageWhereInput | SupportMessageWhereInput[]
+    ticketId?: StringFilter<"SupportMessage"> | string
+    senderId?: StringFilter<"SupportMessage"> | string
+    senderRole?: StringFilter<"SupportMessage"> | string
+    message?: StringFilter<"SupportMessage"> | string
+    attachments?: JsonNullableFilter<"SupportMessage">
+    isRead?: BoolFilter<"SupportMessage"> | boolean
+    createdAt?: DateTimeFilter<"SupportMessage"> | Date | string
+    ticket?: XOR<SupportTicketScalarRelationFilter, SupportTicketWhereInput>
+  }, "id">
+
+  export type SupportMessageOrderByWithAggregationInput = {
+    id?: SortOrder
+    ticketId?: SortOrder
+    senderId?: SortOrder
+    senderRole?: SortOrder
+    message?: SortOrder
+    attachments?: SortOrderInput | SortOrder
+    isRead?: SortOrder
+    createdAt?: SortOrder
+    _count?: SupportMessageCountOrderByAggregateInput
+    _max?: SupportMessageMaxOrderByAggregateInput
+    _min?: SupportMessageMinOrderByAggregateInput
+  }
+
+  export type SupportMessageScalarWhereWithAggregatesInput = {
+    AND?: SupportMessageScalarWhereWithAggregatesInput | SupportMessageScalarWhereWithAggregatesInput[]
+    OR?: SupportMessageScalarWhereWithAggregatesInput[]
+    NOT?: SupportMessageScalarWhereWithAggregatesInput | SupportMessageScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"SupportMessage"> | string
+    ticketId?: StringWithAggregatesFilter<"SupportMessage"> | string
+    senderId?: StringWithAggregatesFilter<"SupportMessage"> | string
+    senderRole?: StringWithAggregatesFilter<"SupportMessage"> | string
+    message?: StringWithAggregatesFilter<"SupportMessage"> | string
+    attachments?: JsonNullableWithAggregatesFilter<"SupportMessage">
+    isRead?: BoolWithAggregatesFilter<"SupportMessage"> | boolean
+    createdAt?: DateTimeWithAggregatesFilter<"SupportMessage"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     email: string
@@ -72694,6 +75503,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateInput = {
@@ -72716,6 +75526,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserUpdateInput = {
@@ -72738,6 +75549,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateInput = {
@@ -72760,6 +75572,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateManyInput = {
@@ -73028,6 +75841,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -73058,6 +75875,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateInput = {
@@ -73081,6 +75899,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -73111,6 +75933,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUpdateInput = {
@@ -73134,6 +75957,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -73164,6 +75991,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateInput = {
@@ -73187,6 +76015,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -73217,6 +76049,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateManyInput = {
@@ -73240,6 +76073,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -73267,6 +76104,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -73294,6 +76135,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -77627,6 +80472,168 @@ export namespace Prisma {
     rotatedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
+  export type SupportTicketCreateInput = {
+    id?: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant?: TenantCreateNestedOneWithoutSupportTicketsInput
+    user: UserCreateNestedOneWithoutSupportTicketsInput
+    messages?: SupportMessageCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketUncheckedCreateInput = {
+    id?: string
+    tenantId?: string | null
+    userId: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: SupportMessageUncheckedCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneWithoutSupportTicketsNestedInput
+    user?: UserUpdateOneRequiredWithoutSupportTicketsNestedInput
+    messages?: SupportMessageUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: SupportMessageUncheckedUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketCreateManyInput = {
+    id?: string
+    tenantId?: string | null
+    userId: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SupportTicketUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportTicketUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageCreateInput = {
+    id?: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+    ticket: SupportTicketCreateNestedOneWithoutMessagesInput
+  }
+
+  export type SupportMessageUncheckedCreateInput = {
+    id?: string
+    ticketId: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SupportMessageUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    ticket?: SupportTicketUpdateOneRequiredWithoutMessagesNestedInput
+  }
+
+  export type SupportMessageUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ticketId?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageCreateManyInput = {
+    id?: string
+    ticketId: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SupportMessageUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    ticketId?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -77743,6 +80750,12 @@ export namespace Prisma {
     none?: AiQuotaLedgerWhereInput
   }
 
+  export type SupportTicketListRelationFilter = {
+    every?: SupportTicketWhereInput
+    some?: SupportTicketWhereInput
+    none?: SupportTicketWhereInput
+  }
+
   export type SortOrderInput = {
     sort: SortOrder
     nulls?: NullsOrder
@@ -77765,6 +80778,10 @@ export namespace Prisma {
   }
 
   export type AiQuotaLedgerOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type SupportTicketOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -78329,6 +81346,10 @@ export namespace Prisma {
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
     storageConfig?: SortOrder
+    hostingStatus?: SortOrder
+    hostingExpiresAt?: SortOrder
+    vercelProjectId?: SortOrder
+    vercelDeploymentUrl?: SortOrder
     aiTokensUsed?: SortOrder
     aiCreditsExtra?: SortOrder
     storageExtraBytes?: SortOrder
@@ -78362,6 +81383,10 @@ export namespace Prisma {
     licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
+    hostingStatus?: SortOrder
+    hostingExpiresAt?: SortOrder
+    vercelProjectId?: SortOrder
+    vercelDeploymentUrl?: SortOrder
     aiTokensUsed?: SortOrder
     aiCreditsExtra?: SortOrder
     storageExtraBytes?: SortOrder
@@ -78388,6 +81413,10 @@ export namespace Prisma {
     licenseKey?: SortOrder
     faviconUrl?: SortOrder
     primaryColor?: SortOrder
+    hostingStatus?: SortOrder
+    hostingExpiresAt?: SortOrder
+    vercelProjectId?: SortOrder
+    vercelDeploymentUrl?: SortOrder
     aiTokensUsed?: SortOrder
     aiCreditsExtra?: SortOrder
     storageExtraBytes?: SortOrder
@@ -80867,6 +83896,88 @@ export namespace Prisma {
     rotatedAt?: SortOrder
   }
 
+  export type SupportMessageListRelationFilter = {
+    every?: SupportMessageWhereInput
+    some?: SupportMessageWhereInput
+    none?: SupportMessageWhereInput
+  }
+
+  export type SupportMessageOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type SupportTicketCountOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    userId?: SortOrder
+    subject?: SortOrder
+    category?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SupportTicketMaxOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    userId?: SortOrder
+    subject?: SortOrder
+    category?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SupportTicketMinOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    userId?: SortOrder
+    subject?: SortOrder
+    category?: SortOrder
+    priority?: SortOrder
+    status?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type SupportTicketScalarRelationFilter = {
+    is?: SupportTicketWhereInput
+    isNot?: SupportTicketWhereInput
+  }
+
+  export type SupportMessageCountOrderByAggregateInput = {
+    id?: SortOrder
+    ticketId?: SortOrder
+    senderId?: SortOrder
+    senderRole?: SortOrder
+    message?: SortOrder
+    attachments?: SortOrder
+    isRead?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type SupportMessageMaxOrderByAggregateInput = {
+    id?: SortOrder
+    ticketId?: SortOrder
+    senderId?: SortOrder
+    senderRole?: SortOrder
+    message?: SortOrder
+    isRead?: SortOrder
+    createdAt?: SortOrder
+  }
+
+  export type SupportMessageMinOrderByAggregateInput = {
+    id?: SortOrder
+    ticketId?: SortOrder
+    senderId?: SortOrder
+    senderRole?: SortOrder
+    message?: SortOrder
+    isRead?: SortOrder
+    createdAt?: SortOrder
+  }
+
   export type AccountCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -80902,6 +84013,13 @@ export namespace Prisma {
     connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
   }
 
+  export type SupportTicketCreateNestedManyWithoutUserInput = {
+    create?: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput> | SupportTicketCreateWithoutUserInput[] | SupportTicketUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutUserInput | SupportTicketCreateOrConnectWithoutUserInput[]
+    createMany?: SupportTicketCreateManyUserInputEnvelope
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+  }
+
   export type AccountUncheckedCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -80935,6 +84053,13 @@ export namespace Prisma {
     connectOrCreate?: AiQuotaLedgerCreateOrConnectWithoutUserInput | AiQuotaLedgerCreateOrConnectWithoutUserInput[]
     createMany?: AiQuotaLedgerCreateManyUserInputEnvelope
     connect?: AiQuotaLedgerWhereUniqueInput | AiQuotaLedgerWhereUniqueInput[]
+  }
+
+  export type SupportTicketUncheckedCreateNestedManyWithoutUserInput = {
+    create?: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput> | SupportTicketCreateWithoutUserInput[] | SupportTicketUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutUserInput | SupportTicketCreateOrConnectWithoutUserInput[]
+    createMany?: SupportTicketCreateManyUserInputEnvelope
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
   }
 
   export type StringFieldUpdateOperationsInput = {
@@ -81031,6 +84156,20 @@ export namespace Prisma {
     deleteMany?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
   }
 
+  export type SupportTicketUpdateManyWithoutUserNestedInput = {
+    create?: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput> | SupportTicketCreateWithoutUserInput[] | SupportTicketUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutUserInput | SupportTicketCreateOrConnectWithoutUserInput[]
+    upsert?: SupportTicketUpsertWithWhereUniqueWithoutUserInput | SupportTicketUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: SupportTicketCreateManyUserInputEnvelope
+    set?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    disconnect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    delete?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    update?: SupportTicketUpdateWithWhereUniqueWithoutUserInput | SupportTicketUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: SupportTicketUpdateManyWithWhereWithoutUserInput | SupportTicketUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
+  }
+
   export type AccountUncheckedUpdateManyWithoutUserNestedInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -81099,6 +84238,20 @@ export namespace Prisma {
     update?: AiQuotaLedgerUpdateWithWhereUniqueWithoutUserInput | AiQuotaLedgerUpdateWithWhereUniqueWithoutUserInput[]
     updateMany?: AiQuotaLedgerUpdateManyWithWhereWithoutUserInput | AiQuotaLedgerUpdateManyWithWhereWithoutUserInput[]
     deleteMany?: AiQuotaLedgerScalarWhereInput | AiQuotaLedgerScalarWhereInput[]
+  }
+
+  export type SupportTicketUncheckedUpdateManyWithoutUserNestedInput = {
+    create?: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput> | SupportTicketCreateWithoutUserInput[] | SupportTicketUncheckedCreateWithoutUserInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutUserInput | SupportTicketCreateOrConnectWithoutUserInput[]
+    upsert?: SupportTicketUpsertWithWhereUniqueWithoutUserInput | SupportTicketUpsertWithWhereUniqueWithoutUserInput[]
+    createMany?: SupportTicketCreateManyUserInputEnvelope
+    set?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    disconnect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    delete?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    update?: SupportTicketUpdateWithWhereUniqueWithoutUserInput | SupportTicketUpdateWithWhereUniqueWithoutUserInput[]
+    updateMany?: SupportTicketUpdateManyWithWhereWithoutUserInput | SupportTicketUpdateManyWithWhereWithoutUserInput[]
+    deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
   }
 
   export type UserCreateNestedOneWithoutAccountsInput = {
@@ -81319,6 +84472,13 @@ export namespace Prisma {
     connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
   }
 
+  export type SupportTicketCreateNestedManyWithoutTenantInput = {
+    create?: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput> | SupportTicketCreateWithoutTenantInput[] | SupportTicketUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutTenantInput | SupportTicketCreateOrConnectWithoutTenantInput[]
+    createMany?: SupportTicketCreateManyTenantInputEnvelope
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+  }
+
   export type ApiKeyUncheckedCreateNestedManyWithoutTenantInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -81499,6 +84659,13 @@ export namespace Prisma {
     connectOrCreate?: InfrastructureServerCreateOrConnectWithoutTenantInput | InfrastructureServerCreateOrConnectWithoutTenantInput[]
     createMany?: InfrastructureServerCreateManyTenantInputEnvelope
     connect?: InfrastructureServerWhereUniqueInput | InfrastructureServerWhereUniqueInput[]
+  }
+
+  export type SupportTicketUncheckedCreateNestedManyWithoutTenantInput = {
+    create?: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput> | SupportTicketCreateWithoutTenantInput[] | SupportTicketUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutTenantInput | SupportTicketCreateOrConnectWithoutTenantInput[]
+    createMany?: SupportTicketCreateManyTenantInputEnvelope
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
   }
 
   export type BigIntFieldUpdateOperationsInput = {
@@ -81873,6 +85040,20 @@ export namespace Prisma {
     deleteMany?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
   }
 
+  export type SupportTicketUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput> | SupportTicketCreateWithoutTenantInput[] | SupportTicketUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutTenantInput | SupportTicketCreateOrConnectWithoutTenantInput[]
+    upsert?: SupportTicketUpsertWithWhereUniqueWithoutTenantInput | SupportTicketUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: SupportTicketCreateManyTenantInputEnvelope
+    set?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    disconnect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    delete?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    update?: SupportTicketUpdateWithWhereUniqueWithoutTenantInput | SupportTicketUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: SupportTicketUpdateManyWithWhereWithoutTenantInput | SupportTicketUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
+  }
+
   export type ApiKeyUncheckedUpdateManyWithoutTenantNestedInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -82235,6 +85416,20 @@ export namespace Prisma {
     update?: InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput | InfrastructureServerUpdateWithWhereUniqueWithoutTenantInput[]
     updateMany?: InfrastructureServerUpdateManyWithWhereWithoutTenantInput | InfrastructureServerUpdateManyWithWhereWithoutTenantInput[]
     deleteMany?: InfrastructureServerScalarWhereInput | InfrastructureServerScalarWhereInput[]
+  }
+
+  export type SupportTicketUncheckedUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput> | SupportTicketCreateWithoutTenantInput[] | SupportTicketUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutTenantInput | SupportTicketCreateOrConnectWithoutTenantInput[]
+    upsert?: SupportTicketUpsertWithWhereUniqueWithoutTenantInput | SupportTicketUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: SupportTicketCreateManyTenantInputEnvelope
+    set?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    disconnect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    delete?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+    update?: SupportTicketUpdateWithWhereUniqueWithoutTenantInput | SupportTicketUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: SupportTicketUpdateManyWithWhereWithoutTenantInput | SupportTicketUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
   }
 
   export type TenantCreateNestedOneWithoutMembersInput = {
@@ -84044,6 +87239,92 @@ export namespace Prisma {
     update?: XOR<XOR<InfrastructureServerUpdateToOneWithWhereWithoutCredentialsInput, InfrastructureServerUpdateWithoutCredentialsInput>, InfrastructureServerUncheckedUpdateWithoutCredentialsInput>
   }
 
+  export type TenantCreateNestedOneWithoutSupportTicketsInput = {
+    create?: XOR<TenantCreateWithoutSupportTicketsInput, TenantUncheckedCreateWithoutSupportTicketsInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutSupportTicketsInput
+    connect?: TenantWhereUniqueInput
+  }
+
+  export type UserCreateNestedOneWithoutSupportTicketsInput = {
+    create?: XOR<UserCreateWithoutSupportTicketsInput, UserUncheckedCreateWithoutSupportTicketsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSupportTicketsInput
+    connect?: UserWhereUniqueInput
+  }
+
+  export type SupportMessageCreateNestedManyWithoutTicketInput = {
+    create?: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput> | SupportMessageCreateWithoutTicketInput[] | SupportMessageUncheckedCreateWithoutTicketInput[]
+    connectOrCreate?: SupportMessageCreateOrConnectWithoutTicketInput | SupportMessageCreateOrConnectWithoutTicketInput[]
+    createMany?: SupportMessageCreateManyTicketInputEnvelope
+    connect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+  }
+
+  export type SupportMessageUncheckedCreateNestedManyWithoutTicketInput = {
+    create?: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput> | SupportMessageCreateWithoutTicketInput[] | SupportMessageUncheckedCreateWithoutTicketInput[]
+    connectOrCreate?: SupportMessageCreateOrConnectWithoutTicketInput | SupportMessageCreateOrConnectWithoutTicketInput[]
+    createMany?: SupportMessageCreateManyTicketInputEnvelope
+    connect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+  }
+
+  export type TenantUpdateOneWithoutSupportTicketsNestedInput = {
+    create?: XOR<TenantCreateWithoutSupportTicketsInput, TenantUncheckedCreateWithoutSupportTicketsInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutSupportTicketsInput
+    upsert?: TenantUpsertWithoutSupportTicketsInput
+    disconnect?: TenantWhereInput | boolean
+    delete?: TenantWhereInput | boolean
+    connect?: TenantWhereUniqueInput
+    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutSupportTicketsInput, TenantUpdateWithoutSupportTicketsInput>, TenantUncheckedUpdateWithoutSupportTicketsInput>
+  }
+
+  export type UserUpdateOneRequiredWithoutSupportTicketsNestedInput = {
+    create?: XOR<UserCreateWithoutSupportTicketsInput, UserUncheckedCreateWithoutSupportTicketsInput>
+    connectOrCreate?: UserCreateOrConnectWithoutSupportTicketsInput
+    upsert?: UserUpsertWithoutSupportTicketsInput
+    connect?: UserWhereUniqueInput
+    update?: XOR<XOR<UserUpdateToOneWithWhereWithoutSupportTicketsInput, UserUpdateWithoutSupportTicketsInput>, UserUncheckedUpdateWithoutSupportTicketsInput>
+  }
+
+  export type SupportMessageUpdateManyWithoutTicketNestedInput = {
+    create?: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput> | SupportMessageCreateWithoutTicketInput[] | SupportMessageUncheckedCreateWithoutTicketInput[]
+    connectOrCreate?: SupportMessageCreateOrConnectWithoutTicketInput | SupportMessageCreateOrConnectWithoutTicketInput[]
+    upsert?: SupportMessageUpsertWithWhereUniqueWithoutTicketInput | SupportMessageUpsertWithWhereUniqueWithoutTicketInput[]
+    createMany?: SupportMessageCreateManyTicketInputEnvelope
+    set?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    disconnect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    delete?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    connect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    update?: SupportMessageUpdateWithWhereUniqueWithoutTicketInput | SupportMessageUpdateWithWhereUniqueWithoutTicketInput[]
+    updateMany?: SupportMessageUpdateManyWithWhereWithoutTicketInput | SupportMessageUpdateManyWithWhereWithoutTicketInput[]
+    deleteMany?: SupportMessageScalarWhereInput | SupportMessageScalarWhereInput[]
+  }
+
+  export type SupportMessageUncheckedUpdateManyWithoutTicketNestedInput = {
+    create?: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput> | SupportMessageCreateWithoutTicketInput[] | SupportMessageUncheckedCreateWithoutTicketInput[]
+    connectOrCreate?: SupportMessageCreateOrConnectWithoutTicketInput | SupportMessageCreateOrConnectWithoutTicketInput[]
+    upsert?: SupportMessageUpsertWithWhereUniqueWithoutTicketInput | SupportMessageUpsertWithWhereUniqueWithoutTicketInput[]
+    createMany?: SupportMessageCreateManyTicketInputEnvelope
+    set?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    disconnect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    delete?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    connect?: SupportMessageWhereUniqueInput | SupportMessageWhereUniqueInput[]
+    update?: SupportMessageUpdateWithWhereUniqueWithoutTicketInput | SupportMessageUpdateWithWhereUniqueWithoutTicketInput[]
+    updateMany?: SupportMessageUpdateManyWithWhereWithoutTicketInput | SupportMessageUpdateManyWithWhereWithoutTicketInput[]
+    deleteMany?: SupportMessageScalarWhereInput | SupportMessageScalarWhereInput[]
+  }
+
+  export type SupportTicketCreateNestedOneWithoutMessagesInput = {
+    create?: XOR<SupportTicketCreateWithoutMessagesInput, SupportTicketUncheckedCreateWithoutMessagesInput>
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutMessagesInput
+    connect?: SupportTicketWhereUniqueInput
+  }
+
+  export type SupportTicketUpdateOneRequiredWithoutMessagesNestedInput = {
+    create?: XOR<SupportTicketCreateWithoutMessagesInput, SupportTicketUncheckedCreateWithoutMessagesInput>
+    connectOrCreate?: SupportTicketCreateOrConnectWithoutMessagesInput
+    upsert?: SupportTicketUpsertWithoutMessagesInput
+    connect?: SupportTicketWhereUniqueInput
+    update?: XOR<XOR<SupportTicketUpdateToOneWithWhereWithoutMessagesInput, SupportTicketUpdateWithoutMessagesInput>, SupportTicketUncheckedUpdateWithoutMessagesInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -84511,6 +87792,40 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type SupportTicketCreateWithoutUserInput = {
+    id?: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant?: TenantCreateNestedOneWithoutSupportTicketsInput
+    messages?: SupportMessageCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketUncheckedCreateWithoutUserInput = {
+    id?: string
+    tenantId?: string | null
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: SupportMessageUncheckedCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketCreateOrConnectWithoutUserInput = {
+    where: SupportTicketWhereUniqueInput
+    create: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput>
+  }
+
+  export type SupportTicketCreateManyUserInputEnvelope = {
+    data: SupportTicketCreateManyUserInput | SupportTicketCreateManyUserInput[]
+    skipDuplicates?: boolean
+  }
+
   export type AccountUpsertWithWhereUniqueWithoutUserInput = {
     where: AccountWhereUniqueInput
     update: XOR<AccountUpdateWithoutUserInput, AccountUncheckedUpdateWithoutUserInput>
@@ -84664,6 +87979,37 @@ export namespace Prisma {
     createdAt?: DateTimeFilter<"AiQuotaLedger"> | Date | string
   }
 
+  export type SupportTicketUpsertWithWhereUniqueWithoutUserInput = {
+    where: SupportTicketWhereUniqueInput
+    update: XOR<SupportTicketUpdateWithoutUserInput, SupportTicketUncheckedUpdateWithoutUserInput>
+    create: XOR<SupportTicketCreateWithoutUserInput, SupportTicketUncheckedCreateWithoutUserInput>
+  }
+
+  export type SupportTicketUpdateWithWhereUniqueWithoutUserInput = {
+    where: SupportTicketWhereUniqueInput
+    data: XOR<SupportTicketUpdateWithoutUserInput, SupportTicketUncheckedUpdateWithoutUserInput>
+  }
+
+  export type SupportTicketUpdateManyWithWhereWithoutUserInput = {
+    where: SupportTicketScalarWhereInput
+    data: XOR<SupportTicketUpdateManyMutationInput, SupportTicketUncheckedUpdateManyWithoutUserInput>
+  }
+
+  export type SupportTicketScalarWhereInput = {
+    AND?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
+    OR?: SupportTicketScalarWhereInput[]
+    NOT?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
+    id?: StringFilter<"SupportTicket"> | string
+    tenantId?: StringNullableFilter<"SupportTicket"> | string | null
+    userId?: StringFilter<"SupportTicket"> | string
+    subject?: StringFilter<"SupportTicket"> | string
+    category?: StringFilter<"SupportTicket"> | string
+    priority?: StringFilter<"SupportTicket"> | string
+    status?: StringFilter<"SupportTicket"> | string
+    createdAt?: DateTimeFilter<"SupportTicket"> | Date | string
+    updatedAt?: DateTimeFilter<"SupportTicket"> | Date | string
+  }
+
   export type UserCreateWithoutAccountsInput = {
     id?: string
     email: string
@@ -84683,6 +88029,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAccountsInput = {
@@ -84704,6 +88051,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAccountsInput = {
@@ -84741,6 +88089,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAccountsInput = {
@@ -84762,6 +88111,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type UserCreateWithoutSessionsInput = {
@@ -84783,6 +88133,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutSessionsInput = {
@@ -84804,6 +88155,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutSessionsInput = {
@@ -84841,6 +88193,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSessionsInput = {
@@ -84862,6 +88215,7 @@ export namespace Prisma {
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ApiKeyCreateWithoutTenantInput = {
@@ -85788,6 +89142,40 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type SupportTicketCreateWithoutTenantInput = {
+    id?: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    user: UserCreateNestedOneWithoutSupportTicketsInput
+    messages?: SupportMessageCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketUncheckedCreateWithoutTenantInput = {
+    id?: string
+    userId: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    messages?: SupportMessageUncheckedCreateNestedManyWithoutTicketInput
+  }
+
+  export type SupportTicketCreateOrConnectWithoutTenantInput = {
+    where: SupportTicketWhereUniqueInput
+    create: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput>
+  }
+
+  export type SupportTicketCreateManyTenantInputEnvelope = {
+    data: SupportTicketCreateManyTenantInput | SupportTicketCreateManyTenantInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ApiKeyUpsertWithWhereUniqueWithoutTenantInput = {
     where: ApiKeyWhereUniqueInput
     update: XOR<ApiKeyUpdateWithoutTenantInput, ApiKeyUncheckedUpdateWithoutTenantInput>
@@ -86573,6 +89961,22 @@ export namespace Prisma {
     updatedAt?: DateTimeFilter<"InfrastructureServer"> | Date | string
   }
 
+  export type SupportTicketUpsertWithWhereUniqueWithoutTenantInput = {
+    where: SupportTicketWhereUniqueInput
+    update: XOR<SupportTicketUpdateWithoutTenantInput, SupportTicketUncheckedUpdateWithoutTenantInput>
+    create: XOR<SupportTicketCreateWithoutTenantInput, SupportTicketUncheckedCreateWithoutTenantInput>
+  }
+
+  export type SupportTicketUpdateWithWhereUniqueWithoutTenantInput = {
+    where: SupportTicketWhereUniqueInput
+    data: XOR<SupportTicketUpdateWithoutTenantInput, SupportTicketUncheckedUpdateWithoutTenantInput>
+  }
+
+  export type SupportTicketUpdateManyWithWhereWithoutTenantInput = {
+    where: SupportTicketScalarWhereInput
+    data: XOR<SupportTicketUpdateManyMutationInput, SupportTicketUncheckedUpdateManyWithoutTenantInput>
+  }
+
   export type TenantCreateWithoutMembersInput = {
     id?: string
     name: string
@@ -86594,6 +89998,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -86623,6 +90031,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMembersInput = {
@@ -86646,6 +90055,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -86675,6 +90088,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMembersInput = {
@@ -86701,6 +90115,7 @@ export namespace Prisma {
     sessions?: SessionCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutTenantsInput = {
@@ -86722,6 +90137,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutTenantsInput = {
@@ -86761,6 +90177,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -86790,6 +90210,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -86813,6 +90234,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -86842,6 +90267,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutTenantsInput = {
@@ -86874,6 +90300,7 @@ export namespace Prisma {
     sessions?: SessionUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutTenantsInput = {
@@ -86895,6 +90322,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContentEntryCreateWithoutContentTypeInput = {
@@ -87008,6 +90436,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87037,6 +90469,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypesInput = {
@@ -87060,6 +90493,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87089,6 +90526,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypesInput = {
@@ -87204,6 +90642,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -87233,6 +90675,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypesInput = {
@@ -87256,6 +90699,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -87285,6 +90732,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantContentTypeAssignmentUpsertWithWhereUniqueWithoutContentTypeInput = {
@@ -87540,6 +90988,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87569,6 +91021,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAiQuotaLedgersInput = {
@@ -87592,6 +91045,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87621,6 +91078,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAiQuotaLedgersInput = {
@@ -87647,6 +91105,7 @@ export namespace Prisma {
     sessions?: SessionCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutAiQuotaLedgersInput = {
@@ -87668,6 +91127,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutAiQuotaLedgersInput = {
@@ -87707,6 +91167,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -87736,6 +91200,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAiQuotaLedgersInput = {
@@ -87759,6 +91224,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -87788,6 +91257,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutAiQuotaLedgersInput = {
@@ -87820,6 +91290,7 @@ export namespace Prisma {
     sessions?: SessionUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutAiQuotaLedgersInput = {
@@ -87841,6 +91312,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type ContentTypeCreateWithoutTenantsInput = {
@@ -87899,6 +91371,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87928,6 +91404,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypeAssignmentsInput = {
@@ -87951,6 +91428,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -87980,6 +91461,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypeAssignmentsInput = {
@@ -88060,6 +91542,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -88089,6 +91575,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypeAssignmentsInput = {
@@ -88112,6 +91599,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -88141,6 +91632,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentTypeCreateWithoutEntriesInput = {
@@ -88199,6 +91691,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -88228,6 +91724,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentEntriesInput = {
@@ -88251,6 +91748,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -88280,6 +91781,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentEntriesInput = {
@@ -88428,6 +91930,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -88457,6 +91963,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentEntriesInput = {
@@ -88480,6 +91987,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -88509,6 +92020,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentReviewAssignmentUpsertWithWhereUniqueWithoutContentEntryInput = {
@@ -88860,6 +92372,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -88889,6 +92405,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypesInput = {
@@ -88912,6 +92429,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -88941,6 +92462,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypesInput = {
@@ -89062,6 +92584,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89091,6 +92617,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypesInput = {
@@ -89114,6 +92641,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89143,6 +92674,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantSingleTypeAssignmentUpsertWithWhereUniqueWithoutSingleTypeInput = {
@@ -89287,6 +92819,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -89316,6 +92852,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypeAssignmentsInput = {
@@ -89339,6 +92876,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -89368,6 +92909,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypeAssignmentsInput = {
@@ -89446,6 +92988,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89475,6 +93021,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypeAssignmentsInput = {
@@ -89498,6 +93045,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89527,6 +93078,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ComponentFieldCreateWithoutComponentInput = {
@@ -89630,6 +93182,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -89659,6 +93215,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentsInput = {
@@ -89682,6 +93239,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -89711,6 +93272,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentsInput = {
@@ -89824,6 +93386,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89853,6 +93419,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentsInput = {
@@ -89876,6 +93443,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -89905,6 +93476,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantComponentAssignmentUpsertWithWhereUniqueWithoutComponentInput = {
@@ -90043,6 +93615,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90072,6 +93648,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentAssignmentsInput = {
@@ -90095,6 +93672,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90124,6 +93705,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentAssignmentsInput = {
@@ -90200,6 +93782,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90229,6 +93815,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentAssignmentsInput = {
@@ -90252,6 +93839,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90281,6 +93872,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiKeysInput = {
@@ -90304,6 +93896,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90333,6 +93929,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiKeysInput = {
@@ -90356,6 +93953,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90385,6 +93986,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiKeysInput = {
@@ -90424,6 +94026,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90453,6 +94059,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiKeysInput = {
@@ -90476,6 +94083,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90505,6 +94116,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InvoiceCreateWithoutSubscriptionInput = {
@@ -90600,6 +94212,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90629,6 +94245,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSubscriptionsInput = {
@@ -90652,6 +94269,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -90681,6 +94302,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSubscriptionsInput = {
@@ -90707,6 +94329,7 @@ export namespace Prisma {
     sessions?: SessionCreateNestedManyWithoutUserInput
     tenants?: TenantMemberCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutUserInput
   }
 
   export type UserUncheckedCreateWithoutSubscriptionsInput = {
@@ -90728,6 +94351,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
     tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutUserInput
   }
 
   export type UserCreateOrConnectWithoutSubscriptionsInput = {
@@ -90833,6 +94457,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90862,6 +94490,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSubscriptionsInput = {
@@ -90885,6 +94514,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -90914,6 +94547,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutSubscriptionsInput = {
@@ -90946,6 +94580,7 @@ export namespace Prisma {
     sessions?: SessionUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutUserNestedInput
   }
 
   export type UserUncheckedUpdateWithoutSubscriptionsInput = {
@@ -90967,6 +94602,7 @@ export namespace Prisma {
     sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
     tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
     aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutUserNestedInput
   }
 
   export type SubscriptionCreateWithoutInvoicesInput = {
@@ -91150,6 +94786,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91179,6 +94819,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAuditLogsInput = {
@@ -91202,6 +94843,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91231,6 +94876,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAuditLogsInput = {
@@ -91270,6 +94916,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91299,6 +94949,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAuditLogsInput = {
@@ -91322,6 +94973,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91351,6 +95006,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSettingsInput = {
@@ -91374,6 +95030,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91403,6 +95063,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSettingsInput = {
@@ -91426,6 +95087,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91455,6 +95120,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSettingsInput = {
@@ -91494,6 +95160,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91523,6 +95193,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSettingsInput = {
@@ -91546,6 +95217,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91575,6 +95250,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiRequestsInput = {
@@ -91598,6 +95274,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91627,6 +95307,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiRequestsInput = {
@@ -91650,6 +95331,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91679,6 +95364,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiRequestsInput = {
@@ -91718,6 +95404,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91747,6 +95437,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiRequestsInput = {
@@ -91770,6 +95461,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -91799,6 +95494,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaCreateWithoutFolderInput = {
@@ -91935,6 +95631,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -91964,6 +95664,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaFoldersInput = {
@@ -91987,6 +95688,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92016,6 +95721,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaFoldersInput = {
@@ -92120,6 +95826,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92149,6 +95859,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaFoldersInput = {
@@ -92172,6 +95883,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92201,6 +95916,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaFolderCreateWithoutMediaInput = {
@@ -92251,6 +95967,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92280,6 +96000,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaInput = {
@@ -92303,6 +96024,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92332,6 +96057,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaInput = {
@@ -92404,6 +96130,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92433,6 +96163,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaInput = {
@@ -92456,6 +96187,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92485,6 +96220,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiTokensInput = {
@@ -92508,6 +96244,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92537,6 +96277,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiTokensInput = {
@@ -92560,6 +96301,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92589,6 +96334,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiTokensInput = {
@@ -92628,6 +96374,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92657,6 +96407,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiTokensInput = {
@@ -92680,6 +96431,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -92709,6 +96464,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookDeadLetterCreateWithoutWebhookInput = {
@@ -92802,6 +96558,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92831,6 +96591,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutWebhooksInput = {
@@ -92854,6 +96615,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -92883,6 +96648,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutWebhooksInput = {
@@ -92987,6 +96753,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93016,6 +96786,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutWebhooksInput = {
@@ -93039,6 +96810,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93068,6 +96843,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookCreateWithoutLogsInput = {
@@ -93259,6 +97035,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93288,6 +97068,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutLocalesInput = {
@@ -93311,6 +97092,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93340,6 +97125,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutLocalesInput = {
@@ -93379,6 +97165,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93408,6 +97198,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutLocalesInput = {
@@ -93431,6 +97222,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93460,6 +97255,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutCustomDomainsInput = {
@@ -93483,6 +97279,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93512,6 +97312,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutCustomDomainsInput = {
@@ -93535,6 +97336,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93564,6 +97369,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutCustomDomainsInput = {
@@ -93603,6 +97409,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93632,6 +97442,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutCustomDomainsInput = {
@@ -93655,6 +97466,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93684,6 +97499,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthClientsInput = {
@@ -93707,6 +97523,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93736,6 +97556,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthClientsInput = {
@@ -93759,6 +97580,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93788,6 +97613,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthClientsInput = {
@@ -93827,6 +97653,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93856,6 +97686,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthClientsInput = {
@@ -93879,6 +97710,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -93908,6 +97743,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthCodesInput = {
@@ -93931,6 +97767,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -93960,6 +97800,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthCodesInput = {
@@ -93983,6 +97824,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94012,6 +97857,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthCodesInput = {
@@ -94051,6 +97897,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94080,6 +97930,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthCodesInput = {
@@ -94103,6 +97954,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94132,6 +97987,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthTokensInput = {
@@ -94155,6 +98011,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94184,6 +98044,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthTokensInput = {
@@ -94207,6 +98068,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94236,6 +98101,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthTokensInput = {
@@ -94275,6 +98141,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94304,6 +98174,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthTokensInput = {
@@ -94327,6 +98198,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94356,6 +98231,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type RolePermissionCreateWithoutPermissionInput = {
@@ -94485,6 +98361,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94514,6 +98394,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutRolesInput = {
@@ -94537,6 +98418,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94566,6 +98451,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutRolesInput = {
@@ -94605,6 +98491,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94634,6 +98524,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutRolesInput = {
@@ -94657,6 +98548,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94686,6 +98581,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSitesInput = {
@@ -94709,6 +98605,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94738,6 +98638,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSitesInput = {
@@ -94761,6 +98662,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -94790,6 +98695,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSitesInput = {
@@ -94939,6 +98845,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -94968,6 +98878,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSitesInput = {
@@ -94991,6 +98902,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -95020,6 +98935,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type SiteFileUpsertWithWhereUniqueWithoutSiteInput = {
@@ -95671,6 +99587,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -95700,6 +99620,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutInfrastructureServersInput = {
@@ -95723,6 +99644,10 @@ export namespace Prisma {
     faviconUrl?: string | null
     primaryColor?: string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
     aiTokensUsed?: number
     aiCreditsExtra?: number
     storageExtraBytes?: bigint | number
@@ -95752,6 +99677,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutInfrastructureServersInput = {
@@ -95826,6 +99752,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -95855,6 +99785,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutInfrastructureServersInput = {
@@ -95878,6 +99809,10 @@ export namespace Prisma {
     faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
     primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
     storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
     aiTokensUsed?: IntFieldUpdateOperationsInput | number
     aiCreditsExtra?: IntFieldUpdateOperationsInput | number
     storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
@@ -95907,6 +99842,7 @@ export namespace Prisma {
     oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InfrastructureCredentialUpsertWithoutServerInput = {
@@ -96078,6 +100014,478 @@ export namespace Prisma {
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type TenantCreateWithoutSupportTicketsInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
+    components?: ComponentCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
+    media?: MediaCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
+    settings?: SettingCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
+    members?: TenantMemberCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleCreateNestedManyWithoutTenantInput
+    sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantUncheckedCreateWithoutSupportTicketsInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
+    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
+    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
+    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
+    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientUncheckedCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantCreateOrConnectWithoutSupportTicketsInput = {
+    where: TenantWhereUniqueInput
+    create: XOR<TenantCreateWithoutSupportTicketsInput, TenantUncheckedCreateWithoutSupportTicketsInput>
+  }
+
+  export type UserCreateWithoutSupportTicketsInput = {
+    id?: string
+    email: string
+    name?: string | null
+    password?: string | null
+    image?: string | null
+    role?: string
+    emailVerified?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    plan?: string
+    aiCreditsUsed?: number
+    aiCreditsExtra?: number
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
+    accounts?: AccountCreateNestedManyWithoutUserInput
+    sessions?: SessionCreateNestedManyWithoutUserInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutUserInput
+    tenants?: TenantMemberCreateNestedManyWithoutUserInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutUserInput
+  }
+
+  export type UserUncheckedCreateWithoutSupportTicketsInput = {
+    id?: string
+    email: string
+    name?: string | null
+    password?: string | null
+    image?: string | null
+    role?: string
+    emailVerified?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    plan?: string
+    aiCreditsUsed?: number
+    aiCreditsExtra?: number
+    masterDatabaseUrl?: string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
+    accounts?: AccountUncheckedCreateNestedManyWithoutUserInput
+    sessions?: SessionUncheckedCreateNestedManyWithoutUserInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutUserInput
+    tenants?: TenantMemberUncheckedCreateNestedManyWithoutUserInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutUserInput
+  }
+
+  export type UserCreateOrConnectWithoutSupportTicketsInput = {
+    where: UserWhereUniqueInput
+    create: XOR<UserCreateWithoutSupportTicketsInput, UserUncheckedCreateWithoutSupportTicketsInput>
+  }
+
+  export type SupportMessageCreateWithoutTicketInput = {
+    id?: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SupportMessageUncheckedCreateWithoutTicketInput = {
+    id?: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SupportMessageCreateOrConnectWithoutTicketInput = {
+    where: SupportMessageWhereUniqueInput
+    create: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput>
+  }
+
+  export type SupportMessageCreateManyTicketInputEnvelope = {
+    data: SupportMessageCreateManyTicketInput | SupportMessageCreateManyTicketInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TenantUpsertWithoutSupportTicketsInput = {
+    update: XOR<TenantUpdateWithoutSupportTicketsInput, TenantUncheckedUpdateWithoutSupportTicketsInput>
+    create: XOR<TenantCreateWithoutSupportTicketsInput, TenantUncheckedCreateWithoutSupportTicketsInput>
+    where?: TenantWhereInput
+  }
+
+  export type TenantUpdateToOneWithWhereWithoutSupportTicketsInput = {
+    where?: TenantWhereInput
+    data: XOR<TenantUpdateWithoutSupportTicketsInput, TenantUncheckedUpdateWithoutSupportTicketsInput>
+  }
+
+  export type TenantUpdateWithoutSupportTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
+    components?: ComponentUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
+    media?: MediaUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
+    settings?: SettingUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantUncheckedUpdateWithoutSupportTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
+    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
+    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
+    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUncheckedUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+  }
+
+  export type UserUpsertWithoutSupportTicketsInput = {
+    update: XOR<UserUpdateWithoutSupportTicketsInput, UserUncheckedUpdateWithoutSupportTicketsInput>
+    create: XOR<UserCreateWithoutSupportTicketsInput, UserUncheckedCreateWithoutSupportTicketsInput>
+    where?: UserWhereInput
+  }
+
+  export type UserUpdateToOneWithWhereWithoutSupportTicketsInput = {
+    where?: UserWhereInput
+    data: XOR<UserUpdateWithoutSupportTicketsInput, UserUncheckedUpdateWithoutSupportTicketsInput>
+  }
+
+  export type UserUpdateWithoutSupportTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    plan?: StringFieldUpdateOperationsInput | string
+    aiCreditsUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
+    accounts?: AccountUpdateManyWithoutUserNestedInput
+    sessions?: SessionUpdateManyWithoutUserNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutUserNestedInput
+    tenants?: TenantMemberUpdateManyWithoutUserNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutUserNestedInput
+  }
+
+  export type UserUncheckedUpdateWithoutSupportTicketsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    password?: NullableStringFieldUpdateOperationsInput | string | null
+    image?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    plan?: StringFieldUpdateOperationsInput | string
+    aiCreditsUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    masterDatabaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    masterStorageConfig?: NullableJsonNullValueInput | InputJsonValue
+    accounts?: AccountUncheckedUpdateManyWithoutUserNestedInput
+    sessions?: SessionUncheckedUpdateManyWithoutUserNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutUserNestedInput
+    tenants?: TenantMemberUncheckedUpdateManyWithoutUserNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutUserNestedInput
+  }
+
+  export type SupportMessageUpsertWithWhereUniqueWithoutTicketInput = {
+    where: SupportMessageWhereUniqueInput
+    update: XOR<SupportMessageUpdateWithoutTicketInput, SupportMessageUncheckedUpdateWithoutTicketInput>
+    create: XOR<SupportMessageCreateWithoutTicketInput, SupportMessageUncheckedCreateWithoutTicketInput>
+  }
+
+  export type SupportMessageUpdateWithWhereUniqueWithoutTicketInput = {
+    where: SupportMessageWhereUniqueInput
+    data: XOR<SupportMessageUpdateWithoutTicketInput, SupportMessageUncheckedUpdateWithoutTicketInput>
+  }
+
+  export type SupportMessageUpdateManyWithWhereWithoutTicketInput = {
+    where: SupportMessageScalarWhereInput
+    data: XOR<SupportMessageUpdateManyMutationInput, SupportMessageUncheckedUpdateManyWithoutTicketInput>
+  }
+
+  export type SupportMessageScalarWhereInput = {
+    AND?: SupportMessageScalarWhereInput | SupportMessageScalarWhereInput[]
+    OR?: SupportMessageScalarWhereInput[]
+    NOT?: SupportMessageScalarWhereInput | SupportMessageScalarWhereInput[]
+    id?: StringFilter<"SupportMessage"> | string
+    ticketId?: StringFilter<"SupportMessage"> | string
+    senderId?: StringFilter<"SupportMessage"> | string
+    senderRole?: StringFilter<"SupportMessage"> | string
+    message?: StringFilter<"SupportMessage"> | string
+    attachments?: JsonNullableFilter<"SupportMessage">
+    isRead?: BoolFilter<"SupportMessage"> | boolean
+    createdAt?: DateTimeFilter<"SupportMessage"> | Date | string
+  }
+
+  export type SupportTicketCreateWithoutMessagesInput = {
+    id?: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    tenant?: TenantCreateNestedOneWithoutSupportTicketsInput
+    user: UserCreateNestedOneWithoutSupportTicketsInput
+  }
+
+  export type SupportTicketUncheckedCreateWithoutMessagesInput = {
+    id?: string
+    tenantId?: string | null
+    userId: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SupportTicketCreateOrConnectWithoutMessagesInput = {
+    where: SupportTicketWhereUniqueInput
+    create: XOR<SupportTicketCreateWithoutMessagesInput, SupportTicketUncheckedCreateWithoutMessagesInput>
+  }
+
+  export type SupportTicketUpsertWithoutMessagesInput = {
+    update: XOR<SupportTicketUpdateWithoutMessagesInput, SupportTicketUncheckedUpdateWithoutMessagesInput>
+    create: XOR<SupportTicketCreateWithoutMessagesInput, SupportTicketUncheckedCreateWithoutMessagesInput>
+    where?: SupportTicketWhereInput
+  }
+
+  export type SupportTicketUpdateToOneWithWhereWithoutMessagesInput = {
+    where?: SupportTicketWhereInput
+    data: XOR<SupportTicketUpdateWithoutMessagesInput, SupportTicketUncheckedUpdateWithoutMessagesInput>
+  }
+
+  export type SupportTicketUpdateWithoutMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneWithoutSupportTicketsNestedInput
+    user?: UserUpdateOneRequiredWithoutSupportTicketsNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateWithoutMessagesInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type AccountCreateManyUserInput = {
     id?: string
     type: string
@@ -96129,6 +100537,17 @@ export namespace Prisma {
     words?: number
     model?: string | null
     createdAt?: Date | string
+  }
+
+  export type SupportTicketCreateManyUserInput = {
+    id?: string
+    tenantId?: string | null
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
   }
 
   export type AccountUpdateWithoutUserInput = {
@@ -96292,6 +100711,41 @@ export namespace Prisma {
     words?: IntFieldUpdateOperationsInput | number
     model?: NullableStringFieldUpdateOperationsInput | string | null
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportTicketUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    tenant?: TenantUpdateOneWithoutSupportTicketsNestedInput
+    messages?: SupportMessageUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: SupportMessageUncheckedUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateManyWithoutUserInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: NullableStringFieldUpdateOperationsInput | string | null
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
   export type ApiKeyCreateManyTenantInput = {
@@ -96600,6 +101054,17 @@ export namespace Prisma {
     lastHealthCheckAt?: Date | string | null
     healthStatus?: string
     metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type SupportTicketCreateManyTenantInput = {
+    id?: string
+    userId: string
+    subject: string
+    category?: string
+    priority?: string
+    status?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -97574,6 +102039,41 @@ export namespace Prisma {
     lastHealthCheckAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     healthStatus?: StringFieldUpdateOperationsInput | string
     metricsSnapshot?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportTicketUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    user?: UserUpdateOneRequiredWithoutSupportTicketsNestedInput
+    messages?: SupportMessageUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    messages?: SupportMessageUncheckedUpdateManyWithoutTicketNestedInput
+  }
+
+  export type SupportTicketUncheckedUpdateManyWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    userId?: StringFieldUpdateOperationsInput | string
+    subject?: StringFieldUpdateOperationsInput | string
+    category?: StringFieldUpdateOperationsInput | string
+    priority?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -98697,6 +103197,46 @@ export namespace Prisma {
     schemaDiff?: NullableJsonNullValueInput | InputJsonValue
     creditsUsed?: IntFieldUpdateOperationsInput | number
     status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageCreateManyTicketInput = {
+    id?: string
+    senderId: string
+    senderRole?: string
+    message: string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: boolean
+    createdAt?: Date | string
+  }
+
+  export type SupportMessageUpdateWithoutTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageUncheckedUpdateWithoutTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type SupportMessageUncheckedUpdateManyWithoutTicketInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    senderId?: StringFieldUpdateOperationsInput | string
+    senderRole?: StringFieldUpdateOperationsInput | string
+    message?: StringFieldUpdateOperationsInput | string
+    attachments?: NullableJsonNullValueInput | InputJsonValue
+    isRead?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 

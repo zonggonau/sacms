@@ -90,9 +90,9 @@ export function SchemaGeneratorDialog({
       
       if (res.ok) {
         toast({ 
-          title: "AI Success!", 
-          description: data.system ? `Full System Architecture has been generated with ${data.contentTypes?.length || 0} Content Types.` : `${typeLabels[type]} "${data.name}" has been generated.`,
-          className: "bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-none shadow-none"
+          title: "AI Berhasil!", 
+          description: data.system ? `Arsitektur Sistem Lengkap telah berhasil dibuat dengan ${data.contentTypes?.length || 0} Content Type.` : `${typeLabels[type]} "${data.name}" telah berhasil dibuat.`,
+          className: "bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl shadow-xs"
         })
         
         setGeneratedData(data)
@@ -101,11 +101,11 @@ export function SchemaGeneratorDialog({
           onSuccess()
         }
       } else {
-        setError(data.error || "Failed to generate schema. Please try again.")
+        setError(data.error || "Gagal membuat skema dengan AI. Silakan coba kembali.")
       }
     } catch (err: any) {
-      setError(err.message || "An unexpected error occurred.")
-      toast({ variant: "destructive", title: "AI Error", description: err.message })
+      setError(err.message || "Terjadi kesalahan yang tidak terduga.")
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal memproses AI" })
     } finally {
       setLoading(false)
     }

@@ -40,7 +40,6 @@ export default async function BlogPage() {
                   <Card className="h-full flex flex-col hover:border-primary/50 transition-colors overflow-hidden">
                     {blog.cover_image && (
                       <div className="w-full h-48 overflow-hidden bg-muted">
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img 
                           src={blog.cover_image} 
                           alt={blog.title} 

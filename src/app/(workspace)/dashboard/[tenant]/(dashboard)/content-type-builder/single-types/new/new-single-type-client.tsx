@@ -105,7 +105,7 @@ export default function NewSingleTypeClient({
 
   const saveFieldConfig = () => {
     if (!editingField?.name || !editingField?.slug) {
-      toast({ variant: "destructive", title: "Missing info", description: "Name and Slug are required" })
+      toast({ variant: "destructive", title: "Data Belum Lengkap", description: "Nama dan Slug field wajib diisi" })
       return
     }
     const exists = fields.find(f => f.id === editingField.id)
@@ -160,7 +160,7 @@ export default function NewSingleTypeClient({
 
   const handleSave = async () => {
     if (!name || !slug) {
-      toast({ variant: "destructive", title: "Error", description: "Name and slug are required" })
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Nama dan slug wajib diisi" })
       return
     }
     setSaving(true)
@@ -177,13 +177,13 @@ export default function NewSingleTypeClient({
       })
 
       if (!res.error) {
-        toast({ title: "Success", description: "Single type created" })
+        toast({ title: "Berhasil", description: "Single type berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error || "Gagal membuat single type" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan single type" })
     } finally {
       setSaving(false)
     }

@@ -12,7 +12,10 @@ const ALLOWED_MIME_TYPES = [
   "video/quicktime",
   "application/pdf",
   "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  "application/msword"
+  "application/msword",
+  "application/zip",
+  "application/x-zip-compressed",
+  "application/octet-stream"
 ] as const
 
 export const MIME_WHITELIST = new Set<string>(ALLOWED_MIME_TYPES)
@@ -37,14 +40,9 @@ export const mediaUpdateSchema = z.object({
  * For more complex types, consider using the 'file-type' package.
  */
 export function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
-  // Common magic bytes:
-  // JPEG: FF D8 FF
-  // PNG: 89 50 4E 47
-  // GIF: 47 49 46 38
-  // WebP: 52 49 46 46 (RIFF) + 57 45 42 50 (WEBP)
-  // PDF: 25 50 44 46 (%PDF)
+  if (!buffer || buffer.length < 4) return false
 
-  const header = buffer.subarray(0, 8)
+  const header = buffer.subarray(0, 32)
   const hex = header.toString("hex").toUpperCase()
 
   switch (mimeType) {
@@ -55,15 +53,31 @@ export function validateMagicBytes(buffer: Buffer, mimeType: string): boolean {
     case "image/gif":
       return hex.startsWith("47494638")
     case "image/webp":
-      return hex.startsWith("52494646") && hex.substring(16, 24) === "57454250"
+      // WebP: RIFF (bytes 0-3 = 52494646) + 4-byte size + WEBP (bytes 8-11 = 57454250)
+      return buffer.length >= 12 && hex.startsWith("52494646") && hex.substring(16, 24) === "57454250"
+    case "image/avif":
+      // AVIF: ftypavif in bytes 4-11
+      return hex.substring(8, 24).includes("66747970")
+    case "video/mp4":
+    case "video/quicktime":
+      // MP4/MOV: bytes 4-7 = ftyp (66747970) or moov (6D6F6F76)
+      return hex.substring(8, 16) === "66747970" || hex.substring(8, 16) === "6D6F6F76" || hex.startsWith("000000")
+    case "video/webm":
+      // WebM: EBML header 1A 45 DF A3
+      return hex.startsWith("1A45DFA3")
     case "application/pdf":
       return hex.startsWith("25504446")
+    case "application/vnd.openxmlformats-officedocument.wordprocessingml.document":
+    case "application/zip":
+    case "application/x-zip-compressed":
+      return hex.startsWith("504B")
+    case "application/msword":
+      return hex.startsWith("D0CF11E0") || hex.startsWith("504B")
     case "image/svg+xml":
       // Basic SVG check: starts with <svg or <?xml
-      const svgStart = buffer.subarray(0, 50).toString().toLowerCase()
+      const svgStart = buffer.subarray(0, 100).toString().toLowerCase()
       return svgStart.includes("<svg") || svgStart.includes("<?xml")
     default:
-      // For other types, we might rely on sharp for further validation or assume valid if no signature known
       return true
   }
 }

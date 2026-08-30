@@ -35,9 +35,17 @@ export async function validateDynamicContent(
     const value = data[field.slug]
 
     // Check Required
-    if (enforceRequired && field.required && (value === undefined || value === null || value === "")) {
-      errors[field.slug] = `${field.name} is required`
-      continue
+    if (enforceRequired && field.required) {
+      if (value === undefined || value === null || value === "") {
+        errors[field.slug] = `${field.name} is required`
+        continue
+      }
+      if (typeof value === "object" && !Array.isArray(value)) {
+        if (field.type === "phone" && (!value.number || String(value.number).trim() === "")) {
+          errors[field.slug] = `${field.name} is required`
+          continue
+        }
+      }
     }
 
     // Skip further checks if empty and not required
@@ -46,24 +54,36 @@ export async function validateDynamicContent(
     // Type Validation
     switch (field.type) {
       case "number":
-        if (typeof value !== "number") errors[field.slug] = `${field.name} must be a number`
+      case "integer":
+      case "currency":
+      case "rating":
+      case "percent":
+        if (typeof value !== "number" && (typeof value !== "string" || isNaN(Number(value)) || value.trim() === "")) {
+          errors[field.slug] = `${field.name} must be a number`
+        }
         break
       case "boolean":
-        if (typeof value !== "boolean") errors[field.slug] = `${field.name} must be a boolean`
+        if (typeof value !== "boolean" && value !== "true" && value !== "false" && value !== 1 && value !== 0) {
+          errors[field.slug] = `${field.name} must be a boolean`
+        }
         break
       case "email":
         const emailSchema = z.string().email()
-        if (!emailSchema.safeParse(value).success) errors[field.slug] = `Invalid email format`
+        if (typeof value !== "string" || !emailSchema.safeParse(value).success) {
+          errors[field.slug] = `Invalid email format`
+        }
         break
       case "date":
       case "datetime":
-        if (isNaN(Date.parse(value))) errors[field.slug] = `Invalid date format`
+        if (typeof value === "string" && isNaN(Date.parse(value))) {
+          errors[field.slug] = `Invalid date format`
+        }
         break
       // Add more specific type checks as needed
     }
 
     // Uniqueness Check (if enabled)
-    if (field.unique) {
+    if (field.unique && typeof value !== "object") {
       const existing = await client.contentEntry.findFirst({
         where: {
           contentTypeId,

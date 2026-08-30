@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
 import { checkPermission, PERMISSIONS } from "@/lib/rbac"
 import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
-import { isR2Configured, uploadToR2, uploadToLocal } from "@/lib/r2"
+import { isR2Configured, isTenantStorageConfigured, uploadToR2, uploadToLocal } from "@/lib/r2"
 import { getTenantPlanConfig } from "@/lib/tenant-plan"
 import type { Media } from "@prisma/client"
 
@@ -25,7 +25,7 @@ export async function GET(
     const media = await tenantDb.media.findMany({
       where: { tenantId },
       orderBy: { createdAt: "desc" },
-    })
+    }).catch(() => [])
 
     return NextResponse.json({ media })
   } catch (error) {
@@ -47,7 +47,13 @@ export async function POST(
     if (!allowed || !tenantId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
 
     const formData = await request.formData()
-    const files = formData.getAll("files") as File[]
+    const filesRaw = (formData.getAll("files") as File[]).concat(formData.getAll("file") as File[])
+    const singleFile = formData.get("file") as File | null
+    const files = filesRaw.filter((f) => f && typeof f === "object" && typeof f.arrayBuffer === "function")
+
+    if (files.length === 0 && singleFile && typeof singleFile.arrayBuffer === "function") {
+      files.push(singleFile)
+    }
 
     if (!files || files.length === 0) return NextResponse.json({ error: "No files provided" }, { status: 400 })
 
@@ -68,7 +74,10 @@ export async function POST(
     }
 
     for (const file of files) {
-      const mimeType = file.type || "application/octet-stream"
+      let mimeType = file.type || "application/octet-stream"
+      if (file.name.endsWith(".docx") && (mimeType === "application/octet-stream" || !mimeType)) {
+        mimeType = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+      }
       if (!isAllowedMimeType(mimeType)) return NextResponse.json({ error: `File type not allowed: ${mimeType}` }, { status: 400 })
 
       if (!isAllowedFileSize(file.size)) return NextResponse.json({ error: `File too large. Max size: ${MAX_FILE_SIZE / 1024 / 1024}MB` }, { status: 400 })
@@ -86,7 +95,8 @@ export async function POST(
       let height: number | null = null
 
       try {
-        if (isR2Configured()) {
+        const canUseS3 = await isTenantStorageConfigured(tenantSlug)
+        if (canUseS3) {
           const result = await uploadToR2(tenantSlug, buffer, file.name, mimeType)
           url = result.url
           storageKey = result.storageKey
@@ -127,7 +137,11 @@ export async function POST(
       uploadedMedia.push(media)
     }
 
-    return NextResponse.json({ media: uploadedMedia })
+    return NextResponse.json({
+      media: uploadedMedia,
+      url: uploadedMedia[0]?.url,
+      file: uploadedMedia[0],
+    })
   } catch (error) {
     console.error("Error uploading media:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

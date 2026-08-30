@@ -77,6 +77,7 @@ describe("Scheduled Publishing Cron API", () => {
       {
         id: "entry-scheduled-1",
         tenantId: "tenant-1",
+        contentTypeId: "ct-articles",
         data: { title: "Scheduled Post" },
         status: "SCHEDULED",
         scheduledAt: new Date(Date.now() - 60000), // Scheduled in the past
@@ -91,6 +92,7 @@ describe("Scheduled Publishing Cron API", () => {
     ;(db.tenant.findMany as any).mockResolvedValue([{ id: "tenant-1", slug: "tenant-1", databaseUrl: "" }])
     
     // Mock contentType
+    ;(db.contentType.findFirst as any).mockResolvedValue({ slug: "articles" })
     ;(db.contentType.findUnique as any).mockResolvedValue({ slug: "articles" })
 
     // Mock updating entries

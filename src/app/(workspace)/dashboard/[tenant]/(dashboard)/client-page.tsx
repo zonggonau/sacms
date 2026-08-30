@@ -83,11 +83,12 @@ interface AssignedSingleType {
 }
 
 interface TenantDashboardClientProps {
-  tenantId: string
+  tenantId?: string
   contentTypes: AssignedContentType[]
   singleTypes?: AssignedSingleType[]
   stats: TenantStats
   usage: any[]
+  activities?: any[]
   session?: any
 }
 
@@ -204,7 +205,7 @@ export default function TenantDashboardClient({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-            <Link href={`/dashboard/${tenantId}/content-type-builder/overview`}>
+            <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               AI Website Studio
             </Link>
@@ -244,7 +245,7 @@ export default function TenantDashboardClient({
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-              <Link href={`/dashboard/${tenantId}/content-type-builder/overview`}>
+              <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                 Buka AI Studio
               </Link>

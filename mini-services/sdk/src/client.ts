@@ -248,10 +248,50 @@ export class QueryBuilder<T> {
   }
 
   /**
+   * Select specific fields to return. E.g. .select(['title', 'slug', 'cover'])
+   */
+  select(fields: string[]) {
+    this.params.fields = fields
+    return this
+  }
+
+  /**
    * Select specific relations to populate. E.g. .populate(['author'])
    */
   populate(fields: string[]) {
     this.params.populate = fields
+    return this
+  }
+
+  /**
+   * Sort results. E.g. .sort('createdAt:desc') or .sort('title:asc')
+   */
+  sort(sortOrder: string) {
+    this.params.sort = sortOrder
+    return this
+  }
+
+  /**
+   * Full-text search across content entries. E.g. .search('nextjs tutorial')
+   */
+  search(query: string) {
+    this.params.search = query
+    return this
+  }
+
+  /**
+   * Target a specific locale. E.g. .locale('id') or .locale('en')
+   */
+  locale(loc: string) {
+    this.params.locale = loc
+    return this
+  }
+
+  /**
+   * Filter by status. E.g. .status('PUBLISHED') or .status('DRAFT')
+   */
+  status(st: string) {
+    this.params.status = st
     return this
   }
 

@@ -42,17 +42,17 @@ function ResetPasswordForm() {
     e.preventDefault()
     
     if (!token) {
-      toast({ title: "Error", description: "Missing reset token", variant: "destructive" })
+      toast({ title: "Perhatian", description: "Token reset kata sandi tidak ditemukan", variant: "destructive" })
       return
     }
 
     if (formData.password !== formData.confirmPassword) {
-      toast({ title: "Error", description: "Passwords do not match", variant: "destructive" })
+      toast({ title: "Perhatian", description: "Konfirmasi kata sandi tidak cocok", variant: "destructive" })
       return
     }
 
     if (strength < 3) {
-      toast({ title: "Error", description: "Password is too weak. Must be 'Kuat' or 'Sangat Kuat'.", variant: "destructive" })
+      toast({ title: "Perhatian", description: "Kata sandi terlalu lemah. Minimal harus 'Kuat'.", variant: "destructive" })
       return
     }
 
@@ -70,13 +70,13 @@ function ResetPasswordForm() {
 
       setIsSuccess(true)
       toast({
-        title: "Success",
-        description: response.message,
+        title: "Berhasil",
+        description: response.message || "Kata sandi Anda berhasil diperbarui.",
       })
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
+        title: "Terjadi Kesalahan",
+        description: error.message || "Terjadi kesalahan saat mengatur ulang kata sandi",
         variant: "destructive",
       })
     } finally {
@@ -87,16 +87,16 @@ function ResetPasswordForm() {
   if (isSuccess) {
     return (
       <div className="text-center space-y-4">
-        <div className="mx-auto w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mb-4">
-          <CheckCircle2 className="w-6 h-6 text-green-600" />
+        <div className="mx-auto w-12 h-12 bg-emerald-500/10 rounded-2xl flex items-center justify-center mb-4 text-emerald-500">
+          <CheckCircle2 className="w-6 h-6" />
         </div>
-        <h3 className="text-lg font-medium">Password Reset Successfully</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          Your password has been changed. You can now log in with your new password.
+        <h3 className="text-base font-bold">Kata Sandi Berhasil Diperbarui</h3>
+        <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+          Kata sandi Anda telah berhasil diubah. Silakan masuk menggunakan kata sandi baru Anda.
         </p>
         <Link href="/login">
-          <Button className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-none transition-none">
-            Go to Login
+          <Button className="w-full h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs">
+            Masuk ke Akun
           </Button>
         </Link>
       </div>
@@ -106,13 +106,13 @@ function ResetPasswordForm() {
   if (!token) {
     return (
       <div className="text-center space-y-4">
-        <h3 className="text-lg font-medium text-destructive">Invalid Link</h3>
-        <p className="text-sm text-muted-foreground mb-6">
-          The password reset link is missing or invalid. Please request a new one.
+        <h3 className="text-base font-bold text-destructive">Tautan Tidak Valid</h3>
+        <p className="text-xs text-muted-foreground mb-6">
+          Tautan reset kata sandi tidak valid atau telah kadaluarsa. Silakan ajukan tautan baru.
         </p>
         <Link href="/forgot-password">
-          <Button variant="outline" className="w-full h-10 rounded-none transition-none">
-            Request New Link
+          <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold">
+            Minta Tautan Baru
           </Button>
         </Link>
       </div>
@@ -121,8 +121,8 @@ function ResetPasswordForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="password" className="text-sm font-medium">New Password</Label>
+      <div className="space-y-1.5">
+        <Label htmlFor="password" className="text-xs font-semibold">Kata Sandi Baru</Label>
         <div className="relative">
           <Input
             id="password"
@@ -131,14 +131,14 @@ function ResetPasswordForm() {
             value={formData.password}
             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
             required
-            className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10"
+            className="h-9 text-xs border-border/80 rounded-xl pr-10"
           />
           <button
             type="button"
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground focus:outline-none"
           >
-            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+            {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
           </button>
         </div>
         {formData.password && (
@@ -154,11 +154,11 @@ function ResetPasswordForm() {
               </p>
             </div>
           )}
-        <p className="text-[10px] text-muted-foreground mt-1">Min. 8 characters, 1 number, 1 symbol.</p>
+        <p className="text-[10px] text-muted-foreground mt-1">Min. 8 karakter, kombinasi huruf & angka.</p>
       </div>
 
-      <div className="space-y-2">
-        <Label htmlFor="confirmPassword" className="text-sm font-medium">Confirm Password</Label>
+      <div className="space-y-1.5">
+        <Label htmlFor="confirmPassword" className="text-xs font-semibold">Konfirmasi Kata Sandi Baru</Label>
         <div className="relative">
           <Input
             id="confirmPassword"
@@ -167,7 +167,7 @@ function ResetPasswordForm() {
             value={formData.confirmPassword}
             onChange={(e) => setFormData({ ...formData, confirmPassword: e.target.value })}
             required
-            className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none pr-10"
+            className="h-9 text-xs border-border/80 rounded-xl pr-10"
           />
         </div>
       </div>
@@ -175,9 +175,9 @@ function ResetPasswordForm() {
       <Button
         type="submit"
         disabled={loading}
-        className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-none transition-none mt-4"
+        className="w-full h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs mt-4"
       >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Reset Password"}
+        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Atur Ulang Kata Sandi"}
       </Button>
     </form>
   )
@@ -186,14 +186,14 @@ function ResetPasswordForm() {
 export default function ResetPasswordPage() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4">
-      <div className="w-full max-w-md bg-card border border-border p-8">
+      <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl p-8 shadow-xs">
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-6">
             <Logo iconSize="md" showText={true} useOrange={true} />
           </Link>
-          <h1 className="text-2xl font-semibold mb-1">Set New Password</h1>
-          <p className="text-sm text-muted-foreground">
-            Create a strong password for your account
+          <h1 className="text-2xl font-bold mb-1">Buat Kata Sandi Baru</h1>
+          <p className="text-xs text-muted-foreground text-center">
+            Buat kata sandi yang aman untuk akun Anda
           </p>
         </div>
 

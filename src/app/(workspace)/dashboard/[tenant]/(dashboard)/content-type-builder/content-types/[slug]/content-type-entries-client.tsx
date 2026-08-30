@@ -7,7 +7,7 @@ import {
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
   Clock, CheckCircle2, Archive, XCircle,
   ImageIcon, Calendar, Loader2, Send, Search, X, Download,
-  AlertCircle
+  AlertCircle, Sparkles, Settings
 } from "lucide-react"
 import { useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
@@ -35,6 +35,8 @@ interface Field {
   slug: string
   type: string
   required: boolean
+  relationSlug?: string | null
+  options?: any
 }
 
 interface ContentType {
@@ -66,18 +68,21 @@ export default function ContentTypeEntriesClient({
   tenantSlug,
   contentTypeSlug,
   initialContentType,
-  initialEntries
+  initialEntries,
+  initialRelationLabels = {},
 }: {
   tenantSlug: string
   contentTypeSlug: string
   initialContentType: ContentType | null
   initialEntries: Entry[]
+  initialRelationLabels?: Record<string, { label: string; subtitle?: string }>
 }) {
   const { data: session } = useSession()
   const router = useRouter()
   
   const [contentType, setContentType] = useState<ContentType | null>(initialContentType)
   const [entries, setEntries] = useState<Entry[]>(initialEntries || [])
+  const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, { label: string; subtitle?: string }>>(initialRelationLabels)
   const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState("")
   const [debouncedSearch, setDebouncedSearch] = useState("")
@@ -107,7 +112,7 @@ export default function ContentTypeEntriesClient({
         setEntries(entriesRes.entries as unknown as Entry[])
       }
     } catch (err) {
-      toast({ title: "Error", description: "Gagal memuat data", variant: "destructive" })
+      toast({ title: "Terjadi Kesalahan", description: "Gagal memuat data", variant: "destructive" })
     } finally {
       setLoading(false)
     }
@@ -127,7 +132,7 @@ export default function ContentTypeEntriesClient({
         toast({ title: "Gagal", description: (res as any)?.error || "Gagal mengubah status", variant: "destructive" })
       }
     } catch (err) {
-      toast({ title: "Error", description: "Terjadi kesalahan sistem", variant: "destructive" })
+      toast({ title: "Terjadi Kesalahan", description: "Terjadi kesalahan sistem", variant: "destructive" })
     }
   }
 
@@ -142,7 +147,7 @@ export default function ContentTypeEntriesClient({
         toast({ title: "Gagal Menghapus", description: res.error, variant: "destructive" })
       }
     } catch (err) {
-      toast({ title: "Error", description: "Gagal menghapus entri", variant: "destructive" })
+      toast({ title: "Terjadi Kesalahan", description: "Gagal menghapus entri", variant: "destructive" })
     }
   }
 
@@ -169,8 +174,8 @@ export default function ContentTypeEntriesClient({
                 <p className="text-xs text-muted-foreground mt-0.5">Kelola data entri untuk koleksi ini.</p>
               </div>
             </div>
-            <div className="flex items-center gap-2.5">
-              <div className="relative w-full sm:w-60">
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="relative w-full sm:w-48">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
                   placeholder="Cari entri..."
@@ -187,6 +192,27 @@ export default function ContentTypeEntriesClient({
                   </button>
                 )}
               </div>
+
+              <Button 
+                variant="outline"
+                className="h-9 px-3 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted shadow-xs flex items-center gap-1.5" 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/cms/content/${contentTypeSlug}`)}
+                title="Buka tampilan Studio CMS lengkap (mendukung Kanban & alur kerja)"
+              >
+                <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                <span className="hidden sm:inline">Buka di CMS Studio</span>
+              </Button>
+
+              <Button 
+                variant="outline"
+                className="h-9 px-3 text-xs font-bold rounded-xl border-border/80 text-muted-foreground hover:text-foreground shadow-xs flex items-center gap-1.5" 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${contentTypeSlug}`)}
+                title="Edit skema dan struktur kolom model ini"
+              >
+                <Settings className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Edit Skema</span>
+              </Button>
+
               <Button 
                 className="bg-primary hover:bg-primary/90 text-primary-foreground h-9 px-4 rounded-xl font-bold text-xs shadow-xs" 
                 onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/${contentTypeSlug}/new`)}
@@ -218,7 +244,7 @@ export default function ContentTypeEntriesClient({
                 <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead className="w-[70px] pl-6 font-bold text-xs">Preview</TableHead>
-                    {contentType?.fields.filter(f => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3).map(field => (
+                    {contentType?.fields.filter(f => !['component', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3).map(field => (
                       <TableHead key={field.id} className="font-bold text-xs">{field.name}</TableHead>
                     ))}
                     <TableHead className="font-bold text-xs">Status</TableHead>
@@ -238,7 +264,7 @@ export default function ContentTypeEntriesClient({
                       const data = entry.data || {}
                       const statusCfg = STATUS_CONFIG[entry.status] || STATUS_CONFIG.DRAFT
                       
-                      const displayFields = contentType?.fields.filter(f => !['component', 'relation', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3) || []
+                      const displayFields = contentType?.fields.filter(f => !['component', 'richText', 'textarea', 'json'].includes(f.type)).slice(0, 3) || []
                       const mediaField = contentType?.fields.find(f => f.type === 'media' || f.type === 'mediaMultiple')
                       const coverUrl = mediaField ? (Array.isArray(data[mediaField.slug]) ? data[mediaField.slug][0] : data[mediaField.slug]) : null
                       
@@ -256,6 +282,9 @@ export default function ContentTypeEntriesClient({
                           
                           {displayFields.map((field, idx) => {
                             const val = data[field.slug]
+                            const fieldType = (field.type || "").toLowerCase()
+                            const isRelation = fieldType === "relation" || !!field.relationSlug || (typeof val === 'string' && !!relationLabelsMap[val])
+
                             return (
                               <TableCell key={field.id} className="py-3">
                                 {idx === 0 ? (
@@ -265,6 +294,26 @@ export default function ContentTypeEntriesClient({
                                     </span>
                                     <span className="text-[10px] text-muted-foreground font-mono">ID: {entry.id.substring(0,8)}</span>
                                   </div>
+                                ) : isRelation ? (
+                                  (() => {
+                                    const ids = Array.isArray(val) ? val : (val ? [val] : [])
+                                    if (ids.length === 0) return <span className="text-xs text-muted-foreground">—</span>
+                                    return (
+                                      <div className="flex flex-wrap gap-1.5 max-w-[220px]">
+                                        {ids.map((id: string, i: number) => {
+                                          const item = relationLabelsMap[id]
+                                          const label = item?.label || (id.length > 12 ? id.substring(0, 8) : id)
+                                          const sub = item?.subtitle
+                                          return (
+                                            <Badge key={i} variant="secondary" className="text-xs font-bold py-0.5 px-2 bg-muted/60 border border-border/80 text-foreground inline-flex items-center gap-1 rounded-md">
+                                              <span>{label}</span>
+                                              {sub && <span className="text-[10px] text-muted-foreground font-normal ml-0.5">• {sub}</span>}
+                                            </Badge>
+                                          )
+                                        })}
+                                      </div>
+                                    )
+                                  })()
                                 ) : (
                                   <span className="text-xs text-muted-foreground">{typeof val === 'object' ? JSON.stringify(val) : String(val || "—")}</span>
                                 )}

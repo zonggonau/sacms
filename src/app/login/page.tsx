@@ -1,15 +1,14 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Eye, EyeOff } from "lucide-react"
+import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
-import { useSearchParams } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
 
 export default function LoginPage() {
@@ -19,16 +18,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const { data: session, status } = useSession()
+  
+  const initialEmail = searchParams.get("email") || ""
+  const redirectTo = searchParams.get("redirect_to") || ""
+
   const [formData, setFormData] = useState({
-    email: "",
+    email: initialEmail,
     password: "",
   })
+
+  // Update email if query param changes
+  useEffect(() => {
+    const emailParam = searchParams.get("email")
+    if (emailParam) {
+      setFormData((prev) => ({ ...prev, email: emailParam }))
+    }
+  }, [searchParams])
 
   // Redirect if already logged in
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const user = session.user as any
-      const redirectTo = searchParams.get("redirect_to") || ""
       if (redirectTo) {
         router.push(redirectTo)
       } else {
@@ -45,7 +55,7 @@ export default function LoginPage() {
         }
       }
     }
-  }, [status, session, router, searchParams])
+  }, [status, session, router, redirectTo])
 
   // Check if this is the first user (no users in system)
   useEffect(() => {
@@ -54,35 +64,34 @@ export default function LoginPage() {
         const res = await fetch("/api/auth/check-first-user")
         const data = await res.json()
         if (data.isFirstUser) {
-          router.push("/register")
+          router.push(redirectTo ? `/register?redirect_to=${encodeURIComponent(redirectTo)}` : "/register")
         }
       } catch (err) {
         console.error("Error checking first user:", err)
       }
     }
     checkFirstUser()
-  }, [router])
+  }, [router, redirectTo])
 
   // Handle redirects from email verification
   useEffect(() => {
     if (searchParams.get("verified") === "true") {
       toast({
-        title: "Email Verified",
-        description: "Your email has been successfully verified. You can now log in.",
+        title: "Email Terverifikasi",
+        description: "Email Anda telah berhasil diverifikasi. Silakan masuk.",
       })
-      // Clear URL params
-      router.replace("/login")
+      router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")
     }
     
     const errorParam = searchParams.get("error")
     if (errorParam === "MissingToken" || errorParam === "InvalidToken") {
-      toast({ variant: "destructive", title: "Verification Failed", description: "The verification link is invalid or missing." })
-      router.replace("/login")
+      toast({ variant: "destructive", title: "Verifikasi Gagal", description: "Tautan verifikasi tidak valid atau tidak ditemukan." })
+      router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")
     } else if (errorParam === "TokenExpired") {
-      toast({ variant: "destructive", title: "Link Expired", description: "The verification link has expired. Please register again or request a new link." })
-      router.replace("/login")
+      toast({ variant: "destructive", title: "Tautan Kadaluarsa", description: "Tautan verifikasi telah kadaluarsa. Silakan daftar kembali atau minta tautan baru." })
+      router.replace(redirectTo ? `/login?redirect_to=${encodeURIComponent(redirectTo)}` : "/login")
     }
-  }, [searchParams, router, toast])
+  }, [searchParams, router, toast, redirectTo])
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -96,10 +105,10 @@ export default function LoginPage() {
       })
 
       if (result?.error) {
-        // NextAuth returns "CredentialsSignin" when authorization fails with `return null`
-        const errorMessage = result.error === "CredentialsSignin" 
-          ? "Email atau password tidak valid" 
-          : result.error;
+        let errorMessage = result.error
+        if (result.error === "CredentialsSignin") {
+          errorMessage = "Email atau kata sandi tidak valid. Silakan periksa kembali."
+        }
           
         toast({
           title: "Akses Ditolak",
@@ -111,14 +120,13 @@ export default function LoginPage() {
 
       toast({
         title: "Selamat Datang",
-        description: "Berhasil masuk ke sistem.",
+        description: "Berhasil masuk ke akun Anda.",
       })
 
       const sessionRes = await fetch("/api/auth/session")
       const sessionData = await sessionRes.json()
       const user = sessionData?.user
 
-      const redirectTo = searchParams.get("redirect_to") || ""
       let destination = "/dashboard"
 
       if (redirectTo) {
@@ -141,13 +149,15 @@ export default function LoginPage() {
     } catch (error: any) {
       toast({
         title: "Terjadi Kesalahan",
-        description: error.message || "Kesalahan sistem tidak terduga.",
+        description: error.message || "Terjadi kesalahan sistem yang tidak terduga.",
         variant: "destructive",
       })
     } finally {
       setLoading(false)
     }
   }
+
+  const registerHref = redirectTo ? `/register?redirect_to=${encodeURIComponent(redirectTo)}` : "/register"
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 relative overflow-hidden">
@@ -159,19 +169,19 @@ export default function LoginPage() {
 
       <div className="w-full max-w-md relative z-10">
         <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-primary/5">
-          <div className="flex flex-col items-center mb-10">
-            <Link href="/" className="inline-block mb-8">
+          <div className="flex flex-col items-center mb-8">
+            <Link href="/" className="inline-block mb-6">
               <Logo iconSize="lg" showText={true} useOrange={true} />
             </Link>
-            <h1 className="text-3xl font-black tracking-tight mb-2">Selamat Datang</h1>
-            <p className="text-sm font-medium text-muted-foreground text-center">
-              Masuk ke akun Anda untuk melanjutkan
+            <h1 className="text-2xl sm:text-3xl font-black tracking-tight mb-1.5">Selamat Datang</h1>
+            <p className="text-xs sm:text-sm font-medium text-muted-foreground text-center">
+              Masuk ke akun Anda untuk melanjutkan ke dashboard
             </p>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-bold text-foreground/80">Email</Label>
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-bold text-foreground/80">Alamat Email</Label>
               <Input
                 id="email"
                 type="email"
@@ -179,15 +189,15 @@ export default function LoginPage() {
                 value={formData.email}
                 onChange={(e) => setFormData({ ...formData, email: e.target.value })}
                 required
-                className="h-12 bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl px-4 transition-all"
+                className="h-11 bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl px-4 text-xs transition-all"
               />
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password" className="text-sm font-bold text-foreground/80">Password</Label>
+                <Label htmlFor="password" className="text-xs font-bold text-foreground/80">Kata Sandi</Label>
                 <Link href="/forgot-password" className="text-xs font-bold text-primary hover:text-primary/80 transition-colors">
-                  Lupa password?
+                  Lupa kata sandi?
                 </Link>
               </div>
               <div className="relative">
@@ -198,12 +208,13 @@ export default function LoginPage() {
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                   required
-                  className="h-12 bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl px-4 pr-12 transition-all"
+                  className="h-11 bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl px-4 pr-11 text-xs transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary focus:outline-none transition-colors"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-primary focus:outline-none transition-colors"
+                  aria-label={showPassword ? "Sembunyikan kata sandi" : "Tampilkan kata sandi"}
                 >
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
@@ -213,15 +224,16 @@ export default function LoginPage() {
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 mt-6"
+              className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-full font-bold shadow-lg shadow-primary/20 hover:shadow-primary/40 transition-all hover:-translate-y-0.5 mt-5 text-xs cursor-pointer"
             >
-              {loading ? <Loader2 className="w-5 h-5 animate-spin" /> : "Masuk ke Sistem"}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Masuk ke Akun
             </Button>
           </form>
 
-          <div className="mt-8 text-center text-sm font-medium text-muted-foreground">
+          <div className="mt-8 text-center text-xs font-medium text-muted-foreground">
             Belum punya akun?{" "}
-            <Link href="/register" className="text-primary font-bold hover:underline">
+            <Link href={registerHref} className="text-primary font-bold hover:underline">
               Daftar sekarang
             </Link>
           </div>

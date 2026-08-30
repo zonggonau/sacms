@@ -54,13 +54,41 @@ export async function getLandingData() {
       free: 1, 
       starter: 2, 
       pro: 3, 
+      business: 4,
       enterprise: 4, 
-      "vps-s": 5, 
-      "vps-m": 6, 
-      "vps-l": 7, 
-      "vds-s": 8, 
-      "vds-m": 9, 
-      "vds-l": 10
+      // Cloud VPS Standard (SSD)
+      "vps-4": 10,
+      "vps-6": 11,
+      "vps-8": 12,
+      "vps-12": 13,
+      "vps-16": 14,
+      "vps-18": 15,
+      // Cloud VPS Plus (NVMe)
+      "vps-plus-4": 20, 
+      "vps-s": 20, 
+      "vps-plus-6": 21, 
+      "enterprise-vps": 21, 
+      "vps-m": 21, 
+      "vps-plus-8": 22, 
+      "vps-l": 22, 
+      "vps-plus-12": 23,
+      "vps-xl": 23,
+      "vps-plus-16": 24,
+      "vps-plus-18": 25,
+      "vps-xxl": 25,
+      // VPS Storage
+      "vps-storage-10": 30,
+      "vps-storage-20": 31,
+      "vps-storage-30": 32,
+      "vps-storage-40": 33,
+      "vps-storage-50": 34,
+      // Cloud VDS Dedicated CPU
+      "vds-s": 40, 
+      "vds-m": 41, 
+      "enterprise-vds": 41, 
+      "vds-l": 42, 
+      "vds-xl": 43,
+      "vds-xxl": 44,
     }
     const pricingWorkspaces = (collectionsData?.["sacms-workspace-pricing"] || []).sort((a: any, b: any) => {
       const slugA = (a.plan_slug || a.id || "").toLowerCase()

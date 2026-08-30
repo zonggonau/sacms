@@ -97,7 +97,7 @@ export function ContentHistorySidebar({
         toast({ variant: "destructive", title: "Gagal Memulihkan Versi" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat memulihkan versi." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat memulihkan versi." })
     } finally {
       setRestoring(null)
     }

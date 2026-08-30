@@ -59,6 +59,11 @@ export async function GET() {
           where: { status: { in: ["active", "trialing"] } },
           orderBy: { currentPeriodEnd: "desc" },
           take: 1
+        },
+        infrastructureServers: {
+          where: { status: { in: ["active", "provisioning", "configuring", "suspended", "error"] } },
+          select: { id: true, status: true },
+          take: 1
         }
       },
       orderBy: { createdAt: "desc" }
@@ -73,12 +78,20 @@ export async function GET() {
         daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
       }
 
+      const isVpsPlan = Boolean(
+        t.plan?.toLowerCase().includes("vps") ||
+        t.plan?.toLowerCase().includes("dedicated") ||
+        t.plan?.toLowerCase().includes("enterprise")
+      )
+      const hasDedicatedInfra = Boolean(t.databaseUrl || (t.infrastructureServers && t.infrastructureServers.length > 0) || isVpsPlan)
+
       return {
         id: t.id,
         name: t.name,
         slug: t.slug,
         status: t.status,
         plan: t.plan,
+        hasDedicatedInfra,
         createdAt: t.createdAt,
         role: t.members[0]?.role || (isSuperAdmin ? 'owner' : 'member'),
         daysRemaining,

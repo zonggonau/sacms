@@ -49,7 +49,7 @@ export async function GET(request: NextRequest, context: Context) {
         createdAt: { gte: thirtyDaysAgo },
       },
       select: { createdAt: true },
-    })
+    }).catch(() => [])
 
     // Group API calls by Date (YYYY-MM-DD)
     const apiCallsByDate: Record<string, number> = {}
@@ -76,23 +76,23 @@ export async function GET(request: NextRequest, context: Context) {
       calls: apiCallsByDate[date]
     }))
 
-    // 3. Calculate Storage
+    // 3. Calculate Storage (Safe fallback if media table not yet created on isolated/custom DB)
     const storageResult = await tenantDb.media.aggregate({
       where: { tenantId },
       _sum: { size: true },
-    })
+    }).catch(() => ({ _sum: { size: 0 } }))
     
     // Storage in MB
-    const totalStorageMB = Math.ceil((storageResult._sum.size || 0) / (1024 * 1024))
+    const totalStorageMB = Math.ceil(((storageResult as any)?._sum?.size || 0) / (1024 * 1024))
 
-    // 4. Calculate Content Types & Entries
+    // 4. Calculate Content Types & Entries (Safe fallback)
     const totalContentTypes = await tenantDb.contentType.count({
       where: { tenantId },
-    })
+    }).catch(() => 0)
 
     const totalContentEntries = await tenantDb.contentEntry.count({
       where: { tenantId },
-    })
+    }).catch(() => 0)
 
     return NextResponse.json({
       plan: effectivePlanConfig,

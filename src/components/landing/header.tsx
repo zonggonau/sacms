@@ -8,7 +8,6 @@ import { motion, AnimatePresence } from "framer-motion"
 import { Logo } from "@/components/ui/logo"
 import { useSession } from "next-auth/react"
 import { useLanguage } from "@/lib/i18n/context"
-import { LanguageSwitcher, MobileLanguageSwitcher } from "@/components/ui/language-switcher"
 
 export function LandingHeader({ brandName }: { brandName?: string }) {
   const { data: session, status } = useSession()
@@ -66,11 +65,6 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
         </nav>
 
         <div className="flex items-center gap-2.5 sm:gap-3">
-          {/* Language Switcher (Desktop) */}
-          <div className="hidden sm:block">
-            <LanguageSwitcher />
-          </div>
-
           <div className="hidden sm:flex items-center gap-2.5">
             {status === "authenticated" && session?.user ? (
               <>
@@ -121,12 +115,6 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
             className="md:hidden border-t border-border/50 bg-background/95 backdrop-blur-2xl overflow-hidden shadow-2xl"
           >
             <nav className="container px-6 py-5 flex flex-col gap-2">
-              {/* Mobile Language Switcher */}
-              <div className="pb-3 border-b border-border/50 mb-1">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground mb-2">Pilih Bahasa / Language</p>
-                <MobileLanguageSwitcher />
-              </div>
-
               {navItems.map((item) => (
                 <Link 
                   key={item.label} 

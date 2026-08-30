@@ -16,12 +16,12 @@ export const DICTIONARY = {
     },
     // Hero Section
     hero: {
-      badge: "SaaS Headless CMS Multi-Tenant #1 Indonesia",
-      title: "Solusi Konten Digital Modern untuk Agensi, UMKM & Pemerintahan",
-      subtitle: "Platform CMS multi-tenant tercepat berbasis Next.js 16. Dilengkapi AI-powered content builder, billing Midtrans otomatis, dan Dedicated Cloud VPS/VDS terisolasi.",
+      badge: "🚀 Next.js 16 Multi-Tenant Headless Engine",
+      title: "Hentikan Kerumitan Mengelola Puluhan CMS & Server Terpisah",
+      subtitle: "Platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
       ctaPrimary: "Coba Gratis Sekarang",
-      ctaSecondary: "Pelajari Fitur",
-      trustedBy: "Dipercaya oleh berbagai agensi, media berita, dan instansi di seluruh Indonesia",
+      ctaSecondary: "Dokumentasi API",
+      trustedBy: "Dipercaya oleh berbagai agensi, software house, media berita, dan instansi di seluruh Indonesia",
     },
     // Features Bento
     features: {
@@ -29,29 +29,29 @@ export const DICTIONARY = {
       title: "Dibangun untuk Skalabilitas, Kecepatan & Keamanan Maksimal",
       subtitle: "Arsitektur headless API-first yang memberi Anda kebebasan penuh untuk mendistribusikan konten ke berbagai platform.",
       items: {
-        apiFirst: {
-          title: "API-First & GraphQL Dinamis",
-          desc: "Akses konten via REST API dan GraphQL otomatis dengan response time super cepat di bawah 50ms.",
-        },
         multiTenancy: {
-          title: "Multi-Tenancy Asli",
-          desc: "Kelola ratusan workspace, situs klien, dan subdomain dalam satu panel kontrol terpusat.",
+          title: "Hybrid Multi-Tenancy & Dedicated Appliance",
+          desc: "Mulai dari shared multi-tenant hemat biaya hingga PostgreSQL 17 + MinIO Appliance terisolasi penuh untuk privasi data absolut.",
         },
-        visualEditor: {
-          title: "Visual Schema & Content Builder",
-          desc: "Rancang tipe data, relasi skema, dan draft konten dengan antarmuka visual intuitif tanpa perlu menulis kode.",
+        aiBuilder: {
+          title: "1-Prompt AI Fullstack Website Engine",
+          desc: "Bangun landing page & website instan berbasis Next.js dengan AI prompt, preview interaktif, export kode, dan 1-click edge deploy.",
         },
-        dedicatedInfra: {
-          title: "Infrastruktur Dedicated Terisolasi",
-          desc: "Otomatisasi Dedicated PostgreSQL 17 + MinIO S3 Object Storage + Caddy Auto-SSL pada Cloud VPS/VDS.",
+        apiFirst: {
+          title: "Dynamic GraphQL, REST API & MCP",
+          desc: "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol (MCP).",
         },
-        mediaStorage: {
-          title: "Penyimpanan Media S3 & Cloudflare R2",
-          desc: "Optimasi gambar otomatis WebP/AVIF dengan CDN global super cepat dan biaya penyimpanan sangat efisien.",
+        customDns: {
+          title: "Vercel-Style Custom DNS & Registrar",
+          desc: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
         },
         billing: {
           title: "Billing Otomatis QRIS & Midtrans",
-          desc: "Dukungan pembayaran lokal lengkap: QRIS, GoPay, OVO, ShopeePay, Virtual Account, dan Kartu Kredit.",
+          desc: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.",
+        },
+        workflow: {
+          title: "Enterprise RBAC & 7-Stage Workflow",
+          desc: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.",
         },
       },
     },
@@ -59,23 +59,23 @@ export const DICTIONARY = {
     sectors: {
       badge: "Solusi Sektoral",
       title: "Disesuaikan untuk Berbagai Kebutuhan Industri",
-      subtitle: "Dari website personal, toko online, portal media berita bertrafik jutaan, hingga portal digital pemerintah.",
+      subtitle: "Dari solo developer, agensi digital, toko online modern, hingga portal digital pemerintah dan enterprise.",
       items: {
-        umkm: {
-          title: "UMKM & Bisnis Lokal",
-          desc: "Katalog produk online, landing page promosi, dan profil bisnis yang cepat dan hemat biaya.",
-        },
-        media: {
-          title: "Portal Berita & Media",
-          desc: "Manajemen artikel multi-penulis, optimasi SEO instan, dan performa tinggi untuk jutaan pembaca.",
-        },
-        ecommerce: {
-          title: "E-Commerce & Startup",
-          desc: "Manajemen inventaris dinamis, API transaksi, dan integrasi headless storefront modern.",
+        agency: {
+          title: "Digital Agency & Software House",
+          desc: "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah.",
         },
         gov: {
           title: "Pemerintah & BUMN",
-          desc: "Keamanan data level tinggi, isolasi CPU fisik dedicated 100%, dan audit log lengkap.",
+          desc: "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem.",
+        },
+        ecommerce: {
+          title: "E-Commerce & Startup",
+          desc: "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern.",
+        },
+        solo: {
+          title: "Solo Builders & Developers",
+          desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant.",
         },
       },
     },
@@ -86,13 +86,15 @@ export const DICTIONARY = {
       subtitle: "Mulai dari Cloud Ekonomis untuk UMKM hingga Dedicated Server (VPS & VDS) terisolasi penuh untuk perusahaan dan instansi pemerintah.",
       tabs: {
         all: "Semua",
-        cloud: "Cloud Ekonomis",
-        businessVps: "Business VPS",
-        govVds: "Gov & Enterprise VDS",
+        cloud: "Cloud SaaS",
+        vps: "Cloud VPS",
+        storage: "VPS Storage",
+        vds: "Cloud VDS",
       },
       badges: {
         popular: "Paling Populer",
         dedicatedVps: "Dedicated VPS",
+        dedicatedStorage: "Dedicated MinIO Storage",
         dedicatedVds: "100% Dedicated CPU",
       },
       period: {
@@ -174,7 +176,7 @@ export const DICTIONARY = {
         },
         {
           q: "Bagaimana cara kerja Dedicated VPS/VDS?",
-          a: "Saat Anda berlangganan paket Business VPS atau Gov VDS, sistem kami secara otomatis mem-provisioning server cloud di Contabo dengan database PostgreSQL 17 dan MinIO S3 terisolasi penuh khusus untuk workspace Anda.",
+          a: "Saat Anda berlangganan paket Cloud VPS atau Gov VDS, sistem kami secara otomatis mem-provisioning server cloud terisolasi dengan database PostgreSQL 17, Object Storage S3, dan hosting frontend khusus untuk workspace Anda.",
         },
         {
           q: "Metode pembayaran apa saja yang didukung?",
@@ -213,222 +215,11 @@ export const DICTIONARY = {
         terms: "Syarat & Ketentuan",
         security: "Keamanan",
       },
-      rights: "Hak Cipta Dilindungi.",
     },
   },
-  en: {
-    // Header & Navigation
-    nav: {
-      home: "Home",
-      features: "Features",
-      pricing: "Pricing",
-      about: "About",
-      docs: "Documentation",
-      blog: "Blog",
-      login: "Sign In",
-      getStarted: "Get Started Free",
-      dashboard: "Go to Dashboard",
-    },
-    // Hero Section
-    hero: {
-      badge: "#1 Enterprise Multi-Tenant Headless CMS",
-      title: "Modern Digital Content Infrastructure for Agencies, SMBs & Government",
-      subtitle: "The fastest multi-tenant CMS built on Next.js 16. Featuring AI-powered content generation, native automated billing, and isolated Dedicated Cloud VPS & VDS.",
-      ctaPrimary: "Try for Free Today",
-      ctaSecondary: "Explore Features",
-      trustedBy: "Trusted by forward-thinking digital agencies, media publishers, and enterprises nationwide",
-    },
-    // Features Bento
-    features: {
-      badge: "Platform Highlights",
-      title: "Engineered for Extreme Scalability, Speed & Security",
-      subtitle: "An API-first headless architecture giving you total freedom to deliver rich content across any digital channel.",
-      items: {
-        apiFirst: {
-          title: "API-First & Dynamic GraphQL",
-          desc: "Query your content seamlessly via REST and dynamic GraphQL with ultra-fast sub-50ms response times.",
-        },
-        multiTenancy: {
-          title: "Native Multi-Tenancy",
-          desc: "Manage hundreds of client workspaces, custom domains, and isolated environments from a single unified hub.",
-        },
-        visualEditor: {
-          title: "Visual Schema & Content Studio",
-          desc: "Design custom data schemas, relational models, and interactive content with a zero-code visual interface.",
-        },
-        dedicatedInfra: {
-          title: "Dedicated Isolated Infrastructure",
-          desc: "Automated zero-touch provisioning: Dedicated PostgreSQL 17 + MinIO S3 Storage + Auto Let's Encrypt SSL.",
-        },
-        mediaStorage: {
-          title: "S3 & Cloudflare R2 Media Storage",
-          desc: "Automated WebP/AVIF media optimization backed by a high-speed global CDN with predictable low costs.",
-        },
-        billing: {
-          title: "Automated Gateway & Invoicing",
-          desc: "Seamless support for instant local payments: QRIS, E-Wallets, Virtual Accounts, and Global Credit Cards.",
-        },
-      },
-    },
-    // Sectors
-    sectors: {
-      badge: "Sector Solutions",
-      title: "Tailored for Diverse Industry Demands",
-      subtitle: "From personal portfolio sites and online stores to high-traffic news portals and mission-critical government platforms.",
-      items: {
-        umkm: {
-          title: "SMBs & Local Businesses",
-          desc: "Cost-effective product catalogs, promotional landing pages, and fast digital business profiles.",
-        },
-        media: {
-          title: "News & Media Publishing",
-          desc: "Multi-author publishing workflows, instant SEO optimization, and rock-solid uptime for millions of readers.",
-        },
-        ecommerce: {
-          title: "E-Commerce & Startups",
-          desc: "Dynamic inventory management, secure transaction APIs, and headless storefront integrations.",
-        },
-        gov: {
-          title: "Government & Enterprise",
-          desc: "High-grade compliance, 100% dedicated physical CPU locking, and exhaustive audit trail logging.",
-        },
-      },
-    },
-    // Pricing
-    pricing: {
-      badge: "Workspace Pricing",
-      title: "Transparent & Flexible Plans for Every Scale",
-      subtitle: "From affordable multi-tenant cloud tiers for SMBs to fully isolated Dedicated Servers (VPS & VDS) for enterprises and public agencies.",
-      tabs: {
-        all: "All Plans",
-        cloud: "Economic Cloud",
-        businessVps: "Business VPS",
-        govVds: "Gov & Enterprise VDS",
-      },
-      badges: {
-        popular: "Most Popular",
-        dedicatedVps: "Dedicated VPS",
-        dedicatedVds: "100% Dedicated CPU",
-      },
-      period: {
-        yearly: "/year",
-        monthly: "/month",
-        freeForever: "Free",
-        monthlyEquivalent: "Equivalent to",
-        yearlyBilling: "(Billed Annually)",
-      },
-      cta: {
-        free: "Start for Free",
-        paid: "Subscribe Now",
-        current: "Active Plan",
-      },
-    },
-    // Workflow
-    workflow: {
-      badge: "How It Works",
-      title: "Supercharged 4-Step Publishing Workflow",
-      subtitle: "Build, curate, and ship digital experiences from concept to live production in minutes.",
-      steps: [
-        {
-          step: 1,
-          title: "Create Workspace & Schemas",
-          desc: "Define your bespoke content models and relational fields using the visual schema studio.",
-        },
-        {
-          step: 2,
-          title: "Craft Content with Team & AI",
-          desc: "Write engaging articles, manage products, and collaborate in real-time with integrated AI writing assistants.",
-        },
-        {
-          step: 3,
-          title: "Publish Across Multi-Channel APIs",
-          desc: "Stream content to Next.js apps, iOS/Android mobile clients, or IoT devices in real-time.",
-        },
-        {
-          step: 4,
-          title: "Monitor Traffic & Audit Logs",
-          desc: "Track API latency, team member activities, and quota consumption from a single dashboard.",
-        },
-      ],
-    },
-    // Addons
-    addons: {
-      badge: "Add-ons & Boosters",
-      title: "Scale Resources on Demand",
-      subtitle: "One-time top-ups for extra AI tokens, S3 storage, and burst API request limits without changing your subscription tier.",
-      cta: "Top Up Now",
-    },
-    // Testimonials
-    testimonials: {
-      badge: "Testimonials",
-      title: "Loved by Developers & Business Leaders",
-      subtitle: "Real stories from engineering teams who accelerated their delivery pipelines with SaCMS.",
-    },
-    // About
-    about: {
-      badge: "About SaCMS",
-      title: "Empowering Digital Transformation at National Scale",
-      desc1: "SaCMS was built to democratize enterprise-grade content management for everyone, from growing local businesses to large public institutions.",
-      desc2: "Built on a resilient headless architecture, we guarantee your data remains secure, isolated, and accessible with optimal throughput.",
-    },
-    // Team
-    team: {
-      badge: "Core Engineering Team",
-      title: "Crafted with Passion for Digital Excellence",
-      subtitle: "Software engineers and cloud architects dedicated to building resilient, modern digital infrastructure.",
-    },
-    // FAQ
-    faq: {
-      badge: "Frequently Asked Questions",
-      title: "Everything You Need to Know",
-      subtitle: "Answers to common questions regarding architecture, security, and flexible payment gateways.",
-      items: [
-        {
-          q: "What is a Headless CMS?",
-          a: "A Headless CMS is an API-first content management system that decouples the backend database from the presentation layer. This lets you display content on Next.js websites, mobile apps, smartwatches, or any frontend framework.",
-        },
-        {
-          q: "How does Dedicated VPS/VDS provisioning work?",
-          a: "When you subscribe to a Business VPS or Gov VDS plan, our automated system provisions a dedicated cloud server with PostgreSQL 17 and MinIO S3 object storage fully isolated for your workspace.",
-        },
-        {
-          q: "Which payment methods are supported?",
-          a: "We support automated Indonesian and international payment methods via Midtrans: QRIS, GoPay, OVO, ShopeePay, Virtual Accounts (BCA, Mandiri, BNI, BRI), and Visa/Mastercard Credit Cards.",
-        },
-        {
-          q: "Can I connect my own custom database (BYODB)?",
-          a: "Yes! You can connect your external PostgreSQL database URL (e.g. Supabase, Neon, AWS RDS, GCP Cloud SQL) directly in your Workspace Settings.",
-        },
-      ],
-    },
-    // CTA Banner
-    cta: {
-      title: "Ready to Accelerate Your Digital Platform?",
-      description: "Join thousands of builders leveraging world-class multi-tenant headless CMS technology.",
-      buttonPrimary: "Get Started Free",
-      buttonSecondary: "Contact Sales",
-    },
-    // Footer
-    footer: {
-      brandDesc: "Leading Enterprise Multi-Tenant Headless CMS platform for seamless digital transformation.",
-      sections: {
-        product: "Product",
-        resources: "Resources",
-        company: "Company",
-        legal: "Legal",
-      },
-      links: {
-        features: "Core Features",
-        pricing: "Pricing Plans",
-        docs: "API Documentation",
-        status: "System Status",
-        blog: "Blog & Insights",
-        about: "About Us",
-        privacy: "Privacy Policy",
-        terms: "Terms of Service",
-        security: "Security Overview",
-      },
-      rights: "All Rights Reserved.",
-    },
-  },
+  en: {} as any,
 }
+
+// Fallback EN to ID for safety
+DICTIONARY.en = DICTIONARY.id
+

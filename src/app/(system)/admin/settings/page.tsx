@@ -24,6 +24,7 @@ import {
   Globe, AlertTriangle, Trash2, Cpu, Sliders, Lock
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { v4 as uuidv4 } from "uuid"
 import { cn } from "@/lib/utils"
 
@@ -35,6 +36,7 @@ export default function AdminSettingsPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [purgingCache, setPurgingCache] = useState(false)
+  const [testAiLoading, setTestAiLoading] = useState(false)
   const [copied, setCopied] = useState(false)
 
   // Comprehensive Settings State with robust defaults
@@ -137,18 +139,45 @@ export default function AdminSettingsPage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal membersihkan cache." })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan saat membersihkan cache." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat membersihkan cache." })
     } finally {
       setPurgingCache(false)
+    }
+  }
+
+  const handleTestAi = async () => {
+    if (!settings.platformAiApiKey) {
+      toast({ variant: "destructive", title: "API Key Kosong", description: "Masukkan API Key terlebih dahulu." })
+      return
+    }
+    setTestAiLoading(true)
+    try {
+      const res = await fetch("/api/admin/settings/test-ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          provider: settings.platformAiProvider,
+          apiKey: settings.platformAiApiKey,
+          model: settings.defaultAiModel
+        })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({ title: "Koneksi Berhasil", description: data.message })
+      } else {
+        toast({ variant: "destructive", title: "Koneksi Gagal", description: data.message || "Gagal menghubungi server AI" })
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: e.message || "Kesalahan jaringan" })
+    } finally {
+      setTestAiLoading(false)
     }
   }
 
   if (status === "loading" || loading) {
     return (
       <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+        <AdminPageSkeleton layout="form" cardsCount={0} />
       </div>
     )
   }
@@ -201,19 +230,31 @@ export default function AdminSettingsPage() {
           {/* Navigation Tabs */}
           <Tabs defaultValue="workspaces" className="space-y-6">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 md:grid-cols-4 h-auto gap-1">
-              <TabsTrigger value="workspaces" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger 
+                value="workspaces" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <Database className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
                 Workspace & Registrasi
               </TabsTrigger>
-              <TabsTrigger value="security" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger 
+                value="security" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <Shield className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
                 Keamanan & Gateway
               </TabsTrigger>
-              <TabsTrigger value="media_ai" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger 
+                value="media_ai" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <Sparkles className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
                 Media & Mesin AI
               </TabsTrigger>
-              <TabsTrigger value="runtime" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger 
+                value="runtime" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
                 <Server className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
                 Runtime & Operasi
               </TabsTrigger>
@@ -616,7 +657,20 @@ export default function AdminSettingsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Platform API Key (Fallback)</Label>
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Platform API Key (Fallback)</Label>
+                        <Button 
+                          type="button" 
+                          variant="ghost" 
+                          size="sm" 
+                          disabled={testAiLoading || !settings.platformAiApiKey}
+                          onClick={handleTestAi}
+                          className="h-6 text-[10px] font-bold text-primary hover:text-primary/80 px-2 rounded-md"
+                        >
+                          {testAiLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
+                          {testAiLoading ? "Menguji..." : "Uji Koneksi AI"}
+                        </Button>
+                      </div>
                       <Input 
                         type="password"
                         value={settings.platformAiApiKey}

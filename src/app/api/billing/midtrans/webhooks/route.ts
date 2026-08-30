@@ -58,34 +58,43 @@ export async function POST(request: NextRequest) {
     })
 
     if (paymentSuccess) {
-      await db.subscription.update({
-        where: { id: transaction.subscriptionId! },
-        data: {
-          status: "active",
-          currentPeriodStart: new Date(),
-        },
-      })
+      if (transaction.subscriptionId) {
+        await db.subscription.update({
+          where: { id: transaction.subscriptionId },
+          data: {
+            status: "active",
+            currentPeriodStart: new Date(),
+          },
+        })
 
-      await db.invoice.create({
-        data: {
-          subscriptionId: transaction.subscriptionId!,
-          amount: transaction.amount,
-          currency: "IDR",
-          status: "paid",
-          paidAt: new Date(),
-          midtransInvoiceId: transaction.orderId
-        },
-      })
+        await db.invoice.create({
+          data: {
+            subscriptionId: transaction.subscriptionId,
+            amount: transaction.amount,
+            currency: "IDR",
+            status: "paid",
+            paidAt: new Date(),
+            midtransInvoiceId: transaction.orderId
+          },
+        })
+      }
 
       // Only update main plan if it's a regular subscription (orderId starts with SUB)
       // If it starts with ADD, it's an addon purchase
       // If it starts with ACC, it's an account upgrade
-      if (orderId.startsWith("SUB")) {
-        const tenantId = transaction.subscription!.tenantId!
-        const planName = transaction.subscription!.plan
+      // If it starts with DOM, it's a custom domain purchase via Vercel Registrar
+      if (orderId.startsWith("SUB") && transaction.subscription) {
+        const tenantId = transaction.subscription.tenantId!
+        const planName = transaction.subscription.plan
+        const hostingExpiry = transaction.subscription.currentPeriodEnd || new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+
         await db.tenant.update({
           where: { id: tenantId },
-          data: { plan: planName },
+          data: {
+            plan: planName,
+            hostingStatus: "active",
+            hostingExpiresAt: hostingExpiry,
+          } as any,
         })
 
         // Auto-provision dedicated VPS/VDS if plan is Enterprise, VPS, or VDS
@@ -106,10 +115,10 @@ export async function POST(request: NextRequest) {
             console.error(`[Webhook] Failed auto-provisioning VPS/VDS for tenant ${tenantId}:`, err)
           })
         }
-      } else if (orderId.startsWith("ACC")) {
+      } else if (orderId.startsWith("ACC") && transaction.subscription) {
         await db.user.update({
-          where: { id: transaction.subscription!.userId },
-          data: { plan: transaction.subscription!.plan },
+          where: { id: transaction.subscription.userId },
+          data: { plan: transaction.subscription.plan },
         })
       } else if (orderId.startsWith("AIC")) {
         const raw = (transaction.rawResponse as any) || {}
@@ -165,8 +174,85 @@ export async function POST(request: NextRequest) {
               where: { id: tenantId },
               data: { apiCallsExtra: { increment: 500000 } } as any
             })
+          } else if (addonId === "hosting_annual_1yr" || addonId === "hosting_bundle_domain_1yr") {
+            const oneYearFromNow = new Date(Date.now() + 365 * 24 * 60 * 60 * 1000)
+            await db.tenant.update({
+              where: { id: tenantId },
+              data: {
+                hostingStatus: "active",
+                hostingExpiresAt: oneYearFromNow,
+              } as any
+            })
+            await Promise.all([
+              db.setting.upsert({
+                where: { key: `${tenantId}_hostingStatus` },
+                update: { value: "active" },
+                create: { tenantId, key: `${tenantId}_hostingStatus`, value: "active" }
+              }),
+              db.setting.upsert({
+                where: { key: `${tenantId}_hostingExpiresAt` },
+                update: { value: oneYearFromNow.toISOString() },
+                create: { tenantId, key: `${tenantId}_hostingExpiresAt`, value: oneYearFromNow.toISOString() }
+              })
+            ])
           }
           console.log(`✅ Addon top-up applied successfully for tenant ${tenantId}: ${addonId} (${transaction.orderId})`)
+        }
+      } else if (orderId.startsWith("DOM")) {
+        const raw = (transaction.rawResponse as any) || {}
+        const tenantId = raw.tenantId || transaction.subscription?.tenantId
+        const domainName = raw.domainName
+        const expectedPriceUsd = raw.expectedPriceUsd || 14
+        const contactInformation = raw.contactInformation
+
+        if (tenantId && domainName) {
+          const { purchaseDomain } = await import("@/lib/vercel-registrar")
+          const purchaseRes = await purchaseDomain(domainName, {
+            expectedPrice: expectedPriceUsd,
+            years: raw.periodYears || 1,
+            autoRenew: false,
+            contactInformation: contactInformation || {
+              firstName: "Tenant",
+              lastName: "Owner",
+              address1: "Jakarta",
+              city: "Jakarta",
+              state: "DKI Jakarta",
+              postalCode: "10000",
+              country: "ID",
+              phone: "+62.812000000",
+              email: "domain@sacms.local",
+            },
+          })
+
+          if (purchaseRes.success) {
+            const currentCount = await db.customDomain.count({ where: { tenantId } })
+            await db.customDomain.upsert({
+              where: { domain: domainName },
+              create: {
+                tenantId,
+                domain: domainName,
+                status: "verified",
+                verifiedAt: new Date(),
+                isPrimary: currentCount === 0,
+              },
+              update: {
+                status: "verified",
+                verifiedAt: new Date(),
+              },
+            })
+
+            const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { slug: true } })
+            if (tenant) {
+              const { getRedis } = await import("@/lib/redis")
+              const redis = getRedis()
+              if (redis) {
+                await redis.set(`domain:${domainName}`, tenant.slug)
+              }
+            }
+            console.log(`✅ Domain ${domainName} successfully registered on Vercel & linked to tenant ${tenantId}`)
+          } else {
+            console.error(`❌ Domain purchase on Vercel failed for ${domainName}:`, purchaseRes.error)
+          }
         }
       }
 

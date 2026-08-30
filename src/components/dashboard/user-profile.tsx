@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState, useTransition } from "react"
 import { useSession } from "next-auth/react"
@@ -35,8 +35,8 @@ export function UserProfile({ initialData }: UserProfileProps) {
     
     if (password && password !== confirmPassword) {
       toast({
-        title: "Error",
-        description: "Passwords do not match.",
+        title: "Perhatian",
+        description: "Konfirmasi kata sandi tidak cocok.",
         variant: "destructive"
       })
       return
@@ -54,20 +54,20 @@ export function UserProfile({ initialData }: UserProfileProps) {
           setPassword("")
           setConfirmPassword("")
           toast({
-            title: "Profile Updated",
-            description: "Your profile has been successfully updated.",
+            title: "Profil Diperbarui",
+            description: "Profil Anda telah berhasil diperbarui.",
           })
         } else {
           toast({
-            title: "Update Failed",
-            description: result.error || "Failed to update profile.",
+            title: "Gagal Memperbarui",
+            description: result.error || "Gagal memperbarui profil.",
             variant: "destructive"
           })
         }
       } catch (error) {
         toast({
-          title: "Update Failed",
-          description: "An unexpected error occurred.",
+          title: "Terjadi Kesalahan",
+          description: "Terjadi kesalahan yang tidak terduga.",
           variant: "destructive"
         })
       } finally {
@@ -76,25 +76,23 @@ export function UserProfile({ initialData }: UserProfileProps) {
     })
   }
 
-
-
   return (
     <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight text-foreground">My Profile</h1>
-        <p className="text-muted-foreground mt-2">Manage your personal information and security settings.</p>
+        <h1 className="text-3xl font-bold tracking-tight text-foreground">Profil Saya</h1>
+        <p className="text-muted-foreground mt-2 text-sm">Kelola informasi pribadi dan pengaturan keamanan akun Anda.</p>
       </div>
 
       <div className="grid gap-8 md:grid-cols-3">
         <div className="md:col-span-1">
-          <Card>
+          <Card className="rounded-2xl border-border/80">
             <CardContent className="pt-6">
               <div className="flex flex-col items-center text-center">
-                <div className="w-24 h-24 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white text-3xl font-bold shadow-lg mb-4">
+                <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-primary/80 to-primary flex items-center justify-center text-primary-foreground text-3xl font-bold shadow-md mb-4">
                   {name?.[0]?.toUpperCase() ?? "U"}
                 </div>
-                <h3 className="text-xl font-bold">{name}</h3>
-                <p className="text-sm text-muted-foreground">{email}</p>
+                <h3 className="text-lg font-bold">{name}</h3>
+                <p className="text-xs text-muted-foreground">{email}</p>
                 <div className="mt-4 inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-semibold capitalize">
                   <Shield className="h-3.5 w-3.5" />
                   {role}
@@ -106,75 +104,78 @@ export function UserProfile({ initialData }: UserProfileProps) {
 
         <div className="md:col-span-2">
           <form onSubmit={handleSave}>
-            <Card>
+            <Card className="rounded-2xl border-border/80">
               <CardHeader>
-                <CardTitle>Personal Information</CardTitle>
-                <CardDescription>Update your basic profile details.</CardDescription>
+                <CardTitle className="text-base font-bold">Informasi Pribadi</CardTitle>
+                <CardDescription className="text-xs">Perbarui rincian profil dasar akun Anda.</CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="name" className="flex items-center gap-2">
-                    <UserIcon className="h-4 w-4 text-muted-foreground" /> Full Name
+                <div className="space-y-1.5">
+                  <Label htmlFor="name" className="flex items-center gap-2 text-xs font-semibold">
+                    <UserIcon className="h-3.5 w-3.5 text-muted-foreground" /> Nama Lengkap
                   </Label>
                   <Input 
                     id="name" 
                     value={name} 
                     onChange={(e) => setName(e.target.value)} 
-                    placeholder="Enter your name" 
+                    placeholder="Masukkan nama lengkap" 
                     required 
+                    className="h-9 text-xs rounded-xl border-border/80"
                   />
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-muted-foreground" /> Email Address
+                <div className="space-y-1.5">
+                  <Label htmlFor="email" className="flex items-center gap-2 text-xs font-semibold">
+                    <Mail className="h-3.5 w-3.5 text-muted-foreground" /> Alamat Email
                   </Label>
                   <Input 
                     id="email" 
                     type="email" 
                     value={email} 
                     disabled 
-                    className="bg-muted/50 text-muted-foreground" 
+                    className="h-9 text-xs rounded-xl bg-muted/50 text-muted-foreground border-border/80" 
                   />
-                  <p className="text-xs text-muted-foreground">Email addresses cannot be changed currently.</p>
+                  <p className="text-[10px] text-muted-foreground">Alamat email saat ini tidak dapat diubah secara langsung.</p>
                 </div>
 
-                <div className="pt-4 mt-4 border-t">
-                  <h4 className="text-sm font-semibold flex items-center gap-2 mb-4">
-                    <Key className="h-4 w-4 text-muted-foreground" /> Change Password
+                <div className="pt-4 mt-4 border-t border-border/60">
+                  <h4 className="text-xs font-bold flex items-center gap-2 mb-4">
+                    <Key className="h-3.5 w-3.5 text-muted-foreground" /> Ubah Kata Sandi
                   </h4>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-2">
-                      <Label htmlFor="new-password">New Password</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="new-password" className="text-xs font-semibold">Kata Sandi Baru</Label>
                       <Input 
                         id="new-password" 
                         type="password" 
                         value={password} 
                         onChange={(e) => setPassword(e.target.value)} 
-                        placeholder="Leave blank to keep current" 
+                        placeholder="Kosongkan jika tidak diubah" 
+                        className="h-9 text-xs rounded-xl border-border/80"
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirm-password">Confirm Password</Label>
+                    <div className="space-y-1.5">
+                      <Label htmlFor="confirm-password" className="text-xs font-semibold">Konfirmasi Kata Sandi</Label>
                       <Input 
                         id="confirm-password" 
                         type="password" 
                         value={confirmPassword} 
                         onChange={(e) => setConfirmPassword(e.target.value)} 
-                        placeholder="Confirm new password" 
+                        placeholder="Konfirmasi kata sandi baru" 
+                        className="h-9 text-xs rounded-xl border-border/80"
                       />
                     </div>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="bg-muted/30 flex justify-end border-t p-4">
-                <Button type="submit" disabled={saving}>
+              <CardFooter className="bg-muted/20 flex justify-end border-t border-border/60 p-4">
+                <Button type="submit" disabled={saving} className="h-9 text-xs font-bold rounded-xl shadow-xs">
                   {saving ? (
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <Save className="mr-2 h-4 w-4" />
+                    <Save className="mr-2 h-3.5 w-3.5" />
                   )}
-                  Save Changes
+                  Simpan Perubahan
                 </Button>
               </CardFooter>
             </Card>

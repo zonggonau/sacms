@@ -136,3 +136,74 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
   return info
 }
+
+export async function sendSupportNotificationEmail({
+  to,
+  recipientName = "Pengguna SaCMS",
+  ticketId,
+  subject,
+  senderName,
+  senderRole,
+  messagePreview,
+  viewUrl,
+}: {
+  to: string
+  recipientName?: string
+  ticketId: string
+  subject: string
+  senderName: string
+  senderRole: "user" | "admin"
+  messagePreview: string
+  viewUrl: string
+}) {
+  const isFromAdmin = senderRole === "admin"
+  const emailSubject = isFromAdmin
+    ? `[Support SaCMS] Balasan Tiket #${ticketId.slice(-6)}: ${subject}`
+    : `[Tiket Baru #${ticketId.slice(-6)}] Pesan dari ${senderName}: ${subject}`
+
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
+        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span> Support</span>
+      </div>
+      <h3 style="color: #0f172a; margin-top: 0;">Halo ${recipientName},</h3>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">
+        ${isFromAdmin ? `Tim IT / Customer Support SaCMS telah membalas tiket pertanyaan Anda:` : `Ada pesan baru dari <strong>${senderName}</strong> untuk tiket support:`}
+      </p>
+      <div style="background-color: #f8fafc; border-left: 4px solid #f97316; padding: 16px; margin: 20px 0; border-radius: 6px;">
+        <div style="font-size: 11px; font-weight: bold; text-transform: uppercase; color: #64748b; margin-bottom: 6px;">
+          Tiket: ${subject} (#${ticketId.slice(-6)})
+        </div>
+        <p style="margin: 0; color: #1e293b; font-size: 14px; font-style: italic; white-space: pre-wrap;">"${messagePreview}"</p>
+      </div>
+      <div style="margin: 30px 0;">
+        <a href="${viewUrl}" style="background-color: #f97316; color: white; padding: 12px 24px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">
+          Buka Percakapan Tiket
+        </a>
+      </div>
+      <p style="color: #94a3b8; font-size: 12px; margin-top: 24px;">
+        Anda menerima email ini karena terdaftar pada tiket dukungan teknis SaCMS.
+      </p>
+    </div>
+  `
+
+  if (resend) {
+    return resend.emails.send({
+      from: process.env.RESEND_FROM || "SaCMS Support <support@sacms.local>",
+      to,
+      subject: emailSubject,
+      html,
+    })
+  }
+
+  const t = await getTransporter()
+  const info = await t.sendMail({
+    from: process.env.SMTP_FROM || '"SaCMS Support" <support@sacms.local>',
+    to,
+    subject: emailSubject,
+    html,
+  })
+
+  return info
+}
+

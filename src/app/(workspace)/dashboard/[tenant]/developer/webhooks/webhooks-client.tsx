@@ -34,6 +34,7 @@ import {
   History,
 } from "lucide-react"
 import { WebhookLogsDialog } from "@/components/cms/webhook-logs-dialog"
+import { WebhookTestDialog } from "@/components/developer/webhook-test-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { createWebhookAction, updateWebhookAction, deleteWebhookAction } from "@/actions/webhooks"
 
@@ -73,6 +74,10 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
     open: false,
     webhookId: "",
     webhookName: "",
+  })
+  const [testDialog, setTestDialog] = useState<{ open: boolean; webhook: WebhookType | null }>({
+    open: false,
+    webhook: null,
   })
 
   // Form state
@@ -119,7 +124,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
         enabled: !webhook.enabled,
       })
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({ title: "Berhasil", description: `Webhook ${!webhook.enabled ? "diaktifkan" : "dinonaktifkan"}` })
       }
@@ -158,7 +163,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
       }
 
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({ title: "Berhasil", description: `Webhook berhasil ${editingWebhook ? "diperbarui" : "dibuat"}` })
         setShowDialog(false)
@@ -173,7 +178,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
     startTransition(async () => {
       const res = await deleteWebhookAction(tenantSlug, webhookId)
       if (res.error) {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error })
       } else {
         toast({ title: "Berhasil", description: "Webhook berhasil dihapus" })
       }
@@ -291,6 +296,15 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                         </TableCell>
                         <TableCell className="text-right pr-6 py-3">
                           <div className="flex items-center justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-7 w-7 rounded-lg text-amber-600 hover:text-amber-700 hover:bg-amber-500/10"
+                              onClick={() => setTestDialog({ open: true, webhook })}
+                              title="Uji Coba Webhook (Test Dispatch)"
+                            >
+                              <Zap className="h-3.5 w-3.5" />
+                            </Button>
                             <Button
                               variant="ghost"
                               size="icon"
@@ -440,6 +454,13 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
         webhookName={logsDialog.webhookName}
         open={logsDialog.open}
         onOpenChange={(open) => setLogsDialog(prev => ({ ...prev, open }))}
+      />
+
+      <WebhookTestDialog
+        tenantSlug={tenantSlug}
+        webhook={testDialog.webhook}
+        open={testDialog.open}
+        onOpenChange={(open) => setTestDialog(prev => ({ ...prev, open }))}
       />
     </div>
   )

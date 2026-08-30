@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Loader2, Activity, RefreshCw, Zap, Clock,
   AlertTriangle, CheckCircle2, TrendingUp, TrendingDown,
@@ -99,10 +100,50 @@ export default function SystemMonitoringPage() {
     if (session?.user?.id) fetchStats()
   }, [tenantSlug, session?.user?.id])
 
-  if (status === "loading") {
+  if (status === "loading" || loading) {
     return (
-      <div className="flex items-center justify-center flex-1 flex-col w-full">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex bg-background flex-1 flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6 animate-in fade-in duration-300">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
+            <div className="space-y-1.5">
+              <Skeleton className="h-7 w-52 rounded-lg" />
+              <Skeleton className="h-3.5 w-80 rounded-md" />
+            </div>
+            <Skeleton className="h-9 w-28 rounded-xl" />
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <Card key={i} className="border border-border/80 shadow-xs bg-card rounded-2xl p-4 space-y-2">
+                <div className="flex justify-between">
+                  <Skeleton className="h-3 w-20 rounded-md" />
+                  <Skeleton className="h-4 w-4 rounded" />
+                </div>
+                <Skeleton className="h-7 w-16 rounded-lg" />
+                <Skeleton className="h-2.5 w-24 rounded-md" />
+              </Card>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-5 space-y-4">
+              <Skeleton className="h-5 w-36 rounded-md" />
+              <div className="space-y-3 pt-2">
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            </Card>
+            <Card className="border border-border/80 shadow-xs bg-card rounded-2xl p-5 space-y-4">
+              <Skeleton className="h-5 w-36 rounded-md" />
+              <div className="space-y-3 pt-2">
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+                <Skeleton className="h-10 w-full rounded-xl" />
+              </div>
+            </Card>
+          </div>
+        </div>
       </div>
     )
   }

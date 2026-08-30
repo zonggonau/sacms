@@ -159,7 +159,7 @@ export async function GET(
     const defaultLocale = (await db.tenantLocale.findFirst({
       where: { tenantId: auth.tenantId, isDefault: true },
       select: { locale: true },
-    }))?.locale || "en"
+    }))?.locale || "id"
     const locale = searchParams.get("locale") || defaultLocale
 
     // CACHE CHECK
@@ -321,7 +321,7 @@ export async function PUT(
     const defaultLocale = (await db.tenantLocale.findFirst({
       where: { tenantId: auth.tenantId, isDefault: true },
       select: { locale: true },
-    }))?.locale || "en"
+    }))?.locale || "id"
     const locale = searchParams.get("locale") || defaultLocale
 
     const { getTenantDb } = await import("@/lib/database")

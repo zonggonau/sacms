@@ -23,6 +23,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { useToast } from "@/hooks/use-toast"
 import {
   Dialog,
@@ -129,7 +130,7 @@ export default function AdminWebhooksPage() {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal memuat data webhook" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setLoading(false)
       setRefreshing(false)
@@ -160,7 +161,7 @@ export default function AdminWebhooksPage() {
         fetchData()
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setRetryingId(null)
     }
@@ -180,14 +181,14 @@ export default function AdminWebhooksPage() {
         fetchData()
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     }
   }
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex flex-1 min-h-[80vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <AdminPageSkeleton layout="table" cardsCount={4} />
       </div>
     )
   }
@@ -292,15 +293,24 @@ export default function AdminWebhooksPage() {
           <Tabs defaultValue="dlq" className="space-y-6">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl">
-                <TabsTrigger value="dlq" className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2">
-                  <AlertTriangle className="w-3.5 h-3.5 text-rose-500" />
+                <TabsTrigger 
+                  value="dlq" 
+                  className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5" />
                   Dead Letter Queue ({deadLetters.length})
                 </TabsTrigger>
-                <TabsTrigger value="logs" className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2">
+                <TabsTrigger 
+                  value="logs" 
+                  className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+                >
                   <Activity className="w-3.5 h-3.5" />
                   Log Pengiriman Terbaru ({logs.length})
                 </TabsTrigger>
-                <TabsTrigger value="webhooks" className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2">
+                <TabsTrigger 
+                  value="webhooks" 
+                  className="rounded-xl font-bold text-xs px-4 py-2 flex items-center gap-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+                >
                   <Webhook className="w-3.5 h-3.5" />
                   Daftar Webhook Tenant ({webhooks.length})
                 </TabsTrigger>

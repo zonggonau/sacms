@@ -7,13 +7,26 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
+import { Skeleton } from "@/components/ui/skeleton"
 import { 
   Loader2, CreditCard, ShieldCheck, CheckCircle2, 
-  ArrowLeft, Zap, Lock, AlertCircle, Info, Check, Shield
+  ArrowLeft, Zap, Lock, AlertCircle, Info, Check, Shield,
+  Server, Cpu, HardDrive, Database, Globe, RefreshCw
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
+
+const APPLIANCE_SPECS: Record<string, { cpu: string; ram: string; disk: string; bandwidth: string; isDedicatedCpu?: boolean }> = {
+  "enterprise-vps": { cpu: "6 vCPU", ram: "16 GB RAM", disk: "150 GB NVMe", bandwidth: "400 Mbps" },
+  "enterprise-vds": { cpu: "4 Dedicated Cores", ram: "32 GB RAM", disk: "240 GB NVMe", bandwidth: "500 Mbps", isDedicatedCpu: true },
+  "vps-s": { cpu: "4 vCPU", ram: "8 GB RAM", disk: "75 GB NVMe", bandwidth: "200 Mbps" },
+  "vps-m": { cpu: "6 vCPU", ram: "16 GB RAM", disk: "150 GB NVMe", bandwidth: "400 Mbps" },
+  "vps-l": { cpu: "8 vCPU", ram: "24 GB RAM", disk: "300 GB NVMe", bandwidth: "600 Mbps" },
+  "vds-s": { cpu: "3 Dedicated Cores", ram: "24 GB RAM", disk: "180 GB NVMe", bandwidth: "250 Mbps", isDedicatedCpu: true },
+  "vds-m": { cpu: "4 Dedicated Cores", ram: "32 GB RAM", disk: "240 GB NVMe", bandwidth: "500 Mbps", isDedicatedCpu: true },
+  "vds-l": { cpu: "6 Dedicated Cores", ram: "48 GB RAM", disk: "360 GB NVMe", bandwidth: "750 Mbps", isDedicatedCpu: true },
+}
 
 export default function CheckoutPage() {
   const { data: session, status } = useSession()
@@ -24,8 +37,9 @@ export default function CheckoutPage() {
   
   const tenantSlug = params?.tenant as string
   const planId = searchParams.get("plan")
-  const interval = (searchParams.get("interval") as 'month' | 'year') || 'year'
+  const initialInterval = (searchParams.get("interval") as 'month' | 'year') || 'year'
 
+  const [interval, setInterval] = useState<'month' | 'year'>(initialInterval)
   const [plan, setPlan] = useState<any>(null)
   const [proration, setProration] = useState<any>(null)
   const [loading, setLoading] = useState(false)
@@ -97,7 +111,32 @@ export default function CheckoutPage() {
         if (plansRes.ok) {
           const plansData = await plansRes.json()
           const selectedPlan = plansData.plans?.find((p: any) => p.id === planId || p.slug === planId)
-          setPlan(selectedPlan)
+          if (selectedPlan) {
+            setPlan(selectedPlan)
+          } else {
+            // Check if it's an appliance plan from dictionary
+            const spec = APPLIANCE_SPECS[planId]
+            if (spec) {
+              setPlan({
+                id: planId,
+                name: `SaCMS Dedicated ${spec.isDedicatedCpu ? 'VDS' : 'VPS'} (${planId.toUpperCase()})`,
+                description: `Dedicated Cloud Appliance (${spec.cpu}, ${spec.ram}, ${spec.disk})`,
+                type: "workspace",
+                price: spec.isDedicatedCpu ? 4500000 : 750000,
+                yearlyPrice: spec.isDedicatedCpu ? 45000000 : 7500000,
+                features: [
+                  `${spec.cpu} / ${spec.ram} / ${spec.disk}`,
+                  "Dedicated PostgreSQL 17 Appliance",
+                  "Dedicated MinIO S3 Object Storage",
+                  "Auto SSL & Reverse Proxy TLS 1.3",
+                  "Port Bandwidth " + spec.bandwidth,
+                  "Dukungan Prioritas 24/7 & SLA 99.9%"
+                ],
+                popular: true,
+                buttonText: "Pilih Paket"
+              })
+            }
+          }
         }
         
         if (prorateRes.ok) {
@@ -118,33 +157,55 @@ export default function CheckoutPage() {
     fetchData()
   }, [tenantSlug, planId])
 
-  // Load Midtrans Snap Script
-  useEffect(() => {
-    const snapScript = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || "https://app.sandbox.midtrans.com/snap/snap.js"
-    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || ""
-
-    const script = document.createElement("script")
-    script.src = snapScript
-    script.setAttribute("data-client-key", clientKey)
-    script.async = true
-    document.body.appendChild(script)
-
-    return () => {
-      if (document.body.contains(script)) {
-        document.body.removeChild(script)
+  // Reliable Midtrans Snap Loader
+  const ensureSnapLoaded = (): Promise<any> => {
+    return new Promise((resolve) => {
+      if (typeof window === "undefined") return resolve(null)
+      if ((window as any).snap && typeof (window as any).snap.pay === "function") {
+        return resolve((window as any).snap)
       }
-    }
+
+      const snapScript = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || "https://app.sandbox.midtrans.com/snap/snap.js"
+      const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "SB-Mid-client-iJwnVpDaskjQe2Z2"
+
+      let script = document.getElementById("midtrans-snap-script") as HTMLScriptElement
+      if (!script) {
+        script = document.createElement("script")
+        script.id = "midtrans-snap-script"
+        script.src = snapScript
+        script.setAttribute("data-client-key", clientKey)
+        script.async = true
+        document.head.appendChild(script)
+      }
+
+      script.onload = () => {
+        resolve((window as any).snap)
+      }
+      script.onerror = () => {
+        console.warn("Midtrans Snap script failed to load via CDN.")
+        resolve(null)
+      }
+
+      setTimeout(() => {
+        resolve((window as any).snap)
+      }, 2500)
+    })
+  }
+
+  // Pre-load Midtrans Snap Script on mount
+  useEffect(() => {
+    ensureSnapLoaded()
   }, [])
 
   const handleCheckout = async () => {
     const isAccount = tenantSlug === "account"
     const isSystemTenant = tenantSlug === globalTenantId
     if (!currentTenant && !isAccount && !isSystemTenant) {
-      toast({ variant: "destructive", title: "Error", description: "Informasi workspace tidak ditemukan." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Informasi workspace tidak ditemukan." })
       return
     }
     if (!plan) {
-      toast({ variant: "destructive", title: "Error", description: "Paket langganan tidak ditemukan." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Paket langganan tidak ditemukan." })
       return
     }
     
@@ -163,32 +224,56 @@ export default function CheckoutPage() {
 
       const data = await res.json()
 
-      if (res.ok && data.token) {
+      if (!res.ok) {
+        throw new Error(data.error || "Inisialisasi checkout gagal.")
+      }
+
+      if (data.token) {
         setSnapToken(data.token)
+        const snap = await ensureSnapLoaded()
         
-        if (typeof window !== 'undefined' && (window as any).snap) {
-          (window as any).snap.pay(data.token, {
-            onSuccess: (result: any) => {
-              toast({ title: "Pembayaran Berhasil!", description: "Paket workspace Anda telah diperbarui." })
-              router.push(`/dashboard/${tenantSlug}/subscriptions`)
-            },
-            onPending: (result: any) => {
-              toast({ title: "Menunggu Pembayaran", description: "Silakan selesaikan pembayaran Anda." })
-              router.push(`/dashboard/${tenantSlug}/subscriptions`)
-            },
-            onError: (error: any) => {
-              toast({ variant: "destructive", title: "Pembayaran Gagal", description: "Silakan coba lagi." })
-            },
-            onClose: () => {
+        if (snap && typeof snap.pay === "function") {
+          try {
+            snap.pay(data.token, {
+              onSuccess: (result: any) => {
+                setLoading(false)
+                toast({ title: "Pembayaran Berhasil!", description: "Paket workspace Anda telah diperbarui." })
+                router.push(`/dashboard/${tenantSlug}/subscriptions`)
+              },
+              onPending: (result: any) => {
+                setLoading(false)
+                toast({ title: "Menunggu Pembayaran", description: "Silakan selesaikan pembayaran Anda." })
+                router.push(`/dashboard/${tenantSlug}/subscriptions`)
+              },
+              onError: (error: any) => {
+                setLoading(false)
+                toast({ variant: "destructive", title: "Pembayaran Gagal", description: "Silakan coba lagi." })
+              },
+              onClose: () => {
+                setLoading(false)
+              }
+            })
+
+            // Automatically reset button loading state once popup is active
+            setTimeout(() => {
               setLoading(false)
+            }, 2000)
+          } catch (snapErr) {
+            console.warn("snap.pay error, redirecting to hosted payment page:", snapErr)
+            if (data.redirect_url) {
+              window.location.href = data.redirect_url
+            } else {
+              throw snapErr
             }
-          })
+          }
+        } else if (data.redirect_url) {
+          toast({ title: "Membuka Halaman Pembayaran...", description: "Mengalihkan Anda ke gerbang Midtrans resmi." })
+          window.location.href = data.redirect_url
         } else {
-          toast({ variant: "destructive", title: "Sistem Pembayaran Belum Siap", description: "Silakan muat ulang halaman." })
-          setLoading(false)
+          throw new Error("Sistem Pembayaran Belum Siap. Silakan muat ulang halaman.")
         }
       } else {
-        throw new Error(data.error || "Inisialisasi checkout gagal.")
+        throw new Error(data.error || "Token checkout tidak valid.")
       }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal Checkout", description: err.message })
@@ -204,10 +289,67 @@ export default function CheckoutPage() {
     }).format(amount)
   }
 
-  if (initializing || !plan || loadingTenants) {
+  // ─── SHIMMER FEED LOADING STATE ───
+  if (initializing || loadingTenants) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto space-y-6 animate-pulse">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-9 w-9 rounded-xl" />
+              <div className="space-y-1.5">
+                <Skeleton className="h-7 w-48 rounded-lg" />
+                <Skeleton className="h-3.5 w-72 rounded-md" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="lg:col-span-2 space-y-4">
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card p-6 space-y-4">
+                  <Skeleton className="h-6 w-40 rounded-md" />
+                  <Skeleton className="h-20 w-full rounded-xl" />
+                  <Skeleton className="h-28 w-full rounded-xl" />
+                </Card>
+              </div>
+              <div className="space-y-4">
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card p-6 space-y-4">
+                  <Skeleton className="h-5 w-32 rounded-md" />
+                  <Skeleton className="h-10 w-full rounded-xl" />
+                  <Skeleton className="h-12 w-full rounded-xl" />
+                </Card>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // ─── PLAN NOT FOUND ERROR STATE ───
+  if (!plan) {
+    return (
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-lg mx-auto space-y-6 pt-16 text-center">
+            <div className="w-14 h-14 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 flex items-center justify-center mx-auto">
+              <AlertCircle className="h-7 w-7" />
+            </div>
+            <div className="space-y-2">
+              <h2 className="text-xl font-black tracking-tight text-foreground">Paket Tidak Ditemukan</h2>
+              <p className="text-xs text-muted-foreground leading-relaxed">
+                Paket langganan <strong className="font-mono text-foreground">"{planId}"</strong> tidak ditemukan atau telah diperbarui. Silakan pilih paket yang tersedia dari katalog langganan.
+              </p>
+            </div>
+            <div className="flex justify-center gap-3 pt-2">
+              <Button 
+                variant="outline" 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                className="rounded-xl text-xs font-bold h-10 px-5 border-border/80"
+              >
+                <ArrowLeft className="mr-2 h-4 w-4" /> Kembali ke Katalog Paket
+              </Button>
+            </div>
+          </div>
+        </div>
       </div>
     )
   }
@@ -217,6 +359,7 @@ export default function CheckoutPage() {
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)
   const total = subtotal + tax
+  const applianceSpec = APPLIANCE_SPECS[plan.id] || null
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -224,18 +367,47 @@ export default function CheckoutPage() {
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-5xl mx-auto space-y-6">
           
           {/* Header */}
-          <div className="flex items-center gap-3">
-            <Button 
-              variant="outline" 
-              size="icon" 
-              onClick={() => router.back()} 
-              className="rounded-xl h-9 w-9 border-border/80"
-            >
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-            <div>
-              <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Langganan</h1>
-              <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran dengan aman.</p>
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <Button 
+                variant="outline" 
+                size="icon" 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)} 
+                className="rounded-xl h-9 w-9 border-border/80"
+              >
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div>
+                <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Langganan</h1>
+                <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran dengan aman.</p>
+              </div>
+            </div>
+
+            {/* Interval Toggle Switcher */}
+            <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60">
+              <button
+                onClick={() => setInterval('month')}
+                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  interval === 'month'
+                    ? "bg-background text-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                Bulanan
+              </button>
+              <button
+                onClick={() => setInterval('year')}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                  interval === 'year'
+                    ? "bg-primary text-primary-foreground shadow-xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <span>Tahunan</span>
+                <span className="text-[9px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-extrabold uppercase">
+                  Hemat 17%
+                </span>
+              </button>
             </div>
           </div>
 
@@ -281,21 +453,58 @@ export default function CheckoutPage() {
                   <div className="flex items-center justify-between p-4 rounded-xl bg-muted/20 border border-border/60">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                        <Zap className="h-5 w-5" />
+                        {applianceSpec ? <Server className="h-5 w-5" /> : <Zap className="h-5 w-5" />}
                       </div>
                       <div>
                         <p className="font-bold text-base text-foreground">{plan.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{interval === 'year' ? 'Periode Tagihan Tahunan' : 'Periode Tagihan Bulanan'}</p>
+                        <p className="text-[11px] text-muted-foreground">{interval === 'year' ? 'Periode Tagihan Tahunan (12 Bulan)' : 'Periode Tagihan Bulanan'}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-black text-foreground">{formatPrice(basePrice)}</p>
+                      {interval === 'year' && (
+                        <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Termasuk 2 Bulan Gratis</p>
+                      )}
                     </div>
                   </div>
 
+                  {/* Appliance Dedicated Specs Highlight */}
+                  {applianceSpec && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 p-3.5 rounded-xl bg-muted/30 border border-border/60">
+                      <div className="flex items-center gap-2">
+                        <Cpu className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Prosesor</p>
+                          <p className="text-xs font-bold text-foreground">{applianceSpec.cpu}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Database className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">RAM Memori</p>
+                          <p className="text-xs font-bold text-foreground">{applianceSpec.ram}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <HardDrive className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Penyimpanan</p>
+                          <p className="text-xs font-bold text-foreground">{applianceSpec.disk}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
+                        <div>
+                          <p className="text-[9px] uppercase font-bold text-muted-foreground">Bandwidth</p>
+                          <p className="text-xs font-bold text-foreground">{applianceSpec.bandwidth}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="space-y-2.5 text-xs">
                     <div className="flex justify-between font-medium text-muted-foreground">
-                      <span>Harga Paket</span>
+                      <span>Harga Paket ({interval === 'year' ? '12 Bulan' : '1 Bulan'})</span>
                       <span className="text-foreground font-bold">{formatPrice(basePrice)}</span>
                     </div>
                     

@@ -107,7 +107,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
     } catch {
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Gagal Menyalin",
         description: `Gagal menyalin ${label.toLowerCase()}`,
       })
     }
@@ -145,7 +145,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
       console.error("Failed to save API settings:", error)
       toast({
         variant: "destructive",
-        title: "Error",
+        title: "Terjadi Kesalahan",
         description: "Gagal menghubungi server",
       })
     } finally {
@@ -176,7 +176,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
       if (res.error) {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: "Terjadi Kesalahan",
           description: res.error,
         })
       } else {
@@ -204,7 +204,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
       if (res.error) {
         toast({
           variant: "destructive",
-          title: "Error",
+          title: "Terjadi Kesalahan",
           description: res.error,
         })
       } else {
@@ -382,11 +382,11 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
           {/* Main Layout Tabs */}
           <Tabs defaultValue="keys" className="space-y-6">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
-              <TabsTrigger value="keys" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="keys" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Key className="h-3.5 w-3.5 mr-1.5" />
                 Daftar API Keys ({tokensList.length})
               </TabsTrigger>
-              <TabsTrigger value="config" className="rounded-xl font-bold text-xs py-2">
+              <TabsTrigger value="config" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Sliders className="h-3.5 w-3.5 mr-1.5" />
                 Konfigurasi REST & CORS
               </TabsTrigger>
@@ -405,30 +405,15 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
                       Gunakan kunci di bawah ini pada header HTTP <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code> untuk memanggil REST dan GraphQL API.
                     </CardDescription>
                   </div>
-                  <Button
-                    size="sm"
-                    onClick={() => setShowCreateDialog(true)}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs shrink-0"
-                  >
-                    <Plus className="w-3.5 h-3.5 mr-1" />
-                    Buat API Key
-                  </Button>
                 </CardHeader>
                 <CardContent className="p-0">
                   {tokensList.length === 0 ? (
                     <div className="text-center py-16 text-muted-foreground">
                       <Key className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                       <p className="font-bold text-xs text-foreground">Belum ada API Key</p>
-                      <p className="text-[11px] text-muted-foreground mt-0.5 mb-4">
-                        Buat API key pertama Anda untuk menghubungkan Headless CMS dengan Next.js, Nuxt, Astro, atau aplikasi mobile Anda.
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        Gunakan tombol <strong>Buat API Key Baru</strong> di pojok kanan atas untuk generate token integrasi.
                       </p>
-                      <Button
-                        size="sm"
-                        onClick={() => setShowCreateDialog(true)}
-                        className="bg-primary text-primary-foreground font-bold text-xs rounded-xl h-8 shadow-xs"
-                      >
-                        <Plus className="w-3.5 h-3.5 mr-1" /> Buat API Key Baru
-                      </Button>
                     </div>
                   ) : (
                     <Table>

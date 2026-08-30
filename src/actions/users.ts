@@ -7,16 +7,18 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
 
+const roleEnum = z.enum(["owner", "admin", "editor", "author", "contributor", "viewer", "subscriber"])
+
 const createMemberSchema = z.object({
   email: z.string().email(),
-  role: z.string().default("viewer"),
+  role: roleEnum.default("viewer"),
   name: z.string().optional(),
   password: z.string().min(8).optional(),
   customPermissions: z.array(z.string()).optional(),
 })
 
 const updateMemberSchema = z.object({
-  role: z.string().optional(),
+  role: roleEnum.optional(),
   password: z.string().min(8).optional(),
   customPermissions: z.array(z.string()).optional(),
 })
@@ -56,7 +58,7 @@ export async function createMemberAction(tenantSlug: string, data: z.infer<typeo
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return { error: "Forbidden" }
 
-    if (access.role !== "admin" && access.role !== "owner") {
+    if (access.role !== "admin" && access.role !== "owner" && session.user.role !== "super_admin") {
       return { error: "Only admins and owners can add members" }
     }
 

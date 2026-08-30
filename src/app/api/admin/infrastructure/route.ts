@@ -14,15 +14,25 @@ export async function GET(req: NextRequest) {
     const status = searchParams.get("status")
     const search = searchParams.get("search")
 
-    const where: any = {}
+    const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId()
+    const notSystemTenant = { slug: { notIn: [globalId] } }
+
+    const where: any = {
+      tenant: notSystemTenant
+    }
     if (status) where.status = status
     if (search) {
-      where.OR = [
-        { name: { contains: search, mode: "insensitive" } },
-        { hostname: { contains: search, mode: "insensitive" } },
-        { ipv4: { contains: search, mode: "insensitive" } },
-        { tenant: { name: { contains: search, mode: "insensitive" } } },
-        { tenant: { slug: { contains: search, mode: "insensitive" } } },
+      where.AND = [
+        { tenant: notSystemTenant },
+        {
+          OR: [
+            { name: { contains: search, mode: "insensitive" } },
+            { hostname: { contains: search, mode: "insensitive" } },
+            { ipv4: { contains: search, mode: "insensitive" } },
+            { tenant: { name: { contains: search, mode: "insensitive" } } },
+            { tenant: { slug: { contains: search, mode: "insensitive" } } },
+          ]
+        }
       ]
     }
 
@@ -51,7 +61,39 @@ export async function GET(req: NextRequest) {
       suspended: servers.filter(s => s.status === 'suspended').length,
     }
 
-    return NextResponse.json({ servers, summary })
+    const { CONTABO_PLANS, CONTABO_REGIONS, DEFAULT_CONTABO_REGION } = await import("@/lib/infrastructure/contabo")
+
+    // Only return tenants eligible for dedicated infra (paid VPS/VDS/Storage or Enterprise)
+    const eligiblePlans = Object.keys(CONTABO_PLANS).concat(["pro", "enterprise", "ENTERPRISE"])
+
+    const tenants = await db.tenant.findMany({
+      where: {
+        ...notSystemTenant,
+        OR: [
+          { plan: { in: eligiblePlans } },
+          { databaseUrl: { not: null } },
+          { subscriptions: { some: { status: "active" } } }
+        ]
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        plan: true,
+      },
+      orderBy: { name: "asc" },
+    })
+
+    return NextResponse.json({
+      servers,
+      summary,
+      meta: {
+        plans: Object.values(CONTABO_PLANS),
+        regions: CONTABO_REGIONS,
+        defaultRegion: DEFAULT_CONTABO_REGION,
+        tenants,
+      }
+    })
   } catch (error: any) {
     console.error("[API Admin Infrastructure GET Error]:", error)
     return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 })

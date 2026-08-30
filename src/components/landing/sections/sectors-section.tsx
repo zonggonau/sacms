@@ -10,24 +10,24 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
 
   const defaultSectors = [
     {
-      icon: "Store",
-      label: dict.sectors.items.umkm.title,
-      desc: dict.sectors.items.umkm.desc,
+      icon: "Building2",
+      label: dict.sectors?.items?.agency?.title || "Digital Agency & Software House",
+      desc: dict.sectors?.items?.agency?.desc || "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah.",
     },
     {
-      icon: "Newspaper",
-      label: dict.sectors.items.media.title,
-      desc: dict.sectors.items.media.desc,
+      icon: "Landmark",
+      label: dict.sectors?.items?.gov?.title || "Pemerintah & BUMN",
+      desc: dict.sectors?.items?.gov?.desc || "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem.",
     },
     {
-      icon: "ShoppingCart",
-      label: dict.sectors.items.ecommerce.title,
-      desc: dict.sectors.items.ecommerce.desc,
+      icon: "ShoppingBag",
+      label: dict.sectors?.items?.ecommerce?.title || "E-Commerce & Startup",
+      desc: dict.sectors?.items?.ecommerce?.desc || "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern.",
     },
     {
-      icon: "ShieldCheck",
-      label: dict.sectors.items.gov.title,
-      desc: dict.sectors.items.gov.desc,
+      icon: "Code2",
+      label: dict.sectors?.items?.solo?.title || "Solo Builders & Developers",
+      desc: dict.sectors?.items?.solo?.desc || "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant.",
     },
   ]
 

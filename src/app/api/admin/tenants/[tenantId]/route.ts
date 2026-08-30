@@ -138,7 +138,41 @@ export async function DELETE(
       }
     }
 
-    // 3. Delete tenant from master database (Cascade will handle members, entries, etc.)
+    // 4. Clean up any related child records that lack foreign-key cascade in PostgreSQL
+    const tenantSubscriptions = await db.subscription.findMany({
+      where: { tenantId },
+      select: { id: true }
+    })
+    const subIds = tenantSubscriptions.map(s => s.id)
+
+    if (subIds.length > 0) {
+      await db.paymentTransaction.deleteMany({
+        where: { subscriptionId: { in: subIds } }
+      }).catch(err => console.warn("Failed to clean up subscription payment transactions:", err))
+
+      await db.invoice.deleteMany({
+        where: { subscriptionId: { in: subIds } }
+      }).catch(err => console.warn("Failed to clean up subscription invoices:", err))
+    }
+
+    // Clean up custom plan overrides
+    await db.customPlanOverride.deleteMany({
+      where: { tenantId }
+    }).catch(err => console.warn("Failed to clean up custom plan overrides:", err))
+
+    // Clean up infrastructure credentials if any
+    const infraServers = await db.infrastructureServer.findMany({
+      where: { tenantId },
+      select: { id: true }
+    })
+    const serverIds = infraServers.map(s => s.id)
+    if (serverIds.length > 0) {
+      await db.infrastructureCredential.deleteMany({
+        where: { serverId: { in: serverIds } }
+      }).catch(err => console.warn("Failed to clean up infrastructure credentials:", err))
+    }
+
+    // 5. Delete tenant from master database
     await db.tenant.delete({
       where: { id: tenantId }
     })

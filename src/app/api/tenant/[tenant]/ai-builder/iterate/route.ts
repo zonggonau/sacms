@@ -35,7 +35,7 @@ export async function POST(
     }
 
     // Call v0 API to iterate
-    await iterateV0Chat(chatId, prompt)
+    const iterRes = await iterateV0Chat(chatId, prompt)
     
     // Deduct user credits after successful iteration
     await deductUserAiCredits(session.user.id, 5, "iterate_frontend", access.tenant.id, "v0.dev")
@@ -43,7 +43,7 @@ export async function POST(
     // Use local proxy route to securely embed the V0 preview
     const previewUrl = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}`
 
-    return NextResponse.json({ success: true, previewUrl })
+    return NextResponse.json({ success: true, previewUrl, files: iterRes?.files || [] })
   } catch (error: any) {
     console.error("AI iteration failed:", error)
     return NextResponse.json({ error: error.message || "Failed to iterate" }, { status: 500 })

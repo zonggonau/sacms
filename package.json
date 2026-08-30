@@ -15,7 +15,11 @@
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:reset": "prisma migrate reset",
-    "seed:global": "tsx prisma/seed-global.ts"
+    "db:tenant:push": "bun scripts/push-tenant-schema.ts",
+    "seed:global": "bun prisma/seed-global.ts",
+    "seed:permissions": "bun scripts/seed-permissions.ts",
+    "cron:publish": "bun scripts/scheduled-publish.ts",
+    "qa": "bun scripts/qa-runner.ts"
   },
   "dependencies": {
     "@ai-sdk/google": "^4.0.29",

@@ -56,9 +56,7 @@ export function AiContentAssistantModal({
   tenantSlug,
   onApply,
   availableLocales = [
-    { locale: "id", name: "Bahasa Indonesia" },
-    { locale: "en", name: "English" },
-    { locale: "ja", name: "Japanese" }
+    { locale: "id", name: "Bahasa Indonesia" }
   ]
 }: AiContentAssistantModalProps) {
   const { toast } = useToast()
@@ -93,7 +91,7 @@ export function AiContentAssistantModal({
         toast({ variant: "destructive", title: "Gagal", description: data.error || "Gagal menghubungi asisten AI" })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error", description: "Terjadi kesalahan jaringan" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan jaringan" })
     } finally {
       setLoading(false)
     }

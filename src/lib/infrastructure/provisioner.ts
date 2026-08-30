@@ -2,17 +2,29 @@ import { db } from '../database'
 import { Prisma } from '../../../prisma/generated-client'
 import { generateSecurePassword, encryptCredential, decryptCredential } from './encryption'
 import { generateCloudInitScript } from './cloud-init'
-import { createContaboInstance, getContaboInstance, restartContaboInstance, stopContaboInstance, deleteContaboInstance, CONTABO_PLANS } from './contabo'
+import {
+  createContaboInstance,
+  getContaboInstance,
+  restartContaboInstance,
+  stopContaboInstance,
+  deleteContaboInstance,
+  findOrCreateSacmsFirewall,
+  assignFirewallToInstance,
+  CONTABO_PLANS,
+  DEFAULT_CONTABO_REGION,
+} from './contabo'
 import { createOrUpdateDnsRecord, deleteDnsRecord } from './dns'
 import { testDatabaseConnection, deployTenantDatabaseSchema } from './migration-runner'
+import { logAudit } from '../audit-log'
 
 export interface ProvisionOptions {
-  plan?: string // e.g. "enterprise-vps-80"
+  plan?: string // e.g. "vps-s"
   region?: string // "EU" | "US-central" | "SIN"
   diskGb?: number
   ramMb?: number
   cpuCount?: number
   subscriptionId?: string
+  autoActivateAsync?: boolean // default true
 }
 
 export interface ProvisionResult {
@@ -33,6 +45,7 @@ export interface ProvisionResult {
 
 /**
  * Main Orchestrator to provision a dedicated Contabo VPS + PostgreSQL 17 + MinIO S3 for a tenant.
+ * Follows an async state machine: REQUESTED -> PROVISIONING -> CONFIGURING -> HEALTHCHECK -> ACTIVE.
  */
 export async function provisionTenantInfrastructure(
   tenantIdOrSlug: string,
@@ -40,8 +53,8 @@ export async function provisionTenantInfrastructure(
 ): Promise<ProvisionResult> {
   const tenant = await db.tenant.findFirst({
     where: {
-      OR: [{ id: tenantIdOrSlug }, { slug: tenantIdOrSlug }]
-    }
+      OR: [{ id: tenantIdOrSlug }, { slug: tenantIdOrSlug }],
+    },
   })
 
   if (!tenant) {
@@ -63,7 +76,7 @@ export async function provisionTenantInfrastructure(
   const requestedPlan = options.plan || 'vps-s'
   const planConfig = CONTABO_PLANS[requestedPlan] || CONTABO_PLANS['vps-s']
 
-  // 1. Create Initial Server Record
+  // 1. Create Initial Server Record in 'provisioning' state
   const server = await db.infrastructureServer.create({
     data: {
       tenantId: tenant.id,
@@ -71,7 +84,7 @@ export async function provisionTenantInfrastructure(
       provider: 'contabo',
       name: `Dedicated ${planConfig.type} - ${tenant.name}`,
       hostname: `${planConfig.type.toLowerCase()}-${tenant.slug}.${baseDomain}`,
-      region: options.region || 'EU',
+      region: options.region || DEFAULT_CONTABO_REGION,
       plan: planConfig.id,
       diskGb: options.diskGb || planConfig.diskGb,
       ramMb: options.ramMb || planConfig.ramMb,
@@ -81,11 +94,15 @@ export async function provisionTenantInfrastructure(
       dbPort: 5432,
       mediaHost: mediaDomain,
       mediaPort: 443,
-    }
+      healthStatus: 'unknown',
+    },
   })
 
   try {
-    // 2. Generate Cloud-Init Config
+    // 2. Ensure SaCMS Cloud Firewall is created/present
+    const firewallId = await findOrCreateSacmsFirewall('sacms-enterprise-firewall')
+
+    // 3. Generate Cloud-Init Config with hardened UFW rules
     const cloudInitScript = generateCloudInitScript({
       tenantSlug: tenant.slug,
       dbName,
@@ -98,38 +115,45 @@ export async function provisionTenantInfrastructure(
       mediaDomain,
     })
 
-    // 3. Create Instance on Contabo (VPS or VDS)
+    // 4. Order/Create Instance on Contabo (VPS or VDS)
     const instance = await createContaboInstance({
       displayName: `sacms-${tenant.slug}`,
       userData: cloudInitScript,
-      region: options.region || 'EU',
+      region: options.region || DEFAULT_CONTABO_REGION,
       productId: planConfig.productId,
     })
 
     const serverIpv4 = instance.ipv4
 
-    // 4. Update Server Record with Provider Details
+    // 5. Attach Cloud Firewall to the Instance
+    if (firewallId && instance.instanceId) {
+      await assignFirewallToInstance(firewallId, instance.instanceId).catch(err => {
+        console.warn(`[Provisioner] Could not attach firewall ${firewallId} to instance ${instance.instanceId}:`, err)
+      })
+    }
+
+    // 6. Update Server Record with Provider Details & transition to 'configuring'
     await db.infrastructureServer.update({
       where: { id: server.id },
       data: {
         providerServerId: String(instance.instanceId),
         ipv4: serverIpv4,
         status: 'configuring',
-      }
+      },
     })
 
-    // 5. Register DNS Records on Cloudflare (direct IP, DNS-only)
+    // 7. Register DNS Records on Cloudflare (direct IP, DNS-only)
     if (serverIpv4) {
       await createOrUpdateDnsRecord(dbDomain, serverIpv4, false)
       await createOrUpdateDnsRecord(mediaDomain, serverIpv4, false)
     }
 
-    // 6. Build Connection Strings & Endpoints
+    // 8. Build Connection Strings & Endpoints
     const connectionString = `postgresql://${dbUser}:${encodeURIComponent(dbPassword)}@${serverIpv4 || dbDomain}:5432/${dbName}?sslmode=require`
     const s3Endpoint = `https://${mediaDomain}`
     const s3PublicUrl = `https://${mediaDomain}/${minioBucket}`
 
-    // 7. Encrypt and Save Credentials
+    // 9. Encrypt and Save Credentials
     await db.infrastructureCredential.create({
       data: {
         serverId: server.id,
@@ -142,10 +166,9 @@ export async function provisionTenantInfrastructure(
         s3Endpoint,
         s3Bucket: minioBucket,
         s3PublicUrl,
-      }
+      },
     })
 
-    // 8. Update Tenant Configuration in SaCMS Master DB
     const storageConfig = {
       endpoint: s3Endpoint,
       accessKey: minioUser,
@@ -154,48 +177,33 @@ export async function provisionTenantInfrastructure(
       publicUrl: s3PublicUrl,
     }
 
-    await db.tenant.update({
-      where: { id: tenant.id },
-      data: {
-        databaseUrl: connectionString,
-        storageConfig: storageConfig as any,
-      }
-    })
-
-    // 9. Check if connection is directly reachable (or mark active for cloud-init background boot)
-    await db.infrastructureServer.update({
-      where: { id: server.id },
-      data: {
-        status: 'active',
-        healthStatus: 'healthy',
-        lastHealthCheckAt: new Date(),
-      }
-    })
+    // 10. Launch Background Verification & Activation Poller (Non-blocking)
+    if (options.autoActivateAsync !== false) {
+      // Run asynchronous activation worker in background
+      runAsyncServerActivation(server.id).catch(err => {
+        console.error(`[Provisioner] Background activation failed for server ${server.id}:`, err)
+      })
+    }
 
     return {
       success: true,
       serverId: server.id,
-      status: 'active',
-      message: 'Dedicated VPS infrastructure provisioned and linked to tenant successfully.',
+      status: 'configuring',
+      message: 'Dedicated VPS provisioning initiated. Server is configuring and will activate once database is online.',
       dbHost: dbDomain,
       mediaHost: mediaDomain,
       databaseUrl: connectionString,
-      storageConfig: {
-        endpoint: s3Endpoint,
-        accessKey: minioUser,
-        bucket: minioBucket,
-        publicUrl: s3PublicUrl,
-      }
+      storageConfig,
     }
   } catch (error: any) {
     console.error(`[Provisioner] Error provisioning infrastructure for tenant ${tenant.slug}:`, error)
-    
+
     await db.infrastructureServer.update({
       where: { id: server.id },
       data: {
         status: 'error',
         errorMessage: error?.message || 'Provisioning failed',
-      }
+      },
     })
 
     return {
@@ -205,6 +213,155 @@ export async function provisionTenantInfrastructure(
       message: error?.message || 'Provisioning failed',
     }
   }
+}
+
+/**
+ * Background Asynchronous Activation Worker:
+ * Polls VPS health until PostgreSQL is reachable and schema migration succeeds,
+ * then activates the server and updates tenant routing.
+ */
+export async function runAsyncServerActivation(
+  serverId: string,
+  maxAttempts = 30,
+  intervalMs = 10000
+): Promise<boolean> {
+  console.log(`[Provisioner] Starting async activation loop for server ${serverId}...`)
+
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const server = await db.infrastructureServer.findUnique({
+        where: { id: serverId },
+        include: { credentials: true, tenant: true },
+      })
+
+      if (!server || !server.credentials) {
+        console.warn(`[Provisioner] Server ${serverId} no longer exists or credentials missing. Aborting.`)
+        return false
+      }
+
+      if (server.status === 'destroyed' || server.status === 'error') {
+        console.warn(`[Provisioner] Server ${serverId} is in '${server.status}' state. Aborting.`)
+        return false
+      }
+
+      // Check if instance is ready on Contabo
+      if (server.providerServerId && !server.providerServerId.startsWith('sim-')) {
+        try {
+          const contaboInfo = await getContaboInstance(server.providerServerId)
+          if (contaboInfo.ipv4 && contaboInfo.ipv4 !== server.ipv4) {
+            await db.infrastructureServer.update({
+              where: { id: serverId },
+              data: { ipv4: contaboInfo.ipv4 },
+            })
+          }
+        } catch (e) {
+          console.warn(`[Provisioner] Failed to poll Contabo status on attempt ${attempt}:`, e)
+        }
+      }
+
+      // Test PostgreSQL database connectivity
+      const rawDbUrl = decryptCredential(server.credentials.connectionStringEncrypted)
+      const dbConnected = await testDatabaseConnection(rawDbUrl, 4000)
+
+      if (dbConnected) {
+        console.log(`[Provisioner] Database reachable for server ${serverId} on attempt ${attempt}. Deploying schema...`)
+
+        // Deploy schema to newly provisioned tenant DB
+        const migrationResult = await deployTenantDatabaseSchema(rawDbUrl)
+
+        if (migrationResult.success) {
+          console.log(`[Provisioner] Schema deployed successfully for tenant ${server.tenant.slug}. Activating tenant DB routing...`)
+
+          const s3Endpoint = server.credentials.s3Endpoint
+          const minioUser = server.credentials.minioUser
+          const minioPassword = decryptCredential(server.credentials.minioSecretEncrypted)
+          const minioBucket = server.credentials.s3Bucket
+          const s3PublicUrl = server.credentials.s3PublicUrl || `${s3Endpoint}/${minioBucket}`
+
+          const storageConfig = {
+            endpoint: s3Endpoint,
+            accessKey: minioUser,
+            secretKey: minioPassword,
+            bucket: minioBucket,
+            publicUrl: s3PublicUrl,
+          }
+
+          // 1. Activate Tenant Database & Storage Routing in master DB
+          await db.tenant.update({
+            where: { id: server.tenantId },
+            data: {
+              databaseUrl: rawDbUrl,
+              storageConfig: storageConfig as any,
+            },
+          })
+
+          // 2. Mark Server as Active & Healthy
+          await db.infrastructureServer.update({
+            where: { id: serverId },
+            data: {
+              status: 'active',
+              healthStatus: 'healthy',
+              lastHealthCheckAt: new Date(),
+              errorMessage: null,
+            },
+          })
+
+          // 3. Write Audit Log
+          logAudit({
+            tenantId: server.tenantId,
+            action: 'infrastructure.provisioned',
+            entity: 'InfrastructureServer',
+            entityId: serverId,
+            data: {
+              provider: server.provider,
+              plan: server.plan,
+              region: server.region,
+              dbHost: server.dbHost,
+              durationAttempts: attempt,
+            },
+          })
+
+          console.log(`[Provisioner] Server ${serverId} is now ACTIVE and serving tenant ${server.tenant.slug}.`)
+          return true
+        } else {
+          console.warn(`[Provisioner] Database connected but schema deployment failed: ${migrationResult.message}`)
+        }
+      }
+
+      // Wait before next attempt
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+      }
+    } catch (err: any) {
+      console.warn(`[Provisioner] Error during activation attempt ${attempt} for server ${serverId}:`, err)
+      if (attempt < maxAttempts) {
+        await new Promise(resolve => setTimeout(resolve, intervalMs))
+      }
+    }
+  }
+
+  // Timeout reached: mark as error
+  console.error(`[Provisioner] Activation timeout reached (${maxAttempts * intervalMs / 1000}s) for server ${serverId}.`)
+  await db.infrastructureServer.update({
+    where: { id: serverId },
+    data: {
+      status: 'error',
+      healthStatus: 'unhealthy',
+      errorMessage: `Provisioning timeout: database did not become reachable within ${Math.round(maxAttempts * intervalMs / 60000)} minutes.`,
+    },
+  })
+
+  logAudit({
+    action: 'infrastructure.failed',
+    entity: 'InfrastructureServer',
+    entityId: serverId,
+    data: {
+      reason: 'timeout',
+      maxAttempts,
+    },
+  })
+
+  return false
 }
 
 /**
@@ -218,7 +375,7 @@ export async function checkServerHealth(serverId: string): Promise<{
 }> {
   const server = await db.infrastructureServer.findUnique({
     where: { id: serverId },
-    include: { credentials: true }
+    include: { credentials: true },
   })
 
   if (!server || !server.credentials) {
@@ -240,7 +397,7 @@ export async function checkServerHealth(serverId: string): Promise<{
   }
 
   const healthy = dbOk && mediaOk
-  const healthStatus = healthy ? 'healthy' : (dbOk || mediaOk ? 'degraded' : 'unhealthy')
+  const healthStatus = healthy ? 'healthy' : dbOk || mediaOk ? 'degraded' : 'unhealthy'
 
   // Compute live resource metrics snapshot
   const ramUsageMb = Math.round(server.ramMb * (healthy ? 0.22 : 0.08))
@@ -267,7 +424,7 @@ export async function checkServerHealth(serverId: string): Promise<{
       healthStatus,
       lastHealthCheckAt: new Date(),
       metricsSnapshot: metricsSnapshot as any,
-    }
+    },
   })
 
   return {
@@ -283,7 +440,7 @@ export async function checkServerHealth(serverId: string): Promise<{
  */
 export async function restartServer(serverId: string): Promise<boolean> {
   const server = await db.infrastructureServer.findUnique({
-    where: { id: serverId }
+    where: { id: serverId },
   })
   if (!server || !server.providerServerId) return false
   return restartContaboInstance(server.providerServerId)
@@ -295,12 +452,12 @@ export async function restartServer(serverId: string): Promise<boolean> {
 export async function destroyServer(serverId: string): Promise<boolean> {
   const server = await db.infrastructureServer.findUnique({
     where: { id: serverId },
-    include: { tenant: true }
+    include: { tenant: true },
   })
   if (!server) return false
 
   // 1. Delete Contabo VPS
-  if (server.providerServerId) {
+  if (server.providerServerId && !server.providerServerId.startsWith('sim-')) {
     await deleteContaboInstance(server.providerServerId).catch(console.error)
   }
 
@@ -309,21 +466,30 @@ export async function destroyServer(serverId: string): Promise<boolean> {
   if (server.mediaHost) await deleteDnsRecord(server.mediaHost).catch(console.error)
 
   // 3. Reset Tenant databaseUrl and storageConfig
-  await db.tenant.update({
-    where: { id: server.tenantId },
-    data: {
-      databaseUrl: null,
-      storageConfig: Prisma.DbNull,
-    }
-  })
+  if (server.tenantId) {
+    await db.tenant.update({
+      where: { id: server.tenantId },
+      data: {
+        databaseUrl: null,
+        storageConfig: Prisma.DbNull,
+      },
+    }).catch(console.error)
+  }
 
-  // 4. Mark server as destroyed
+  // 4. If the server is in 'error' or already 'destroyed', purge record from DB
+  if (server.status === 'destroyed' || server.status === 'error' || !server.providerServerId) {
+    await db.infrastructureCredential.deleteMany({ where: { serverId } }).catch(() => {})
+    await db.infrastructureServer.delete({ where: { id: serverId } }).catch(() => {})
+    return true
+  }
+
+  // Otherwise mark server as destroyed
   await db.infrastructureServer.update({
     where: { id: serverId },
     data: {
       status: 'destroyed',
       healthStatus: 'unhealthy',
-    }
+    },
   })
 
   return true
@@ -335,7 +501,7 @@ export async function destroyServer(serverId: string): Promise<boolean> {
 export async function syncServerDns(serverId: string): Promise<{ success: boolean; message: string }> {
   const server = await db.infrastructureServer.findUnique({
     where: { id: serverId },
-    include: { tenant: true }
+    include: { tenant: true },
   })
   if (!server) return { success: false, message: 'Server not found' }
   if (!server.ipv4) return { success: false, message: 'Server IPv4 is not assigned' }
@@ -352,4 +518,3 @@ export async function syncServerDns(serverId: string): Promise<{ success: boolea
     return { success: false, message: e?.message || 'Failed to sync DNS records' }
   }
 }
-

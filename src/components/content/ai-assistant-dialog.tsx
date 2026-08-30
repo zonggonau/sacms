@@ -87,7 +87,7 @@ export function AIAssistantDialog({
         }
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat konten" })
     } finally {
       setLoading(false)
     }
@@ -115,7 +115,7 @@ export function AIAssistantDialog({
         throw new Error("Gagal memperbaiki teks")
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal memperbaiki teks" })
     } finally {
       setLoading(false)
     }
@@ -141,7 +141,7 @@ export function AIAssistantDialog({
         throw new Error("Gagal menerjemahkan teks")
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal menerjemahkan teks" })
     } finally {
       setLoading(false)
     }
@@ -166,7 +166,7 @@ export function AIAssistantDialog({
         throw new Error("Gagal membuat ringkasan SEO")
       }
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Error", description: err.message })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat ringkasan SEO" })
     } finally {
       setLoading(false)
     }

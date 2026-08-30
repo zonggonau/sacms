@@ -75,22 +75,22 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
 
       if (res.ok) {
         toast({
-          title: "Settings saved",
-          description: "API configuration updated successfully",
+          title: "Pengaturan Disimpan",
+          description: "Konfigurasi API berhasil diperbarui",
         })
       } else {
         const data = await res.json()
         toast({
-          title: "Error",
-          description: data.error || "Failed to save settings",
+          title: "Gagal Menyimpan",
+          description: data.error || "Gagal menyimpan konfigurasi",
           variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Failed to save:", error)
       toast({
-        title: "Error",
-        description: "Failed to save settings",
+        title: "Terjadi Kesalahan",
+        description: "Gagal menyimpan konfigurasi",
         variant: "destructive",
       })
     } finally {
@@ -99,7 +99,7 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
   }
 
   const handleGenerateApiKey = async () => {
-    if (!confirm("Are you sure you want to generate a new API key? The old key will no longer work for new integrations if you rely on it.")) return
+    if (!confirm("Apakah Anda yakin ingin membuat kunci API baru? Kunci lama tidak akan dapat digunakan lagi untuk integrasi baru.")) return
     
     setGeneratingApiKey(true)
     try {
@@ -111,22 +111,22 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
         const data = await res.json()
         setApiKey(data.apiKey)
         toast({
-          title: "Success",
-          description: "New API key generated successfully",
+          title: "Berhasil",
+          description: "Kunci API baru berhasil dibuat",
         })
       } else {
         const data = await res.json()
         toast({
-          title: "Error",
-          description: data.error || "Failed to generate API key",
+          title: "Gagal Membuat Kunci API",
+          description: data.error || "Gagal membuat kunci API",
           variant: "destructive",
         })
       }
     } catch (error) {
       console.error("Failed to generate API key:", error)
       toast({
-        title: "Error",
-        description: "Failed to generate API key",
+        title: "Terjadi Kesalahan",
+        description: "Gagal membuat kunci API",
         variant: "destructive",
       })
     } finally {
@@ -138,15 +138,15 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
     if (apiKey) {
       navigator.clipboard.writeText(apiKey)
       toast({
-        title: "Copied",
-        description: "API Key copied to clipboard",
+        title: "Tersalin",
+        description: "Kunci API berhasil disalin ke clipboard",
       })
     }
   }
 
   if (loading) {
     return (
-      <Card>
+      <Card className="rounded-2xl border-border/80">
         <CardContent className="p-6 flex justify-center">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </CardContent>
@@ -155,58 +155,59 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
   }
 
   return (
-    <Card>
+    <Card className="rounded-2xl border-border/80 shadow-xs">
       <CardHeader>
-        <CardTitle>API Configuration</CardTitle>
-        <CardDescription>
-          Configure API settings for your workspace
+        <CardTitle className="text-base font-bold">Konfigurasi API</CardTitle>
+        <CardDescription className="text-xs">
+          Kelola pengaturan API untuk workspace Anda
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <Label>API Key</Label>
+          <Label className="text-xs font-semibold">Kunci API Utama</Label>
           <div className="flex gap-2">
             <div className="relative flex-1">
               <Input
                 type="text"
-                value={apiKey || "No API key generated"}
+                value={apiKey || "Belum ada kunci API yang dibuat"}
                 readOnly
-                className="pr-10 font-mono text-sm"
+                className="pr-10 font-mono text-xs rounded-xl h-9 border-border/80"
               />
               <Button
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground"
+                className="absolute right-1 top-1 h-7 w-7 text-muted-foreground hover:text-foreground rounded-lg"
                 onClick={handleCopyApiKey}
                 disabled={!apiKey}
               >
-                <Copy className="h-4 w-4" />
+                <Copy className="h-3.5 w-3.5" />
               </Button>
             </div>
             <Button 
               variant="secondary" 
               onClick={handleGenerateApiKey}
               disabled={generatingApiKey}
+              className="rounded-xl h-9 text-xs font-semibold"
             >
               {generatingApiKey ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />
               ) : null}
-              Generate
+              Generate Kunci
             </Button>
           </div>
-          <p className="text-xs text-muted-foreground">
-            Use this key to authenticate external applications and integrations.
+          <p className="text-[10px] text-muted-foreground">
+            Gunakan kunci ini untuk mengotentikasi integrasi dan aplikasi eksternal.
           </p>
         </div>
         <Separator />
         <div className="space-y-2">
-          <Label>API Version</Label>
+          <Label className="text-xs font-semibold">Versi API</Label>
           <Select value={apiVersion} onValueChange={setApiVersion}>
-            <SelectTrigger className="w-48">
+            <SelectTrigger className="w-48 h-9 text-xs rounded-xl border-border/80">
               <SelectValue />
             </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="v1">v1 (Stable)</SelectItem>
+            <SelectContent className="rounded-xl border-border">
+              <SelectItem value="v1">v1 (Stabil)</SelectItem>
               <SelectItem value="v2">v2 (Beta)</SelectItem>
             </SelectContent>
           </Select>
@@ -214,50 +215,53 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
         <Separator />
         <div className="flex items-center justify-between">
           <div>
-            <Label>Rate Limiting</Label>
-            <p className="text-sm text-muted-foreground">
-              Enable rate limiting for API requests
+            <Label className="text-xs font-semibold">Rate Limiting</Label>
+            <p className="text-xs text-muted-foreground">
+              Aktifkan pembatasan laju permintaan untuk API
             </p>
           </div>
           <Switch checked={rateLimiting} onCheckedChange={setRateLimiting} />
         </div>
         {rateLimiting && (
           <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Requests per minute</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Permintaan per Menit</Label>
               <Input
                 type="number"
                 value={requestsPerMinute}
                 onChange={(e) => setRequestsPerMinute(e.target.value)}
+                className="h-9 text-xs rounded-xl border-border/80"
               />
             </div>
-            <div className="space-y-2">
-              <Label>Burst limit</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">Batas Burst</Label>
               <Input
                 type="number"
                 value={burstLimit}
                 onChange={(e) => setBurstLimit(e.target.value)}
+                className="h-9 text-xs rounded-xl border-border/80"
               />
             </div>
           </div>
         )}
         <Separator />
         <div className="space-y-2">
-          <Label>Allowed Origins (CORS)</Label>
+          <Label className="text-xs font-semibold">Domain Diizinkan (CORS)</Label>
           <Textarea
-            placeholder="Enter allowed origins, one per line&#10;https://example.com&#10;https://app.example.com"
+            placeholder="Masukkan domain yang diizinkan, satu per baris&#10;https://contoh.com&#10;https://app.contoh.com"
             rows={4}
             value={corsOrigins}
             onChange={(e) => setCorsOrigins(e.target.value)}
+            className="text-xs rounded-xl border-border/80 font-mono"
           />
-          <p className="text-xs text-muted-foreground">
-            Enter domain names, one per line. Use * for all origins (not recommended for production)
+          <p className="text-[10px] text-muted-foreground">
+            Masukkan nama domain, satu per baris. Gunakan * untuk semua origin (tidak disarankan untuk lingkungan produksi).
           </p>
         </div>
         <div className="flex justify-end pt-4">
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Save Configuration
+          <Button onClick={handleSave} disabled={saving} className="rounded-xl h-9 text-xs font-bold shadow-xs">
+            {saving && <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />}
+            Simpan Konfigurasi
           </Button>
         </div>
       </CardContent>

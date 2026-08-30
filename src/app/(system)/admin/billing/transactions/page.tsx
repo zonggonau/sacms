@@ -144,18 +144,15 @@ export default function AdminTransactionsPage() {
 
   if (status === "loading" || loading) {
     return (
-      <div className="flex flex-1 flex-col w-full">
-        <div className="flex-1 min-h-[80vh] flex items-center justify-center flex-col w-full bg-background">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
+      <div className="flex flex-1 min-h-[80vh] items-center justify-center flex-col w-full bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs text-muted-foreground mt-3 font-semibold">Memuat Transaksi Pembayaran...</p>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-1 flex-col w-full">
-      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
-        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+    <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -334,8 +331,6 @@ export default function AdminTransactionsPage() {
               </div>
             )}
           </Card>
-        </div>
-      </div>
       
       {/* Transaction Details Modal */}
       <Dialog open={!!selectedTx} onOpenChange={(open) => !open && setSelectedTx(null)}>

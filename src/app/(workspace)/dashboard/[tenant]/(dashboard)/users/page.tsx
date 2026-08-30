@@ -36,7 +36,7 @@ export default async function TenantUsersPage({ params }: { params: Promise<{ te
   // Safely map members since we know the shape returned by the action
   const initialMembers = (usersData.members || []).map(m => ({
     ...m,
-    joinedAt: m.joinedAt.toISOString(),
+    joinedAt: m.joinedAt instanceof Date ? m.joinedAt.toISOString() : (m.joinedAt ? String(m.joinedAt) : new Date().toISOString()),
   }))
 
   return (

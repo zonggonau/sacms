@@ -334,7 +334,7 @@ export async function provisionTenant(tenantId: string, aiPrompt?: string, websi
               tenantId_singleTypeId_locale: {
                 tenantId,
                 singleTypeId: singleType.id,
-                locale: "en"
+                locale: "id"
               }
             },
             update: { enabled: true },

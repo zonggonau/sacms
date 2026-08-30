@@ -31,7 +31,6 @@ export default async function WorkspaceSelectionPage() {
         select: { role: true }
       },
       subscriptions: {
-        where: { status: { in: ["active", "trialing"] } },
         orderBy: { currentPeriodEnd: "desc" },
         take: 1
       }
@@ -49,35 +48,46 @@ export default async function WorkspaceSelectionPage() {
     redirect("/dashboard/billing")
   }
 
-
   // If non-admin / non-owner team member belongs to a single workspace, forward directly to its CMS studio
   const isOwnerOrAdmin = session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "owner" || tenants.some(t => t.members[0]?.role === "owner" || t.members[0]?.role === "admin")
   if (!isOwnerOrAdmin && tenants.length === 1) {
     redirect(`/dashboard/${tenants[0].slug || tenants[0].id}/cms`)
   }
 
-  const formattedTenants = tenants.map(t => {
+  const formattedTenants = await Promise.all(tenants.map(async (t) => {
     const sub = t.subscriptions[0]
     let daysRemaining: number | null = null
-    
-    if (sub?.currentPeriodEnd) {
-      const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()
-      daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+    let isExpired = false
+
+    const enterprise = isGlobalEnterprise || await isEnterpriseTenant(t.id, session.user.id)
+
+    if (!enterprise) {
+      if (t.status === "suspended") {
+        isExpired = true
+      } else if (sub?.currentPeriodEnd) {
+        const diff = new Date(sub.currentPeriodEnd).getTime() - Date.now()
+        daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)))
+        if (new Date() > new Date(sub.currentPeriodEnd)) {
+          isExpired = true
+        }
+      }
     }
 
     return {
       id: t.id,
       name: t.name,
       slug: t.slug,
-      status: (isGlobalEnterprise && t.status === "suspended") ? "active" : t.status,
+      status: (enterprise && t.status === "suspended") ? "active" : t.status,
       plan: t.plan,
       createdAt: t.createdAt.toISOString(),
       role: t.members[0]?.role || (isSuperAdmin ? 'owner' : 'member'),
       daysRemaining,
+      isExpired,
+      isEnterprise: enterprise,
       subscriptionStatus: sub?.status || null,
       expiresAt: sub?.currentPeriodEnd ? new Date(sub.currentPeriodEnd).toISOString() : null
     }
-  })
+  }))
 
   // Fetch global dependencies for the creation dialog
   let dbTemplates: any[] = []

@@ -20,7 +20,12 @@ import {
   FileText,
   Clock,
   Code2,
-  ArrowLeft
+  ArrowLeft,
+  ArrowRight,
+  Plus,
+  Settings,
+  Sparkles,
+  Sliders
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -92,25 +97,55 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
 
           {/* Collections */}
           <div className="space-y-1">
-            <p className="px-3 mb-1.5 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Koleksi Konten</p>
+            <div className="flex items-center justify-between px-3 mb-1.5">
+              <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Koleksi Konten</p>
+              {canGoBack && (
+                <Link 
+                  href={`/dashboard/${tenantId}/content-type-builder/content-types/new`}
+                  title="Tambah Skema Koleksi Baru"
+                  className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
             {contentTypes.length === 0 ? (
               <p className="px-3 text-xs text-muted-foreground/60 italic">Belum ada skema</p>
             ) : (
               contentTypes.map(ct => {
                 const active = pathname.startsWith(href(`/content/${ct.slug}`))
                 return (
-                  <Link key={ct.id} href={href(`/content/${ct.slug}`)}>
-                    <div className={cn(
-                      "flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-all rounded-xl group",
-                      active
-                        ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                        : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
-                    )}>
-                      <Database className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
-                      <span className="truncate flex-1">{ct.name}</span>
-                      <ChevronRight className={cn("h-3 w-3 transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-100")} />
-                    </div>
-                  </Link>
+                  <div key={ct.id} className="relative group">
+                    <Link href={href(`/content/${ct.slug}`)}>
+                      <div className={cn(
+                        "flex items-center gap-2.5 px-3 py-2 text-xs font-semibold transition-all rounded-xl",
+                        active
+                          ? "bg-primary text-primary-foreground font-bold shadow-xs"
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                      )}>
+                        <Database className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+                        <span className="truncate flex-1 pr-6">{ct.name}</span>
+                        {!canGoBack && (
+                          <ChevronRight className={cn("h-3 w-3 transition-opacity", active ? "opacity-100" : "opacity-0 group-hover:opacity-100")} />
+                        )}
+                      </div>
+                    </Link>
+                    {canGoBack && (
+                      <Link
+                        href={`/dashboard/${tenantId}/content-type-builder/content-types/edit/${ct.slug}`}
+                        title={`Edit Skema ${ct.name}`}
+                        className={cn(
+                          "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
+                          active
+                            ? "text-primary-foreground/80 hover:text-primary-foreground hover:bg-primary-foreground/20"
+                            : "text-muted-foreground hover:text-primary hover:bg-muted"
+                        )}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <Settings className="h-3.5 w-3.5" />
+                      </Link>
+                    )}
+                  </div>
                 )
               })
             )}
@@ -118,7 +153,18 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
 
           {/* Single Pages */}
           <div className="space-y-1">
-            <p className="px-3 mb-1.5 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Halaman Statis</p>
+            <div className="flex items-center justify-between px-3 mb-1.5">
+              <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Halaman Statis</p>
+              {canGoBack && (
+                <Link 
+                  href={`/dashboard/${tenantId}/content-type-builder/single-types/new`}
+                  title="Tambah Single Type Baru"
+                  className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
+                >
+                  <Plus className="h-3.5 w-3.5" />
+                </Link>
+              )}
+            </div>
             
             <Link href={href("/single-types")}>
               <div className={cn(
@@ -135,23 +181,53 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
             {singleTypes.length > 0 && singleTypes.map(st => {
               const active = pathname.startsWith(href(`/single-types/${st.slug}`))
               return (
-                <Link key={st.id} href={href(`/single-types/${st.slug}`)}>
-                  <div className={cn(
-                    "flex items-center gap-2.5 px-3 py-1.5 text-xs transition-all rounded-lg group ml-3",
-                    active
-                      ? "bg-muted text-foreground font-bold"
-                      : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
-                  )}>
-                    <FileText className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
-                    <span className="truncate flex-1">{st.name}</span>
-                  </div>
-                </Link>
+                <div key={st.id} className="relative group ml-3">
+                  <Link href={href(`/single-types/${st.slug}`)}>
+                    <div className={cn(
+                      "flex items-center gap-2.5 px-3 py-1.5 text-xs transition-all rounded-lg",
+                      active
+                        ? "bg-muted text-foreground font-bold"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                    )}>
+                      <FileText className={cn("h-3.5 w-3.5 shrink-0", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")} />
+                      <span className="truncate flex-1 pr-6">{st.name}</span>
+                    </div>
+                  </Link>
+                  {canGoBack && (
+                    <Link
+                      href={`/dashboard/${tenantId}/content-type-builder/single-types/${st.slug}/edit`}
+                      title={`Edit Skema ${st.name}`}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-muted"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      <Settings className="h-3 w-3" />
+                    </Link>
+                  )}
+                </div>
               )
             })}
           </div>
 
         </div>
       </ScrollArea>
+
+      {/* Direct Quick Jump to Content-Type Builder */}
+      {canGoBack && (
+        <div className="px-3 pt-2 pb-1 border-t border-border/80 bg-muted/20">
+          <Link href={`/dashboard/${tenantId}/content-type-builder/content-types`}>
+            <div className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/30 group shadow-xs">
+              <Database className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:rotate-12 transition-transform" />
+              <div className="min-w-0 flex-1">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold">Content-Type Builder</span>
+                  <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform text-indigo-600 dark:text-indigo-400" />
+                </div>
+                <p className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">Edit skema & arsitektur model</p>
+              </div>
+            </div>
+          </Link>
+        </div>
+      )}
 
       {/* Footer User Info */}
       <div className="border-t p-3 space-y-2 bg-card">

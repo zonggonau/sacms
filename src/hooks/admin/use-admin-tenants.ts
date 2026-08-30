@@ -62,7 +62,7 @@ export function useAdminTenants() {
       }
     } catch (error) {
       console.error("Failed to fetch tenants:", error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to fetch tenants." })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat data workspace." })
     } finally {
       setLoading(false)
     }

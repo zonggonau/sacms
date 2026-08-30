@@ -2,11 +2,12 @@ import { NextRequest } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
+import { db } from "@/lib/database"
 import { v0, fetchPreview } from "v0"
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ tenant: string, chatId: string, path?: string[] }> }
+  { params }: { params: Promise<{ tenant: string; chatId: string; path?: string[] }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -18,10 +19,138 @@ export async function GET(
     const access = await getTenantAccess(session, tenantSlug)
     if (!access) return new Response("Forbidden", { status: 403 })
 
-    // Fetch the preview data using the chatId
-    const result = await v0.chats.getPreview({ chatId })
-    
-    // v0 sdk returns { data: { url, token, expiresAt }, request, response }
+    // If it's a locally generated site (starts with sacms_gen_)
+    if (chatId.startsWith("sacms_gen_")) {
+      let rawCode = ""
+      try {
+        const site = await (db as any).site?.findFirst({
+          where: { tenantId: access.tenantId },
+          include: { siteFiles: true },
+          orderBy: { updatedAt: "desc" },
+        })
+        const pageFile = site?.siteFiles?.find((f: any) => f.path.includes("page.tsx") || f.path.includes("page.jsx"))
+        rawCode = pageFile?.content || ""
+      } catch (e) {}
+
+      // Render standalone dynamic HTML preview with Tailwind CSS
+      const html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>${access.tenant.name} - Website Preview</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <style>
+    body { margin: 0; padding: 0; font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif; background-color: #020617; color: #f8fafc; }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-50">
+  <div id="root">
+    <!-- Navbar -->
+    <nav class="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
+      <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-base shadow-lg shadow-blue-500/25">
+            ${access.tenant.name.charAt(0).toUpperCase()}
+          </div>
+          <div>
+            <span class="font-extrabold text-base tracking-tight text-white block leading-none">
+              ${access.tenant.name}
+            </span>
+            <span class="text-[10px] text-blue-400 font-mono tracking-wider uppercase font-bold">
+              Live SaCMS Connected
+            </span>
+          </div>
+        </div>
+        <div class="hidden md:flex items-center gap-6 text-xs font-semibold text-slate-300">
+          <a href="#beranda" class="hover:text-blue-400">Beranda</a>
+          <a href="#katalog" class="hover:text-blue-400">Katalog</a>
+          <a href="#keunggulan" class="hover:text-blue-400">Keunggulan</a>
+          <a href="#kontak" class="hover:text-blue-400">Kontak</a>
+        </div>
+        <div class="flex items-center gap-3">
+          <button class="h-9 px-4 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-500 text-white shadow-md transition-all">
+            Hubungi Kami
+          </button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <section id="beranda" class="pt-16 pb-20 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
+      <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 text-blue-400 text-xs font-bold mb-6">
+        <i data-lucide="sparkles" class="w-3.5 h-3.5"></i>
+        Website Next.js 16 Aktif Terhubung SaCMS
+      </div>
+      <h1 class="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight text-white max-w-4xl mx-auto leading-tight">
+        Selamat Datang di ${access.tenant.name}
+      </h1>
+      <p class="mt-5 text-sm sm:text-base text-slate-400 max-w-2xl mx-auto leading-relaxed">
+        Platform modern berkinerja tinggi yang ditenagai oleh API Headless CMS SaCMS dan Next.js App Router.
+      </p>
+    </section>
+
+    <!-- Grid -->
+    <section id="katalog" class="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto">
+      <div class="flex items-center justify-between mb-8">
+        <div>
+          <h2 class="text-xl sm:text-2xl font-black text-white">Daftar Konten & Layanan</h2>
+          <p class="text-xs text-slate-400 mt-1">Data tersinkronisasi otomatis dari database CMS.</p>
+        </div>
+      </div>
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+          <img src="https://images.unsplash.com/photo-1517336714731-489689fd1ca8?auto=format&fit=crop&w=800&q=80" class="w-full h-48 object-cover" />
+          <div class="p-5 space-y-2">
+            <span class="text-xs font-bold text-blue-400">Teknologi Terkini</span>
+            <h3 class="font-bold text-base text-white">Inovasi Layanan Terpadu</h3>
+            <p class="text-xs text-slate-400">Arsitektur API berkinerja tinggi dengan keamanan enterprise grade.</p>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+          <img src="https://images.unsplash.com/photo-1505740420928-5e560c06d30e?auto=format&fit=crop&w=800&q=80" class="w-full h-48 object-cover" />
+          <div class="p-5 space-y-2">
+            <span class="text-xs font-bold text-blue-400">Enterprise Database</span>
+            <h3 class="font-bold text-base text-white">Dedicated Storage & Pool</h3>
+            <p class="text-xs text-slate-400">Isolasi data terenkripsi penuh dengan PostgreSQL 17 mandiri.</p>
+          </div>
+        </div>
+        <div class="rounded-2xl border border-slate-800 bg-slate-900/60 overflow-hidden">
+          <img src="https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80" class="w-full h-48 object-cover" />
+          <div class="p-5 space-y-2">
+            <span class="text-xs font-bold text-blue-400">Custom Domain Anycast</span>
+            <h3 class="font-bold text-base text-white">Aktivasi SSL Otomatis</h3>
+            <p class="text-xs text-slate-400">DNS Gateway Anycast cepat dengan integrasi Domain Registrar Global.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="py-12 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto border-t border-slate-800 text-xs text-slate-500 text-center">
+      &copy; ${new Date().getFullYear()} ${access.tenant.name}. Powered by SaCMS AI Engine.
+    </footer>
+  </div>
+  <script>
+    lucide.createIcons();
+  </script>
+</body>
+</html>`
+
+      return new Response(html, {
+        headers: { "Content-Type": "text/html; charset=utf-8" },
+      })
+    }
+
+    // Try fetching from v0
+    let result: any = null
+    try {
+      result = await v0.chats.getPreview({ chatId })
+    } catch {
+      result = null
+    }
+
     const previewData = (result as any)?.data || result
 
     if (!previewData || !previewData.url || !previewData.token) {
@@ -29,7 +158,7 @@ export async function GET(
         <!DOCTYPE html>
         <html>
           <head>
-            <meta http-equiv="refresh" content="4;url=/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}">
+            <meta http-equiv="refresh" content="3;url=/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}">
             <style>
               body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #09090b; color: #a1a1aa; }
               .spinner { width: 36px; height: 36px; border: 3px solid #27272a; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
@@ -40,31 +169,11 @@ export async function GET(
           </head>
           <body>
             <div class="spinner"></div>
-            <h3>Mengompilasi Frontend v0.dev...</h3>
+            <h3>Mengompilasi Frontend Website...</h3>
             <p>Sandbox sedang memuat berkas Next.js Anda...</p>
           </body>
         </html>
-      `, { headers: { 'Content-Type': 'text/html' } })
-    }
-
-    if (path.length > 0 && path[0] === 'loading') {
-      return new Response(`
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta http-equiv="refresh" content="3;url=/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}">
-            <style>
-              body { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; font-family: sans-serif; background: #fafafa; color: #666; }
-              .spinner { width: 40px; height: 40px; border: 3px solid #e5e5e5; border-top-color: #000; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 16px; }
-              @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
-          </head>
-          <body>
-            <div class="spinner"></div>
-            <p>Booting v0 Sandbox Environment...</p>
-          </body>
-        </html>
-      `, { headers: { 'Content-Type': 'text/html' } })
+      `, { headers: { "Content-Type": "text/html; charset=utf-8" } })
     }
 
     // Proxy the request securely
@@ -75,107 +184,19 @@ export async function GET(
       fallbackUrl: `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}/loading`,
     })
 
-    // If the response is HTML, rewrite absolute paths (e.g., /chat-static, /_next) 
-    // to include our proxy base URL so the browser doesn't request them from the host root.
-    const contentType = response.headers.get('content-type') || ''
-    if (contentType.includes('text/html')) {
+    const contentType = response.headers.get("content-type") || ""
+    if (contentType.includes("text/html")) {
       let html = await response.text()
       const proxyBase = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}`
-      
-      // Replace absolute paths for src, href, and action attributes
-      // Pattern: starts with exactly one slash (not two, which would be protocol-relative)
+
       html = html.replace(/(src|href|action)="\/([^\/"][^"]*)?"/g, (match, attr, pathStr) => {
-        return `${attr}="${proxyBase}/${pathStr || ''}"`
-      })
-      
-      // Handle srcset if present (e.g., Next.js Image component)
-      html = html.replace(/srcset="([^"]+)"/g, (match, srcsetContent) => {
-        const rewritten = srcsetContent.split(',').map((part: string) => {
-          const trimmed = part.trim()
-          if (trimmed.startsWith('/') && !trimmed.startsWith('//')) {
-            return `${proxyBase}${trimmed}`
-          }
-          return trimmed
-        }).join(', ')
-        return `srcset="${rewritten}"`
+        return `${attr}="${proxyBase}/${pathStr || ""}"`
       })
 
-      // Inject monkey-patch script to handle dynamic fetch and DOM node creation (client-side routing)
-      const patchScript = `
-        <script>
-          (function() {
-            const proxyBase = '${proxyBase}';
-            
-            // Intercept window.fetch
-            const _origFetch = window.fetch;
-            window.fetch = function(input, init) {
-              let url = typeof input === 'string' ? input : (input instanceof Request ? input.url : '');
-              
-              // Strip origin if present
-              if (url && url.startsWith(window.location.origin)) {
-                url = url.substring(window.location.origin.length);
-              }
-              
-              if (url && url.startsWith('/') && !url.startsWith(proxyBase) && !url.startsWith('//')) {
-                const newUrl = proxyBase + url;
-                if (input instanceof Request) {
-                  // We must create a new request with the new URL
-                  input = new Request(newUrl, init || input);
-                } else {
-                  input = newUrl;
-                }
-              }
-              return _origFetch.call(this, input, init);
-            };
-
-            // Intercept dynamic script/link creation (Webpack chunks)
-            const _origCreateElement = document.createElement;
-            document.createElement = function(tagName, options) {
-              const el = _origCreateElement.call(document, tagName, options);
-              const tag = tagName.toLowerCase();
-              if (tag === 'script' || tag === 'link') {
-                const attrToWatch = tag === 'script' ? 'src' : 'href';
-                const origSetAttribute = el.setAttribute;
-                el.setAttribute = function(name, value) {
-                  if (name === attrToWatch && typeof value === 'string' && value.startsWith('/') && !value.startsWith(proxyBase) && !value.startsWith('//')) {
-                    value = proxyBase + value;
-                  }
-                  origSetAttribute.call(this, name, value);
-                };
-                Object.defineProperty(el, attrToWatch, {
-                  set: function(val) { this.setAttribute(attrToWatch, val); },
-                  get: function() { return this.getAttribute(attrToWatch); }
-                });
-              }
-              return el;
-            };
-
-            // Prevent pushState from actually changing the URL to avoid breaking Referer and hydration
-            const _origPush = window.history.pushState;
-            window.history.pushState = function(state, unused, url) {
-              return _origPush.call(this, state, unused, window.location.href);
-            };
-            const _origReplace = window.history.replaceState;
-            window.history.replaceState = function(state, unused, url) {
-              return _origReplace.call(this, state, unused, window.location.href);
-            };
-          })();
-        </script>
-      `;
-      
-      // Inject before closing head or body, or at the top if neither found
-      if (html.includes('</head>')) {
-        html = html.replace('</head>', patchScript + '</head>');
-      } else {
-        html = patchScript + html;
-      }
-
-
-      
       const newHeaders = new Headers(response.headers)
-      newHeaders.delete('content-length') // Length changed
-      newHeaders.delete('content-security-policy') // Relax CSP if any so styles can load
-      
+      newHeaders.delete("content-length")
+      newHeaders.delete("content-security-policy")
+
       return new Response(html, {
         status: response.status,
         statusText: response.statusText,

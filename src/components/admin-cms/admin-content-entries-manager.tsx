@@ -84,12 +84,12 @@ export function AdminContentEntriesManager({
     try {
       const res = await deleteAdminEntryAction(contentTypeSlug, entryId)
       if (res.success) {
-        toast({ title: "Deleted Successfully" })
+        toast({ title: "Berhasil Dihapus" })
       } else {
-        toast({ variant: "destructive", title: "Failed to delete", description: res.error })
+        toast({ variant: "destructive", title: "Gagal Menghapus", description: res.error })
       }
     } catch (err) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menghapus entri" })
     }
   }
 
@@ -97,12 +97,12 @@ export function AdminContentEntriesManager({
     try {
       const res = await updateAdminContentEntryStatusAction(contentTypeSlug, entryId, newStatus)
       if (res.success) {
-        toast({ title: "Status Updated" })
+        toast({ title: "Status Berhasil Diperbarui" })
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error })
+        toast({ variant: "destructive", title: "Gagal Memperbarui Status", description: res.error })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memperbarui status" })
     }
   }
 
@@ -286,9 +286,9 @@ export function AdminContentEntriesManager({
                         </DropdownMenu>
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-col">
-                          <span className="text-xs font-bold text-muted-foreground">{new Date(entry.updatedAt).toLocaleDateString()}</span>
-                          <span className="text-[10px] text-muted-foreground/50">{new Date(entry.updatedAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+                        <div className="flex flex-col" suppressHydrationWarning>
+                          <span className="text-xs font-bold text-muted-foreground" suppressHydrationWarning>{new Date(entry.updatedAt).toLocaleDateString('id-ID')}</span>
+                          <span className="text-[10px] text-muted-foreground/50" suppressHydrationWarning>{new Date(entry.updatedAt).toLocaleTimeString('id-ID', {hour: '2-digit', minute:'2-digit'})}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-right pr-6">

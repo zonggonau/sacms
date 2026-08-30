@@ -2,12 +2,22 @@ import crypto from 'crypto'
 
 const ALGORITHM = 'aes-256-gcm'
 const IV_LENGTH = 12 // 96 bits recommended for GCM
-const SALT = 'sacms-infra-salt-v1'
 
 function getMasterKey(): Buffer {
-  const secret = process.env.INFRA_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET || 'sacms-default-fallback-infra-key-change-me'
-  return crypto.scryptSync(secret, SALT, 32)
+  const secret = process.env.INFRA_ENCRYPTION_KEY || process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error(
+      '[SECURITY] Neither INFRA_ENCRYPTION_KEY nor NEXTAUTH_SECRET is set. ' +
+      'Cannot encrypt/decrypt infrastructure credentials. ' +
+      'Set one of these environment variables before starting the server.'
+    )
+  }
+  // Derive a deployment-specific salt from the secret itself (first 16 chars of its SHA-256)
+  // This ensures different deployments with different secrets produce different master keys
+  const salt = crypto.createHash('sha256').update(secret).digest('hex').slice(0, 16)
+  return crypto.scryptSync(secret, salt, 32)
 }
+
 
 /**
  * Encrypt a plain text string using AES-256-GCM

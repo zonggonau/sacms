@@ -5,7 +5,7 @@ import { useParams, useRouter } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { 
   ArrowLeft, Save, Edit2, FileText, Trash2, Loader2, 
-  Globe, Database, ShieldCheck, Send, CheckCircle2, Zap
+  Globe, Database, ShieldCheck, Send, CheckCircle2, Zap, Sparkles
 } from "lucide-react"
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
@@ -87,7 +87,7 @@ export default function SingleTypeDetailClient({
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [formData, setFormData] = useState<Record<string, unknown>>(initialSingleType?.data || {})
-  const [locale, setLocale] = useState<string>("en")
+  const [locale, setLocale] = useState<string>("id")
   const [availableLocales, setAvailableLocales] = useState<any[]>(initialLocales)
 
   const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.id])
@@ -114,7 +114,7 @@ export default function SingleTypeDetailClient({
       }
     } catch (error) {
       console.error(error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to load content" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal memuat data konten" })
     } finally {
       setLoading(false)
     }
@@ -138,7 +138,7 @@ export default function SingleTypeDetailClient({
       if (response.error) throw new Error(response.error)
       
       toast({ 
-        title: publishNow ? "Published Successfully!" : "Draft Saved",
+        title: publishNow ? "Berhasil Diterbitkan!" : "Draf Berhasil Disimpan",
         className: publishNow ? "bg-emerald-50 border-emerald-200 text-emerald-800" : ""
       })
       
@@ -150,7 +150,7 @@ export default function SingleTypeDetailClient({
         fetchData()
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Failed to save content" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan konten" })
     } finally {
       setSaving(false)
     }
@@ -256,6 +256,12 @@ export default function SingleTypeDetailClient({
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button variant="outline" className="h-8 px-3 text-xs font-bold rounded-xl border-border/80 text-foreground hover:bg-muted shadow-xs flex items-center gap-1.5" asChild>
+                <Link href={`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`} title="Buka entri single type di CMS Studio">
+                  <Sparkles className="h-3.5 w-3.5 text-emerald-500" />
+                  <span className="hidden sm:inline">Buka di CMS Studio</span>
+                </Link>
+              </Button>
               <Button variant="outline" className="h-8 px-3 text-xs font-bold rounded-xl border-border/80" asChild>
                 <Link href={`/dashboard/${tenantSlug}/content-type-builder/single-types/${singleType.slug}/edit`}>
                   <Edit2 className="h-3.5 w-3.5 mr-1.5" /> Edit Skema

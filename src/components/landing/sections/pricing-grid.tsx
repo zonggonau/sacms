@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Check, Server, Zap, Sparkles, Layers, ShieldCheck } from "lucide-react"
+import { Check, Server, Zap, Sparkles, Layers, ShieldCheck, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { useLanguage } from "@/lib/i18n/context"
@@ -19,8 +19,8 @@ export function PricingGrid({
   label, 
   bgClass = "bg-card" 
 }: PricingGridProps) {
-  const { dict, locale } = useLanguage()
-  const [selectedCategory, setSelectedCategory] = useState<'all' | 'cloud' | 'business_vps' | 'gov_vds'>('all')
+  const { dict } = useLanguage()
+  const [selectedCategory, setSelectedCategory] = useState<'all' | 'cloud' | 'vps' | 'storage' | 'vds'>('all')
 
   if (!plans || plans.length === 0) return null
 
@@ -33,24 +33,34 @@ export function PricingGrid({
     return (plan.plan_slug || plan.id || plan.name || "").toLowerCase()
   }
 
-  // Check if this pricing collection has VPS/VDS plans
+  // Check if this pricing collection has VPS/VDS/Storage plans
   const hasInfraPlans = plans.some((p: any) => {
     const slug = getPlanSlug(p)
-    return slug.includes('vps') || slug.includes('vds')
+    return slug.includes('vps') || slug.includes('vds') || slug.includes('storage')
   })
+
+  // Helper to classify plan into one of the 4 main tiers
+  const getPlanCategory = (plan: any): 'cloud' | 'vps' | 'storage' | 'vds' => {
+    const slug = getPlanSlug(plan)
+    if (slug.includes('vds')) return 'vds'
+    if (slug.includes('storage')) return 'storage'
+    if (slug.includes('vps')) return 'vps'
+    return 'cloud'
+  }
+
+  // Count items per category
+  const categoryCounts = {
+    all: plans.length,
+    cloud: plans.filter(p => getPlanCategory(p) === 'cloud').length,
+    vps: plans.filter(p => getPlanCategory(p) === 'vps').length,
+    storage: plans.filter(p => getPlanCategory(p) === 'storage').length,
+    vds: plans.filter(p => getPlanCategory(p) === 'vds').length,
+  }
 
   // Filter plans based on category
   const filteredPlans = plans.filter((plan: any) => {
     if (!hasInfraPlans || selectedCategory === 'all') return true
-    const slug = getPlanSlug(plan)
-    const isVps = slug.includes('vps')
-    const isVds = slug.includes('vds')
-    const isCloud = !isVps && !isVds
-
-    if (selectedCategory === 'cloud') return isCloud
-    if (selectedCategory === 'business_vps') return isVps
-    if (selectedCategory === 'gov_vds') return isVds
-    return true
+    return getPlanCategory(plan) === selectedCategory
   })
 
   const parseFeatures = (val: any): string[] => {
@@ -98,47 +108,66 @@ export function PricingGrid({
                 <button
                   type="button"
                   onClick={() => setSelectedCategory('all')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
                     selectedCategory === 'all'
                       ? 'bg-primary text-primary-foreground shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
-                  <Layers className="h-3.5 w-3.5" /> {dict.pricing.tabs.all} ({plans.length})
+                  <Layers className="h-3.5 w-3.5" /> {dict.pricing.tabs.all} ({categoryCounts.all})
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('cloud')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectedCategory === 'cloud'
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <Sparkles className="h-3.5 w-3.5 text-blue-400" /> {dict.pricing.tabs.cloud}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('business_vps')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectedCategory === 'business_vps'
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <Server className="h-3.5 w-3.5 text-primary" /> {dict.pricing.tabs.businessVps}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCategory('gov_vds')}
-                  className={`px-4 py-2 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
-                    selectedCategory === 'gov_vds'
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                  }`}
-                >
-                  <Zap className="h-3.5 w-3.5 text-amber-500" /> {dict.pricing.tabs.govVds}
-                </button>
+                {categoryCounts.cloud > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('cloud')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectedCategory === 'cloud'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-blue-400" /> {dict.pricing.tabs.cloud} ({categoryCounts.cloud})
+                  </button>
+                )}
+                {categoryCounts.vps > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('vps')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectedCategory === 'vps'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <Server className="h-3.5 w-3.5 text-purple-400" /> {dict.pricing.tabs.vps} ({categoryCounts.vps})
+                  </button>
+                )}
+                {categoryCounts.storage > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('storage')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectedCategory === 'storage'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <HardDrive className="h-3.5 w-3.5 text-emerald-500" /> {dict.pricing.tabs.storage} ({categoryCounts.storage})
+                  </button>
+                )}
+                {categoryCounts.vds > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCategory('vds')}
+                    className={`px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 ${
+                      selectedCategory === 'vds'
+                        ? 'bg-primary text-primary-foreground shadow-sm'
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> {dict.pricing.tabs.vds} ({categoryCounts.vds})
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -154,8 +183,9 @@ export function PricingGrid({
         }`}>
           {filteredPlans.map((plan: any, i: number) => {
             const slug = getPlanSlug(plan)
-            const isVps = slug.includes('vps')
+            const isStorage = slug.includes('storage')
             const isVds = slug.includes('vds')
+            const isVps = slug.includes('vps') && !isStorage
             const isPopular = plan.is_popular === true || plan.popular === true || plan.isPopular === true || slug === 'pro' || slug === 'vds-s'
             const features = parseFeatures(plan.features)
             const price = typeof plan.price === 'number' ? plan.price : parseInt(String(plan.price || 0).replace(/[^\d]/g, ''), 10) || 0
@@ -167,7 +197,7 @@ export function PricingGrid({
               <div
                 key={plan.id || slug || i}
                 className={`group relative flex flex-col p-6 sm:p-8 rounded-3xl transition-all duration-300 hover:-translate-y-1.5 backdrop-blur-xl border ${
-                  isCurrentHighlight(isPopular, isVds, isVps)
+                  isCurrentHighlight(isPopular, isVds, isStorage, isVps)
                 }`}
               >
                 {/* Glow Overlay */}
@@ -177,6 +207,10 @@ export function PricingGrid({
                 {isVds ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
                     <Zap className="h-3 w-3" /> {dict.pricing.badges.dedicatedVds}
+                  </div>
+                ) : isStorage ? (
+                  <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
+                    <HardDrive className="h-3 w-3" /> {dict.pricing.badges.dedicatedStorage}
                   </div>
                 ) : isVps ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-blue-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
@@ -235,7 +269,7 @@ export function PricingGrid({
                   <Link href={`/register?plan=${slug}`} className="mt-auto block">
                     <Button
                       className={`w-full h-11 rounded-2xl font-bold text-xs transition-all duration-300 shadow-sm ${
-                        isPopular || isVds || isVps
+                        isPopular || isVds || isStorage || isVps
                           ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/20 hover:shadow-primary/30 hover:scale-[1.01]"
                           : "bg-muted hover:bg-muted/80 text-foreground hover:text-primary hover:scale-[1.01]"
                       }`}
@@ -253,8 +287,9 @@ export function PricingGrid({
   )
 }
 
-function isCurrentHighlight(isPopular: boolean, isVds: boolean, isVps: boolean): string {
+function isCurrentHighlight(isPopular: boolean, isVds: boolean, isStorage: boolean, isVps: boolean): string {
   if (isVds) return "bg-card/80 border-amber-500/40 shadow-xl shadow-amber-500/5 hover:border-amber-500"
+  if (isStorage) return "bg-card/80 border-emerald-500/40 shadow-xl shadow-emerald-500/5 hover:border-emerald-500"
   if (isVps) return "bg-card/80 border-primary/40 shadow-xl shadow-primary/5 hover:border-primary"
   if (isPopular) return "bg-card/80 border-primary/50 shadow-xl shadow-primary/10 scale-[1.02] z-10 hover:border-primary"
   return "bg-card/40 border-border/70 hover:border-primary/40 shadow-md hover:shadow-lg"

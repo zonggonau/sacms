@@ -27,21 +27,26 @@ export default async function EditContentTypePage({
       initialContentType = response.contentType
       
       initialFields = (response.contentType.fields || []).map((f: any) => {
+        let showInCms = f.showInCms !== false
         let extra: any = {
-          relationType: "",
-          targetModel: "",
-          targetSlug: "",
+          relationType: f.type === "relation" ? "manyToOne" : "",
+          targetModel: f.type === "relation" ? "content-type" : "",
+          targetSlug: f.type === "relation" ? (f.relationSlug || "") : "",
           componentSlug: "",
           repeatable: false,
           autoGenerate: false,
           sourceField: "",
+          showInCms: true,
         }
         if (f.options) {
           try {
             const opts = typeof f.options === "string" ? JSON.parse(f.options) : f.options
+            if (opts?.showInCms !== undefined) {
+              showInCms = opts.showInCms !== false
+            }
             if (f.type === "relation") {
-              extra.relationType = opts.relationType || ""
-              extra.targetModel = opts.targetModel || ""
+              extra.relationType = opts.relationType || "manyToOne"
+              extra.targetModel = opts.targetModel || "content-type"
               extra.targetSlug = opts.targetSlug || f.relationSlug || ""
             } else if (f.type === "component") {
               extra.componentSlug = opts.componentSlug || ""
@@ -52,7 +57,8 @@ export default async function EditContentTypePage({
             }
           } catch {}
         }
-        return { ...f, ...extra }
+        extra.showInCms = showInCms
+        return { ...f, ...extra, showInCms }
       })
     }
   } catch (error) {

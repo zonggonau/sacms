@@ -303,10 +303,10 @@ export default function EditSingleTypeClient({
         toast({ title: "Berhasil", description: "Single type berhasil diperbarui" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error || "Gagal memperbarui single type" })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error || "Gagal memperbarui single type" })
       }
     } catch (error) {
-      toast({ variant: "destructive", title: "Error", description: "Gagal menyimpan skema" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan skema" })
     } finally {
       setSaving(false)
     }

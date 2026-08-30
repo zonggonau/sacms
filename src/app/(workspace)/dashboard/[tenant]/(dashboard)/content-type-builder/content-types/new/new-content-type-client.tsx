@@ -45,7 +45,7 @@ import { FieldConfigModal, Field } from "@/components/cms/field-config-modal"
 import { cn } from "@/lib/utils"
 import { toast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
-import { createContentTypeAction } from "@/actions/content-types"
+import { createContentTypeAction, getContentTypesAction } from "@/actions/content-types"
 
 export default function NewContentTypeClient({
   tenantSlug,
@@ -66,6 +66,7 @@ export default function NewContentTypeClient({
   const [isTypeSelectorOpen, setIsTypeSelectorOpen] = useState(false)
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false)
   const [editingField, setEditingField] = useState<Field | null>(null)
+  const [availableContentTypes, setAvailableContentTypes] = useState<any[]>([])
 
   const tenants = session?.user?.tenants || []
 
@@ -79,6 +80,18 @@ export default function NewContentTypeClient({
       setSlug(generatedSlug)
     }
   }, [name])
+
+  useEffect(() => {
+    async function loadContentTypes() {
+      try {
+        const res = await getContentTypesAction(tenantSlug)
+        if ("contentTypes" in res && res.contentTypes) {
+          setAvailableContentTypes(res.contentTypes)
+        }
+      } catch (err) {}
+    }
+    loadContentTypes()
+  }, [tenantSlug])
 
   const generateFieldSlug = (value: string) => {
     return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
@@ -115,7 +128,7 @@ export default function NewContentTypeClient({
 
   const saveFieldConfig = () => {
     if (!editingField?.name || !editingField?.slug) {
-      toast({ variant: "destructive", title: "Missing info", description: "Name and Slug are required" })
+      toast({ variant: "destructive", title: "Data Belum Lengkap", description: "Nama dan Slug field wajib diisi" })
       return
     }
 
@@ -130,8 +143,39 @@ export default function NewContentTypeClient({
     setEditingField(null)
   }
 
+  const saveBatchFields = (newFields: Field[]) => {
+    setFields(prev => {
+      let updated = [...prev]
+      for (const nf of newFields) {
+        const idx = updated.findIndex(f => f.id === nf.id || f.slug === nf.slug)
+        if (idx >= 0) {
+          updated[idx] = nf
+        } else {
+          updated.push(nf)
+        }
+      }
+      return updated
+    })
+    setIsConfigModalOpen(false)
+    setEditingField(null)
+  }
+
   const removeField = (id: string) => {
     setFields(fields.filter(f => f.id !== id))
+  }
+
+  const toggleFieldShowInCms = (id: string, checked: boolean) => {
+    setFields(prev => prev.map(f => {
+      if (f.id !== id) return f
+      let currentOpts: any = {}
+      if (typeof f.options === 'string') {
+        try { currentOpts = JSON.parse(f.options) } catch {}
+      } else if (typeof f.options === 'object' && f.options !== null) {
+        currentOpts = { ...f.options }
+      }
+      currentOpts.showInCms = checked
+      return { ...f, showInCms: checked, options: currentOpts }
+    }))
   }
 
   const serializeFieldOptions = (field: Field) => {
@@ -148,31 +192,37 @@ export default function NewContentTypeClient({
             options = field.options
           }
         }
+      } else if (typeof field.options === 'object' && field.options !== null) {
+        options = { ...field.options }
       } else {
-        options = field.options || {}
+        options = {}
       }
     } catch (e) {
       options = {}
     }
 
+    if (typeof options !== 'object' || options === null) options = {}
+    options.showInCms = field.showInCms !== false
+
     if (field.type === "relation") {
-      options.relationType = field.relationType
-      options.targetModel = field.targetModel
-      options.targetSlug = field.targetSlug
+      options.relationType = field.relationType || "manyToOne"
+      options.targetModel = field.targetModel || "content-type"
+      options.targetSlug = field.targetSlug || field.relationSlug || ""
+      options.multiple = field.relationType === "oneToMany" || field.relationType === "manyToMany"
     } else if (field.type === "component") {
-      options.componentSlug = field.componentSlug
-      options.repeatable = field.repeatable
+      options.componentSlug = field.componentSlug || ""
+      options.repeatable = !!field.repeatable
     } else if (field.type === "slug") {
-      options.autoGenerate = field.autoGenerate
-      options.sourceField = field.sourceField
+      options.autoGenerate = !!field.autoGenerate
+      options.sourceField = field.sourceField || ""
     }
     
-    return Object.keys(options).length > 0 ? JSON.stringify(options) : field.options
+    return options
   }
 
   const handleSaveSchema = async () => {
     if (!name || !slug) {
-      toast({ variant: "destructive", title: "Validation Error", description: "Name and slug are required" })
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Nama dan slug skema wajib diisi" })
       return
     }
 
@@ -191,20 +241,25 @@ export default function NewContentTypeClient({
           required: f.required,
           unique: f.unique,
           options: serializeFieldOptions(f),
-          relationSlug: f.type === "relation" ? f.targetSlug : null,
+          relationSlug: f.type === "relation" ? (f.targetSlug || f.relationSlug || null) : null,
+          relationType: f.relationType || undefined,
+          targetModel: f.targetModel || undefined,
+          targetSlug: f.targetSlug || f.relationSlug || undefined,
+          componentSlug: f.componentSlug || undefined,
+          repeatable: f.repeatable,
           order: index,
         })),
       })
 
       if (!res.error) {
-        toast({ title: "Success", description: "Content type created successfully" })
+        toast({ title: "Berhasil", description: "Content type berhasil dibuat" })
         router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
       } else {
-        toast({ variant: "destructive", title: "Error", description: res.error || "Failed to create content type" })
+        toast({ variant: "destructive", title: "Terjadi Kesalahan", description: res.error || "Gagal membuat content type" })
       }
     } catch (error) {
       console.error("Failed to save:", error)
-      toast({ variant: "destructive", title: "Error", description: "Failed to save schema" })
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Gagal menyimpan skema" })
     } finally {
       setSaving(false)
     }
@@ -304,15 +359,25 @@ export default function NewContentTypeClient({
                   {fields.map((field) => {
                     const fieldTypeInfo = FIELD_TYPES.find(ft => ft.type === field.type)
                     const Icon = fieldTypeInfo?.icon || Zap
+                    const isCmsActive = field.showInCms ?? field.options?.showInCms ?? true
                     return (
-                      <div key={field.id} className="group bg-card text-card-foreground border border-border/80 rounded-xl p-3.5 flex items-center gap-3.5 hover:border-primary/60 transition-all shadow-xs">
+                      <div 
+                        key={field.id} 
+                        className={`group bg-card text-card-foreground border rounded-xl p-3.5 flex items-center gap-3.5 hover:border-primary/60 transition-all shadow-xs ${
+                          isCmsActive ? "border-border/80" : "border-border/40 bg-muted/20 opacity-75"
+                        }`}
+                      >
                         <div className="cursor-grab text-muted-foreground/30 group-hover:text-muted-foreground transition-colors"><GripVertical className="h-4 w-4" /></div>
-                        <div className="w-9 h-9 rounded-lg flex items-center justify-center text-primary bg-primary/10 shrink-0">
+                        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 ${
+                          isCmsActive ? "text-primary bg-primary/10" : "text-muted-foreground bg-muted"
+                        }`}>
                           <Icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
-                            <span className="font-bold text-xs truncate text-foreground">{field.name}</span>
+                            <span className={`font-bold text-xs truncate ${isCmsActive ? "text-foreground" : "text-muted-foreground"}`}>
+                              {field.name}
+                            </span>
                             {field.required && <Badge variant="outline" className="text-[8px] h-3.5 border-rose-500/20 text-rose-600 bg-rose-500/10 font-bold rounded-full">WAJIB</Badge>}
                           </div>
                           <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono mt-0.5">
@@ -321,6 +386,27 @@ export default function NewContentTypeClient({
                             <span>/{field.slug}</span>
                           </div>
                         </div>
+
+                        {/* Switch Tampil di CMS */}
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 bg-muted/40 hover:bg-muted/70 transition-colors rounded-lg border border-border/60 shrink-0">
+                          <Switch 
+                            id={`switch-cms-new-${field.id}`}
+                            checked={isCmsActive}
+                            onCheckedChange={(checked) => toggleFieldShowInCms(field.id, checked)}
+                            className="scale-75 data-[state=checked]:bg-emerald-600"
+                          />
+                          <Label 
+                            htmlFor={`switch-cms-new-${field.id}`}
+                            className="text-[10px] font-bold cursor-pointer select-none whitespace-nowrap hidden sm:inline"
+                          >
+                            {isCmsActive ? (
+                              <span className="text-emerald-600 dark:text-emerald-400">CMS ON</span>
+                            ) : (
+                              <span className="text-muted-foreground/70">CMS OFF</span>
+                            )}
+                          </Label>
+                        </div>
+
                         <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground" onClick={() => editField(field)}><Settings2 className="h-3.5 w-3.5" /></Button>
                           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10" onClick={() => removeField(field.id)}><Trash2 className="h-3.5 w-3.5" /></Button>
@@ -350,6 +436,8 @@ export default function NewContentTypeClient({
         tenantSlug={tenantSlug}
         context="contentType"
         onSave={saveFieldConfig}
+        onSaveBatch={saveBatchFields}
+        templateContentTypes={availableContentTypes}
       />
     </div>
   )

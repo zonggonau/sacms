@@ -50,9 +50,19 @@ async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | 
     // 1. Check global enterprise license first
     let enterprise = await isEnterpriseTenant(globalTenantId)
     
-    // 2. Fallback to tenant-specific license if no global license
+    // 2. Fallback to tenant-specific license or dedicated VPS plan if no global license
     if (!enterprise && tenantId && tenantId !== globalTenantId) {
       enterprise = await isEnterpriseTenant(tenantId)
+      if (!enterprise) {
+        const t = await db.tenant.findUnique({
+          where: { id: tenantId },
+          select: { plan: true, databaseUrl: true, storageConfig: true }
+        })
+        const p = (t?.plan || "").toLowerCase()
+        if (p.includes("vps") || p.includes("dedicated") || p.includes("enterprise") || (t?.databaseUrl && t?.storageConfig)) {
+          enterprise = true
+        }
+      }
     }
 
     if (enterprise) {
@@ -61,7 +71,7 @@ async function enterpriseBypass(tenantId?: string): Promise<EnforcementResult | 
         current: 0,
         max: 999999999,
         planSlug: "enterprise",
-        message: "Enterprise License — Unlimited",
+        message: "Enterprise & Dedicated Appliance — Unlimited",
       }
     }
   } catch {
@@ -395,17 +405,20 @@ async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource):
     switch (resource) {
       case "content_types":
         return db.contentType.count({ where: { tenantId } })
-      case "content_entries":
-        return db.contentEntry.count({ where: { tenantId } })
+      case "content_entries": {
+        const tenantDb = await getTenantDb(tenantId)
+        return tenantDb.contentEntry.count({ where: { tenantId } }).catch(() => 0)
+      }
       case "team_members":
         return db.tenantMember.count({ where: { tenantId, role: { not: "owner" } } })
       case "storage": {
-        // Sum of all media files sizes for this tenant
-        const result = await db.media.aggregate({
+        // Sum of all media files sizes for this tenant (from tenant-specific DB)
+        const tenantDb = await getTenantDb(tenantId)
+        const result = await tenantDb.media.aggregate({
           where: { tenantId },
           _sum: { size: true },
-        })
-        return result._sum.size || 0
+        }).catch(() => ({ _sum: { size: 0 } }))
+        return (result as any)?._sum?.size || 0
       }
       case "locales":
         return db.tenantLocale.count({ where: { tenantId, isEnabled: true } })

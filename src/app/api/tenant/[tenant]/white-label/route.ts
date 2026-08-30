@@ -40,10 +40,6 @@ export async function GET(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    if (!await isFeatureEnabled(access.tenantId, "ENABLE_WHITE_LABEL")) {
-      return NextResponse.json({ error: "White-label requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
-    }
-
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
       select: {
@@ -58,7 +54,7 @@ export async function GET(
       },
     })
 
-    return NextResponse.json(tenantRecord)
+    return NextResponse.json(tenantRecord || {})
   } catch (error) {
     console.error("Error fetching white-label settings:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
@@ -83,10 +79,6 @@ export async function PATCH(
     const access = await getTenantAccess(session, tenant)
     if (!access || !["owner", "admin"].includes(access.role)) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    if (!await isFeatureEnabled(access.tenantId, "ENABLE_WHITE_LABEL")) {
-      return NextResponse.json({ error: "White-label requires a Pro, Enterprise, or Custom plan" }, { status: 403 })
     }
 
     const result = await validateBody(request, whiteLabelSchema)

@@ -29,13 +29,13 @@ export default function ForgotPasswordPage() {
 
       setIsSent(true)
       toast({
-        title: "Link Sent",
-        description: response.message,
+        title: "Tautan Terkirim",
+        description: response.message || "Tautan reset kata sandi telah dikirim ke email Anda.",
       })
     } catch (error: any) {
       toast({
-        title: "Error",
-        description: error.message || "An unexpected error occurred",
+        title: "Terjadi Kesalahan",
+        description: error.message || "Terjadi kesalahan saat memproses permintaan.",
         variant: "destructive",
       })
     } finally {
@@ -45,66 +45,66 @@ export default function ForgotPasswordPage() {
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4">
-      <div className="w-full max-w-md bg-card border border-border p-8">
+      <div className="w-full max-w-md bg-card border border-border/80 rounded-2xl p-8 shadow-xs">
         <div className="flex flex-col items-center mb-8">
           <Link href="/" className="flex items-center gap-2 mb-6">
             <Logo iconSize="md" showText={true} useOrange={true} />
           </Link>
-          <h1 className="text-2xl font-semibold mb-1">Forgot Password</h1>
-          <p className="text-sm text-muted-foreground text-center">
-            Enter your email and we'll send you a link to reset your password.
+          <h1 className="text-2xl font-bold mb-1">Lupa Kata Sandi</h1>
+          <p className="text-xs text-muted-foreground text-center">
+            Masukkan email Anda dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
           </p>
         </div>
 
         {isSent ? (
           <div className="text-center space-y-4">
-            <div className="mx-auto w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center mb-4">
-              <Mail className="w-6 h-6 text-orange-500" />
+            <div className="mx-auto w-12 h-12 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 text-primary">
+              <Mail className="w-6 h-6" />
             </div>
-            <h3 className="text-lg font-medium">Check your email</h3>
-            <p className="text-sm text-muted-foreground mb-6">
-              If an account with {email} exists, an email will be sent with further instructions.
+            <h3 className="text-base font-bold">Periksa Email Anda</h3>
+            <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
+              Jika akun dengan alamat <span className="font-semibold text-foreground">{email}</span> terdaftar, email berisi petunjuk telah dikirim.
             </p>
             <Button
               variant="outline"
-              className="w-full h-10 rounded-none transition-none"
+              className="w-full h-9 rounded-xl text-xs font-semibold"
               onClick={() => setIsSent(false)}
             >
-              Try another email
+              Gunakan email lain
             </Button>
             <div className="mt-4">
-              <Link href="/login" className="text-sm text-orange-500 hover:underline">
-                Back to login
+              <Link href="/login" className="text-xs font-semibold text-primary hover:underline">
+                &larr; Kembali ke halaman masuk
               </Link>
             </div>
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email" className="text-sm font-medium">Email</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold">Alamat Email</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="name@example.com"
+                placeholder="nama@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="h-10 border-border focus-visible:ring-1 focus-visible:ring-orange-500 rounded-none"
+                className="h-9 text-xs rounded-xl border-border/80"
               />
             </div>
 
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-10 bg-orange-500 hover:bg-orange-600 text-white rounded-none transition-none mt-4"
+              className="w-full h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs mt-4"
             >
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Send Reset Link"}
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : "Kirim Tautan Reset"}
             </Button>
 
-            <div className="mt-8 text-center text-sm text-muted-foreground">
-              Remember your password?{" "}
-              <Link href="/login" className="text-orange-500 hover:underline">
-                Sign in
+            <div className="mt-6 text-center text-xs text-muted-foreground">
+              Ingat kata sandi Anda?{" "}
+              <Link href="/login" className="text-primary font-semibold hover:underline">
+                Masuk sekarang
               </Link>
             </div>
           </form>

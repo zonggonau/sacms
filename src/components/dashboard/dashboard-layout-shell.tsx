@@ -1,6 +1,7 @@
 "use client"
 
-import { usePathname } from "next/navigation"
+import { usePathname, useParams } from "next/navigation"
+import { SupportWidget } from "@/components/support/support-widget"
 
 interface DashboardLayoutShellProps {
   sidebar: React.ReactNode
@@ -13,8 +14,6 @@ export function DashboardLayoutShell({
 }: DashboardLayoutShellProps) {
   const pathname = usePathname()
 
-
-
   return (
     <div className="flex h-screen overflow-hidden bg-muted/20">
       {sidebar}
@@ -24,3 +23,4 @@ export function DashboardLayoutShell({
     </div>
   )
 }
+

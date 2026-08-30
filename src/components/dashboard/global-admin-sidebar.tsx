@@ -26,6 +26,7 @@ import {
   Gem,
   Webhook,
   Server,
+  Headphones,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -50,6 +51,7 @@ const adminNavSections: NavSection[] = [
     label: "OPERATIONS",
     items: [
       { title: "Dashboard", href: "/admin", icon: LayoutDashboard, exact: true },
+      { title: "Support & Chat CS", href: "/admin/support", icon: Headphones },
       { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
     ],
@@ -93,11 +95,24 @@ export function GlobalAdminSidebar() {
   const [mounted, setMounted] = useState(false)
   const [permittedPaths, setPermittedPaths] = useState<string[] | null>(null)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [unreadSupportCount, setUnreadSupportCount] = useState(0)
 
   const userId = session?.user?.id
   useEffect(() => {
     setMounted(true)
-    
+
+    const fetchUnread = async () => {
+      try {
+        const res = await fetch("/api/support/unread-count")
+        if (res.ok) {
+          const data = await res.json()
+          setUnreadSupportCount(data.unreadCount || 0)
+        }
+      } catch {}
+    }
+    fetchUnread()
+    const interval = setInterval(fetchUnread, 8000)
+
     // Fetch dynamic permissions
     const fetchPerms = async () => {
       if (userId) {
@@ -115,6 +130,8 @@ export function GlobalAdminSidebar() {
       }
     }
     fetchPerms()
+
+    return () => clearInterval(interval)
   }, [userId])
 
   // Hide the global admin sidebar when inside a specific schema builder template editor 
@@ -133,11 +150,21 @@ export function GlobalAdminSidebar() {
 
   const getFilteredNav = () => {
     const role = session?.user?.role
-    if (!role || role === "super_admin" || role === "admin" || (permittedPaths && permittedPaths.includes("*"))) return adminNavSections
+    const sectionsWithBadges = adminNavSections.map(sec => ({
+      ...sec,
+      items: sec.items.map(item => {
+        if (item.href === "/admin/support" && unreadSupportCount > 0) {
+          return { ...item, badge: `${unreadSupportCount} BARU` }
+        }
+        return item
+      })
+    }))
+
+    if (!role || role === "super_admin" || role === "admin" || (permittedPaths && permittedPaths.includes("*"))) return sectionsWithBadges
 
     if (!permittedPaths) return [] // Loading state
 
-    return adminNavSections
+    return sectionsWithBadges
       .map((section) => {
         const items = section.items.filter((item) => {
           // Check if the user has a permission name that matches the item.href or a wildcard that covers it
@@ -246,7 +273,7 @@ export function GlobalAdminSidebar() {
     </div>
   )
 
-  if (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/content')) {
+  if (pathname.startsWith('/admin/cms') || pathname.startsWith('/admin/content') || pathname.startsWith('/admin/billing')) {
     return null
   }
 
