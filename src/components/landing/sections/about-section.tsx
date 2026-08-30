@@ -46,10 +46,10 @@ export function AboutSection({ about }: { about: AboutData | null }) {
 
         <div className="flex-1 w-full grid grid-cols-2 gap-4 sm:gap-6">
           {[
-            { label: locale === "en" ? "Founded" : "Didirikan", value: about?.founded || "2024", icon: "🚀" },
+            { label: locale === "en" ? "Founded" : "Didirikan", value: about?.founded || "2026", icon: "🚀" },
             { label: locale === "en" ? "Architecture" : "Arsitektur", value: "Multi-Tenant", icon: "🏢" },
             { label: locale === "en" ? "API Protocol" : "Protokol API", value: "REST + GraphQL", icon: "⚡" },
-            { label: locale === "en" ? "Storage" : "Penyimpanan", value: "Cloudflare R2", icon: "☁️" },
+            { label: locale === "en" ? "Storage" : "Penyimpanan", value: "Cloudflare R2 / S3", icon: "☁️" },
           ].map((item, i) => (
             <div 
               key={item.label} 
