@@ -85,16 +85,10 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
           </div>
         </div>
 
-        <div className="border-t border-border/50 pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
+        <div className="border-t border-border/50 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="text-xs sm:text-sm text-muted-foreground font-medium">
             © {new Date().getFullYear()} <span className="text-foreground font-bold">{footer?.brand_name || "SaCMS"}</span>. {dict.footer.rights}
           </p>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium">
-            <span>Built with</span>
-            <span className="px-2 py-0.5 bg-card rounded-md border border-border/50 text-foreground font-bold text-[11px]">Next.js 16</span>
-            <span>+</span>
-            <span className="px-2 py-0.5 bg-card rounded-md border border-border/50 text-foreground font-bold text-[11px]">Prisma ORM</span>
-          </div>
         </div>
       </div>
     </footer>
