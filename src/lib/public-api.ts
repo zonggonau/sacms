@@ -115,7 +115,9 @@ export async function getLandingData() {
       whatsapp: lp.whatsapp || null,
       about: lp.about || null,
       owners: lp.owners || [],
-      blogs: collectionsData?.["posts"] || [],
+      blogs: (collectionsData?.["posts"] && collectionsData["posts"].length > 0) 
+        ? collectionsData["posts"] 
+        : (lp.blogs && lp.blogs.length > 0 ? lp.blogs : DEFAULT_LANDING_PAGE_DATA["sacms-blogs"] || []),
       testimonials: lp.testimonials || [],
       sectors: lp.sectors || [],
       localPride: lp.local_pride || null,
