@@ -145,6 +145,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             mkdir -p /opt/sacms/db/backups
@@ -157,6 +158,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           source: "docker-compose.yml,Caddyfile"
           target: "/opt/sacms"
@@ -167,6 +169,7 @@ jobs:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY }}
+          password: ${{ secrets.SERVER_PASSWORD }}
           port: ${{ secrets.SERVER_PORT || 22 }}
           script: |
             set -e
