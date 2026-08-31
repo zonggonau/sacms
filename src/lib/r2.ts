@@ -130,9 +130,9 @@ function extractTenantSlug(key: string): string | null {
  */
 function buildUrl(key: string, publicUrl: string, isCustom: boolean): string {
   if (publicUrl) return `${publicUrl.replace(/\/$/, '')}/${key}`
-  if (!isCustom && R2_ACCOUNT_ID) return `https://${R2_BUCKET}.${R2_ACCOUNT_ID}.r2.cloudflarestorage.com/${key}`
   return `/api/media/serve?key=${key}`
 }
+
 
 export interface UploadResult {
   url: string
@@ -240,7 +240,7 @@ export async function deleteFromStorage(storageKey: string): Promise<void> {
   const tenantSlug = extractTenantSlug(storageKey)
   const { s3, bucket, isCustom } = await getS3Client(tenantSlug || undefined)
 
-  if (isCustom || isR2Configured()) {
+  if (isCustom || (await isR2Configured())) {
     const keys = [
       storageKey,
       storageKey.replace(/(\.[^.]+)$/, "_thumb$1"),
@@ -268,7 +268,7 @@ export async function deleteTenantStorage(tenantSlug: string): Promise<void> {
   const prefix = `upload/${tenantSlug}/`
   const { s3, bucket, isCustom } = await getS3Client(tenantSlug)
 
-  if (isCustom || isR2Configured()) {
+  if (isCustom || (await isR2Configured())) {
     try {
       let continuationToken: string | undefined = undefined
       let totalDeleted = 0
@@ -322,7 +322,7 @@ export async function generatePresignedUrl(storageKey: string, expiresIn = 3600)
   const tenantSlug = extractTenantSlug(storageKey)
   const { s3, bucket, isCustom } = await getS3Client(tenantSlug || undefined)
   
-  if (isCustom || isR2Configured()) {
+  if (isCustom || (await isR2Configured())) {
     const command = new GetObjectCommand({
       Bucket: bucket,
       Key: storageKey,
@@ -333,3 +333,4 @@ export async function generatePresignedUrl(storageKey: string, expiresIn = 3600)
   // Fallback for local storage: internal proxy route
   return `/api/media/serve?key=${storageKey}`
 }
+

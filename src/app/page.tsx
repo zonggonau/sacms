@@ -5,7 +5,8 @@ import { WhatsAppButton } from "@/components/landing/whatsapp-button"
 import { getLandingData } from "@/lib/public-api"
 import { getSiteUrl, SEO_CONFIG, generatePlatformJsonLd, generateFaqJsonLd } from "@/lib/seo"
 
-export const dynamic = "force-dynamic"
+// ISR: Rebuild landing page every 60s from cache. getLandingData() is a direct DB query, not HTTP — caching is safe.
+export const revalidate = 60
 
 export async function generateMetadata(): Promise<Metadata> {
   const data = await getLandingData()

@@ -1,9 +1,24 @@
+import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { redirect, notFound } from "next/navigation"
 import { ContentEntriesManager } from "@/components/cms/content-entries-manager"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string; slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const label = slug
+    .replace(/-/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return {
+    title: `${label} — Content Manager | SaCMS`,
+  }
+}
 
 export default async function CMSContentTypeEntriesPage({ 
   params 

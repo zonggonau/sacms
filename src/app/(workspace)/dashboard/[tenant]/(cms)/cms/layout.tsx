@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
@@ -6,7 +7,31 @@ import { CMSSidebar } from "@/components/cms/cms-sidebar"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isEnterpriseTenant } from "@/lib/license"
 
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string }>
+}): Promise<Metadata> {
+  const { tenant } = await params
+  try {
+    const t = await db.tenant.findFirst({
+      where: { OR: [{ id: tenant }, { slug: tenant }] },
+      select: { name: true },
+    })
+    const name = t?.name || "CMS"
+    return {
+      title: {
+        template: `%s | ${name} CMS — SaCMS`,
+        default: `${name} — Content Studio | SaCMS`,
+      },
+    }
+  } catch {
+    return { title: "Content Studio | SaCMS" }
+  }
+}
+
 export default async function CMSLayout({
+
   children,
   params,
 }: {

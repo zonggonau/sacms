@@ -16,7 +16,21 @@ import {
 import { Badge } from "@/components/ui/badge"
 import { getSiteUrl, SEO_CONFIG, generateBlogPostJsonLd } from "@/lib/seo"
 
-export const dynamic = "force-dynamic"
+// ISR: Individual blog articles rebuild every 1 hour.
+export const revalidate = 3600
+
+// Pre-generate known article slugs at build time for instant first load.
+export async function generateStaticParams() {
+  try {
+    const data = await getLandingData()
+    const blogs: BlogPost[] = data.blogs || []
+    return blogs.map((b) => ({
+      slug: b.slug || b.id || b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""),
+    }))
+  } catch {
+    return []
+  }
+}
 
 interface BlogDetailPageProps {
   params: Promise<{ slug: string }>

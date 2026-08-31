@@ -24,15 +24,20 @@ export async function generateMetadata({
       select: { name: true }
     })
     
+    const tenantName = tenant?.name || "Workspace"
     return {
-      title: tenant ? `${tenant.name} | SaCMS` : "Workspace | SaCMS",
+      title: {
+        template: `%s | ${tenantName} — SaCMS`,
+        default: `${tenantName} — SaCMS`,
+      },
     }
   } catch (error) {
     return {
-      title: "Workspace | SaCMS"
+      title: "Workspace — SaCMS",
     }
   }
 }
+
 
 export default async function TenantDashboardLayout({
   children,

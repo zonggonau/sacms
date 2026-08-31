@@ -46,7 +46,7 @@ export async function POST(request: NextRequest) {
     const filename = `avatar_${session.user.id}_${Date.now()}_${file.name.replace(/[^a-zA-Z0-9.-]/g, "_")}`
 
     let uploadResult
-    if (isR2Configured()) {
+    if (await isR2Configured()) {
       uploadResult = await uploadToR2("avatars", buffer, filename, file.type)
     } else {
       uploadResult = await uploadToLocal("avatars", buffer, filename, file.type)

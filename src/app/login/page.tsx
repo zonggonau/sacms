@@ -7,15 +7,19 @@ import { signIn, useSession } from "next-auth/react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle } from "lucide-react"
+import { Loader2, Eye, EyeOff, CheckCircle2, AlertCircle, Mail, RefreshCw } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
+import { resendVerificationAction } from "@/actions/auth"
 
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
+  const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const { data: session, status } = useSession()
   
@@ -26,6 +30,7 @@ export default function LoginPage() {
     email: initialEmail,
     password: "",
   })
+
 
   // Update email if query param changes
   useEffect(() => {
@@ -93,6 +98,33 @@ export default function LoginPage() {
     }
   }, [searchParams, router, toast, redirectTo])
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  const handleResendActivation = async () => {
+    const targetEmail = unverifiedEmail || formData.email
+    if (!targetEmail || resending || resendCooldown > 0) return
+    setResending(true)
+    try {
+      const res = await resendVerificationAction(targetEmail)
+      if (res.error) {
+        toast({ title: "Gagal Mengirim", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Email Terkirim!", description: res.message || "Tautan aktivasi baru telah dikirim." })
+        setResendCooldown(60)
+      }
+    } catch (err: any) {
+      toast({ title: "Gagal Mengirim", description: err.message || "Terjadi kesalahan sistem.", variant: "destructive" })
+    } finally {
+      setResending(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -110,8 +142,9 @@ export default function LoginPage() {
 
         if (result.error === "CredentialsSignin") {
           errorMessage = "Email atau kata sandi tidak valid. Silakan periksa kembali."
-        } else if (result.error.toLowerCase().includes("aktivasi") || result.error.toLowerCase().includes("verifikasi")) {
+        } else if (result.error.toLowerCase().includes("aktivasi") || result.error.toLowerCase().includes("verifikasi") || result.error.toLowerCase().includes("belum aktif")) {
           errorTitle = "Aktivasi Akun Diperlukan"
+          setUnverifiedEmail(formData.email)
         }
           
         toast({
@@ -186,6 +219,33 @@ export default function LoginPage() {
             </p>
           </div>
 
+          {unverifiedEmail && (
+            <div className="mb-5 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 text-xs space-y-2">
+              <div className="flex items-center gap-2 font-bold text-amber-600 dark:text-amber-400">
+                <Mail className="w-4 h-4 shrink-0" />
+                <span>Akun Anda Belum Aktif</span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Tautan aktivasi telah dikirim ke <strong>{unverifiedEmail}</strong>. Belum menerima email atau tautan sudah kadaluarsa?
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={handleResendActivation}
+                disabled={resending || resendCooldown > 0}
+                className="w-full text-xs font-bold rounded-xl h-8 mt-1 border-amber-500/30 bg-background/80 hover:bg-amber-500/10"
+              >
+                {resending ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                ) : (
+                  <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                )}
+                {resendCooldown > 0 ? `Kirim Ulang Link (${resendCooldown}s)` : "Kirim Ulang Link Aktivasi"}
+              </Button>
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
               <Label htmlFor="email" className="text-xs font-bold text-foreground/80">Alamat Email</Label>
@@ -199,6 +259,7 @@ export default function LoginPage() {
                 className="h-11 bg-background/50 border-border/50 focus-visible:ring-1 focus-visible:ring-primary focus-visible:border-primary rounded-xl px-4 text-xs transition-all"
               />
             </div>
+
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">

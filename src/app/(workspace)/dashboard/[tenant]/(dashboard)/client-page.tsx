@@ -1,14 +1,14 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
-import { useRouter, useParams } from "next/navigation"
+import { useState, useMemo } from "react"
+import { useParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import {
-  Loader2, Database, FileText, ImageIcon, Users, Plus, PenTool,
+  Database, FileText, ImageIcon, Users, Plus, PenTool,
   AlertTriangle, Clock, CheckCircle2, Archive, CalendarClock,
   Eye, Key, Globe, XCircle, ArrowRight, Webhook, Activity,
   Zap, Upload, Play, BookOpen, ClipboardList, TrendingUp,
@@ -23,7 +23,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/lib/utils"
 import { Progress } from "@/components/ui/progress"
-import { getContentTypesAction } from "@/actions/content-types"
 
 interface AssignedContentType {
   id: string
@@ -100,73 +99,26 @@ export default function TenantDashboardClient({
   usage: initialUsage,
   session: initialSession,
 }: TenantDashboardClientProps) {
-  const { data: sessionData, status } = useSession()
+  const { data: sessionData } = useSession()
   const session = sessionData || initialSession
-  const router = useRouter()
   const params = useParams()
   const tenantId = (params?.tenant as string) || initialTenantId
 
-  const [contentTypes, setContentTypes] = useState<AssignedContentType[]>(initialContentTypes)
-  const [singleTypes, setSingleTypes] = useState<AssignedSingleType[]>(initialSingleTypes)
+  // These come from the Server Component (page.tsx) — no client-side re-fetch needed.
+  const contentTypes = initialContentTypes
+  const singleTypes = initialSingleTypes
+  const stats = initialStats
+  const usage = initialUsage
+
+  // UI-only state: tab toggle between Collections and Single Types
   const [schemaView, setSchemaView] = useState<"collections" | "single_types">("collections")
-  const [stats, setStats] = useState<TenantStats>(initialStats)
-  const [usage, setUsage] = useState<any[]>(initialUsage)
-  const [loading, setLoading] = useState(false)
 
   const userId = session?.user?.id
   const tenants = useMemo(() => session?.user?.tenants || [], [session?.user?.tenants])
   const currentTenant = useMemo(() => {
-    // Priority 1: From stats API (most up-to-date)
     if (stats?.tenant) return stats.tenant
-    // Priority 2: From session (initial load)
     return tenants.find((t) => t.id === tenantId || t.slug === tenantId)
   }, [tenants, tenantId, stats?.tenant])
-
-  useEffect(() => {
-    if (status === "unauthenticated") {
-      router.push("/login")
-    }
-  }, [status, router])
-
-  useEffect(() => {
-    async function fetchData() {
-      if (!tenantId || !userId) return
-      try {
-        const ctResPromise = getContentTypesAction(tenantId)
-        const [ctRes, statsRes, usageRes] = await Promise.all([
-          ctResPromise,
-          fetch(`/api/tenant/${tenantId}/stats`, { cache: 'no-store' }),
-          fetch(`/api/tenant/${tenantId}/billing/usage`, { cache: 'no-store' }),
-        ])
-        
-        if (ctRes.error) {
-          console.error(`[Dashboard] Action returned error for tenant ${tenantId}:`, ctRes.error);
-        } else if (ctRes.contentTypes) {
-          setContentTypes(ctRes.contentTypes as any)
-        }
-
-        if (statsRes.ok && statsRes.headers.get("content-type")?.includes("application/json")) {
-          const statsData = await statsRes.json()
-          setStats({
-            ...statsData,
-            entries: statsData.entries || {
-              draft: 0, in_review: 0, approved: 0, scheduled: 0, published: 0, archived: 0
-            },
-            recentEntries: statsData.recentEntries || []
-          })
-        }
-        if (usageRes.ok && usageRes.headers.get("content-type")?.includes("application/json")) {
-          const usageData = await usageRes.json()
-          setUsage(usageData.usage || [])
-        }
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-    if (userId) fetchData()
-  }, [tenantId, userId])
 
   const usageAlerts = useMemo(() => {
     return usage.filter(u => (u.current / u.limit) >= 0.9)
@@ -176,14 +128,6 @@ export default function TenantDashboardClient({
     if (!stats?.entries) return 0
     return Object.values(stats.entries).reduce((a, b) => (Number(a) || 0) + (Number(b) || 0), 0)
   }, [stats])
-
-  if (status === "loading" || !stats) {
-    return (
-      <div className="flex items-center justify-center bg-background text-foreground flex-1 flex-col w-full min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
 
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">

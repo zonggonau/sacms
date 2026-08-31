@@ -3,16 +3,18 @@ import { db } from "@/lib/database"
 
 export async function GET() {
   try {
-    const userCount = await db.user.count()
+    const superAdmin = await db.user.findFirst({
+      where: { role: "super_admin" },
+      select: { id: true },
+    })
     return NextResponse.json({
-      isFirstUser: userCount === 0,
-      userCount,
+      isFirstUser: !superAdmin,
     })
   } catch (error) {
     console.error("Error checking first user:", error)
     return NextResponse.json({
       isFirstUser: false,
-      userCount: 0,
     })
   }
 }
+

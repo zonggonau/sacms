@@ -113,7 +113,7 @@ export async function sendVerificationEmail(email: string, token: string, name: 
   const { client: resend, fromEmail } = await getResendClient()
   if (resend) {
     try {
-      console.log(`[Mail] Sending verification email to ${email} via Resend (${fromEmail})...`)
+      console.log(`[Mail] Attempting to send verification email to ${email} via Resend (${fromEmail})...`)
       const res = await resend.emails.send({
         from: fromEmail,
         to: email,
@@ -122,15 +122,13 @@ export async function sendVerificationEmail(email: string, token: string, name: 
       })
 
       if (res.error) {
-        console.error("❌ [Mail] Resend error:", res.error)
-        throw new Error(`Resend error: ${res.error.message || JSON.stringify(res.error)}`)
+        console.warn("⚠️ [Mail] Resend returned error, falling back to SMTP:", res.error.message || JSON.stringify(res.error))
       } else {
         console.log("✅ [Mail] Verification email successfully sent via Resend. ID:", res.data?.id)
         return res
       }
     } catch (err: any) {
-      console.error("❌ [Mail] Resend exception:", err)
-      throw err
+      console.warn("⚠️ [Mail] Resend exception, falling back to SMTP:", err?.message || err)
     }
   }
 
@@ -158,9 +156,9 @@ export async function sendVerificationEmail(email: string, token: string, name: 
       console.log("✅ [Mail] Verification email sent via SMTP. MessageId:", info.messageId)
     }
     return info
-  } catch (smtpErr) {
+  } catch (smtpErr: any) {
     console.error("❌ [Mail] SMTP send error:", smtpErr)
-    throw smtpErr
+    throw new Error(smtpErr?.message || "Gagal mengirim email verifikasi via SMTP.")
   }
 }
 
@@ -188,7 +186,7 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   const { client: resend, fromEmail } = await getResendClient()
   if (resend) {
     try {
-      console.log(`[Mail] Sending password reset email to ${email} via Resend (${fromEmail})...`)
+      console.log(`[Mail] Attempting to send password reset email to ${email} via Resend (${fromEmail})...`)
       const res = await resend.emails.send({
         from: fromEmail,
         to: email,
@@ -197,15 +195,13 @@ export async function sendPasswordResetEmail(email: string, token: string) {
       })
 
       if (res.error) {
-        console.error("❌ [Mail] Resend reset error:", res.error)
-        throw new Error(`Resend error: ${res.error.message || JSON.stringify(res.error)}`)
+        console.warn("⚠️ [Mail] Resend returned error on password reset, falling back to SMTP:", res.error.message || JSON.stringify(res.error))
       } else {
         console.log("✅ [Mail] Password reset email successfully sent via Resend. ID:", res.data?.id)
         return res
       }
     } catch (err: any) {
-      console.error("❌ [Mail] Resend reset exception:", err)
-      throw err
+      console.warn("⚠️ [Mail] Resend password reset exception, falling back to SMTP:", err?.message || err)
     }
   }
 
@@ -222,21 +218,14 @@ export async function sendPasswordResetEmail(email: string, token: string) {
       subject,
       html,
     })
-
-    if (info.messageId && !mailConfig.smtpHost) {
-      console.log("=========================================")
-      console.log("✉️  PASSWORD RESET EMAIL SENT TO ETHEREAL!")
-      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
-      console.log("=========================================")
-    } else {
-      console.log("✅ [Mail] Password reset email sent via SMTP. MessageId:", info.messageId)
-    }
+    console.log("✅ [Mail] Password reset email sent via SMTP. MessageId:", info.messageId)
     return info
-  } catch (smtpErr) {
-    console.error("❌ [Mail] SMTP reset error:", smtpErr)
-    throw smtpErr
+  } catch (smtpErr: any) {
+    console.error("❌ [Mail] SMTP password reset error:", smtpErr)
+    throw new Error(smtpErr?.message || "Gagal mengirim email reset kata sandi via SMTP.")
   }
 }
+
 
 export async function sendSupportNotificationEmail({
   to,

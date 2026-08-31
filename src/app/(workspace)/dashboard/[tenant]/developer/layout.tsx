@@ -1,3 +1,4 @@
+import type { Metadata } from "next"
 import { DeveloperSidebar } from "@/components/dashboard/developer-sidebar"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -6,6 +7,23 @@ import { redirect } from "next/navigation"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { isEnterpriseTenant } from "@/lib/license"
 import { SubscriptionGate } from "../(dashboard)/subscription-gate"
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ tenant: string }>
+}): Promise<Metadata> {
+  const { tenant } = await params
+  try {
+    const t = await db.tenant.findFirst({
+      where: { OR: [{ id: tenant }, { slug: tenant }] },
+      select: { name: true },
+    })
+    return { title: t ? `Developer Portal — ${t.name} | SaCMS` : "Developer Portal | SaCMS" }
+  } catch {
+    return { title: "Developer Portal | SaCMS" }
+  }
+}
 
 export default async function DeveloperLayout({
   children,

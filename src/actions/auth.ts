@@ -154,13 +154,14 @@ export async function registerUser(formData: any) {
         autoVerified: false,
         message: "Pendaftaran berhasil! Kami telah mengirimkan tautan aktivasi ke email Anda." 
       }
-    } catch (mailErr) {
+    } catch (mailErr: any) {
       console.error("Failed to send verification email during signup:", mailErr)
       return {
         success: true,
         isFirstUser: false,
         autoVerified: false,
-        message: "Pendaftaran berhasil dibuat! Silakan periksa email Anda untuk tautan aktivasi."
+        emailDeliveryWarning: true,
+        message: "Pendaftaran berhasil dibuat! Namun layanan email sedang mengalami antrean. Anda dapat mengklik 'Kirim Ulang Email' di halaman ini."
       }
     }
   } catch (error) {
@@ -169,7 +170,61 @@ export async function registerUser(formData: any) {
   }
 }
 
+export async function resendVerificationAction(email: string) {
+  try {
+    if (!email) {
+      return { error: "Email wajib diisi" }
+    }
+
+    const cleanEmail = email.toLowerCase().trim()
+    const user = await db.user.findUnique({
+      where: { email: cleanEmail },
+    })
+
+    if (!user) {
+      return { 
+        success: true, 
+        message: "Jika email terdaftar dan belum diverifikasi, tautan aktivasi baru telah dikirimkan." 
+      }
+    }
+
+    if (user.emailVerified) {
+      return { 
+        error: "Akun ini sudah aktif dan terverifikasi. Silakan langsung masuk." 
+      }
+    }
+
+    // Generate Verification Token (24 hours validity)
+    const token = crypto.randomBytes(32).toString("hex")
+    const expires = new Date()
+    expires.setHours(expires.getHours() + 24)
+
+    await db.verificationToken.deleteMany({
+      where: { identifier: user.email },
+    })
+
+    await db.verificationToken.create({
+      data: {
+        identifier: user.email,
+        token,
+        expires,
+      },
+    })
+
+    await sendVerificationEmail(user.email, token, user.name || "User")
+
+    return { 
+      success: true, 
+      message: `Tautan aktivasi baru telah dikirimkan ke ${user.email}. Silakan periksa kotak masuk atau spam.` 
+    }
+  } catch (error: any) {
+    console.error("Resend Verification Error:", error)
+    return { error: error?.message || "Gagal mengirim ulang email verifikasi. Coba beberapa saat lagi." }
+  }
+}
+
 export async function forgotPassword(email: string) {
+
   try {
     if (!email) {
       return { error: "Email wajib diisi" }

@@ -6,7 +6,8 @@ import { BlogExplorer, type BlogPost } from "@/components/blog/blog-explorer"
 import { Sparkles } from "lucide-react"
 import { getSiteUrl, SEO_CONFIG } from "@/lib/seo"
 
-export const dynamic = "force-dynamic"
+// ISR: Blog list rebuilds every 30 minutes. getLandingData() queries DB directly.
+export const revalidate = 1800
 
 export async function generateMetadata(): Promise<Metadata> {
   const siteUrl = getSiteUrl()

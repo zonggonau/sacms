@@ -8,10 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Crown, Eye, EyeOff, CheckCircle2 } from "lucide-react"
+import { Loader2, Crown, Eye, EyeOff, CheckCircle2, Mail, RefreshCw } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
-import { registerUser } from "@/actions/auth"
+import { registerUser, resendVerificationAction } from "@/actions/auth"
 
 export default function RegisterPage() {
   const router = useRouter()
@@ -21,12 +21,15 @@ export default function RegisterPage() {
   
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
+  const [resending, setResending] = useState(false)
+  const [resendCooldown, setResendCooldown] = useState(0)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
   const [checkingUsers, setCheckingUsers] = useState(true)
   const [isFirstUser, setIsFirstUser] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const { data: session, status } = useSession()
+
   
   const [formData, setFormData] = useState({
     name: "",
@@ -86,6 +89,32 @@ export default function RegisterPage() {
     checkFirstUser()
   }, [])
 
+  useEffect(() => {
+    if (resendCooldown <= 0) return
+    const timer = setInterval(() => {
+      setResendCooldown((prev) => prev - 1)
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [resendCooldown])
+
+  const handleResendEmail = async () => {
+    if (resendCooldown > 0 || resending || !formData.email) return
+    setResending(true)
+    try {
+      const res = await resendVerificationAction(formData.email)
+      if (res.error) {
+        toast({ title: "Gagal Mengirim", description: res.error, variant: "destructive" })
+      } else {
+        toast({ title: "Email Terkirim!", description: res.message || "Tautan aktivasi baru telah dikirim ke email Anda." })
+        setResendCooldown(60)
+      }
+    } catch (err: any) {
+      toast({ title: "Gagal Mengirim", description: err.message || "Terjadi kesalahan sistem.", variant: "destructive" })
+    } finally {
+      setResending(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     
@@ -127,6 +156,7 @@ export default function RegisterPage() {
         router.push(loginUrl)
       } else {
         setIsSuccess(true)
+        setResendCooldown(60)
       }
     } catch (error: any) {
       toast({
@@ -187,22 +217,46 @@ export default function RegisterPage() {
           )}
 
           {isSuccess ? (
-            <div className="text-center space-y-4 py-4">
-              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-4 shadow-inner shadow-primary/20 text-primary">
+            <div className="text-center space-y-4 py-2">
+              <div className="mx-auto w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mb-3 shadow-inner shadow-primary/20 text-primary">
                 <CheckCircle2 className="w-8 h-8" />
               </div>
               <h3 className="text-xl font-black tracking-tight">Pendaftaran Berhasil!</h3>
-              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-6 leading-relaxed">
-                Satu langkah lagi. Kami telah mengirimkan tautan aktivasi ke <strong className="text-foreground">{formData.email}</strong>. 
+              <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-4 leading-relaxed">
+                Tautan aktivasi telah dikirimkan ke <strong className="text-foreground">{formData.email}</strong>. 
                 Silakan cek kotak masuk atau folder spam email Anda untuk mengaktifkan akun.
               </p>
-              <Link href={loginHref}>
-                <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-full font-bold shadow-lg shadow-primary/20 transition-all hover:scale-105 text-xs cursor-pointer">
+
+              <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground space-y-2 mb-4">
+                <div className="flex items-center justify-center gap-1.5 font-bold text-foreground">
+                  <Mail className="w-4 h-4 text-primary" /> Belum menerima email?
+                </div>
+                <p className="text-[11px]">Email mungkin butuh 1-2 menit untuk sampai atau masuk ke tab Spam/Promosi.</p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={handleResendEmail}
+                  disabled={resending || resendCooldown > 0}
+                  className="w-full text-xs font-bold rounded-lg mt-1 h-9 cursor-pointer"
+                >
+                  {resending ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin mr-1.5" />
+                  ) : (
+                    <RefreshCw className="w-3.5 h-3.5 mr-1.5" />
+                  )}
+                  {resendCooldown > 0 ? `Kirim Ulang Email (${resendCooldown}s)` : "Kirim Ulang Email Aktivasi"}
+                </Button>
+              </div>
+
+              <Link href={loginHref} className="block pt-2">
+                <Button className="w-full h-11 bg-primary hover:bg-primary/90 text-white rounded-full font-bold shadow-lg shadow-primary/20 transition-all hover:scale-[1.02] text-xs cursor-pointer">
                   Masuk ke Halaman Login
                 </Button>
               </Link>
             </div>
           ) : (
+
             <form onSubmit={handleSubmit} className="space-y-4">
               <div className="space-y-1.5">
                 <Label htmlFor="name" className="text-xs font-bold text-foreground/80">Nama Lengkap</Label>

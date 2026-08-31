@@ -2,7 +2,8 @@ import type { MetadataRoute } from "next"
 import { getSiteUrl } from "@/lib/seo"
 import { getLandingData } from "@/lib/public-api"
 
-export const dynamic = "force-dynamic"
+// ISR: Rebuild sitemap every hour
+export const revalidate = 3600
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
