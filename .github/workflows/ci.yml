@@ -152,11 +152,32 @@ jobs:
               echo "ℹ️ Preserving existing /opt/sacms/.env on server."
             fi
 
+            # Prioritize IPv4 on Contabo VPS to prevent IPv6 connection reset drops on large GHCR image layers
+            if [ -f /etc/gai.conf ]; then
+              sed -i 's/#precedence ::ffff:0:0\/96  100/precedence ::ffff:0:0\/96  100/' /etc/gai.conf 2>/dev/null || true
+            else
+              echo "precedence ::ffff:0:0/96  100" > /etc/gai.conf 2>/dev/null || true
+            fi
+
             echo "==> [3/7] Authenticating to GHCR..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            echo "==> [4/7] Pulling latest SaCMS image..."
-            docker compose pull app
+            echo "==> [4/7] Pulling latest SaCMS image (with auto-retry)..."
+            PULL_SUCCESS=0
+            for attempt in 1 2 3 4 5; do
+              echo "Pull attempt $attempt/5..."
+              if docker compose pull app; then
+                PULL_SUCCESS=1
+                echo "✅ SaCMS image pulled successfully."
+                break
+              fi
+              echo "⚠️ Pull attempt $attempt failed (network glitch). Resuming in 4s..."
+              sleep 4
+            done
+            if [ "$PULL_SUCCESS" -ne 1 ]; then
+              echo "❌ Error: Failed to pull SaCMS image after 5 attempts."
+              exit 1
+            fi
 
             echo "==> [5/7] Running Prisma Database Migrations & Permission Sync..."
             # Ensure postgres & redis are up and healthy first
