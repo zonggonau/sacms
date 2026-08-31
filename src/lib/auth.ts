@@ -107,7 +107,24 @@ export const authOptions: NextAuthOptions = {
               data: { emailVerified: new Date() },
             })
           } else {
-            // Generate new verification token
+            // Check existing active verification token
+            const existingToken = await db.verificationToken.findFirst({
+              where: { identifier: user.email },
+              orderBy: { expires: "desc" },
+            })
+
+            const now = new Date()
+            const isTokenExpired = !existingToken || existingToken.expires <= now
+            
+            // If a token was generated less than 2 minutes ago, prevent duplicate email blast
+            const tokenCreatedAt = existingToken ? new Date(existingToken.expires.getTime() - 24 * 60 * 60 * 1000) : null
+            const isRecentlySent = tokenCreatedAt && (now.getTime() - tokenCreatedAt.getTime() < 2 * 60 * 1000)
+
+            if (isRecentlySent) {
+              throw new Error("Akun Anda belum aktif. Email aktivasi baru saja dikirimkan (berlaku 24 jam). Silakan periksa kotak masuk atau folder spam.")
+            }
+
+            // Generate fresh verification token valid for 24 hours (1 day)
             const token = crypto.randomBytes(32).toString("hex")
             const expires = new Date()
             expires.setHours(expires.getHours() + 24)
@@ -146,7 +163,11 @@ export const authOptions: NextAuthOptions = {
               }
             }
 
-            throw new Error("Email belum diverifikasi. Tautan verifikasi baru telah dikirim ke email Anda.")
+            if (isTokenExpired) {
+              throw new Error("Tautan aktivasi sebelumnya telah kadaluarsa. Tautan aktivasi baru telah dikirimkan ke email Anda (berlaku 24 jam). Silakan cek kotak masuk.")
+            } else {
+              throw new Error("Akun Anda belum aktif. Tautan aktivasi baru telah dikirimkan ke email Anda (berlaku 24 jam). Silakan periksa kotak masuk atau spam.")
+            }
           }
         }
 

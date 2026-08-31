@@ -106,12 +106,16 @@ export default function LoginPage() {
 
       if (result?.error) {
         let errorMessage = result.error
+        let errorTitle = "Akses Ditolak"
+
         if (result.error === "CredentialsSignin") {
           errorMessage = "Email atau kata sandi tidak valid. Silakan periksa kembali."
+        } else if (result.error.toLowerCase().includes("aktivasi") || result.error.toLowerCase().includes("verifikasi")) {
+          errorTitle = "Aktivasi Akun Diperlukan"
         }
           
         toast({
-          title: "Akses Ditolak",
+          title: errorTitle,
           description: errorMessage,
           variant: "destructive",
         })
