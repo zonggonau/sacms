@@ -90,14 +90,24 @@ export async function registerUser(formData: any) {
       }
     }
 
-    // Check if this is the first user
-    const userCount = await db.user.count()
-    const isFirstUser = userCount === 0
+    // Check if Super Admin already exists in the system
+    let isFirstUser = false
+    if (typeof db.user?.findFirst === "function") {
+      const superAdmin = await db.user.findFirst({
+        where: { role: "super_admin" },
+      })
+      isFirstUser = !superAdmin
+    } else if (typeof db.user?.count === "function") {
+      const count = await db.user.count().catch(() => 0)
+      isFirstUser = count === 0
+    }
 
     // Hash password
     const hashedPassword = await hashPassword(password)
 
-    // Create user (first user is super_admin, all new registrants are account owners)
+    // Create user:
+    // - If no Super Admin exists: this user is Super Admin (auto-verified).
+    // - If Super Admin exists: all subsequent users require email activation (emailVerified: null).
     const user = await db.user.create({
       data: {
         name,
@@ -105,25 +115,27 @@ export async function registerUser(formData: any) {
         password: hashedPassword,
         role: isFirstUser ? "super_admin" : "owner",
         plan: isFirstUser ? "enterprise" : "free",
-        emailVerified: !hasMailService ? new Date() : null,
+        emailVerified: isFirstUser ? new Date() : null,
       },
     })
 
-    if (!hasMailService) {
-      return {
-        success: true,
-        isFirstUser,
+    if (isFirstUser) {
+      return { 
+        success: true, 
+        isFirstUser: true,
         autoVerified: true,
-        message: isFirstUser 
-          ? "Akun Super Admin berhasil dibuat. Silakan masuk." 
-          : "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
+        message: "Akun Super Admin berhasil dibuat. Silakan masuk." 
       }
     }
 
-    // Generate Verification Token
+    // For all subsequent users: Generate Verification Token (24 hours validity)
     const token = crypto.randomBytes(32).toString("hex")
     const expires = new Date()
-    expires.setHours(expires.getHours() + 24) // 24 hours expiry
+    expires.setHours(expires.getHours() + 24)
+
+    await db.verificationToken.deleteMany({
+      where: { identifier: user.email },
+    })
 
     await db.verificationToken.create({
       data: {
@@ -133,25 +145,22 @@ export async function registerUser(formData: any) {
       },
     })
 
-    // Send email with error safety
+    // Send activation email
     try {
       await sendVerificationEmail(user.email, token, user.name || "User")
       return { 
         success: true, 
-        isFirstUser,
-        message: "Pendaftaran berhasil. Kami telah mengirimkan tautan aktivasi ke email Anda." 
+        isFirstUser: false,
+        autoVerified: false,
+        message: "Pendaftaran berhasil! Kami telah mengirimkan tautan aktivasi ke email Anda." 
       }
     } catch (mailErr) {
       console.error("Failed to send verification email during signup:", mailErr)
-      // Auto-verify if email sending fails so user is not locked out
-      await db.user.update({
-        where: { id: user.id },
-        data: { emailVerified: new Date() }
-      })
       return {
         success: true,
-        autoVerified: true,
-        message: "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
+        isFirstUser: false,
+        autoVerified: false,
+        message: "Pendaftaran berhasil dibuat! Silakan periksa email Anda untuk tautan aktivasi."
       }
     }
   } catch (error) {

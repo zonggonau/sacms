@@ -6,6 +6,7 @@ vi.mock("@/lib/database", () => ({
   db: {
     user: {
       findUnique: vi.fn(),
+      findFirst: vi.fn(),
       count: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
