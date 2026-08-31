@@ -42,99 +42,147 @@ async function getTransporter() {
 }
 
 const getBaseUrl = () => {
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, "")
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "")
   return "http://localhost:3000"
 }
 
 export async function sendVerificationEmail(email: string, token: string, name: string = "User") {
-  const verifyUrl = `${getBaseUrl()}/api/auth/verify?token=${token}`
-  const subject = "Verify your email address - SaCMS"
+  const baseUrl = getBaseUrl()
+  const verifyUrl = `${baseUrl}/api/auth/verify?token=${token}`
+  const subject = "Verifikasi Alamat Email Anda — SaCMS"
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-      <h2 style="color: #0f172a;">Welcome to SaCMS!</h2>
-      <p>Hi ${name},</p>
-      <p>Please verify your email address by clicking the button below:</p>
-      <div style="margin: 30px 0;">
-        <a href="${verifyUrl}" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Verify Email</a>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
+        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span></span>
       </div>
-      <p style="color: #64748b; font-size: 14px;">Or copy and paste this link in your browser:</p>
-      <p style="word-break: break-all; color: #3b82f6; font-size: 14px;"><a href="${verifyUrl}">${verifyUrl}</a></p>
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-      <p style="color: #94a3b8; font-size: 12px;">If you didn't create an account, you can safely ignore this email.</p>
+      <h2 style="color: #0f172a; margin-top: 0;">Selamat Datang di SaCMS!</h2>
+      <p style="color: #334155; font-size: 15px; line-height: 1.6;">Halo <strong>${name}</strong>,</p>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">Terima kasih telah mendaftar di SaCMS (Smart Content Management System). Silakan klik tombol di bawah untuk memverifikasi alamat email Anda dan mengaktifkan akun:</p>
+      <div style="margin: 28px 0;">
+        <a href="${verifyUrl}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);">Verifikasi Email Saya</a>
+      </div>
+      <p style="color: #64748b; font-size: 13px;">Atau salin tautan berikut ke browser Anda:</p>
+      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${verifyUrl}" style="color: #f97316;">${verifyUrl}</a></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">Jika Anda tidak merasa mendaftar di SaCMS, abaikan email ini.</p>
     </div>
   `
 
   if (resend) {
-    return resend.emails.send({
-      from: process.env.RESEND_FROM || "SaCMS <noreply@sacms.local>",
+    try {
+      const fromEmail = process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>"
+      console.log(`[Mail] Sending verification email to ${email} via Resend (${fromEmail})...`)
+      const res = await resend.emails.send({
+        from: fromEmail,
+        to: email,
+        subject,
+        html,
+      })
+
+      if (res.error) {
+        console.error("❌ [Mail] Resend error:", res.error)
+      } else {
+        console.log("✅ [Mail] Verification email successfully sent via Resend. ID:", res.data?.id)
+        return res
+      }
+    } catch (err) {
+      console.error("❌ [Mail] Resend exception:", err)
+    }
+  }
+
+  // Fallback to SMTP / Ethereal
+  try {
+    const t = await getTransporter()
+    const info = await t.sendMail({
+      from: process.env.SMTP_FROM || process.env.RESEND_FROM || '"SaCMS" <noreply@mail.sacms.cloud>',
       to: email,
       subject,
       html,
     })
+
+    if (info.messageId && !process.env.SMTP_HOST) {
+      console.log("=========================================")
+      console.log("✉️  VERIFICATION EMAIL SENT TO ETHEREAL!")
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
+      console.log("=========================================")
+    } else {
+      console.log("✅ [Mail] Verification email sent via SMTP. MessageId:", info.messageId)
+    }
+    return info
+  } catch (smtpErr) {
+    console.error("❌ [Mail] SMTP send error:", smtpErr)
+    throw smtpErr
   }
-
-  const t = await getTransporter()
-  const info = await t.sendMail({
-    from: process.env.SMTP_FROM || '"SaCMS" <noreply@sacms.local>',
-    to: email,
-    subject,
-    html,
-  })
-
-  if (info.messageId && !process.env.SMTP_HOST) {
-    console.log("=========================================")
-    console.log("✉️  VERIFICATION EMAIL SENT TO ETHEREAL!")
-    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
-    console.log("=========================================")
-  }
-
-  return info
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const resetUrl = `${getBaseUrl()}/reset-password?token=${token}`
-  const subject = "Reset your password - SaCMS"
+  const baseUrl = getBaseUrl()
+  const resetUrl = `${baseUrl}/reset-password?token=${token}`
+  const subject = "Atur Ulang Kata Sandi — SaCMS"
   const html = `
-    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-      <h2 style="color: #0f172a;">Password Reset Request</h2>
-      <p>We received a request to reset your password for your SaCMS account.</p>
-      <p>Click the button below to choose a new password:</p>
-      <div style="margin: 30px 0;">
-        <a href="${resetUrl}" style="background-color: #0f172a; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Reset Password</a>
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <div style="margin-bottom: 20px; border-bottom: 2px solid #f97316; padding-bottom: 12px;">
+        <span style="font-size: 20px; font-weight: 900; color: #0f172a; letter-spacing: -0.5px;">Sa<span style="color: #f97316;">CMS</span></span>
       </div>
-      <p style="color: #64748b; font-size: 14px;">Or copy and paste this link in your browser:</p>
-      <p style="word-break: break-all; color: #3b82f6; font-size: 14px;"><a href="${resetUrl}">${resetUrl}</a></p>
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 20px 0;" />
-      <p style="color: #94a3b8; font-size: 12px;">If you didn't request a password reset, you can safely ignore this email.</p>
+      <h2 style="color: #0f172a; margin-top: 0;">Permintaan Reset Kata Sandi</h2>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">Kami menerima permintaan untuk mengatur ulang kata sandi akun SaCMS Anda. Klik tombol di bawah untuk membuat kata sandi baru:</p>
+      <div style="margin: 28px 0;">
+        <a href="${resetUrl}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block; box-shadow: 0 4px 12px rgba(249, 115, 22, 0.25);">Atur Ulang Kata Sandi</a>
+      </div>
+      <p style="color: #64748b; font-size: 13px;">Atau salin tautan berikut ke browser Anda:</p>
+      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${resetUrl}" style="color: #f97316;">${resetUrl}</a></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">Jika Anda tidak meminta reset kata sandi, abaikan email ini.</p>
     </div>
   `
 
   if (resend) {
-    return resend.emails.send({
-      from: process.env.RESEND_FROM || "SaCMS <noreply@sacms.local>",
+    try {
+      const fromEmail = process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>"
+      console.log(`[Mail] Sending password reset email to ${email} via Resend (${fromEmail})...`)
+      const res = await resend.emails.send({
+        from: fromEmail,
+        to: email,
+        subject,
+        html,
+      })
+
+      if (res.error) {
+        console.error("❌ [Mail] Resend reset error:", res.error)
+      } else {
+        console.log("✅ [Mail] Password reset email successfully sent via Resend. ID:", res.data?.id)
+        return res
+      }
+    } catch (err) {
+      console.error("❌ [Mail] Resend reset exception:", err)
+    }
+  }
+
+  // Fallback to SMTP
+  try {
+    const t = await getTransporter()
+    const info = await t.sendMail({
+      from: process.env.SMTP_FROM || process.env.RESEND_FROM || '"SaCMS" <noreply@mail.sacms.cloud>',
       to: email,
       subject,
       html,
     })
+
+    if (info.messageId && !process.env.SMTP_HOST) {
+      console.log("=========================================")
+      console.log("✉️  PASSWORD RESET EMAIL SENT TO ETHEREAL!")
+      console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
+      console.log("=========================================")
+    } else {
+      console.log("✅ [Mail] Password reset email sent via SMTP. MessageId:", info.messageId)
+    }
+    return info
+  } catch (smtpErr) {
+    console.error("❌ [Mail] SMTP reset error:", smtpErr)
+    throw smtpErr
   }
-
-  const t = await getTransporter()
-  const info = await t.sendMail({
-    from: process.env.SMTP_FROM || '"SaCMS" <noreply@sacms.local>',
-    to: email,
-    subject,
-    html,
-  })
-
-  if (info.messageId && !process.env.SMTP_HOST) {
-    console.log("=========================================")
-    console.log("✉️  PASSWORD RESET EMAIL SENT TO ETHEREAL!")
-    console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
-    console.log("=========================================")
-  }
-
-  return info
 }
 
 export async function sendSupportNotificationEmail({
