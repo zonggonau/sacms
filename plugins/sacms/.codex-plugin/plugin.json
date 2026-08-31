@@ -1,0 +1,29 @@
+{
+  "name": "sacms",
+  "version": "2.2.0",
+  "description": "Headless CMS automation plugin for SaCMS. Manage content collections, design database schemas with 33 field types, publish single pages, and deploy to Vercel or Contabo VPS directly from ChatGPT and Codex.",
+  "author": {
+    "name": "SaCMS Team",
+    "url": "https://sacms.cloud"
+  },
+  "keywords": [
+    "cms",
+    "headless-cms",
+    "strapi-alternative",
+    "database",
+    "nextjs",
+    "vercel",
+    "contabo",
+    "mcp"
+  ],
+  "skills": "./skills/",
+  "mcpServers": {
+    "sacms-cloud": {
+      "url": "https://sacms.cloud/api/mcp",
+      "transport": "sse",
+      "headers": {
+        "Authorization": "Bearer ${SACMS_API_TOKEN}"
+      }
+    }
+  }
+}

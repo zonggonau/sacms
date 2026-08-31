@@ -1,0 +1,20 @@
+{
+  "name": "sacms-official-marketplace",
+  "interface": {
+    "displayName": "SaCMS Official Plugins"
+  },
+  "plugins": [
+    {
+      "name": "sacms",
+      "source": {
+        "source": "local",
+        "path": "./plugins/sacms"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Developer Tools"
+    }
+  ]
+}

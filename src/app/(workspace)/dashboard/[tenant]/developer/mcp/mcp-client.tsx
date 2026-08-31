@@ -241,6 +241,24 @@ console.log(response.text);`
         }
       }, null, 2)
 
+    case "chatgpt-plugin":
+      return JSON.stringify({
+        name: "sacms",
+        version: "2.2.0",
+        description: "Official SaCMS Plugin for ChatGPT & Codex",
+        skills: "./skills/",
+        mcpServers: {
+          sacms: {
+            url: mcpUrl,
+            transport: "sse",
+            headers: {
+              Authorization: `Bearer ${token}`,
+              Accept: "application/json, text/event-stream"
+            }
+          }
+        }
+      }, null, 2)
+
     case "v0":
       return mcpUrl
 
@@ -263,6 +281,20 @@ interface PlatformInfo {
 }
 
 const PLATFORMS: PlatformInfo[] = [
+  {
+    id: "chatgpt-plugin",
+    name: "OpenAI Plugin (ChatGPT & Codex)",
+    icon: "🧩",
+    badge: "Official Plugin 2.0",
+    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    configPath: "CLI: codex plugin marketplace add zonggonau/sacms",
+    steps: [
+      "Tambahkan marketplace SaCMS via CLI: codex plugin marketplace add zonggonau/sacms",
+      "Buka ChatGPT Desktop / Codex → Plugins Directory → pilih marketplace 'SaCMS Official Plugins' → Klik Install.",
+      "Atau di ChatGPT Web Developer Mode (chatgpt.com/plugins): klik '+' → masukkan URL MCP Server https://sacms.cloud/api/mcp dengan Header Authorization: Bearer <TOKEN>.",
+      "ChatGPT & Codex langsung mengenali 4 workflow skills (manage-content, build-schema, hosting-deployment, webhooks-automation) dan 31 live tools CMS!"
+    ]
+  },
   {
     id: "antigravity",
     name: "Antigravity (AGY)",
@@ -481,8 +513,12 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
 
   { name: "list_webhooks", category: "webhook", description: "Mendaftar webhook event yang aktif di workspace.", inputs: [] },
   { name: "create_webhook", category: "webhook", description: "Mendaftarkan webhook baru untuk trigger deploy Vercel/Netlify atau notifikasi.", inputs: ["name", "url", "events", "secret"] },
+  { name: "update_webhook", category: "webhook", description: "Memperbarui URL target, event trigger, atau status aktif endpoint webhook.", inputs: ["id", "url", "events", "enabled"] },
   { name: "delete_webhook", category: "webhook", description: "Menghapus endpoint webhook.", inputs: ["id"] },
+  { name: "test_webhook", category: "webhook", description: "Mengirimkan test ping payload ke endpoint webhook untuk verifikasi koneksi.", inputs: ["id"] },
   { name: "get_api_docs", category: "webhook", description: "Mengambil panduan REST & GraphQL API lengkap beserta contoh fetch Next.js.", inputs: [] },
+  { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa fitur live gateway API publik, filtering Strapi, dan status webhook.", inputs: [] },
+  { name: "get_api_info", category: "webhook", description: "Mengambil informasi dasar versi API SaCMS dan spesifikasi server MCP.", inputs: [] },
 
   // Hosting & Cloud Deployment MCP Tools
   { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website / frontend langsung ke Vercel Serverless hosting.", inputs: ["projectName", "files", "envVars"] },
@@ -1011,7 +1047,7 @@ export function MCPDashboardClient({
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
               <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
-                28 Live Tools MCP Aktif
+                31 Live Tools MCP Aktif
               </TabsTrigger>
               <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
@@ -1019,7 +1055,7 @@ export function MCPDashboardClient({
               </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: 28 LIVE TOOLS */}
+            {/* TAB 1: 31 LIVE TOOLS */}
             <TabsContent value="catalog" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {MCP_TOOLS_CATALOG.map((tool) => (
