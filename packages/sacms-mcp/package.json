@@ -1,0 +1,22 @@
+{
+  "name": "sacms-mcp",
+  "version": "1.0.0",
+  "description": "Stdio Bridge and MCP CLI Client for SaCMS Headless CMS",
+  "main": "src/index.ts",
+  "bin": {
+    "sacms-mcp": "./src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "sacms",
+    "headless-cms",
+    "claude",
+    "cursor"
+  ],
+  "author": "SaCMS Team",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.30.0"
+  }
+}

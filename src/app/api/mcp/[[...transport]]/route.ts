@@ -17,15 +17,22 @@ import { db, getTenantDb } from "@/lib/database"
 import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
+import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
+import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
 
-// ─── Auth Helper ──────────────────────────────────────────────────────────────
+// ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
 interface AuthContext {
   tenantId: string
   tenantSlug: string
   tenantName: string
   permissions: string[]
+  plan: string
+  isPaid: boolean
+  hostingType: "shared_vercel" | "dedicated_vps"
+  vpsHost?: string
   isSuperAdmin?: boolean
+  paymentError?: string
 }
 
 const authContext = new AsyncLocalStorage<AuthContext>()
@@ -34,6 +41,9 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
   if (!rawToken?.trim()) return null
   const clean = rawToken.trim()
   const hashed = createHash("sha256").update(clean).digest("hex")
+
+  let tenantData: { id: string; slug: string; name: string; plan: string; status: string; hostingStatus: string | null } | null = null
+  let permissions: string[] = ["read", "write", "delete"]
 
   // Look up by hashed token first, then plain token
   const token = await db.apiToken.findFirst({
@@ -46,50 +56,90 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
     select: { 
       tenantId: true, 
       permissions: true,
-      tenant: { select: { id: true, slug: true, name: true } } 
+      tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } } 
     },
   })
 
   if (token?.tenant) {
-    // Update lastUsedAt asynchronously
     db.apiToken.updateMany({
       where: { OR: [{ token: hashed }, { token: clean }] },
       data: { lastUsedAt: new Date() }
     }).catch(() => {})
 
-    const perms = Array.isArray(token.permissions) ? (token.permissions as string[]) : ["read", "write", "delete"]
-    return {
-      tenantId: token.tenant.id,
-      tenantSlug: token.tenant.slug,
-      tenantName: token.tenant.name,
-      permissions: perms,
-      isSuperAdmin: false,
+    tenantData = token.tenant
+    if (Array.isArray(token.permissions)) {
+      permissions = token.permissions as string[]
+    }
+  } else {
+    // Fallback to ApiKey (plain key)
+    const apiKey = await db.apiKey.findUnique({
+      where: { key: clean },
+      include: { tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } } },
+    })
+
+    if (apiKey?.tenant) {
+      db.apiKey.update({
+        where: { id: apiKey.id },
+        data: { lastUsed: new Date() },
+      }).catch(() => {})
+
+      tenantData = apiKey.tenant
+      if (Array.isArray(apiKey.permissions)) {
+        permissions = apiKey.permissions as string[]
+      }
     }
   }
 
-  // Also fallback to ApiKey (plain key)
-  const apiKey = await db.apiKey.findUnique({
-    where: { key: clean },
-    include: { tenant: true },
+  if (!tenantData) return null
+
+  // ─── Payment Status & Active Subscription Check ────────────────────────────
+  const activeSubscription = await db.subscription.findFirst({
+    where: {
+      tenantId: tenantData.id,
+      status: { in: ["active", "paid", "trialing"] }
+    }
   })
 
-  if (apiKey?.tenant) {
-    db.apiKey.update({
-      where: { id: apiKey.id },
-      data: { lastUsed: new Date() },
-    }).catch(() => {})
+  // Verify whether tenant is PAID or has active hosting
+  const isPaid = (tenantData.status === "active" && !!activeSubscription) || tenantData.hostingStatus === "active"
+  let paymentError: string | undefined = undefined
 
-    const perms = Array.isArray(apiKey.permissions) ? (apiKey.permissions as string[]) : ["read", "write", "delete"]
-    return {
-      tenantId: apiKey.tenant.id,
-      tenantSlug: apiKey.tenant.slug,
-      tenantName: apiKey.tenant.name,
-      permissions: perms,
-      isSuperAdmin: false,
+  if (!isPaid) {
+    paymentError = `❌ Payment Required: Akses MCP dinonaktifkan untuk workspace '${tenantData.slug}'. Status langganan Anda belum aktif/dibayar (status: ${activeSubscription?.status || "unpaid"}). Silakan aktifkan pembayaran melalui dashboard workspace.`
+  }
+
+  // ─── Plan & Dedicated VPS vs Shared Vercel Resolution ──────────────────────
+  const isVpsPlan = tenantData.plan.startsWith("vps-") || tenantData.plan === "enterprise"
+  let hostingType: "shared_vercel" | "dedicated_vps" = "shared_vercel"
+  let vpsHost: string | undefined = undefined
+
+  if (isVpsPlan) {
+    const vpsServer = await db.infrastructureServer.findFirst({
+      where: {
+        tenantId: tenantData.id,
+        status: { in: ["active", "configuring", "provisioning"] }
+      },
+      orderBy: { createdAt: "desc" }
+    })
+
+    if (vpsServer) {
+      hostingType = "dedicated_vps"
+      vpsHost = vpsServer.hostname || vpsServer.ipv4 || undefined
     }
   }
 
-  return null
+  return {
+    tenantId: tenantData.id,
+    tenantSlug: tenantData.slug,
+    tenantName: tenantData.name,
+    permissions,
+    plan: tenantData.plan,
+    isPaid,
+    hostingType,
+    vpsHost,
+    isSuperAdmin: false,
+    paymentError,
+  }
 }
 
 const UNAUTHORIZED = {
@@ -98,6 +148,7 @@ const UNAUTHORIZED = {
     text: "❌ Unauthorized: Invalid or missing API token. Please provide a valid Bearer token for your SaCMS workspace."
   }]
 }
+
 
 // ─── MCP Handler with Complete CRUD Capabilities ─────────────────────────────
 
@@ -1411,9 +1462,259 @@ export default async function NewsPage() {
         return { content: [{ type: "text" as const, text: docs }] }
       }
     )
+
+    // =========================================================================
+    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (VERCEL & CONTABO VPS)
+    // =========================================================================
+
+    // ── deploy_to_vercel ─────────────────────────────────────────────────────
+    server.registerTool(
+      "deploy_to_vercel",
+      {
+        title: "Deploy Website / App to Vercel",
+        description: "Deploy generated website frontend files (Next.js, HTML, React) directly to Vercel Serverless hosting. Returns the live production deployment URL.",
+        inputSchema: {
+          projectName: z.string().describe("Name of the Vercel project (e.g. 'my-awesome-site')"),
+          files: z.array(z.object({
+            name: z.string().describe("File path (e.g. 'app/page.tsx', 'index.html', 'styles.css')"),
+            content: z.string().describe("Raw source code content of the file")
+          })).describe("Array of files to deploy"),
+          envVars: z.record(z.string()).optional().describe("Optional environment variables for the deployment")
+        },
+      },
+      async ({ projectName, files, envVars }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        if (!auth.isPaid) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Payment Required: Fitur deploy Vercel memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+            }],
+            isError: true,
+          }
+        }
+
+        try {
+          const result = await deployToVercel(projectName, files, envVars)
+          return {
+            content: [{
+              type: "text" as const,
+              text: `🚀 Vercel Deployment Sukses!\n- Deployment ID: ${result.id}\n- Live URL: ${result.url}\n- Status: ${result.state}\n- Project: ${result.projectName || projectName}`
+            }]
+          }
+        } catch (err: any) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Gagal deploy ke Vercel: ${err.message}`
+            }],
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── get_vercel_deployment_status ─────────────────────────────────────────
+    server.registerTool(
+      "get_vercel_deployment_status",
+      {
+        title: "Get Vercel Deployment Status",
+        description: "Check the build progress, ready state, and live URL of an existing Vercel deployment.",
+        inputSchema: {
+          deploymentId: z.string().describe("Vercel deployment ID (e.g. 'dpl_xxx')"),
+        },
+      },
+      async ({ deploymentId }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        try {
+          const status = await getDeploymentStatus(deploymentId)
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                deploymentId,
+                state: status.state,
+                url: status.url,
+                isReady: status.state === "READY",
+              }, null, 2)
+            }]
+          }
+        } catch (err: any) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Error memeriksa status Vercel: ${err.message}`
+            }],
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── configure_vercel_domain ──────────────────────────────────────────────
+    server.registerTool(
+      "configure_vercel_domain",
+      {
+        title: "Configure Custom Domain on Vercel",
+        description: "Attach and verify a custom apex domain or subdomain to a Vercel project with DNS diagnostics.",
+        inputSchema: {
+          projectId: z.string().describe("Vercel Project ID"),
+          domain: z.string().describe("Custom domain name (e.g. 'mysite.com' or 'blog.mysite.com')"),
+        },
+      },
+      async ({ projectId, domain }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        try {
+          const result = await addDomainToProject(projectId, domain)
+          const config = await getDomainConfig(domain)
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                domain: result.name,
+                verified: result.verified,
+                verificationRequired: result.verificationRequired,
+                dnsConfig: {
+                  cnameTarget: config.cname,
+                  aRecordTarget: config.aRecord,
+                  configured: config.configured,
+                },
+                message: result.verified ? "✅ Domain terverifikasi dan aktif!" : "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
+              }, null, 2)
+            }]
+          }
+        } catch (err: any) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Gagal mengonfigurasi domain di Vercel: ${err.message}`
+            }],
+            isError: true,
+          }
+        }
+      }
+    )
+
+    // ── get_contabo_infrastructure_status ────────────────────────────────────
+    server.registerTool(
+      "get_contabo_infrastructure_status",
+      {
+        title: "Get Dedicated Contabo VPS Status",
+        description: "Inspect dedicated Contabo VPS appliance health, IP address, CPU/RAM specs, and PostgreSQL/MinIO status for this workspace.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const serverInfo = await db.infrastructureServer.findFirst({
+          where: { tenantId: auth.tenantId },
+          orderBy: { createdAt: "desc" }
+        })
+
+        if (!serverInfo) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                hasDedicatedVps: false,
+                currentPlan: auth.plan,
+                message: "Workspace ini menggunakan Shared Vercel Cloud. Upgrade ke paket VPS (vps-s, vps-m, vps-l, enterprise) untuk mengaktifkan Dedicated Contabo VPS Appliance."
+              }, null, 2)
+            }]
+          }
+        }
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              hasDedicatedVps: true,
+              serverId: serverInfo.id,
+              status: serverInfo.status,
+              healthStatus: serverInfo.healthStatus,
+              hostname: serverInfo.hostname,
+              ipv4: serverInfo.ipv4,
+              plan: serverInfo.plan,
+              cpuCount: serverInfo.cpuCount,
+              ramMb: serverInfo.ramMb,
+              diskGb: serverInfo.diskGb,
+              dbHost: serverInfo.dbHost,
+              mediaHost: serverInfo.mediaHost,
+              lastHealthCheckAt: serverInfo.lastHealthCheckAt,
+            }, null, 2)
+          }]
+        }
+      }
+    )
+
+    // ── provision_contabo_vps ────────────────────────────────────────────────
+    server.registerTool(
+      "provision_contabo_vps",
+      {
+        title: "Provision Dedicated Contabo VPS Appliance",
+        description: "Trigger automated provisioning of a dedicated Contabo VPS (PostgreSQL 17, Redis, MinIO S3) for a paid VPS-tier workspace.",
+        inputSchema: {
+          plan: z.enum(["vps-s", "vps-m", "vps-l", "vps-xl"]).default("vps-s").describe("Contabo VPS instance size"),
+          region: z.enum(["EU", "US-central", "SIN"]).default("EU").describe("Datacenter region"),
+        },
+      },
+      async ({ plan, region }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        if (!auth.isPaid) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Payment Required: Provisioning VPS memerlukan status pembayaran PAID. Silakan bayar invoice langganan di: /dashboard/${auth.tenantSlug}/subscriptions`
+            }],
+            isError: true,
+          }
+        }
+
+        const isVpsEligible = auth.plan.startsWith("vps-") || auth.plan === "enterprise"
+        if (!isVpsEligible) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Paket workspace Anda saat ini '${auth.plan}' adalah Shared Cloud. Silakan upgrade ke paket VPS di dashboard untuk provisioning dedicated server.`
+            }],
+            isError: true,
+          }
+        }
+
+        try {
+          const result = await provisionTenantInfrastructure(auth.tenantId, {
+            plan,
+            region,
+          })
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify(result, null, 2)
+            }]
+          }
+        } catch (err: any) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Gagal melakukan provisioning Contabo VPS: ${err.message}`
+            }],
+            isError: true,
+          }
+        }
+      }
+    )
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.0.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.1.0" },
   }
 )
 
@@ -1466,6 +1767,14 @@ export async function GET(req: Request) {
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized: Invalid or missing API token." }, { status: 401 })
     }
+    if (auth.paymentError) {
+      return NextResponse.json({
+        error: auth.paymentError,
+        code: "PAYMENT_REQUIRED",
+        plan: auth.plan,
+        upgradeUrl: `/dashboard/${auth.tenantSlug}/subscriptions`
+      }, { status: 402 })
+    }
     const patchedReq = patchRequestUrl(req)
     return await authContext.run(auth, () => handler(patchedReq))
   } catch (error: any) {
@@ -1480,6 +1789,14 @@ export async function POST(req: Request) {
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized: Invalid or missing API token." }, { status: 401 })
     }
+    if (auth.paymentError) {
+      return NextResponse.json({
+        error: auth.paymentError,
+        code: "PAYMENT_REQUIRED",
+        plan: auth.plan,
+        upgradeUrl: `/dashboard/${auth.tenantSlug}/subscriptions`
+      }, { status: 402 })
+    }
     const patchedReq = patchRequestUrl(req)
     return await authContext.run(auth, () => handler(patchedReq))
   } catch (error: any) {
@@ -1493,6 +1810,14 @@ export async function DELETE(req: Request) {
     const auth = await authenticateRequest(req)
     if (!auth) {
       return NextResponse.json({ error: "Unauthorized: Invalid or missing API token." }, { status: 401 })
+    }
+    if (auth.paymentError) {
+      return NextResponse.json({
+        error: auth.paymentError,
+        code: "PAYMENT_REQUIRED",
+        plan: auth.plan,
+        upgradeUrl: `/dashboard/${auth.tenantSlug}/subscriptions`
+      }, { status: 402 })
     }
     const patchedReq = patchRequestUrl(req)
     return await authContext.run(auth, () => handler(patchedReq))

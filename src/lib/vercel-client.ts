@@ -4,11 +4,23 @@
  * Docs: https://vercel.com/docs/rest-api
  */
 
+import { getPlatformSettings } from "./settings"
+
 const VERCEL_API_BASE = "https://api.vercel.com"
 
-function getVercelHeaders() {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
-  if (!token) throw new Error("VERCEL_ACCESS_TOKEN is not configured")
+export async function getVercelToken(): Promise<string> {
+  try {
+    const settings = await getPlatformSettings()
+    if (settings?.vercelAccessToken?.trim()) {
+      return settings.vercelAccessToken.trim()
+    }
+  } catch {}
+  return (process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN || "").trim()
+}
+
+async function getVercelHeaders() {
+  const token = await getVercelToken()
+  if (!token) throw new Error("VERCEL_ACCESS_TOKEN is not configured in settings or environment")
   return {
     "Authorization": `Bearer ${token}`,
     "Content-Type": "application/json"
@@ -55,11 +67,11 @@ export async function deployToVercel(
   files: { name: string; content: string }[],
   envVars?: Record<string, string>
 ): Promise<VercelDeploymentResult> {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
+  const token = await getVercelToken()
   
   // Safe Fallback if token is not configured in local development
   if (!token) {
-    console.warn("[Vercel Client] VERCEL_ACCESS_TOKEN not set. Simulating instant deployment.")
+    console.warn("[Vercel Client] VERCEL_ACCESS_TOKEN not set in settings or env. Simulating instant deployment.")
     const sanitizedName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-")
     return {
       id: `dpl_${Date.now()}`,
@@ -70,7 +82,7 @@ export async function deployToVercel(
     }
   }
 
-  const headers = getVercelHeaders()
+  const headers = await getVercelHeaders()
 
   const deployFiles: VercelDeploymentFile[] = files.map(f => ({
     file: f.name,
@@ -116,13 +128,13 @@ export async function deployToVercel(
  * Get deployment status
  */
 export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string }> {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
+  const token = await getVercelToken()
   if (!token) {
     return { state: "READY", url: `https://sacms-site.vercel.app` }
   }
 
   const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}${getTeamQuery()}`, {
-    headers: getVercelHeaders()
+    headers: await getVercelHeaders()
   })
 
   if (!res.ok) throw new Error("Failed to get deployment status")
@@ -140,7 +152,7 @@ export async function addDomainToProject(
   projectId: string,
   domain: string
 ): Promise<VercelDomainResult> {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
+  const token = await getVercelToken()
   if (!token) {
     return {
       name: domain,
@@ -152,7 +164,7 @@ export async function addDomainToProject(
 
   const res = await fetch(`${VERCEL_API_BASE}/v10/projects/${projectId}/domains${getTeamQuery()}`, {
     method: "POST",
-    headers: getVercelHeaders(),
+    headers: await getVercelHeaders(),
     body: JSON.stringify({ name: domain })
   })
 
@@ -182,13 +194,13 @@ export async function getDomainConfig(domain: string): Promise<{
   aRecord?: string
   configured: boolean
 }> {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
+  const token = await getVercelToken()
   if (!token) {
     return { cname: "cname.vercel-dns.com", aRecord: "76.76.21.21", configured: true }
   }
 
   const res = await fetch(`${VERCEL_API_BASE}/v6/domains/${domain}/config${getTeamQuery()}`, {
-    headers: getVercelHeaders()
+    headers: await getVercelHeaders()
   })
 
   if (!res.ok) {
@@ -207,11 +219,11 @@ export async function getDomainConfig(domain: string): Promise<{
  * List all projects on Vercel account
  */
 export async function listVercelProjects(): Promise<{ id: string; name: string; url: string }[]> {
-  const token = process.env.VERCEL_ACCESS_TOKEN || process.env.VERCEL_API_TOKEN
+  const token = await getVercelToken()
   if (!token) return []
 
   const res = await fetch(`${VERCEL_API_BASE}/v9/projects?limit=20${getTeamQuery().replace("?", "&")}`, {
-    headers: getVercelHeaders()
+    headers: await getVercelHeaders()
   })
 
   if (!res.ok) return []

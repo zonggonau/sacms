@@ -1,0 +1,87 @@
+version: "3.9"
+
+services:
+  # ─── 1. SaCMS Core App & MCP Gateway ───────────────────────────────────────
+  sacms-app:
+    build:
+      context: ../..
+      dockerfile: docker/mcp-contabo/Dockerfile
+    container_name: sacms_app
+    restart: always
+    environment:
+      - DATABASE_URL=postgresql://sacms:${POSTGRES_PASSWORD:-sacmspass123}@sacms-db:5432/sacms_db?schema=public
+      - DIRECT_URL=postgresql://sacms:${POSTGRES_PASSWORD:-sacmspass123}@sacms-db:5432/sacms_db?schema=public
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-your-random-32-chars-secret-key-change-this}
+      - NEXTAUTH_URL=https://${DOMAIN:-cms.yourdomain.com}
+      - REDIS_URL=redis://sacms-redis:6379
+      - PUBLIC_GATEWAY_IP=${PUBLIC_GATEWAY_IP:-161.97.100.1}
+      - PUBLIC_CNAME_TARGET=${PUBLIC_CNAME_TARGET:-cname.sacms.cloud}
+    depends_on:
+      sacms-db:
+        condition: service_healthy
+      sacms-redis:
+        condition: service_healthy
+    networks:
+      - sacms-network
+
+  # ─── 2. Dedicated PostgreSQL Database ───────────────────────────────────────
+  sacms-db:
+    image: postgres:17-alpine
+    container_name: sacms_postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=sacms
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-sacmspass123}
+      - POSTGRES_DB=sacms_db
+    volumes:
+      - sacms_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sacms -d sacms_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sacms-network
+
+  # ─── 3. Redis Cache & SSE Rate-Limiter ──────────────────────────────────────
+  sacms-redis:
+    image: redis:7-alpine
+    container_name: sacms_redis
+    restart: always
+    command: redis-server --save 60 1 --loglevel warning
+    volumes:
+      - sacms_redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sacms-network
+
+  # ─── 4. Caddy Reverse Proxy (Auto SSL & Infinite SSE Streaming) ─────────────
+  sacms-caddy:
+    image: caddy:2-alpine
+    container_name: sacms_caddy
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - sacms_caddy_data:/data
+      - sacms_caddy_config:/config
+    depends_on:
+      - sacms-app
+    networks:
+      - sacms-network
+
+networks:
+  sacms-network:
+    driver: bridge
+
+volumes:
+  sacms_pgdata:
+  sacms_redisdata:
+  sacms_caddy_data:
+  sacms_caddy_config:

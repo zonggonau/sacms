@@ -1,0 +1,33 @@
+{
+    email admin@sacms.cloud
+}
+
+# Production Domain with Automatic HTTPS & Unbuffered SSE Streaming
+{$DOMAIN:cms.yourdomain.com} {
+    encode gzip zstd
+
+    # Dedicated routing for MCP Server-Sent Events (SSE) stream without proxy buffering
+    handle /api/mcp* {
+        reverse_proxy sacms-app:3000 {
+            flush_interval -1
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Public OpenAPI & Dynamic REST APIs
+    handle /api/public/* {
+        reverse_proxy sacms-app:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+
+    # Default App Routing
+    handle {
+        reverse_proxy sacms-app:3000 {
+            header_up X-Forwarded-Proto {scheme}
+            header_up X-Forwarded-Host {host}
+        }
+    }
+}
