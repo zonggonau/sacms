@@ -122,6 +122,107 @@ function AdminUsersContent() {
     role: "owner"
   })
 
+  // Verification Action States
+  const [verifyingUserId, setVerifyingUserId] = useState<string | null>(null)
+
+  const handleSendVerificationEmail = async (targetUser: User) => {
+    setVerifyingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "send_email" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({
+          title: "Tautan Aktivasi Terkirim! ✉️",
+          description: data.message || `Tautan aktivasi berhasil dikirim ke ${targetUser.email} (berlaku 24 jam).`,
+        })
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Pengiriman Gagal",
+          description: data.error || "Gagal mengirimkan email aktivasi.",
+        })
+      }
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Kesalahan Jaringan",
+        description: e.message || "Gagal menghubungi server.",
+      })
+    } finally {
+      setVerifyingUserId(null)
+    }
+  }
+
+  const handleManualVerify = async (targetUser: User) => {
+    setVerifyingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "manual_verify" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({
+          title: "Verifikasi Berhasil! ✅",
+          description: data.message || `Akun ${targetUser.email} telah diverifikasi secara manual.`,
+        })
+        setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, emailVerified: new Date().toISOString() } : u))
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Gagal Verifikasi",
+          description: data.error || "Gagal memverifikasi akun.",
+        })
+      }
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Kesalahan Jaringan",
+        description: e.message || "Gagal menghubungi server.",
+      })
+    } finally {
+      setVerifyingUserId(null)
+    }
+  }
+
+  const handleRevokeVerify = async (targetUser: User) => {
+    setVerifyingUserId(targetUser.id)
+    try {
+      const res = await fetch(`/api/admin/users/${targetUser.id}/verify`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "revoke_verify" }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({
+          title: "Status Dicabut",
+          description: data.message || `Status verifikasi akun ${targetUser.email} telah dicabut.`,
+        })
+        setUsers(prev => prev.map(u => u.id === targetUser.id ? { ...u, emailVerified: null } : u))
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Gagal",
+          description: data.error || "Gagal mencabut status verifikasi.",
+        })
+      }
+    } catch (e: any) {
+      toast({
+        variant: "destructive",
+        title: "Kesalahan",
+        description: e.message || "Gagal menghubungi server.",
+      })
+    } finally {
+      setVerifyingUserId(null)
+    }
+  }
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/login")
@@ -621,6 +722,16 @@ function AdminUsersContent() {
                             >
                               {user.role === "super_admin" ? "SUPER ADMIN" : "ACCOUNT OWNER"}
                             </Badge>
+
+                            {user.emailVerified ? (
+                              <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[9px] font-bold rounded-full gap-1">
+                                <CheckCircle className="w-2.5 h-2.5" /> Terverifikasi
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[9px] font-bold rounded-full gap-1">
+                                <AlertCircle className="w-2.5 h-2.5" /> Menunggu Aktivasi
+                              </Badge>
+                            )}
                             
                             {user.plan && (
                               <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-full border-border/60 text-muted-foreground">
@@ -642,10 +753,28 @@ function AdminUsersContent() {
                       </div>
                       
                       <div className="flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 pt-2 sm:pt-0">
-                        <div className="flex flex-col items-start sm:items-end text-left sm:text-right">
+                        <div className="flex flex-col items-start sm:items-end text-left sm:text-right mr-1">
                           <span className="text-[10px] text-muted-foreground uppercase font-bold">Bergabung</span>
                           <span className="text-xs font-mono text-foreground">{new Date(user.createdAt).toLocaleDateString('id-ID')}</span>
                         </div>
+
+                        {!user.emailVerified && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 rounded-xl text-xs font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10 gap-1.5 shadow-none shrink-0"
+                            onClick={() => handleSendVerificationEmail(user)}
+                            disabled={verifyingUserId === user.id}
+                            title="Kirim Tautan Aktivasi Email"
+                          >
+                            {verifyingUserId === user.id ? (
+                              <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                            ) : (
+                              <Mail className="w-3.5 h-3.5" />
+                            )}
+                            <span className="hidden md:inline">Kirim Link Aktivasi</span>
+                          </Button>
+                        )}
 
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -653,7 +782,7 @@ function AdminUsersContent() {
                               <MoreVertical className="h-3.5 w-3.5" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-52 rounded-xl border-border bg-card">
+                          <DropdownMenuContent align="end" className="w-56 rounded-xl border-border bg-card">
                             <DropdownMenuLabel className="text-xs font-bold text-muted-foreground">Aksi Akun</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => openEdit(user)} className="cursor-pointer text-xs rounded-lg">
                               <Edit className="mr-2 h-3.5 w-3.5" /> Edit Profil
@@ -669,6 +798,36 @@ function AdminUsersContent() {
                                 <Building2 className="mr-2 h-3.5 w-3.5" /> Kelola Workspace
                               </Link>
                             </DropdownMenuItem>
+                            
+                            <DropdownMenuSeparator />
+                            <DropdownMenuLabel className="text-[10px] font-bold uppercase text-muted-foreground">Status Verifikasi</DropdownMenuLabel>
+                            
+                            <DropdownMenuItem 
+                              onClick={() => handleSendVerificationEmail(user)} 
+                              className="cursor-pointer text-xs rounded-lg text-primary font-medium"
+                              disabled={verifyingUserId === user.id}
+                            >
+                              <Mail className="mr-2 h-3.5 w-3.5" /> Kirim Link Aktivasi Email
+                            </DropdownMenuItem>
+                            
+                            {user.emailVerified ? (
+                              <DropdownMenuItem 
+                                onClick={() => handleRevokeVerify(user)} 
+                                className="cursor-pointer text-xs rounded-lg text-amber-600 font-medium"
+                                disabled={verifyingUserId === user.id}
+                              >
+                                <AlertCircle className="mr-2 h-3.5 w-3.5" /> Cabut Status Verifikasi
+                              </DropdownMenuItem>
+                            ) : (
+                              <DropdownMenuItem 
+                                onClick={() => handleManualVerify(user)} 
+                                className="cursor-pointer text-xs rounded-lg text-emerald-600 font-medium"
+                                disabled={verifyingUserId === user.id}
+                              >
+                                <ShieldCheck className="mr-2 h-3.5 w-3.5" /> Verifikasi Manual (Instan)
+                              </DropdownMenuItem>
+                            )}
+
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               onClick={() => openDelete(user)}
