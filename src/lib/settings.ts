@@ -216,15 +216,25 @@ export async function getResolvedAiConfig() {
 
 export async function getResolvedMailConfig() {
   const settings = await getPlatformSettings()
+  const resendApiKey = (settings.resendApiKey || process.env.RESEND_API_KEY || "").trim()
+  const resendFrom = (settings.resendFrom || process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>").trim()
+  const smtpHost = (settings.smtpHost || process.env.SMTP_HOST || "").trim()
+  const rawPort = (settings.smtpPort || process.env.SMTP_PORT || "587").toString().trim()
+  const smtpPort = parseInt(rawPort, 10) || 587
+  const smtpSecure = (settings.smtpSecure === "true" || process.env.SMTP_SECURE === "true" || smtpPort === 465)
+  const smtpUser = (settings.smtpUser || process.env.SMTP_USER || "").trim()
+  const smtpPass = (settings.smtpPass || process.env.SMTP_PASS || "").trim()
+  const smtpFrom = (settings.smtpFrom || process.env.SMTP_FROM || resendFrom || "SaCMS <noreply@mail.sacms.cloud>").trim()
+
   return {
-    resendApiKey: settings.resendApiKey || process.env.RESEND_API_KEY || "",
-    resendFrom: settings.resendFrom || process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>",
-    smtpHost: settings.smtpHost || process.env.SMTP_HOST || "",
-    smtpPort: parseInt(settings.smtpPort || process.env.SMTP_PORT || "587"),
-    smtpSecure: (settings.smtpSecure === "true" || process.env.SMTP_SECURE === "true" || (settings.smtpPort === "465" || process.env.SMTP_PORT === "465")),
-    smtpUser: settings.smtpUser || process.env.SMTP_USER || "",
-    smtpPass: settings.smtpPass || process.env.SMTP_PASS || "",
-    smtpFrom: settings.smtpFrom || process.env.SMTP_FROM || "SaCMS <noreply@mail.sacms.cloud>",
+    resendApiKey,
+    resendFrom,
+    smtpHost,
+    smtpPort,
+    smtpSecure,
+    smtpUser,
+    smtpPass,
+    smtpFrom,
   }
 }
 

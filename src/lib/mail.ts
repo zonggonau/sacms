@@ -1,4 +1,6 @@
-import { getResolvedMailConfig } from "./settings"
+import nodemailer from "nodemailer"
+import { Resend } from "resend"
+import { getResolvedMailConfig, getPlatformSettings } from "./settings"
 
 // Cached transporter per config signature
 let cachedTransporter: nodemailer.Transporter | null = null
@@ -57,21 +59,37 @@ async function getResendClient(): Promise<{ client: Resend | null; fromEmail: st
   if (config.resendApiKey) {
     return {
       client: new Resend(config.resendApiKey),
-      fromEmail: config.resendFrom,
+      fromEmail: config.resendFrom || "SaCMS <noreply@mail.sacms.cloud>",
     }
   }
-  return { client: null, fromEmail: config.resendFrom }
+  return { client: null, fromEmail: config.resendFrom || "SaCMS <noreply@mail.sacms.cloud>" }
 }
 
-const getBaseUrl = () => {
-  if (process.env.NEXTAUTH_URL) return process.env.NEXTAUTH_URL.replace(/\/$/, "")
-  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
-  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "")
-  return "http://localhost:3000"
+export async function getBaseUrl(): Promise<string> {
+  try {
+    const settings = await getPlatformSettings()
+    if (settings.siteUrl && settings.siteUrl.startsWith("http")) {
+      return settings.siteUrl.replace(/\/$/, "")
+    }
+  } catch {}
+  
+  if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")) {
+    return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
+  }
+  if (process.env.NEXTAUTH_URL && process.env.NEXTAUTH_URL.startsWith("http") && !process.env.NEXTAUTH_URL.includes("localhost")) {
+    return process.env.NEXTAUTH_URL.replace(/\/$/, "")
+  }
+  if (process.env.VERCEL_URL) {
+    return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "")
+  }
+  if (process.env.NODE_ENV === "production") {
+    return "https://sacms.cloud"
+  }
+  return process.env.NEXTAUTH_URL?.replace(/\/$/, "") || "http://localhost:3000"
 }
 
 export async function sendVerificationEmail(email: string, token: string, name: string = "User") {
-  const baseUrl = getBaseUrl()
+  const baseUrl = await getBaseUrl()
   const verifyUrl = `${baseUrl}/api/auth/verify?token=${token}`
   const subject = "Verifikasi Alamat Email Anda — SaCMS"
   const html = `
@@ -105,12 +123,14 @@ export async function sendVerificationEmail(email: string, token: string, name: 
 
       if (res.error) {
         console.error("❌ [Mail] Resend error:", res.error)
+        throw new Error(`Resend error: ${res.error.message || JSON.stringify(res.error)}`)
       } else {
         console.log("✅ [Mail] Verification email successfully sent via Resend. ID:", res.data?.id)
         return res
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ [Mail] Resend exception:", err)
+      throw err
     }
   }
 
@@ -119,7 +139,7 @@ export async function sendVerificationEmail(email: string, token: string, name: 
     const t = await getTransporter()
     if (!t) {
       console.warn("⚠️ [Mail] No email provider (Resend or SMTP) configured. Skipping email dispatch.")
-      return null
+      throw new Error("Layanan email belum dikonfigurasi di Super Admin Settings.")
     }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
@@ -145,7 +165,7 @@ export async function sendVerificationEmail(email: string, token: string, name: 
 }
 
 export async function sendPasswordResetEmail(email: string, token: string) {
-  const baseUrl = getBaseUrl()
+  const baseUrl = await getBaseUrl()
   const resetUrl = `${baseUrl}/reset-password?token=${token}`
   const subject = "Atur Ulang Kata Sandi — SaCMS"
   const html = `
@@ -178,18 +198,23 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
       if (res.error) {
         console.error("❌ [Mail] Resend reset error:", res.error)
+        throw new Error(`Resend error: ${res.error.message || JSON.stringify(res.error)}`)
       } else {
         console.log("✅ [Mail] Password reset email successfully sent via Resend. ID:", res.data?.id)
         return res
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("❌ [Mail] Resend reset exception:", err)
+      throw err
     }
   }
 
   // Fallback to SMTP
   try {
     const t = await getTransporter()
+    if (!t) {
+      throw new Error("Layanan email belum dikonfigurasi di Super Admin Settings.")
+    }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
       from: mailConfig.smtpFrom || fromEmail || '"SaCMS" <noreply@mail.sacms.cloud>',
@@ -274,6 +299,9 @@ export async function sendSupportNotificationEmail({
   }
 
   const t = await getTransporter()
+  if (!t) {
+    throw new Error("Layanan email belum dikonfigurasi di Super Admin Settings.")
+  }
   const mailConfig = await getResolvedMailConfig()
   const info = await t.sendMail({
     from: mailConfig.smtpFrom || fromEmail || '"SaCMS Support" <support@sacms.local>',
@@ -284,4 +312,3 @@ export async function sendSupportNotificationEmail({
 
   return info
 }
-
