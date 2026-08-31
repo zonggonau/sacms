@@ -67,28 +67,58 @@ echo "==> [5/6] Checking production environment file..."
 if [ ! -f /opt/sacms/.env ]; then
     echo "Generating default production /opt/sacms/.env..."
     RANDOM_SECRET=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
+    CRON_RANDOM=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
     cat <<EOF > /opt/sacms/.env
-# SaCMS Production Environment for 164.68.116.79
+# SaCMS Production Environment for 164.68.116.79 & sacms.cloud
 NODE_ENV=production
 NEXTAUTH_SECRET=${RANDOM_SECRET}
-NEXTAUTH_URL=http://164.68.116.79
+NEXTAUTH_URL=https://sacms.cloud
+NEXT_PUBLIC_APP_URL=https://sacms.cloud
 PUBLIC_GATEWAY_IP=164.68.116.79
+PUBLIC_CNAME_TARGET=cname.sacms.cloud
 
 # Database Configuration (PostgreSQL 17)
 POSTGRES_USER=sacms
 POSTGRES_PASSWORD=Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}
 POSTGRES_DB=sacms
-DATABASE_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms
-DIRECT_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms
+DATABASE_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms?schema=public
+DIRECT_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms?schema=public
 
-# Redis
+# Redis Caching & Edge Rate Limiting
 REDIS_URL=redis://redis:6379
 
-# Self-Hosted Mode (Enterprise)
+# Cron & Selfhost Mode
+CRON_SECRET=${CRON_RANDOM}
 SELFHOST_MODE=true
+
+# Email Notification (Resend)
+RESEND_API_KEY=${RESEND_API_KEY:-""}
+RESEND_FROM=${RESEND_FROM:-"SaCMS <noreply@mail.sacms.cloud>"}
+
+# Payment Gateway (Midtrans)
+MIDTRANS_SERVER_KEY=${MIDTRANS_SERVER_KEY:-""}
+MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-""}
+MIDTRANS_MODE=sandbox
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-""}
+NEXT_PUBLIC_MIDTRANS_SNAP_URL=https://app.sandbox.midtrans.com/snap/snap.js
+
+# AI Website Builder & Edge Generator
+NEXT_PUBLIC_SYSTEM_API_KEY=${NEXT_PUBLIC_SYSTEM_API_KEY:-""}
+DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-""}
+VERCEL_ACCESS_TOKEN=${VERCEL_ACCESS_TOKEN:-""}
+V0_API_KEY=${V0_API_KEY:-""}
+
+# Contabo Dedicated Appliance Provisioning
+CONTABO_CLIENT_ID=${CONTABO_CLIENT_ID:-""}
+CONTABO_CLIENT_SECRET=${CONTABO_CLIENT_SECRET:-""}
+CONTABO_API_USER=${CONTABO_API_USER:-""}
+CONTABO_API_PASSWORD=${CONTABO_API_PASSWORD:-""}
+CONTABO_AUTH_URL=https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token
+CONTABO_API_URL=https://api.contabo.com/v1/compute/instances
+INFRA_BASE_DOMAIN=sacms.cloud
 EOF
     chmod 600 /opt/sacms/.env
-    echo "Created /opt/sacms/.env with secure credentials."
+    echo "Created /opt/sacms/.env with complete production credentials."
 else
     echo "/opt/sacms/.env already exists. Preserving existing configuration."
 fi
