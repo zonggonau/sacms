@@ -88,5 +88,12 @@ async function seed() {
 }
 
 seed()
-  .catch(console.error)
-  .finally(() => db.$disconnect())
+  .then(async () => {
+    await db.$disconnect()
+    process.exit(0)
+  })
+  .catch(async (e) => {
+    console.error(e)
+    await db.$disconnect()
+    process.exit(1)
+  })
