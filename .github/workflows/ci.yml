@@ -202,28 +202,51 @@ jobs:
             echo "==> [4/7] Pulling latest SaCMS image..."
             docker compose pull app
 
-            echo "==> [5/7] Running Prisma Database Migrations..."
-            # Ensure postgres is running first
+            echo "==> [5/7] Running Prisma Database Migrations & Permission Sync..."
+            # Ensure postgres & redis are up and healthy first
             docker compose up -d postgres redis
-            sleep 3
+            for i in $(seq 1 15); do
+              if docker compose exec -T postgres pg_isready -q 2>/dev/null; then
+                echo "PostgreSQL is ready!"
+                break
+              fi
+              echo "Waiting for PostgreSQL ($i/15)..."
+              sleep 2
+            done
 
-            # Run Prisma schema push / migration
-            docker compose run --rm app bun x prisma db push --accept-data-loss || true
+            # Run Prisma schema push & RBAC permission sync
+            docker compose run --rm app bun x prisma db push --accept-data-loss
+            docker compose run --rm app bun run seed:permissions || true
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans
 
-            echo "==> [7/7] Verifying service health..."
-            for i in $(seq 1 15); do
-              if docker compose ps app | grep -q "Up"; then
-                echo "SaCMS Container is UP and Healthy! 🚀"
+            echo "==> [7/7] Verifying live system health..."
+            HEALTHY=0
+            for i in $(seq 1 20); do
+              HEALTH_RES=$(curl -sf http://127.0.0.1:3000/api/health 2>/dev/null || echo "")
+              if echo "$HEALTH_RES" | grep -q '"status":"healthy"'; then
+                echo "✅ SaCMS App, Database & Services are 100% HEALTHY! 🚀"
+                HEALTHY=1
+                break
+              elif echo "$HEALTH_RES" | grep -q '"database":{"status":"ok"}'; then
+                echo "✅ SaCMS Database is connected and healthy!"
+                HEALTHY=1
                 break
               fi
-              echo "Waiting for app container to become ready ($i/15)..."
-              sleep 2
+              echo "Waiting for app health check ($i/20)..."
+              sleep 3
             done
+
+            if [ "$HEALTHY" -ne 1 ]; then
+              echo "⚠️ Warning: Healthcheck did not return healthy within 60s. Recent app logs:"
+              docker compose logs --tail=30 app
+            fi
 
             echo "==> Cleaning up unused images..."
             docker image prune -f
 
-            echo "✅ Deployment to 164.68.116.79 completed successfully!"
+            echo "========================================================"
+            echo "🎉 Deployment to 164.68.116.79 completed successfully!"
+            echo "Domain: https://sacms.cloud"
+            echo "========================================================"
