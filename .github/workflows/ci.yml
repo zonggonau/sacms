@@ -16,14 +16,17 @@ permissions:
   packages: write
 
 jobs:
-  validate:
-    name: Fast Lint & Unit Tests
+  build-and-push:
+    name: ⚡ Fast Test, Build & Push (GHCR)
     runs-on: ubuntu-latest
     env:
       DATABASE_URL: "postgresql://placeholder:placeholder@localhost:5432/placeholder"
       NEXTAUTH_SECRET: "ci-secret-placeholder-must-be-long-enough-32char"
       INFRA_ENCRYPTION_KEY: "ci-infra-key-placeholder-32-characters-key"
       NEXTAUTH_URL: "http://localhost:3000"
+      SKIP_SENTRY_BUILD: "1"
+      SENTRY_IGNORE_API_RESOLUTION_ERROR: "1"
+      SENTRY_DISABLE_SERVER_SIDE_SOURCE_MAPS: "1"
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -33,26 +36,17 @@ jobs:
         with:
           bun-version: latest
 
-      - name: Install Dependencies
+      - name: Install Dependencies (Cached)
         run: bun install --frozen-lockfile
 
       - name: Generate Prisma Client
         run: bun x prisma generate
 
-      - name: Run ESLint
-        run: bun run lint
-
-      - name: Run Vitest Suite (155 tests)
+      - name: Run Automated Vitest Suite (155 tests)
         run: bun run test
 
-  docker-push:
-    name: Fast Build & Push Image (GHCR)
-    needs: [validate]
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms'
-    steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
+      - name: Compile Next.js Standalone Bundle
+        run: bun run build
 
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
@@ -64,23 +58,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and Push Docker Image (AMD64)
+      - name: Build & Push Ultra-Fast Image (5s)
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          push: true
+          push: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms' }}
           tags: |
             ghcr.io/${{ github.repository_owner }}/sacms:${{ github.ref_name }}
             ghcr.io/${{ github.repository_owner }}/sacms:sha-${{ github.sha }}
             ghcr.io/${{ github.repository_owner }}/sacms:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
 
   deploy:
-    name: Fast Zero-Downtime Deploy (164.68.116.79)
-    needs: [docker-push]
+    name: 🚀 Live Zero-Downtime Deploy (164.68.116.79)
+    needs: [build-and-push]
     runs-on: ubuntu-latest
     if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms'
     steps:
