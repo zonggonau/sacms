@@ -19,14 +19,13 @@ import {
 } from "@/components/ui/select"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Loader2, Save, Server, Info, RefreshCw, Copy, Database, Check,
-  Shield, Key, Sparkles, Image as ImageIcon, HardDrive,
-  Globe, AlertTriangle, Trash2, Cpu, Sliders, Lock
+  Loader2, Save, Server, RefreshCw, Copy, Database, Check,
+  Shield, Sparkles, Image as ImageIcon,
+  AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { v4 as uuidv4 } from "uuid"
-import { cn } from "@/lib/utils"
 
 export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
@@ -37,39 +36,78 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [purgingCache, setPurgingCache] = useState(false)
   const [testAiLoading, setTestAiLoading] = useState(false)
+  const [testEmailLoading, setTestEmailLoading] = useState(false)
+  const [testEmailRecipient, setTestEmailRecipient] = useState("")
   const [copied, setCopied] = useState(false)
+  const [showMasks, setShowMasks] = useState<Record<string, boolean>>({})
+
+  const toggleMask = (field: string) => {
+    setShowMasks(prev => ({ ...prev, [field]: !prev[field] }))
+  }
 
   // Comprehensive Settings State with robust defaults
   const [settings, setSettings] = useState({
     // Tab 1: Workspace & Registration
     globalTenantId: "sacms-global",
-    registrationMode: "open", // open | invite_only | closed
-    defaultUserPlan: "free", // free | starter | pro_trial
+    registrationMode: "open",
+    defaultUserPlan: "free",
     maxWorkspacesPerUser: "1",
     autoProvisionSeedData: "true",
-    customDomainPolicy: "paid_only", // all_plans | paid_only | disabled
+    customDomainPolicy: "paid_only",
     defaultStorageLimitMb: "500",
 
-    // Tab 2: Security & API Gateway
+    // Tab 2: Security & Gateway
     maintenanceMode: "false",
     maintenanceMessage: "Platform SaCMS sedang dalam pemeliharaan terjadwal. Silakan coba kembali beberapa saat lagi.",
     maintenanceIpWhitelist: "127.0.0.1",
     apiRateLimitPerMinute: "120",
-    globalCorsPolicy: "wildcard", // wildcard | strict_tenant
+    globalCorsPolicy: "wildcard",
     ipBlacklist: "",
     webhookMaxRetries: "3",
 
-    // Tab 3: Media & AI Engine
+    // Tab 3: AI Engine & Providers
+    platformAiProvider: "deepseek",
+    platformAiApiKey: "",
+    deepseekApiKey: "",
+    openaiApiKey: "",
+    geminiApiKey: "",
+    anthropicApiKey: "",
+    v0ApiKey: "",
+    vercelAccessToken: "",
+    defaultAiModel: "deepseek-chat",
+    freePlanAiMonthlyWords: "10000",
+
+    // Tab 4: Email & SMTP Delivery
+    resendApiKey: "",
+    resendFrom: "SaCMS <noreply@mail.sacms.cloud>",
+    smtpHost: "",
+    smtpPort: "587",
+    smtpSecure: "false",
+    smtpUser: "",
+    smtpPass: "",
+    smtpFrom: "SaCMS <noreply@mail.sacms.cloud>",
+
+    // Tab 5: Billing & Midtrans
+    midtransMode: "sandbox",
+    midtransServerKey: "",
+    midtransClientKey: "",
+
+    // Tab 6: Storage & Dedicated Infrastructure
     maxUploadFileSizeMb: "25",
     allowedFileExtensions: ".jpg, .jpeg, .png, .webp, .svg, .pdf, .mp4",
     autoWebpConvert: "true",
     autoGenerateThumbnails: "true",
-    platformAiProvider: "openai", // openai | gemini | anthropic
-    platformAiApiKey: "",
-    defaultAiModel: "gpt-4o-mini",
-    freePlanAiMonthlyWords: "10000",
+    r2AccountId: "",
+    r2AccessKeyId: "",
+    r2SecretAccessKey: "",
+    r2BucketName: "",
+    r2PublicUrl: "",
+    contaboClientId: "",
+    contaboClientSecret: "",
+    contaboApiUser: "",
+    contaboApiPassword: "",
 
-    // Tab 4: Runtime & Retention
+    // Retention
     auditLogRetentionDays: "90",
     apiLogRetentionDays: "14",
   })
@@ -105,8 +143,11 @@ export default function AdminSettingsPage() {
   useEffect(() => {
     if (session?.user?.role === "super_admin") {
       fetchSettings()
+      if (session.user.email) {
+        setTestEmailRecipient(session.user.email)
+      }
     }
-  }, [session?.user?.id, session?.user?.role])
+  }, [session?.user?.id, session?.user?.role, session?.user?.email])
 
   const handleSave = async () => {
     setSaving(true)
@@ -117,7 +158,7 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({ settings }),
       })
       if (res.ok) {
-        toast({ title: "Pengaturan Berhasil Disimpan", description: "Seluruh parameter konfigurasi platform berhasil diperbarui." })
+        toast({ title: "Pengaturan Berhasil Disimpan", description: "Seluruh parameter konfigurasi platform berhasil disinkronkan ke database & Redis cache." })
       } else {
         throw new Error("Failed to save")
       }
@@ -138,39 +179,84 @@ export default function AdminSettingsPage() {
       } else {
         toast({ variant: "destructive", title: "Gagal", description: "Gagal membersihkan cache." })
       }
-    } catch (err) {
-      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: "Terjadi kesalahan saat membersihkan cache." })
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: e.message })
     } finally {
       setPurgingCache(false)
     }
   }
 
-  const handleTestAi = async () => {
-    if (!settings.platformAiApiKey) {
-      toast({ variant: "destructive", title: "API Key Kosong", description: "Masukkan API Key terlebih dahulu." })
+  const handleTestAi = async (targetProvider?: string, keyToTest?: string) => {
+    const provider = targetProvider || settings.platformAiProvider || "deepseek"
+    const apiKey = keyToTest || (
+      provider === "deepseek" ? (settings.deepseekApiKey || settings.platformAiApiKey) :
+      provider === "openai" ? settings.openaiApiKey :
+      provider === "gemini" ? settings.geminiApiKey :
+      provider === "anthropic" ? settings.anthropicApiKey : settings.platformAiApiKey
+    )
+
+    if (!apiKey) {
+      toast({ variant: "destructive", title: "API Key Kosong", description: `Silakan masukkan API Key untuk ${provider} sebelum melakukan tes koneksi.` })
       return
     }
+
     setTestAiLoading(true)
     try {
       const res = await fetch("/api/admin/settings/test-ai", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          provider: settings.platformAiProvider,
-          apiKey: settings.platformAiApiKey,
+          provider,
+          apiKey,
           model: settings.defaultAiModel
         })
       })
       const data = await res.json()
       if (res.ok && data.success) {
-        toast({ title: "Koneksi Berhasil", description: data.message })
+        toast({ title: "Koneksi AI Berhasil!", description: data.message })
       } else {
-        toast({ variant: "destructive", title: "Koneksi Gagal", description: data.message || "Gagal menghubungi server AI" })
+        toast({ variant: "destructive", title: "Uji Koneksi AI Gagal", description: data.message || "Gagal menghubungi AI provider." })
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: e.message || "Kesalahan jaringan" })
     } finally {
       setTestAiLoading(false)
+    }
+  }
+
+  const handleTestEmail = async () => {
+    if (!testEmailRecipient) {
+      toast({ variant: "destructive", title: "Email Tujuan Kosong", description: "Silakan masukkan alamat email penerima untuk pengujian." })
+      return
+    }
+
+    setTestEmailLoading(true)
+    try {
+      const res = await fetch("/api/admin/settings/test-email", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetEmail: testEmailRecipient,
+          resendApiKey: settings.resendApiKey,
+          resendFrom: settings.resendFrom,
+          smtpHost: settings.smtpHost,
+          smtpPort: settings.smtpPort,
+          smtpSecure: settings.smtpSecure,
+          smtpUser: settings.smtpUser,
+          smtpPass: settings.smtpPass,
+          smtpFrom: settings.smtpFrom,
+        })
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        toast({ title: "Email Berhasil Dikirim!", description: data.message })
+      } else {
+        toast({ variant: "destructive", title: "Uji Email Gagal", description: data.message || "Gagal mengirim email tes." })
+      }
+    } catch (e: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: e.message || "Kesalahan jaringan" })
+    } finally {
+      setTestEmailLoading(false)
     }
   }
 
@@ -202,7 +288,7 @@ export default function AdminSettingsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pusat kendali operasional, perizinan workspace, batasan kuota, dan keamanan sistem SaCMS.
+                Pusat kendali operasional, API keys pihak ketiga, email delivery, payment gateway, dan perizinan sistem SaCMS.
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -228,39 +314,659 @@ export default function AdminSettingsPage() {
           )}
 
           {/* Navigation Tabs */}
-          <Tabs defaultValue="workspaces" className="space-y-6">
-            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 md:grid-cols-4 h-auto gap-1">
+          <Tabs defaultValue="ai_engine" className="space-y-6">
+            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 h-auto gap-1">
+              <TabsTrigger 
+                value="ai_engine" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                <Bot className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+                Mesin AI
+              </TabsTrigger>
+              <TabsTrigger 
+                value="email_smtp" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                <Mail className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+                Email & SMTP
+              </TabsTrigger>
+              <TabsTrigger 
+                value="billing_payments" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                <CreditCard className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+                Payment Midtrans
+              </TabsTrigger>
+              <TabsTrigger 
+                value="storage_infra" 
+                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
+              >
+                <HardDrive className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
+                Storage & Infra
+              </TabsTrigger>
               <TabsTrigger 
                 value="workspaces" 
                 className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
               >
                 <Database className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-                Workspace & Registrasi
+                Workspace
               </TabsTrigger>
               <TabsTrigger 
                 value="security" 
                 className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
               >
                 <Shield className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-                Keamanan & Gateway
-              </TabsTrigger>
-              <TabsTrigger 
-                value="media_ai" 
-                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
-              >
-                <Sparkles className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-                Media & Mesin AI
-              </TabsTrigger>
-              <TabsTrigger 
-                value="runtime" 
-                className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs transition-all"
-              >
-                <Server className="h-3.5 w-3.5 mr-1.5 hidden sm:inline" />
-                Runtime & Operasi
+                Keamanan
               </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: WORKSPACE & REGISTRATION */}
+            {/* TAB 1: MESIN AI & PROVIDERS */}
+            <TabsContent value="ai_engine" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* AI Configuration */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                        <Bot className="h-4 w-4 text-primary" />
+                        Provider AI Utama & Kuota
+                      </CardTitle>
+                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
+                        Dynamic Engine
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Pilih provider AI utama untuk generator konten, AI site builder, dan asisten redaksi.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Provider AI Aktif</Label>
+                      <Select 
+                        value={settings.platformAiProvider}
+                        onValueChange={v => setSettings(prev => ({ ...prev, platformAiProvider: v as any }))}
+                      >
+                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="deepseek" className="text-xs rounded-lg">DeepSeek AI (Rekomendasi V3 / Reasoner)</SelectItem>
+                          <SelectItem value="openai" className="text-xs rounded-lg">OpenAI (GPT-4o, GPT-4o-mini)</SelectItem>
+                          <SelectItem value="gemini" className="text-xs rounded-lg">Google Gemini (Gemini 1.5 Pro/Flash)</SelectItem>
+                          <SelectItem value="anthropic" className="text-xs rounded-lg">Anthropic Claude (Claude 3.5 Sonnet/Haiku)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model Default</Label>
+                      <Input 
+                        value={settings.defaultAiModel}
+                        onChange={e => setSettings(prev => ({ ...prev, defaultAiModel: e.target.value }))}
+                        placeholder="deepseek-chat, gpt-4o-mini, dll."
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Kata Bulanan Plan Free</Label>
+                      <Input 
+                        type="number"
+                        value={settings.freePlanAiMonthlyWords}
+                        onChange={e => setSettings(prev => ({ ...prev, freePlanAiMonthlyWords: e.target.value }))}
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                      />
+                    </div>
+
+                    <div className="pt-2">
+                      <Button 
+                        variant="outline" 
+                        size="sm" 
+                        onClick={() => handleTestAi()}
+                        disabled={testAiLoading}
+                        className="w-full text-xs font-bold rounded-xl border-border/80 h-9"
+                      >
+                        {testAiLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />}
+                        Uji Koneksi Provider AI Aktif
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* API Keys Management */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                      Koleksi Kunci API AI (Real-Time Fallback)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Kunci yang diisi di sini akan langsung digunakan sistem tanpa perlu merestart server. Jika kosong, sistem otomatis fallback ke file <code>.env</code>.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    
+                    {/* DeepSeek */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">DeepSeek API Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('deepseek')}>
+                          {showMasks.deepseek ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.deepseek ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.deepseek ? "text" : "password"}
+                          value={settings.deepseekApiKey || settings.platformAiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, deepseekApiKey: e.target.value, platformAiApiKey: e.target.value }))}
+                          placeholder="sk-cf74••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl"
+                          onClick={() => handleTestAi('deepseek', settings.deepseekApiKey || settings.platformAiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          Tes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* OpenAI */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">OpenAI API Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('openai')}>
+                          {showMasks.openai ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.openai ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.openai ? "text" : "password"}
+                          value={settings.openaiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                          placeholder="sk-proj-••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl"
+                          onClick={() => handleTestAi('openai', settings.openaiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          Tes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Google Gemini */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Google Gemini API Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('gemini')}>
+                          {showMasks.gemini ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.gemini ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.gemini ? "text" : "password"}
+                          value={settings.geminiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, geminiApiKey: e.target.value }))}
+                          placeholder="AIzaSy••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl"
+                          onClick={() => handleTestAi('gemini', settings.geminiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          Tes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* Anthropic Claude */}
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Anthropic Claude API Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('anthropic')}>
+                          {showMasks.anthropic ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.anthropic ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.anthropic ? "text" : "password"}
+                          value={settings.anthropicApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, anthropicApiKey: e.target.value }))}
+                          placeholder="sk-ant-api03-••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl"
+                          onClick={() => handleTestAi('anthropic', settings.anthropicApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          Tes
+                        </Button>
+                      </div>
+                    </div>
+
+                    {/* V0 & Vercel */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">v0 by Vercel API Key</Label>
+                        <Input 
+                          type="password"
+                          value={settings.v0ApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, v0ApiKey: e.target.value }))}
+                          placeholder="v1:••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Vercel Access Token</Label>
+                        <Input 
+                          type="password"
+                          value={settings.vercelAccessToken}
+                          onChange={e => setSettings(prev => ({ ...prev, vercelAccessToken: e.target.value }))}
+                          placeholder="vcp_••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
+                    </div>
+
+                  </CardContent>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+            {/* TAB 2: EMAIL & SMTP DELIVERY */}
+            <TabsContent value="email_smtp" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Resend & SMTP Config */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Mail className="h-4 w-4 text-primary" />
+                      Konfigurasi Pengiriman Email
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Pilih menggunakan Resend API atau SMTP kustom (Gmail, SendGrid, Mailgun, dll).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    
+                    {/* Resend Section */}
+                    <div className="space-y-1.5 p-3.5 bg-muted/20 rounded-xl border border-border/60">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Resend API Key (Prioritas Utama)</Label>
+                      <Input 
+                        type="password"
+                        value={settings.resendApiKey}
+                        onChange={e => setSettings(prev => ({ ...prev, resendApiKey: e.target.value }))}
+                        placeholder="re_••••••••••••••••"
+                        className="h-9 rounded-xl text-xs bg-background border-border/80 font-mono"
+                      />
+                      <div className="space-y-1 pt-1.5">
+                        <Label className="text-[10px] font-bold text-muted-foreground">Pengirim Resend (From Address)</Label>
+                        <Input 
+                          value={settings.resendFrom}
+                          onChange={e => setSettings(prev => ({ ...prev, resendFrom: e.target.value }))}
+                          placeholder="SaCMS <noreply@mail.sacms.cloud>"
+                          className="h-9 rounded-xl text-xs bg-background border-border/80"
+                        />
+                      </div>
+                    </div>
+
+                    {/* SMTP Fallback Section */}
+                    <div className="space-y-3 p-3.5 bg-muted/20 rounded-xl border border-border/60">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">SMTP Fallback Server</Label>
+                      
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">SMTP Host</Label>
+                          <Input 
+                            value={settings.smtpHost}
+                            onChange={e => setSettings(prev => ({ ...prev, smtpHost: e.target.value }))}
+                            placeholder="smtp.gmail.com"
+                            className="h-9 rounded-xl text-xs bg-background border-border/80"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">SMTP Port</Label>
+                          <Input 
+                            value={settings.smtpPort}
+                            onChange={e => setSettings(prev => ({ ...prev, smtpPort: e.target.value }))}
+                            placeholder="587"
+                            className="h-9 rounded-xl text-xs bg-background border-border/80"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">SMTP User</Label>
+                          <Input 
+                            value={settings.smtpUser}
+                            onChange={e => setSettings(prev => ({ ...prev, smtpUser: e.target.value }))}
+                            placeholder="apikey atau user@domain.com"
+                            className="h-9 rounded-xl text-xs bg-background border-border/80"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-[10px] text-muted-foreground">SMTP Password</Label>
+                          <Input 
+                            type="password"
+                            value={settings.smtpPass}
+                            onChange={e => setSettings(prev => ({ ...prev, smtpPass: e.target.value }))}
+                            placeholder="••••••••••••••••"
+                            className="h-9 rounded-xl text-xs bg-background border-border/80 font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between pt-1">
+                        <Label className="text-xs text-foreground font-bold">Gunakan SSL/TLS Aman (Port 465)</Label>
+                        <Switch 
+                          checked={settings.smtpSecure === "true"}
+                          onCheckedChange={c => setSettings(prev => ({ ...prev, smtpSecure: c ? "true" : "false" }))}
+                        />
+                      </div>
+                    </div>
+
+                  </CardContent>
+                </Card>
+
+                {/* Test Email Delivery */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Send className="h-4 w-4 text-primary" />
+                      Uji Coba Pengiriman Email Live
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Kirim email tes langsung ke kotak masuk Anda untuk memverifikasi autentikasi SMTP / Resend.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Email Penerima Uji Coba</Label>
+                      <Input 
+                        type="email"
+                        value={testEmailRecipient}
+                        onChange={e => setTestEmailRecipient(e.target.value)}
+                        placeholder="admin@domain.com"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                      />
+                    </div>
+
+                    <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
+                      <h4 className="text-xs font-bold text-primary">Informasi Email Otomatis SaCMS</h4>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Pengaturan email ini digunakan untuk:
+                      </p>
+                      <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
+                        <li>Verifikasi alamat email pengguna saat mendaftar</li>
+                        <li>Tautan reset kata sandi lupa login</li>
+                        <li>Notifikasi tiket customer support dan pembayaran invoice</li>
+                      </ul>
+                    </div>
+
+                    <Button 
+                      onClick={handleTestEmail}
+                      disabled={testEmailLoading}
+                      className="w-full text-xs font-bold rounded-xl h-9 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    >
+                      {testEmailLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Send className="h-3.5 w-3.5 mr-1.5" />}
+                      {testEmailLoading ? "Mengirim Email Tes..." : "Kirim Email Uji Coba Sekarang"}
+                    </Button>
+                  </CardContent>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+            {/* TAB 3: PAYMENT & MIDTRANS */}
+            <TabsContent value="billing_payments" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <CreditCard className="h-4 w-4 text-primary" />
+                      Payment Gateway Midtrans Snap
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Pengaturan kredensial Midtrans untuk QRIS, Virtual Account (BCA, Mandiri, BRI, BNI), dan Kartu Kredit.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mode Transaksi</Label>
+                      <Select 
+                        value={settings.midtransMode}
+                        onValueChange={v => setSettings(prev => ({ ...prev, midtransMode: v as any }))}
+                      >
+                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
+                        <SelectContent className="rounded-xl border-border bg-card">
+                          <SelectItem value="sandbox" className="text-xs rounded-lg">Sandbox (Simulasi Pengujian)</SelectItem>
+                          <SelectItem value="production" className="text-xs rounded-lg">Production (Pembayaran Asli QRIS / Bank)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Midtrans Server Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('midtransServer')}>
+                          {showMasks.midtransServer ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.midtransServer ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <Input 
+                        type={showMasks.midtransServer ? "text" : "password"}
+                        value={settings.midtransServerKey}
+                        onChange={e => setSettings(prev => ({ ...prev, midtransServerKey: e.target.value }))}
+                        placeholder="SB-Mid-server-••••••••••••"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Midtrans Client Key</Label>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => toggleMask('midtransClient')}>
+                          {showMasks.midtransClient ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.midtransClient ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <Input 
+                        type={showMasks.midtransClient ? "text" : "password"}
+                        value={settings.midtransClientKey}
+                        onChange={e => setSettings(prev => ({ ...prev, midtransClientKey: e.target.value }))}
+                        placeholder="SB-Mid-client-••••••••••••"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+
+                  </CardContent>
+                </Card>
+
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold text-foreground">Webhook URL Notifikasi</CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Salin URL ini dan masukkan ke Dashboard Midtrans $\rightarrow$ Settings $\rightarrow$ Configuration $\rightarrow$ Notification URL.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Payment Webhook URL</Label>
+                      <div className="flex gap-2">
+                        <Input 
+                          readOnly 
+                          value="https://sacms.cloud/api/billing/midtrans/webhooks"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          className="h-9 rounded-xl text-xs"
+                          onClick={() => {
+                            navigator.clipboard.writeText("https://sacms.cloud/api/billing/midtrans/webhooks")
+                            toast({ title: "Tersalin", description: "Webhook URL Midtrans berhasil disalin." })
+                          }}
+                        >
+                          Salin
+                        </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+            {/* TAB 4: STORAGE & INFRASTRUCTURE */}
+            <TabsContent value="storage_infra" className="space-y-6">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                
+                {/* Cloudflare R2 */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <ImageIcon className="h-4 w-4 text-primary" />
+                      Penyimpanan Berkas (Cloudflare R2 / AWS S3)
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Kredensial S3 Object Storage untuk media upload pustaka konten.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-3.5">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Cloudflare R2 Account ID</Label>
+                      <Input 
+                        value={settings.r2AccountId}
+                        onChange={e => setSettings(prev => ({ ...prev, r2AccountId: e.target.value }))}
+                        placeholder="contoh: c8b9e6f••••••••••••"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">Access Key ID</Label>
+                        <Input 
+                          value={settings.r2AccessKeyId}
+                          onChange={e => setSettings(prev => ({ ...prev, r2AccessKeyId: e.target.value }))}
+                          placeholder="AKIA••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">Secret Access Key</Label>
+                        <Input 
+                          type="password"
+                          value={settings.r2SecretAccessKey}
+                          onChange={e => setSettings(prev => ({ ...prev, r2SecretAccessKey: e.target.value }))}
+                          placeholder="••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">Bucket Name</Label>
+                        <Input 
+                          value={settings.r2BucketName}
+                          onChange={e => setSettings(prev => ({ ...prev, r2BucketName: e.target.value }))}
+                          placeholder="sacms-media"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">Public CDN URL</Label>
+                        <Input 
+                          value={settings.r2PublicUrl}
+                          onChange={e => setSettings(prev => ({ ...prev, r2PublicUrl: e.target.value }))}
+                          placeholder="https://media.sacms.cloud"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Contabo Provisioner */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Server className="h-4 w-4 text-primary" />
+                      Otomatisasi Contabo Cloud VPS / VDS API
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Kredensial OAuth2 API Contabo untuk auto-provision Dedicated PostgreSQL & MinIO Appliance.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-3.5">
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contabo Client ID</Label>
+                      <Input 
+                        value={settings.contaboClientId}
+                        onChange={e => setSettings(prev => ({ ...prev, contaboClientId: e.target.value }))}
+                        placeholder="INT-14950307"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contabo Client Secret</Label>
+                      <Input 
+                        type="password"
+                        value={settings.contaboClientSecret}
+                        onChange={e => setSettings(prev => ({ ...prev, contaboClientSecret: e.target.value }))}
+                        placeholder="DZtSUAEP••••••••"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">API User (Email)</Label>
+                        <Input 
+                          value={settings.contaboApiUser}
+                          onChange={e => setSettings(prev => ({ ...prev, contaboApiUser: e.target.value }))}
+                          placeholder="user@domain.com"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground">API Password</Label>
+                        <Input 
+                          type="password"
+                          value={settings.contaboApiPassword}
+                          onChange={e => setSettings(prev => ({ ...prev, contaboApiPassword: e.target.value }))}
+                          placeholder="••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+            {/* TAB 5: WORKSPACE & REGISTRATION */}
             <TabsContent value="workspaces" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 
@@ -302,126 +1008,54 @@ export default function AdminSettingsPage() {
                         </div>
                         <Button 
                           variant="outline" 
-                          size="icon" 
-                          title="Generate ID Baru"
-                          className="h-9 w-9 shrink-0 rounded-xl border-border/80 hover:bg-muted"
                           onClick={generateTenantId}
+                          className="text-xs font-bold rounded-xl border-border/80 h-9 shrink-0"
                         >
-                          <RefreshCw className="h-3.5 w-3.5" />
+                          <RefreshCw className="mr-1.5 h-3 w-3 text-muted-foreground" />
+                          Acak Baru
                         </Button>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground leading-relaxed">
-                      Membuat ID baru akan memetakan API global ke instance tenant baru. Konten dari tenant sebelumnya tetap aman di basis data PostgreSQL.
-                    </p>
                   </CardContent>
                 </Card>
 
-                {/* Registration & New Account Defaults */}
+                {/* User Registration & Plan */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Sliders className="h-4 w-4 text-primary" />
-                      Kebijakan Registrasi Akun Baru
-                    </CardTitle>
+                    <CardTitle className="text-sm font-bold text-foreground">Registrasi & Kebijakan Domain</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pengaturan pembuatan akun dan inisialisasi default tenant baru.
+                      Batasan hak akses saat pengguna baru mendaftar di SaCMS.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mode Pendaftaran Pengguna</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Mode Registrasi Akun</Label>
                       <Select 
                         value={settings.registrationMode} 
-                        onValueChange={v => setSettings(prev => ({ ...prev, registrationMode: v }))}
+                        onValueChange={v => setSettings(prev => ({ ...prev, registrationMode: v as any }))}
                       >
                         <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
-                          <SelectItem value="open" className="text-xs rounded-lg">Terbuka untuk Umum (Public Registration)</SelectItem>
+                          <SelectItem value="open" className="text-xs rounded-lg">Terbuka untuk Umum (Open Signup)</SelectItem>
                           <SelectItem value="invite_only" className="text-xs rounded-lg">Hanya Melalui Undangan (Invite Only)</SelectItem>
-                          <SelectItem value="closed" className="text-xs rounded-lg">Pendaftaran Ditutup Sementara</SelectItem>
+                          <SelectItem value="closed" className="text-xs rounded-lg">Pendaftaran Ditutup (Closed)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Paket Default</Label>
-                        <Select 
-                          value={settings.defaultUserPlan} 
-                          onValueChange={v => setSettings(prev => ({ ...prev, defaultUserPlan: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="free" className="text-xs rounded-lg">Paket Gratis (Free)</SelectItem>
-                            <SelectItem value="starter" className="text-xs rounded-lg">Starter</SelectItem>
-                            <SelectItem value="pro_trial" className="text-xs rounded-lg">Pro (Trial 14 Hari)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Max Workspace / User</Label>
-                        <Input 
-                          type="number"
-                          value={settings.maxWorkspacesPerUser}
-                          onChange={e => setSettings(prev => ({ ...prev, maxWorkspacesPerUser: e.target.value }))}
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="flex items-center justify-between pt-2 border-t border-border/60">
-                      <div className="space-y-0.5">
-                        <Label className="text-xs font-bold text-foreground">Starter Template Seed Data</Label>
-                        <p className="text-[11px] text-muted-foreground">Otomatis buat contoh tipe konten saat workspace baru dibuat</p>
-                      </div>
-                      <Switch 
-                        checked={settings.autoProvisionSeedData === "true"}
-                        onCheckedChange={c => setSettings(prev => ({ ...prev, autoProvisionSeedData: c ? "true" : "false" }))}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Domain & Storage Defaults */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card md:col-span-2">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Globe className="h-4 w-4 text-primary" />
-                      Domain Kustom & Kuota Penyimpanan Standar
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Batas alokasi fitur dan resource untuk seluruh workspace baru.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kebijakan Custom Domain</Label>
                       <Select 
                         value={settings.customDomainPolicy} 
-                        onValueChange={v => setSettings(prev => ({ ...prev, customDomainPolicy: v }))}
+                        onValueChange={v => setSettings(prev => ({ ...prev, customDomainPolicy: v as any }))}
                       >
                         <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
                         <SelectContent className="rounded-xl border-border bg-card">
-                          <SelectItem value="paid_only" className="text-xs rounded-lg">Khusus Paket Berbayar (Starter, Pro, Enterprise)</SelectItem>
-                          <SelectItem value="all_plans" className="text-xs rounded-lg">Semua Paket (Termasuk Free Tier)</SelectItem>
-                          <SelectItem value="disabled" className="text-xs rounded-lg">Nonaktifkan Fitur Domain Kustom</SelectItem>
+                          <SelectItem value="paid_only" className="text-xs rounded-lg">Hanya Tenant Berlangganan Berbayar (Pro/Enterprise)</SelectItem>
+                          <SelectItem value="all_plans" className="text-xs rounded-lg">Semua Paket Termasuk Free Plan</SelectItem>
+                          <SelectItem value="disabled" className="text-xs rounded-lg">Nonaktifkan Custom Domain</SelectItem>
                         </SelectContent>
                       </Select>
-                      <p className="text-[11px] text-muted-foreground">Mengatur apakah tenant diizinkan menambahkan domain sendiri (e.g. news.domain.com).</p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Storage Default Paket Free (MB)</Label>
-                      <Input 
-                        type="number"
-                        value={settings.defaultStorageLimitMb}
-                        onChange={e => setSettings(prev => ({ ...prev, defaultStorageLimitMb: e.target.value }))}
-                        placeholder="500"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Kapasitas penyimpanan media awal yang diberikan kepada workspace Free.</p>
                     </div>
                   </CardContent>
                 </Card>
@@ -429,26 +1063,26 @@ export default function AdminSettingsPage() {
               </div>
             </TabsContent>
 
-            {/* TAB 2: SECURITY & GATEWAY */}
+            {/* TAB 6: KEAMANAN & RUNTIME */}
             <TabsContent value="security" className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Maintenance Mode */}
+                
+                {/* Maintenance & Rate Limit */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Lock className="h-4 w-4 text-primary" />
-                      Mode Pemeliharaan (Maintenance Mode)
+                      <Shield className="h-4 w-4 text-primary" />
+                      Mode Pemeliharaan & Rate Limit
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kunci dashboard platform untuk pembaruan atau migrasi database darurat.
+                      Kendali akses global saat update server dan pembatasan traffic API.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
-                    <div className="flex items-center justify-between p-3 rounded-xl bg-muted/20 border border-border/60">
+                    <div className="flex items-center justify-between p-3.5 bg-muted/20 border border-border/60 rounded-xl">
                       <div className="space-y-0.5">
-                        <Label className="text-xs font-bold text-foreground">Aktifkan Mode Pemeliharaan</Label>
-                        <p className="text-[11px] text-muted-foreground">Hanya Super Admin yang dapat mengakses dashboard</p>
+                        <Label className="text-xs font-bold text-foreground">Mode Pemeliharaan (Maintenance)</Label>
+                        <p className="text-[11px] text-muted-foreground">Kunci akses tenant saat maintenance terjadwal</p>
                       </div>
                       <Switch 
                         checked={settings.maintenanceMode === "true"}
@@ -457,351 +1091,47 @@ export default function AdminSettingsPage() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pesan Pemeliharaan untuk Pengguna</Label>
-                      <Textarea 
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Pesan Pemeliharaan</Label>
+                      <Input 
                         value={settings.maintenanceMessage}
                         onChange={e => setSettings(prev => ({ ...prev, maintenanceMessage: e.target.value }))}
-                        rows={2}
-                        className="rounded-xl text-xs bg-muted/20 border-border/80"
-                      />
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">IP Whitelist Pemeliharaan</Label>
-                      <Input 
-                        value={settings.maintenanceIpWhitelist}
-                        onChange={e => setSettings(prev => ({ ...prev, maintenanceIpWhitelist: e.target.value }))}
-                        placeholder="127.0.0.1, 103.21.x.x"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Daftar IP yang tetap diizinkan mengakses saat maintenance aktif (pisahkan koma).</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* API Gateway & Rate Limit */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Shield className="h-4 w-4 text-primary" />
-                      Gerbang API & Rate Limiting
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Proteksi terhadap traffic burst, scraping liar, dan penyalahgunaan webhook.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rate Limit (Req/Menit)</Label>
-                        <Input 
-                          type="number"
-                          value={settings.apiRateLimitPerMinute}
-                          onChange={e => setSettings(prev => ({ ...prev, apiRateLimitPerMinute: e.target.value }))}
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Webhook Retry DLQ</Label>
-                        <Select 
-                          value={settings.webhookMaxRetries}
-                          onValueChange={v => setSettings(prev => ({ ...prev, webhookMaxRetries: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="3" className="text-xs rounded-lg">3 Kali Percobaan</SelectItem>
-                            <SelectItem value="5" className="text-xs rounded-lg">5 Kali Percobaan</SelectItem>
-                            <SelectItem value="10" className="text-xs rounded-lg">10 Kali Percobaan</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kebijakan CORS Global</Label>
-                      <Select 
-                        value={settings.globalCorsPolicy}
-                        onValueChange={v => setSettings(prev => ({ ...prev, globalCorsPolicy: v }))}
-                      >
-                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-border bg-card">
-                          <SelectItem value="wildcard" className="text-xs rounded-lg">Izinkan Semua Domain (* Wildcard CORS)</SelectItem>
-                          <SelectItem value="strict_tenant" className="text-xs rounded-lg">Ketat per Domain Terdaftar Tenant</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Global IP Blacklist</Label>
-                      <Textarea 
-                        value={settings.ipBlacklist}
-                        onChange={e => setSettings(prev => ({ ...prev, ipBlacklist: e.target.value }))}
-                        placeholder="192.168.1.100, 10.0.0.5"
-                        rows={2}
-                        className="rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Blokir IP mencurigakan secara instan di Edge Middleware.</p>
-                    </div>
-                  </CardContent>
-                </Card>
-
-              </div>
-            </TabsContent>
-
-            {/* TAB 3: MEDIA & AI ENGINE */}
-            <TabsContent value="media_ai" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Media Upload Engine */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <ImageIcon className="h-4 w-4 text-primary" />
-                      Penyimpanan Media & Cloudflare R2
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kontrol ukuran berkas, kompresi gambar, dan format upload yang diizinkan.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Ukuran Upload File (MB)</Label>
-                      <Input 
-                        type="number"
-                        value={settings.maxUploadFileSizeMb}
-                        onChange={e => setSettings(prev => ({ ...prev, maxUploadFileSizeMb: e.target.value }))}
                         className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
                       />
                     </div>
 
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Whitelist Format File</Label>
-                      <Input 
-                        value={settings.allowedFileExtensions}
-                        onChange={e => setSettings(prev => ({ ...prev, allowedFileExtensions: e.target.value }))}
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Format ekstensi yang boleh diupload ke pustaka media.</p>
-                    </div>
-
-                    <div className="space-y-3 pt-2 border-t border-border/60">
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-xs font-bold text-foreground">Otomatis Optimasi WebP</Label>
-                          <p className="text-[11px] text-muted-foreground">Kompresi gambar saat diunggah untuk hemat bandwidth</p>
-                        </div>
-                        <Switch 
-                          checked={settings.autoWebpConvert === "true"}
-                          onCheckedChange={c => setSettings(prev => ({ ...prev, autoWebpConvert: c ? "true" : "false" }))}
-                        />
-                      </div>
-
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label className="text-xs font-bold text-foreground">Generate Thumbnail Cepat</Label>
-                          <p className="text-[11px] text-muted-foreground">Buat thumbnail 200x200 untuk grid media library</p>
-                        </div>
-                        <Switch 
-                          checked={settings.autoGenerateThumbnails === "true"}
-                          onCheckedChange={c => setSettings(prev => ({ ...prev, autoGenerateThumbnails: c ? "true" : "false" }))}
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* AI Content Engine */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Mesin AI Terpusat (Platform AI Engine)
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Penyedia AI global untuk fitur auto-generate artikel, SEO meta, dan auto-translate.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Provider AI Utama</Label>
-                        <Select 
-                          value={settings.platformAiProvider}
-                          onValueChange={v => setSettings(prev => ({ ...prev, platformAiProvider: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="openai" className="text-xs rounded-lg">OpenAI (ChatGPT)</SelectItem>
-                            <SelectItem value="gemini" className="text-xs rounded-lg">Google Gemini</SelectItem>
-                            <SelectItem value="anthropic" className="text-xs rounded-lg">Anthropic Claude</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model AI Standar</Label>
-                        <Select 
-                          value={settings.defaultAiModel}
-                          onValueChange={v => setSettings(prev => ({ ...prev, defaultAiModel: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="gpt-4o-mini" className="text-xs rounded-lg">GPT-4o Mini (Cepat & Hemat)</SelectItem>
-                            <SelectItem value="gpt-4o" className="text-xs rounded-lg">GPT-4o (Akurasi Tinggi)</SelectItem>
-                            <SelectItem value="gemini-1.5-flash" className="text-xs rounded-lg">Gemini 1.5 Flash</SelectItem>
-                            <SelectItem value="claude-3-5-haiku" className="text-xs rounded-lg">Claude 3.5 Haiku</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Platform API Key (Fallback)</Label>
-                        <Button 
-                          type="button" 
-                          variant="ghost" 
-                          size="sm" 
-                          disabled={testAiLoading || !settings.platformAiApiKey}
-                          onClick={handleTestAi}
-                          className="h-6 text-[10px] font-bold text-primary hover:text-primary/80 px-2 rounded-md"
-                        >
-                          {testAiLoading ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Sparkles className="h-3 w-3 mr-1" />}
-                          {testAiLoading ? "Menguji..." : "Uji Koneksi AI"}
-                        </Button>
-                      </div>
-                      <Input 
-                        type="password"
-                        value={settings.platformAiApiKey}
-                        onChange={e => setSettings(prev => ({ ...prev, platformAiApiKey: e.target.value }))}
-                        placeholder="sk-..."
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                      <p className="text-[11px] text-muted-foreground">Digunakan oleh seluruh tenant yang tidak mengonfigurasi API key mandiri.</p>
-                    </div>
-
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Kata AI Bulanan (Free Plan)</Label>
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Rate Limit Global (Request / Menit)</Label>
                       <Input 
                         type="number"
-                        value={settings.freePlanAiMonthlyWords}
-                        onChange={e => setSettings(prev => ({ ...prev, freePlanAiMonthlyWords: e.target.value }))}
+                        value={settings.apiRateLimitPerMinute}
+                        onChange={e => setSettings(prev => ({ ...prev, apiRateLimitPerMinute: e.target.value }))}
                         className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
                       />
-                      <p className="text-[11px] text-muted-foreground">Maksimal kata yang dapat di-generate oleh akun gratis per bulan.</p>
                     </div>
                   </CardContent>
                 </Card>
 
-              </div>
-            </TabsContent>
-
-            {/* TAB 4: RUNTIME & SYSTEM OPERATIONS */}
-            <TabsContent value="runtime" className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
-                {/* Runtime Specifications */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Server className="h-4 w-4 text-primary" /> Informasi Runtime & Ekosistem
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">Spesifikasi lingkungan server SaCMS</CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-0">
-                    <div className="divide-y divide-border/60 text-xs">
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Framework & Engine</span>
-                        <span className="font-mono font-bold text-foreground">Next.js 16 (App Router)</span>
-                      </div>
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Environment Mode</span>
-                        <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-full border-border/60">{process.env.NODE_ENV}</Badge>
-                      </div>
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Basis Data Utama</span>
-                        <span className="font-bold text-foreground">PostgreSQL (Prisma ORM)</span>
-                      </div>
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Penyimpanan Objek Cloud</span>
-                        <span className="font-bold text-primary">Cloudflare R2 (S3 Protocol)</span>
-                      </div>
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Edge Cache & Rate Limiting</span>
-                        <span className="font-bold text-emerald-600 dark:text-emerald-400">Upstash Redis</span>
-                      </div>
-                      <div className="p-3.5 px-5 flex justify-between items-center">
-                        <span className="text-muted-foreground font-medium">Gateway Pembayaran</span>
-                        <span className="font-bold text-blue-600 dark:text-blue-400">Midtrans Snap API</span>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Operations & Log Retention */}
+                {/* Edge Cache Purge */}
                 <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Cpu className="h-4 w-4 text-primary" />
-                      Operasi Platform & Retensi Log
-                    </CardTitle>
+                    <CardTitle className="text-sm font-bold text-foreground">Edge & Redis Cache Flushing</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pembersihan cache dan kebijakan penyimpanan riwayat aktivitas.
+                      Bersihkan seluruh cache respon API publik dan setting platform.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Retensi Audit Log</Label>
-                        <Select 
-                          value={settings.auditLogRetentionDays}
-                          onValueChange={v => setSettings(prev => ({ ...prev, auditLogRetentionDays: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="30" className="text-xs rounded-lg">30 Hari</SelectItem>
-                            <SelectItem value="90" className="text-xs rounded-lg">90 Hari (Standar)</SelectItem>
-                            <SelectItem value="180" className="text-xs rounded-lg">180 Hari (6 Bulan)</SelectItem>
-                            <SelectItem value="365" className="text-xs rounded-lg">1 Tahun</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Retensi Log API</Label>
-                        <Select 
-                          value={settings.apiLogRetentionDays}
-                          onValueChange={v => setSettings(prev => ({ ...prev, apiLogRetentionDays: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card">
-                            <SelectItem value="7" className="text-xs rounded-lg">7 Hari</SelectItem>
-                            <SelectItem value="14" className="text-xs rounded-lg">14 Hari (Standar)</SelectItem>
-                            <SelectItem value="30" className="text-xs rounded-lg">30 Hari</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 space-y-2.5">
-                      <div className="space-y-0.5">
-                        <h4 className="text-xs font-bold text-destructive">Pembersihan Cache Edge Redis</h4>
-                        <p className="text-[11px] text-muted-foreground">
-                          Membersihkan seluruh cache routing domain kustom, token blacklist, dan schema cache platform.
-                        </p>
-                      </div>
-                      <Button 
-                        variant="destructive" 
-                        size="sm" 
-                        onClick={handlePurgeCache} 
-                        disabled={purgingCache}
-                        className="rounded-xl text-xs font-bold h-8 shadow-xs"
-                      >
-                        {purgingCache ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5 mr-1.5" />}
-                        {purgingCache ? "Membersihkan..." : "Flush Cache Platform"}
-                      </Button>
-                    </div>
+                    <p className="text-xs text-muted-foreground leading-relaxed">
+                      Tombol ini akan menghapus semua cache Redis untuk rate-limit, domain mapping, dynamic pricing, dan platform settings secara instan.
+                    </p>
+                    <Button 
+                      variant="destructive"
+                      onClick={handlePurgeCache}
+                      disabled={purgingCache}
+                      className="w-full text-xs font-bold rounded-xl h-9"
+                    >
+                      {purgingCache ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
+                      {purgingCache ? "Membersihkan Cache..." : "Purge All Edge & Redis Cache"}
+                    </Button>
                   </CardContent>
                 </Card>
 

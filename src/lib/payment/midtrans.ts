@@ -26,23 +26,25 @@ function mapMidtransStatus(
 
 export class MidtransProvider implements PaymentProvider {
   readonly name = "midtrans"
-  private _snap: InstanceType<typeof Midtrans.Snap> | null = null
 
-  private get snap() {
-    if (!this._snap) {
-      this._snap = new Midtrans.Snap({
-        isProduction: process.env.MIDTRANS_MODE === "production",
-        serverKey: process.env.MIDTRANS_SERVER_KEY!,
-        clientKey: process.env.MIDTRANS_CLIENT_KEY!,
-      })
+  private async getSnapClient() {
+    const { getResolvedMidtransConfig } = await import("../settings")
+    const config = await getResolvedMidtransConfig()
+    return {
+      snap: new Midtrans.Snap({
+        isProduction: config.isProduction,
+        serverKey: config.serverKey || process.env.MIDTRANS_SERVER_KEY || "",
+        clientKey: config.clientKey || process.env.MIDTRANS_CLIENT_KEY || "",
+      }),
+      config
     }
-    return this._snap
   }
 
   async createPayment(req: CreatePaymentRequest): Promise<CreatePaymentResult> {
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+    const { snap } = await this.getSnapClient()
 
-    const transaction = await this.snap.createTransaction({
+    const transaction = await snap.createTransaction({
       transaction_details: {
         order_id: req.orderId,
         gross_amount: req.amount,
@@ -100,8 +102,10 @@ export class MidtransProvider implements PaymentProvider {
       fraud_status,
     } = body
 
-    // Verify signature
-    const serverKey = process.env.MIDTRANS_SERVER_KEY!
+    // Verify signature with dynamic config
+    const { getResolvedMidtransConfig } = await import("../settings")
+    const config = await getResolvedMidtransConfig()
+    const serverKey = config.serverKey || process.env.MIDTRANS_SERVER_KEY || ""
     const expectedSignature = createHash("sha512")
       .update(order_id + status_code + gross_amount + serverKey)
       .digest("hex")

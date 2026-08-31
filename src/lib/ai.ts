@@ -8,22 +8,29 @@ const MODELS_TO_TRY = [
   "deepseek-reasoner" // Fallback to reasoning model if needed
 ]
 
-// Lazy client
-let _openai: OpenAI | null = null
+async function getOpenAI(): Promise<{ client: OpenAI; defaultModel: string }> {
+  const { getResolvedAiConfig } = await import("./settings")
+  const config = await getResolvedAiConfig()
 
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    const apiKey = process.env.DEEPSEEK_API_KEY
-    if (!apiKey) {
-      throw new Error("DEEPSEEK_API_KEY is not configured")
+  if (config.provider === "openai" && config.openaiApiKey) {
+    return {
+      client: new OpenAI({ apiKey: config.openaiApiKey }),
+      defaultModel: config.defaultModel || "gpt-4o-mini"
     }
-    // DeepSeek API is OpenAI compatible
-    _openai = new OpenAI({
+  }
+
+  const apiKey = config.deepseekApiKey || process.env.DEEPSEEK_API_KEY
+  if (!apiKey) {
+    throw new Error("DEEPSEEK_API_KEY is not configured. Please configure in Super Admin Settings or .env")
+  }
+
+  return {
+    client: new OpenAI({
       baseURL: 'https://api.deepseek.com',
       apiKey: apiKey
-    })
+    }),
+    defaultModel: config.defaultModel || "deepseek-chat"
   }
-  return _openai
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -98,7 +105,7 @@ export async function safeGenerateContent(
       try {
         console.log(`[AI] Attempting with model: ${modelName} (Attempt ${attempts + 1}/${maxAttempts})`)
         
-        const openai = getOpenAI()
+        const { client: openai } = await getOpenAI()
         
         const messages: OpenAI.Chat.ChatCompletionMessageParam[] = []
         if (systemPrompt) {

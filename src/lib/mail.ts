@@ -1,44 +1,58 @@
-import nodemailer from "nodemailer"
-import { Resend } from "resend"
+import { getResolvedMailConfig } from "./settings"
 
-// Create a cached transporter so we don't recreate it on every API call in dev
-let transporter: nodemailer.Transporter | null = null
-
-// Initialize Resend
-const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null
+// Cached transporter per config signature
+let cachedTransporter: nodemailer.Transporter | null = null
+let cachedSignature = ""
 
 async function getTransporter() {
-  if (transporter) return transporter
+  const config = await getResolvedMailConfig()
+  const sig = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.smtpPass}:${config.smtpSecure}`
 
-  if (process.env.SMTP_HOST && process.env.SMTP_PORT) {
-    // Use real SMTP server
-    transporter = nodemailer.createTransport({
-      host: process.env.SMTP_HOST,
-      port: parseInt(process.env.SMTP_PORT),
-      secure: process.env.SMTP_SECURE === "true" || parseInt(process.env.SMTP_PORT) === 465,
-      auth: {
-        user: process.env.SMTP_USER,
-        pass: process.env.SMTP_PASS,
-      },
+  if (cachedTransporter && cachedSignature === sig) {
+    return cachedTransporter
+  }
+
+  if (config.smtpHost && config.smtpPort) {
+    // Use real SMTP server from settings or .env
+    cachedTransporter = nodemailer.createTransport({
+      host: config.smtpHost,
+      port: config.smtpPort,
+      secure: config.smtpSecure,
+      auth: config.smtpUser ? {
+        user: config.smtpUser,
+        pass: config.smtpPass,
+      } : undefined,
     })
+    cachedSignature = sig
   } else {
-    // Generate test SMTP service account from ethereal.email
-    // Only used for development/testing if no real SMTP is provided
+    // Generate test SMTP service account from ethereal.email in dev
     console.warn("No SMTP config found. Using Ethereal Email for testing...")
     const testAccount = await nodemailer.createTestAccount()
     
-    transporter = nodemailer.createTransport({
+    cachedTransporter = nodemailer.createTransport({
       host: "smtp.ethereal.email",
       port: 587,
-      secure: false, // true for 465, false for other ports
+      secure: false,
       auth: {
         user: testAccount.user,
         pass: testAccount.pass,
       },
     })
+    cachedSignature = "ethereal"
   }
 
-  return transporter
+  return cachedTransporter
+}
+
+async function getResendClient(): Promise<{ client: Resend | null; fromEmail: string }> {
+  const config = await getResolvedMailConfig()
+  if (config.resendApiKey) {
+    return {
+      client: new Resend(config.resendApiKey),
+      fromEmail: config.resendFrom,
+    }
+  }
+  return { client: null, fromEmail: config.resendFrom }
 }
 
 const getBaseUrl = () => {
@@ -70,9 +84,9 @@ export async function sendVerificationEmail(email: string, token: string, name: 
     </div>
   `
 
+  const { client: resend, fromEmail } = await getResendClient()
   if (resend) {
     try {
-      const fromEmail = process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>"
       console.log(`[Mail] Sending verification email to ${email} via Resend (${fromEmail})...`)
       const res = await resend.emails.send({
         from: fromEmail,
@@ -95,14 +109,15 @@ export async function sendVerificationEmail(email: string, token: string, name: 
   // Fallback to SMTP / Ethereal
   try {
     const t = await getTransporter()
+    const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
-      from: process.env.SMTP_FROM || process.env.RESEND_FROM || '"SaCMS" <noreply@mail.sacms.cloud>',
+      from: mailConfig.smtpFrom || fromEmail || '"SaCMS" <noreply@mail.sacms.cloud>',
       to: email,
       subject,
       html,
     })
 
-    if (info.messageId && !process.env.SMTP_HOST) {
+    if (info.messageId && !mailConfig.smtpHost) {
       console.log("=========================================")
       console.log("✉️  VERIFICATION EMAIL SENT TO ETHEREAL!")
       console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
@@ -138,9 +153,9 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     </div>
   `
 
+  const { client: resend, fromEmail } = await getResendClient()
   if (resend) {
     try {
-      const fromEmail = process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>"
       console.log(`[Mail] Sending password reset email to ${email} via Resend (${fromEmail})...`)
       const res = await resend.emails.send({
         from: fromEmail,
@@ -163,14 +178,15 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   // Fallback to SMTP
   try {
     const t = await getTransporter()
+    const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
-      from: process.env.SMTP_FROM || process.env.RESEND_FROM || '"SaCMS" <noreply@mail.sacms.cloud>',
+      from: mailConfig.smtpFrom || fromEmail || '"SaCMS" <noreply@mail.sacms.cloud>',
       to: email,
       subject,
       html,
     })
 
-    if (info.messageId && !process.env.SMTP_HOST) {
+    if (info.messageId && !mailConfig.smtpHost) {
       console.log("=========================================")
       console.log("✉️  PASSWORD RESET EMAIL SENT TO ETHEREAL!")
       console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
@@ -235,9 +251,10 @@ export async function sendSupportNotificationEmail({
     </div>
   `
 
+  const { client: resend, fromEmail } = await getResendClient()
   if (resend) {
     return resend.emails.send({
-      from: process.env.RESEND_FROM || "SaCMS Support <support@sacms.local>",
+      from: fromEmail,
       to,
       subject: emailSubject,
       html,
@@ -245,8 +262,9 @@ export async function sendSupportNotificationEmail({
   }
 
   const t = await getTransporter()
+  const mailConfig = await getResolvedMailConfig()
   const info = await t.sendMail({
-    from: process.env.SMTP_FROM || '"SaCMS Support" <support@sacms.local>',
+    from: mailConfig.smtpFrom || fromEmail || '"SaCMS Support" <support@sacms.local>',
     to,
     subject: emailSubject,
     html,

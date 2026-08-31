@@ -27,12 +27,16 @@ interface SnapTransactionResponse {
   redirect_url: string
 }
 
-// Initialize Midtrans Snap client
-const midtransClient = new Midtrans.Snap({
-  isProduction: process.env.MIDTRANS_MODE === 'production',
-  serverKey: process.env.MIDTRANS_SERVER_KEY!,
-  clientKey: process.env.MIDTRANS_CLIENT_KEY!,
-})
+// Lazy dynamic Midtrans Snap client
+async function getMidtransClient(): Promise<any> {
+  const { getResolvedMidtransConfig } = await import('./settings')
+  const config = await getResolvedMidtransConfig()
+  return new Midtrans.Snap({
+    isProduction: config.isProduction,
+    serverKey: config.serverKey || process.env.MIDTRANS_SERVER_KEY || '',
+    clientKey: config.clientKey || process.env.MIDTRANS_CLIENT_KEY || '',
+  })
+}
 
 /**
  * Create a Snap payment transaction
@@ -41,7 +45,8 @@ export async function createSnapPayment(
   params: CreatePaymentParams
 ): Promise<SnapTransactionResponse> {
   try {
-    const transaction = await midtransClient.createTransaction({
+    const client = await getMidtransClient()
+    const transaction = await client.createTransaction({
       transaction_details: {
         order_id: params.orderId,
         gross_amount: params.amount,

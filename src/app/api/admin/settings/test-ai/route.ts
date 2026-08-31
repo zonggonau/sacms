@@ -16,6 +16,19 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, message: "API Key tidak boleh kosong." }, { status: 400 })
     }
 
+    if (provider === "deepseek") {
+      const res = await fetch("https://api.deepseek.com/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi DeepSeek API berhasil diverifikasi!" })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `DeepSeek error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
     if (provider === "openai") {
       const res = await fetch("https://api.openai.com/v1/models", {
         headers: { Authorization: `Bearer ${apiKey}` },

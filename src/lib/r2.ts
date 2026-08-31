@@ -12,22 +12,7 @@ import fs from "fs"
 import path from "path"
 import { db } from "./database"
 
-const R2_ACCOUNT_ID = process.env.R2_ACCOUNT_ID || ""
-const R2_ACCESS_KEY = process.env.R2_ACCESS_KEY_ID || ""
-const R2_SECRET_KEY = process.env.R2_SECRET_ACCESS_KEY || ""
-const R2_BUCKET = process.env.R2_BUCKET_NAME || "sacms-media"
-const R2_PUBLIC_URL = process.env.R2_PUBLIC_URL || "" // CDN URL e.g. https://media.sacms.dev
-
-const globalS3 = new S3Client({
-  region: "auto",
-  endpoint: R2_ACCOUNT_ID
-    ? `https://${R2_ACCOUNT_ID}.r2.cloudflarestorage.com`
-    : "http://localhost:9000", // dev fallback
-  credentials: {
-    accessKeyId: R2_ACCESS_KEY,
-    secretAccessKey: R2_SECRET_KEY,
-  },
-})
+import { getResolvedStorageConfig } from "./settings"
 
 export interface StorageConfig {
   endpoint: string
@@ -76,10 +61,25 @@ async function getS3Client(tenantSlug?: string): Promise<{ s3: S3Client, bucket:
     }
   }
   
+  const storageConfig = await getResolvedStorageConfig()
+  const accountId = storageConfig.accountId || process.env.R2_ACCOUNT_ID || ""
+  const endpoint = accountId
+    ? `https://${accountId}.r2.cloudflarestorage.com`
+    : "http://localhost:9000"
+
+  const globalS3 = new S3Client({
+    region: "auto",
+    endpoint,
+    credentials: {
+      accessKeyId: storageConfig.accessKeyId || process.env.R2_ACCESS_KEY_ID || "",
+      secretAccessKey: storageConfig.secretAccessKey || process.env.R2_SECRET_ACCESS_KEY || "",
+    },
+  })
+
   return { 
     s3: globalS3, 
-    bucket: R2_BUCKET, 
-    publicUrl: R2_PUBLIC_URL, 
+    bucket: storageConfig.bucketName || process.env.R2_BUCKET_NAME || "sacms-media", 
+    publicUrl: storageConfig.publicUrl || process.env.R2_PUBLIC_URL || "", 
     isCustom: false 
   }
 }
@@ -87,8 +87,9 @@ async function getS3Client(tenantSlug?: string): Promise<{ s3: S3Client, bucket:
 /**
  * Check if global R2 is configured.
  */
-export function isR2Configured(): boolean {
-  return !!(R2_ACCOUNT_ID && R2_ACCESS_KEY && R2_SECRET_KEY)
+export async function isR2Configured(): Promise<boolean> {
+  const cfg = await getResolvedStorageConfig()
+  return !!(cfg.accountId && cfg.accessKeyId && cfg.secretAccessKey)
 }
 
 /**

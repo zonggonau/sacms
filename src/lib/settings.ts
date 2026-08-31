@@ -23,10 +23,48 @@ export interface PlatformSettings {
   allowedFileExtensions: string
   autoWebpConvert: string
   autoGenerateThumbnails: string
-  platformAiProvider: "openai" | "gemini" | "anthropic"
+
+  // Dynamic AI Engine & Providers
+  platformAiProvider: "deepseek" | "openai" | "gemini" | "anthropic"
   platformAiApiKey: string
+  deepseekApiKey: string
+  openaiApiKey: string
+  geminiApiKey: string
+  anthropicApiKey: string
+  v0ApiKey: string
+  vercelAccessToken: string
   defaultAiModel: string
   freePlanAiMonthlyWords: string
+
+  // Dynamic Email / SMTP
+  resendApiKey: string
+  resendFrom: string
+  smtpHost: string
+  smtpPort: string
+  smtpSecure: string
+  smtpUser: string
+  smtpPass: string
+  smtpFrom: string
+
+  // Dynamic Midtrans Payment
+  midtransMode: "sandbox" | "production"
+  midtransServerKey: string
+  midtransClientKey: string
+
+  // Dynamic R2 / S3 Storage
+  r2AccountId: string
+  r2AccessKeyId: string
+  r2SecretAccessKey: string
+  r2BucketName: string
+  r2PublicUrl: string
+
+  // Dynamic Dedicated Infrastructure (Contabo)
+  contaboClientId: string
+  contaboClientSecret: string
+  contaboApiUser: string
+  contaboApiPassword: string
+
+  // System Retention
   auditLogRetentionDays: string
   apiLogRetentionDays: string
 }
@@ -53,10 +91,48 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   allowedFileExtensions: ".jpg, .jpeg, .png, .webp, .svg, .pdf, .mp4",
   autoWebpConvert: "true",
   autoGenerateThumbnails: "true",
-  platformAiProvider: "openai",
+
+  // AI Defaults
+  platformAiProvider: "deepseek",
   platformAiApiKey: "",
-  defaultAiModel: "gpt-4o-mini",
+  deepseekApiKey: "",
+  openaiApiKey: "",
+  geminiApiKey: "",
+  anthropicApiKey: "",
+  v0ApiKey: "",
+  vercelAccessToken: "",
+  defaultAiModel: "deepseek-chat",
   freePlanAiMonthlyWords: "10000",
+
+  // Email Defaults
+  resendApiKey: "",
+  resendFrom: "SaCMS <noreply@mail.sacms.cloud>",
+  smtpHost: "",
+  smtpPort: "587",
+  smtpSecure: "false",
+  smtpUser: "",
+  smtpPass: "",
+  smtpFrom: "SaCMS <noreply@mail.sacms.cloud>",
+
+  // Midtrans Defaults
+  midtransMode: "sandbox",
+  midtransServerKey: "",
+  midtransClientKey: "",
+
+  // Storage Defaults
+  r2AccountId: "",
+  r2AccessKeyId: "",
+  r2SecretAccessKey: "",
+  r2BucketName: "",
+  r2PublicUrl: "",
+
+  // Contabo Defaults
+  contaboClientId: "",
+  contaboClientSecret: "",
+  contaboApiUser: "",
+  contaboApiPassword: "",
+
+  // Retention
   auditLogRetentionDays: "90",
   apiLogRetentionDays: "14",
 }
@@ -100,7 +176,8 @@ export async function syncPlatformSettingsCache(newSettings: Partial<PlatformSet
   const redis = getRedis()
   if (redis) {
     try {
-      const full = { ...DEFAULT_PLATFORM_SETTINGS, ...newSettings }
+      const current = await getPlatformSettings()
+      const full = { ...current, ...newSettings }
       await redis.set(CACHE_KEY, full, { ex: 300 })
     } catch (e) {
       console.warn("[Settings] Failed to update Redis cache:", e)
@@ -117,4 +194,72 @@ export async function getGlobalWorkspaceId(): Promise<string> {
     return "sacms-global"
   }
 }
+
+// ─── Dynamic Resolvers (Database First with .env Fallback) ───
+
+export async function getResolvedAiConfig() {
+  const settings = await getPlatformSettings()
+  return {
+    provider: settings.platformAiProvider || "deepseek",
+    deepseekApiKey: settings.deepseekApiKey || settings.platformAiApiKey || process.env.DEEPSEEK_API_KEY || "",
+    openaiApiKey: settings.openaiApiKey || (settings.platformAiProvider === "openai" ? settings.platformAiApiKey : "") || process.env.OPENAI_API_KEY || "",
+    geminiApiKey: settings.geminiApiKey || (settings.platformAiProvider === "gemini" ? settings.platformAiApiKey : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "",
+    anthropicApiKey: settings.anthropicApiKey || (settings.platformAiProvider === "anthropic" ? settings.platformAiApiKey : "") || process.env.ANTHROPIC_API_KEY || "",
+    v0ApiKey: settings.v0ApiKey || process.env.V0_API_KEY || "",
+    vercelAccessToken: settings.vercelAccessToken || process.env.VERCEL_ACCESS_TOKEN || "",
+    defaultModel: settings.defaultAiModel || "deepseek-chat",
+  }
+}
+
+export async function getResolvedMailConfig() {
+  const settings = await getPlatformSettings()
+  return {
+    resendApiKey: settings.resendApiKey || process.env.RESEND_API_KEY || "",
+    resendFrom: settings.resendFrom || process.env.RESEND_FROM || "SaCMS <noreply@mail.sacms.cloud>",
+    smtpHost: settings.smtpHost || process.env.SMTP_HOST || "",
+    smtpPort: parseInt(settings.smtpPort || process.env.SMTP_PORT || "587"),
+    smtpSecure: (settings.smtpSecure === "true" || process.env.SMTP_SECURE === "true" || (settings.smtpPort === "465" || process.env.SMTP_PORT === "465")),
+    smtpUser: settings.smtpUser || process.env.SMTP_USER || "",
+    smtpPass: settings.smtpPass || process.env.SMTP_PASS || "",
+    smtpFrom: settings.smtpFrom || process.env.SMTP_FROM || "SaCMS <noreply@mail.sacms.cloud>",
+  }
+}
+
+export async function getResolvedMidtransConfig() {
+  const settings = await getPlatformSettings()
+  const mode = settings.midtransMode || process.env.MIDTRANS_MODE || "sandbox"
+  const isProduction = mode === "production"
+  return {
+    isProduction,
+    serverKey: settings.midtransServerKey || process.env.MIDTRANS_SERVER_KEY || "",
+    clientKey: settings.midtransClientKey || process.env.MIDTRANS_CLIENT_KEY || process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || "",
+    snapUrl: isProduction
+      ? "https://app.midtrans.com/snap/snap.js"
+      : "https://app.sandbox.midtrans.com/snap/snap.js",
+  }
+}
+
+export async function getResolvedStorageConfig() {
+  const settings = await getPlatformSettings()
+  return {
+    accountId: settings.r2AccountId || process.env.R2_ACCOUNT_ID || "",
+    accessKeyId: settings.r2AccessKeyId || process.env.R2_ACCESS_KEY_ID || "",
+    secretAccessKey: settings.r2SecretAccessKey || process.env.R2_SECRET_ACCESS_KEY || "",
+    bucketName: settings.r2BucketName || process.env.R2_BUCKET_NAME || "",
+    publicUrl: settings.r2PublicUrl || process.env.R2_PUBLIC_URL || "",
+  }
+}
+
+export async function getResolvedContaboConfig() {
+  const settings = await getPlatformSettings()
+  return {
+    clientId: settings.contaboClientId || process.env.CONTABO_CLIENT_ID || "",
+    clientSecret: settings.contaboClientSecret || process.env.CONTABO_CLIENT_SECRET || "",
+    apiUser: settings.contaboApiUser || process.env.CONTABO_API_USER || "",
+    apiPassword: settings.contaboApiPassword || process.env.CONTABO_API_PASSWORD || "",
+    authUrl: process.env.CONTABO_AUTH_URL || "https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token",
+    apiUrl: process.env.CONTABO_API_URL || "https://api.contabo.com/v1/compute/instances",
+  }
+}
+
 
