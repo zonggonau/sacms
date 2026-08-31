@@ -5,6 +5,15 @@ import { getLandingData } from "@/lib/public-api"
 // ISR: Rebuild sitemap every hour
 export const revalidate = 3600
 
+function parseDateSafely(val: any, fallback: Date): Date {
+  if (!val) return fallback
+  const d = new Date(val)
+  if (isNaN(d.getTime())) {
+    return fallback
+  }
+  return d
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const baseUrl = getSiteUrl()
   const now = new Date()
@@ -40,7 +49,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       if (slug) {
         routes.push({
           url: `${baseUrl}/blog/${slug}`,
-          lastModified: blog.date ? new Date(blog.date) : now,
+          lastModified: parseDateSafely(blog.date, now),
           changeFrequency: "weekly",
           priority: 0.7,
         })
@@ -52,3 +61,4 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
 
   return routes
 }
+
