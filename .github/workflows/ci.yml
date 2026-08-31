@@ -214,6 +214,22 @@ jobs:
               sleep 2
             done
 
+            # Auto-sync PostgreSQL user & password from .env to volume database
+            DB_USER=$(grep -E '^POSTGRES_USER=' /opt/sacms/.env 2>/dev/null | head -n1 | cut -d '=' -f2- | tr -d '"' | tr -d "'" || echo "sacms")
+            DB_PASS=$(grep -E '^POSTGRES_PASSWORD=' /opt/sacms/.env 2>/dev/null | head -n1 | cut -d '=' -f2- | tr -d '"' | tr -d "'" || true)
+            if [ -z "$DB_PASS" ]; then
+              DB_PASS=$(grep -E '^DATABASE_URL=' /opt/sacms/.env 2>/dev/null | head -n1 | sed -E 's|.*://[^:]+:([^@]+)@.*|\1|' || true)
+            fi
+            if [ -z "$DB_USER" ]; then
+              DB_USER="sacms"
+            fi
+            if [ -n "$DB_PASS" ]; then
+              echo "==> Synchronizing PostgreSQL credentials for '$DB_USER' to match .env..."
+              docker compose exec -T postgres psql -U postgres -d template1 -c "DO \$\$ BEGIN IF NOT EXISTS (SELECT FROM pg_catalog.pg_roles WHERE rolname = '$DB_USER') THEN CREATE ROLE \"$DB_USER\" WITH SUPERUSER LOGIN PASSWORD '$DB_PASS'; ELSE ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS'; END IF; END \$\$;" 2>/dev/null || \
+              docker compose exec -T postgres psql -U "$DB_USER" -d template1 -c "ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS';" 2>/dev/null || \
+              docker compose exec -T postgres psql -c "ALTER USER \"$DB_USER\" WITH PASSWORD '$DB_PASS';" 2>/dev/null || true
+            fi
+
             # Run Prisma schema push & RBAC permission sync
             docker compose run --rm app bun x prisma db push --accept-data-loss
             docker compose run --rm app bun run seed:permissions || true
