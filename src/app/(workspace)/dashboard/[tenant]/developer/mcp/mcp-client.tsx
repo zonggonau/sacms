@@ -458,6 +458,7 @@ interface McpToolDoc {
 
 const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "get_full_schema", category: "schema", description: "Mengambil seluruh struktur Content Types, Single Types, dan Components workspace sekaligus.", inputs: [] },
+  { name: "list_field_types", category: "schema", description: "Mendaftar seluruh 33 tipe field resmi SaCMS (textarea, richText, currency, relation, repeater, mediaMultiple, dll.) beserta format opsi konfigurasi.", inputs: ["category?"] },
   { name: "list_content_types", category: "schema", description: "Mendaftar seluruh model koleksi konten beserta skema field dan jumlah entri aktif.", inputs: [] },
   { name: "get_content_type", category: "schema", description: "Mendapatkan skema detail dari Content Type tertentu berdasarkan slug atau ID.", inputs: ["slug"] },
   { name: "create_content_type", category: "schema", description: "Membuat Content Type (koleksi) baru lengkap dengan daftar field skema.", inputs: ["name", "slug", "description", "fields"] },
@@ -1010,7 +1011,7 @@ export function MCPDashboardClient({
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
               <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
-                27 Live Tools MCP Aktif
+                28 Live Tools MCP Aktif
               </TabsTrigger>
               <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
@@ -1018,7 +1019,7 @@ export function MCPDashboardClient({
               </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: 27 LIVE TOOLS */}
+            {/* TAB 1: 28 LIVE TOOLS */}
             <TabsContent value="catalog" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {MCP_TOOLS_CATALOG.map((tool) => (

@@ -19,6 +19,7 @@ import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
+import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -228,6 +229,101 @@ const handler = createMcpHandler(
       }
     )
 
+    // ── list_field_types ─────────────────────────────────────────────────────
+    server.registerTool(
+      "list_field_types",
+      {
+        title: "List Supported Field Types",
+        description: "List all 33 supported field types in SaCMS (text, textarea, richText, markdown, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating). Call this to discover allowed types, validation rules, and schema configuration options before creating or modifying content types.",
+        inputSchema: {
+          category: z.enum([
+            "Basic",
+            "Number",
+            "Date & Time",
+            "Selection",
+            "Boolean",
+            "Validation",
+            "Media",
+            "Relations",
+            "Advanced"
+          ]).optional().describe("Optional category to filter field types"),
+        },
+      },
+      async ({ category }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        let types = FIELD_TYPES as any[]
+        if (category) {
+          types = types.filter(t => t.category.toLowerCase() === category.toLowerCase())
+        }
+
+        const fieldDocs = types.map((ft) => {
+          const supportedOptions: Record<string, string> = {
+            required: "boolean (default false)",
+            unique: "boolean (default false)",
+            localizable: "boolean (default true - i18n translation)",
+          }
+          const exampleField: Record<string, any> = {
+            name: ft.label,
+            slug: ft.type.toLowerCase().replace(/[^a-z0-9]/g, "_"),
+            type: ft.type,
+            required: false,
+          }
+
+          if (ft.type === "relation") {
+            supportedOptions.relationSlug = "string (target collection slug, e.g. 'categories')"
+            supportedOptions.relationType = "oneToOne | oneToMany | manyToOne | manyToMany"
+            exampleField.relationSlug = "categories"
+          } else if (ft.type === "component") {
+            supportedOptions.options = "{ componentSlug: string } (e.g. { componentSlug: 'hero_section' })"
+            exampleField.options = { componentSlug: "hero_section" }
+          } else if (ft.type === "repeater") {
+            supportedOptions.options = "{ componentSlugs: string[] } (dynamic polymorphic zone)"
+            exampleField.options = { componentSlugs: ["hero_section", "cta_banner", "testimonial_card"] }
+          } else if (ft.type === "select" || ft.type === "multiselect") {
+            supportedOptions.options = "{ choices: Array<{ label: string, value: string }> }"
+            exampleField.options = {
+              choices: [
+                { label: "Option A", value: "option_a" },
+                { label: "Option B", value: "option_b" }
+              ]
+            }
+          } else if (ft.type === "currency") {
+            supportedOptions.options = "{ currencyCode: 'IDR' | 'USD' | 'EUR', min?: number, max?: number }"
+            exampleField.options = { currencyCode: "IDR", min: 0 }
+          } else if (ft.type === "number" || ft.type === "percent") {
+            supportedOptions.options = "{ min?: number, max?: number, step?: number }"
+            exampleField.options = { min: 0, max: 100 }
+          } else if (ft.type === "media" || ft.type === "mediaMultiple") {
+            supportedOptions.options = "{ allowedTypes: ['image', 'video', 'document'], maxFileSizeMb?: number }"
+            exampleField.options = { allowedTypes: ["image"] }
+          }
+
+          return {
+            type: ft.type,
+            label: ft.label,
+            category: ft.category,
+            description: ft.description,
+            supportedOptions,
+            exampleSchemaField: exampleField,
+          }
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              totalCount: fieldDocs.length,
+              categories: FIELD_CATEGORIES,
+              fieldTypes: fieldDocs,
+              usageNote: "Pass these field definitions in the 'fields' array of 'create_content_type', 'create_single_type', or 'create_component'."
+            }, null, 2)
+          }]
+        }
+      }
+    )
+
     // =========================================================================
     // 2. CONTENT TYPES (COLLECTIONS) CRUD
     // =========================================================================
@@ -334,7 +430,7 @@ const handler = createMcpHandler(
       "create_content_type",
       {
         title: "Create Content Type",
-        description: "Create a new Content Type collection schema with fields. Field types: 'string', 'text', 'richtext', 'number', 'boolean', 'date', 'media', 'relation', 'component', 'json', 'select'.",
+        description: "Create a new Content Type collection schema with fields. Call 'list_field_types' to discover all 33 supported field types (text, textarea, richText, markdown, number, currency, percent, date, datetime, time, dateRange, select, multiselect, tags, icon, boolean, email, password, url, phone, uid, media, mediaMultiple, file, relation, component, repeater, location, seo, code, json, color, rating).",
         inputSchema: {
           name: z.string().describe("Display name (e.g. 'Blog Post', 'Product Item')"),
           slug: z.string().describe("URL-safe slug (e.g. 'articles', 'products')"),
@@ -344,12 +440,12 @@ const handler = createMcpHandler(
             z.object({
               name: z.string().describe("Field display name (e.g. 'Title', 'Price')"),
               slug: z.string().describe("Field slug (e.g. 'title', 'price')"),
-              type: z.string().describe("Field type: string, text, richtext, number, boolean, date, media, relation, component, json, select"),
+              type: z.string().describe("Field type identifier (e.g. 'text', 'textarea', 'richText', 'currency', 'date', 'mediaMultiple', 'relation', 'repeater', etc. See 'list_field_types' for full list)"),
               required: z.boolean().optional().default(false),
               unique: z.boolean().optional().default(false),
               localizable: z.boolean().optional().default(true),
               relationSlug: z.string().optional().describe("For relation type: slug of target content type"),
-              options: z.record(z.string(), z.any()).optional().describe("Extra field options (e.g. { componentSlug: 'hero' })"),
+              options: z.record(z.string(), z.any()).optional().describe("Extra field options (e.g. { currencyCode: 'IDR' }, { choices: [{label, value}] }, { componentSlug: 'hero' })"),
             })
           ).optional().describe("List of field definitions to create for this Content Type"),
         },
