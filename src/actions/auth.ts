@@ -98,7 +98,6 @@ export async function registerUser(formData: any) {
     const hashedPassword = await hashPassword(password)
 
     // Create user (first user is super_admin, all new registrants are account owners)
-    // If no email service is configured on the platform, auto-verify the user so they can login directly
     const user = await db.user.create({
       data: {
         name,
@@ -106,24 +105,18 @@ export async function registerUser(formData: any) {
         password: hashedPassword,
         role: isFirstUser ? "super_admin" : "owner",
         plan: isFirstUser ? "enterprise" : "free",
-        emailVerified: (isFirstUser || !hasMailService) ? new Date() : null,
+        emailVerified: !hasMailService ? new Date() : null,
       },
     })
-
-    if (isFirstUser) {
-      return { 
-        success: true, 
-        isFirstUser: true,
-        autoVerified: true,
-        message: "Akun Super Admin berhasil dibuat. Silakan masuk." 
-      }
-    }
 
     if (!hasMailService) {
       return {
         success: true,
+        isFirstUser,
         autoVerified: true,
-        message: "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
+        message: isFirstUser 
+          ? "Akun Super Admin berhasil dibuat. Silakan masuk." 
+          : "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
       }
     }
 
@@ -145,7 +138,8 @@ export async function registerUser(formData: any) {
       await sendVerificationEmail(user.email, token, user.name || "User")
       return { 
         success: true, 
-        message: "Pendaftaran berhasil. Silakan periksa email Anda untuk verifikasi akun." 
+        isFirstUser,
+        message: "Pendaftaran berhasil. Kami telah mengirimkan tautan aktivasi ke email Anda." 
       }
     } catch (mailErr) {
       console.error("Failed to send verification email during signup:", mailErr)

@@ -118,7 +118,7 @@ export default function RegisterPage() {
         throw new Error(response.error)
       }
 
-      if (response.isFirstUser || response.autoVerified) {
+      if (response.autoVerified) {
         toast({
           title: "Pendaftaran Berhasil",
           description: response.message || "Akun Anda berhasil dibuat. Silakan masuk.",
