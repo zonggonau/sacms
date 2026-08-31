@@ -169,11 +169,15 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
       redis.set(CACHE_KEY, combined, { ex: 300 }).catch(() => {})
     }
     return combined
-  } catch (error) {
-    console.error("[Settings] Failed to fetch settings from DB:", error)
+  } catch (error: any) {
+    if (process.env.NODE_ENV !== "production" || process.env.NEXT_PHASE === "phase-production-build") {
+      return DEFAULT_PLATFORM_SETTINGS
+    }
+    console.warn("[Settings] Database unreachable, using default platform settings:", error?.message || error)
     return DEFAULT_PLATFORM_SETTINGS
   }
 }
+
 
 export async function syncPlatformSettingsCache(newSettings: Partial<PlatformSettings>): Promise<void> {
   const redis = getRedis()

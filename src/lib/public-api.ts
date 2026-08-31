@@ -142,11 +142,14 @@ export async function getLandingData() {
       papuaConnectedSites: [],
       papuaInitiatives: [],
     }
-  } catch (err) {
-    console.error("Error in getLandingData:", err);
-    return getDefaultData();
+  } catch (err: any) {
+    if (process.env.NODE_ENV === "production" && process.env.NEXT_PHASE !== "phase-production-build") {
+      console.warn("[LandingData] Database query fallback:", err?.message || err)
+    }
+    return getDefaultData()
   }
 }
+
 
 function getDefaultData() {
   const landing = DEFAULT_LANDING_PAGE_DATA;
