@@ -1,28 +1,101 @@
+import type { Metadata } from "next"
 import { LandingHeader } from "@/components/landing/header"
 import { FooterSection } from "@/components/landing/sections/footer-section"
 import { getLandingData } from "@/lib/public-api"
 import { BlogExplorer, type BlogPost } from "@/components/blog/blog-explorer"
-import { Sparkles, BookOpen } from "lucide-react"
+import { Sparkles } from "lucide-react"
+import { getSiteUrl, SEO_CONFIG } from "@/lib/seo"
 
 export const dynamic = "force-dynamic"
 
-export const metadata = {
-  title: "Blog & Wawasan Arsitektur — SaCMS | Smart Content Management System",
-  description: "Eksplorasi wawasan, arsitektur headless CMS, tips optimasi Next.js 16, multi-tenancy, custom domain DNS, dan update terbaru dari SaCMS.",
-  openGraph: {
-    title: "Blog & Wawasan Arsitektur — SaCMS",
-    description: "Build smarter. Manage easier. Scale faster. Artikel dan panduan teknologi headless CMS multi-tenant modern.",
-    siteName: "SaCMS — Smart Content Management System",
-    type: "website",
-  },
+export async function generateMetadata(): Promise<Metadata> {
+  const siteUrl = getSiteUrl()
+  const blogUrl = `${siteUrl}/blog`
+  const title = "Blog & Wawasan Arsitektur Headless CMS — SaCMS"
+  const description =
+    "Eksplorasi wawasan teknis, arsitektur hybrid multi-tenancy, tutorial Next.js 16 App Router, Dynamic GraphQL, dan strategi optimasi sistem Headless CMS bersama SaCMS."
+
+  return {
+    title,
+    description,
+    keywords: [
+      "SaCMS Blog",
+      "Headless CMS Architecture",
+      "Multi-Tenant PostgreSQL 17",
+      "Next.js 16 Tutorial",
+      "Dynamic GraphQL",
+      "Upstash Redis Edge Cache",
+      "Model Context Protocol",
+      "Web Engineering Insights"
+    ],
+    alternates: {
+      canonical: blogUrl,
+    },
+    openGraph: {
+      title,
+      description,
+      url: blogUrl,
+      siteName: "SaCMS — Smart Content Management System",
+      locale: "id_ID",
+      type: "website",
+      images: [
+        {
+          url: `${siteUrl}/og-image.png`,
+          width: 1200,
+          height: 630,
+          alt: "SaCMS Blog & Insights",
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title,
+      description,
+      images: [`${siteUrl}/og-image.png`],
+      creator: SEO_CONFIG.social.twitter,
+    },
+  }
 }
 
 export default async function BlogPage() {
   const data = await getLandingData()
   const blogs: BlogPost[] = data.blogs || []
+  const siteUrl = getSiteUrl()
+
+  const blogCollectionJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "CollectionPage",
+    "@id": `${siteUrl}/blog`,
+    "name": "Blog & Wawasan Arsitektur Headless CMS — SaCMS",
+    "description": "Kumpulan artikel dan panduan teknis seputar arsitektur Headless CMS, multi-tenancy, dan web engineering modern.",
+    "url": `${siteUrl}/blog`,
+    "publisher": {
+      "@type": "Organization",
+      "name": "SaCMS — Smart Content Management System",
+      "logo": {
+        "@type": "ImageObject",
+        "url": `${siteUrl}/logo.svg`
+      }
+    },
+    "hasPart": blogs.map((b) => {
+      const slug = b.slug || b.id || b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+      return {
+        "@type": "BlogPosting",
+        "headline": b.title,
+        "url": `${siteUrl}/blog/${slug}`,
+        "description": b.excerpt,
+        "datePublished": b.date
+      }
+    })
+  }
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/30">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(blogCollectionJsonLd) }}
+      />
+
       <LandingHeader brandName={data.footer?.brand_name} />
 
       <main className="flex-1 pt-28 sm:pt-32 pb-20 relative overflow-hidden">

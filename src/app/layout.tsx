@@ -16,19 +16,67 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 })
 
+import { getSiteUrl, SEO_CONFIG } from "@/lib/seo"
+
+const siteUrl = getSiteUrl()
+
 export const metadata: Metadata = {
-  title: "SaCMS — Smart Content Management System | Build smarter. Manage easier. Scale faster.",
-  description: "SaCMS (Smart Content Management System) — Build smarter. Manage easier. Scale faster. Modern AI-native multi-tenant headless CMS with Dedicated PostgreSQL Appliance, AI website generation, and custom domain management.",
-  keywords: ["SaCMS", "Smart Content Management System", "Headless CMS", "Content Management System", "Next.js", "TypeScript", "Multi-tenant CMS", "SaaS"],
-  authors: [{ name: "SaCMS Team" }],
+  metadataBase: new URL(siteUrl),
+  title: {
+    default: SEO_CONFIG.defaultTitle,
+    template: "%s | SaCMS",
+  },
+  description: SEO_CONFIG.defaultDescription,
+  keywords: SEO_CONFIG.keywords,
+  authors: [{ name: "SaCMS Team", url: siteUrl }],
+  creator: "SaCMS Team",
+  publisher: "SaCMS — Smart Content Management System",
+  formatDetection: {
+    email: false,
+    address: false,
+    telephone: false,
+  },
   icons: {
     icon: "/logo.svg",
+    shortcut: "/logo.svg",
+    apple: "/logo.svg",
+  },
+  alternates: {
+    canonical: "/",
   },
   openGraph: {
-    title: "SaCMS — Smart Content Management System",
-    description: "Build smarter. Manage easier. Scale faster.",
+    title: SEO_CONFIG.defaultTitle,
+    description: SEO_CONFIG.defaultDescription,
+    url: siteUrl,
     siteName: "SaCMS — Smart Content Management System",
+    locale: "id_ID",
     type: "website",
+    images: [
+      {
+        url: "/og-image.png",
+        width: 1200,
+        height: 630,
+        alt: "SaCMS — Smart Content Management System",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: SEO_CONFIG.defaultTitle,
+    description: SEO_CONFIG.defaultDescription,
+    images: ["/og-image.png"],
+    creator: SEO_CONFIG.social.twitter,
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      "max-video-preview": -1,
+      "max-image-preview": "large",
+      "max-snippet": -1,
+    },
   },
 }
 

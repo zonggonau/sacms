@@ -10,16 +10,11 @@ import {
   Clock, 
   User, 
   ArrowLeft, 
-  Share2, 
-  Bookmark, 
-  CheckCircle2, 
   ChevronRight, 
-  Sparkles,
-  ArrowRight,
-  BookOpen
+  ArrowRight
 } from "lucide-react"
-import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { getSiteUrl, SEO_CONFIG, generateBlogPostJsonLd } from "@/lib/seo"
 
 export const dynamic = "force-dynamic"
 
@@ -31,6 +26,8 @@ export async function generateMetadata({ params }: BlogDetailPageProps): Promise
   const { slug } = await params
   const data = await getLandingData()
   const blogs: BlogPost[] = data.blogs || []
+  const siteUrl = getSiteUrl()
+  const articleUrl = `${siteUrl}/blog/${slug}`
   
   const post = blogs.find(
     (b) => (b.slug || b.id || b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) === slug
@@ -42,14 +39,43 @@ export async function generateMetadata({ params }: BlogDetailPageProps): Promise
     }
   }
 
+  const cleanDescription = post.excerpt || (post.content ? post.content.replace(/<[^>]*>/g, "").slice(0, 160) + "..." : "Baca artikel lengkap di SaCMS Blog.")
+  const ogImages = post.cover_image 
+    ? [{ url: post.cover_image, width: 1200, height: 630, alt: post.title }] 
+    : [{ url: `${siteUrl}/og-image.png`, width: 1200, height: 630, alt: post.title }]
+
   return {
     title: `${post.title} — SaCMS Blog`,
-    description: post.excerpt || "Baca artikel lengkap di SaCMS Blog.",
+    description: cleanDescription,
+    keywords: [
+      post.category || "Headless CMS",
+      "SaCMS Blog",
+      "Smart Content Management System",
+      "Next.js 16",
+      "PostgreSQL 17",
+      "API Architecture"
+    ],
+    alternates: {
+      canonical: articleUrl,
+    },
     openGraph: {
       title: post.title,
-      description: post.excerpt || "Baca artikel lengkap di SaCMS Blog.",
+      description: cleanDescription,
+      url: articleUrl,
+      siteName: "SaCMS — Smart Content Management System",
       type: "article",
-      images: post.cover_image ? [{ url: post.cover_image }] : [],
+      locale: "id_ID",
+      publishedTime: post.date,
+      authors: [post.author || "Tim SaCMS"],
+      section: post.category || "Technology",
+      images: ogImages,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: cleanDescription,
+      images: post.cover_image ? [post.cover_image] : [`${siteUrl}/og-image.png`],
+      creator: SEO_CONFIG.social.twitter,
     },
   }
 }
@@ -58,6 +84,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   const { slug } = await params
   const data = await getLandingData()
   const blogs: BlogPost[] = data.blogs || []
+  const siteUrl = getSiteUrl()
 
   const post = blogs.find(
     (b) => (b.slug || b.id || b.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")) === slug
@@ -67,10 +94,57 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
     notFound()
   }
 
+  const articleJsonLd = generateBlogPostJsonLd({
+    title: post.title,
+    slug,
+    excerpt: post.excerpt,
+    content: post.content,
+    date: post.date,
+    author: post.author,
+    authorAvatar: post.author_avatar,
+    coverImage: post.cover_image,
+    category: post.category,
+  })
+
+  const breadcrumbJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "BreadcrumbList",
+    "itemListElement": [
+      {
+        "@type": "ListItem",
+        "position": 1,
+        "name": "Beranda",
+        "item": siteUrl
+      },
+      {
+        "@type": "ListItem",
+        "position": 2,
+        "name": "Blog",
+        "item": `${siteUrl}/blog`
+      },
+      {
+        "@type": "ListItem",
+        "position": 3,
+        "name": post.title,
+        "item": `${siteUrl}/blog/${slug}`
+      }
+    ]
+  }
+
   const relatedPosts = blogs.filter((b) => b !== post).slice(0, 3)
 
   return (
     <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/30">
+      {/* Schema.org Structured Data */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
+      />
+
       <LandingHeader brandName={data.footer?.brand_name} />
 
       <main className="flex-1 pt-28 sm:pt-32 pb-24 relative overflow-hidden">
