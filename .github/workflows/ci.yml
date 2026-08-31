@@ -58,17 +58,27 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Extract Docker Metadata & Tags
+        id: meta
+        if: github.event_name != 'pull_request'
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository_owner }}/sacms
+          tags: |
+            type=ref,event=branch
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/aisacms' }}
+
       - name: Build & Push Ultra-Fast Image (5s)
+        if: github.event_name != 'pull_request'
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
           platforms: linux/amd64
-          push: ${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms' }}
-          tags: |
-            ghcr.io/${{ github.repository_owner }}/sacms:${{ github.ref_name }}
-            ghcr.io/${{ github.repository_owner }}/sacms:sha-${{ github.sha }}
-            ghcr.io/${{ github.repository_owner }}/sacms:latest
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
 
   deploy:
     name: 🚀 Live Zero-Downtime Deploy (164.68.116.79)
