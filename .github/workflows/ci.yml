@@ -147,6 +147,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 10m
           script: |
             mkdir -p /opt/sacms/db/backups
             mkdir -p /opt/sacms/caddy_data
@@ -160,6 +162,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 10m
           source: "docker-compose.yml,Caddyfile"
           target: "/opt/sacms"
 
@@ -173,6 +177,8 @@ jobs:
           key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          timeout: 60s
+          command_timeout: 30m
           envs: ENV_CONTENT
           script: |
             set -e
@@ -231,7 +237,7 @@ jobs:
             fi
 
             # Run Prisma schema push & RBAC permission sync
-            docker compose run --rm app bun x prisma db push --accept-data-loss
+            docker compose run --rm app bun x prisma db push --accept-data-loss --skip-generate
             docker compose run --rm app bun run seed:permissions || true
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."

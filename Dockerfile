@@ -37,21 +37,16 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN groupadd --system --gid 1001 nodejs
 RUN useradd --system --uid 1001 --gid nodejs nextjs
 
-# Copy essential files for runtime
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/.next/standalone ./
-COPY --from=builder /app/prisma ./prisma
-COPY --from=builder /app/scripts ./scripts
-
-# static and public were copied inside standalone, but some setups might need them at root
-# Let's ensure they are available where server.js expects them (usually inside standalone)
-# but for manual scripts we might want them at root.
-# Standalone build already includes them if we copied them during builder phase.
+# Copy essential files for runtime with correct ownership
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 
 USER nextjs
 EXPOSE 3000
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 
-CMD ["node", "server.js"]
+CMD ["bun", "server.js"]
