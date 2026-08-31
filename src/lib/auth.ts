@@ -97,28 +97,57 @@ export const authOptions: NextAuthOptions = {
 
         // Check if email is verified
         if (user.emailVerified === null) {
-          // Generate new verification token
-          const token = crypto.randomBytes(32).toString("hex")
-          const expires = new Date()
-          expires.setHours(expires.getHours() + 24)
+          const { isMailConfigured, getGlobalWorkspaceId } = await import("@/lib/settings")
+          const hasMailService = await isMailConfigured()
 
-          // Delete existing token if any
-          await db.verificationToken.deleteMany({
-            where: { identifier: user.email }
-          })
+          if (!hasMailService) {
+            // Auto-verify user if platform has no email delivery service configured
+            await db.user.update({
+              where: { id: user.id },
+              data: { emailVerified: new Date() },
+            })
+          } else {
+            // Generate new verification token
+            const token = crypto.randomBytes(32).toString("hex")
+            const expires = new Date()
+            expires.setHours(expires.getHours() + 24)
 
-          await db.verificationToken.create({
-            data: {
-              identifier: user.email,
-              token,
-              expires,
-            },
-          })
+            // Delete existing token if any
+            await db.verificationToken.deleteMany({
+              where: { identifier: user.email }
+            })
 
-          // Send email
-          await sendVerificationEmail(user.email, token, user.name || "User")
+            await db.verificationToken.create({
+              data: {
+                identifier: user.email,
+                token,
+                expires,
+              },
+            })
 
-          throw new Error("Email belum diverifikasi. Tautan verifikasi baru telah dikirim ke email Anda.")
+            try {
+              await sendVerificationEmail(user.email, token, user.name || "User")
+            } catch (err) {
+              console.error("Failed to send verification email on login:", err)
+              // If email fails to send, auto-verify user to avoid permanent lockout
+              await db.user.update({
+                where: { id: user.id },
+                data: { emailVerified: new Date() },
+              })
+              const globalTenantId = await getGlobalWorkspaceId()
+              return {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role,
+                plan: user.plan || "free",
+                tenants: user.tenants || [],
+                globalTenantId,
+              }
+            }
+
+            throw new Error("Email belum diverifikasi. Tautan verifikasi baru telah dikirim ke email Anda.")
+          }
         }
 
         // Auto-migrate legacy passwords to bcrypt on successful login

@@ -4,7 +4,7 @@ import { getResolvedMailConfig } from "./settings"
 let cachedTransporter: nodemailer.Transporter | null = null
 let cachedSignature = ""
 
-async function getTransporter() {
+async function getTransporter(): Promise<nodemailer.Transporter | null> {
   const config = await getResolvedMailConfig()
   const sig = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.smtpPass}:${config.smtpSecure}`
 
@@ -24,24 +24,32 @@ async function getTransporter() {
       } : undefined,
     })
     cachedSignature = sig
-  } else {
-    // Generate test SMTP service account from ethereal.email in dev
-    console.warn("No SMTP config found. Using Ethereal Email for testing...")
-    const testAccount = await nodemailer.createTestAccount()
-    
-    cachedTransporter = nodemailer.createTransport({
-      host: "smtp.ethereal.email",
-      port: 587,
-      secure: false,
-      auth: {
-        user: testAccount.user,
-        pass: testAccount.pass,
-      },
-    })
-    cachedSignature = "ethereal"
+    return cachedTransporter
   }
 
-  return cachedTransporter
+  if (process.env.NODE_ENV !== "production") {
+    // Generate test SMTP service account from ethereal.email in dev only
+    try {
+      console.warn("No SMTP config found. Using Ethereal Email for local dev...")
+      const testAccount = await nodemailer.createTestAccount()
+      
+      cachedTransporter = nodemailer.createTransport({
+        host: "smtp.ethereal.email",
+        port: 587,
+        secure: false,
+        auth: {
+          user: testAccount.user,
+          pass: testAccount.pass,
+        },
+      })
+      cachedSignature = "ethereal"
+      return cachedTransporter
+    } catch {
+      return null
+    }
+  }
+
+  return null
 }
 
 async function getResendClient(): Promise<{ client: Resend | null; fromEmail: string }> {
@@ -109,6 +117,10 @@ export async function sendVerificationEmail(email: string, token: string, name: 
   // Fallback to SMTP / Ethereal
   try {
     const t = await getTransporter()
+    if (!t) {
+      console.warn("⚠️ [Mail] No email provider (Resend or SMTP) configured. Skipping email dispatch.")
+      return null
+    }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
       from: mailConfig.smtpFrom || fromEmail || '"SaCMS" <noreply@mail.sacms.cloud>',

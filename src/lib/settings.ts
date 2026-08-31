@@ -153,6 +153,9 @@ export async function getPlatformSettings(): Promise<PlatformSettings> {
   }
 
   try {
+    if (!db?.setting?.findMany) {
+      return DEFAULT_PLATFORM_SETTINGS
+    }
     const settingsList = await db.setting.findMany({
       where: { tenantId: null }
     })
@@ -223,6 +226,11 @@ export async function getResolvedMailConfig() {
     smtpPass: settings.smtpPass || process.env.SMTP_PASS || "",
     smtpFrom: settings.smtpFrom || process.env.SMTP_FROM || "SaCMS <noreply@mail.sacms.cloud>",
   }
+}
+
+export async function isMailConfigured(): Promise<boolean> {
+  const mail = await getResolvedMailConfig()
+  return !!(mail.resendApiKey || (mail.smtpHost && mail.smtpPort))
 }
 
 export async function getResolvedMidtransConfig() {

@@ -30,10 +30,26 @@ export async function registerUser(formData: any) {
       where: { email: email.toLowerCase() },
     })
 
+    const { isMailConfigured } = await import("@/lib/settings")
+    const hasMailService = await isMailConfigured()
+
     if (existingUser) {
       if (existingUser.emailVerified) {
         return { error: "Akun dengan email ini sudah terdaftar dan terverifikasi. Silakan masuk." }
       } else {
+        if (!hasMailService) {
+          // Auto-verify existing unverified user if mail service is not active
+          await db.user.update({
+            where: { id: existingUser.id },
+            data: { emailVerified: new Date() }
+          })
+          return {
+            success: true,
+            autoVerified: true,
+            message: "Akun Anda telah diaktifkan secara otomatis. Silakan masuk."
+          }
+        }
+
         // Generate Verification Token
         const token = crypto.randomBytes(32).toString("hex")
         const expires = new Date()
@@ -52,12 +68,24 @@ export async function registerUser(formData: any) {
           },
         })
 
-        // Send email
-        await sendVerificationEmail(existingUser.email, token, existingUser.name || "User")
-
-        return { 
-          success: true, 
-          message: "Akun sudah terdaftar tapi belum diverifikasi. Kami telah mengirim ulang email verifikasi ke kotak masuk Anda." 
+        // Send email safely
+        try {
+          await sendVerificationEmail(existingUser.email, token, existingUser.name || "User")
+          return { 
+            success: true, 
+            message: "Akun sudah terdaftar. Kami telah mengirim ulang email verifikasi ke kotak masuk Anda." 
+          }
+        } catch (mailErr) {
+          console.error("Failed to resend verification email:", mailErr)
+          await db.user.update({
+            where: { id: existingUser.id },
+            data: { emailVerified: new Date() }
+          })
+          return {
+            success: true,
+            autoVerified: true,
+            message: "Akun Anda telah diaktifkan secara otomatis. Silakan masuk."
+          }
         }
       }
     }
@@ -70,6 +98,7 @@ export async function registerUser(formData: any) {
     const hashedPassword = await hashPassword(password)
 
     // Create user (first user is super_admin, all new registrants are account owners)
+    // If no email service is configured on the platform, auto-verify the user so they can login directly
     const user = await db.user.create({
       data: {
         name,
@@ -77,7 +106,7 @@ export async function registerUser(formData: any) {
         password: hashedPassword,
         role: isFirstUser ? "super_admin" : "owner",
         plan: isFirstUser ? "enterprise" : "free",
-        emailVerified: isFirstUser ? new Date() : null, // Super admin is auto-verified
+        emailVerified: (isFirstUser || !hasMailService) ? new Date() : null,
       },
     })
 
@@ -85,7 +114,16 @@ export async function registerUser(formData: any) {
       return { 
         success: true, 
         isFirstUser: true,
+        autoVerified: true,
         message: "Akun Super Admin berhasil dibuat. Silakan masuk." 
+      }
+    }
+
+    if (!hasMailService) {
+      return {
+        success: true,
+        autoVerified: true,
+        message: "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
       }
     }
 
@@ -102,12 +140,25 @@ export async function registerUser(formData: any) {
       },
     })
 
-    // Send email
-    await sendVerificationEmail(user.email, token, user.name || "User")
-
-    return { 
-      success: true, 
-      message: "Pendaftaran berhasil. Silakan periksa email Anda untuk verifikasi akun." 
+    // Send email with error safety
+    try {
+      await sendVerificationEmail(user.email, token, user.name || "User")
+      return { 
+        success: true, 
+        message: "Pendaftaran berhasil. Silakan periksa email Anda untuk verifikasi akun." 
+      }
+    } catch (mailErr) {
+      console.error("Failed to send verification email during signup:", mailErr)
+      // Auto-verify if email sending fails so user is not locked out
+      await db.user.update({
+        where: { id: user.id },
+        data: { emailVerified: new Date() }
+      })
+      return {
+        success: true,
+        autoVerified: true,
+        message: "Pendaftaran berhasil! Akun Anda telah aktif dan siap digunakan."
+      }
     }
   } catch (error) {
     console.error("Registration Error:", error)

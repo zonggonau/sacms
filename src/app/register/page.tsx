@@ -118,10 +118,10 @@ export default function RegisterPage() {
         throw new Error(response.error)
       }
 
-      if (response.isFirstUser) {
+      if (response.isFirstUser || response.autoVerified) {
         toast({
-          title: "Inisialisasi Berhasil",
-          description: "Akun Super Admin berhasil dibuat. Silakan masuk.",
+          title: "Pendaftaran Berhasil",
+          description: response.message || "Akun Anda berhasil dibuat. Silakan masuk.",
         })
         const loginUrl = `/login?email=${encodeURIComponent(formData.email)}${redirectTo ? '&redirect_to=' + encodeURIComponent(redirectTo) : '&redirect_to=/dashboard'}`
         router.push(loginUrl)
