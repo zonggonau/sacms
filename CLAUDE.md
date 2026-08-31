@@ -1,20 +1,60 @@
-# SaCMS — Project Guide & Deployment Configuration
+# SaCMS — Project Guide & Architecture Blueprint
 
-## Deploy Configuration (configured by /setup-deploy)
-- Platform: VPS (Docker Compose + PostgreSQL 17 + Redis 7 + Caddy)
-- Production URL: https://sacms.cloud
-- Deploy workflow: .github/workflows/ci.yml
-- Deploy trigger: Automatic on push to `master`, `develop`, `aisacms`
-- Deploy status command: curl -sf https://sacms.cloud/api/health
-- Post-deploy health check: https://sacms.cloud/api/health
-- Server Host: 164.68.116.79
-- App Target Directory: /opt/sacms
-- Merge method: squash
+## 🏗️ Production Architecture Blueprint
 
-### Custom deploy hooks
-- Pre-merge: `bun run lint && bun run test && bun run build`
-- Deploy trigger: Automatic via GitHub Actions CI/CD on git push
-- Post-deploy verification: `curl -sf https://sacms.cloud/api/health`
+```
+[ Local Development ]
+PC / Laptop
+  └── Bun (`bun run dev`) + Local PostgreSQL & Redis
+          │
+          ▼
+   ( `git push` )
+          │
+          ▼
+[ Cloud CI/CD ]
+GitHub Repository (zonggonau/sacms)
+  └── GitHub Actions Runner (.github/workflows/ci.yml)
+          ├── 1. Bun Install (Cached)
+          ├── 2. Prisma Generate
+          ├── 3. Vitest Suite (158 Automated Tests)
+          ├── 4. Next.js Standalone Turbo Compile (~30s)
+          └── 5. Build Lightweight OCI Container (5s)
+          │
+          ▼
+[ Container Registry ]
+GitHub Container Registry (GHCR)
+  └── ghcr.io/zonggonau/sacms:latest (~200MB)
+          │
+          ▼ (SSH Zero-Downtime Deploy)
+[ Production Server — VPS (164.68.116.79) ]
+/opt/sacms
+  ├── Caddy Gateway (Auto SSL / TLS Termination & Wildcard Custom Domains)
+  │       │
+  │       ▼
+  ├── SaCMS App Service (`bun server.js` on Standalone Next.js 16)
+  │       │
+  │       ├── PostgreSQL 17 Database (Shared Pool & Dedicated Tenant Appliance)
+  │       ├── Upstash / Local Redis (Cache, Rate Limiting & Domain Edge Proxy)
+  │       ├── Cloudflare R2 / S3 Storage (Media Assets & Thumbnails)
+  │       └── Automated DB Backup Service (`/opt/sacms/db/backups`)
+```
+
+## 🚀 Deploy Configuration (Configured by /setup-deploy)
+- **Production Host:** `164.68.116.79` (VPS Ubuntu 24.04 LTS)
+- **Live URL:** https://sacms.cloud
+- **App Working Directory:** `/opt/sacms`
+- **Reverse Proxy & SSL:** Caddy (`/opt/sacms/Caddyfile`)
+- **Docker Compose:** `/opt/sacms/docker-compose.yml`
+- **Deploy Workflow:** `.github/workflows/ci.yml`
+- **Deploy Triggers:** Automatic on push to `master`, `develop`, `aisacms`
+- **Health Check Endpoint:** `https://sacms.cloud/api/health`
+- **Total Pipeline Execution Time:** **~90 seconds (1.5 menit)**
+
+### Custom Deploy Hooks
+- **CI Validation:** `bun run test && bun run build`
+- **Database Synchronization:** `docker compose run --rm app bun x prisma db push --skip-generate`
+- **RBAC Permission Seed:** `docker compose run --rm app bun run seed:permissions`
+- **Post-Deploy Healthcheck:** `curl -sf http://127.0.0.1:3000/api/health`
 
 ---
 
