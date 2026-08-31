@@ -165,15 +165,18 @@ jobs:
 
       - name: Execute Zero-Downtime Deployment & DB Migration
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          ENV_CONTENT: ${{ secrets.ENV_PRODUCTION }}
         with:
           host: ${{ secrets.SERVER_HOST || '164.68.116.79' }}
           username: ${{ secrets.SERVER_USER || secrets.SSH_USER || 'root' }}
           key: ${{ secrets.SERVER_SSH_KEY || secrets.SSH_KEY || secrets.SSH_PRIVATE_KEY }}
           password: ${{ secrets.SERVER_PASSWORD || secrets.SSH_PASSWORD || secrets.SERVER_PASS }}
           port: ${{ secrets.SERVER_PORT || 22 }}
+          envs: ENV_CONTENT
           script: |
             set -e
-            echo "==> [1/6] Checking Docker environment..."
+            echo "==> [1/7] Checking Docker environment..."
             if ! command -v docker &> /dev/null; then
               echo "Error: Docker is not installed on this server. Run scripts/vps-setup.sh first."
               exit 1
@@ -181,13 +184,25 @@ jobs:
 
             cd /opt/sacms
 
-            echo "==> [2/6] Authenticating to GHCR..."
+            echo "==> [2/7] Syncing Environment Configuration..."
+            if [ -n "$ENV_CONTENT" ]; then
+              echo "$ENV_CONTENT" > /opt/sacms/.env
+              chmod 600 /opt/sacms/.env
+              echo "✅ Successfully synced /opt/sacms/.env from GitHub Secrets (ENV_PRODUCTION)."
+            elif [ ! -f /opt/sacms/.env ]; then
+              echo "⚠️ Warning: /opt/sacms/.env not found on server and ENV_PRODUCTION secret not configured."
+              echo "Please set up /opt/sacms/.env or add ENV_PRODUCTION to GitHub Secrets."
+            else
+              echo "ℹ️ Preserving existing /opt/sacms/.env on server."
+            fi
+
+            echo "==> [3/7] Authenticating to GHCR..."
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-            echo "==> [3/6] Pulling latest SaCMS image..."
+            echo "==> [4/7] Pulling latest SaCMS image..."
             docker compose pull app
 
-            echo "==> [4/6] Running Prisma Database Migrations..."
+            echo "==> [5/7] Running Prisma Database Migrations..."
             # Ensure postgres is running first
             docker compose up -d postgres redis
             sleep 3
@@ -195,10 +210,10 @@ jobs:
             # Run Prisma schema push / migration
             docker compose run --rm app bun x prisma db push --accept-data-loss || true
 
-            echo "==> [5/6] Starting all services (Zero-downtime rolling update)..."
+            echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
             docker compose up -d --remove-orphans
 
-            echo "==> [6/6] Verifying service health..."
+            echo "==> [7/7] Verifying service health..."
             for i in $(seq 1 15); do
               if docker compose ps app | grep -q "Up"; then
                 echo "SaCMS Container is UP and Healthy! 🚀"
