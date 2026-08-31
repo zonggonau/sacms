@@ -31,7 +31,7 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
     },
   ]
 
-  const activeSectors = locale === "en" || sectors.length === 0 ? defaultSectors : sectors
+  const activeSectors = sectors && sectors.length > 0 ? sectors : defaultSectors
 
   return (
     <section id="sektor" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">

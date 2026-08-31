@@ -43,8 +43,8 @@ const COMPONENTS = [
       { name: "Name", slug: "name", type: "text", order: 0 },
       { name: "Role", slug: "role", type: "text", order: 1 },
       { name: "Bio", slug: "bio", type: "textarea", order: 2 },
-      { name: "Avatar URL", slug: "avatar", type: "text", order: 3 },
-      { name: "Social Links", slug: "social", type: "json", order: 4 },
+      { name: "Avatar URL", slug: "avatar_url", type: "text", order: 3 },
+      { name: "LinkedIn URL", slug: "linkedin", type: "text", order: 4 },
     ]
   },
   {
@@ -53,9 +53,10 @@ const COMPONENTS = [
     fields: [
       { name: "Name", slug: "name", type: "text", order: 0 },
       { name: "Role", slug: "role", type: "text", order: 1 },
-      { name: "Content", slug: "content", type: "textarea", order: 2 },
-      { name: "Avatar URL", slug: "avatar", type: "text", order: 3 },
-      { name: "Rating", slug: "rating", type: "integer", order: 4 },
+      { name: "Company", slug: "company", type: "text", order: 2 },
+      { name: "Content", slug: "content", type: "textarea", order: 3 },
+      { name: "Avatar URL", slug: "avatar_url", type: "text", order: 4 },
+      { name: "Rating", slug: "rating", type: "integer", order: 5 },
     ]
   },
   {
@@ -100,8 +101,10 @@ const COMPONENTS = [
     slug: "sacms-component-about",
     fields: [
       { name: "Title", slug: "title", type: "text", order: 0 },
-      { name: "Content", slug: "content", type: "textarea", order: 1 },
-      { name: "Image URL", slug: "image", type: "text", order: 2 },
+      { name: "Description", slug: "description", type: "textarea", order: 1 },
+      { name: "Mission", slug: "mission", type: "textarea", order: 2 },
+      { name: "Founded Year", slug: "founded", type: "text", order: 3 },
+      { name: "Image URL", slug: "image", type: "text", order: 4 },
     ]
   },
   {
@@ -235,9 +238,9 @@ const COLLECTION_TYPES = [
 const SEED_DATA: Record<string, any> = {
   // ───── LANDING PAGE (Single Type with Components) ─────
   "sacms-landing-page": {
-    hero_badge: "🚀 Next.js 16 Multi-Tenant Headless Engine",
-    hero_title: "Hentikan Kerumitan Mengelola Puluhan CMS & Server Terpisah.",
-    hero_subtitle: "SaCMS adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
+    hero_badge: "",
+    hero_title: "Build smarter. Manage easier. Scale faster.",
+    hero_subtitle: "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, 1-Prompt AI Fullstack Website Engine, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
     hero_cta_primary: "Coba Gratis Sekarang",
     hero_cta_secondary: "Dokumentasi API",
     hero_image: "",
@@ -268,12 +271,54 @@ const SEED_DATA: Record<string, any> = {
     ],
 
     owners: [
-      { name: "John Doe", role: "CEO & Founder", bio: "Berpengalaman 10 tahun di industri SaaS dan Headless CMS.", avatar: "", social: { twitter: "https://twitter.com", linkedin: "https://linkedin.com" } }
+      { 
+        name: "Cristoper Zonggonau", 
+        role: "Platform Architect & Founder", 
+        bio: "Spesialis arsitektur sistem multi-tenant, cloud edge computing, dan pengembang inti platform SaCMS.", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper", 
+        linkedin: "https://linkedin.com" 
+      },
+      { 
+        name: "Januar Fonda", 
+        role: "Head of Engineering", 
+        bio: "Fokus pada integrasi GraphQL performa tinggi, Next.js 16 App Router, dan sistem automasi AI coding.", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar", 
+        linkedin: "https://linkedin.com" 
+      },
+      { 
+        name: "Tim SaCMS", 
+        role: "Product & Infrastructure", 
+        bio: "Membangun dedicated PostgreSQL 17 appliance dan sistem billing otomatis untuk pasar enterprise.", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Team", 
+        linkedin: "https://linkedin.com" 
+      }
     ],
 
     testimonials: [
-      { name: "Budi Santoso", role: "CTO Tech Indo", content: "Sangat membantu kami menghemat biaya server dan manajemen klien dengan arsitektur multi-tenant sejati.", avatar: "", rating: 5 },
-      { name: "Siti Aminah", role: "Lead Digital Agency", content: "Fitur AI Website Builder dan auto-billing Midtrans mempercepat onboarding klien baru hingga 5x lipat.", avatar: "", rating: 5 },
+      { 
+        name: "Zonggonau Cristoper", 
+        role: "Solo Developer", 
+        company: "Indie Hacker", 
+        content: "Dulu saya harus setup droplet baru tiap kali ada klien web company profile. Sekarang semua masuk ke SaCMS, hemat biaya server 80%!", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper", 
+        rating: 5 
+      },
+      { 
+        name: "Januar Fonda", 
+        role: "Tech Lead", 
+        company: "Digital Agency", 
+        content: "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar", 
+        rating: 5 
+      },
+      { 
+        name: "Budi Santoso", 
+        role: "CTO", 
+        company: "Tech Media Group", 
+        content: "Arsitektur multi-tenant dengan isolasi data PostgreSQL 17 memberi rasa aman bagi klien enterprise kami.", 
+        avatar_url: "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi", 
+        rating: 5 
+      }
     ],
 
     sectors: [
@@ -284,34 +329,36 @@ const SEED_DATA: Record<string, any> = {
     ],
 
     local_pride: {
-      badge: "Solusi B2B & Enterprise",
-      title: "Dibangun Untuk Menjawab Masalah Nyata Pengembang.",
+      badge: "Smart Content Management System",
+      title: "Build smarter. Manage easier. Scale faster.",
       description: "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien secara manual. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol terpadu yang elegan.",
     },
 
     cta_banner: {
-      title: "Siap Meningkatkan Skala Bisnis CMS Anda?",
-      description: "Pindahkan seluruh proyek klien ke SaCMS. Skalabilitas tanpa batas, performa Next.js 16 secepat kilat, dan bebas kerumitan infrastruktur.",
+      title: "Build smarter. Manage easier. Scale faster.",
+      description: "Mulai gunakan SaCMS (Smart Content Management System) hari ini. Nikmati arsitektur multi-tenant murni, performa Next.js 16 secepat kilat, dan tagihan Midtrans otomatis.",
       button_primary_text: "Coba Gratis Sekarang",
       button_secondary_text: "Baca Dokumentasi API",
     },
 
     about: {
-      title: "Tentang SaCMS",
-      content: "SaCMS adalah platform Headless CMS Multi-Tenant generasi baru yang dirancang khusus untuk memenuhi kebutuhan agensi digital, software house, dan instansi modern...",
+      title: "Tentang SaCMS — Smart Content Management System",
+      description: "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated PostgreSQL 17 Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
+      mission: "Membantu para developer dan bisnis membangun produk digital lebih cerdas (Build smarter), mengelola konten lebih mudah (Manage easier), dan menskalakan infrastruktur lebih cepat (Scale faster).",
+      founded: "2026",
       image: ""
     },
 
     whatsapp: {
-      phone: "6281234567890",
-      message: "Halo, saya tertarik dengan SaCMS. Bisa minta info lebih lanjut?",
+      phone: "6282199220551",
+      message: "Halo! Saya tertarik dengan integrasi SaCMS untuk proyek web saya.",
       label: "Hubungi Kami",
       is_active: true
     },
 
     footer: {
       brand_name: "SaCMS",
-      description: "The Ultimate Multi-Tenant Headless CMS for Modern Developers and Agencies.",
+      description: "SaCMS — Smart Content Management System. Build smarter. Manage easier. Scale faster. Platform SaaS Headless CMS terdepan untuk transformasi digital.",
       copyright: "SaCMS. Hak cipta dilindungi.",
     }
   },

@@ -4,6 +4,7 @@ import Link from "next/link"
 import { Calendar, Clock, ArrowRight, BookOpen, Sparkles } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { useLanguage } from "@/lib/i18n/context"
 
 export interface BlogPostItem {
   slug?: string
@@ -20,6 +21,8 @@ export interface BlogPostItem {
 }
 
 export function BlogPreviewSection({ blogs = [] }: { blogs?: BlogPostItem[] }) {
+  const { dict } = useLanguage()
+
   if (!blogs || blogs.length === 0) return null
 
   const displayBlogs = blogs.slice(0, 3)
@@ -40,19 +43,19 @@ export function BlogPreviewSection({ blogs = [] }: { blogs?: BlogPostItem[] }) {
           <div className="space-y-3">
             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
               <Sparkles className="w-3.5 h-3.5" />
-              <span>Blog & Wawasan Terkini</span>
+              <span>{dict.blog?.badge || "Blog & Wawasan Terkini"}</span>
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
-              Wawasan Teknis & Arsitektur SaCMS
+              {dict.blog?.title || "Wawasan Teknis & Arsitektur SaCMS"}
             </h2>
             <p className="text-sm sm:text-base text-muted-foreground max-w-2xl font-medium leading-relaxed">
-              Panduan praktis, arsitektur multi-tenant, dan strategi pengembangan headless CMS modern.
+              {dict.blog?.subtitle || "Panduan praktis, arsitektur multi-tenant, dan strategi pengembangan headless CMS modern."}
             </p>
           </div>
 
           <Link href="/blog">
             <Button variant="outline" className="rounded-2xl border-border/60 hover:border-primary/50 font-bold text-xs h-11 px-5 gap-2 shadow-xs shrink-0">
-              <span>Lihat Semua Artikel</span>
+              <span>{dict.blog?.viewAll || "Lihat Semua Artikel"}</span>
               <ArrowRight className="w-4 h-4" />
             </Button>
           </Link>
@@ -120,7 +123,7 @@ export function BlogPreviewSection({ blogs = [] }: { blogs?: BlogPostItem[] }) {
                   <span className="font-semibold text-foreground/80">{post.author || "Tim SaCMS"}</span>
                   <Link href={`/blog/${slug}`}>
                     <span className="font-bold text-primary flex items-center gap-1 group-hover:translate-x-0.5 transition-transform">
-                      Baca <ArrowRight className="w-3.5 h-3.5" />
+                      {dict.blog?.readMore || "Baca"} <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </Link>
                 </div>

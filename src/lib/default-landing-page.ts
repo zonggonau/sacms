@@ -1,10 +1,10 @@
 export const DEFAULT_LANDING_PAGE_DATA: any = {
   "sacms-hero": {
-    "headline": "Hentikan Kerumitan Mengelola Puluhan CMS Terpisah.",
-    "subheadline": "SaCMS adalah Headless CMS Multi-Tenant sejati. Satu codebase untuk mengelola semua klien Anda dengan isolasi data absolut, integrasi billing Midtrans otomatis, dan API secepat kilat.",
+    "headline": "Build smarter. Manage easier. Scale faster.",
+    "subheadline": "SaCMS (Smart Content Management System) adalah platform Headless CMS multi-tenant modern dengan Dedicated PostgreSQL 17 Appliance, 1-Prompt AI Fullstack Website Engine, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis.",
     "cta_primary": "Coba Gratis Sekarang",
     "cta_secondary": "Lihat Dokumentasi",
-    "badge_text": "🚀 SaaS Headless Engine Generasi Baru",
+    "badge_text": "",
     "image_url": ""
   },
   "sacms-features": [
@@ -121,6 +121,102 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       "unit": "bulan"
     }
   ],
+  "sacms-workspace-pricing": [
+    {
+      "name": "SaCMS Free Forever",
+      "plan_slug": "free",
+      "price": 0,
+      "yearly_price": 0,
+      "period": "selamanya",
+      "description": "Kapasitas dasar gratis untuk belajar, eksplorasi, dan pengembangan sandbox.",
+      "max_content_types": 999999,
+      "max_content_entries": 500,
+      "max_team_members": 1,
+      "max_storage": 100,
+      "max_locales": 1,
+      "max_api_calls": 1000,
+      "features": [
+        "Unlimited Content Schemas & Tipe Data",
+        "500 Entri Konten Dinamis",
+        "1 Anggota Tim",
+        "100 MB Cloudflare R2 Storage",
+        "1.000 API Calls / bulan",
+        "50 Bonus AI Credits Awal (Top-Up jika habis)",
+        "Live Sandbox Preview (AI Website Builder)",
+        "Community Support"
+      ]
+    },
+    {
+      "name": "SaCMS Cloud Pro",
+      "plan_slug": "pro",
+      "price": 249000,
+      "yearly_price": 1490000,
+      "period": "bulan",
+      "is_popular": true,
+      "description": "Paket lengkap all-inclusive untuk bisnis, media, dan startup modern (Tanpa Biaya Tersembunyi).",
+      "max_content_types": 999999,
+      "max_content_entries": 10000,
+      "max_team_members": 10,
+      "max_storage": 5120,
+      "max_locales": 5,
+      "max_api_calls": 100000,
+      "features": [
+        "10.000 Entri Konten & Unlimited Schemas",
+        "10 Anggota Tim & Kolaborasi Multi-Role",
+        "5 GB Cloud Storage Media Assets",
+        "100.000 API Requests / bulan",
+        "500 AI Credits Awal (Top-Up untuk build lanjutan)",
+        "🌐 Cloud Edge Global Hosting SUDAH TERMASUK (Rp 0 Tambahan)",
+        "🏷️ GRATIS 1 Domain Kustom (.com / .id) Selama 1 Tahun",
+        "Sertifikat SSL HTTPS Otomatis & Global Anycast CDN",
+        "Prioritas Support & 99.9% SLA"
+      ]
+    },
+    {
+      "name": "Cloud VPS Standard",
+      "plan_slug": "vps-4",
+      "price": 450000,
+      "yearly_price": 4500000,
+      "period": "bulan",
+      "description": "Virtual Private Server terisolasi dengan dedicated storage SSD berkecepatan tinggi.",
+      "max_content_types": 999999,
+      "max_content_entries": 50000,
+      "max_team_members": 25,
+      "max_storage": 50000,
+      "max_locales": 10,
+      "max_api_calls": 500000,
+      "features": [
+        "4 vCPU Cores & 8 GB RAM",
+        "50 GB NVMe / SSD Storage",
+        "Dedicated PostgreSQL Instance",
+        "Unmetered Bandwidth (Port 1 Gbps)",
+        "Full Root / SSH Access & Dedicated IPv4",
+        "Automated Daily Snapshot & Backup"
+      ]
+    },
+    {
+      "name": "Cloud VDS Dedicated CPU",
+      "plan_slug": "vds-s",
+      "price": 1250000,
+      "yearly_price": 12500000,
+      "period": "bulan",
+      "description": "100% Dedicated CPU Cores untuk kebutuhan enterprise dan instansi pemerintah.",
+      "max_content_types": 999999,
+      "max_content_entries": 500000,
+      "max_team_members": 100,
+      "max_storage": 200000,
+      "max_locales": 50,
+      "max_api_calls": 5000000,
+      "features": [
+        "4 Dedicated CPU Cores (100% Dedicated)",
+        "24 GB RAM & 200 GB NVMe Storage",
+        "Isolated Dedicated PostgreSQL 17 Appliance",
+        "Gov & Enterprise Compliance Ready",
+        "Custom SSL & Anycast DNS Shield",
+        "24/7 Dedicated Support & SLA 99.99%"
+      ]
+    }
+  ],
   "sacms-testimonials": [
     {
       "name": "Zonggonau Cristoper",
@@ -137,59 +233,81 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
       "content": "Fitur auto-billing via Midtrans sangat membantu kami menagih biaya langganan bulanan ke klien tanpa harus kirim invoice manual lagi.",
       "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
       "rating": 5
+    },
+    {
+      "name": "Budi Santoso",
+      "role": "CTO",
+      "company": "Tech Media Group",
+      "content": "Arsitektur multi-tenant dengan isolasi data PostgreSQL 17 memberi rasa aman bagi klien enterprise kami.",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Budi",
+      "rating": 5
     }
   ],
   "sacms-owners": [
     {
+      "name": "Cristoper Zonggonau",
+      "role": "Platform Architect & Founder",
+      "bio": "Spesialis arsitektur sistem multi-tenant, cloud edge computing, dan pengembang inti platform SaCMS.",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Cristoper",
+      "linkedin": "https://linkedin.com"
+    },
+    {
+      "name": "Januar Fonda",
+      "role": "Head of Engineering",
+      "bio": "Fokus pada integrasi GraphQL performa tinggi, Next.js 16 App Router, dan sistem automasi AI coding.",
+      "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Januar",
+      "linkedin": "https://linkedin.com"
+    },
+    {
       "name": "Tim SaCMS",
-      "role": "Platform Engineers",
-      "bio": "Dibangun oleh developer untuk developer, memecahkan masalah fragmentasi CMS.",
+      "role": "Product & Infrastructure",
+      "bio": "Membangun dedicated PostgreSQL 17 appliance dan sistem billing otomatis untuk pasar enterprise.",
       "avatar_url": "https://api.dicebear.com/7.x/avataaars/svg?seed=Team",
-      "linkedin": ""
+      "linkedin": "https://linkedin.com"
     }
   ],
   "sacms-about": {
-    "title": "Tentang SaCMS",
-    "description": "Platform Headless CMS generasi baru yang menghilangkan kompleksitas pengelolaan infrastruktur untuk agensi dan freelance developer.",
-    "mission": "Mempercepat pengiriman proyek digital dengan infrastruktur CMS yang terpusat, aman, dan mudah dimonetisasi.",
+    "title": "Tentang SaCMS — Smart Content Management System",
+    "description": "<p>SaCMS (Smart Content Management System) lahir dengan moto <strong>'Build smarter. Manage easier. Scale faster.'</strong> — mendemokratisasi teknologi Headless CMS dan Dedicated Appliance kelas enterprise untuk seluruh developer, software house, dan instansi.</p><p class=\"mt-3\">Dengan arsitektur Hybrid Multi-Tenancy dan Dedicated PostgreSQL 17 Appliance, SaCMS memberikan performa maksimal, privasi data absolut, dan integrasi modern tanpa kompromi.</p>",
+    "mission": "Membantu para developer dan bisnis membangun produk digital lebih cerdas (Build smarter), mengelola konten lebih mudah (Manage easier), dan menskalakan infrastruktur lebih cepat (Scale faster).",
     "founded": "2026"
   },
   "sacms-whatsapp": {
     "phone": "6282199220551",
-    "message": "Halo! Saya ingin berdiskusi mengenai integrasi SaCMS untuk agensi saya.",
+    "message": "Halo! Saya tertarik dengan integrasi SaCMS untuk proyek web saya.",
     "label": "Hubungi Kami",
     "is_active": true
   },
   "sacms-sectors": [
     {
-      "icon": "Building",
-      "label": "Digital Agency",
-      "desc": "Kelola puluhan klien web"
+      "icon": "Building2",
+      "label": "Digital Agency & Software House",
+      "desc": "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah."
     },
     {
-      "icon": "Code",
-      "label": "Solo Developer",
-      "desc": "Kurangi biaya server"
+      "icon": "Landmark",
+      "label": "Pemerintah & BUMN",
+      "desc": "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem."
     },
     {
       "icon": "ShoppingBag",
-      "label": "E-Commerce",
-      "desc": "Katalog headless"
+      "label": "E-Commerce & Startup",
+      "desc": "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern."
     },
     {
-      "icon": "Briefcase",
-      "label": "SaaS Builders",
-      "desc": "Backend data terpusat"
+      "icon": "Code2",
+      "label": "Solo Builders & Developers",
+      "desc": "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant."
     }
   ],
   "sacms-local-pride": {
-    "badge": "Solusi B2B Terbaik",
-    "title": "Dibangun Untuk Menjawab Masalah Nyata Developer.",
-    "description": "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol elegan."
+    "badge": "Smart Content Management System",
+    "title": "Build smarter. Manage easier. Scale faster.",
+    "description": "Kami memahami betapa frustrasinya mengelola banyak instance CMS terpisah dan menagih klien secara manual. SaCMS hadir untuk merangkum semua infrastruktur tersebut menjadi satu panel kontrol terpadu yang elegan."
   },
   "sacms-cta": {
-    "title": "Siap Berhenti Melakukan Self-Host CMS?",
-    "description": "Pindahkan proyek klien Anda ke SaCMS. Skalabilitas tanpa batas, tanpa pusing.",
+    "title": "Build smarter. Manage easier. Scale faster.",
+    "description": "Mulai gunakan SaCMS (Smart Content Management System) hari ini. Nikmati arsitektur multi-tenant murni, performa Next.js 16 secepat kilat, dan tagihan Midtrans otomatis.",
     "button_primary_text": "Coba Gratis Sekarang",
     "button_secondary_text": "Baca Dokumentasi API"
   },
@@ -304,7 +422,7 @@ export const DEFAULT_LANDING_PAGE_DATA: any = {
   ],
   "sacms-footer": {
     "brand_name": "SaCMS",
-    "description": "The Ultimate Multi-Tenant Headless CMS for Modern Developers and Agencies.",
+    "description": "SaCMS — Smart Content Management System. Build smarter. Manage easier. Scale faster. Platform SaaS Headless CMS terdepan untuk transformasi digital.",
     "copyright": "SaCMS. Hak cipta dilindungi."
   }
 }

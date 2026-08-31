@@ -6,7 +6,7 @@ import type { AddonItem } from "../types"
 import { useLanguage } from "@/lib/i18n/context"
 
 export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
-  const { dict } = useLanguage()
+  const { dict, locale } = useLanguage()
 
   if (!addons || addons.length === 0) return null
 
@@ -61,7 +61,7 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
                       </span>
                     ) : (
                       <span className="inline-flex items-center text-xs font-bold text-green-500 px-3 py-1 bg-green-500/10 rounded-full">
-                        Gratis
+                        {locale === "en" ? "Free" : "Gratis"}
                       </span>
                     )}
                   </div>

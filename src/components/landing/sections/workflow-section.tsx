@@ -14,7 +14,7 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
     icon: idx === 0 ? "FolderPlus" : idx === 1 ? "FileEdit" : idx === 2 ? "Send" : "BarChart3",
   }))
 
-  const activeSteps = locale === "en" || workflow.length === 0 ? defaultSteps : workflow
+  const activeSteps = workflow && workflow.length > 0 ? workflow : defaultSteps
 
   return (
     <section id="workflow" className="py-20 relative bg-background border-t border-border/50 scroll-mt-24 overflow-hidden">

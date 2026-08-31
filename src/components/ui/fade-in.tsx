@@ -27,6 +27,11 @@ export function FadeIn({
     const el = ref.current
     if (!el) return
 
+    if (!("IntersectionObserver" in window)) {
+      setVisible(true)
+      return
+    }
+
     const observer = new IntersectionObserver(
       ([entry]) => {
         if (entry.isIntersecting) {
@@ -36,7 +41,7 @@ export function FadeIn({
           setVisible(false)
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0, rootMargin: "0px 0px 50px 0px" }
     )
 
     observer.observe(el)

@@ -199,6 +199,14 @@ export const DICTIONARY = {
         },
       ],
     },
+    // Blog
+    blog: {
+      badge: "Blog & Wawasan Terkini",
+      title: "Wawasan Teknis & Arsitektur SaCMS",
+      subtitle: "Panduan praktis, arsitektur multi-tenant, dan strategi pengembangan headless CMS modern.",
+      viewAll: "Lihat Semua Artikel",
+      readMore: "Baca",
+    },
     // CTA Banner
     cta: {
       title: "Build smarter. Manage easier. Scale faster.",
@@ -409,6 +417,14 @@ export const DICTIONARY = {
           a: "Yes! You can connect your external PostgreSQL instance (e.g. Supabase, Neon, AWS RDS) directly in Workspace Settings.",
         },
       ],
+    },
+    // Blog
+    blog: {
+      badge: "Latest Blog & Insights",
+      title: "Technical Insights & SaCMS Architecture",
+      subtitle: "Practical guides, multi-tenant architecture, and modern headless CMS development strategies.",
+      viewAll: "View All Articles",
+      readMore: "Read",
     },
     cta: {
       title: "Build smarter. Manage easier. Scale faster.",

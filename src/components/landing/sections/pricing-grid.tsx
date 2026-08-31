@@ -291,6 +291,6 @@ function isCurrentHighlight(isPopular: boolean, isVds: boolean, isStorage: boole
   if (isVds) return "bg-card/80 border-amber-500/40 shadow-xl shadow-amber-500/5 hover:border-amber-500"
   if (isStorage) return "bg-card/80 border-emerald-500/40 shadow-xl shadow-emerald-500/5 hover:border-emerald-500"
   if (isVps) return "bg-card/80 border-primary/40 shadow-xl shadow-primary/5 hover:border-primary"
-  if (isPopular) return "bg-card/80 border-primary/50 shadow-xl shadow-primary/10 scale-[1.02] z-10 hover:border-primary"
+  if (isPopular) return "bg-card/80 border-primary/50 shadow-xl shadow-primary/10 scale-100 sm:scale-[1.02] z-10 hover:border-primary"
   return "bg-card/40 border-border/70 hover:border-primary/40 shadow-md hover:shadow-lg"
 }

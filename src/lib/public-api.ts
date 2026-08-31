@@ -90,44 +90,51 @@ export async function getLandingData() {
       "vds-xl": 43,
       "vds-xxl": 44,
     }
-    const pricingWorkspaces = (collectionsData?.["sacms-workspace-pricing"] || []).sort((a: any, b: any) => {
+    const rawPricingWorkspaces = collectionsData?.["sacms-workspace-pricing"] || []
+    const pricingWorkspacesList = rawPricingWorkspaces.length > 0 
+      ? rawPricingWorkspaces 
+      : (DEFAULT_LANDING_PAGE_DATA["sacms-workspace-pricing"] || [])
+
+    const pricingWorkspaces = pricingWorkspacesList.sort((a: any, b: any) => {
       const slugA = (a.plan_slug || a.id || "").toLowerCase()
       const slugB = (b.plan_slug || b.id || "").toLowerCase()
       return (PLAN_ORDER[slugA] || 99) - (PLAN_ORDER[slugB] || 99) || (Number(a.price) || 0) - (Number(b.price) || 0)
     });
     const addons = collectionsData?.["sacms-addons"] || [];
 
+    const def = DEFAULT_LANDING_PAGE_DATA
+
     return {
       hero: {
-        headline: lp.hero_title || "",
-        subheadline: lp.hero_subtitle || "",
-        badge_text: lp.hero_badge || "",
-        image_url: lp.hero_image || "",
-        cta_primary: lp.hero_cta_primary || "",
-        cta_secondary: lp.hero_cta_secondary || "",
+        headline: lp.hero_title || def["sacms-hero"]?.headline || "",
+        subheadline: lp.hero_subtitle || def["sacms-hero"]?.subheadline || "",
+        badge_text: lp.hero_badge || def["sacms-hero"]?.badge_text || "",
+        image_url: lp.hero_image || def["sacms-hero"]?.image_url || "",
+        cta_primary: lp.hero_cta_primary || def["sacms-hero"]?.cta_primary || "",
+        cta_secondary: lp.hero_cta_secondary || def["sacms-hero"]?.cta_secondary || "",
       },
-      features: lp.features || [],
-      pricingAccounts: pricingAccounts,
+      features: (lp.features && lp.features.length > 0) ? lp.features : (def["sacms-features"] || []),
+      pricingAccounts: pricingAccounts.length > 0 ? pricingAccounts : (def["sacms-account-pricing"] || []),
       pricingWorkspaces: pricingWorkspaces,
-      addons: addons,
-      workflow: lp.workflows || [],
-      faq: lp.faqs || [],
-      whatsapp: lp.whatsapp || null,
-      about: lp.about || null,
-      owners: lp.owners || [],
+      addons: addons.length > 0 ? addons : (def["sacms-addons"] || []),
+      workflow: (lp.workflows && lp.workflows.length > 0) ? lp.workflows : (def["sacms-workflow"] || []),
+      faq: (lp.faqs && lp.faqs.length > 0) ? lp.faqs : (def["sacms-faq"] || []),
+      whatsapp: lp.whatsapp || def["sacms-whatsapp"] || null,
+      about: lp.about || def["sacms-about"] || null,
+      owners: (lp.owners && lp.owners.length > 0) ? lp.owners : (def["sacms-owners"] || []),
       blogs: (collectionsData?.["posts"] && collectionsData["posts"].length > 0) 
         ? collectionsData["posts"] 
-        : (lp.blogs && lp.blogs.length > 0 ? lp.blogs : DEFAULT_LANDING_PAGE_DATA["sacms-blogs"] || []),
-      testimonials: lp.testimonials || [],
-      sectors: lp.sectors || [],
-      localPride: lp.local_pride || null,
+        : (lp.blogs && lp.blogs.length > 0 ? lp.blogs : def["sacms-blogs"] || []),
+      testimonials: (lp.testimonials && lp.testimonials.length > 0) ? lp.testimonials : (def["sacms-testimonials"] || []),
+      sectors: (lp.sectors && lp.sectors.length > 0) ? lp.sectors : (def["sacms-sectors"] || []),
+      localPride: lp.local_pride || def["sacms-local-pride"] || null,
       cta: {
-        title: lp.cta_banner?.title || "",
-        description: lp.cta_banner?.description || "",
-        button_primary_text: lp.cta_banner?.button_primary_text || "",
-        button_secondary_text: lp.cta_banner?.button_secondary_text || "",
+        title: lp.cta_banner?.title || def["sacms-cta"]?.title || "",
+        description: lp.cta_banner?.description || def["sacms-cta"]?.description || "",
+        button_primary_text: lp.cta_banner?.button_primary_text || def["sacms-cta"]?.button_primary_text || "",
+        button_secondary_text: lp.cta_banner?.button_secondary_text || def["sacms-cta"]?.button_secondary_text || "",
       },
-      footer: lp.footer || null,
+      footer: lp.footer || def["sacms-footer"] || null,
       papuaHero: null,
       papuaVisionMission: null,
       papuaChallenges: [],
@@ -148,7 +155,7 @@ function getDefaultData() {
     features: landing["sacms-features"],
     addons: landing["sacms-addons"],
     pricingAccounts: [],
-    pricingWorkspaces: [],
+    pricingWorkspaces: landing["sacms-workspace-pricing"] || [],
     workflow: landing["sacms-workflow"],
     faq: landing["sacms-faq"],
     whatsapp: landing["sacms-whatsapp"],

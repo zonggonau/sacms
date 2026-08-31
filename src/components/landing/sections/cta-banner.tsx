@@ -15,10 +15,10 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
   const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
-  const title = locale === "en" ? dict.cta.title : (cta?.title || dict.cta.title)
-  const description = locale === "en" ? dict.cta.description : (cta?.description || dict.cta.description)
-  const buttonPrimary = locale === "en" ? dict.cta.buttonPrimary : (cta?.button_primary_text || dict.cta.buttonPrimary)
-  const buttonSecondary = locale === "en" ? dict.cta.buttonSecondary : (cta?.button_secondary_text || dict.cta.buttonSecondary)
+  const title = cta?.title || dict.cta.title
+  const description = cta?.description || dict.cta.description
+  const buttonPrimary = cta?.button_primary_text || dict.cta.buttonPrimary
+  const buttonSecondary = cta?.button_secondary_text || dict.cta.buttonSecondary
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-background">

@@ -14,7 +14,7 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
     answer: item.a,
   }))
 
-  const activeFaq = locale === "en" || faq.length === 0 ? defaultFaq : faq
+  const activeFaq = faq && faq.length > 0 ? faq : defaultFaq
 
   return (
     <section id="faq" className="py-24 sm:py-32 relative bg-card/30 border-t border-border/50 scroll-mt-24 overflow-hidden">

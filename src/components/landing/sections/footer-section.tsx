@@ -8,7 +8,7 @@ import { useLanguage } from "@/lib/i18n/context"
 export function FooterSection({ footer }: { footer: FooterData | null }) {
   const { dict, locale } = useLanguage()
 
-  const brandDesc = locale === "en" ? dict.footer.brandDesc : (footer?.description || dict.footer.brandDesc)
+  const brandDesc = footer?.description || dict.footer.brandDesc
 
   return (
     <footer className="pt-20 pb-10 bg-background border-t border-border/50 relative overflow-hidden">

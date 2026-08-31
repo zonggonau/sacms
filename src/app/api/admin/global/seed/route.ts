@@ -56,7 +56,7 @@ export async function POST(request: NextRequest) {
     const { promisify } = await import("util")
     const execAsync = promisify(exec)
 
-    const result = await execAsync("npx tsx scripts/seed-all-global.ts")
+    const result = await execAsync("bun scripts/seed-all-global.ts")
     console.log("Global seed execution output:", result.stdout)
 
     return NextResponse.json({

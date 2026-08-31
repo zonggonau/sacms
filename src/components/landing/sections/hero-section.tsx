@@ -27,11 +27,11 @@ export function HeroSection({ data }: { data: HeroData | null }) {
   const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
-  const badgeText = locale === "en" ? dict.hero.badge : (data?.badge_text || dict.hero.badge)
-  const headlineText = locale === "en" ? dict.hero.title : (data?.headline || dict.hero.title)
-  const subheadlineText = locale === "en" ? dict.hero.subtitle : (data?.subheadline || dict.hero.subtitle)
-  const ctaPrimary = locale === "en" ? dict.hero.ctaPrimary : (data?.cta_primary || dict.hero.ctaPrimary)
-  const ctaSecondary = locale === "en" ? dict.hero.ctaSecondary : (data?.cta_secondary || dict.hero.ctaSecondary)
+  const badgeText = data?.badge_text || ""
+  const headlineText = data?.headline || dict.hero.title
+  const subheadlineText = data?.subheadline || dict.hero.subtitle
+  const ctaPrimary = data?.cta_primary || dict.hero.ctaPrimary
+  const ctaSecondary = data?.cta_secondary || dict.hero.ctaSecondary
 
   return (
     <section className="min-h-[80vh] flex items-center justify-center pt-24 pb-16 relative overflow-hidden">

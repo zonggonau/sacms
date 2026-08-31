@@ -6,10 +6,8 @@ import { useLanguage } from "@/lib/i18n/context"
 export function AboutSection({ about }: { about: AboutData | null }) {
   const { dict, locale } = useLanguage()
 
-  const title = locale === "en" ? dict.about.title : (about?.title || dict.about.title)
-  const description = locale === "en" 
-    ? `<p>${dict.about.desc1}</p><p class="mt-3">${dict.about.desc2}</p>` 
-    : (about?.description || `<p>${dict.about.desc1}</p>`)
+  const title = about?.title || dict.about.title
+  const description = about?.description || `<p>${dict.about.desc1}</p><p class="mt-3">${dict.about.desc2}</p>`
 
   return (
     <section id="about" className="py-24 sm:py-32 relative bg-background border-t border-border/50 overflow-hidden">

@@ -42,7 +42,7 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
     },
   ]
 
-  const activeFeatures = locale === "en" || features.length === 0 ? defaultFeatures : features
+  const activeFeatures = features && features.length > 0 ? features : defaultFeatures
 
   return (
     <section id="fitur" className="py-20 relative bg-background overflow-hidden scroll-mt-24">
