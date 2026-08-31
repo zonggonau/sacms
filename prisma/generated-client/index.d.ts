@@ -50518,6 +50518,7 @@ export namespace Prisma {
     status: string | null
     verifiedAt: Date | null
     isPrimary: boolean | null
+    target: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -50529,6 +50530,7 @@ export namespace Prisma {
     status: string | null
     verifiedAt: Date | null
     isPrimary: boolean | null
+    target: string | null
     createdAt: Date | null
     updatedAt: Date | null
   }
@@ -50540,6 +50542,7 @@ export namespace Prisma {
     status: number
     verifiedAt: number
     isPrimary: number
+    target: number
     createdAt: number
     updatedAt: number
     _all: number
@@ -50553,6 +50556,7 @@ export namespace Prisma {
     status?: true
     verifiedAt?: true
     isPrimary?: true
+    target?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -50564,6 +50568,7 @@ export namespace Prisma {
     status?: true
     verifiedAt?: true
     isPrimary?: true
+    target?: true
     createdAt?: true
     updatedAt?: true
   }
@@ -50575,6 +50580,7 @@ export namespace Prisma {
     status?: true
     verifiedAt?: true
     isPrimary?: true
+    target?: true
     createdAt?: true
     updatedAt?: true
     _all?: true
@@ -50659,6 +50665,7 @@ export namespace Prisma {
     status: string
     verifiedAt: Date | null
     isPrimary: boolean
+    target: string
     createdAt: Date
     updatedAt: Date
     _count: CustomDomainCountAggregateOutputType | null
@@ -50687,6 +50694,7 @@ export namespace Prisma {
     status?: boolean
     verifiedAt?: boolean
     isPrimary?: boolean
+    target?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -50699,6 +50707,7 @@ export namespace Prisma {
     status?: boolean
     verifiedAt?: boolean
     isPrimary?: boolean
+    target?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -50711,6 +50720,7 @@ export namespace Prisma {
     status?: boolean
     verifiedAt?: boolean
     isPrimary?: boolean
+    target?: boolean
     createdAt?: boolean
     updatedAt?: boolean
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
@@ -50723,11 +50733,12 @@ export namespace Prisma {
     status?: boolean
     verifiedAt?: boolean
     isPrimary?: boolean
+    target?: boolean
     createdAt?: boolean
     updatedAt?: boolean
   }
 
-  export type CustomDomainOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "domain" | "status" | "verifiedAt" | "isPrimary" | "createdAt" | "updatedAt", ExtArgs["result"]["customDomain"]>
+  export type CustomDomainOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "domain" | "status" | "verifiedAt" | "isPrimary" | "target" | "createdAt" | "updatedAt", ExtArgs["result"]["customDomain"]>
   export type CustomDomainInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     tenant?: boolean | TenantDefaultArgs<ExtArgs>
   }
@@ -50750,6 +50761,7 @@ export namespace Prisma {
       status: string
       verifiedAt: Date | null
       isPrimary: boolean
+      target: string
       createdAt: Date
       updatedAt: Date
     }, ExtArgs["result"]["customDomain"]>
@@ -51182,6 +51194,7 @@ export namespace Prisma {
     readonly status: FieldRef<"CustomDomain", 'String'>
     readonly verifiedAt: FieldRef<"CustomDomain", 'DateTime'>
     readonly isPrimary: FieldRef<"CustomDomain", 'Boolean'>
+    readonly target: FieldRef<"CustomDomain", 'String'>
     readonly createdAt: FieldRef<"CustomDomain", 'DateTime'>
     readonly updatedAt: FieldRef<"CustomDomain", 'DateTime'>
   }
@@ -70449,6 +70462,7 @@ export namespace Prisma {
     status: 'status',
     verifiedAt: 'verifiedAt',
     isPrimary: 'isPrimary',
+    target: 'target',
     createdAt: 'createdAt',
     updatedAt: 'updatedAt'
   };
@@ -74156,6 +74170,7 @@ export namespace Prisma {
     status?: StringFilter<"CustomDomain"> | string
     verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
     isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    target?: StringFilter<"CustomDomain"> | string
     createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
     updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
@@ -74168,6 +74183,7 @@ export namespace Prisma {
     status?: SortOrder
     verifiedAt?: SortOrderInput | SortOrder
     isPrimary?: SortOrder
+    target?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     tenant?: TenantOrderByWithRelationInput
@@ -74183,6 +74199,7 @@ export namespace Prisma {
     status?: StringFilter<"CustomDomain"> | string
     verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
     isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    target?: StringFilter<"CustomDomain"> | string
     createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
     updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
     tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
@@ -74195,6 +74212,7 @@ export namespace Prisma {
     status?: SortOrder
     verifiedAt?: SortOrderInput | SortOrder
     isPrimary?: SortOrder
+    target?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
     _count?: CustomDomainCountOrderByAggregateInput
@@ -74212,6 +74230,7 @@ export namespace Prisma {
     status?: StringWithAggregatesFilter<"CustomDomain"> | string
     verifiedAt?: DateTimeNullableWithAggregatesFilter<"CustomDomain"> | Date | string | null
     isPrimary?: BoolWithAggregatesFilter<"CustomDomain"> | boolean
+    target?: StringWithAggregatesFilter<"CustomDomain"> | string
     createdAt?: DateTimeWithAggregatesFilter<"CustomDomain"> | Date | string
     updatedAt?: DateTimeWithAggregatesFilter<"CustomDomain"> | Date | string
   }
@@ -79162,6 +79181,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
     tenant: TenantCreateNestedOneWithoutCustomDomainsInput
@@ -79174,6 +79194,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -79184,6 +79205,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
     tenant?: TenantUpdateOneRequiredWithoutCustomDomainsNestedInput
@@ -79196,6 +79218,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -79207,6 +79230,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -79217,6 +79241,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -79228,6 +79253,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -83198,6 +83224,7 @@ export namespace Prisma {
     status?: SortOrder
     verifiedAt?: SortOrder
     isPrimary?: SortOrder
+    target?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -83209,6 +83236,7 @@ export namespace Prisma {
     status?: SortOrder
     verifiedAt?: SortOrder
     isPrimary?: SortOrder
+    target?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -83220,6 +83248,7 @@ export namespace Prisma {
     status?: SortOrder
     verifiedAt?: SortOrder
     isPrimary?: SortOrder
+    target?: SortOrder
     createdAt?: SortOrder
     updatedAt?: SortOrder
   }
@@ -88880,6 +88909,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -88890,6 +88920,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -89753,6 +89784,7 @@ export namespace Prisma {
     status?: StringFilter<"CustomDomain"> | string
     verifiedAt?: DateTimeNullableFilter<"CustomDomain"> | Date | string | null
     isPrimary?: BoolFilter<"CustomDomain"> | boolean
+    target?: StringFilter<"CustomDomain"> | string
     createdAt?: DateTimeFilter<"CustomDomain"> | Date | string
     updatedAt?: DateTimeFilter<"CustomDomain"> | Date | string
   }
@@ -100970,6 +101002,7 @@ export namespace Prisma {
     status?: string
     verifiedAt?: Date | string | null
     isPrimary?: boolean
+    target?: string
     createdAt?: Date | string
     updatedAt?: Date | string
   }
@@ -101757,6 +101790,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -101767,6 +101801,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
@@ -101777,6 +101812,7 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     verifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
     isPrimary?: BoolFieldUpdateOperationsInput | boolean
+    target?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }

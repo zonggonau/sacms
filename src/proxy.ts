@@ -165,32 +165,114 @@ export async function proxy(request: NextRequest) {
 
 
   // ==================== CUSTOM DOMAIN ROUTING ====================
+  // A custom domain lookup returns either:
+  //   - A plain string slug (legacy: "delvia") → default target = cms
+  //   - A JSON string: '{"slug":"delvia","target":"workspace"}' (new with target routing)
   let tenantSlug: string | null = null
+  let domainTarget: string = "cms"
   let version = "v1"
 
   if (host && host !== APP_HOST && !host.includes("localhost")) {
     const redis = getRedis()
     if (redis) {
-      tenantSlug = await redis.get(`domain:${host}`)
+      const rawValue = await redis.get<string>(`domain:${host}`)
+      if (rawValue) {
+        try {
+          const parsed = JSON.parse(rawValue)
+          tenantSlug = parsed.slug || null
+          domainTarget = parsed.target || "cms"
+        } catch {
+          // Legacy plain string value
+          tenantSlug = rawValue
+          domainTarget = "cms"
+        }
+      }
     }
-    
+
     if (tenantSlug) {
-      // Map custom domain paths. Supports /v1/content or /content (defaults to v1)
-      let restPath = pathname
-      const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
-      if (vMatch) {
-        version = vMatch[1]
-        restPath = `/${vMatch[2]}`
+      // ---- API passthrough: always rewrite /api/* to public API ----
+      if (pathname.startsWith("/api/") || pathname.startsWith("/graphql")) {
+        let restPath = pathname
+        const vMatch = pathname.match(/^\/(v[12])\/(.+)$/)
+        if (vMatch) {
+          version = vMatch[1]
+          restPath = `/${vMatch[2]}`
+        }
+        const rewriteUrl = request.nextUrl.clone()
+        rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath.replace(/^\/api/, "")}`
+        const response = NextResponse.rewrite(rewriteUrl)
+        applySecurityHeaders(response)
+        applyCorsHeaders(response)
+        response.headers.set("X-API-Version", version)
+        response.headers.set("X-Tenant-Domain", host)
+        if (request.method === "OPTIONS") {
+          return new NextResponse(null, { status: 204, headers: response.headers })
+        }
+        return response
       }
 
+      // ---- Static/Next.js internal assets: pass through unchanged ----
+      if (
+        pathname.startsWith("/_next/") ||
+        pathname.startsWith("/favicon") ||
+        pathname.startsWith("/robots") ||
+        pathname.startsWith("/sitemap")
+      ) {
+        const response = NextResponse.next()
+        applySecurityHeaders(response)
+        response.headers.set("X-Tenant-Domain", host)
+        return response
+      }
+
+      // ---- Portal routing: redirect root "/" based on domain target ----
+      if (pathname === "/" || pathname === "") {
+        const rewriteUrl = request.nextUrl.clone()
+        switch (domainTarget) {
+          case "workspace":
+            rewriteUrl.pathname = `/dashboard/${tenantSlug}`
+            break
+          case "site":
+            rewriteUrl.pathname = `/site/${tenantSlug}`
+            break
+          case "api":
+            rewriteUrl.pathname = `/api/public/${tenantSlug}/content`
+            break
+          case "cms":
+          default:
+            rewriteUrl.pathname = `/dashboard/${tenantSlug}/cms`
+            break
+        }
+        const response = NextResponse.rewrite(rewriteUrl)
+        applySecurityHeaders(response)
+        response.headers.set("X-Tenant-Domain", host)
+        response.headers.set("X-Domain-Target", domainTarget)
+        return response
+      }
+
+      // ---- For all other paths under a custom domain, rewrite transparently ----
+      // This lets /cms, /dashboard, /login etc. still work on the custom domain
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath}`
-      
+      // Preserve existing path (e.g. admin.domain.com/cms/articles -> /dashboard/slug/cms/articles)
+      if (pathname.startsWith("/cms")) {
+        rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname}`
+      } else if (pathname.startsWith("/dashboard")) {
+        // Already a dashboard path, pass through
+        rewriteUrl.pathname = pathname
+      } else {
+        // Default fallthrough: let Next.js handle the path as-is
+        const response = NextResponse.next()
+        applySecurityHeaders(response)
+        response.headers.set("X-Tenant-Domain", host)
+        response.headers.set("X-Domain-Target", domainTarget)
+        return response
+      }
+
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response)
       applyCorsHeaders(response)
       response.headers.set("X-API-Version", version)
       response.headers.set("X-Tenant-Domain", host)
+      response.headers.set("X-Domain-Target", domainTarget)
 
       if (request.method === "OPTIONS") {
         return new NextResponse(null, { status: 204, headers: response.headers })

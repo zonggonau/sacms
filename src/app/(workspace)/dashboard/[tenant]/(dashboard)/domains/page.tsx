@@ -26,16 +26,54 @@ import {
   ArrowRight,
   Info,
   Star,
+  LayoutDashboard,
+  FileText,
+  Zap,
+  Layout,
 } from "lucide-react"
 import { toast } from "sonner"
 import { BuyDomainDialog } from "@/components/domains/buy-domain-dialog"
 import { parseDomainInfo, getExpectedDnsRecords, ExpectedDnsRecord, DnsDiagnosticsResult } from "@/lib/domain-parser"
+
+type DomainTarget = "cms" | "workspace" | "site" | "api"
+
+const DOMAIN_TARGETS: { value: DomainTarget; label: string; desc: string; icon: React.ReactNode; example: string }[] = [
+  {
+    value: "cms",
+    label: "CMS Content Manager",
+    desc: "Langsung masuk ke manajer konten tenant",
+    icon: <FileText className="h-3.5 w-3.5" />,
+    example: "admin.domain.com → /cms",
+  },
+  {
+    value: "workspace",
+    label: "Workspace Hub",
+    desc: "Langsung masuk ke dashboard workspace",
+    icon: <LayoutDashboard className="h-3.5 w-3.5" />,
+    example: "portal.domain.com → /workspace",
+  },
+  {
+    value: "site",
+    label: "Halaman Web Publik",
+    desc: "Tampilkan halaman publik / frontend site",
+    icon: <Layout className="h-3.5 w-3.5" />,
+    example: "domain.com → /site",
+  },
+  {
+    value: "api",
+    label: "Headless API Gateway",
+    desc: "Expose REST & GraphQL API publik tenant",
+    icon: <Zap className="h-3.5 w-3.5" />,
+    example: "api.domain.com → /api",
+  },
+]
 
 interface DomainItem {
   id: string
   domain: string
   status: "verified" | "pending" | "failed"
   isPrimary?: boolean
+  target?: DomainTarget
   verifiedAt?: string
   dnsRecords?: ExpectedDnsRecord[]
   dnsVerification?: {
@@ -54,11 +92,13 @@ export default function TenantDomainsPage() {
   const [domains, setDomains] = useState<DomainItem[]>([])
   const [loading, setLoading] = useState(true)
   const [newDomainInput, setNewDomainInput] = useState("")
+  const [newDomainTarget, setNewDomainTarget] = useState<DomainTarget>("cms")
   const [addingDomain, setAddingDomain] = useState(false)
   const [verifyingMap, setVerifyingMap] = useState<Record<string, boolean>>({})
   const [diagnosticsMap, setDiagnosticsMap] = useState<Record<string, DnsDiagnosticsResult>>({})
   const [deletingDomain, setDeletingDomain] = useState<string | null>(null)
   const [settingPrimary, setSettingPrimary] = useState<string | null>(null)
+  const [updatingTargetMap, setUpdatingTargetMap] = useState<Record<string, boolean>>({})
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [showBuyDialog, setShowBuyDialog] = useState(false)
 
@@ -104,13 +144,14 @@ export default function TenantDomainsPage() {
       const res = await fetch(`/api/tenant/${tenantSlug}/white-label/domain`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customDomain: domain }),
+        body: JSON.stringify({ customDomain: domain, target: newDomainTarget }),
       })
 
       const data = await res.json()
       if (res.ok) {
-        toast.success(`Domain ${domain} berhasil ditambahkan! Silakan atur DNS record di bawah.`)
+        toast.success(`Domain ${domain} berhasil ditambahkan dengan tujuan "${newDomainTarget}". Silakan atur DNS record di bawah.`)
         setNewDomainInput("")
+        setNewDomainTarget("cms")
         await fetchDomains()
       } else {
         toast.error(data.error || "Gagal menambahkan domain")
@@ -119,6 +160,28 @@ export default function TenantDomainsPage() {
       toast.error("Terjadi kesalahan koneksi saat menambahkan domain")
     } finally {
       setAddingDomain(false)
+    }
+  }
+
+  const handleUpdateTarget = async (domainName: string, target: DomainTarget) => {
+    setUpdatingTargetMap((prev) => ({ ...prev, [domainName]: true }))
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/white-label/domain`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ customDomain: domainName, target }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        toast.success(`Tujuan domain diperbarui ke "${target}".`)
+        setDomains((prev) => prev.map((d) => d.domain === domainName ? { ...d, target } : d))
+      } else {
+        toast.error(data.error || "Gagal memperbarui tujuan domain")
+      }
+    } catch {
+      toast.error("Terjadi kesalahan koneksi")
+    } finally {
+      setUpdatingTargetMap((prev) => ({ ...prev, [domainName]: false }))
     }
   }
 
@@ -337,25 +400,59 @@ export default function TenantDomainsPage() {
                 Masukkan domain utama (misal: <span className="font-mono font-semibold text-foreground">intanjayakab.go.id</span>) atau subdomain (misal: <span className="font-mono font-semibold text-foreground">dpr.intanjayakab.go.id</span>).
               </CardDescription>
             </CardHeader>
-            <CardContent className="p-5 space-y-4">
-              <form onSubmit={handleAddDomain} className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
-                  <Input
-                    placeholder="Contoh: portal.perusahaananda.com atau dinas.intanjayakab.go.id"
-                    value={newDomainInput}
-                    onChange={(e) => setNewDomainInput(e.target.value)}
-                    className="rounded-xl h-10 text-xs bg-background border-border/80 font-mono pl-9"
-                  />
-                  <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+            <CardContent className="p-5 space-y-5">
+              <form onSubmit={handleAddDomain} className="flex flex-col gap-4">
+                <div className="flex flex-col sm:flex-row gap-3">
+                  <div className="relative flex-1">
+                    <Input
+                      placeholder="Contoh: admin.domainanda.go.id atau portal.perusahaan.com"
+                      value={newDomainInput}
+                      onChange={(e) => setNewDomainInput(e.target.value)}
+                      className="rounded-xl h-10 text-xs bg-background border-border/80 font-mono pl-9"
+                    />
+                    <Globe className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <Button
+                    type="submit"
+                    disabled={addingDomain || !newDomainInput.trim()}
+                    className="rounded-xl h-10 px-5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0"
+                  >
+                    {addingDomain ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
+                    Tambahkan Domain
+                  </Button>
                 </div>
-                <Button
-                  type="submit"
-                  disabled={addingDomain || !newDomainInput.trim()}
-                  className="rounded-xl h-10 px-5 text-xs font-bold bg-primary text-primary-foreground shadow-xs shrink-0"
-                >
-                  {addingDomain ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Plus className="mr-1.5 h-3.5 w-3.5" />}
-                  Tambahkan Domain
-                </Button>
+
+                {/* Portal Target Selector */}
+                <div className="space-y-2">
+                  <Label className="text-xs font-bold text-foreground">Tujuan Portal Domain</Label>
+                  <p className="text-[11px] text-muted-foreground">Pilih ke mana pengunjung akan diarahkan saat membuka domain ini.</p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {DOMAIN_TARGETS.map((t) => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setNewDomainTarget(t.value)}
+                        className={`flex items-start gap-3 p-3 rounded-xl border text-left transition-all ${
+                          newDomainTarget === t.value
+                            ? "border-primary bg-primary/5 shadow-xs"
+                            : "border-border/60 hover:border-border hover:bg-muted/40"
+                        }`}
+                      >
+                        <span className={`mt-0.5 ${newDomainTarget === t.value ? "text-primary" : "text-muted-foreground"}`}>
+                          {t.icon}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <div className={`text-xs font-bold ${newDomainTarget === t.value ? "text-primary" : "text-foreground"}`}>{t.label}</div>
+                          <div className="text-[11px] text-muted-foreground">{t.desc}</div>
+                          <code className="text-[10px] text-muted-foreground/70 font-mono">{t.example}</code>
+                        </div>
+                        {newDomainTarget === t.value && (
+                          <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
               </form>
 
               {/* Live Preview Type Detection */}
@@ -412,6 +509,9 @@ export default function TenantDomainsPage() {
                   const isVerifying = verifyingMap[dom.domain] || false
                   const diagnostics = diagnosticsMap[dom.domain]
 
+                  const currentTarget = dom.target || "cms"
+                  const currentTargetInfo = DOMAIN_TARGETS.find((t) => t.value === currentTarget)
+
                   return (
                     <Card key={dom.id} className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
                       {/* Domain Header Bar */}
@@ -453,6 +553,12 @@ export default function TenantDomainsPage() {
 
                           <Badge variant="outline" className="text-[10px] text-muted-foreground border-border/60">
                             {info.isApex ? "Apex Domain (@)" : `Subdomain (${info.subdomainPrefix})`}
+                          </Badge>
+
+                          {/* Portal Target Badge */}
+                          <Badge variant="outline" className="text-[10px] border-border/60 flex items-center gap-1">
+                            {currentTargetInfo?.icon}
+                            <span className="ml-0.5">{currentTargetInfo?.label || currentTarget}</span>
                           </Badge>
                         </div>
 
@@ -594,11 +700,43 @@ export default function TenantDomainsPage() {
                           </div>
                         </div>
 
+                        {/* Portal Target Selector */}
+                        <div className="rounded-xl border border-border/60 bg-muted/20 p-4 space-y-2">
+                          <Label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                            <ArrowRight className="h-3.5 w-3.5 text-primary" />
+                            Tujuan Portal Domain
+                          </Label>
+                          <p className="text-[11px] text-muted-foreground">Pilih ke mana pengunjung akan diarahkan saat membuka <code className="font-mono text-foreground">{dom.domain}</code></p>
+                          <div className="grid grid-cols-2 gap-2">
+                            {DOMAIN_TARGETS.map((t) => (
+                              <button
+                                key={t.value}
+                                type="button"
+                                disabled={updatingTargetMap[dom.domain]}
+                                onClick={() => currentTarget !== t.value && handleUpdateTarget(dom.domain, t.value)}
+                                className={`flex items-center gap-2 p-2.5 rounded-lg border text-left transition-all ${
+                                  currentTarget === t.value
+                                    ? "border-primary bg-primary/10"
+                                    : "border-border/50 hover:border-border hover:bg-muted/40 cursor-pointer"
+                                }`}
+                              >
+                                <span className={currentTarget === t.value ? "text-primary" : "text-muted-foreground"}>{t.icon}</span>
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-[11px] font-bold truncate ${currentTarget === t.value ? "text-primary" : "text-foreground"}`}>{t.label}</div>
+                                  <code className="text-[10px] text-muted-foreground/70 font-mono">{t.example}</code>
+                                </div>
+                                {currentTarget === t.value && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
+                                {updatingTargetMap[dom.domain] && currentTarget !== t.value && null}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+
                         {/* SSL & Target URL Footer */}
                         <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground border-t border-border/60">
                           <div className="flex items-center gap-1.5">
                             <ShieldCheck className="h-4 w-4 text-emerald-500" />
-                            <span>SSL Certificate: <strong>Auto Let&apos;s Encrypt / TLS 1.3 Aktif</strong></span>
+                            <span>SSL Certificate: <strong>Auto Let&apos;s Encrypt / On-Demand TLS Aktif</strong></span>
                           </div>
                           
                           <a

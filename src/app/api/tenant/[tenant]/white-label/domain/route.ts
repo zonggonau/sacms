@@ -24,6 +24,7 @@ const setDomainSchema = z.object({
       /^(?:[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?\.)+[a-zA-Z]{2,}$/,
       "Format nama domain tidak valid"
     ),
+  target: z.enum(["cms", "workspace", "site", "api"]).optional().default("cms"),
 })
 
 const verifyOrDeleteSchema = z.object({
@@ -33,6 +34,11 @@ const verifyOrDeleteSchema = z.object({
 const setPrimarySchema = z.object({
   customDomain: z.string().min(3),
   isPrimary: z.boolean(),
+})
+
+const updateTargetSchema = z.object({
+  customDomain: z.string().min(3),
+  target: z.enum(["cms", "workspace", "site", "api"]),
 })
 
 /**
@@ -148,12 +154,15 @@ export async function POST(
       )
     }
 
+    const target = result.data.target || "cms"
+
     const newDomain = await db.customDomain.create({
       data: {
         tenantId: access.tenantId,
         domain: customDomain,
         status: "pending",
         isPrimary: currentDomainCount === 0,
+        target,
       },
     })
 
@@ -236,7 +245,11 @@ export async function PUT(
     const redis = getRedis()
     if (diagnostics.verified && tenantRecord) {
       if (redis) {
-        await redis.set(`domain:${customDomain}`, tenantRecord.slug)
+        // Store JSON payload so proxy can read both slug AND portal target
+        await redis.set(
+          `domain:${customDomain}`,
+          JSON.stringify({ slug: tenantRecord.slug, target: updatedDomain.target || "cms" })
+        )
       }
     } else {
       if (redis) await redis.del(`domain:${customDomain}`)
@@ -255,7 +268,7 @@ export async function PUT(
 
 /**
  * PATCH /api/tenant/[tenant]/white-label/domain
- * Set primary domain for tenant
+ * Set primary domain for tenant OR update domain portal target
  */
 export async function PATCH(
   request: NextRequest,
@@ -271,7 +284,58 @@ export async function PATCH(
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    const result = await validateBody(request, setPrimarySchema)
+    const body = await request.json().catch(() => ({}))
+
+    // If request includes "target" field — update domain portal routing target
+    if ("target" in body) {
+      const parsed = updateTargetSchema.safeParse(body)
+      if (!parsed.success) {
+        return NextResponse.json({ error: parsed.error.issues[0]?.message }, { status: 400 })
+      }
+
+      const { customDomain, target } = parsed.data
+      const domainRecord = await db.customDomain.findUnique({ where: { domain: customDomain } })
+      if (!domainRecord || domainRecord.tenantId !== access.tenantId) {
+        return NextResponse.json({ error: "Domain tidak ditemukan." }, { status: 404 })
+      }
+
+      const updated = await db.customDomain.update({
+        where: { id: domainRecord.id },
+        data: { target },
+      })
+
+      // Update Redis cache if domain is verified
+      if (domainRecord.status === "verified") {
+        const redis = getRedis()
+        const tenantRecord = await db.tenant.findUnique({
+          where: { id: access.tenantId },
+          select: { slug: true },
+        })
+        if (redis && tenantRecord) {
+          await redis.set(
+            `domain:${customDomain}`,
+            JSON.stringify({ slug: tenantRecord.slug, target })
+          )
+        }
+      }
+
+      logAudit({
+        tenantId: access.tenantId,
+        userId: session.user.id,
+        action: AuditAction.SETTINGS_UPDATED,
+        entity: "tenant_custom_domain",
+        entityId: domainRecord.id,
+        data: { action: "update_target", domain: customDomain, target },
+      })
+
+      return NextResponse.json({ success: true, domain: updated })
+    }
+
+    // Default: set primary domain
+    const result = await validateBody(
+      new Request(request.url, { method: "PATCH", body: JSON.stringify(body), headers: { "Content-Type": "application/json" } }),
+      setPrimarySchema
+    )
     if ("error" in result) return result.error
 
     const { customDomain, isPrimary } = result.data
@@ -291,7 +355,7 @@ export async function PATCH(
 
     return NextResponse.json({ success: true, domain: updated })
   } catch (error) {
-    console.error("Error updating primary domain:", error)
+    console.error("Error updating domain:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

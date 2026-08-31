@@ -630,6 +630,7 @@ exports.Prisma.CustomDomainScalarFieldEnum = {
   status: 'status',
   verifiedAt: 'verifiedAt',
   isPrimary: 'isPrimary',
+  target: 'target',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 };
