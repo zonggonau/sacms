@@ -83,92 +83,9 @@ interface MCPDashboardClientProps {
 
 function generateConfig(platform: string, mcpUrl: string, token: string = "YOUR_MCP_TOKEN", tenantSlug: string = "workspace"): string {
   const origin = mcpUrl ? mcpUrl.replace(/\/api\/mcp\/?$/, "") : "http://localhost:3000"
-  const openApiUrl = `${origin}/api/public/${tenantSlug}/openapi.json`
-  const geminiToolsUrl = `${origin}/api/public/${tenantSlug}/gemini-tools`
 
   switch (platform) {
-    case "chatgpt":
-      return JSON.stringify({
-        schema_url: openApiUrl,
-        auth: {
-          type: "apiKey",
-          authType: "bearer",
-          token: token
-        },
-        privacy_policy_url: `${origin}/privacy`,
-        instructions: `Anda adalah AI Content Manager untuk SaCMS workspace '${tenantSlug}'. Gunakan actions yang tersedia untuk mengambil struktur data, menulis atau mempublikasikan artikel/produk, dan membaca data halaman singleton.`
-      }, null, 2)
-
-    case "gemini":
-      return `// ─── Google Gemini / Google AI Studio Integration ───
-// 1. Tool Declaration Endpoint (Copy-paste JSON or fetch dynamically):
-// ${geminiToolsUrl}
-
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-
-// Fetch active tool schema dynamically from SaCMS
-const toolsRes = await fetch("${geminiToolsUrl}");
-const { tools } = await toolsRes.json();
-
-const response = await ai.models.generateContent({
-  model: "gemini-2.0-flash",
-  contents: "Daftarkan 5 artikel terbaru dari SaCMS dan buatkan ringkasan.",
-  config: { tools }
-});
-
-console.log(response.text);`
-
-    case "manus":
-      return JSON.stringify({
-        mcp_servers: [
-          {
-            name: "sacms",
-            transport: "streamable-http",
-            url: mcpUrl,
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        ],
-        custom_tools_openapi: openApiUrl,
-        instructions: `Integrate with SaCMS Headless CMS. Use 'sacms' MCP tools to perform schema introspection and content management.`
-      }, null, 2)
-
-    case "emergent":
-      return JSON.stringify({
-        agent_connectors: {
-          sacms_mcp: {
-            endpoint: mcpUrl,
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          },
-          sacms_openapi: {
-            spec_url: openApiUrl,
-            auth_header: `Bearer ${token}`
-          }
-        }
-      }, null, 2)
-
-    case "contabo":
-      return JSON.stringify({
-        mcpServers: {
-          sacms: {
-            command: "bunx",
-            args: [
-              "sacms-mcp",
-              "--host",
-              origin,
-              "--token",
-              token
-            ]
-          }
-        }
-      }, null, 2)
-
-    case "claude":
+    case "antigravity":
       return JSON.stringify({
         mcpServers: {
           sacms: {
@@ -229,7 +146,7 @@ console.log(response.text);`
         }
       }, null, 2)
 
-    case "antigravity":
+    case "claude":
       return JSON.stringify({
         mcpServers: {
           sacms: {
@@ -241,15 +158,41 @@ console.log(response.text);`
         }
       }, null, 2)
 
-    case "v0":
-      return mcpUrl
+    case "zed":
+      return JSON.stringify({
+        context_servers: {
+          sacms: {
+            url: mcpUrl,
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      }, null, 2)
+
+    case "contabo":
+    case "stdio":
+      return JSON.stringify({
+        mcpServers: {
+          sacms: {
+            command: "bunx",
+            args: [
+              "sacms-mcp",
+              "--host",
+              origin,
+              "--token",
+              token
+            ]
+          }
+        }
+      }, null, 2)
 
     default:
       return mcpUrl
   }
 }
 
-// ─── Platform definitions ────────────────────────────────────────────────────
+// ─── Platform definitions (Pure AI IDEs & Code Editors Only) ─────────────────
 
 interface PlatformInfo {
   id: string
@@ -272,72 +215,10 @@ const PLATFORMS: PlatformInfo[] = [
     configPath: ".agents/mcp_config.json",
     steps: [
       "Buka atau buat file .agents/mcp_config.json di root workspace project Anda.",
-      "Salin dan tempelkan blok JSON konfigurasi di bawah.",
+      "Salin atau klik tombol 'Unduh File (.json)' di atas.",
       "Token otorisasi aktif otomatis disematkan pada konfigurasi.",
       "Antigravity akan otomatis mendeteksi server MCP 'sacms' saat proses tasking dimulai.",
       "Prompt contoh: 'Gunakan MCP sacms untuk query schema CMS dan buatkan Server Action untuk mutasi artikel.'"
-    ]
-  },
-  {
-    id: "chatgpt",
-    name: "ChatGPT Actions",
-    icon: "🤖",
-    badge: "Custom GPTs",
-    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    configPath: "GPT Builder → Configure → Create new action",
-    steps: [
-      "Buka chatgpt.com → Klik profil → My GPTs → Create a GPT.",
-      "Masuk ke tab 'Configure', scroll ke bawah ke bagian 'Actions' dan klik 'Create new action'.",
-      "Klik tombol 'Import from URL' dan masukkan URL OpenAPI Schema publik di bawah.",
-      "Di bagian 'Authentication', pilih 'API Key', Auth Type 'Bearer', dan masukkan Token Otorisasi Anda.",
-      "Set URL Kebijakan Privasi dengan: https://your-domain/privacy.",
-      "Instruksi contoh: 'Anda adalah Asisten CMS. Gunakan actions untuk membuat artikel baru saat user meminta.'"
-    ],
-    notes: [
-      "OpenAPI 3.1 schema ter-generate secara dinamis sesuai Content Types dan Single Types di workspace Anda."
-    ]
-  },
-  {
-    id: "gemini",
-    name: "Google AI Studio",
-    icon: "✨",
-    badge: "Gemini 2.0 / Flash",
-    badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    configPath: "Google AI Studio → Tools → Function Calling",
-    steps: [
-      "Buka aistudio.google.com dan buat chat prompt baru.",
-      "Pada panel sebelah kanan, aktifkan 'Tools' → pilih 'Function calling' / 'Structured Output'.",
-      "Buka endpoint Gemini Tools URL untuk menyalin seluruh functionDeclarations JSON.",
-      "Atau gunakan Google GenAI SDK (Node.js/Python) dengan mem-fetch schema secara otomatis seperti snippet di bawah.",
-      "Gemini sekarang dapat memanggil tool 'sacms_list_entries', 'sacms_create_entry', dsb secara autonomous."
-    ]
-  },
-  {
-    id: "manus",
-    name: "Manus AI",
-    icon: "🧠",
-    badge: "Autonomous Agent",
-    badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-    configPath: "Manus Settings → MCP Connectors / Custom Tools",
-    steps: [
-      "Buka Manus Agent Dashboard → Settings → Integrations.",
-      "Tambahkan MCP Server baru dengan transport 'Streamable HTTP / SSE'.",
-      "Masukkan URL MCP SaCMS dan tambahkan Header 'Authorization: Bearer <TOKEN>'.",
-      "Manus akan langsung mengenali seluruh 22 capabilities CMS untuk mengelola website."
-    ]
-  },
-  {
-    id: "emergent",
-    name: "Emergent AI",
-    icon: "🌐",
-    badge: "Agent Mesh",
-    badgeColor: "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/20",
-    configPath: "Emergent Agent Studio → Integrations → MCP",
-    steps: [
-      "Di Emergent Agent Studio, buka menu Agent Connections.",
-      "Pilih 'Model Context Protocol (MCP)' dan masukkan Endpoint URL SaCMS.",
-      "Sematkan API Token Anda untuk autentikasi workspace.",
-      "Emergent siap mengotomatisasi pipeline konten multi-channel."
     ]
   },
   {
@@ -346,47 +227,26 @@ const PLATFORMS: PlatformInfo[] = [
     icon: "🟦",
     badge: "AI Code Editor",
     badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
-    configPath: "Cursor Settings → MCP",
+    configPath: ".cursor/mcp.json",
     steps: [
-      "Buka Cursor → Settings (Ctrl+Shift+J) → Features → MCP.",
-      "Klik tombol '+ Add new MCP server'.",
-      "Pilih Type: 'HTTP' / 'SSE'.",
-      "Name: 'sacms', URL: Masukkan URL MCP SaCMS.",
-      "Tambahkan Header: Authorization: Bearer <TOKEN>.",
+      "Buka Cursor → Settings (Ctrl+Shift+J) → Features → MCP (atau buat file .cursor/mcp.json).",
+      "Klik tombol '+ Add new MCP server' atau salin file konfigurasi di bawah.",
+      "Pilih Type: 'HTTP' / 'SSE', URL: URL MCP SaCMS, Header: Authorization: Bearer <TOKEN>.",
       "Indikator hijau akan menyala tanda server aktif.",
       "Di Composer (Agent mode), minta: 'Gunakan MCP sacms untuk membuat content type products dan buatkan halaman etalase Next.js.'"
     ]
   },
   {
-    id: "claude",
-    name: "Claude Desktop",
-    icon: "🟣",
-    badge: "AI Assistant",
-    badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
-    configPath: "claude_desktop_config.json",
+    id: "windsurf",
+    name: "Windsurf",
+    icon: "🌊",
+    badge: "AI IDE",
+    badgeColor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
+    configPath: "~/.codeium/windsurf/mcp_config.json",
     steps: [
-      "Buka Claude Desktop → Settings → Developer → Edit Config.",
-      "Tambahkan blok server 'sacms' seperti yang disediakan di bawah.",
-      "Simpan berkas konfigurasi lalu restart Claude Desktop.",
-      "Ikon plug 🔌 akan muncul di kolom chat menandakan MCP terhubung.",
-      "Prompt contoh: 'Daftarkan semua content type yang ada di workspace SaCMS saya dan buatkan ringkasannya.'"
-    ],
-    notes: [
-      "Windows: %APPDATA%\\Claude\\claude_desktop_config.json",
-      "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
-    ]
-  },
-  {
-    id: "contabo",
-    name: "Contabo VPS (CLI)",
-    icon: "🖥️",
-    badge: "Dedicated Stdio CLI",
-    badgeColor: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
-    configPath: "Terminal CLI / Claude Stdio Bridge",
-    steps: [
-      "Gunakan perintah CLI 'bunx sacms-mcp' atau 'npx sacms-mcp' untuk menjembatani stdio lokal ke server SaCMS di VPS Contabo.",
-      "Bagus untuk autonomous background worker atau pemrosesan batch yang membutuhkan waktu eksekusi tanpa batas (bypass serverless timeouts).",
-      "Jalankan di terminal lokal atau masukkan ke claude_desktop_config.json dengan command 'bunx'."
+      "Buka file ~/.codeium/windsurf/mcp_config.json (atau klik ikon Cascade Settings → MCP).",
+      "Masukkan konfigurasi server 'sacms' dari snippet di bawah.",
+      "Restart Windsurf dan gunakan Cascade Agent untuk scaffolding schema atau data CMS."
     ]
   },
   {
@@ -404,19 +264,6 @@ const PLATFORMS: PlatformInfo[] = [
     ]
   },
   {
-    id: "windsurf",
-    name: "Windsurf",
-    icon: "🌊",
-    badge: "AI IDE",
-    badgeColor: "bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border-cyan-500/20",
-    configPath: "~/.codeium/windsurf/mcp_config.json",
-    steps: [
-      "Buka file ~/.codeium/windsurf/mcp_config.json.",
-      "Masukkan konfigurasi server sacms.",
-      "Restart Windsurf dan gunakan Cascade Agent."
-    ]
-  },
-  {
     id: "cline",
     name: "Cline",
     icon: "🔵",
@@ -426,23 +273,52 @@ const PLATFORMS: PlatformInfo[] = [
     steps: [
       "Buka panel Cline di VS Code → klik icon Settings (Gear) → MCP Servers.",
       "Tambahkan konfigurasi server 'sacms'.",
-      "Cline akan menampilkan daftar 22 tools aktif yang siap digunakan."
+      "Cline akan menampilkan daftar 36 tools aktif yang siap digunakan."
     ]
   },
   {
-    id: "v0",
-    name: "v0.dev",
-    icon: "🔺",
-    badge: "UI Generator",
-    badgeColor: "bg-primary/10 text-primary border-primary/20",
-    configPath: "v0.dev Project Settings → MCP",
+    id: "claude",
+    name: "Claude Code & Desktop",
+    icon: "🟣",
+    badge: "AI Code Assistant",
+    badgeColor: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20",
+    configPath: "claude_desktop_config.json",
     steps: [
-      "Buka chat v0.dev atau menu Project Settings pada project Anda.",
-      "Navigasi ke menu 'MCP Servers' atau 'Integrations'.",
-      "Klik tombol '+ Add MCP Server' dan pilih koneksi HTTP / SSE.",
-      "Masukkan Server URL dengan URL MCP SaCMS di bawah.",
-      "Tambahkan Header: Key 'Authorization', Value 'Bearer <TOKEN>'.",
-      "Prompt contoh ke v0: 'Gunakan MCP SaCMS untuk membuat blog modern lengkap dengan Content Types articles, categories, dan ambil 5 data artikel pertama.'"
+      "Buka Claude Desktop → Settings → Developer → Edit Config (atau jalankan Claude Code di terminal).",
+      "Tambahkan blok server 'sacms' seperti yang disediakan di bawah.",
+      "Simpan berkas konfigurasi lalu restart Claude Desktop.",
+      "Ikon plug 🔌 akan muncul di kolom chat menandakan MCP terhubung.",
+      "Prompt contoh: 'Daftarkan semua content type yang ada di workspace SaCMS saya dan buatkan ringkasannya.'"
+    ],
+    notes: [
+      "Windows: %APPDATA%\\Claude\\claude_desktop_config.json",
+      "macOS: ~/Library/Application Support/Claude/claude_desktop_config.json"
+    ]
+  },
+  {
+    id: "zed",
+    name: "Zed IDE",
+    icon: "🟩",
+    badge: "Fast Rust IDE",
+    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    configPath: "~/.config/zed/settings.json",
+    steps: [
+      "Buka Zed Settings (Ctrl+, atau ~/.config/zed/settings.json).",
+      "Tambahkan blok 'context_servers' seperti yang disediakan di bawah.",
+      "Simpan berkas konfigurasi. Zed AI Assistant akan otomatis terhubung ke MCP SaCMS."
+    ]
+  },
+  {
+    id: "contabo",
+    name: "Terminal Stdio CLI",
+    icon: "🖥️",
+    badge: "Stdio Bridge",
+    badgeColor: "bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20",
+    configPath: "Terminal CLI (bunx sacms-mcp)",
+    steps: [
+      "Gunakan perintah CLI 'bunx sacms-mcp' untuk menjembatani stdio lokal ke server SaCMS.",
+      "Bagus untuk autonomous background worker atau script otomatisasi lokal.",
+      "Jalankan di terminal lokal atau masukkan ke claude_desktop_config.json dengan command 'bunx'."
     ]
   }
 ]
@@ -575,6 +451,7 @@ export function MCPDashboardClient({
     else if (platformId === "vscode") filename = "mcp.json"
     else if (platformId === "claude") filename = "claude_desktop_config.json"
     else if (platformId === "cline") filename = "cline_mcp_settings.json"
+    else if (platformId === "zed") filename = "settings.json"
 
     const blob = new Blob([snippet], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -763,10 +640,10 @@ export function MCPDashboardClient({
             </div>
           )}
 
-          {/* Universal AI Endpoints & Active Token Bar */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {/* Pure IDE MCP Endpoints Bar */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             
-            {/* Server URL Card (MCP) */}
+            {/* Server URL Card (MCP HTTP / SSE) */}
             <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 flex flex-col justify-between space-y-3">
               <div>
                 <div className="flex items-center justify-between">
@@ -774,12 +651,12 @@ export function MCPDashboardClient({
                     <Server className="h-4 w-4 text-primary" />
                     <p className="text-xs font-bold text-foreground">MCP Server (HTTP / SSE)</p>
                   </div>
-                  <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-muted/30">
-                    Cursor / Claude / AGY
+                  <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-primary/10 text-primary border-primary/20">
+                    Cursor / Windsurf / AGY / VS Code
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Endpoint JSON-RPC 2.0 untuk seluruh MCP-compatible agent.
+                  Endpoint stream JSON-RPC 2.0 untuk seluruh AI Code Editor & IDE.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -794,73 +671,40 @@ export function MCPDashboardClient({
                   onClick={() => handleCopy(mcpUrl, "MCP Server URL")}
                   className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
                 >
-                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin
+                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin URL
                 </Button>
               </div>
             </Card>
 
-            {/* OpenAPI 3.1 Endpoint Card (ChatGPT Actions) */}
+            {/* Direct CLI Command Card */}
             <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 flex flex-col justify-between space-y-3">
               <div>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileCode2 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
-                    <p className="text-xs font-bold text-foreground">OpenAPI 3.1 Spec</p>
+                    <Terminal className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+                    <p className="text-xs font-bold text-foreground">Terminal Stdio Bridge (CLI)</p>
                   </div>
                   <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
-                    ChatGPT Actions
+                    Claude Code / CLI
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Schema spesifikasi REST publik untuk Custom GPTs & Actions.
+                  Perintah CLI untuk menghubungkan local stdio ke server SaCMS.
                 </p>
               </div>
               <div className="flex gap-2">
                 <Input
-                  value={mcpUrl ? `${mcpUrl.replace(/\/api\/mcp\/?$/, "")}/api/public/${tenantSlug}/openapi.json` : `/api/public/${tenantSlug}/openapi.json`}
+                  value={`bunx sacms-mcp --url ${mcpUrl || "https://sacms.cloud/api/mcp"} --token ${effectiveToken || "YOUR_TOKEN"}`}
                   readOnly
                   className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
                 />
                 <Button
                   variant="secondary"
                   size="sm"
-                  onClick={() => handleCopy(`${mcpUrl.replace(/\/api\/mcp\/?$/, "")}/api/public/${tenantSlug}/openapi.json`, "OpenAPI Spec URL")}
+                  onClick={() => handleCopy(`bunx sacms-mcp --url ${mcpUrl || "https://sacms.cloud/api/mcp"} --token ${effectiveToken || "YOUR_TOKEN"}`, "Perintah CLI MCP")}
                   className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
                 >
-                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin
-                </Button>
-              </div>
-            </Card>
-
-            {/* Gemini Function Tools Card (Google AI Studio) */}
-            <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-4 flex flex-col justify-between space-y-3">
-              <div>
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Sparkles className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                    <p className="text-xs font-bold text-foreground">Google Gemini Tools JSON</p>
-                  </div>
-                  <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20">
-                    AI Studio / SDK
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Definisi Function Calling siap pakai di Google AI Studio.
-                </p>
-              </div>
-              <div className="flex gap-2">
-                <Input
-                  value={mcpUrl ? `${mcpUrl.replace(/\/api\/mcp\/?$/, "")}/api/public/${tenantSlug}/gemini-tools` : `/api/public/${tenantSlug}/gemini-tools`}
-                  readOnly
-                  className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={() => handleCopy(`${mcpUrl.replace(/\/api\/mcp\/?$/, "")}/api/public/${tenantSlug}/gemini-tools`, "Gemini Tools URL")}
-                  className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin
+                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Salin CLI
                 </Button>
               </div>
             </Card>
