@@ -36,7 +36,7 @@ import {
   Code2, Key, Server, Sparkles, Database, Layers, Webhook,
   Plus, Trash2, ShieldCheck, Loader2, Info, CheckCircle2,
   Cpu, Search, Image, GitBranch, FileCode2, Wand2, Lightbulb,
-  Lock, AlertTriangle, ArrowUpRight, HardDrive
+  Lock, AlertTriangle, ArrowUpRight, HardDrive, Download, FileCode, BookOpen
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
@@ -593,6 +593,31 @@ export function MCPDashboardClient({
     }
   }
 
+  const handleDownloadConfigFile = (platformId: string) => {
+    const snippet = generateConfig(platformId, mcpUrl, effectiveToken, tenantSlug)
+    let filename = "mcp_config.json"
+    if (platformId === "cursor") filename = "mcp.json"
+    else if (platformId === "vscode") filename = "mcp.json"
+    else if (platformId === "claude") filename = "claude_desktop_config.json"
+    else if (platformId === "chatgpt-plugin") filename = "plugin.json"
+    else if (platformId === "cline") filename = "cline_mcp_settings.json"
+
+    const blob = new Blob([snippet], { type: "application/json" })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = filename
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+
+    toast({
+      title: "File Konfigurasi Diunduh!",
+      description: `File ${filename} berhasil diunduh. Letakkan di folder project sesuai petunjuk.`,
+    })
+  }
+
   const handleCreateToken = () => {
     if (!newTokenName.trim()) {
       toast({
@@ -1005,14 +1030,25 @@ export function MCPDashboardClient({
                   </div>
                 </div>
 
-                <Button
-                  size="sm"
-                  onClick={() => handleCopy(generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug), `Konfigurasi ${currentPlatformInfo.name}`)}
-                  className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs shrink-0"
-                >
-                  <Copy className="h-3.5 w-3.5 mr-1.5" />
-                  Salin Konfigurasi
-                </Button>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => handleDownloadConfigFile(currentPlatformInfo.id)}
+                    className="border-border/80 text-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                  >
+                    <Download className="h-3.5 w-3.5 mr-1.5" />
+                    Unduh File (.json)
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => handleCopy(generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug), `Konfigurasi ${currentPlatformInfo.name}`)}
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                  >
+                    <Copy className="h-3.5 w-3.5 mr-1.5" />
+                    Salin Konfigurasi
+                  </Button>
+                </div>
               </CardHeader>
 
               <CardContent className="p-5 space-y-5">
@@ -1042,16 +1078,20 @@ export function MCPDashboardClient({
             </Card>
           </div>
 
-          {/* Live Catalog Tools & Recommendations Tabs */}
+          {/* Live Catalog Tools, IDE Prompt Recipes & Recommendations Tabs */}
           <Tabs defaultValue="catalog" className="space-y-4">
-            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
+            <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-3 max-w-lg h-auto gap-1">
               <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
-                31 Live Tools MCP Aktif
+                31 Tools Live
+              </TabsTrigger>
+              <TabsTrigger value="recipes" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                IDE Recipes 🚀
               </TabsTrigger>
               <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
-                Rekomendasi MCP Baru 💡
+                Rekomendasi 💡
               </TabsTrigger>
             </TabsList>
 
@@ -1096,7 +1136,144 @@ export function MCPDashboardClient({
               </div>
             </TabsContent>
 
-            {/* TAB 2: RECOMMENDED MCP TOOLS */}
+            {/* TAB 2: IDE PROMPT RECIPES & SCAFFOLDER */}
+            <TabsContent value="recipes" className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                
+                {/* Recipe 1: Typegen */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20 text-[10px] font-bold">
+                        TypeScript
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">1. Auto-Generate TypeScript Types</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Gunakan MCP sacms tool get_full_schema. Tolong generate file types/sacms.d.ts yang mendefinisikan TypeScript interface 100% type-safe untuk seluruh Content Types, Single Types, dan Components di workspace ini lengkap dengan JSDoc documentation.", "Prompt Typegen")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Menghasilkan file deklarasi TypeScript (`.d.ts`) otomatis dari skema database live SaCMS untuk autocompletion di IDE.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Gunakan MCP sacms tool get_full_schema. Tolong generate file types/sacms.d.ts yang mendefinisikan TypeScript interface 100% type-safe untuk seluruh Content Types, Single Types, dan Components di workspace ini lengkap dengan JSDoc documentation.
+                  </pre>
+                </Card>
+
+                {/* Recipe 2: Next.js 16 Scaffolder */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold">
+                        Next.js 16
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">2. Scaffold Halaman Listing & Detail</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Gunakan MCP sacms tool get_content_type untuk koleksi 'articles'. Buatkan halaman listing app/blog/page.tsx dengan filter search dan pagination, serta detail app/blog/[slug]/page.tsx menggunakan React Server Components dan Tailwind CSS.", "Prompt Next.js Scaffolder")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Membuat halaman frontend Next.js App Router lengkap dengan fetch data real-time, SEO meta tags, dan Tailwind CSS.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Gunakan MCP sacms tool get_content_type untuk koleksi 'articles'. Buatkan halaman listing app/blog/page.tsx dengan filter search dan pagination, serta detail app/blog/[slug]/page.tsx menggunakan React Server Components dan Tailwind CSS.
+                  </pre>
+                </Card>
+
+                {/* Recipe 3: Schema Designer (33 Field Types) */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold">
+                        Schema Builder
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">3. Desain Content Type (33 Field Types)</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Panggil tool list_field_types untuk memeriksa tipe field yang didukung. Kemudian buatkan Content Type baru bernama 'Products' (slug: 'products') dengan field: title (text), slug (slug), description (richText), price (currency: IDR), gallery (mediaMultiple), status (select), dan category (relation ke 'categories').", "Prompt Schema Designer")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Membuat model koleksi data baru langsung dari instruksi bahasa alami di IDE menggunakan 33 tipe field presisi.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Panggil tool list_field_types untuk memeriksa tipe field yang didukung. Kemudian buatkan Content Type baru bernama 'Products' (slug: 'products') dengan field: title (text), slug (slug), description (richText), price (currency: IDR), gallery (mediaMultiple), status (select), dan category (relation ke 'categories').
+                  </pre>
+                </Card>
+
+                {/* Recipe 4: Batch Data Seeding */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20 text-[10px] font-bold">
+                        Mock Data
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">4. Batch Dummy Data Seeder</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Gunakan tool bulk_create_entries untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.", "Prompt Batch Seeder")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Mengisi database CMS dengan banyak data contoh realistis dalam satu kali panggil untuk mempercepat pengujian UI frontend.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Gunakan tool bulk_create_entries untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.
+                  </pre>
+                </Card>
+
+                {/* Recipe 5: 1-Click Vercel Deploy */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3 md:col-span-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold">
+                        Cloud Deploy
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">5. Deploy Frontend Langsung ke Vercel Serverless</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy("Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.", "Prompt Vercel Deploy")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Menerbitkan website ke internet dan mengembalikan live URL produksi dalam hitungan detik.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.
+                  </pre>
+                </Card>
+
+              </div>
+            </TabsContent>
+
+            {/* TAB 3: RECOMMENDED MCP TOOLS */}
             <TabsContent value="recommendations" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 
