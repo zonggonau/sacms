@@ -237,31 +237,40 @@ export default function TenantDomainsPage() {
     }
   }
 
-  const handleDeleteDomain = async (domainName: string) => {
-    if (!confirm(`Apakah Anda yakin ingin menghapus domain ${domainName}? Routing API dan web via domain ini akan dinonaktifkan.`)) {
-      return
-    }
+  const handleDeleteDomain = (domainName: string) => {
+    toast(`Hapus domain ${domainName}?`, {
+      description: "Routing API dan web via domain ini akan dinonaktifkan.",
+      action: {
+        label: "Hapus",
+        onClick: async () => {
+          setDeletingDomain(domainName)
+          const toastId = toast.loading(`Menghapus domain ${domainName}...`)
+          try {
+            const res = await fetch(`/api/tenant/${tenantSlug}/white-label/domain`, {
+              method: "DELETE",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ customDomain: domainName }),
+            })
 
-    setDeletingDomain(domainName)
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/white-label/domain`, {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ customDomain: domainName }),
-      })
-
-      if (res.ok) {
-        toast.success(`Domain ${domainName} berhasil dihapus.`)
-        await fetchDomains()
-      } else {
-        const data = await res.json()
-        toast.error(data.error || "Gagal menghapus domain")
-      }
-    } catch {
-      toast.error("Terjadi kesalahan saat menghapus domain")
-    } finally {
-      setDeletingDomain(null)
-    }
+            if (res.ok) {
+              toast.success(`Domain ${domainName} berhasil dihapus.`, { id: toastId })
+              await fetchDomains()
+            } else {
+              const data = await res.json()
+              toast.error(data.error || "Gagal menghapus domain", { id: toastId })
+            }
+          } catch {
+            toast.error("Terjadi kesalahan saat menghapus domain", { id: toastId })
+          } finally {
+            setDeletingDomain(null)
+          }
+        },
+      },
+      cancel: {
+        label: "Batal",
+        onClick: () => {},
+      },
+    })
   }
 
   const copyText = (text: string, id: string) => {
