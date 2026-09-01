@@ -37,11 +37,20 @@ function legacySimpleHash(password: string): string {
   return hash.toString(16)
 }
 
-const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud"
-const isLocalhost = ROOT_DOMAIN.includes("localhost") || ROOT_DOMAIN.includes("127.0.0.1")
+const NEXTAUTH_URL = process.env.NEXTAUTH_URL || "http://localhost:3000"
+const isLocalEnv = 
+  process.env.NODE_ENV === "development" ||
+  NEXTAUTH_URL.includes("localhost") || 
+  NEXTAUTH_URL.includes("127.0.0.1") ||
+  NEXTAUTH_URL.startsWith("http://")
+
+const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || (isLocalEnv ? "localhost" : "sacms.cloud")).toLowerCase()
+const isLocalhost = isLocalEnv || ROOT_DOMAIN.includes("localhost") || ROOT_DOMAIN.includes("127.0.0.1")
+
+// For localhost (*.localhost:3000), use undefined so host cookies work on HTTP. For production, use '.sacms.cloud'
 const COOKIE_DOMAIN = process.env.NEXTAUTH_COOKIE_DOMAIN || (!isLocalhost ? `.${ROOT_DOMAIN}` : undefined)
 
-const useSecure = Boolean(process.env.NEXTAUTH_URL?.startsWith("https://") || process.env.NODE_ENV === "production")
+const useSecure = !isLocalhost && Boolean(NEXTAUTH_URL.startsWith("https://") || process.env.NODE_ENV === "production")
 const cookiePrefix = useSecure ? "__Secure-" : ""
 
 export const authOptions: NextAuthOptions = {
