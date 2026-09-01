@@ -169,6 +169,7 @@ export async function proxy(request: NextRequest) {
   const cleanHost = (host.split(":")[0] || "").toLowerCase()
 
   let platformSubdomain: "api" | "cms" | "admin" | null = null
+  let dynamicSubdomain: string | null = null
 
   if (cleanHost === `api.${ROOT_DOMAIN}` || cleanHost === "api.localhost") {
     platformSubdomain = "api"
@@ -176,6 +177,10 @@ export async function proxy(request: NextRequest) {
     platformSubdomain = "cms"
   } else if (cleanHost === `admin.${ROOT_DOMAIN}` || cleanHost === "admin.localhost") {
     platformSubdomain = "admin"
+  } else if (cleanHost.endsWith(`.${ROOT_DOMAIN}`) && cleanHost !== `www.${ROOT_DOMAIN}` && cleanHost !== ROOT_DOMAIN) {
+    dynamicSubdomain = cleanHost.replace(`.${ROOT_DOMAIN}`, "")
+  } else if (cleanHost.endsWith(".localhost") && cleanHost !== "localhost") {
+    dynamicSubdomain = cleanHost.replace(".localhost", "")
   }
 
   // 1. Dedicated API Subdomain (api.sacms.cloud)
@@ -394,6 +399,75 @@ export async function proxy(request: NextRequest) {
       response.headers.set("X-Subdomain-Portal", "admin")
       return response
     }
+  }
+
+  // 4. Dynamic Owner / Workspace Subdomain Routing (*.sacms.cloud)
+  if (dynamicSubdomain) {
+    // Static assets & Auth passthrough
+    if (
+      pathname.startsWith("/_next/") ||
+      pathname.startsWith("/favicon") ||
+      pathname.startsWith("/robots") ||
+      pathname.startsWith("/sitemap") ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
+    ) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      return response
+    }
+
+    // A. Owner Account Subdomain (e.g. u8f9c1d2e3b4a5f6.sacms.cloud)
+    const isOwnerFormat = dynamicSubdomain.startsWith("u") && dynamicSubdomain.length >= 8
+    if (isOwnerFormat) {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = `/owner/${dynamicSubdomain}${pathname === "/" ? "" : pathname}`
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "owner")
+      response.headers.set("X-Owner-Slug", dynamicSubdomain)
+      return response
+    }
+
+    // B. Direct Workspace Subdomain (e.g. klinik-intan.sacms.cloud)
+    const rewriteUrl = request.nextUrl.clone()
+
+    if (pathname === "/" || pathname === "") {
+      // Default entry: CMS Studio for this workspace
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms`
+    } else if (pathname.startsWith("/admin")) {
+      // /admin -> Workspace Settings & Schemas
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname.replace(/^\/admin/, "")}`
+    } else if (pathname.startsWith("/content")) {
+      // /content/posts -> /dashboard/[slug]/cms/content/posts
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
+    } else if (pathname.startsWith("/media") || pathname.startsWith("/single-types")) {
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
+    } else if (pathname.startsWith("/api/public/") || pathname.startsWith("/api/tenant/")) {
+      rewriteUrl.pathname = pathname
+    } else if (pathname.startsWith("/api/")) {
+      rewriteUrl.pathname = `/api/public/${dynamicSubdomain}${pathname.replace(/^\/api/, "")}`
+    } else if (pathname === "/graphql") {
+      rewriteUrl.pathname = `/api/public/${dynamicSubdomain}/graphql`
+    } else if (pathname.startsWith("/cms")) {
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname}`
+    } else if (pathname.startsWith("/dashboard")) {
+      rewriteUrl.pathname = pathname
+    } else {
+      // Default: CMS route group
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
+    }
+
+    const response = NextResponse.rewrite(rewriteUrl)
+    applySecurityHeaders(response, pathname)
+    applyCorsHeaders(response, request)
+    response.headers.set("X-Subdomain-Portal", "workspace")
+    response.headers.set("X-Tenant-Slug", dynamicSubdomain)
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: response.headers })
+    }
+    return response
   }
 
   // ==================== CUSTOM DOMAIN ROUTING ====================

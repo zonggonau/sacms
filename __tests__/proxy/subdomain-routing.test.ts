@@ -91,6 +91,56 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
+
+  it("should rewrite owner subdomain u8f9c1d2e3b4a5f6.sacms.cloud to /owner/u8f9c1d2e3b4a5f6", async () => {
+    const req = new NextRequest("http://u8f9c1d2e3b4a5f6.sacms.cloud/", {
+      headers: {
+        host: "u8f9c1d2e3b4a5f6.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/owner/u8f9c1d2e3b4a5f6")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("owner")
+    expect(res.headers.get("X-Owner-Slug")).toBe("u8f9c1d2e3b4a5f6")
+  })
+
+  it("should rewrite direct workspace subdomain klinik.sacms.cloud to /dashboard/klinik/cms", async () => {
+    const req = new NextRequest("http://klinik.sacms.cloud/", {
+      headers: {
+        host: "klinik.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/klinik/cms")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
+    expect(res.headers.get("X-Tenant-Slug")).toBe("klinik")
+  })
+
+  it("should rewrite direct workspace subdomain admin route klinik.sacms.cloud/admin to /dashboard/klinik", async () => {
+    const req = new NextRequest("http://klinik.sacms.cloud/admin", {
+      headers: {
+        host: "klinik.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/klinik")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
+  })
+
+  it("should rewrite direct workspace subdomain API route klinik.sacms.cloud/api/content/posts to /api/public/klinik/content/posts", async () => {
+    const req = new NextRequest("http://klinik.sacms.cloud/api/content/posts", {
+      headers: {
+        host: "klinik.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/api/public/klinik/content/posts")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
+  })
 })
 
 describe("Portal URLs Generator Helper", () => {

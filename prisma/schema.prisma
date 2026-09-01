@@ -11,12 +11,13 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(cuid())
-  email         String         @unique
-  name          String?
-  password      String?
-  image         String?
-  role          String         @default("user")
+  id                  String         @id @default(cuid())
+  email               String         @unique
+  name                String?
+  password            String?
+  image               String?
+  role                String         @default("owner")
+  ownerSlug           String?        @unique
   emailVerified       DateTime?
   createdAt           DateTime       @default(now())
   updatedAt           DateTime       @updatedAt
@@ -29,6 +30,7 @@ model User {
   sessions            Session[]
   subscriptions       Subscription[]
   tenants             TenantMember[]
+  ownedTenants        Tenant[]       @relation("OwnerTenants")
   aiQuotaLedgers      AiQuotaLedger[]
   supportTickets      SupportTicket[]
 
@@ -83,6 +85,8 @@ model Tenant {
   status                 String                        @default("active")
   createdAt              DateTime                      @default(now())
   updatedAt              DateTime                      @updatedAt
+  ownerId                String?
+  owner                  User?                         @relation("OwnerTenants", fields: [ownerId], references: [id], onDelete: SetNull)
   brandLogo              String?
   brandName              String?
   customDomain           String?                       @unique
