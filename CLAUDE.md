@@ -77,3 +77,5 @@ Key routing rules:
 - Resume context → invoke /context-restore
 - Author a backlog-ready spec/issue → invoke /spec
 - Configure deploy settings → invoke /setup-deploy
+- Build frontend / website with SaCMS MCP → invoke /sacms-frontend-builder
+

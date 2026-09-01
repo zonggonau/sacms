@@ -164,10 +164,239 @@ export async function proxy(request: NextRequest) {
   }
 
 
+  // ==================== PLATFORM SUBDOMAIN & CUSTOM DOMAIN ROUTING ====================
+  const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
+  const cleanHost = (host.split(":")[0] || "").toLowerCase()
+
+  let platformSubdomain: "api" | "cms" | "admin" | null = null
+
+  if (cleanHost === `api.${ROOT_DOMAIN}` || cleanHost === "api.localhost") {
+    platformSubdomain = "api"
+  } else if (cleanHost === `cms.${ROOT_DOMAIN}` || cleanHost === "cms.localhost") {
+    platformSubdomain = "cms"
+  } else if (cleanHost === `admin.${ROOT_DOMAIN}` || cleanHost === "admin.localhost") {
+    platformSubdomain = "admin"
+  }
+
+  // 1. Dedicated API Subdomain (api.sacms.cloud)
+  if (platformSubdomain === "api") {
+    // Static assets & internal Next.js paths
+    if (
+      pathname.startsWith("/_next/") ||
+      pathname.startsWith("/favicon") ||
+      pathname.startsWith("/robots") ||
+      pathname.startsWith("/sitemap")
+    ) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      return response
+    }
+
+    // Health check
+    if (pathname === "/health" || pathname === "/api/health") {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = "/api/health"
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      applyCorsHeaders(response, request)
+      return response
+    }
+
+    // Interactive Docs on root or /docs
+    if (pathname === "/" || pathname === "" || pathname === "/docs" || pathname === "/api-docs") {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = "/api-docs"
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      applyCorsHeaders(response, request)
+      response.headers.set("X-Subdomain-Portal", "api")
+      return response
+    }
+
+    // Passthrough for standard API paths (/api/auth/..., /api/public/..., /api/tenant/...)
+    if (pathname.startsWith("/api/")) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      applyCorsHeaders(response, request)
+      response.headers.set("X-Subdomain-Portal", "api")
+      if (request.method === "OPTIONS") {
+        return new NextResponse(null, { status: 204, headers: response.headers })
+      }
+      return response
+    }
+
+    // Versioned Route (e.g., /v1/tenant/content/posts -> /api/public/tenant/content/posts)
+    const vMatch = pathname.match(/^\/(v[12])\/([^/]+)\/(.+)$/)
+    if (vMatch) {
+      const ver = vMatch[1]
+      const tenant = vMatch[2]
+      const rest = vMatch[3]
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = `/api/public/${tenant}/${rest}`
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      applyCorsHeaders(response, request)
+      response.headers.set("X-API-Version", ver)
+      response.headers.set("X-Subdomain-Portal", "api")
+      if (request.method === "OPTIONS") {
+        return new NextResponse(null, { status: 204, headers: response.headers })
+      }
+      return response
+    }
+
+    // Direct Tenant REST API (e.g. api.sacms.cloud/delvia/content/posts -> /api/public/delvia/content/posts)
+    const tenantContentMatch = pathname.match(/^\/([^/]+)\/(content|single-types|graphql|brand)(.*)$/)
+    if (tenantContentMatch) {
+      const tenant = tenantContentMatch[1]
+      const action = tenantContentMatch[2]
+      const rest = tenantContentMatch[3] || ""
+      const rewriteUrl = request.nextUrl.clone()
+      if (action === "single-types") {
+        rewriteUrl.pathname = `/api/public/${tenant}/content${rest}`
+      } else {
+        rewriteUrl.pathname = `/api/public/${tenant}/${action}${rest}`
+      }
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      applyCorsHeaders(response, request)
+      response.headers.set("X-Subdomain-Portal", "api")
+      if (request.method === "OPTIONS") {
+        return new NextResponse(null, { status: 204, headers: response.headers })
+      }
+      return response
+    }
+
+    // Fallback pass-through with CORS
+    const response = NextResponse.next()
+    applySecurityHeaders(response, pathname)
+    applyCorsHeaders(response, request)
+    response.headers.set("X-Subdomain-Portal", "api")
+    if (request.method === "OPTIONS") {
+      return new NextResponse(null, { status: 204, headers: response.headers })
+    }
+    return response
+  }
+
+  // 2. Dedicated CMS Subdomain (cms.sacms.cloud)
+  if (platformSubdomain === "cms") {
+    // Static assets & Auth
+    if (
+      pathname.startsWith("/_next/") ||
+      pathname.startsWith("/favicon") ||
+      pathname.startsWith("/robots") ||
+      pathname.startsWith("/sitemap") ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
+    ) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      return response
+    }
+
+    // Root CMS access -> rewrite to workspace selector / dashboard
+    if (pathname === "/" || pathname === "") {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = "/dashboard"
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "cms")
+      return response
+    }
+
+    // Passthrough if already dashboard path
+    if (pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "cms")
+      return response
+    }
+
+    // Map cms.sacms.cloud/tenant/content/... -> /dashboard/tenant/cms/content/...
+    const cmsMatch = pathname.match(/^\/([^/]+)(.*)$/)
+    if (cmsMatch) {
+      const tenant = cmsMatch[1]
+      const rest = cmsMatch[2] || ""
+      const rewriteUrl = request.nextUrl.clone()
+
+      if (rest.startsWith("/cms")) {
+        rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
+      } else if (rest.startsWith("/content")) {
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms${rest}`
+      } else if (rest.startsWith("/single-types") || rest.startsWith("/media") || rest.startsWith("/graphql")) {
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms${rest}`
+      } else if (rest === "" || rest === "/") {
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms`
+      } else {
+        // Fallback to dashboard route group
+        rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
+      }
+
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "cms")
+      return response
+    }
+  }
+
+  // 3. Dedicated Admin Subdomain (admin.sacms.cloud)
+  if (platformSubdomain === "admin") {
+    // Static assets & Auth
+    if (
+      pathname.startsWith("/_next/") ||
+      pathname.startsWith("/favicon") ||
+      pathname.startsWith("/robots") ||
+      pathname.startsWith("/sitemap") ||
+      pathname.startsWith("/api/auth") ||
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
+    ) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      return response
+    }
+
+    // Superadmin route passthrough
+    if (pathname === "/admin" || pathname.startsWith("/admin/")) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "admin")
+      return response
+    }
+
+    // Root admin access -> workspace hub
+    if (pathname === "/" || pathname === "") {
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = "/dashboard"
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "admin")
+      return response
+    }
+
+    // Already dashboard or API path
+    if (pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
+      const response = NextResponse.next()
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "admin")
+      return response
+    }
+
+    // Map admin.sacms.cloud/tenant/... -> /dashboard/tenant/...
+    const adminMatch = pathname.match(/^\/([^/]+)(.*)$/)
+    if (adminMatch) {
+      const tenant = adminMatch[1]
+      const rest = adminMatch[2] || ""
+      const rewriteUrl = request.nextUrl.clone()
+      rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
+      const response = NextResponse.rewrite(rewriteUrl)
+      applySecurityHeaders(response, pathname)
+      response.headers.set("X-Subdomain-Portal", "admin")
+      return response
+    }
+  }
+
   // ==================== CUSTOM DOMAIN ROUTING ====================
-  // A custom domain lookup returns either:
-  //   - A plain string slug (legacy: "delvia") → default target = cms
-  //   - A JSON string: '{"slug":"delvia","target":"workspace"}' (new with target routing)
   let tenantSlug: string | null = null
   let domainTarget: string = "cms"
   let version = "v1"
@@ -202,7 +431,7 @@ export async function proxy(request: NextRequest) {
         rewriteUrl.pathname = `/api/public/${tenantSlug}${restPath.replace(/^\/api/, "")}`
         const response = NextResponse.rewrite(rewriteUrl)
         applySecurityHeaders(response)
-        applyCorsHeaders(response)
+        applyCorsHeaders(response, request)
         response.headers.set("X-API-Version", version)
         response.headers.set("X-Tenant-Domain", host)
         if (request.method === "OPTIONS") {
@@ -250,16 +479,12 @@ export async function proxy(request: NextRequest) {
       }
 
       // ---- For all other paths under a custom domain, rewrite transparently ----
-      // This lets /cms, /dashboard, /login etc. still work on the custom domain
       const rewriteUrl = request.nextUrl.clone()
-      // Preserve existing path (e.g. admin.domain.com/cms/articles -> /dashboard/slug/cms/articles)
       if (pathname.startsWith("/cms")) {
         rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname}`
       } else if (pathname.startsWith("/dashboard")) {
-        // Already a dashboard path, pass through
         rewriteUrl.pathname = pathname
       } else {
-        // Default fallthrough: let Next.js handle the path as-is
         const response = NextResponse.next()
         applySecurityHeaders(response)
         response.headers.set("X-Tenant-Domain", host)
@@ -269,7 +494,7 @@ export async function proxy(request: NextRequest) {
 
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response)
-      applyCorsHeaders(response)
+      applyCorsHeaders(response, request)
       response.headers.set("X-API-Version", version)
       response.headers.set("X-Tenant-Domain", host)
       response.headers.set("X-Domain-Target", domainTarget)
@@ -282,8 +507,6 @@ export async function proxy(request: NextRequest) {
   }
 
   // ==================== API VERSIONING (APP_HOST) ====================
-  // Rewrite /api/v1/<tenant>/... → /api/public/<tenant>/...
-  // Rewrite /api/v2/<tenant>/... → /api/public/<tenant>/... (future)
   const versionMatch = pathname.match(/^\/api\/(v[12])\/(.+)$/)
   if (versionMatch) {
     version = versionMatch[1]
@@ -293,7 +516,7 @@ export async function proxy(request: NextRequest) {
 
     const response = NextResponse.rewrite(rewriteUrl)
     applySecurityHeaders(response, pathname)
-    applyCorsHeaders(response)
+    applyCorsHeaders(response, request)
     response.headers.set("X-API-Version", version)
 
     if (request.method === "OPTIONS") {
@@ -307,7 +530,7 @@ export async function proxy(request: NextRequest) {
 
   // CORS for public API routes
   if (pathname.startsWith("/api/public/")) {
-    applyCorsHeaders(response)
+    applyCorsHeaders(response, request)
 
     if (request.method === "OPTIONS") {
       return new NextResponse(null, { status: 204, headers: response.headers })
@@ -356,10 +579,22 @@ function applySecurityHeaders(response: NextResponse, pathname?: string) {
   )
 }
 
-function applyCorsHeaders(response: NextResponse) {
-  response.headers.set("Access-Control-Allow-Origin", "*")
-  response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
-  response.headers.set("Access-Control-Allow-Headers", "Authorization, Content-Type, x-api-key, X-API-Key")
+function applyCorsHeaders(response: NextResponse, request?: NextRequest) {
+  const origin = request?.headers.get("origin")
+  const rootDomain = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
+
+  if (origin && (origin.includes(rootDomain) || origin.includes("localhost"))) {
+    response.headers.set("Access-Control-Allow-Origin", origin)
+    response.headers.set("Access-Control-Allow-Credentials", "true")
+  } else {
+    response.headers.set("Access-Control-Allow-Origin", "*")
+  }
+
+  response.headers.set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS, PATCH")
+  response.headers.set(
+    "Access-Control-Allow-Headers",
+    "Authorization, Content-Type, x-api-key, X-API-Key, X-Tenant-Domain, X-API-Version"
+  )
 }
 
 export const config = {

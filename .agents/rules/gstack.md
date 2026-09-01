@@ -10,3 +10,5 @@
   - `/ship`: Release branch, deployment, and pull request workflow.
   - `/qa`: Automated browser QA testing.
   - `/retro`: Retrospective and post-mortem review.
+  - `/sacms-frontend-builder`: Autonomous Next.js 16 + TailwindCSS frontend builder connected to SaCMS via MCP tools.
+

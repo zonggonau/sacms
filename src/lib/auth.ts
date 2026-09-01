@@ -37,10 +37,47 @@ function legacySimpleHash(password: string): string {
   return hash.toString(16)
 }
 
+const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud"
+const COOKIE_DOMAIN = process.env.NEXTAUTH_COOKIE_DOMAIN ||
+  (process.env.NODE_ENV === "production" ? `.${ROOT_DOMAIN}` : undefined)
+
+const useSecure = process.env.NODE_ENV === "production"
+const cookiePrefix = useSecure ? "__Secure-" : ""
+
 export const authOptions: NextAuthOptions = {
   adapter: PrismaAdapter(db),
   secret: process.env.NEXTAUTH_SECRET,
-  useSecureCookies: process.env.NODE_ENV === "production",
+  useSecureCookies: useSecure,
+  cookies: {
+    sessionToken: {
+      name: `${cookiePrefix}next-auth.session-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        domain: COOKIE_DOMAIN,
+        secure: useSecure,
+      },
+    },
+    callbackUrl: {
+      name: `${cookiePrefix}next-auth.callback-url`,
+      options: {
+        sameSite: "lax",
+        path: "/",
+        domain: COOKIE_DOMAIN,
+        secure: useSecure,
+      },
+    },
+    csrfToken: {
+      name: `${useSecure ? "__Host-" : ""}next-auth.csrf-token`,
+      options: {
+        httpOnly: true,
+        sameSite: "lax",
+        path: "/",
+        secure: useSecure,
+      },
+    },
+  },
   session: {
     strategy: "jwt",
   },
