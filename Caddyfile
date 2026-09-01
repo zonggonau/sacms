@@ -14,8 +14,8 @@
 	}
 }
 
-# Main SaCMS Domain (Automatic Let's Encrypt HTTPS & HTTP→HTTPS Redirect)
-sacms.cloud, www.sacms.cloud {
+# Main SaCMS Domain & Core Subdomains (Automatic Let's Encrypt HTTPS & HTTP→HTTPS Redirect)
+sacms.cloud, www.sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud, *.sacms.cloud {
 	reverse_proxy app:3000 {
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-Proto {scheme}
