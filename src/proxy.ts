@@ -315,7 +315,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // Passthrough if already dashboard path
-    if (pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "cms")
@@ -385,7 +385,7 @@ export async function proxy(request: NextRequest) {
     }
 
     // Already dashboard or API path
-    if (pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "admin")
