@@ -189,7 +189,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 0,
     support_level: "Community",
     max_ai_tokens: 50000,
-    max_custom_domains: 0,
+    max_custom_domains: 5,
   },
   starter: {
     plan_slug: "starter",
@@ -202,7 +202,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 7,
     support_level: "Email Support",
     max_ai_tokens: 100000,
-    max_custom_domains: 1,
+    max_custom_domains: 10,
   },
   pro: {
     plan_slug: "pro",
@@ -215,7 +215,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 30,
     support_level: "Priority Support",
     max_ai_tokens: 500000,
-    max_custom_domains: 3,
+    max_custom_domains: 25,
   },
   enterprise: {
     plan_slug: "enterprise",
@@ -228,7 +228,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 365,
     support_level: "24/7 Dedicated Support",
     max_ai_tokens: 2000000,
-    max_custom_domains: 10,
+    max_custom_domains: 50,
   },
   "enterprise-vps": {
     plan_slug: "enterprise-vps",
@@ -241,7 +241,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 365,
     support_level: "24/7 Dedicated SLA & Support",
     max_ai_tokens: 5000000,
-    max_custom_domains: 25,
+    max_custom_domains: 100,
   },
   "vps-s": {
     plan_slug: "vps-s",
@@ -254,7 +254,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     audit_log_retention: 365,
     support_level: "24/7 Dedicated SLA & Support",
     max_ai_tokens: 5000000,
-    max_custom_domains: 25,
+    max_custom_domains: 100,
   },
   "vps-m": {
     plan_slug: "vps-m",

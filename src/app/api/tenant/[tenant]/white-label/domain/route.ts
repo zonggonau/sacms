@@ -133,10 +133,13 @@ export async function POST(
       where: { tenantId: access.tenantId },
     })
 
-    if (currentDomainCount >= planConfig.max_custom_domains) {
+    const isSelfHost = process.env.SELFHOST_MODE === "true" || process.env.NODE_ENV === "development"
+    const maxAllowed = isSelfHost ? 9999 : (planConfig.max_custom_domains || 25)
+
+    if (currentDomainCount >= maxAllowed) {
       return NextResponse.json(
         {
-          error: `Batas domain kustom tercapai (${planConfig.max_custom_domains} domain untuk paket Anda). Silakan upgrade paket untuk menambah domain.`,
+          error: `Batas domain kustom tercapai (${maxAllowed} domain untuk paket Anda). Silakan upgrade paket untuk menambah domain.`,
         },
         { status: 403 }
       )
