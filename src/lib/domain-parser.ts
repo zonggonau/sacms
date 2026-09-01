@@ -119,7 +119,7 @@ export function getExpectedDnsRecords(domain: string, tenantId: string): Expecte
         value: PUBLIC_GATEWAY_IP,
         ttl: "60 / Auto",
         required: true,
-        description: "Mengarahkan root/apex domain ke Gateway Server SaCMS",
+        description: "Mengarahkan apex domain ke IP Server SaCMS",
       },
       {
         type: "TXT",
@@ -127,7 +127,7 @@ export function getExpectedDnsRecords(domain: string, tenantId: string): Expecte
         value: verifyToken,
         ttl: "60 / Auto",
         required: true,
-        description: "Verifikasi kepemilikan domain oleh workspace Anda",
+        description: "Verifikasi kepemilikan domain untuk workspace Anda",
       },
     ]
   }
@@ -139,15 +139,23 @@ export function getExpectedDnsRecords(domain: string, tenantId: string): Expecte
       value: PUBLIC_CNAME_TARGET,
       ttl: "60 / Auto",
       required: true,
-      description: "Mengarahkan subdomain ke Edge Routing SaCMS",
+      description: "Opsi 1: Routing CNAME ke Edge Server SaCMS",
+    },
+    {
+      type: "A",
+      name: info.subdomainPrefix,
+      value: PUBLIC_GATEWAY_IP,
+      ttl: "60 / Auto",
+      required: false,
+      description: "Opsi 2: Routing A Record langsung ke IP Server (Paling Cepat & Stabil)",
     },
     {
       type: "TXT",
       name: `_sacms-challenge.${info.subdomainPrefix}`,
       value: verifyToken,
       ttl: "60 / Auto",
-      required: false,
-      description: "Verifikasi kepemilikan subdomain",
+      required: true,
+      description: "Verifikasi kepemilikan subdomain oleh workspace Anda",
     },
   ]
 }

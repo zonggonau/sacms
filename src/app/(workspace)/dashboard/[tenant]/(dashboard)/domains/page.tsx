@@ -619,6 +619,7 @@ export default function TenantDomainsPage() {
                                   <th className="p-3">Type</th>
                                   <th className="p-3">Name / Host</th>
                                   <th className="p-3">Value / Target</th>
+                                  <th className="p-3">Keterangan</th>
                                   <th className="p-3">TTL</th>
                                   <th className="p-3">Status</th>
                                   <th className="p-3 text-right">Aksi</th>
@@ -631,7 +632,20 @@ export default function TenantDomainsPage() {
 
                                   return (
                                     <tr key={i} className="hover:bg-muted/20 transition-colors">
-                                      <td className="p-3 font-bold font-mono text-primary">{rec.type}</td>
+                                      <td className="p-3 font-bold font-mono">
+                                        <Badge
+                                          variant="outline"
+                                          className={`font-mono text-[11px] font-bold ${
+                                            rec.type === "CNAME"
+                                              ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20"
+                                              : rec.type === "A"
+                                              ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20"
+                                              : "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
+                                          }`}
+                                        >
+                                          {rec.type}
+                                        </Badge>
+                                      </td>
                                       <td className="p-3 font-mono font-semibold text-foreground">
                                         <div className="flex items-center gap-1.5">
                                           <span>{rec.name}</span>
@@ -665,6 +679,9 @@ export default function TenantDomainsPage() {
                                             )}
                                           </Button>
                                         </div>
+                                      </td>
+                                      <td className="p-3 text-[11px] text-muted-foreground max-w-[200px]">
+                                        {rec.description}
                                       </td>
                                       <td className="p-3 text-muted-foreground font-mono">{rec.ttl}</td>
                                       <td className="p-3">

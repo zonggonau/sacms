@@ -31,135 +31,131 @@ export async function diagnoseDomainDns(domain: string, tenantId: string): Promi
   let txtValid = false
   let hasMisconfiguration = false
 
+  // Live DNS resolution
+  let liveIps: string[] = []
+  let liveCnames: string[] = []
+  let liveTxts: string[] = []
+
+  try {
+    liveIps = await resolve4(info.domain)
+  } catch {}
+
+  try {
+    liveCnames = await resolveCname(info.domain)
+  } catch {}
+
+  // Check routing validity
+  const hasValidA = liveIps.includes(PUBLIC_GATEWAY_IP)
+  const hasValidCname = liveCnames.some((c) => c.toLowerCase().includes(PUBLIC_CNAME_TARGET.toLowerCase()))
+
+  if (hasValidA || hasValidCname) {
+    routingValid = true
+  }
+
+  // Lookup TXT
+  const lookupHost = info.isApex
+    ? `_sacms-challenge.${info.rootDomain}`
+    : `_sacms-challenge.${info.domain}`
+  
+  const fallbackLookupHost = `_sacms-verify.${info.domain}`
+
+  try {
+    const records = await resolveTxt(lookupHost)
+    liveTxts = records.flat()
+  } catch {
+    try {
+      const fallbackRecords = await resolveTxt(fallbackLookupHost)
+      liveTxts = fallbackRecords.flat()
+    } catch {}
+  }
+
+  const expectedToken = buildVerificationToken(tenantId)
+  const isTxtMatch = liveTxts.some((t) => t.includes(expectedToken) || t.includes(tenantId))
+  if (isTxtMatch) {
+    txtValid = true
+  }
+
+  // Evaluate each row in the unified table
   for (const expected of expectedRecords) {
     if (expected.type === "A") {
-      try {
-        const ips = await resolve4(info.domain)
-        if (ips.includes(PUBLIC_GATEWAY_IP)) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "valid",
-            actualValue: ips.join(", "),
-            message: `A Record valid mengarah ke ${PUBLIC_GATEWAY_IP}`,
-          })
-          routingValid = true
-        } else if (ips.length > 0) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "invalid",
-            actualValue: ips.join(", "),
-            message: `Domain saat ini mengarah ke IP (${ips.join(", ")}), ubah menjadi ${PUBLIC_GATEWAY_IP}`,
-          })
-          hasMisconfiguration = true
-        } else {
-          evaluatedRecords.push({
-            ...expected,
-            status: "not_found",
-            actualValue: null,
-            message: `A Record belum ditemukan pada DNS server`,
-          })
-        }
-      } catch {
+      if (hasValidA) {
         evaluatedRecords.push({
           ...expected,
-          status: "not_found",
+          status: "valid",
+          actualValue: liveIps.join(", "),
+          message: `A Record valid mengarah ke ${PUBLIC_GATEWAY_IP}`,
+        })
+      } else if (hasValidCname) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "valid",
+          actualValue: `Menggunakan rute CNAME (${liveCnames.join(", ")})`,
+          message: `Rute domain terpenuhi melalui CNAME`,
+        })
+      } else if (liveIps.length > 0) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "invalid",
+          actualValue: liveIps.join(", "),
+          message: `Saat ini mengarah ke IP (${liveIps.join(", ")}), ubah menjadi ${PUBLIC_GATEWAY_IP}`,
+        })
+        hasMisconfiguration = true
+      } else {
+        evaluatedRecords.push({
+          ...expected,
+          status: routingValid ? "valid" : "not_found",
           actualValue: null,
-          message: `A Record belum terdeteksi. Silakan tambahkan A record di panel DNS Anda.`,
+          message: routingValid ? "Terpenuhi via CNAME" : `A Record belum ditemukan pada DNS server`,
         })
       }
     } else if (expected.type === "CNAME") {
-      try {
-        let cnames: string[] = []
-        try {
-          cnames = await resolveCname(info.domain)
-        } catch {
-          // Fallback check if domain resolves to Gateway IP
-          const ips: string[] = await resolve4(info.domain).catch(() => [] as string[])
-          if (ips.includes(PUBLIC_GATEWAY_IP)) {
-            routingValid = true
-          }
-        }
-
-        const isCnameMatch = cnames.some((c) => c.toLowerCase().includes(PUBLIC_CNAME_TARGET.toLowerCase()))
-
-        if (isCnameMatch || routingValid) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "valid",
-            actualValue: cnames.length > 0 ? cnames.join(", ") : PUBLIC_GATEWAY_IP,
-            message: `CNAME valid mengarah ke ${PUBLIC_CNAME_TARGET}`,
-          })
-          routingValid = true
-        } else if (cnames.length > 0) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "invalid",
-            actualValue: cnames.join(", "),
-            message: `CNAME saat ini mengarah ke (${cnames.join(", ")}), ubah menjadi ${PUBLIC_CNAME_TARGET}`,
-          })
-          hasMisconfiguration = true
-        } else {
-          evaluatedRecords.push({
-            ...expected,
-            status: "not_found",
-            actualValue: null,
-            message: `CNAME record belum terdeteksi. Silakan tambahkan CNAME record pada panel DNS Anda.`,
-          })
-        }
-      } catch {
+      if (hasValidCname) {
         evaluatedRecords.push({
           ...expected,
-          status: "not_found",
+          status: "valid",
+          actualValue: liveCnames.join(", "),
+          message: `CNAME valid mengarah ke ${PUBLIC_CNAME_TARGET}`,
+        })
+      } else if (hasValidA) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "valid",
+          actualValue: `Menggunakan rute A Record (${liveIps.join(", ")})`,
+          message: `Rute domain terpenuhi langsung melalui A Record`,
+        })
+      } else if (liveCnames.length > 0) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "invalid",
+          actualValue: liveCnames.join(", "),
+          message: `CNAME saat ini mengarah ke (${liveCnames.join(", ")}), ubah menjadi ${PUBLIC_CNAME_TARGET}`,
+        })
+        hasMisconfiguration = true
+      } else {
+        evaluatedRecords.push({
+          ...expected,
+          status: routingValid ? "valid" : "not_found",
           actualValue: null,
-          message: `CNAME record belum terdeteksi pada DNS.`,
+          message: routingValid ? "Terpenuhi via A Record" : `CNAME belum terdeteksi pada DNS`,
         })
       }
     } else if (expected.type === "TXT") {
-      const lookupHost = info.isApex
-        ? `_sacms-challenge.${info.rootDomain}`
-        : `_sacms-challenge.${info.domain}`
-      
-      const fallbackLookupHost = `_sacms-verify.${info.domain}`
-
-      try {
-        let txts: string[] = []
-        try {
-          const records = await resolveTxt(lookupHost)
-          txts = records.flat()
-        } catch {
-          try {
-            const fallbackRecords = await resolveTxt(fallbackLookupHost)
-            txts = fallbackRecords.flat()
-          } catch {}
-        }
-
-        const isMatch = txts.some((t) => t.includes(expected.value) || t.includes(buildVerificationToken(tenantId)))
-
-        if (isMatch) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "valid",
-            actualValue: txts[0] || expected.value,
-            message: `Verifikasi TXT record berhasil.`,
-          })
-          txtValid = true
-        } else if (txts.length > 0) {
-          evaluatedRecords.push({
-            ...expected,
-            status: "invalid",
-            actualValue: txts.join(", "),
-            message: `TXT record ditemukan namun nilainya tidak sesuai.`,
-          })
-          hasMisconfiguration = true
-        } else {
-          evaluatedRecords.push({
-            ...expected,
-            status: "not_found",
-            actualValue: null,
-            message: `TXT record verifikasi belum ditemukan.`,
-          })
-        }
-      } catch {
+      if (txtValid) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "valid",
+          actualValue: liveTxts[0] || expected.value,
+          message: `Verifikasi TXT record berhasil.`,
+        })
+      } else if (liveTxts.length > 0) {
+        evaluatedRecords.push({
+          ...expected,
+          status: "invalid",
+          actualValue: liveTxts.join(", "),
+          message: `TXT record ditemukan namun nilainya belum sesuai.`,
+        })
+        hasMisconfiguration = true
+      } else {
         evaluatedRecords.push({
           ...expected,
           status: "not_found",
