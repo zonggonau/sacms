@@ -9,8 +9,6 @@
 	# Caddy asks SaCMS before issuing any certificate for an unknown hostname.
 	on_demand_tls {
 		ask http://127.0.0.1:3000/api/public/caddy-ask
-		interval 2m
-		burst 5
 	}
 }
 
