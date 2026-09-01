@@ -283,6 +283,16 @@ export type SupportTicket = $Result.DefaultSelection<Prisma.$SupportTicketPayloa
  * 
  */
 export type SupportMessage = $Result.DefaultSelection<Prisma.$SupportMessagePayload>
+/**
+ * Model Member
+ * 
+ */
+export type Member = $Result.DefaultSelection<Prisma.$MemberPayload>
+/**
+ * Model MemberSession
+ * 
+ */
+export type MemberSession = $Result.DefaultSelection<Prisma.$MemberSessionPayload>
 
 /**
  * Enums
@@ -963,6 +973,26 @@ export class PrismaClient<
     * ```
     */
   get supportMessage(): Prisma.SupportMessageDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.member`: Exposes CRUD operations for the **Member** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more Members
+    * const members = await prisma.member.findMany()
+    * ```
+    */
+  get member(): Prisma.MemberDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.memberSession`: Exposes CRUD operations for the **MemberSession** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more MemberSessions
+    * const memberSessions = await prisma.memberSession.findMany()
+    * ```
+    */
+  get memberSession(): Prisma.MemberSessionDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -1457,7 +1487,9 @@ export namespace Prisma {
     InfrastructureServer: 'InfrastructureServer',
     InfrastructureCredential: 'InfrastructureCredential',
     SupportTicket: 'SupportTicket',
-    SupportMessage: 'SupportMessage'
+    SupportMessage: 'SupportMessage',
+    Member: 'Member',
+    MemberSession: 'MemberSession'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
@@ -1476,7 +1508,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage" | "infrastructureServer" | "infrastructureCredential" | "supportTicket" | "supportMessage"
+      modelProps: "user" | "account" | "session" | "verificationToken" | "tenant" | "tenantMember" | "customPlanOverride" | "contentType" | "schemaField" | "aiQuotaLedger" | "tenantContentTypeAssignment" | "contentEntry" | "contentVersion" | "contentReviewAssignment" | "singleType" | "singleTypeField" | "tenantSingleTypeAssignment" | "component" | "componentField" | "tenantComponentAssignment" | "apiKey" | "subscription" | "invoice" | "paymentTransaction" | "auditLog" | "setting" | "systemMetric" | "apiRequest" | "mediaFolder" | "media" | "apiToken" | "webhook" | "webhookLog" | "webhookDeadLetter" | "tenantLocale" | "enterpriseLicense" | "licenseCache" | "customDomain" | "oAuthClient" | "oAuthCode" | "oAuthToken" | "permission" | "rolePermission" | "tenantRole" | "site" | "siteFile" | "siteVersion" | "siteDeployment" | "siteConversation" | "siteMessage" | "infrastructureServer" | "infrastructureCredential" | "supportTicket" | "supportMessage" | "member" | "memberSession"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -5476,6 +5508,154 @@ export namespace Prisma {
           }
         }
       }
+      Member: {
+        payload: Prisma.$MemberPayload<ExtArgs>
+        fields: Prisma.MemberFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.MemberFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.MemberFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          findFirst: {
+            args: Prisma.MemberFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.MemberFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          findMany: {
+            args: Prisma.MemberFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>[]
+          }
+          create: {
+            args: Prisma.MemberCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          createMany: {
+            args: Prisma.MemberCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.MemberCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>[]
+          }
+          delete: {
+            args: Prisma.MemberDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          update: {
+            args: Prisma.MemberUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          deleteMany: {
+            args: Prisma.MemberDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.MemberUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.MemberUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>[]
+          }
+          upsert: {
+            args: Prisma.MemberUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberPayload>
+          }
+          aggregate: {
+            args: Prisma.MemberAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateMember>
+          }
+          groupBy: {
+            args: Prisma.MemberGroupByArgs<ExtArgs>
+            result: $Utils.Optional<MemberGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.MemberCountArgs<ExtArgs>
+            result: $Utils.Optional<MemberCountAggregateOutputType> | number
+          }
+        }
+      }
+      MemberSession: {
+        payload: Prisma.$MemberSessionPayload<ExtArgs>
+        fields: Prisma.MemberSessionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.MemberSessionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.MemberSessionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          findFirst: {
+            args: Prisma.MemberSessionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.MemberSessionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          findMany: {
+            args: Prisma.MemberSessionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>[]
+          }
+          create: {
+            args: Prisma.MemberSessionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          createMany: {
+            args: Prisma.MemberSessionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.MemberSessionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>[]
+          }
+          delete: {
+            args: Prisma.MemberSessionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          update: {
+            args: Prisma.MemberSessionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          deleteMany: {
+            args: Prisma.MemberSessionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.MemberSessionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.MemberSessionUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>[]
+          }
+          upsert: {
+            args: Prisma.MemberSessionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$MemberSessionPayload>
+          }
+          aggregate: {
+            args: Prisma.MemberSessionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateMemberSession>
+          }
+          groupBy: {
+            args: Prisma.MemberSessionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<MemberSessionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.MemberSessionCountArgs<ExtArgs>
+            result: $Utils.Optional<MemberSessionCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -5626,6 +5806,8 @@ export namespace Prisma {
     infrastructureCredential?: InfrastructureCredentialOmit
     supportTicket?: SupportTicketOmit
     supportMessage?: SupportMessageOmit
+    member?: MemberOmit
+    memberSession?: MemberSessionOmit
   }
 
   /* Types for Logging */
@@ -5809,6 +5991,7 @@ export namespace Prisma {
     sites: number
     infrastructureServers: number
     supportTickets: number
+    appMembers: number
   }
 
   export type TenantCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
@@ -5839,6 +6022,7 @@ export namespace Prisma {
     sites?: boolean | TenantCountOutputTypeCountSitesArgs
     infrastructureServers?: boolean | TenantCountOutputTypeCountInfrastructureServersArgs
     supportTickets?: boolean | TenantCountOutputTypeCountSupportTicketsArgs
+    appMembers?: boolean | TenantCountOutputTypeCountAppMembersArgs
   }
 
   // Custom InputTypes
@@ -6039,6 +6223,13 @@ export namespace Prisma {
    */
   export type TenantCountOutputTypeCountSupportTicketsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SupportTicketWhereInput
+  }
+
+  /**
+   * TenantCountOutputType without action
+   */
+  export type TenantCountOutputTypeCountAppMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MemberWhereInput
   }
 
 
@@ -6497,6 +6688,37 @@ export namespace Prisma {
    */
   export type SupportTicketCountOutputTypeCountMessagesArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
     where?: SupportMessageWhereInput
+  }
+
+
+  /**
+   * Count Type MemberCountOutputType
+   */
+
+  export type MemberCountOutputType = {
+    sessions: number
+  }
+
+  export type MemberCountOutputTypeSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    sessions?: boolean | MemberCountOutputTypeCountSessionsArgs
+  }
+
+  // Custom InputTypes
+  /**
+   * MemberCountOutputType without action
+   */
+  export type MemberCountOutputTypeDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberCountOutputType
+     */
+    select?: MemberCountOutputTypeSelect<ExtArgs> | null
+  }
+
+  /**
+   * MemberCountOutputType without action
+   */
+  export type MemberCountOutputTypeCountSessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MemberSessionWhereInput
   }
 
 
@@ -11479,6 +11701,7 @@ export namespace Prisma {
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
     infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
     supportTickets?: boolean | Tenant$supportTicketsArgs<ExtArgs>
+    appMembers?: boolean | Tenant$appMembersArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }, ExtArgs["result"]["tenant"]>
 
@@ -11604,6 +11827,7 @@ export namespace Prisma {
     sites?: boolean | Tenant$sitesArgs<ExtArgs>
     infrastructureServers?: boolean | Tenant$infrastructureServersArgs<ExtArgs>
     supportTickets?: boolean | Tenant$supportTicketsArgs<ExtArgs>
+    appMembers?: boolean | Tenant$appMembersArgs<ExtArgs>
     _count?: boolean | TenantCountOutputTypeDefaultArgs<ExtArgs>
   }
   export type TenantIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {}
@@ -11639,6 +11863,7 @@ export namespace Prisma {
       sites: Prisma.$SitePayload<ExtArgs>[]
       infrastructureServers: Prisma.$InfrastructureServerPayload<ExtArgs>[]
       supportTickets: Prisma.$SupportTicketPayload<ExtArgs>[]
+      appMembers: Prisma.$MemberPayload<ExtArgs>[]
     }
     scalars: $Extensions.GetPayloadResult<{
       id: string
@@ -12090,6 +12315,7 @@ export namespace Prisma {
     sites<T extends Tenant$sitesArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$sitesArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SitePayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     infrastructureServers<T extends Tenant$infrastructureServersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$infrastructureServersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$InfrastructureServerPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     supportTickets<T extends Tenant$supportTicketsArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$supportTicketsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$SupportTicketPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    appMembers<T extends Tenant$appMembersArgs<ExtArgs> = {}>(args?: Subset<T, Tenant$appMembersArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
     /**
      * Attaches callbacks for the resolution and/or rejection of the Promise.
      * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -13180,6 +13406,30 @@ export namespace Prisma {
     take?: number
     skip?: number
     distinct?: SupportTicketScalarFieldEnum | SupportTicketScalarFieldEnum[]
+  }
+
+  /**
+   * Tenant.appMembers
+   */
+  export type Tenant$appMembersArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    where?: MemberWhereInput
+    orderBy?: MemberOrderByWithRelationInput | MemberOrderByWithRelationInput[]
+    cursor?: MemberWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: MemberScalarFieldEnum | MemberScalarFieldEnum[]
   }
 
   /**
@@ -69829,6 +70079,2317 @@ export namespace Prisma {
 
 
   /**
+   * Model Member
+   */
+
+  export type AggregateMember = {
+    _count: MemberCountAggregateOutputType | null
+    _min: MemberMinAggregateOutputType | null
+    _max: MemberMaxAggregateOutputType | null
+  }
+
+  export type MemberMinAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    email: string | null
+    passwordHash: string | null
+    name: string | null
+    avatar: string | null
+    role: string | null
+    status: string | null
+    emailVerified: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    lastLoginAt: Date | null
+  }
+
+  export type MemberMaxAggregateOutputType = {
+    id: string | null
+    tenantId: string | null
+    email: string | null
+    passwordHash: string | null
+    name: string | null
+    avatar: string | null
+    role: string | null
+    status: string | null
+    emailVerified: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+    lastLoginAt: Date | null
+  }
+
+  export type MemberCountAggregateOutputType = {
+    id: number
+    tenantId: number
+    email: number
+    passwordHash: number
+    name: number
+    avatar: number
+    role: number
+    status: number
+    emailVerified: number
+    metadata: number
+    createdAt: number
+    updatedAt: number
+    lastLoginAt: number
+    _all: number
+  }
+
+
+  export type MemberMinAggregateInputType = {
+    id?: true
+    tenantId?: true
+    email?: true
+    passwordHash?: true
+    name?: true
+    avatar?: true
+    role?: true
+    status?: true
+    emailVerified?: true
+    createdAt?: true
+    updatedAt?: true
+    lastLoginAt?: true
+  }
+
+  export type MemberMaxAggregateInputType = {
+    id?: true
+    tenantId?: true
+    email?: true
+    passwordHash?: true
+    name?: true
+    avatar?: true
+    role?: true
+    status?: true
+    emailVerified?: true
+    createdAt?: true
+    updatedAt?: true
+    lastLoginAt?: true
+  }
+
+  export type MemberCountAggregateInputType = {
+    id?: true
+    tenantId?: true
+    email?: true
+    passwordHash?: true
+    name?: true
+    avatar?: true
+    role?: true
+    status?: true
+    emailVerified?: true
+    metadata?: true
+    createdAt?: true
+    updatedAt?: true
+    lastLoginAt?: true
+    _all?: true
+  }
+
+  export type MemberAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Member to aggregate.
+     */
+    where?: MemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Members to fetch.
+     */
+    orderBy?: MemberOrderByWithRelationInput | MemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: MemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Members from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Members.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned Members
+    **/
+    _count?: true | MemberCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: MemberMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: MemberMaxAggregateInputType
+  }
+
+  export type GetMemberAggregateType<T extends MemberAggregateArgs> = {
+        [P in keyof T & keyof AggregateMember]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateMember[P]>
+      : GetScalarType<T[P], AggregateMember[P]>
+  }
+
+
+
+
+  export type MemberGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MemberWhereInput
+    orderBy?: MemberOrderByWithAggregationInput | MemberOrderByWithAggregationInput[]
+    by: MemberScalarFieldEnum[] | MemberScalarFieldEnum
+    having?: MemberScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: MemberCountAggregateInputType | true
+    _min?: MemberMinAggregateInputType
+    _max?: MemberMaxAggregateInputType
+  }
+
+  export type MemberGroupByOutputType = {
+    id: string
+    tenantId: string
+    email: string
+    passwordHash: string
+    name: string | null
+    avatar: string | null
+    role: string
+    status: string
+    emailVerified: Date | null
+    metadata: JsonValue | null
+    createdAt: Date
+    updatedAt: Date
+    lastLoginAt: Date | null
+    _count: MemberCountAggregateOutputType | null
+    _min: MemberMinAggregateOutputType | null
+    _max: MemberMaxAggregateOutputType | null
+  }
+
+  type GetMemberGroupByPayload<T extends MemberGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<MemberGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof MemberGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], MemberGroupByOutputType[P]>
+            : GetScalarType<T[P], MemberGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type MemberSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    email?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    avatar?: boolean
+    role?: boolean
+    status?: boolean
+    emailVerified?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    lastLoginAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    sessions?: boolean | Member$sessionsArgs<ExtArgs>
+    _count?: boolean | MemberCountOutputTypeDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["member"]>
+
+  export type MemberSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    email?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    avatar?: boolean
+    role?: boolean
+    status?: boolean
+    emailVerified?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    lastLoginAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["member"]>
+
+  export type MemberSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    tenantId?: boolean
+    email?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    avatar?: boolean
+    role?: boolean
+    status?: boolean
+    emailVerified?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    lastLoginAt?: boolean
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["member"]>
+
+  export type MemberSelectScalar = {
+    id?: boolean
+    tenantId?: boolean
+    email?: boolean
+    passwordHash?: boolean
+    name?: boolean
+    avatar?: boolean
+    role?: boolean
+    status?: boolean
+    emailVerified?: boolean
+    metadata?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    lastLoginAt?: boolean
+  }
+
+  export type MemberOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "tenantId" | "email" | "passwordHash" | "name" | "avatar" | "role" | "status" | "emailVerified" | "metadata" | "createdAt" | "updatedAt" | "lastLoginAt", ExtArgs["result"]["member"]>
+  export type MemberInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+    sessions?: boolean | Member$sessionsArgs<ExtArgs>
+    _count?: boolean | MemberCountOutputTypeDefaultArgs<ExtArgs>
+  }
+  export type MemberIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+  export type MemberIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    tenant?: boolean | TenantDefaultArgs<ExtArgs>
+  }
+
+  export type $MemberPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "Member"
+    objects: {
+      tenant: Prisma.$TenantPayload<ExtArgs>
+      sessions: Prisma.$MemberSessionPayload<ExtArgs>[]
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      tenantId: string
+      email: string
+      passwordHash: string
+      name: string | null
+      avatar: string | null
+      role: string
+      status: string
+      emailVerified: Date | null
+      metadata: Prisma.JsonValue | null
+      createdAt: Date
+      updatedAt: Date
+      lastLoginAt: Date | null
+    }, ExtArgs["result"]["member"]>
+    composites: {}
+  }
+
+  type MemberGetPayload<S extends boolean | null | undefined | MemberDefaultArgs> = $Result.GetResult<Prisma.$MemberPayload, S>
+
+  type MemberCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<MemberFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: MemberCountAggregateInputType | true
+    }
+
+  export interface MemberDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['Member'], meta: { name: 'Member' } }
+    /**
+     * Find zero or one Member that matches the filter.
+     * @param {MemberFindUniqueArgs} args - Arguments to find a Member
+     * @example
+     * // Get one Member
+     * const member = await prisma.member.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends MemberFindUniqueArgs>(args: SelectSubset<T, MemberFindUniqueArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one Member that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {MemberFindUniqueOrThrowArgs} args - Arguments to find a Member
+     * @example
+     * // Get one Member
+     * const member = await prisma.member.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends MemberFindUniqueOrThrowArgs>(args: SelectSubset<T, MemberFindUniqueOrThrowArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Member that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberFindFirstArgs} args - Arguments to find a Member
+     * @example
+     * // Get one Member
+     * const member = await prisma.member.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends MemberFindFirstArgs>(args?: SelectSubset<T, MemberFindFirstArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first Member that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberFindFirstOrThrowArgs} args - Arguments to find a Member
+     * @example
+     * // Get one Member
+     * const member = await prisma.member.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends MemberFindFirstOrThrowArgs>(args?: SelectSubset<T, MemberFindFirstOrThrowArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more Members that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all Members
+     * const members = await prisma.member.findMany()
+     * 
+     * // Get first 10 Members
+     * const members = await prisma.member.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const memberWithIdOnly = await prisma.member.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends MemberFindManyArgs>(args?: SelectSubset<T, MemberFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a Member.
+     * @param {MemberCreateArgs} args - Arguments to create a Member.
+     * @example
+     * // Create one Member
+     * const Member = await prisma.member.create({
+     *   data: {
+     *     // ... data to create a Member
+     *   }
+     * })
+     * 
+     */
+    create<T extends MemberCreateArgs>(args: SelectSubset<T, MemberCreateArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many Members.
+     * @param {MemberCreateManyArgs} args - Arguments to create many Members.
+     * @example
+     * // Create many Members
+     * const member = await prisma.member.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends MemberCreateManyArgs>(args?: SelectSubset<T, MemberCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many Members and returns the data saved in the database.
+     * @param {MemberCreateManyAndReturnArgs} args - Arguments to create many Members.
+     * @example
+     * // Create many Members
+     * const member = await prisma.member.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many Members and only return the `id`
+     * const memberWithIdOnly = await prisma.member.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends MemberCreateManyAndReturnArgs>(args?: SelectSubset<T, MemberCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a Member.
+     * @param {MemberDeleteArgs} args - Arguments to delete one Member.
+     * @example
+     * // Delete one Member
+     * const Member = await prisma.member.delete({
+     *   where: {
+     *     // ... filter to delete one Member
+     *   }
+     * })
+     * 
+     */
+    delete<T extends MemberDeleteArgs>(args: SelectSubset<T, MemberDeleteArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one Member.
+     * @param {MemberUpdateArgs} args - Arguments to update one Member.
+     * @example
+     * // Update one Member
+     * const member = await prisma.member.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends MemberUpdateArgs>(args: SelectSubset<T, MemberUpdateArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more Members.
+     * @param {MemberDeleteManyArgs} args - Arguments to filter Members to delete.
+     * @example
+     * // Delete a few Members
+     * const { count } = await prisma.member.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends MemberDeleteManyArgs>(args?: SelectSubset<T, MemberDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Members.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many Members
+     * const member = await prisma.member.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends MemberUpdateManyArgs>(args: SelectSubset<T, MemberUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more Members and returns the data updated in the database.
+     * @param {MemberUpdateManyAndReturnArgs} args - Arguments to update many Members.
+     * @example
+     * // Update many Members
+     * const member = await prisma.member.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more Members and only return the `id`
+     * const memberWithIdOnly = await prisma.member.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends MemberUpdateManyAndReturnArgs>(args: SelectSubset<T, MemberUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one Member.
+     * @param {MemberUpsertArgs} args - Arguments to update or create a Member.
+     * @example
+     * // Update or create a Member
+     * const member = await prisma.member.upsert({
+     *   create: {
+     *     // ... data to create a Member
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the Member we want to update
+     *   }
+     * })
+     */
+    upsert<T extends MemberUpsertArgs>(args: SelectSubset<T, MemberUpsertArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of Members.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberCountArgs} args - Arguments to filter Members to count.
+     * @example
+     * // Count the number of Members
+     * const count = await prisma.member.count({
+     *   where: {
+     *     // ... the filter for the Members we want to count
+     *   }
+     * })
+    **/
+    count<T extends MemberCountArgs>(
+      args?: Subset<T, MemberCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], MemberCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a Member.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends MemberAggregateArgs>(args: Subset<T, MemberAggregateArgs>): Prisma.PrismaPromise<GetMemberAggregateType<T>>
+
+    /**
+     * Group by Member.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends MemberGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: MemberGroupByArgs['orderBy'] }
+        : { orderBy?: MemberGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, MemberGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetMemberGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the Member model
+   */
+  readonly fields: MemberFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for Member.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__MemberClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    tenant<T extends TenantDefaultArgs<ExtArgs> = {}>(args?: Subset<T, TenantDefaultArgs<ExtArgs>>): Prisma__TenantClient<$Result.GetResult<Prisma.$TenantPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    sessions<T extends Member$sessionsArgs<ExtArgs> = {}>(args?: Subset<T, Member$sessionsArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions> | Null>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the Member model
+   */
+  interface MemberFieldRefs {
+    readonly id: FieldRef<"Member", 'String'>
+    readonly tenantId: FieldRef<"Member", 'String'>
+    readonly email: FieldRef<"Member", 'String'>
+    readonly passwordHash: FieldRef<"Member", 'String'>
+    readonly name: FieldRef<"Member", 'String'>
+    readonly avatar: FieldRef<"Member", 'String'>
+    readonly role: FieldRef<"Member", 'String'>
+    readonly status: FieldRef<"Member", 'String'>
+    readonly emailVerified: FieldRef<"Member", 'DateTime'>
+    readonly metadata: FieldRef<"Member", 'Json'>
+    readonly createdAt: FieldRef<"Member", 'DateTime'>
+    readonly updatedAt: FieldRef<"Member", 'DateTime'>
+    readonly lastLoginAt: FieldRef<"Member", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * Member findUnique
+   */
+  export type MemberFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter, which Member to fetch.
+     */
+    where: MemberWhereUniqueInput
+  }
+
+  /**
+   * Member findUniqueOrThrow
+   */
+  export type MemberFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter, which Member to fetch.
+     */
+    where: MemberWhereUniqueInput
+  }
+
+  /**
+   * Member findFirst
+   */
+  export type MemberFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter, which Member to fetch.
+     */
+    where?: MemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Members to fetch.
+     */
+    orderBy?: MemberOrderByWithRelationInput | MemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Members.
+     */
+    cursor?: MemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Members from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Members.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Members.
+     */
+    distinct?: MemberScalarFieldEnum | MemberScalarFieldEnum[]
+  }
+
+  /**
+   * Member findFirstOrThrow
+   */
+  export type MemberFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter, which Member to fetch.
+     */
+    where?: MemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Members to fetch.
+     */
+    orderBy?: MemberOrderByWithRelationInput | MemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for Members.
+     */
+    cursor?: MemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Members from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Members.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Members.
+     */
+    distinct?: MemberScalarFieldEnum | MemberScalarFieldEnum[]
+  }
+
+  /**
+   * Member findMany
+   */
+  export type MemberFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter, which Members to fetch.
+     */
+    where?: MemberWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of Members to fetch.
+     */
+    orderBy?: MemberOrderByWithRelationInput | MemberOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing Members.
+     */
+    cursor?: MemberWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` Members from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` Members.
+     */
+    skip?: number
+    distinct?: MemberScalarFieldEnum | MemberScalarFieldEnum[]
+  }
+
+  /**
+   * Member create
+   */
+  export type MemberCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * The data needed to create a Member.
+     */
+    data: XOR<MemberCreateInput, MemberUncheckedCreateInput>
+  }
+
+  /**
+   * Member createMany
+   */
+  export type MemberCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many Members.
+     */
+    data: MemberCreateManyInput | MemberCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * Member createManyAndReturn
+   */
+  export type MemberCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * The data used to create many Members.
+     */
+    data: MemberCreateManyInput | MemberCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Member update
+   */
+  export type MemberUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * The data needed to update a Member.
+     */
+    data: XOR<MemberUpdateInput, MemberUncheckedUpdateInput>
+    /**
+     * Choose, which Member to update.
+     */
+    where: MemberWhereUniqueInput
+  }
+
+  /**
+   * Member updateMany
+   */
+  export type MemberUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update Members.
+     */
+    data: XOR<MemberUpdateManyMutationInput, MemberUncheckedUpdateManyInput>
+    /**
+     * Filter which Members to update
+     */
+    where?: MemberWhereInput
+    /**
+     * Limit how many Members to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * Member updateManyAndReturn
+   */
+  export type MemberUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * The data used to update Members.
+     */
+    data: XOR<MemberUpdateManyMutationInput, MemberUncheckedUpdateManyInput>
+    /**
+     * Filter which Members to update
+     */
+    where?: MemberWhereInput
+    /**
+     * Limit how many Members to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * Member upsert
+   */
+  export type MemberUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * The filter to search for the Member to update in case it exists.
+     */
+    where: MemberWhereUniqueInput
+    /**
+     * In case the Member found by the `where` argument doesn't exist, create a new Member with this data.
+     */
+    create: XOR<MemberCreateInput, MemberUncheckedCreateInput>
+    /**
+     * In case the Member was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<MemberUpdateInput, MemberUncheckedUpdateInput>
+  }
+
+  /**
+   * Member delete
+   */
+  export type MemberDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+    /**
+     * Filter which Member to delete.
+     */
+    where: MemberWhereUniqueInput
+  }
+
+  /**
+   * Member deleteMany
+   */
+  export type MemberDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which Members to delete
+     */
+    where?: MemberWhereInput
+    /**
+     * Limit how many Members to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * Member.sessions
+   */
+  export type Member$sessionsArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    where?: MemberSessionWhereInput
+    orderBy?: MemberSessionOrderByWithRelationInput | MemberSessionOrderByWithRelationInput[]
+    cursor?: MemberSessionWhereUniqueInput
+    take?: number
+    skip?: number
+    distinct?: MemberSessionScalarFieldEnum | MemberSessionScalarFieldEnum[]
+  }
+
+  /**
+   * Member without action
+   */
+  export type MemberDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the Member
+     */
+    select?: MemberSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the Member
+     */
+    omit?: MemberOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberInclude<ExtArgs> | null
+  }
+
+
+  /**
+   * Model MemberSession
+   */
+
+  export type AggregateMemberSession = {
+    _count: MemberSessionCountAggregateOutputType | null
+    _min: MemberSessionMinAggregateOutputType | null
+    _max: MemberSessionMaxAggregateOutputType | null
+  }
+
+  export type MemberSessionMinAggregateOutputType = {
+    id: string | null
+    memberId: string | null
+    tenantId: string | null
+    refreshToken: string | null
+    userAgent: string | null
+    ipAddress: string | null
+    expiresAt: Date | null
+    revokedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MemberSessionMaxAggregateOutputType = {
+    id: string | null
+    memberId: string | null
+    tenantId: string | null
+    refreshToken: string | null
+    userAgent: string | null
+    ipAddress: string | null
+    expiresAt: Date | null
+    revokedAt: Date | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type MemberSessionCountAggregateOutputType = {
+    id: number
+    memberId: number
+    tenantId: number
+    refreshToken: number
+    userAgent: number
+    ipAddress: number
+    expiresAt: number
+    revokedAt: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type MemberSessionMinAggregateInputType = {
+    id?: true
+    memberId?: true
+    tenantId?: true
+    refreshToken?: true
+    userAgent?: true
+    ipAddress?: true
+    expiresAt?: true
+    revokedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MemberSessionMaxAggregateInputType = {
+    id?: true
+    memberId?: true
+    tenantId?: true
+    refreshToken?: true
+    userAgent?: true
+    ipAddress?: true
+    expiresAt?: true
+    revokedAt?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type MemberSessionCountAggregateInputType = {
+    id?: true
+    memberId?: true
+    tenantId?: true
+    refreshToken?: true
+    userAgent?: true
+    ipAddress?: true
+    expiresAt?: true
+    revokedAt?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type MemberSessionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which MemberSession to aggregate.
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MemberSessions to fetch.
+     */
+    orderBy?: MemberSessionOrderByWithRelationInput | MemberSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: MemberSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MemberSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MemberSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned MemberSessions
+    **/
+    _count?: true | MemberSessionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: MemberSessionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: MemberSessionMaxAggregateInputType
+  }
+
+  export type GetMemberSessionAggregateType<T extends MemberSessionAggregateArgs> = {
+        [P in keyof T & keyof AggregateMemberSession]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateMemberSession[P]>
+      : GetScalarType<T[P], AggregateMemberSession[P]>
+  }
+
+
+
+
+  export type MemberSessionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: MemberSessionWhereInput
+    orderBy?: MemberSessionOrderByWithAggregationInput | MemberSessionOrderByWithAggregationInput[]
+    by: MemberSessionScalarFieldEnum[] | MemberSessionScalarFieldEnum
+    having?: MemberSessionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: MemberSessionCountAggregateInputType | true
+    _min?: MemberSessionMinAggregateInputType
+    _max?: MemberSessionMaxAggregateInputType
+  }
+
+  export type MemberSessionGroupByOutputType = {
+    id: string
+    memberId: string
+    tenantId: string
+    refreshToken: string
+    userAgent: string | null
+    ipAddress: string | null
+    expiresAt: Date
+    revokedAt: Date | null
+    createdAt: Date
+    updatedAt: Date
+    _count: MemberSessionCountAggregateOutputType | null
+    _min: MemberSessionMinAggregateOutputType | null
+    _max: MemberSessionMaxAggregateOutputType | null
+  }
+
+  type GetMemberSessionGroupByPayload<T extends MemberSessionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<MemberSessionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof MemberSessionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], MemberSessionGroupByOutputType[P]>
+            : GetScalarType<T[P], MemberSessionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type MemberSessionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    memberId?: boolean
+    tenantId?: boolean
+    refreshToken?: boolean
+    userAgent?: boolean
+    ipAddress?: boolean
+    expiresAt?: boolean
+    revokedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["memberSession"]>
+
+  export type MemberSessionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    memberId?: boolean
+    tenantId?: boolean
+    refreshToken?: boolean
+    userAgent?: boolean
+    ipAddress?: boolean
+    expiresAt?: boolean
+    revokedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["memberSession"]>
+
+  export type MemberSessionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    memberId?: boolean
+    tenantId?: boolean
+    refreshToken?: boolean
+    userAgent?: boolean
+    ipAddress?: boolean
+    expiresAt?: boolean
+    revokedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }, ExtArgs["result"]["memberSession"]>
+
+  export type MemberSessionSelectScalar = {
+    id?: boolean
+    memberId?: boolean
+    tenantId?: boolean
+    refreshToken?: boolean
+    userAgent?: boolean
+    ipAddress?: boolean
+    expiresAt?: boolean
+    revokedAt?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type MemberSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "memberId" | "tenantId" | "refreshToken" | "userAgent" | "ipAddress" | "expiresAt" | "revokedAt" | "createdAt" | "updatedAt", ExtArgs["result"]["memberSession"]>
+  export type MemberSessionInclude<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }
+  export type MemberSessionIncludeCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }
+  export type MemberSessionIncludeUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    member?: boolean | MemberDefaultArgs<ExtArgs>
+  }
+
+  export type $MemberSessionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "MemberSession"
+    objects: {
+      member: Prisma.$MemberPayload<ExtArgs>
+    }
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      memberId: string
+      tenantId: string
+      refreshToken: string
+      userAgent: string | null
+      ipAddress: string | null
+      expiresAt: Date
+      revokedAt: Date | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["memberSession"]>
+    composites: {}
+  }
+
+  type MemberSessionGetPayload<S extends boolean | null | undefined | MemberSessionDefaultArgs> = $Result.GetResult<Prisma.$MemberSessionPayload, S>
+
+  type MemberSessionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<MemberSessionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: MemberSessionCountAggregateInputType | true
+    }
+
+  export interface MemberSessionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['MemberSession'], meta: { name: 'MemberSession' } }
+    /**
+     * Find zero or one MemberSession that matches the filter.
+     * @param {MemberSessionFindUniqueArgs} args - Arguments to find a MemberSession
+     * @example
+     * // Get one MemberSession
+     * const memberSession = await prisma.memberSession.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends MemberSessionFindUniqueArgs>(args: SelectSubset<T, MemberSessionFindUniqueArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one MemberSession that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {MemberSessionFindUniqueOrThrowArgs} args - Arguments to find a MemberSession
+     * @example
+     * // Get one MemberSession
+     * const memberSession = await prisma.memberSession.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends MemberSessionFindUniqueOrThrowArgs>(args: SelectSubset<T, MemberSessionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first MemberSession that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionFindFirstArgs} args - Arguments to find a MemberSession
+     * @example
+     * // Get one MemberSession
+     * const memberSession = await prisma.memberSession.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends MemberSessionFindFirstArgs>(args?: SelectSubset<T, MemberSessionFindFirstArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first MemberSession that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionFindFirstOrThrowArgs} args - Arguments to find a MemberSession
+     * @example
+     * // Get one MemberSession
+     * const memberSession = await prisma.memberSession.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends MemberSessionFindFirstOrThrowArgs>(args?: SelectSubset<T, MemberSessionFindFirstOrThrowArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more MemberSessions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all MemberSessions
+     * const memberSessions = await prisma.memberSession.findMany()
+     * 
+     * // Get first 10 MemberSessions
+     * const memberSessions = await prisma.memberSession.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const memberSessionWithIdOnly = await prisma.memberSession.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends MemberSessionFindManyArgs>(args?: SelectSubset<T, MemberSessionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a MemberSession.
+     * @param {MemberSessionCreateArgs} args - Arguments to create a MemberSession.
+     * @example
+     * // Create one MemberSession
+     * const MemberSession = await prisma.memberSession.create({
+     *   data: {
+     *     // ... data to create a MemberSession
+     *   }
+     * })
+     * 
+     */
+    create<T extends MemberSessionCreateArgs>(args: SelectSubset<T, MemberSessionCreateArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many MemberSessions.
+     * @param {MemberSessionCreateManyArgs} args - Arguments to create many MemberSessions.
+     * @example
+     * // Create many MemberSessions
+     * const memberSession = await prisma.memberSession.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends MemberSessionCreateManyArgs>(args?: SelectSubset<T, MemberSessionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many MemberSessions and returns the data saved in the database.
+     * @param {MemberSessionCreateManyAndReturnArgs} args - Arguments to create many MemberSessions.
+     * @example
+     * // Create many MemberSessions
+     * const memberSession = await prisma.memberSession.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many MemberSessions and only return the `id`
+     * const memberSessionWithIdOnly = await prisma.memberSession.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends MemberSessionCreateManyAndReturnArgs>(args?: SelectSubset<T, MemberSessionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a MemberSession.
+     * @param {MemberSessionDeleteArgs} args - Arguments to delete one MemberSession.
+     * @example
+     * // Delete one MemberSession
+     * const MemberSession = await prisma.memberSession.delete({
+     *   where: {
+     *     // ... filter to delete one MemberSession
+     *   }
+     * })
+     * 
+     */
+    delete<T extends MemberSessionDeleteArgs>(args: SelectSubset<T, MemberSessionDeleteArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one MemberSession.
+     * @param {MemberSessionUpdateArgs} args - Arguments to update one MemberSession.
+     * @example
+     * // Update one MemberSession
+     * const memberSession = await prisma.memberSession.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends MemberSessionUpdateArgs>(args: SelectSubset<T, MemberSessionUpdateArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more MemberSessions.
+     * @param {MemberSessionDeleteManyArgs} args - Arguments to filter MemberSessions to delete.
+     * @example
+     * // Delete a few MemberSessions
+     * const { count } = await prisma.memberSession.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends MemberSessionDeleteManyArgs>(args?: SelectSubset<T, MemberSessionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more MemberSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many MemberSessions
+     * const memberSession = await prisma.memberSession.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends MemberSessionUpdateManyArgs>(args: SelectSubset<T, MemberSessionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more MemberSessions and returns the data updated in the database.
+     * @param {MemberSessionUpdateManyAndReturnArgs} args - Arguments to update many MemberSessions.
+     * @example
+     * // Update many MemberSessions
+     * const memberSession = await prisma.memberSession.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more MemberSessions and only return the `id`
+     * const memberSessionWithIdOnly = await prisma.memberSession.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends MemberSessionUpdateManyAndReturnArgs>(args: SelectSubset<T, MemberSessionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one MemberSession.
+     * @param {MemberSessionUpsertArgs} args - Arguments to update or create a MemberSession.
+     * @example
+     * // Update or create a MemberSession
+     * const memberSession = await prisma.memberSession.upsert({
+     *   create: {
+     *     // ... data to create a MemberSession
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the MemberSession we want to update
+     *   }
+     * })
+     */
+    upsert<T extends MemberSessionUpsertArgs>(args: SelectSubset<T, MemberSessionUpsertArgs<ExtArgs>>): Prisma__MemberSessionClient<$Result.GetResult<Prisma.$MemberSessionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of MemberSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionCountArgs} args - Arguments to filter MemberSessions to count.
+     * @example
+     * // Count the number of MemberSessions
+     * const count = await prisma.memberSession.count({
+     *   where: {
+     *     // ... the filter for the MemberSessions we want to count
+     *   }
+     * })
+    **/
+    count<T extends MemberSessionCountArgs>(
+      args?: Subset<T, MemberSessionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], MemberSessionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a MemberSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends MemberSessionAggregateArgs>(args: Subset<T, MemberSessionAggregateArgs>): Prisma.PrismaPromise<GetMemberSessionAggregateType<T>>
+
+    /**
+     * Group by MemberSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {MemberSessionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends MemberSessionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: MemberSessionGroupByArgs['orderBy'] }
+        : { orderBy?: MemberSessionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, MemberSessionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetMemberSessionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the MemberSession model
+   */
+  readonly fields: MemberSessionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for MemberSession.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__MemberSessionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    member<T extends MemberDefaultArgs<ExtArgs> = {}>(args?: Subset<T, MemberDefaultArgs<ExtArgs>>): Prisma__MemberClient<$Result.GetResult<Prisma.$MemberPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the MemberSession model
+   */
+  interface MemberSessionFieldRefs {
+    readonly id: FieldRef<"MemberSession", 'String'>
+    readonly memberId: FieldRef<"MemberSession", 'String'>
+    readonly tenantId: FieldRef<"MemberSession", 'String'>
+    readonly refreshToken: FieldRef<"MemberSession", 'String'>
+    readonly userAgent: FieldRef<"MemberSession", 'String'>
+    readonly ipAddress: FieldRef<"MemberSession", 'String'>
+    readonly expiresAt: FieldRef<"MemberSession", 'DateTime'>
+    readonly revokedAt: FieldRef<"MemberSession", 'DateTime'>
+    readonly createdAt: FieldRef<"MemberSession", 'DateTime'>
+    readonly updatedAt: FieldRef<"MemberSession", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * MemberSession findUnique
+   */
+  export type MemberSessionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which MemberSession to fetch.
+     */
+    where: MemberSessionWhereUniqueInput
+  }
+
+  /**
+   * MemberSession findUniqueOrThrow
+   */
+  export type MemberSessionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which MemberSession to fetch.
+     */
+    where: MemberSessionWhereUniqueInput
+  }
+
+  /**
+   * MemberSession findFirst
+   */
+  export type MemberSessionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which MemberSession to fetch.
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MemberSessions to fetch.
+     */
+    orderBy?: MemberSessionOrderByWithRelationInput | MemberSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for MemberSessions.
+     */
+    cursor?: MemberSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MemberSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MemberSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of MemberSessions.
+     */
+    distinct?: MemberSessionScalarFieldEnum | MemberSessionScalarFieldEnum[]
+  }
+
+  /**
+   * MemberSession findFirstOrThrow
+   */
+  export type MemberSessionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which MemberSession to fetch.
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MemberSessions to fetch.
+     */
+    orderBy?: MemberSessionOrderByWithRelationInput | MemberSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for MemberSessions.
+     */
+    cursor?: MemberSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MemberSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MemberSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of MemberSessions.
+     */
+    distinct?: MemberSessionScalarFieldEnum | MemberSessionScalarFieldEnum[]
+  }
+
+  /**
+   * MemberSession findMany
+   */
+  export type MemberSessionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter, which MemberSessions to fetch.
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of MemberSessions to fetch.
+     */
+    orderBy?: MemberSessionOrderByWithRelationInput | MemberSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing MemberSessions.
+     */
+    cursor?: MemberSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` MemberSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` MemberSessions.
+     */
+    skip?: number
+    distinct?: MemberSessionScalarFieldEnum | MemberSessionScalarFieldEnum[]
+  }
+
+  /**
+   * MemberSession create
+   */
+  export type MemberSessionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to create a MemberSession.
+     */
+    data: XOR<MemberSessionCreateInput, MemberSessionUncheckedCreateInput>
+  }
+
+  /**
+   * MemberSession createMany
+   */
+  export type MemberSessionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many MemberSessions.
+     */
+    data: MemberSessionCreateManyInput | MemberSessionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * MemberSession createManyAndReturn
+   */
+  export type MemberSessionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * The data used to create many MemberSessions.
+     */
+    data: MemberSessionCreateManyInput | MemberSessionCreateManyInput[]
+    skipDuplicates?: boolean
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionIncludeCreateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * MemberSession update
+   */
+  export type MemberSessionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * The data needed to update a MemberSession.
+     */
+    data: XOR<MemberSessionUpdateInput, MemberSessionUncheckedUpdateInput>
+    /**
+     * Choose, which MemberSession to update.
+     */
+    where: MemberSessionWhereUniqueInput
+  }
+
+  /**
+   * MemberSession updateMany
+   */
+  export type MemberSessionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update MemberSessions.
+     */
+    data: XOR<MemberSessionUpdateManyMutationInput, MemberSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which MemberSessions to update
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * Limit how many MemberSessions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * MemberSession updateManyAndReturn
+   */
+  export type MemberSessionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * The data used to update MemberSessions.
+     */
+    data: XOR<MemberSessionUpdateManyMutationInput, MemberSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which MemberSessions to update
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * Limit how many MemberSessions to update.
+     */
+    limit?: number
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionIncludeUpdateManyAndReturn<ExtArgs> | null
+  }
+
+  /**
+   * MemberSession upsert
+   */
+  export type MemberSessionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * The filter to search for the MemberSession to update in case it exists.
+     */
+    where: MemberSessionWhereUniqueInput
+    /**
+     * In case the MemberSession found by the `where` argument doesn't exist, create a new MemberSession with this data.
+     */
+    create: XOR<MemberSessionCreateInput, MemberSessionUncheckedCreateInput>
+    /**
+     * In case the MemberSession was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<MemberSessionUpdateInput, MemberSessionUncheckedUpdateInput>
+  }
+
+  /**
+   * MemberSession delete
+   */
+  export type MemberSessionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+    /**
+     * Filter which MemberSession to delete.
+     */
+    where: MemberSessionWhereUniqueInput
+  }
+
+  /**
+   * MemberSession deleteMany
+   */
+  export type MemberSessionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which MemberSessions to delete
+     */
+    where?: MemberSessionWhereInput
+    /**
+     * Limit how many MemberSessions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * MemberSession without action
+   */
+  export type MemberSessionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the MemberSession
+     */
+    select?: MemberSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the MemberSession
+     */
+    omit?: MemberSessionOmit<ExtArgs> | null
+    /**
+     * Choose, which related nodes to fetch as well
+     */
+    include?: MemberSessionInclude<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -70716,6 +73277,41 @@ export namespace Prisma {
   export type SupportMessageScalarFieldEnum = (typeof SupportMessageScalarFieldEnum)[keyof typeof SupportMessageScalarFieldEnum]
 
 
+  export const MemberScalarFieldEnum: {
+    id: 'id',
+    tenantId: 'tenantId',
+    email: 'email',
+    passwordHash: 'passwordHash',
+    name: 'name',
+    avatar: 'avatar',
+    role: 'role',
+    status: 'status',
+    emailVerified: 'emailVerified',
+    metadata: 'metadata',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt',
+    lastLoginAt: 'lastLoginAt'
+  };
+
+  export type MemberScalarFieldEnum = (typeof MemberScalarFieldEnum)[keyof typeof MemberScalarFieldEnum]
+
+
+  export const MemberSessionScalarFieldEnum: {
+    id: 'id',
+    memberId: 'memberId',
+    tenantId: 'tenantId',
+    refreshToken: 'refreshToken',
+    userAgent: 'userAgent',
+    ipAddress: 'ipAddress',
+    expiresAt: 'expiresAt',
+    revokedAt: 'revokedAt',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type MemberSessionScalarFieldEnum = (typeof MemberSessionScalarFieldEnum)[keyof typeof MemberSessionScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
@@ -71239,6 +73835,7 @@ export namespace Prisma {
     sites?: SiteListRelationFilter
     infrastructureServers?: InfrastructureServerListRelationFilter
     supportTickets?: SupportTicketListRelationFilter
+    appMembers?: MemberListRelationFilter
   }
 
   export type TenantOrderByWithRelationInput = {
@@ -71297,6 +73894,7 @@ export namespace Prisma {
     sites?: SiteOrderByRelationAggregateInput
     infrastructureServers?: InfrastructureServerOrderByRelationAggregateInput
     supportTickets?: SupportTicketOrderByRelationAggregateInput
+    appMembers?: MemberOrderByRelationAggregateInput
   }
 
   export type TenantWhereUniqueInput = Prisma.AtLeast<{
@@ -71358,6 +73956,7 @@ export namespace Prisma {
     sites?: SiteListRelationFilter
     infrastructureServers?: InfrastructureServerListRelationFilter
     supportTickets?: SupportTicketListRelationFilter
+    appMembers?: MemberListRelationFilter
   }, "id" | "slug" | "customDomain" | "licenseKey">
 
   export type TenantOrderByWithAggregationInput = {
@@ -75502,6 +78101,185 @@ export namespace Prisma {
     createdAt?: DateTimeWithAggregatesFilter<"SupportMessage"> | Date | string
   }
 
+  export type MemberWhereInput = {
+    AND?: MemberWhereInput | MemberWhereInput[]
+    OR?: MemberWhereInput[]
+    NOT?: MemberWhereInput | MemberWhereInput[]
+    id?: StringFilter<"Member"> | string
+    tenantId?: StringFilter<"Member"> | string
+    email?: StringFilter<"Member"> | string
+    passwordHash?: StringFilter<"Member"> | string
+    name?: StringNullableFilter<"Member"> | string | null
+    avatar?: StringNullableFilter<"Member"> | string | null
+    role?: StringFilter<"Member"> | string
+    status?: StringFilter<"Member"> | string
+    emailVerified?: DateTimeNullableFilter<"Member"> | Date | string | null
+    metadata?: JsonNullableFilter<"Member">
+    createdAt?: DateTimeFilter<"Member"> | Date | string
+    updatedAt?: DateTimeFilter<"Member"> | Date | string
+    lastLoginAt?: DateTimeNullableFilter<"Member"> | Date | string | null
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    sessions?: MemberSessionListRelationFilter
+  }
+
+  export type MemberOrderByWithRelationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrderInput | SortOrder
+    avatar?: SortOrderInput | SortOrder
+    role?: SortOrder
+    status?: SortOrder
+    emailVerified?: SortOrderInput | SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lastLoginAt?: SortOrderInput | SortOrder
+    tenant?: TenantOrderByWithRelationInput
+    sessions?: MemberSessionOrderByRelationAggregateInput
+  }
+
+  export type MemberWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    tenantId_email?: MemberTenantIdEmailCompoundUniqueInput
+    AND?: MemberWhereInput | MemberWhereInput[]
+    OR?: MemberWhereInput[]
+    NOT?: MemberWhereInput | MemberWhereInput[]
+    tenantId?: StringFilter<"Member"> | string
+    email?: StringFilter<"Member"> | string
+    passwordHash?: StringFilter<"Member"> | string
+    name?: StringNullableFilter<"Member"> | string | null
+    avatar?: StringNullableFilter<"Member"> | string | null
+    role?: StringFilter<"Member"> | string
+    status?: StringFilter<"Member"> | string
+    emailVerified?: DateTimeNullableFilter<"Member"> | Date | string | null
+    metadata?: JsonNullableFilter<"Member">
+    createdAt?: DateTimeFilter<"Member"> | Date | string
+    updatedAt?: DateTimeFilter<"Member"> | Date | string
+    lastLoginAt?: DateTimeNullableFilter<"Member"> | Date | string | null
+    tenant?: XOR<TenantScalarRelationFilter, TenantWhereInput>
+    sessions?: MemberSessionListRelationFilter
+  }, "id" | "tenantId_email">
+
+  export type MemberOrderByWithAggregationInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrderInput | SortOrder
+    avatar?: SortOrderInput | SortOrder
+    role?: SortOrder
+    status?: SortOrder
+    emailVerified?: SortOrderInput | SortOrder
+    metadata?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lastLoginAt?: SortOrderInput | SortOrder
+    _count?: MemberCountOrderByAggregateInput
+    _max?: MemberMaxOrderByAggregateInput
+    _min?: MemberMinOrderByAggregateInput
+  }
+
+  export type MemberScalarWhereWithAggregatesInput = {
+    AND?: MemberScalarWhereWithAggregatesInput | MemberScalarWhereWithAggregatesInput[]
+    OR?: MemberScalarWhereWithAggregatesInput[]
+    NOT?: MemberScalarWhereWithAggregatesInput | MemberScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"Member"> | string
+    tenantId?: StringWithAggregatesFilter<"Member"> | string
+    email?: StringWithAggregatesFilter<"Member"> | string
+    passwordHash?: StringWithAggregatesFilter<"Member"> | string
+    name?: StringNullableWithAggregatesFilter<"Member"> | string | null
+    avatar?: StringNullableWithAggregatesFilter<"Member"> | string | null
+    role?: StringWithAggregatesFilter<"Member"> | string
+    status?: StringWithAggregatesFilter<"Member"> | string
+    emailVerified?: DateTimeNullableWithAggregatesFilter<"Member"> | Date | string | null
+    metadata?: JsonNullableWithAggregatesFilter<"Member">
+    createdAt?: DateTimeWithAggregatesFilter<"Member"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"Member"> | Date | string
+    lastLoginAt?: DateTimeNullableWithAggregatesFilter<"Member"> | Date | string | null
+  }
+
+  export type MemberSessionWhereInput = {
+    AND?: MemberSessionWhereInput | MemberSessionWhereInput[]
+    OR?: MemberSessionWhereInput[]
+    NOT?: MemberSessionWhereInput | MemberSessionWhereInput[]
+    id?: StringFilter<"MemberSession"> | string
+    memberId?: StringFilter<"MemberSession"> | string
+    tenantId?: StringFilter<"MemberSession"> | string
+    refreshToken?: StringFilter<"MemberSession"> | string
+    userAgent?: StringNullableFilter<"MemberSession"> | string | null
+    ipAddress?: StringNullableFilter<"MemberSession"> | string | null
+    expiresAt?: DateTimeFilter<"MemberSession"> | Date | string
+    revokedAt?: DateTimeNullableFilter<"MemberSession"> | Date | string | null
+    createdAt?: DateTimeFilter<"MemberSession"> | Date | string
+    updatedAt?: DateTimeFilter<"MemberSession"> | Date | string
+    member?: XOR<MemberScalarRelationFilter, MemberWhereInput>
+  }
+
+  export type MemberSessionOrderByWithRelationInput = {
+    id?: SortOrder
+    memberId?: SortOrder
+    tenantId?: SortOrder
+    refreshToken?: SortOrder
+    userAgent?: SortOrderInput | SortOrder
+    ipAddress?: SortOrderInput | SortOrder
+    expiresAt?: SortOrder
+    revokedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    member?: MemberOrderByWithRelationInput
+  }
+
+  export type MemberSessionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    refreshToken?: string
+    AND?: MemberSessionWhereInput | MemberSessionWhereInput[]
+    OR?: MemberSessionWhereInput[]
+    NOT?: MemberSessionWhereInput | MemberSessionWhereInput[]
+    memberId?: StringFilter<"MemberSession"> | string
+    tenantId?: StringFilter<"MemberSession"> | string
+    userAgent?: StringNullableFilter<"MemberSession"> | string | null
+    ipAddress?: StringNullableFilter<"MemberSession"> | string | null
+    expiresAt?: DateTimeFilter<"MemberSession"> | Date | string
+    revokedAt?: DateTimeNullableFilter<"MemberSession"> | Date | string | null
+    createdAt?: DateTimeFilter<"MemberSession"> | Date | string
+    updatedAt?: DateTimeFilter<"MemberSession"> | Date | string
+    member?: XOR<MemberScalarRelationFilter, MemberWhereInput>
+  }, "id" | "refreshToken">
+
+  export type MemberSessionOrderByWithAggregationInput = {
+    id?: SortOrder
+    memberId?: SortOrder
+    tenantId?: SortOrder
+    refreshToken?: SortOrder
+    userAgent?: SortOrderInput | SortOrder
+    ipAddress?: SortOrderInput | SortOrder
+    expiresAt?: SortOrder
+    revokedAt?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: MemberSessionCountOrderByAggregateInput
+    _max?: MemberSessionMaxOrderByAggregateInput
+    _min?: MemberSessionMinOrderByAggregateInput
+  }
+
+  export type MemberSessionScalarWhereWithAggregatesInput = {
+    AND?: MemberSessionScalarWhereWithAggregatesInput | MemberSessionScalarWhereWithAggregatesInput[]
+    OR?: MemberSessionScalarWhereWithAggregatesInput[]
+    NOT?: MemberSessionScalarWhereWithAggregatesInput | MemberSessionScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"MemberSession"> | string
+    memberId?: StringWithAggregatesFilter<"MemberSession"> | string
+    tenantId?: StringWithAggregatesFilter<"MemberSession"> | string
+    refreshToken?: StringWithAggregatesFilter<"MemberSession"> | string
+    userAgent?: StringNullableWithAggregatesFilter<"MemberSession"> | string | null
+    ipAddress?: StringNullableWithAggregatesFilter<"MemberSession"> | string | null
+    expiresAt?: DateTimeWithAggregatesFilter<"MemberSession"> | Date | string
+    revokedAt?: DateTimeNullableWithAggregatesFilter<"MemberSession"> | Date | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"MemberSession"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"MemberSession"> | Date | string
+  }
+
   export type UserCreateInput = {
     id?: string
     email: string
@@ -75895,6 +78673,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateInput = {
@@ -75953,6 +78732,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUpdateInput = {
@@ -76011,6 +78791,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateInput = {
@@ -76069,6 +78850,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateManyInput = {
@@ -80660,6 +83442,211 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type MemberCreateInput = {
+    id?: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+    tenant: TenantCreateNestedOneWithoutAppMembersInput
+    sessions?: MemberSessionCreateNestedManyWithoutMemberInput
+  }
+
+  export type MemberUncheckedCreateInput = {
+    id?: string
+    tenantId: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+    sessions?: MemberSessionUncheckedCreateNestedManyWithoutMemberInput
+  }
+
+  export type MemberUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    tenant?: TenantUpdateOneRequiredWithoutAppMembersNestedInput
+    sessions?: MemberSessionUpdateManyWithoutMemberNestedInput
+  }
+
+  export type MemberUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sessions?: MemberSessionUncheckedUpdateManyWithoutMemberNestedInput
+  }
+
+  export type MemberCreateManyInput = {
+    id?: string
+    tenantId: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+  }
+
+  export type MemberUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type MemberUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+  }
+
+  export type MemberSessionCreateInput = {
+    id?: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    member: MemberCreateNestedOneWithoutSessionsInput
+  }
+
+  export type MemberSessionUncheckedCreateInput = {
+    id?: string
+    memberId: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MemberSessionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    member?: MemberUpdateOneRequiredWithoutSessionsNestedInput
+  }
+
+  export type MemberSessionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    memberId?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberSessionCreateManyInput = {
+    id?: string
+    memberId: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MemberSessionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberSessionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    memberId?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -81259,6 +84246,12 @@ export namespace Prisma {
     none?: InfrastructureServerWhereInput
   }
 
+  export type MemberListRelationFilter = {
+    every?: MemberWhereInput
+    some?: MemberWhereInput
+    none?: MemberWhereInput
+  }
+
   export type ApiKeyOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
@@ -81348,6 +84341,10 @@ export namespace Prisma {
   }
 
   export type InfrastructureServerOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type MemberOrderByRelationAggregateInput = {
     _count?: SortOrder
   }
 
@@ -84007,6 +87004,111 @@ export namespace Prisma {
     createdAt?: SortOrder
   }
 
+  export type MemberSessionListRelationFilter = {
+    every?: MemberSessionWhereInput
+    some?: MemberSessionWhereInput
+    none?: MemberSessionWhereInput
+  }
+
+  export type MemberSessionOrderByRelationAggregateInput = {
+    _count?: SortOrder
+  }
+
+  export type MemberTenantIdEmailCompoundUniqueInput = {
+    tenantId: string
+    email: string
+  }
+
+  export type MemberCountOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    avatar?: SortOrder
+    role?: SortOrder
+    status?: SortOrder
+    emailVerified?: SortOrder
+    metadata?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lastLoginAt?: SortOrder
+  }
+
+  export type MemberMaxOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    avatar?: SortOrder
+    role?: SortOrder
+    status?: SortOrder
+    emailVerified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lastLoginAt?: SortOrder
+  }
+
+  export type MemberMinOrderByAggregateInput = {
+    id?: SortOrder
+    tenantId?: SortOrder
+    email?: SortOrder
+    passwordHash?: SortOrder
+    name?: SortOrder
+    avatar?: SortOrder
+    role?: SortOrder
+    status?: SortOrder
+    emailVerified?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    lastLoginAt?: SortOrder
+  }
+
+  export type MemberScalarRelationFilter = {
+    is?: MemberWhereInput
+    isNot?: MemberWhereInput
+  }
+
+  export type MemberSessionCountOrderByAggregateInput = {
+    id?: SortOrder
+    memberId?: SortOrder
+    tenantId?: SortOrder
+    refreshToken?: SortOrder
+    userAgent?: SortOrder
+    ipAddress?: SortOrder
+    expiresAt?: SortOrder
+    revokedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MemberSessionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    memberId?: SortOrder
+    tenantId?: SortOrder
+    refreshToken?: SortOrder
+    userAgent?: SortOrder
+    ipAddress?: SortOrder
+    expiresAt?: SortOrder
+    revokedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type MemberSessionMinOrderByAggregateInput = {
+    id?: SortOrder
+    memberId?: SortOrder
+    tenantId?: SortOrder
+    refreshToken?: SortOrder
+    userAgent?: SortOrder
+    ipAddress?: SortOrder
+    expiresAt?: SortOrder
+    revokedAt?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
   export type AccountCreateNestedManyWithoutUserInput = {
     create?: XOR<AccountCreateWithoutUserInput, AccountUncheckedCreateWithoutUserInput> | AccountCreateWithoutUserInput[] | AccountUncheckedCreateWithoutUserInput[]
     connectOrCreate?: AccountCreateOrConnectWithoutUserInput | AccountCreateOrConnectWithoutUserInput[]
@@ -84508,6 +87610,13 @@ export namespace Prisma {
     connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
   }
 
+  export type MemberCreateNestedManyWithoutTenantInput = {
+    create?: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput> | MemberCreateWithoutTenantInput[] | MemberUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: MemberCreateOrConnectWithoutTenantInput | MemberCreateOrConnectWithoutTenantInput[]
+    createMany?: MemberCreateManyTenantInputEnvelope
+    connect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+  }
+
   export type ApiKeyUncheckedCreateNestedManyWithoutTenantInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -84695,6 +87804,13 @@ export namespace Prisma {
     connectOrCreate?: SupportTicketCreateOrConnectWithoutTenantInput | SupportTicketCreateOrConnectWithoutTenantInput[]
     createMany?: SupportTicketCreateManyTenantInputEnvelope
     connect?: SupportTicketWhereUniqueInput | SupportTicketWhereUniqueInput[]
+  }
+
+  export type MemberUncheckedCreateNestedManyWithoutTenantInput = {
+    create?: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput> | MemberCreateWithoutTenantInput[] | MemberUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: MemberCreateOrConnectWithoutTenantInput | MemberCreateOrConnectWithoutTenantInput[]
+    createMany?: MemberCreateManyTenantInputEnvelope
+    connect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
   }
 
   export type BigIntFieldUpdateOperationsInput = {
@@ -85083,6 +88199,20 @@ export namespace Prisma {
     deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
   }
 
+  export type MemberUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput> | MemberCreateWithoutTenantInput[] | MemberUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: MemberCreateOrConnectWithoutTenantInput | MemberCreateOrConnectWithoutTenantInput[]
+    upsert?: MemberUpsertWithWhereUniqueWithoutTenantInput | MemberUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: MemberCreateManyTenantInputEnvelope
+    set?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    disconnect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    delete?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    connect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    update?: MemberUpdateWithWhereUniqueWithoutTenantInput | MemberUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: MemberUpdateManyWithWhereWithoutTenantInput | MemberUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: MemberScalarWhereInput | MemberScalarWhereInput[]
+  }
+
   export type ApiKeyUncheckedUpdateManyWithoutTenantNestedInput = {
     create?: XOR<ApiKeyCreateWithoutTenantInput, ApiKeyUncheckedCreateWithoutTenantInput> | ApiKeyCreateWithoutTenantInput[] | ApiKeyUncheckedCreateWithoutTenantInput[]
     connectOrCreate?: ApiKeyCreateOrConnectWithoutTenantInput | ApiKeyCreateOrConnectWithoutTenantInput[]
@@ -85459,6 +88589,20 @@ export namespace Prisma {
     update?: SupportTicketUpdateWithWhereUniqueWithoutTenantInput | SupportTicketUpdateWithWhereUniqueWithoutTenantInput[]
     updateMany?: SupportTicketUpdateManyWithWhereWithoutTenantInput | SupportTicketUpdateManyWithWhereWithoutTenantInput[]
     deleteMany?: SupportTicketScalarWhereInput | SupportTicketScalarWhereInput[]
+  }
+
+  export type MemberUncheckedUpdateManyWithoutTenantNestedInput = {
+    create?: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput> | MemberCreateWithoutTenantInput[] | MemberUncheckedCreateWithoutTenantInput[]
+    connectOrCreate?: MemberCreateOrConnectWithoutTenantInput | MemberCreateOrConnectWithoutTenantInput[]
+    upsert?: MemberUpsertWithWhereUniqueWithoutTenantInput | MemberUpsertWithWhereUniqueWithoutTenantInput[]
+    createMany?: MemberCreateManyTenantInputEnvelope
+    set?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    disconnect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    delete?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    connect?: MemberWhereUniqueInput | MemberWhereUniqueInput[]
+    update?: MemberUpdateWithWhereUniqueWithoutTenantInput | MemberUpdateWithWhereUniqueWithoutTenantInput[]
+    updateMany?: MemberUpdateManyWithWhereWithoutTenantInput | MemberUpdateManyWithWhereWithoutTenantInput[]
+    deleteMany?: MemberScalarWhereInput | MemberScalarWhereInput[]
   }
 
   export type TenantCreateNestedOneWithoutMembersInput = {
@@ -87354,6 +90498,76 @@ export namespace Prisma {
     update?: XOR<XOR<SupportTicketUpdateToOneWithWhereWithoutMessagesInput, SupportTicketUpdateWithoutMessagesInput>, SupportTicketUncheckedUpdateWithoutMessagesInput>
   }
 
+  export type TenantCreateNestedOneWithoutAppMembersInput = {
+    create?: XOR<TenantCreateWithoutAppMembersInput, TenantUncheckedCreateWithoutAppMembersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutAppMembersInput
+    connect?: TenantWhereUniqueInput
+  }
+
+  export type MemberSessionCreateNestedManyWithoutMemberInput = {
+    create?: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput> | MemberSessionCreateWithoutMemberInput[] | MemberSessionUncheckedCreateWithoutMemberInput[]
+    connectOrCreate?: MemberSessionCreateOrConnectWithoutMemberInput | MemberSessionCreateOrConnectWithoutMemberInput[]
+    createMany?: MemberSessionCreateManyMemberInputEnvelope
+    connect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+  }
+
+  export type MemberSessionUncheckedCreateNestedManyWithoutMemberInput = {
+    create?: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput> | MemberSessionCreateWithoutMemberInput[] | MemberSessionUncheckedCreateWithoutMemberInput[]
+    connectOrCreate?: MemberSessionCreateOrConnectWithoutMemberInput | MemberSessionCreateOrConnectWithoutMemberInput[]
+    createMany?: MemberSessionCreateManyMemberInputEnvelope
+    connect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+  }
+
+  export type TenantUpdateOneRequiredWithoutAppMembersNestedInput = {
+    create?: XOR<TenantCreateWithoutAppMembersInput, TenantUncheckedCreateWithoutAppMembersInput>
+    connectOrCreate?: TenantCreateOrConnectWithoutAppMembersInput
+    upsert?: TenantUpsertWithoutAppMembersInput
+    connect?: TenantWhereUniqueInput
+    update?: XOR<XOR<TenantUpdateToOneWithWhereWithoutAppMembersInput, TenantUpdateWithoutAppMembersInput>, TenantUncheckedUpdateWithoutAppMembersInput>
+  }
+
+  export type MemberSessionUpdateManyWithoutMemberNestedInput = {
+    create?: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput> | MemberSessionCreateWithoutMemberInput[] | MemberSessionUncheckedCreateWithoutMemberInput[]
+    connectOrCreate?: MemberSessionCreateOrConnectWithoutMemberInput | MemberSessionCreateOrConnectWithoutMemberInput[]
+    upsert?: MemberSessionUpsertWithWhereUniqueWithoutMemberInput | MemberSessionUpsertWithWhereUniqueWithoutMemberInput[]
+    createMany?: MemberSessionCreateManyMemberInputEnvelope
+    set?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    disconnect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    delete?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    connect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    update?: MemberSessionUpdateWithWhereUniqueWithoutMemberInput | MemberSessionUpdateWithWhereUniqueWithoutMemberInput[]
+    updateMany?: MemberSessionUpdateManyWithWhereWithoutMemberInput | MemberSessionUpdateManyWithWhereWithoutMemberInput[]
+    deleteMany?: MemberSessionScalarWhereInput | MemberSessionScalarWhereInput[]
+  }
+
+  export type MemberSessionUncheckedUpdateManyWithoutMemberNestedInput = {
+    create?: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput> | MemberSessionCreateWithoutMemberInput[] | MemberSessionUncheckedCreateWithoutMemberInput[]
+    connectOrCreate?: MemberSessionCreateOrConnectWithoutMemberInput | MemberSessionCreateOrConnectWithoutMemberInput[]
+    upsert?: MemberSessionUpsertWithWhereUniqueWithoutMemberInput | MemberSessionUpsertWithWhereUniqueWithoutMemberInput[]
+    createMany?: MemberSessionCreateManyMemberInputEnvelope
+    set?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    disconnect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    delete?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    connect?: MemberSessionWhereUniqueInput | MemberSessionWhereUniqueInput[]
+    update?: MemberSessionUpdateWithWhereUniqueWithoutMemberInput | MemberSessionUpdateWithWhereUniqueWithoutMemberInput[]
+    updateMany?: MemberSessionUpdateManyWithWhereWithoutMemberInput | MemberSessionUpdateManyWithWhereWithoutMemberInput[]
+    deleteMany?: MemberSessionScalarWhereInput | MemberSessionScalarWhereInput[]
+  }
+
+  export type MemberCreateNestedOneWithoutSessionsInput = {
+    create?: XOR<MemberCreateWithoutSessionsInput, MemberUncheckedCreateWithoutSessionsInput>
+    connectOrCreate?: MemberCreateOrConnectWithoutSessionsInput
+    connect?: MemberWhereUniqueInput
+  }
+
+  export type MemberUpdateOneRequiredWithoutSessionsNestedInput = {
+    create?: XOR<MemberCreateWithoutSessionsInput, MemberUncheckedCreateWithoutSessionsInput>
+    connectOrCreate?: MemberCreateOrConnectWithoutSessionsInput
+    upsert?: MemberUpsertWithoutSessionsInput
+    connect?: MemberWhereUniqueInput
+    update?: XOR<XOR<MemberUpdateToOneWithWhereWithoutSessionsInput, MemberUpdateWithoutSessionsInput>, MemberUncheckedUpdateWithoutSessionsInput>
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -89207,6 +92421,48 @@ export namespace Prisma {
     skipDuplicates?: boolean
   }
 
+  export type MemberCreateWithoutTenantInput = {
+    id?: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+    sessions?: MemberSessionCreateNestedManyWithoutMemberInput
+  }
+
+  export type MemberUncheckedCreateWithoutTenantInput = {
+    id?: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+    sessions?: MemberSessionUncheckedCreateNestedManyWithoutMemberInput
+  }
+
+  export type MemberCreateOrConnectWithoutTenantInput = {
+    where: MemberWhereUniqueInput
+    create: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput>
+  }
+
+  export type MemberCreateManyTenantInputEnvelope = {
+    data: MemberCreateManyTenantInput | MemberCreateManyTenantInput[]
+    skipDuplicates?: boolean
+  }
+
   export type ApiKeyUpsertWithWhereUniqueWithoutTenantInput = {
     where: ApiKeyWhereUniqueInput
     update: XOR<ApiKeyUpdateWithoutTenantInput, ApiKeyUncheckedUpdateWithoutTenantInput>
@@ -90009,6 +93265,41 @@ export namespace Prisma {
     data: XOR<SupportTicketUpdateManyMutationInput, SupportTicketUncheckedUpdateManyWithoutTenantInput>
   }
 
+  export type MemberUpsertWithWhereUniqueWithoutTenantInput = {
+    where: MemberWhereUniqueInput
+    update: XOR<MemberUpdateWithoutTenantInput, MemberUncheckedUpdateWithoutTenantInput>
+    create: XOR<MemberCreateWithoutTenantInput, MemberUncheckedCreateWithoutTenantInput>
+  }
+
+  export type MemberUpdateWithWhereUniqueWithoutTenantInput = {
+    where: MemberWhereUniqueInput
+    data: XOR<MemberUpdateWithoutTenantInput, MemberUncheckedUpdateWithoutTenantInput>
+  }
+
+  export type MemberUpdateManyWithWhereWithoutTenantInput = {
+    where: MemberScalarWhereInput
+    data: XOR<MemberUpdateManyMutationInput, MemberUncheckedUpdateManyWithoutTenantInput>
+  }
+
+  export type MemberScalarWhereInput = {
+    AND?: MemberScalarWhereInput | MemberScalarWhereInput[]
+    OR?: MemberScalarWhereInput[]
+    NOT?: MemberScalarWhereInput | MemberScalarWhereInput[]
+    id?: StringFilter<"Member"> | string
+    tenantId?: StringFilter<"Member"> | string
+    email?: StringFilter<"Member"> | string
+    passwordHash?: StringFilter<"Member"> | string
+    name?: StringNullableFilter<"Member"> | string | null
+    avatar?: StringNullableFilter<"Member"> | string | null
+    role?: StringFilter<"Member"> | string
+    status?: StringFilter<"Member"> | string
+    emailVerified?: DateTimeNullableFilter<"Member"> | Date | string | null
+    metadata?: JsonNullableFilter<"Member">
+    createdAt?: DateTimeFilter<"Member"> | Date | string
+    updatedAt?: DateTimeFilter<"Member"> | Date | string
+    lastLoginAt?: DateTimeNullableFilter<"Member"> | Date | string | null
+  }
+
   export type TenantCreateWithoutMembersInput = {
     id?: string
     name: string
@@ -90064,6 +93355,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMembersInput = {
@@ -90121,6 +93413,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMembersInput = {
@@ -90243,6 +93536,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMembersInput = {
@@ -90300,6 +93594,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutTenantsInput = {
@@ -90502,6 +93797,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypesInput = {
@@ -90559,6 +93855,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypesInput = {
@@ -90708,6 +94005,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypesInput = {
@@ -90765,6 +94063,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantContentTypeAssignmentUpsertWithWhereUniqueWithoutContentTypeInput = {
@@ -91054,6 +94353,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAiQuotaLedgersInput = {
@@ -91111,6 +94411,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAiQuotaLedgersInput = {
@@ -91233,6 +94534,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAiQuotaLedgersInput = {
@@ -91290,6 +94592,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutAiQuotaLedgersInput = {
@@ -91437,6 +94740,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentTypeAssignmentsInput = {
@@ -91494,6 +94798,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentTypeAssignmentsInput = {
@@ -91608,6 +94913,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentTypeAssignmentsInput = {
@@ -91665,6 +94971,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentTypeCreateWithoutEntriesInput = {
@@ -91757,6 +95064,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutContentEntriesInput = {
@@ -91814,6 +95122,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutContentEntriesInput = {
@@ -91996,6 +95305,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutContentEntriesInput = {
@@ -92053,6 +95363,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ContentReviewAssignmentUpsertWithWhereUniqueWithoutContentEntryInput = {
@@ -92438,6 +95749,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypesInput = {
@@ -92495,6 +95807,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypesInput = {
@@ -92650,6 +95963,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypesInput = {
@@ -92707,6 +96021,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantSingleTypeAssignmentUpsertWithWhereUniqueWithoutSingleTypeInput = {
@@ -92885,6 +96200,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSingleTypeAssignmentsInput = {
@@ -92942,6 +96258,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSingleTypeAssignmentsInput = {
@@ -93054,6 +96371,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSingleTypeAssignmentsInput = {
@@ -93111,6 +96429,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type ComponentFieldCreateWithoutComponentInput = {
@@ -93248,6 +96567,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentsInput = {
@@ -93305,6 +96625,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentsInput = {
@@ -93452,6 +96773,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentsInput = {
@@ -93509,6 +96831,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantComponentAssignmentUpsertWithWhereUniqueWithoutComponentInput = {
@@ -93681,6 +97004,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutComponentAssignmentsInput = {
@@ -93738,6 +97062,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutComponentAssignmentsInput = {
@@ -93848,6 +97173,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutComponentAssignmentsInput = {
@@ -93905,6 +97231,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiKeysInput = {
@@ -93962,6 +97289,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiKeysInput = {
@@ -94019,6 +97347,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiKeysInput = {
@@ -94092,6 +97421,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiKeysInput = {
@@ -94149,6 +97479,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InvoiceCreateWithoutSubscriptionInput = {
@@ -94278,6 +97609,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSubscriptionsInput = {
@@ -94335,6 +97667,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSubscriptionsInput = {
@@ -94523,6 +97856,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSubscriptionsInput = {
@@ -94580,6 +97914,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutSubscriptionsInput = {
@@ -94852,6 +98187,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutAuditLogsInput = {
@@ -94909,6 +98245,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutAuditLogsInput = {
@@ -94982,6 +98319,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutAuditLogsInput = {
@@ -95039,6 +98377,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSettingsInput = {
@@ -95096,6 +98435,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSettingsInput = {
@@ -95153,6 +98493,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSettingsInput = {
@@ -95226,6 +98567,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSettingsInput = {
@@ -95283,6 +98625,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiRequestsInput = {
@@ -95340,6 +98683,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiRequestsInput = {
@@ -95397,6 +98741,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiRequestsInput = {
@@ -95470,6 +98815,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiRequestsInput = {
@@ -95527,6 +98873,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaCreateWithoutFolderInput = {
@@ -95697,6 +99044,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaFoldersInput = {
@@ -95754,6 +99102,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaFoldersInput = {
@@ -95892,6 +99241,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaFoldersInput = {
@@ -95949,6 +99299,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type MediaFolderCreateWithoutMediaInput = {
@@ -96033,6 +99384,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutMediaInput = {
@@ -96090,6 +99442,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutMediaInput = {
@@ -96196,6 +99549,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutMediaInput = {
@@ -96253,6 +99607,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutApiTokensInput = {
@@ -96310,6 +99665,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutApiTokensInput = {
@@ -96367,6 +99723,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutApiTokensInput = {
@@ -96440,6 +99797,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutApiTokensInput = {
@@ -96497,6 +99855,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookDeadLetterCreateWithoutWebhookInput = {
@@ -96624,6 +99983,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutWebhooksInput = {
@@ -96681,6 +100041,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutWebhooksInput = {
@@ -96819,6 +100180,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutWebhooksInput = {
@@ -96876,6 +100238,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type WebhookCreateWithoutLogsInput = {
@@ -97101,6 +100464,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutLocalesInput = {
@@ -97158,6 +100522,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutLocalesInput = {
@@ -97231,6 +100596,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutLocalesInput = {
@@ -97288,6 +100654,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutCustomDomainsInput = {
@@ -97345,6 +100712,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutCustomDomainsInput = {
@@ -97402,6 +100770,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutCustomDomainsInput = {
@@ -97475,6 +100844,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutCustomDomainsInput = {
@@ -97532,6 +100902,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthClientsInput = {
@@ -97589,6 +100960,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthClientsInput = {
@@ -97646,6 +101018,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthClientsInput = {
@@ -97719,6 +101092,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthClientsInput = {
@@ -97776,6 +101150,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthCodesInput = {
@@ -97833,6 +101208,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthCodesInput = {
@@ -97890,6 +101266,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthCodesInput = {
@@ -97963,6 +101340,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthCodesInput = {
@@ -98020,6 +101398,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutOauthTokensInput = {
@@ -98077,6 +101456,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutOauthTokensInput = {
@@ -98134,6 +101514,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutOauthTokensInput = {
@@ -98207,6 +101588,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutOauthTokensInput = {
@@ -98264,6 +101646,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type RolePermissionCreateWithoutPermissionInput = {
@@ -98427,6 +101810,7 @@ export namespace Prisma {
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutRolesInput = {
@@ -98484,6 +101868,7 @@ export namespace Prisma {
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutRolesInput = {
@@ -98557,6 +101942,7 @@ export namespace Prisma {
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutRolesInput = {
@@ -98614,6 +102000,7 @@ export namespace Prisma {
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantCreateWithoutSitesInput = {
@@ -98671,6 +102058,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSitesInput = {
@@ -98728,6 +102116,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSitesInput = {
@@ -98911,6 +102300,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSitesInput = {
@@ -98968,6 +102358,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type SiteFileUpsertWithWhereUniqueWithoutSiteInput = {
@@ -99653,6 +103044,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutInfrastructureServersInput = {
@@ -99710,6 +103102,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutInfrastructureServersInput = {
@@ -99818,6 +103211,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutInfrastructureServersInput = {
@@ -99875,6 +103269,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type InfrastructureCredentialUpsertWithoutServerInput = {
@@ -100101,6 +103496,7 @@ export namespace Prisma {
     roles?: TenantRoleCreateNestedManyWithoutTenantInput
     sites?: SiteCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    appMembers?: MemberCreateNestedManyWithoutTenantInput
   }
 
   export type TenantUncheckedCreateWithoutSupportTicketsInput = {
@@ -100158,6 +103554,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
     sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
     infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    appMembers?: MemberUncheckedCreateNestedManyWithoutTenantInput
   }
 
   export type TenantCreateOrConnectWithoutSupportTicketsInput = {
@@ -100310,6 +103707,7 @@ export namespace Prisma {
     roles?: TenantRoleUpdateManyWithoutTenantNestedInput
     sites?: SiteUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUpdateManyWithoutTenantNestedInput
   }
 
   export type TenantUncheckedUpdateWithoutSupportTicketsInput = {
@@ -100367,6 +103765,7 @@ export namespace Prisma {
     roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
     sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
     infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    appMembers?: MemberUncheckedUpdateManyWithoutTenantNestedInput
   }
 
   export type UserUpsertWithoutSupportTicketsInput = {
@@ -100516,6 +103915,400 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type TenantCreateWithoutAppMembersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogCreateNestedManyWithoutTenantInput
+    components?: ComponentCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeCreateNestedManyWithoutTenantInput
+    media?: MediaCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderCreateNestedManyWithoutTenantInput
+    settings?: SettingCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleCreateNestedManyWithoutTenantInput
+    members?: TenantMemberCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleCreateNestedManyWithoutTenantInput
+    sites?: SiteCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantUncheckedCreateWithoutAppMembersInput = {
+    id?: string
+    name: string
+    slug: string
+    description?: string | null
+    logo?: string | null
+    plan?: string
+    status?: string
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    brandLogo?: string | null
+    brandName?: string | null
+    customDomain?: string | null
+    customDomainStatus?: string | null
+    customDomainVerifiedAt?: Date | string | null
+    customEmailSender?: string | null
+    databaseUrl?: string | null
+    licenseKey?: string | null
+    faviconUrl?: string | null
+    primaryColor?: string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: string | null
+    hostingExpiresAt?: Date | string | null
+    vercelProjectId?: string | null
+    vercelDeploymentUrl?: string | null
+    aiTokensUsed?: number
+    aiCreditsExtra?: number
+    storageExtraBytes?: bigint | number
+    apiCallsExtra?: number
+    apiKeys?: ApiKeyUncheckedCreateNestedManyWithoutTenantInput
+    apiRequests?: ApiRequestUncheckedCreateNestedManyWithoutTenantInput
+    apiTokens?: ApiTokenUncheckedCreateNestedManyWithoutTenantInput
+    auditLogs?: AuditLogUncheckedCreateNestedManyWithoutTenantInput
+    components?: ComponentUncheckedCreateNestedManyWithoutTenantInput
+    contentEntries?: ContentEntryUncheckedCreateNestedManyWithoutTenantInput
+    contentTypes?: ContentTypeUncheckedCreateNestedManyWithoutTenantInput
+    media?: MediaUncheckedCreateNestedManyWithoutTenantInput
+    mediaFolders?: MediaFolderUncheckedCreateNestedManyWithoutTenantInput
+    settings?: SettingUncheckedCreateNestedManyWithoutTenantInput
+    singleTypes?: SingleTypeUncheckedCreateNestedManyWithoutTenantInput
+    subscriptions?: SubscriptionUncheckedCreateNestedManyWithoutTenantInput
+    componentAssignments?: TenantComponentAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    locales?: TenantLocaleUncheckedCreateNestedManyWithoutTenantInput
+    members?: TenantMemberUncheckedCreateNestedManyWithoutTenantInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedCreateNestedManyWithoutTenantInput
+    webhooks?: WebhookUncheckedCreateNestedManyWithoutTenantInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedCreateNestedManyWithoutTenantInput
+    customDomains?: CustomDomainUncheckedCreateNestedManyWithoutTenantInput
+    oauthClients?: OAuthClientUncheckedCreateNestedManyWithoutTenantInput
+    oauthCodes?: OAuthCodeUncheckedCreateNestedManyWithoutTenantInput
+    oauthTokens?: OAuthTokenUncheckedCreateNestedManyWithoutTenantInput
+    roles?: TenantRoleUncheckedCreateNestedManyWithoutTenantInput
+    sites?: SiteUncheckedCreateNestedManyWithoutTenantInput
+    infrastructureServers?: InfrastructureServerUncheckedCreateNestedManyWithoutTenantInput
+    supportTickets?: SupportTicketUncheckedCreateNestedManyWithoutTenantInput
+  }
+
+  export type TenantCreateOrConnectWithoutAppMembersInput = {
+    where: TenantWhereUniqueInput
+    create: XOR<TenantCreateWithoutAppMembersInput, TenantUncheckedCreateWithoutAppMembersInput>
+  }
+
+  export type MemberSessionCreateWithoutMemberInput = {
+    id?: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MemberSessionUncheckedCreateWithoutMemberInput = {
+    id?: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MemberSessionCreateOrConnectWithoutMemberInput = {
+    where: MemberSessionWhereUniqueInput
+    create: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput>
+  }
+
+  export type MemberSessionCreateManyMemberInputEnvelope = {
+    data: MemberSessionCreateManyMemberInput | MemberSessionCreateManyMemberInput[]
+    skipDuplicates?: boolean
+  }
+
+  export type TenantUpsertWithoutAppMembersInput = {
+    update: XOR<TenantUpdateWithoutAppMembersInput, TenantUncheckedUpdateWithoutAppMembersInput>
+    create: XOR<TenantCreateWithoutAppMembersInput, TenantUncheckedCreateWithoutAppMembersInput>
+    where?: TenantWhereInput
+  }
+
+  export type TenantUpdateToOneWithWhereWithoutAppMembersInput = {
+    where?: TenantWhereInput
+    data: XOR<TenantUpdateWithoutAppMembersInput, TenantUncheckedUpdateWithoutAppMembersInput>
+  }
+
+  export type TenantUpdateWithoutAppMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUpdateManyWithoutTenantNestedInput
+    components?: ComponentUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUpdateManyWithoutTenantNestedInput
+    media?: MediaUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUpdateManyWithoutTenantNestedInput
+    settings?: SettingUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUpdateManyWithoutTenantNestedInput
+    sites?: SiteUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUpdateManyWithoutTenantNestedInput
+  }
+
+  export type TenantUncheckedUpdateWithoutAppMembersInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    name?: StringFieldUpdateOperationsInput | string
+    slug?: StringFieldUpdateOperationsInput | string
+    description?: NullableStringFieldUpdateOperationsInput | string | null
+    logo?: NullableStringFieldUpdateOperationsInput | string | null
+    plan?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    brandLogo?: NullableStringFieldUpdateOperationsInput | string | null
+    brandName?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomain?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    customDomainVerifiedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    customEmailSender?: NullableStringFieldUpdateOperationsInput | string | null
+    databaseUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    licenseKey?: NullableStringFieldUpdateOperationsInput | string | null
+    faviconUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    primaryColor?: NullableStringFieldUpdateOperationsInput | string | null
+    storageConfig?: NullableJsonNullValueInput | InputJsonValue
+    hostingStatus?: NullableStringFieldUpdateOperationsInput | string | null
+    hostingExpiresAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    vercelProjectId?: NullableStringFieldUpdateOperationsInput | string | null
+    vercelDeploymentUrl?: NullableStringFieldUpdateOperationsInput | string | null
+    aiTokensUsed?: IntFieldUpdateOperationsInput | number
+    aiCreditsExtra?: IntFieldUpdateOperationsInput | number
+    storageExtraBytes?: BigIntFieldUpdateOperationsInput | bigint | number
+    apiCallsExtra?: IntFieldUpdateOperationsInput | number
+    apiKeys?: ApiKeyUncheckedUpdateManyWithoutTenantNestedInput
+    apiRequests?: ApiRequestUncheckedUpdateManyWithoutTenantNestedInput
+    apiTokens?: ApiTokenUncheckedUpdateManyWithoutTenantNestedInput
+    auditLogs?: AuditLogUncheckedUpdateManyWithoutTenantNestedInput
+    components?: ComponentUncheckedUpdateManyWithoutTenantNestedInput
+    contentEntries?: ContentEntryUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypes?: ContentTypeUncheckedUpdateManyWithoutTenantNestedInput
+    media?: MediaUncheckedUpdateManyWithoutTenantNestedInput
+    mediaFolders?: MediaFolderUncheckedUpdateManyWithoutTenantNestedInput
+    settings?: SettingUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypes?: SingleTypeUncheckedUpdateManyWithoutTenantNestedInput
+    subscriptions?: SubscriptionUncheckedUpdateManyWithoutTenantNestedInput
+    componentAssignments?: TenantComponentAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    contentTypeAssignments?: TenantContentTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    locales?: TenantLocaleUncheckedUpdateManyWithoutTenantNestedInput
+    members?: TenantMemberUncheckedUpdateManyWithoutTenantNestedInput
+    singleTypeAssignments?: TenantSingleTypeAssignmentUncheckedUpdateManyWithoutTenantNestedInput
+    webhooks?: WebhookUncheckedUpdateManyWithoutTenantNestedInput
+    aiQuotaLedgers?: AiQuotaLedgerUncheckedUpdateManyWithoutTenantNestedInput
+    customDomains?: CustomDomainUncheckedUpdateManyWithoutTenantNestedInput
+    oauthClients?: OAuthClientUncheckedUpdateManyWithoutTenantNestedInput
+    oauthCodes?: OAuthCodeUncheckedUpdateManyWithoutTenantNestedInput
+    oauthTokens?: OAuthTokenUncheckedUpdateManyWithoutTenantNestedInput
+    roles?: TenantRoleUncheckedUpdateManyWithoutTenantNestedInput
+    sites?: SiteUncheckedUpdateManyWithoutTenantNestedInput
+    infrastructureServers?: InfrastructureServerUncheckedUpdateManyWithoutTenantNestedInput
+    supportTickets?: SupportTicketUncheckedUpdateManyWithoutTenantNestedInput
+  }
+
+  export type MemberSessionUpsertWithWhereUniqueWithoutMemberInput = {
+    where: MemberSessionWhereUniqueInput
+    update: XOR<MemberSessionUpdateWithoutMemberInput, MemberSessionUncheckedUpdateWithoutMemberInput>
+    create: XOR<MemberSessionCreateWithoutMemberInput, MemberSessionUncheckedCreateWithoutMemberInput>
+  }
+
+  export type MemberSessionUpdateWithWhereUniqueWithoutMemberInput = {
+    where: MemberSessionWhereUniqueInput
+    data: XOR<MemberSessionUpdateWithoutMemberInput, MemberSessionUncheckedUpdateWithoutMemberInput>
+  }
+
+  export type MemberSessionUpdateManyWithWhereWithoutMemberInput = {
+    where: MemberSessionScalarWhereInput
+    data: XOR<MemberSessionUpdateManyMutationInput, MemberSessionUncheckedUpdateManyWithoutMemberInput>
+  }
+
+  export type MemberSessionScalarWhereInput = {
+    AND?: MemberSessionScalarWhereInput | MemberSessionScalarWhereInput[]
+    OR?: MemberSessionScalarWhereInput[]
+    NOT?: MemberSessionScalarWhereInput | MemberSessionScalarWhereInput[]
+    id?: StringFilter<"MemberSession"> | string
+    memberId?: StringFilter<"MemberSession"> | string
+    tenantId?: StringFilter<"MemberSession"> | string
+    refreshToken?: StringFilter<"MemberSession"> | string
+    userAgent?: StringNullableFilter<"MemberSession"> | string | null
+    ipAddress?: StringNullableFilter<"MemberSession"> | string | null
+    expiresAt?: DateTimeFilter<"MemberSession"> | Date | string
+    revokedAt?: DateTimeNullableFilter<"MemberSession"> | Date | string | null
+    createdAt?: DateTimeFilter<"MemberSession"> | Date | string
+    updatedAt?: DateTimeFilter<"MemberSession"> | Date | string
+  }
+
+  export type MemberCreateWithoutSessionsInput = {
+    id?: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+    tenant: TenantCreateNestedOneWithoutAppMembersInput
+  }
+
+  export type MemberUncheckedCreateWithoutSessionsInput = {
+    id?: string
+    tenantId: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
+  }
+
+  export type MemberCreateOrConnectWithoutSessionsInput = {
+    where: MemberWhereUniqueInput
+    create: XOR<MemberCreateWithoutSessionsInput, MemberUncheckedCreateWithoutSessionsInput>
+  }
+
+  export type MemberUpsertWithoutSessionsInput = {
+    update: XOR<MemberUpdateWithoutSessionsInput, MemberUncheckedUpdateWithoutSessionsInput>
+    create: XOR<MemberCreateWithoutSessionsInput, MemberUncheckedCreateWithoutSessionsInput>
+    where?: MemberWhereInput
+  }
+
+  export type MemberUpdateToOneWithWhereWithoutSessionsInput = {
+    where?: MemberWhereInput
+    data: XOR<MemberUpdateWithoutSessionsInput, MemberUncheckedUpdateWithoutSessionsInput>
+  }
+
+  export type MemberUpdateWithoutSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    tenant?: TenantUpdateOneRequiredWithoutAppMembersNestedInput
+  }
+
+  export type MemberUncheckedUpdateWithoutSessionsInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
   export type AccountCreateManyUserInput = {
@@ -101100,6 +104893,21 @@ export namespace Prisma {
     status?: string
     createdAt?: Date | string
     updatedAt?: Date | string
+  }
+
+  export type MemberCreateManyTenantInput = {
+    id?: string
+    email: string
+    passwordHash: string
+    name?: string | null
+    avatar?: string | null
+    role?: string
+    status?: string
+    emailVerified?: Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: Date | string
+    updatedAt?: Date | string
+    lastLoginAt?: Date | string | null
   }
 
   export type ApiKeyUpdateWithoutTenantInput = {
@@ -102112,6 +105920,53 @@ export namespace Prisma {
     status?: StringFieldUpdateOperationsInput | string
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
     updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sessions?: MemberSessionUpdateManyWithoutMemberNestedInput
+  }
+
+  export type MemberUncheckedUpdateWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    sessions?: MemberSessionUncheckedUpdateManyWithoutMemberNestedInput
+  }
+
+  export type MemberUncheckedUpdateManyWithoutTenantInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    email?: StringFieldUpdateOperationsInput | string
+    passwordHash?: StringFieldUpdateOperationsInput | string
+    name?: NullableStringFieldUpdateOperationsInput | string | null
+    avatar?: NullableStringFieldUpdateOperationsInput | string | null
+    role?: StringFieldUpdateOperationsInput | string
+    status?: StringFieldUpdateOperationsInput | string
+    emailVerified?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    metadata?: NullableJsonNullValueInput | InputJsonValue
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    lastLoginAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
   }
 
   export type ContentEntryCreateManyContentTypeInput = {
@@ -103274,6 +107129,54 @@ export namespace Prisma {
     attachments?: NullableJsonNullValueInput | InputJsonValue
     isRead?: BoolFieldUpdateOperationsInput | boolean
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberSessionCreateManyMemberInput = {
+    id?: string
+    tenantId: string
+    refreshToken: string
+    userAgent?: string | null
+    ipAddress?: string | null
+    expiresAt: Date | string
+    revokedAt?: Date | string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type MemberSessionUpdateWithoutMemberInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberSessionUncheckedUpdateWithoutMemberInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type MemberSessionUncheckedUpdateManyWithoutMemberInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    tenantId?: StringFieldUpdateOperationsInput | string
+    refreshToken?: StringFieldUpdateOperationsInput | string
+    userAgent?: NullableStringFieldUpdateOperationsInput | string | null
+    ipAddress?: NullableStringFieldUpdateOperationsInput | string | null
+    expiresAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    revokedAt?: NullableDateTimeFieldUpdateOperationsInput | Date | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
 

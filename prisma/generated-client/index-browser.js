@@ -833,6 +833,35 @@ exports.Prisma.SupportMessageScalarFieldEnum = {
   createdAt: 'createdAt'
 };
 
+exports.Prisma.MemberScalarFieldEnum = {
+  id: 'id',
+  tenantId: 'tenantId',
+  email: 'email',
+  passwordHash: 'passwordHash',
+  name: 'name',
+  avatar: 'avatar',
+  role: 'role',
+  status: 'status',
+  emailVerified: 'emailVerified',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt',
+  lastLoginAt: 'lastLoginAt'
+};
+
+exports.Prisma.MemberSessionScalarFieldEnum = {
+  id: 'id',
+  memberId: 'memberId',
+  tenantId: 'tenantId',
+  refreshToken: 'refreshToken',
+  userAgent: 'userAgent',
+  ipAddress: 'ipAddress',
+  expiresAt: 'expiresAt',
+  revokedAt: 'revokedAt',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+};
+
 exports.Prisma.SortOrder = {
   asc: 'asc',
   desc: 'desc'
@@ -926,7 +955,9 @@ exports.Prisma.ModelName = {
   InfrastructureServer: 'InfrastructureServer',
   InfrastructureCredential: 'InfrastructureCredential',
   SupportTicket: 'SupportTicket',
-  SupportMessage: 'SupportMessage'
+  SupportMessage: 'SupportMessage',
+  Member: 'Member',
+  MemberSession: 'MemberSession'
 };
 
 /**

@@ -488,6 +488,13 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
   { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa fitur live gateway API publik, filtering Strapi, dan status webhook.", inputs: [] },
   { name: "get_api_info", category: "webhook", description: "Mengambil informasi dasar versi API SaCMS dan spesifikasi server MCP.", inputs: [] },
 
+  // Multi-Tenant End-User & Member Auth MCP Tools
+  { name: "list_members", category: "member", description: "Mendaftar akun end-user/member website dengan filter search, role (vip, member), dan status.", inputs: ["page", "pageSize", "search", "role", "status"] },
+  { name: "get_member", category: "member", description: "Mengambil data detail profil member, metadata kustom, dan riwayat sesi aktif.", inputs: ["idOrEmail"] },
+  { name: "create_member", category: "member", description: "Mendaftarkan member baru secara programmatic dengan password ter-hash bcrypt 12 rounds.", inputs: ["email", "password", "name", "role", "metadata"] },
+  { name: "update_member", category: "member", description: "Mengubah status member (active/suspended), role, password baru, atau metadata kustom.", inputs: ["idOrEmail", "name", "role", "status", "password", "metadata"] },
+  { name: "delete_member", category: "member", description: "Menghapus akun member dan me-revoke seluruh sesi login aktif secara permanen.", inputs: ["idOrEmail"] },
+
   // Hosting & Cloud Deployment MCP Tools
   { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website / frontend langsung ke Vercel Serverless hosting.", inputs: ["projectName", "files", "envVars"] },
   { name: "get_vercel_deployment_status", category: "hosting", description: "Mengecek status build dan URL produksi dari deployment Vercel.", inputs: ["deploymentId"] },
@@ -1050,7 +1057,7 @@ export function MCPDashboardClient({
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-3 max-w-lg h-auto gap-1">
               <TabsTrigger value="catalog" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Layers className="h-3.5 w-3.5 mr-1.5" />
-                31 Tools Live
+                36 Tools Live
               </TabsTrigger>
               <TabsTrigger value="recipes" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
@@ -1062,7 +1069,7 @@ export function MCPDashboardClient({
               </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: 31 LIVE TOOLS */}
+            {/* TAB 1: 36 LIVE TOOLS */}
             <TabsContent value="catalog" className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                 {MCP_TOOLS_CATALOG.map((tool) => (
@@ -1080,6 +1087,7 @@ export function MCPDashboardClient({
                           tool.category === "content" && "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30",
                           tool.category === "single" && "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30",
                           tool.category === "webhook" && "bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border-indigo-500/30",
+                          tool.category === "member" && "bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/30",
                         )}
                       >
                         {tool.category}
@@ -1212,13 +1220,13 @@ export function MCPDashboardClient({
                 </Card>
 
                 {/* Recipe 5: 1-Click Vercel Deploy */}
-                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3 md:col-span-2">
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <Badge className="bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20 text-[10px] font-bold">
                         Cloud Deploy
                       </Badge>
-                      <h3 className="text-sm font-bold text-foreground">5. Deploy Frontend Langsung ke Vercel Serverless</h3>
+                      <h3 className="text-sm font-bold text-foreground">5. Deploy Frontend Langsung ke Vercel</h3>
                     </div>
                     <Button
                       size="sm"
@@ -1234,6 +1242,32 @@ export function MCPDashboardClient({
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.
+                  </pre>
+                </Card>
+
+                {/* Recipe 6: Headless Member Auth & Login */}
+                <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-teal-500/10 text-teal-600 dark:text-teal-400 border-teal-500/20 text-[10px] font-bold">
+                        Headless Auth
+                      </Badge>
+                      <h3 className="text-sm font-bold text-foreground">6. Scaffold Auth Register & Login Client</h3>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => handleCopy(`Buatkan form autentikasi Next.js (app/login/page.tsx & app/register/page.tsx) yang memanggil endpoint Headless Auth SaCMS (/api/public/${tenantSlug}/auth/login dan /register), menyimpan Access Token JWT di cookie/localStorage, dan mengambil profil member dari /api/public/${tenantSlug}/auth/me.`, "Prompt Auth Scaffolder")}
+                      className="h-7 px-2 text-xs font-bold text-primary"
+                    >
+                      <Copy className="h-3 w-3 mr-1" /> Salin Prompt
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Menghasilkan form login & register end-user lengkap dengan JWT access token, refresh token rotation, dan proteksi route.
+                  </p>
+                  <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
+                    Buatkan form autentikasi Next.js (app/login/page.tsx & app/register/page.tsx) yang memanggil endpoint Headless Auth SaCMS (/api/public/{tenantSlug}/auth/login dan /register), menyimpan Access Token JWT di cookie, dan mengambil profil member dari /api/public/{tenantSlug}/auth/me.
                   </pre>
                 </Card>
 

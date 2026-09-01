@@ -20,6 +20,7 @@ import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
+import { hashMemberPassword } from "@/lib/member-auth"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -1808,9 +1809,332 @@ export default async function NewsPage() {
         }
       }
     )
+
+    // ─── SECTION 7: MULTI-TENANT END-USERS & MEMBER AUTH ─────────────────────
+
+    // ── list_members ──────────────────────────────────────────────────────────
+    server.registerTool(
+      "list_members",
+      {
+        title: "List End-User Members",
+        description: "List registered members/end-users for this workspace with filtering by search, role, or status.",
+        inputSchema: {
+          page: z.number().default(1).describe("Page number (1-based)"),
+          pageSize: z.number().default(20).describe("Number of items per page (max 100)"),
+          search: z.string().optional().describe("Search keyword for email or name"),
+          role: z.string().optional().describe("Filter by member role (e.g. 'member', 'vip', 'subscriber')"),
+          status: z.string().optional().describe("Filter by member status (e.g. 'active', 'suspended')"),
+        },
+      },
+      async ({ page, pageSize, search, role, status }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
+        const limit = Math.min(pageSize || 20, 100)
+        const skip = ((page || 1) - 1) * limit
+
+        const where: Record<string, any> = { tenantId: auth.tenantId }
+        if (role) where.role = role
+        if (status) where.status = status
+        if (search) {
+          where.OR = [
+            { email: { contains: search, mode: "insensitive" } },
+            { name: { contains: search, mode: "insensitive" } },
+          ]
+        }
+
+        const [members, total] = await Promise.all([
+          tenantDb.member.findMany({
+            where,
+            select: {
+              id: true,
+              email: true,
+              name: true,
+              avatar: true,
+              role: true,
+              status: true,
+              metadata: true,
+              createdAt: true,
+              lastLoginAt: true,
+            },
+            orderBy: { createdAt: "desc" },
+            skip,
+            take: limit,
+          }),
+          tenantDb.member.count({ where }),
+        ])
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              members,
+              pagination: {
+                page: page || 1,
+                pageSize: limit,
+                total,
+                totalPages: Math.ceil(total / limit),
+              }
+            }, null, 2)
+          }]
+        }
+      }
+    )
+
+    // ── get_member ────────────────────────────────────────────────────────────
+    server.registerTool(
+      "get_member",
+      {
+        title: "Get End-User Member",
+        description: "Get detailed profile and metadata of a specific end-user member by ID or email.",
+        inputSchema: {
+          idOrEmail: z.string().describe("Member ID (cuid) or email address"),
+        },
+      },
+      async ({ idOrEmail }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
+        const member = await tenantDb.member.findFirst({
+          where: {
+            tenantId: auth.tenantId,
+            OR: [
+              { id: idOrEmail },
+              { email: idOrEmail.toLowerCase().trim() },
+            ]
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            avatar: true,
+            role: true,
+            status: true,
+            metadata: true,
+            createdAt: true,
+            updatedAt: true,
+            lastLoginAt: true,
+            sessions: {
+              where: { revokedAt: null },
+              select: {
+                id: true,
+                userAgent: true,
+                ipAddress: true,
+                expiresAt: true,
+                createdAt: true,
+              },
+              take: 5,
+            }
+          }
+        })
+
+        if (!member) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found in this workspace.` }],
+            isError: true,
+          }
+        }
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify(member, null, 2)
+          }]
+        }
+      }
+    )
+
+    // ── create_member ─────────────────────────────────────────────────────────
+    server.registerTool(
+      "create_member",
+      {
+        title: "Create End-User Member",
+        description: "Programmatically create a new member/end-user for this workspace with bcrypt hashed password.",
+        inputSchema: {
+          email: z.string().email().describe("Member email address"),
+          password: z.string().min(6).describe("Plaintext password (will be hashed with bcrypt 12 rounds)"),
+          name: z.string().optional().describe("Full name of the member"),
+          role: z.string().default("member").describe("Member role (default 'member', e.g. 'vip', 'subscriber')"),
+          metadata: z.record(z.string(), z.any()).optional().describe("Custom JSON metadata/attributes"),
+        },
+      },
+      async ({ email, password, name, role, metadata }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
+        const cleanEmail = email.toLowerCase().trim()
+
+        const existing = await tenantDb.member.findUnique({
+          where: {
+            tenantId_email: {
+              tenantId: auth.tenantId,
+              email: cleanEmail,
+            }
+          }
+        })
+
+        if (existing) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Member with email '${cleanEmail}' already exists in this workspace.` }],
+            isError: true,
+          }
+        }
+
+        const passwordHash = await hashMemberPassword(password)
+        const created = await tenantDb.member.create({
+          data: {
+            tenantId: auth.tenantId,
+            email: cleanEmail,
+            passwordHash,
+            name: name || null,
+            role: role || "member",
+            status: "active",
+            metadata: metadata || {},
+          },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            status: true,
+            metadata: true,
+            createdAt: true,
+          }
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: `✅ Member '${created.email}' created successfully.\n\n${JSON.stringify(created, null, 2)}`
+          }]
+        }
+      }
+    )
+
+    // ── update_member ─────────────────────────────────────────────────────────
+    server.registerTool(
+      "update_member",
+      {
+        title: "Update End-User Member",
+        description: "Update an existing member's profile, role, status ('active' | 'suspended'), password, or custom metadata.",
+        inputSchema: {
+          idOrEmail: z.string().describe("Member ID or email"),
+          name: z.string().optional().describe("Updated full name"),
+          role: z.string().optional().describe("Updated role (e.g. 'vip', 'subscriber', 'member')"),
+          status: z.string().optional().describe("Updated status: 'active' | 'suspended' | 'pending_verification'"),
+          password: z.string().min(6).optional().describe("New plaintext password (will be re-hashed)"),
+          metadata: z.record(z.string(), z.any()).optional().describe("Custom JSON metadata to merge"),
+        },
+      },
+      async ({ idOrEmail, name, role, status, password, metadata }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
+        const member = await tenantDb.member.findFirst({
+          where: {
+            tenantId: auth.tenantId,
+            OR: [
+              { id: idOrEmail },
+              { email: idOrEmail.toLowerCase().trim() },
+            ]
+          }
+        })
+
+        if (!member) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found.` }],
+            isError: true,
+          }
+        }
+
+        const updateData: Record<string, any> = {}
+        if (name !== undefined) updateData.name = name
+        if (role !== undefined) updateData.role = role
+        if (status !== undefined) updateData.status = status
+        if (metadata !== undefined) {
+          updateData.metadata = {
+            ...((member.metadata as Record<string, any>) || {}),
+            ...metadata,
+          }
+        }
+        if (password) {
+          updateData.passwordHash = await hashMemberPassword(password)
+        }
+
+        const updated = await tenantDb.member.update({
+          where: { id: member.id },
+          data: updateData,
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            role: true,
+            status: true,
+            metadata: true,
+            updatedAt: true,
+          }
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: `✅ Member '${updated.email}' updated successfully.\n\n${JSON.stringify(updated, null, 2)}`
+          }]
+        }
+      }
+    )
+
+    // ── delete_member ─────────────────────────────────────────────────────────
+    server.registerTool(
+      "delete_member",
+      {
+        title: "Delete End-User Member",
+        description: "Permanently delete an end-user member and invalidate all associated sessions.",
+        inputSchema: {
+          idOrEmail: z.string().describe("Member ID or email to delete"),
+        },
+      },
+      async ({ idOrEmail }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+
+        const tenantDb = (await getTenantDb(auth.tenantSlug)) as any
+        const member = await tenantDb.member.findFirst({
+          where: {
+            tenantId: auth.tenantId,
+            OR: [
+              { id: idOrEmail },
+              { email: idOrEmail.toLowerCase().trim() },
+            ]
+          }
+        })
+
+        if (!member) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Member '${idOrEmail}' not found.` }],
+            isError: true,
+          }
+        }
+
+        await tenantDb.member.delete({
+          where: { id: member.id }
+        })
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: `✅ Member '${member.email}' (ID: ${member.id}) deleted successfully.`
+          }]
+        }
+      }
+    )
   },
   {
-    serverInfo: { name: "sacms-mcp", version: "2.1.0" },
+    serverInfo: { name: "sacms-mcp", version: "2.2.0" },
   }
 )
 
