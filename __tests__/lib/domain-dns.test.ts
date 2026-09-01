@@ -52,14 +52,19 @@ describe("Domain DNS Utility", () => {
     expect(txtRecord?.value).toContain("sacms-verify=")
   })
 
-  it("should generate CNAME Record and TXT Record for Subdomain", () => {
+  it("should generate CNAME Record, A Record, and TXT Record for Subdomain in unified list", () => {
     const records = getExpectedDnsRecords("dpr.intanjayakab.go.id", "tenant-123")
-    expect(records).toHaveLength(2)
+    expect(records).toHaveLength(3)
 
     const cnameRecord = records.find((r) => r.type === "CNAME")
     expect(cnameRecord).toBeDefined()
     expect(cnameRecord?.name).toBe("dpr")
     expect(cnameRecord?.value).toContain("sacms.cloud")
+
+    const aRecord = records.find((r) => r.type === "A")
+    expect(aRecord).toBeDefined()
+    expect(aRecord?.name).toBe("dpr")
+    expect(aRecord?.value).toBeTruthy()
 
     const txtRecord = records.find((r) => r.type === "TXT")
     expect(txtRecord).toBeDefined()
