@@ -38,10 +38,10 @@ function legacySimpleHash(password: string): string {
 }
 
 const ROOT_DOMAIN = process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud"
-const COOKIE_DOMAIN = process.env.NEXTAUTH_COOKIE_DOMAIN ||
-  (process.env.NODE_ENV === "production" ? `.${ROOT_DOMAIN}` : undefined)
+const isLocalhost = ROOT_DOMAIN.includes("localhost") || ROOT_DOMAIN.includes("127.0.0.1")
+const COOKIE_DOMAIN = process.env.NEXTAUTH_COOKIE_DOMAIN || (!isLocalhost ? `.${ROOT_DOMAIN}` : undefined)
 
-const useSecure = process.env.NODE_ENV === "production"
+const useSecure = Boolean(process.env.NEXTAUTH_URL?.startsWith("https://") || process.env.NODE_ENV === "production")
 const cookiePrefix = useSecure ? "__Secure-" : ""
 
 export const authOptions: NextAuthOptions = {
