@@ -241,24 +241,6 @@ console.log(response.text);`
         }
       }, null, 2)
 
-    case "chatgpt-plugin":
-      return JSON.stringify({
-        name: "sacms",
-        version: "2.2.0",
-        description: "Official SaCMS Plugin for ChatGPT & Codex",
-        skills: "./skills/",
-        mcpServers: {
-          sacms: {
-            url: mcpUrl,
-            transport: "sse",
-            headers: {
-              Authorization: `Bearer ${token}`,
-              Accept: "application/json, text/event-stream"
-            }
-          }
-        }
-      }, null, 2)
-
     case "v0":
       return mcpUrl
 
@@ -281,20 +263,6 @@ interface PlatformInfo {
 }
 
 const PLATFORMS: PlatformInfo[] = [
-  {
-    id: "chatgpt-plugin",
-    name: "OpenAI Plugin (ChatGPT & Codex)",
-    icon: "🧩",
-    badge: "Official Plugin 2.0",
-    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
-    configPath: "CLI: codex plugin marketplace add zonggonau/sacms",
-    steps: [
-      "Tambahkan marketplace SaCMS via CLI: codex plugin marketplace add zonggonau/sacms",
-      "Buka ChatGPT Desktop / Codex → Plugins Directory → pilih marketplace 'SaCMS Official Plugins' → Klik Install.",
-      "Atau di ChatGPT Web Developer Mode (chatgpt.com/plugins): klik '+' → masukkan URL MCP Server https://sacms.cloud/api/mcp dengan Header Authorization: Bearer <TOKEN>.",
-      "ChatGPT & Codex langsung mengenali 4 workflow skills (manage-content, build-schema, hosting-deployment, webhooks-automation) dan 31 live tools CMS!"
-    ]
-  },
   {
     id: "antigravity",
     name: "Antigravity (AGY)",
@@ -599,7 +567,6 @@ export function MCPDashboardClient({
     if (platformId === "cursor") filename = "mcp.json"
     else if (platformId === "vscode") filename = "mcp.json"
     else if (platformId === "claude") filename = "claude_desktop_config.json"
-    else if (platformId === "chatgpt-plugin") filename = "plugin.json"
     else if (platformId === "cline") filename = "cline_mcp_settings.json"
 
     const blob = new Blob([snippet], { type: "application/json" })
