@@ -1,10 +1,25 @@
-import crypto from "crypto"
+import crypto, { timingSafeEqual } from "crypto"
 import bcrypt from "bcrypt"
 import { db, getTenantDb } from "@/lib/database"
 
 const SALT_ROUNDS = 12
 const ACCESS_TOKEN_TTL_SECONDS = 60 * 15 // 15 minutes
 const REFRESH_TOKEN_TTL_DAYS = 7 // 7 days
+
+/**
+ * Resolve the JWT signing secret. Hard-throws if NEXTAUTH_SECRET is not set
+ * to prevent signing tokens with a publicly-known fallback string.
+ */
+function getJwtSecret(): string {
+  const secret = process.env.NEXTAUTH_SECRET
+  if (!secret) {
+    throw new Error(
+      "[SECURITY] NEXTAUTH_SECRET is not set. Cannot sign or verify member JWT tokens. " +
+      "Set NEXTAUTH_SECRET in your .env file before using headless member auth."
+    )
+  }
+  return secret
+}
 
 export interface MemberJwtPayload {
   sub: string // member ID
@@ -65,7 +80,7 @@ function base64UrlDecode(str: string): string {
  */
 export function signMemberAccessToken(
   payload: Omit<MemberJwtPayload, "iat" | "exp">,
-  secret = process.env.NEXTAUTH_SECRET || "sacms-member-jwt-secret-key"
+  secret: string = getJwtSecret()
 ): { token: string; expiresIn: number } {
   const now = Math.floor(Date.now() / 1000)
   const exp = now + ACCESS_TOKEN_TTL_SECONDS
@@ -99,7 +114,7 @@ export function signMemberAccessToken(
  */
 export function verifyMemberAccessToken(
   token: string,
-  secret = process.env.NEXTAUTH_SECRET || "sacms-member-jwt-secret-key"
+  secret: string = getJwtSecret()
 ): MemberJwtPayload | null {
   try {
     const parts = token.split(".")
@@ -114,7 +129,12 @@ export function verifyMemberAccessToken(
       .replace(/\+/g, "-")
       .replace(/\//g, "_")
 
-    if (signature !== expectedSignature) return null
+    // Timing-safe comparison to prevent signature brute-force via response timing
+    const sigBuffer = Buffer.from(signature)
+    const expectedBuffer = Buffer.from(expectedSignature)
+    if (sigBuffer.length !== expectedBuffer.length || !timingSafeEqual(sigBuffer, expectedBuffer)) {
+      return null
+    }
 
     const payloadJson = base64UrlDecode(encodedPayload)
     const payload = JSON.parse(payloadJson) as MemberJwtPayload

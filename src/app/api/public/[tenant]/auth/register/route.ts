@@ -7,6 +7,7 @@ import {
   generateRefreshTokenString, 
   REFRESH_TOKEN_TTL_DAYS 
 } from "@/lib/member-auth"
+import { rateLimit } from "@/lib/rate-limit"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -34,6 +35,17 @@ export async function POST(
     const { tenant: tenantSlug } = await params
     if (!tenantSlug) {
       return NextResponse.json({ error: "Tenant identifier required" }, { status: 400, headers: CORS_HEADERS })
+    }
+
+    // Rate limiting: 5 registrations per minute per IP
+    const forwardedFor = request.headers.get("x-forwarded-for")
+    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1"
+    const rl = await rateLimit(`auth:register:${tenantSlug}:${clientIp}`, { limit: 5, windowSeconds: 60 })
+    if (!rl.success) {
+      return NextResponse.json(
+        { error: "Terlalu banyak percobaan registrasi. Silakan tunggu 1 menit." },
+        { status: 429, headers: CORS_HEADERS }
+      )
     }
 
     // Resolve tenant
@@ -101,8 +113,7 @@ export async function POST(
     expiresAt.setDate(expiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS)
 
     const userAgent = request.headers.get("user-agent") || null
-    const forwardedFor = request.headers.get("x-forwarded-for")
-    const ipAddress = forwardedFor ? forwardedFor.split(",")[0].trim() : null
+    const ipAddress = clientIp || null
 
     await tenantDb.memberSession.create({
       data: {
