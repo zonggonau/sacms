@@ -113,28 +113,36 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // B6 Fix: Rate limit auth endpoints (30 req/min per IP)
+  // B6 Fix: Rate limit auth endpoints (Brute-force protection for login attempts)
   if (pathname.startsWith("/api/auth/")) {
     const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
-    const rl = await rateLimit(`auth:${ip}`, RATE_LIMITS.auth)
+    const isLocalIp = ip === "127.0.0.1" || ip === "::1" || ip === "localhost"
 
-    if (!rl.success) {
-      return new NextResponse(
-        JSON.stringify({
-          error: "Too Many Requests",
-          message: "Authentication rate limit exceeded.",
-          resetAt: new Date(rl.resetAt).toISOString(),
-        }),
-        {
-          status: 429,
-          headers: {
-            "Content-Type": "application/json",
-            "X-RateLimit-Limit": rl.limit.toString(),
-            "X-RateLimit-Remaining": rl.remaining.toString(),
-            "X-RateLimit-Reset": rl.resetAt.toString(),
-          },
-        }
-      )
+    // Only strictly rate-limit login credential submission (POST /api/auth/callback/credentials)
+    const isLoginAttempt = request.method === "POST" && pathname.includes("/callback/credentials")
+
+    if (!isLocalIp) {
+      const config = isLoginAttempt ? RATE_LIMITS.auth : { limit: 300, windowSeconds: 60 }
+      const rl = await rateLimit(`auth:${ip}${isLoginAttempt ? ":login" : ""}`, config)
+
+      if (!rl.success) {
+        return new NextResponse(
+          JSON.stringify({
+            error: "Too Many Requests",
+            message: "Authentication rate limit exceeded. Please try again later.",
+            resetAt: new Date(rl.resetAt).toISOString(),
+          }),
+          {
+            status: 429,
+            headers: {
+              "Content-Type": "application/json",
+              "X-RateLimit-Limit": rl.limit.toString(),
+              "X-RateLimit-Remaining": rl.remaining.toString(),
+              "X-RateLimit-Reset": rl.resetAt.toString(),
+            },
+          }
+        )
+      }
     }
   }
 
