@@ -7,7 +7,7 @@ import {
   generateRefreshTokenString, 
   REFRESH_TOKEN_TTL_DAYS 
 } from "@/lib/member-auth"
-import { checkRateLimit } from "@/lib/rate-limit"
+import { rateLimit } from "@/lib/rate-limit"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -37,8 +37,8 @@ export async function POST(
     // Rate limiting: 10 attempts per minute per IP
     const forwardedFor = request.headers.get("x-forwarded-for")
     const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1"
-    const rateLimit = await checkRateLimit(`auth:login:${tenantSlug}:${clientIp}`, 10, 60)
-    if (!rateLimit.allowed) {
+    const rl = await rateLimit(`auth:login:${tenantSlug}:${clientIp}`, { limit: 10, windowSeconds: 60 })
+    if (!rl.success) {
       return NextResponse.json(
         { error: "Terlalu banyak percobaan login. Silakan tunggu 1 menit." },
         { status: 429, headers: CORS_HEADERS }
