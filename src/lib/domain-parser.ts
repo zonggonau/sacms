@@ -1,5 +1,5 @@
-export const PUBLIC_GATEWAY_IP = process.env.NEXT_PUBLIC_GATEWAY_IP || "161.97.100.1"
-export const PUBLIC_CNAME_TARGET = process.env.NEXT_PUBLIC_CNAME_TARGET || "cname.sacms.cloud"
+export const PUBLIC_GATEWAY_IP = process.env.NEXT_PUBLIC_GATEWAY_IP || process.env.PUBLIC_GATEWAY_IP || "164.68.116.79"
+export const PUBLIC_CNAME_TARGET = process.env.NEXT_PUBLIC_CNAME_TARGET || process.env.PUBLIC_CNAME_TARGET || "cname.sacms.cloud"
 
 // Multi-part ccTLDs common in Indonesia and globally
 const TWO_PART_TLDS = new Set([
