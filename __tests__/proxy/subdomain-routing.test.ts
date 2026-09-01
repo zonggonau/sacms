@@ -80,10 +80,23 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
 
-  it("should rewrite admin.sacms.cloud/ to /dashboard workspace hub", async () => {
+  it("should rewrite unauthenticated admin.sacms.cloud/ directly to /login", async () => {
     const req = new NextRequest("http://admin.sacms.cloud/", {
       headers: {
         host: "admin.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/login")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
+  })
+
+  it("should rewrite authenticated admin.sacms.cloud/ to /dashboard workspace hub", async () => {
+    const req = new NextRequest("http://admin.sacms.cloud/", {
+      headers: {
+        host: "admin.sacms.cloud",
+        cookie: "next-auth.session-token=valid-token-mock",
       },
     })
 
@@ -92,10 +105,23 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
 
-  it("should rewrite owner subdomain u8f9c1d2e3b4a5f6.sacms.cloud to /owner/u8f9c1d2e3b4a5f6", async () => {
+  it("should rewrite unauthenticated owner subdomain to /login", async () => {
     const req = new NextRequest("http://u8f9c1d2e3b4a5f6.sacms.cloud/", {
       headers: {
         host: "u8f9c1d2e3b4a5f6.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/login")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("owner")
+  })
+
+  it("should rewrite authenticated owner subdomain u8f9c1d2e3b4a5f6.sacms.cloud to /owner/u8f9c1d2e3b4a5f6", async () => {
+    const req = new NextRequest("http://u8f9c1d2e3b4a5f6.sacms.cloud/", {
+      headers: {
+        host: "u8f9c1d2e3b4a5f6.sacms.cloud",
+        cookie: "next-auth.session-token=valid-token-mock",
       },
     })
 

@@ -168,6 +168,11 @@ export async function proxy(request: NextRequest) {
   const ROOT_DOMAIN = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
   const cleanHost = (host.split(":")[0] || "").toLowerCase()
 
+  const hasAuthCookie = Boolean(
+    request.cookies.get("next-auth.session-token") ||
+    request.cookies.get("__Secure-next-auth.session-token")
+  )
+
   let platformSubdomain: "api" | "cms" | "admin" | null = null
   let dynamicSubdomain: string | null = null
 
@@ -299,10 +304,10 @@ export async function proxy(request: NextRequest) {
       return response
     }
 
-    // Root CMS access -> rewrite to workspace selector / dashboard
+    // Root CMS access -> workspace selector (if authenticated) or login (if unauthenticated)
     if (pathname === "/" || pathname === "") {
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = "/dashboard"
+      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/login"
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "cms")
@@ -369,10 +374,10 @@ export async function proxy(request: NextRequest) {
       return response
     }
 
-    // Root admin access -> workspace hub
+    // Root admin access -> workspace hub (if authenticated) or login (if unauthenticated)
     if (pathname === "/" || pathname === "") {
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = "/dashboard"
+      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/login"
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "admin")
@@ -422,7 +427,11 @@ export async function proxy(request: NextRequest) {
     const isOwnerFormat = dynamicSubdomain.startsWith("u") && dynamicSubdomain.length >= 8
     if (isOwnerFormat) {
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = `/owner/${dynamicSubdomain}${pathname === "/" ? "" : pathname}`
+      if (!hasAuthCookie) {
+        rewriteUrl.pathname = "/login"
+      } else {
+        rewriteUrl.pathname = `/owner/${dynamicSubdomain}${pathname === "/" ? "" : pathname}`
+      }
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "owner")
