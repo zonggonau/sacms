@@ -1,36 +1,38 @@
 /**
- * POST /api/enterprise/activate
- * Activate a license key on this self-hosted instance
+ * POST /api/tenant/[tenant]/license/activate
+ * Activate an enterprise license key on a workspace.
+ *
+ * Requires the caller to be an owner of the workspace (withStaffAuth minRole:
+ * "owner"). The RSA signature proves the key is genuine; this gate proves the
+ * caller is entitled to attach it here.
  */
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { parseLicenseKey, isLicenseExpired, upsertLicenseCache } from "@/lib/license"
 import { db } from "@/lib/database"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { z } from "zod"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest, context: { params: Promise<{ tenant: string }> }) {
-  try {
-    const { tenant: tenantId } = await context.params
-    const body = await request.json()
-    const { licenseKey } = body
+const ActivateSchema = z.object({ licenseKey: z.string().min(1).max(8000) })
 
-    if (!licenseKey) {
-      return NextResponse.json({ error: "licenseKey is required" }, { status: 400 })
-    }
+export const POST = withStaffAuth(
+  async (request, context, { access }) => {
+    const { tenant: tenantId } = await context.params
+
+    const body = await readJson(request, ActivateSchema)
+    if (!body.ok) return body.response
+    const { licenseKey } = body.data
 
     // 1. Parse & verify RSA signature
     const { payload, error } = parseLicenseKey(licenseKey)
     if (!payload) {
-      return NextResponse.json({ error: error || "Invalid license key" }, { status: 400 })
+      return apiError("validation", { message: error || "Invalid license key" })
     }
 
     // 2. Check expiry
     if (isLicenseExpired(payload)) {
-      return NextResponse.json({
-        error: "This license key has expired",
-        expiresAt: new Date(payload.exp * 1000).toISOString(),
-        expiredSince: new Date(payload.exp * 1000).toISOString(),
-      }, { status: 400 })
+      return apiError("validation", { message: "This license key has expired" })
     }
 
     // 3. Try online validation (optional)
@@ -45,18 +47,17 @@ export async function POST(request: NextRequest, context: { params: Promise<{ te
         })
 
         if (!res.ok) {
-          const data = await res.json()
-          return NextResponse.json({
-            error: data.error || "License validation failed on license server",
-          }, { status: 400 })
+          const data = await res.json().catch(() => ({}))
+          return apiError("validation", {
+            message: data.error || "License validation failed on license server",
+          })
         }
       } catch {
-        // License server unreachable — continue with offline activation
         console.warn("[License] License server unreachable, activating offline")
       }
     }
 
-    // 4. Cache the license locally
+    // 4. Cache the license locally, scoped to the resolved tenant
     await upsertLicenseCache({
       valid: true,
       customerName: payload.name,
@@ -68,25 +69,15 @@ export async function POST(request: NextRequest, context: { params: Promise<{ te
       issuedAt: new Date(payload.iat * 1000),
       daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
       status: "active",
-    }, tenantId, licenseKey)
+    }, access.tenantId, licenseKey)
 
-    // 5. Also store in Tenant model for persistence if it's a valid tenant
-    const { getGlobalWorkspaceId } = await import("@/lib/settings");
-  const globalId = await getGlobalWorkspaceId();
-  if (tenantId !== globalId) {
-      try {
-        await db.tenant.update({
-          where: { id: tenantId },
-          data: { licenseKey },
+    // 5. Persist on the Tenant row (skip the global workspace)
+    if (!access.isGlobal) {
+      await db.tenant
+        .update({ where: { id: access.tenantId }, data: { licenseKey } })
+        .catch((err: { code?: string }) => {
+          if (err.code !== "P2025") throw err
         })
-      } catch (err: any) {
-        // If the record was not found (P2025), it means tenantId is likely a User ID 
-        // activating a license for their entire account. The LicenseCache is already updated, 
-        // so we can safely ignore this error.
-        if (err.code !== 'P2025') {
-          throw err;
-        }
-      }
     }
 
     return NextResponse.json({
@@ -97,8 +88,6 @@ export async function POST(request: NextRequest, context: { params: Promise<{ te
       expiresAt: new Date(payload.exp * 1000),
       daysRemaining: Math.max(0, Math.floor((payload.exp * 1000 - Date.now()) / 86400000)),
     })
-  } catch (err) {
-    console.error("License activation error:", err)
-    return NextResponse.json({ error: "Activation failed" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "owner" },
+)

@@ -1,15 +1,17 @@
 /**
- * GET /api/enterprise/status
- * Returns the current enterprise license status (for self-hosted instance UI)
+ * GET /api/tenant/[tenant]/license/status
+ * Current enterprise license status for a workspace. Members only — the body
+ * carries customer name / email / org.
  */
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { getCachedLicense, validateLicense, parseLicenseKey } from "@/lib/license"
 import { db } from "@/lib/database"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(request: NextRequest, context: { params: Promise<{ tenant: string }> }) {
-  const { tenant: tenantId } = await context.params
+export const GET = withStaffAuth(async (_request, _context, { access }) => {
+  const tenantId = access.tenantId
   try {
     // 1. Try database cache first
     let license = await getCachedLicense(tenantId)
@@ -67,4 +69,4 @@ export async function GET(request: NextRequest, context: { params: Promise<{ ten
     console.error("License status error:", err)
     return NextResponse.json({ valid: false, error: "Failed to check license" }, { status: 500 })
   }
-}
+})
