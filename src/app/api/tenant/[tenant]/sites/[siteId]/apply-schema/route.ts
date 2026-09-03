@@ -1,44 +1,25 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { McpClientBridge } from "@/lib/mcp/mcp-client-bridge"
 import { applySchemaPlan, SchemaPlanSchema } from "@/lib/ai/schema-engine"
 import { generateFullWebsiteProject } from "@/lib/ai/website-generator"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; siteId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug, siteId } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-      select: { id: true, slug: true, name: true }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+export const POST = withStaffAuth(
+  async (request, context, { access }) => {
+    const { siteId } = await context.params
+    const tenant = access.tenant
 
     const site = await db.site.findFirst({
-      where: { id: siteId, tenantId: tenant.id },
-      select: { id: true, name: true, slug: true, description: true }
+      where: { id: siteId, tenantId: access.tenantId },
+      select: { id: true, name: true, slug: true, description: true },
     })
-
-    if (!site) {
-      return NextResponse.json({ error: "Site not found" }, { status: 404 })
-    }
+    if (!site) return apiError("not_found", { message: "Site not found" })
 
     const json = await request.json()
     const parsed = SchemaPlanSchema.safeParse(json.schemaPlan)
     if (!parsed.success) {
-      return NextResponse.json({ error: "Format Schema Plan tidak valid", details: parsed.error.issues }, { status: 400 })
+      return apiError("validation", { message: "Format Schema Plan tidak valid", details: { issues: parsed.error.issues } })
     }
 
     const schemaPlan = parsed.data
@@ -94,8 +75,6 @@ export async function POST(
       schemaResults,
       updatedFiles: generatedFiles,
     })
-  } catch (error: any) {
-    console.error("Apply schema error:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

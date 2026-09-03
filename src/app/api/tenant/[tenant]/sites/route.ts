@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { z } from "zod"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const createSiteSchema = z.object({
   name: z.string().min(2, "Nama website minimal 2 karakter"),
@@ -11,77 +10,26 @@ const createSiteSchema = z.object({
   template: z.enum(["blank", "nextjs-tailwind", "landing-page", "ecommerce", "hotel", "blog"]).default("nextjs-tailwind"),
 })
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+export const GET = withStaffAuth(async (_request, _context, { access }) => {
+  const sites = await db.site.findMany({
+    where: { tenantId: access.tenantId },
+    include: { _count: { select: { files: true, versions: true, deployments: true } } },
+    orderBy: { updatedAt: "desc" },
+  })
+  return NextResponse.json({ sites })
+})
 
-    const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-      select: { id: true, slug: true, name: true }
-    })
+export const POST = withStaffAuth(
+  async (request, _context, { access }) => {
+    const tenant = access.tenant
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const parsed = await readJson(request, createSiteSchema)
+    if (!parsed.ok) return parsed.response
+    const { name, slug, description } = parsed.data
 
-    const sites = await db.site.findMany({
-      where: { tenantId: tenant.id },
-      include: {
-        _count: {
-          select: { files: true, versions: true, deployments: true }
-        }
-      },
-      orderBy: { updatedAt: "desc" }
-    })
-
-    return NextResponse.json({ sites })
-  } catch (error) {
-    console.error("Failed to list sites:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-      select: { id: true, slug: true, name: true }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    const json = await request.json()
-    const parsed = createSiteSchema.safeParse(json)
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-    }
-
-    const { name, slug, description, template } = parsed.data
-
-    // Check duplicate slug
-    const existing = await db.site.findFirst({
-      where: { tenantId: tenant.id, slug }
-    })
+    const existing = await db.site.findFirst({ where: { tenantId: tenant.id, slug } })
     if (existing) {
-      return NextResponse.json({ error: `Website dengan slug "${slug}" sudah digunakan.` }, { status: 409 })
+      return apiError("conflict", { message: `Website dengan slug "${slug}" sudah digunakan.` })
     }
 
     // Default starter files for Next.js App Router + Tailwind
@@ -258,8 +206,6 @@ export default async function HomePage() {
     })
 
     return NextResponse.json({ site }, { status: 201 })
-  } catch (error) {
-    console.error("Failed to create site:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

@@ -1,20 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-type Context = { params: Promise<{ tenant: string }> }
-
-export async function GET(request: NextRequest, context: Context) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
+export const GET = withStaffAuth(
+  async (_request, context, { access }) => {
     const { tenant: tenantSlug } = await context.params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
-
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
@@ -90,9 +80,6 @@ export async function GET(request: NextRequest, context: Context) {
         "Content-Disposition": `attachment; filename="${tenantSlug}-export-${new Date().toISOString().split("T")[0]}.json"`,
       },
     })
-
-  } catch (error) {
-    console.error("Export error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

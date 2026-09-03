@@ -1,50 +1,27 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { AgentOrchestrator, AgentStepEvent } from "@/lib/ai/agent-orchestrator"
 import { z } from "zod"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const chatRequestSchema = z.object({
   prompt: z.string().min(2, "Prompt minimal 2 karakter"),
   conversationId: z.string().optional(),
 })
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; siteId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug, siteId } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-      select: { id: true, slug: true, name: true }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+export const POST = withStaffAuth(
+  async (request, context, { access, session }) => {
+    const { siteId } = await context.params
+    const tenant = access.tenant
 
     const site = await db.site.findFirst({
-      where: { id: siteId, tenantId: tenant.id },
-      select: { id: true, name: true }
+      where: { id: siteId, tenantId: access.tenantId },
+      select: { id: true, name: true },
     })
+    if (!site) return apiError("not_found", { message: "Site not found" })
 
-    if (!site) {
-      return NextResponse.json({ error: "Site not found" }, { status: 404 })
-    }
-
-    const json = await request.json()
-    const parsed = chatRequestSchema.safeParse(json)
-    if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.issues[0].message }, { status: 400 })
-    }
-
+    const parsed = await readJson(request, chatRequestSchema)
+    if (!parsed.ok) return parsed.response
     const { prompt, conversationId } = parsed.data
 
     // Find or create conversation
@@ -88,7 +65,7 @@ export async function POST(
     })
 
     if (!result.success) {
-      return NextResponse.json({ error: result.error || "Gagal mengeksekusi pipeline AI" }, { status: 400 })
+      return apiError("validation", { message: result.error || "Gagal mengeksekusi pipeline AI" })
     }
 
     // Save assistant response message to database
@@ -113,8 +90,6 @@ export async function POST(
       schemaDiff: result.schemaDiff,
       creditsUsed: result.creditsUsed,
     })
-  } catch (error: any) {
-    console.error("Chat orchestration error:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
