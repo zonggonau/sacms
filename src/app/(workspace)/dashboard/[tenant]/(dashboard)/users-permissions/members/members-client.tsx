@@ -1,0 +1,291 @@
+﻿"use client"
+
+import { useState } from "react"
+import { Users, UserPlus, Search, Shield, MoreHorizontal, CheckCircle, XCircle, Clock } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Badge } from "@/components/ui/badge"
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { toast } from "sonner"
+
+interface Member {
+  id: string
+  email: string
+  name: string | null
+  avatar: string | null
+  role: string
+  status: string
+  createdAt: string
+  lastLoginAt: string | null
+  emailVerified: string | null
+}
+
+interface Role {
+  id: string
+  name: string
+  slug: string
+  isSystem: boolean
+}
+
+interface Props {
+  tenantSlug: string
+  initialMembers: Member[]
+  roles: Role[]
+  total: number
+}
+
+const STATUS_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
+  active: { label: "Active", variant: "default" },
+  suspended: { label: "Suspended", variant: "destructive" },
+  pending_verification: { label: "Pending", variant: "secondary" },
+}
+
+function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string; roles: Role[]; onSuccess: (m: Member) => void }) {
+  const [open, setOpen] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [form, setForm] = useState({ name: "", email: "", password: "", role: "authenticated" })
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/app-members`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(form),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error ?? "Failed to create member")
+      toast.success("Member created successfully")
+      onSuccess(data.member)
+      setOpen(false)
+      setForm({ name: "", email: "", password: "", role: "authenticated" })
+    } catch (err: any) {
+      toast.error(err.message)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" className="gap-2">
+          <UserPlus className="h-4 w-4" /> Add Member
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Application User</DialogTitle>
+          <DialogDescription>Create a new end-user account for your application or website.</DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4 mt-2">
+          <div className="space-y-1">
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" placeholder="Full name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="email">Email *</Label>
+            <Input id="email" type="email" placeholder="user@example.com" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="password">Password *</Label>
+            <Input id="password" type="password" placeholder="Min. 8 characters" required minLength={8} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="role">Role</Label>
+            <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
+              <SelectTrigger id="role"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {roles.map(r => <SelectItem key={r.id} value={r.slug}>{r.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="flex justify-end gap-2 pt-2">
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+            <Button type="submit" disabled={loading}>{loading ? "Creating..." : "Create Member"}</Button>
+          </div>
+        </form>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+export function MembersClient({ tenantSlug, initialMembers, roles, total }: Props) {
+  const [members, setMembers] = useState<Member[]>(initialMembers)
+  const [search, setSearch] = useState("")
+  const [statusFilter, setStatusFilter] = useState("all")
+  const [roleFilter, setRoleFilter] = useState("all")
+
+  const filtered = members.filter(m => {
+    const matchSearch = !search || m.email.includes(search) || (m.name ?? "").toLowerCase().includes(search.toLowerCase())
+    const matchStatus = statusFilter === "all" || m.status === statusFilter
+    const matchRole = roleFilter === "all" || m.role === roleFilter
+    return matchSearch && matchStatus && matchRole
+  })
+
+  const handleSuspend = async (member: Member) => {
+    const newStatus = member.status === "active" ? "suspended" : "active"
+    const res = await fetch(`/api/tenant/${tenantSlug}/app-members/${member.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    if (res.ok) {
+      setMembers(prev => prev.map(m => m.id === member.id ? { ...m, status: newStatus } : m))
+      toast.success(`Member ${newStatus === "active" ? "reactivated" : "suspended"}`)
+    }
+  }
+
+  const handleDelete = async (memberId: string) => {
+    if (!confirm("Delete this member? This cannot be undone.")) return
+    const res = await fetch(`/api/tenant/${tenantSlug}/app-members/${memberId}`, { method: "DELETE" })
+    if (res.ok) {
+      setMembers(prev => prev.filter(m => m.id !== memberId))
+      toast.success("Member deleted")
+    }
+  }
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6" /> Application Users</h1>
+          <p className="text-sm text-muted-foreground mt-1">{total} end-user member{total !== 1 ? "s" : ""} across your application</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" asChild>
+            <a href={`/dashboard/${tenantSlug}/users-permissions/roles`} className="gap-2 flex items-center">
+              <Shield className="h-4 w-4" /> Manage Roles
+            </a>
+          </Button>
+          <AddMemberDialog tenantSlug={tenantSlug} roles={roles} onSuccess={m => setMembers(prev => [m, ...prev])} />
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="flex gap-3 flex-wrap">
+        <div className="relative flex-1 min-w-[200px]">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input className="pl-9" placeholder="Search by email or name..." value={search} onChange={e => setSearch(e.target.value)} />
+        </div>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="suspended">Suspended</SelectItem>
+            <SelectItem value="pending_verification">Pending</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Role" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            {roles.map(r => <SelectItem key={r.id} value={r.slug}>{r.name}</SelectItem>)}
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Table */}
+      <div className="border rounded-lg overflow-hidden">
+        <Table>
+          <TableHeader>
+            <TableRow className="bg-muted/40">
+              <TableHead>User</TableHead>
+              <TableHead>Role</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Joined</TableHead>
+              <TableHead>Last Login</TableHead>
+              <TableHead className="w-12"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filtered.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
+                  {search || statusFilter !== "all" || roleFilter !== "all" ? "No members match your filters." : "No members yet. Add your first user."}
+                </TableCell>
+              </TableRow>
+            ) : filtered.map(member => (
+              <TableRow key={member.id} className="hover:bg-muted/30">
+                <TableCell>
+                  <div className="flex items-center gap-3">
+                    <Avatar className="h-8 w-8">
+                      <AvatarImage src={member.avatar ?? undefined} />
+                      <AvatarFallback className="text-xs">{(member.name ?? member.email).slice(0, 2).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div>
+                      <div className="font-medium text-sm">{member.name ?? <span className="text-muted-foreground italic">No name</span>}</div>
+                      <div className="text-xs text-muted-foreground">{member.email}</div>
+                    </div>
+                    {member.emailVerified ? (
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-1" title="Email verified" />
+                    ) : (
+                      <XCircle className="h-3.5 w-3.5 text-muted-foreground ml-1" title="Email not verified" />
+                    )}
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Badge variant="outline" className="text-xs font-mono">{member.role}</Badge>
+                </TableCell>
+                <TableCell>
+                  <Badge variant={STATUS_BADGES[member.status]?.variant ?? "outline"} className="text-xs">
+                    {STATUS_BADGES[member.status]?.label ?? member.status}
+                  </Badge>
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {new Date(member.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {member.lastLoginAt ? new Date(member.lastLoginAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : <span className="italic">Never</span>}
+                </TableCell>
+                <TableCell>
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                        <MoreHorizontal className="h-4 w-4" />
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                      <DropdownMenuItem onClick={() => handleSuspend(member)}>
+                        {member.status === "active" ? "Suspend" : "Reactivate"}
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(member.id)}>Delete Member</DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
+  )
+}

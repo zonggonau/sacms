@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/database"
+import { randomUUID, createHash } from "crypto"
+import { db, getTenantDb } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
-import { getCache, setCache } from "@/lib/cache"
+import { getCache, setCache, invalidatePattern } from "@/lib/cache"
 import { logApiRequest } from "@/lib/monitoring"
-import { createHash } from "crypto"
 import { isWorkflowStatus } from "@/lib/content-workflow-rules"
+import { resolvePublicApiActor, authorizeActor } from "@/lib/public-api-actor"
 import {
   parseFilters,
   buildFilterSQL,
@@ -568,6 +569,157 @@ export async function GET(
     return NextResponse.json(
       { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
       { status: 500 }
+    )
+  }
+}
+
+/**
+ * Public API — create an entry.
+ *
+ * Authorized via the RBAC permission engine: the caller's role (member JWT or the
+ * anonymous "public" role) must be granted the `create` action for this content
+ * type. Full-access API tokens are also accepted.
+ *
+ * Body: `{ data: { ...fields }, locale?: string }`
+ * New entries are always created as DRAFT; publishing goes through the CMS workflow.
+ */
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string; contentType: string }> }
+) {
+  const startTime = Date.now()
+  const { tenant: tenantParam, contentType: contentTypeSlug } = await params
+
+  const logResponse = (res: NextResponse, tenantId: string | null) => {
+    logApiRequest({
+      tenantId,
+      endpoint: request.nextUrl.pathname,
+      method: "POST",
+      statusCode: res.status,
+      duration: Date.now() - startTime,
+    }).catch(() => {})
+    return res
+  }
+
+  try {
+    const resolution = await resolvePublicApiActor(request, tenantParam)
+    if (!resolution.ok) {
+      return logResponse(NextResponse.json({ error: resolution.error }, { status: resolution.status }), null)
+    }
+    const actor = resolution.actor
+
+    const denial = await authorizeActor(actor, contentTypeSlug, "create")
+    if (denial) {
+      return logResponse(NextResponse.json({ error: denial.error }, { status: denial.status }), actor.tenantId)
+    }
+
+    // Per-actor write rate limit (10 writes / 10s).
+    const rlKey =
+      actor.kind === "member"
+        ? `public:write:member:${actor.memberId}`
+        : actor.kind === "api-token"
+          ? `public:write:token:${actor.tokenId}`
+          : `public:write:public:${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"}`
+    const rl = await rateLimit(rlKey, { limit: 10, windowSeconds: 10 })
+    if (!rl.success) {
+      return logResponse(
+        NextResponse.json({ error: "Write rate limit exceeded. Slow down." }, { status: 429 }),
+        actor.tenantId
+      )
+    }
+
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== "object" || typeof body.data !== "object" || body.data === null) {
+      return logResponse(
+        NextResponse.json({ error: "Request body must be { data: { ...fields } }" }, { status: 400 }),
+        actor.tenantId
+      )
+    }
+
+    const tenantDb = await getTenantDb(actor.tenantId)
+
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { slug: contentTypeSlug, OR: [{ tenantId: actor.tenantId }, { tenantId: null }] },
+      include: { schemaFields: { orderBy: { order: "asc" } }, tenants: true },
+    })
+    if (!contentType) {
+      return logResponse(NextResponse.json({ error: "Content type not found" }, { status: 404 }), actor.tenantId)
+    }
+    const isGlobal = contentType.tenants.length === 0
+    const isAssigned = contentType.tenants.some((t) => t.tenantId === actor.tenantId && t.enabled)
+    if (!isGlobal && !isAssigned) {
+      return logResponse(
+        NextResponse.json({ error: "Content type not available for this tenant" }, { status: 403 }),
+        actor.tenantId
+      )
+    }
+
+    // Resolve locale (requested → tenant default → "id")
+    const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
+      where: { tenantId: actor.tenantId, isDefault: true },
+      select: { locale: true },
+    })
+    const locale =
+      (typeof body.locale === "string" && body.locale.trim()) || tenantDefaultLocale?.locale || "id"
+
+    // Whitelist incoming fields to the content type's known slugs; enforce required.
+    const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
+    const cleanData: Record<string, unknown> = {}
+    for (const [k, v] of Object.entries(body.data as Record<string, unknown>)) {
+      if (allowedFieldNames.has(k)) cleanData[k] = v
+    }
+    const missingRequired = contentType.schemaFields
+      .filter((f) => f.required && (cleanData[f.slug] === undefined || cleanData[f.slug] === null || cleanData[f.slug] === ""))
+      .map((f) => f.slug)
+    if (missingRequired.length > 0) {
+      return logResponse(
+        NextResponse.json({ error: "Missing required fields", fields: missingRequired }, { status: 400 }),
+        actor.tenantId
+      )
+    }
+
+    const documentId = randomUUID()
+    const created = await tenantDb.contentEntry.create({
+      data: {
+        contentTypeId: contentType.id,
+        tenantId: actor.tenantId,
+        documentId,
+        locale,
+        status: "DRAFT",
+        data: cleanData as any,
+        createdBy: actor.kind === "member" ? actor.memberId : null,
+        updatedBy: actor.kind === "member" ? actor.memberId : null,
+      },
+    })
+
+    // Bust the public list/detail cache for this content type.
+    await invalidatePattern(`public_api:${actor.tenantSlug}:${contentTypeSlug}:*`).catch(() => {})
+
+    return logResponse(
+      NextResponse.json(
+        {
+          data: {
+            id: created.id,
+            documentId: created.documentId,
+            ...cleanData,
+            locale: created.locale,
+            status: created.status,
+            createdAt: created.createdAt,
+            updatedAt: created.updatedAt,
+          },
+        },
+        { status: 201 }
+      ),
+      actor.tenantId
+    )
+  } catch (error) {
+    console.error("Error creating content:", error)
+    return logResponse(
+      NextResponse.json(
+        { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
+        { status: 500 }
+      ),
+      null
     )
   }
 }

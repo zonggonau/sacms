@@ -134,6 +134,7 @@ model Tenant {
   infrastructureServers  InfrastructureServer[]
   supportTickets         SupportTicket[]
   appMembers             Member[]
+  memberRoles            MemberRole[]
 
   @@map("tenants")
 }
@@ -1050,13 +1051,15 @@ model Member {
   passwordHash  String
   name          String?
   avatar        String?
-  role          String          @default("member") // member | subscriber | vip | editor
+  role          String          @default("authenticated") // slug of MemberRole (public | authenticated | custom slugs)
   status        String          @default("active") // active | suspended | pending_verification
   emailVerified DateTime?
   metadata      Json?           // Custom attributes (e.g. phone, address, preferences)
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
   lastLoginAt   DateTime?
+  passwordResetToken   String?  @unique
+  passwordResetExpires DateTime?
   tenant        Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessions      MemberSession[]
 
@@ -1084,3 +1087,39 @@ model MemberSession {
   @@map("member_sessions")
 }
 
+// ─── Strapi-parity: Users & Permissions Plugin (MemberRole) ─────────
+
+/// A role scoped to a single tenant (e.g. "Public", "Authenticated", "VIP Member")
+model MemberRole {
+  id          String                 @id @default(cuid())
+  tenantId    String
+  name        String                 // Human label e.g. "VIP Member"
+  slug        String                 // Identifier e.g. "vip-member"
+  description String?
+  isSystem    Boolean                @default(false) // true = public | authenticated (cannot delete)
+  createdAt   DateTime               @default(now())
+  updatedAt   DateTime               @updatedAt
+  tenant      Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  permissions MemberRolePermission[]
+
+  @@unique([tenantId, slug])
+  @@index([tenantId])
+  @@map("member_roles")
+}
+
+/// Granular permission granted to a MemberRole for a content-type and action
+/// action: find | findOne | create | update | delete
+model MemberRolePermission {
+  id            String     @id @default(cuid())
+  memberRoleId  String
+  contentTypeSlug String   // slug of ContentType, or "*" = all
+  action        String     // find | findOne | create | update | delete
+  granted       Boolean    @default(true)
+  conditions    Json?      // Optional: field-level or ownership conditions
+  createdAt     DateTime   @default(now())
+  memberRole    MemberRole @relation(fields: [memberRoleId], references: [id], onDelete: Cascade)
+
+  @@unique([memberRoleId, contentTypeSlug, action])
+  @@index([memberRoleId])
+  @@map("member_role_permissions")
+}

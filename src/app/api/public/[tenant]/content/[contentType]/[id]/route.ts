@@ -1,14 +1,178 @@
 import { NextRequest, NextResponse } from "next/server"
-import { db } from "@/lib/database"
-import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
-import { getCache, setCache } from "@/lib/cache"
-import { logApiRequest } from "@/lib/monitoring"
 import { createHash } from "crypto"
+import { db, getTenantDb } from "@/lib/database"
+import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
+import { getCache, setCache, invalidatePattern } from "@/lib/cache"
+import { logApiRequest } from "@/lib/monitoring"
 import {
   parseFieldSelection,
   parsePopulate,
   applyFieldSelection,
 } from "@/lib/filters"
+import {
+  resolvePublicApiActor,
+  authorizeActor,
+  type PublicApiActor,
+} from "@/lib/public-api-actor"
+
+/** Ownership check for member actors: `conditions.owner === true` on the granted
+ * permission restricts the action to entries the member created. */
+async function assertOwnershipIfRequired(
+  actor: PublicApiActor,
+  tenantId: string,
+  contentTypeSlug: string,
+  action: "update" | "delete",
+  entry: { createdBy: string | null },
+): Promise<boolean> {
+  if (actor.kind !== "member") return true
+  const perm = await db.memberRolePermission.findFirst({
+    where: {
+      memberRole: { tenantId, slug: actor.roleSlug },
+      OR: [{ contentTypeSlug }, { contentTypeSlug: "*" }],
+      action,
+      granted: true,
+    },
+    orderBy: { contentTypeSlug: "desc" }, // specific ("posts") before wildcard ("*")
+  })
+  const conditions = (perm?.conditions ?? null) as { owner?: boolean } | null
+  if (!conditions?.owner) return true
+  return entry.createdBy === actor.memberId
+}
+
+async function writeHandler(
+  request: NextRequest,
+  params: Promise<{ tenant: string; contentType: string; id: string }>,
+  action: "update" | "delete",
+) {
+  const startTime = Date.now()
+  const { tenant: tenantParam, contentType: contentTypeSlug, id: entryIdOrDocId } = await params
+
+  const log = (res: NextResponse, tenantId: string | null) => {
+    logApiRequest({
+      tenantId,
+      endpoint: request.nextUrl.pathname,
+      method: request.method,
+      statusCode: res.status,
+      duration: Date.now() - startTime,
+    }).catch(() => {})
+    return res
+  }
+
+  try {
+    const resolution = await resolvePublicApiActor(request, tenantParam)
+    if (!resolution.ok) {
+      return log(NextResponse.json({ error: resolution.error }, { status: resolution.status }), null)
+    }
+    const actor = resolution.actor
+
+    const denial = await authorizeActor(actor, contentTypeSlug, action)
+    if (denial) {
+      return log(NextResponse.json({ error: denial.error }, { status: denial.status }), actor.tenantId)
+    }
+
+    const rlKey =
+      actor.kind === "member"
+        ? `public:write:member:${actor.memberId}`
+        : actor.kind === "api-token"
+          ? `public:write:token:${actor.tokenId}`
+          : `public:write:public:${request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown"}`
+    const rl = await rateLimit(rlKey, { limit: 10, windowSeconds: 10 })
+    if (!rl.success) {
+      return log(NextResponse.json({ error: "Write rate limit exceeded. Slow down." }, { status: 429 }), actor.tenantId)
+    }
+
+    const tenantDb = await getTenantDb(actor.tenantId)
+
+    const contentType = await tenantDb.contentType.findFirst({
+      where: { slug: contentTypeSlug, OR: [{ tenantId: actor.tenantId }, { tenantId: null }] },
+      include: { schemaFields: { orderBy: { order: "asc" } }, tenants: true },
+    })
+    if (!contentType) {
+      return log(NextResponse.json({ error: "Content type not found" }, { status: 404 }), actor.tenantId)
+    }
+    const isGlobal = contentType.tenants.length === 0
+    const isAssigned = contentType.tenants.some((t) => t.tenantId === actor.tenantId && t.enabled)
+    if (!isGlobal && !isAssigned) {
+      return log(NextResponse.json({ error: "Content type not available for this tenant" }, { status: 403 }), actor.tenantId)
+    }
+
+    const entry = await tenantDb.contentEntry.findFirst({
+      where: {
+        contentTypeId: contentType.id,
+        tenantId: actor.tenantId,
+        OR: [{ id: entryIdOrDocId }, { documentId: entryIdOrDocId }],
+      },
+    })
+    if (!entry) {
+      return log(NextResponse.json({ error: "Entry not found" }, { status: 404 }), actor.tenantId)
+    }
+
+    const owns = await assertOwnershipIfRequired(actor, actor.tenantId, contentTypeSlug, action, entry)
+    if (!owns) {
+      return log(NextResponse.json({ error: "You can only modify entries you created" }, { status: 403 }), actor.tenantId)
+    }
+
+    if (action === "delete") {
+      await tenantDb.contentEntry.delete({ where: { id: entry.id } })
+      await invalidatePattern(`public_api*:${actor.tenantSlug}:${contentTypeSlug}:*`).catch(() => {})
+      return log(NextResponse.json({ data: { id: entry.id, deleted: true } }, { status: 200 }), actor.tenantId)
+    }
+
+    // ---- update ----
+    const body = await request.json().catch(() => null)
+    if (!body || typeof body !== "object" || typeof body.data !== "object" || body.data === null) {
+      return log(NextResponse.json({ error: "Request body must be { data: { ...fields } }" }, { status: 400 }), actor.tenantId)
+    }
+
+    const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
+    let currentData: Record<string, unknown> = {}
+    try {
+      currentData = typeof entry.data === "string" ? JSON.parse(entry.data) : ((entry.data as Record<string, unknown>) || {})
+    } catch {
+      currentData = {}
+    }
+    const merged = { ...currentData }
+    for (const [k, v] of Object.entries(body.data as Record<string, unknown>)) {
+      if (allowedFieldNames.has(k)) merged[k] = v
+    }
+
+    const updated = await tenantDb.contentEntry.update({
+      where: { id: entry.id },
+      data: {
+        data: merged as any,
+        updatedBy: actor.kind === "member" ? actor.memberId : null,
+      },
+    })
+
+    await invalidatePattern(`public_api*:${actor.tenantSlug}:${contentTypeSlug}:*`).catch(() => {})
+
+    return log(
+      NextResponse.json(
+        {
+          data: {
+            id: updated.id,
+            documentId: updated.documentId,
+            ...merged,
+            locale: updated.locale,
+            status: updated.status,
+            updatedAt: updated.updatedAt,
+          },
+        },
+        { status: 200 }
+      ),
+      actor.tenantId
+    )
+  } catch (error) {
+    console.error(`Error on content ${action}:`, error)
+    return log(
+      NextResponse.json(
+        { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
+        { status: 500 }
+      ),
+      null
+    )
+  }
+}
 
 /**
  * Public API - Get single entry by ID or documentId with relation population and locale fallback.
@@ -359,4 +523,20 @@ export async function GET(
       { status: 500 }
     )
   }
+}
+
+/** Public API — update an entry (RBAC `update`, honours `conditions.owner`). */
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string; contentType: string; id: string }> }
+) {
+  return writeHandler(request, params, "update")
+}
+
+/** Public API — delete an entry (RBAC `delete`, honours `conditions.owner`). */
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string; contentType: string; id: string }> }
+) {
+  return writeHandler(request, params, "delete")
 }
