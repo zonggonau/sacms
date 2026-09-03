@@ -1,16 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import nodemailer from "nodemailer"
 import { Resend } from "resend"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function POST(request: NextRequest) {
+export const POST = withAdminAuth(async (request, _context, { session }) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
     const body = await request.json()
     const { 
       targetEmail, 
@@ -96,4 +90,4 @@ export async function POST(request: NextRequest) {
   } catch (error: any) {
     return NextResponse.json({ success: false, message: error.message || "Gagal menguji pengiriman email." }, { status: 500 })
   }
-}
+})

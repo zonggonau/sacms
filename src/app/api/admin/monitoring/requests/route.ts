@@ -1,19 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
 // GET /api/admin/monitoring/requests - Get recent API request logs
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async (request) => {
     const { searchParams } = request.nextUrl
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
@@ -57,14 +47,10 @@ export async function GET(request: NextRequest) {
       db.apiRequest.count({ where })
     ])
 
-    return NextResponse.json({ 
+    return NextResponse.json({
       requests,
       total,
       page,
       totalPages: Math.ceil(total / limit)
     })
-  } catch (error) {
-    console.error("Error fetching API requests:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})

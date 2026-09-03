@@ -1,17 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
 import { isContaboConfigured } from "@/lib/infrastructure/contabo"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async () => {
     const healthChecks: Record<string, { status: "healthy" | "degraded" | "down", latencyMs: number, message?: string }> = {}
 
     // 1. PostgreSQL 17 Master DB
@@ -77,7 +70,4 @@ export async function GET() {
       timestamp: new Date().toISOString(),
       health: healthChecks
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 })
-  }
-}
+})
