@@ -1,15 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(
+  async () => {
     const [webhooks, recentLogs, deadLetters] = await Promise.all([
       db.webhook.findMany({
         include: {
@@ -60,21 +54,13 @@ export async function GET(request: NextRequest) {
         failedLogsCount: recentLogs.filter(l => !l.success).length,
       }
     })
-  } catch (error: any) {
-    console.error("Failed to fetch admin webhooks:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const { deadLetterId, action } = body
+export const POST = withAdminAuth(
+  async (request) => {
+    const { deadLetterId, action } = await request.json()
 
     if (action === "retry" && deadLetterId) {
       const deadLetter = await db.webhookDeadLetter.findUnique({
@@ -83,7 +69,7 @@ export async function POST(request: NextRequest) {
       })
 
       if (!deadLetter) {
-        return NextResponse.json({ error: "Dead letter not found" }, { status: 404 })
+        return apiError("not_found", { message: "Dead letter not found" })
       }
 
       // Perform retry delivery
@@ -163,9 +149,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: "Dead letter queue purged" })
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
-  } catch (error: any) {
-    console.error("Failed to process webhook action:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+    return apiError("validation", { message: "Invalid action" })
+  },
+  { allowRoles: ["admin"] },
+)

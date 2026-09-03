@@ -1,15 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
+export const POST = withAdminAuth(async (request) => {
     const body = await request.json()
     const { action } = body
 
@@ -88,9 +82,5 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: true, message: "Global pricing dan catalog template berhasil disinkronkan." })
     }
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
-  } catch (error: any) {
-    console.error("Quick action error:", error)
-    return NextResponse.json({ error: error.message || "Internal error" }, { status: 500 })
-  }
-}
+    return apiError("validation", { message: "Invalid action" })
+})

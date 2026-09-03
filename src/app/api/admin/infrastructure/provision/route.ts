@@ -1,8 +1,7 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
 import { z } from "zod/v4"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 const provisionSchema = z.object({
   tenantId: z.string().min(1),
@@ -14,35 +13,24 @@ const provisionSchema = z.object({
   subscriptionId: z.string().optional(),
 })
 
-export async function POST(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 })
-    }
-
-    const body = await req.json()
-    const parsed = provisionSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid request payload", details: parsed.error.format() }, { status: 400 })
-    }
-
-    const result = await provisionTenantInfrastructure(parsed.data.tenantId, {
-      plan: parsed.data.plan,
-      region: parsed.data.region,
-      diskGb: parsed.data.diskGb,
-      ramMb: parsed.data.ramMb,
-      cpuCount: parsed.data.cpuCount,
-      subscriptionId: parsed.data.subscriptionId,
+export const POST = withAdminAuth(async (req) => {
+  const parsed = provisionSchema.safeParse(await req.json())
+  if (!parsed.success) {
+    return apiError("validation", {
+      message: "Invalid request payload",
+      details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
     })
-
-    if (!result.success) {
-      return NextResponse.json({ error: result.message }, { status: 500 })
-    }
-
-    return NextResponse.json(result)
-  } catch (error: any) {
-    console.error("[API Admin Infrastructure Provision Error]:", error)
-    return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 })
   }
-}
+
+  const result = await provisionTenantInfrastructure(parsed.data.tenantId, {
+    plan: parsed.data.plan,
+    region: parsed.data.region,
+    diskGb: parsed.data.diskGb,
+    ramMb: parsed.data.ramMb,
+    cpuCount: parsed.data.cpuCount,
+    subscriptionId: parsed.data.subscriptionId,
+  })
+  if (!result.success) return apiError("internal", { message: result.message })
+
+  return NextResponse.json(result)
+})

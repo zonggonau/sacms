@@ -1,18 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const search = searchParams.get("search") || ""
-
+export const GET = withAdminAuth(
+  async (request) => {
+    const search = new URL(request.url).searchParams.get("search") || ""
     const where: any = {}
     if (search) {
       where.OR = [
@@ -25,98 +17,49 @@ export async function GET(request: NextRequest) {
     const domains = await db.customDomain.findMany({
       where,
       include: {
-        tenant: {
-          select: {
-            id: true,
-            name: true,
-            slug: true,
-            plan: true,
-            status: true,
-          }
-        }
+        tenant: { select: { id: true, name: true, slug: true, plan: true, status: true } },
       },
-      orderBy: { createdAt: "desc" }
+      orderBy: { createdAt: "desc" },
     })
-
     return NextResponse.json({ domains })
-  } catch (error: any) {
-    console.error("Failed to fetch admin custom domains:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const POST = withAdminAuth(
+  async (request) => {
+    const { domainId, action } = await request.json()
+    if (!domainId) return apiError("validation", { message: "Domain ID is required" })
 
-    const body = await request.json()
-    const { domainId, action } = body
-
-    if (!domainId) {
-      return NextResponse.json({ error: "Domain ID is required" }, { status: 400 })
-    }
-
-    const existingDomain = await db.customDomain.findUnique({
-      where: { id: domainId }
-    })
-
-    if (!existingDomain) {
-      return NextResponse.json({ error: "Custom domain not found" }, { status: 404 })
-    }
+    const existingDomain = await db.customDomain.findUnique({ where: { id: domainId } })
+    if (!existingDomain) return apiError("not_found", { message: "Custom domain not found" })
 
     if (action === "verify") {
       const updated = await db.customDomain.update({
         where: { id: domainId },
-        data: {
-          status: "verified",
-          verifiedAt: new Date()
-        }
+        data: { status: "verified", verifiedAt: new Date() },
       })
       return NextResponse.json({ success: true, domain: updated })
     }
-
     if (action === "set_pending") {
       const updated = await db.customDomain.update({
         where: { id: domainId },
-        data: {
-          status: "pending",
-          verifiedAt: null
-        }
+        data: { status: "pending", verifiedAt: null },
       })
       return NextResponse.json({ success: true, domain: updated })
     }
+    return apiError("validation", { message: "Invalid action" })
+  },
+  { allowRoles: ["admin"] },
+)
 
-    return NextResponse.json({ error: "Invalid action" }, { status: 400 })
-  } catch (error: any) {
-    console.error("Failed to update custom domain status:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+export const DELETE = withAdminAuth(
+  async (request) => {
+    const id = new URL(request.url).searchParams.get("id")
+    if (!id) return apiError("validation", { message: "Domain ID is required" })
 
-export async function DELETE(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { searchParams } = new URL(request.url)
-    const id = searchParams.get("id")
-
-    if (!id) {
-      return NextResponse.json({ error: "Domain ID is required" }, { status: 400 })
-    }
-
-    await db.customDomain.delete({
-      where: { id }
-    })
-
+    await db.customDomain.delete({ where: { id } })
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Failed to delete custom domain:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

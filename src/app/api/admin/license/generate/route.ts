@@ -3,25 +3,18 @@
  * Generate a new enterprise license key (admin only)
  */
 import crypto from "crypto"
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { generateLicenseKey } from "@/lib/license"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    const adminRoles = ["super_admin", "admin", "employee", "karyawan"]
-    if (!session?.user || !adminRoles.includes(session.user.role)) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 403 })
-    }
-
+export const POST = withAdminAuth(
+  async (request, _context, { session }) => {
     const body = await request.json()
     const { customerName, customerEmail, organization, type = "enterprise", expiresAt, features } = body
 
     if (!customerName || !expiresAt) {
-      return NextResponse.json({ error: "customerName and expiresAt are required" }, { status: 400 })
+      return apiError("validation", { message: "customerName and expiresAt are required" })
     }
 
     const expDate = new Date(expiresAt)
@@ -59,8 +52,6 @@ export async function POST(request: NextRequest) {
       type: license.type,
       expiresAt: license.expiresAt,
     })
-  } catch (err) {
-    console.error("Error generating license:", err)
-    return NextResponse.json({ error: "Failed to generate license" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin", "employee", "karyawan"] },
+)

@@ -1,7 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { z } from "zod/v4"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 const smartFillSchema = z.object({
   prompt: z.string().min(1),
@@ -19,20 +18,15 @@ const smartFillSchema = z.object({
   language: z.string().optional().default("Indonesian"),
 })
 
-export async function POST(request: NextRequest) {
+export const POST = withAdminAuth(async (request) => {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
     const body = await request.json()
     const parsed = smartFillSchema.safeParse(body)
     if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid payload", details: parsed.error.format() },
-        { status: 400 }
-      )
+      return apiError("validation", {
+        message: "Invalid payload",
+        details: parsed.error.flatten().fieldErrors as Record<string, unknown>,
+      })
     }
 
     const { prompt, contentType, schema, tone, language } = parsed.data
@@ -99,6 +93,6 @@ ${schemaDescription}`
     return NextResponse.json({ success: true, content: fallbackContent })
   } catch (error: any) {
     console.error("Admin Smart Fill API Error:", error)
-    return NextResponse.json({ error: "Gagal memproses Smart Fill" }, { status: 500 })
+    return apiError("internal", { message: "Gagal memproses Smart Fill" })
   }
-}
+})

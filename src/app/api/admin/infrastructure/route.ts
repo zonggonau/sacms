@@ -1,15 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function GET(req: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async (req) => {
     const { searchParams } = new URL(req.url)
     const status = searchParams.get("status")
     const search = searchParams.get("search")
@@ -94,8 +87,4 @@ export async function GET(req: NextRequest) {
         tenants,
       }
     })
-  } catch (error: any) {
-    console.error("[API Admin Infrastructure GET Error]:", error)
-    return NextResponse.json({ error: error?.message || "Internal Server Error" }, { status: 500 })
-  }
-}
+})

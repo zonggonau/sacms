@@ -1,16 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(
+  async () => {
     const startTime = Date.now()
     
     // Check Primary PostgreSQL
@@ -113,8 +107,6 @@ export async function GET(request: NextRequest) {
         }))
       }
     })
-  } catch (error: any) {
-    console.error("Failed to fetch database routing status:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

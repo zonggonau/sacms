@@ -1,16 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-// GET /api/admin/support - Get all tickets across all tenants with filter & search
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden: Super Admin access required" }, { status: 403 })
-    }
-
+// GET /api/admin/support - all tickets across all tenants
+export const GET = withAdminAuth(async (request) => {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status")
     const category = searchParams.get("category")
@@ -54,8 +47,4 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.json({ tickets, summary })
-  } catch (error: any) {
-    console.error("[Admin Support GET Error]:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+})

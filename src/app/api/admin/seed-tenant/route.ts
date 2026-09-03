@@ -2,10 +2,9 @@
  * POST /api/admin/seed-tenant
  * Seed a tenant with default content types, fields, and sample entries
  */
-import { NextRequest, NextResponse } from "next/server"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 const SEED_SCHEMAS = [
   {
@@ -50,26 +49,15 @@ const SEED_SCHEMAS = [
   },
 ]
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
+export const POST = withAdminAuth(async (request) => {
     const body = await request.json()
     const { tenantId } = body
     if (!tenantId) {
-      return NextResponse.json({ error: "tenantId is required" }, { status: 400 })
+      return apiError("validation", { message: "tenantId is required" })
     }
 
-    // Verify tenant exists + user has access
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId, userId: session.user.id, role: { in: ["owner", "admin"] } },
-    })
-    if (!membership) {
-      return NextResponse.json({ error: "Access denied" }, { status: 403 })
-    }
+    const tenant = await db.tenant.findUnique({ where: { id: tenantId }, select: { id: true } })
+    if (!tenant) return apiError("not_found", { message: "Tenant not found" })
 
     // Check if already seeded
     const existing = await db.contentType.count({ where: { tenantId } })
@@ -110,8 +98,4 @@ export async function POST(request: NextRequest) {
       entries: totalEntries,
       message: `Seeded ${SEED_SCHEMAS.length} content types with ${totalEntries} sample entries`,
     })
-  } catch (err) {
-    console.error("Seed error:", err)
-    return NextResponse.json({ error: "Seed failed" }, { status: 500 })
-  }
-}
+})
