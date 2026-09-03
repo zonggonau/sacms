@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/database"
 import fs from "fs"
 import path from "path"
 import { withStaffAuth } from "@/lib/api/route-helpers"
+import { assertPublicUrl, resolveWithinBase, SsrfError } from "@/lib/safe-url"
 
 /**
  * Helper to clean HTML tags from rich text/textarea values
@@ -191,19 +192,27 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
     let templateBuffer: Buffer | null = null
     if (templateUrl) {
       try {
-        if (templateUrl.startsWith("/upload/") || templateUrl.startsWith("/")) {
-          const localPath = path.join(process.cwd(), "public", templateUrl)
-          if (fs.existsSync(localPath)) {
+        if (templateUrl.startsWith("/")) {
+          // Only allow reads from public/upload/<this tenant>/ — no traversal,
+          // no other tenants' files, no arbitrary server paths.
+          const rel = templateUrl.replace(/^\/+(upload\/)?/, "")
+          const base = path.join(process.cwd(), "public", "upload", access.tenant.slug)
+          const localPath = resolveWithinBase(base, rel)
+          if (fs.existsSync(localPath) && fs.statSync(localPath).isFile()) {
             templateBuffer = fs.readFileSync(localPath)
           }
         } else if (templateUrl.startsWith("http://") || templateUrl.startsWith("https://")) {
-          const res = await fetch(templateUrl)
+          const safe = await assertPublicUrl(templateUrl, { allowHttp: true })
+          const res = await fetch(safe.toString(), { redirect: "error" })
           if (res.ok) {
             const arr = await res.arrayBuffer()
             templateBuffer = Buffer.from(arr)
           }
         }
       } catch (err) {
+        if (err instanceof SsrfError) {
+          return NextResponse.json({ error: "Template URL not allowed" }, { status: 400 })
+        }
         console.error("[LOAD_TEMPLATE_ERROR]:", err)
       }
     }

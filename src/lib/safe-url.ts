@@ -100,6 +100,52 @@ export async function assertPublicUrl(
 }
 
 /**
+ * Like {@link assertPublicUrl} but for a bare hostname (SMTP host, DB host, …).
+ * Throws {@link SsrfError} if it's localhost or resolves to a private address.
+ */
+export async function assertPublicHost(host: string): Promise<void> {
+  const h = host.trim().toLowerCase()
+  if (
+    !h ||
+    h === "localhost" ||
+    h === "0.0.0.0" ||
+    h.endsWith(".localhost") ||
+    h.endsWith(".internal") ||
+    h.endsWith(".local")
+  ) {
+    throw new SsrfError("Blocked host")
+  }
+  if (net.isIP(h)) {
+    if (isPrivateIp(h)) throw new SsrfError("Host is a private address")
+    return
+  }
+  let records: { address: string }[]
+  try {
+    records = await lookup(h, { all: true })
+  } catch {
+    throw new SsrfError("Host does not resolve")
+  }
+  if (records.length === 0) throw new SsrfError("Host does not resolve")
+  for (const r of records) {
+    if (isPrivateIp(r.address)) throw new SsrfError("Host resolves to a private address")
+  }
+}
+
+/**
+ * `fetch` that first runs {@link assertPublicUrl} and disables redirects (so a
+ * public URL can't 30x to a private one). Use for every outbound call to a
+ * URL a caller can influence.
+ */
+export async function safeFetch(
+  url: string,
+  init: RequestInit & { allowHttp?: boolean } = {},
+): Promise<Response> {
+  const { allowHttp, ...rest } = init
+  const safe = await assertPublicUrl(url, { allowHttp })
+  return fetch(safe.toString(), { ...rest, redirect: "error" })
+}
+
+/**
  * Resolve a request-relative or absolute path against a base directory, throwing
  * if the result escapes the base (path traversal). Returns the safe absolute
  * path.

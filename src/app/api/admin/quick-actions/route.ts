@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
+import { safeFetch } from "@/lib/safe-url"
 
 export const POST = withAdminAuth(async (request) => {
     const body = await request.json()
@@ -39,7 +40,7 @@ export const POST = withAdminAuth(async (request) => {
       for (const dl of deadLetters) {
         try {
           const payloadData = typeof dl.payload === "string" ? JSON.parse(dl.payload) : dl.payload
-          const res = await fetch(dl.webhook.url, {
+          const res = await safeFetch(dl.webhook.url, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",

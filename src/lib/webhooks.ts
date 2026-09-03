@@ -1,6 +1,7 @@
 import { db } from "@/lib/database"
 import { createHmac } from "crypto"
 import { waitUntil } from "@vercel/functions"
+import { safeFetch } from "@/lib/safe-url"
 
 interface WebhookPayload {
   event: string
@@ -134,7 +135,7 @@ async function fireWebhook(
     }
 
     // Send webhook
-    const response = await fetch(webhook.url, {
+    const response = await safeFetch(webhook.url, {
       method: "POST",
       headers,
       body: payloadString,
@@ -290,7 +291,7 @@ export async function executeSyncHooks(
         headers["X-Webhook-Signature"] = `sha256=${signature}`
       }
 
-      const response = await fetch(webhook.url, {
+      const response = await safeFetch(webhook.url, {
         method: "POST",
         headers,
         body: payloadString,
@@ -472,7 +473,7 @@ export async function processWebhookRetries(): Promise<{
         headers["X-Webhook-Signature"] = `sha256=${signature}`
       }
 
-      const response = await fetch(entry.webhook.url, {
+      const response = await safeFetch(entry.webhook.url, {
         method: "POST",
         headers,
         body: typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload),
@@ -567,7 +568,7 @@ export async function replayDeadLetter(deadLetterId: string): Promise<boolean> {
       headers["X-Webhook-Signature"] = `sha256=${signature}`
     }
 
-    const response = await fetch(entry.webhook.url, {
+    const response = await safeFetch(entry.webhook.url, {
       method: "POST",
       headers,
       body: typeof entry.payload === "string" ? entry.payload : JSON.stringify(entry.payload),

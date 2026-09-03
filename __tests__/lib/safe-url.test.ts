@@ -1,6 +1,16 @@
-import { describe, it, expect } from "vitest"
-import { assertPublicUrl, resolveWithinBase, SsrfError } from "@/lib/safe-url"
+import { describe, it, expect, vi } from "vitest"
 import path from "path"
+
+// Keep DNS lookups off the network: public hostnames resolve to a public IP,
+// nothing else is called (literal-IP and scheme cases never hit DNS).
+vi.mock("dns/promises", () => ({
+  lookup: vi.fn(async (host: string) => {
+    if (host === "example.com") return [{ address: "93.184.216.34", family: 4 }]
+    throw new Error("ENOTFOUND")
+  }),
+}))
+
+const { assertPublicUrl, resolveWithinBase, SsrfError } = await import("@/lib/safe-url")
 
 describe("assertPublicUrl", () => {
   it("rejects private / loopback / link-local literals", async () => {

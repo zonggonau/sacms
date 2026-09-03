@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
+import { safeFetch } from "@/lib/safe-url"
 
 export const GET = withAdminAuth(
   async () => {
@@ -84,7 +85,7 @@ export const POST = withAdminAuth(
           ? JSON.parse(deadLetter.payload) 
           : deadLetter.payload
 
-        const res = await fetch(deadLetter.webhook.url, {
+        const res = await safeFetch(deadLetter.webhook.url, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",

@@ -21,6 +21,7 @@ import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfi
 import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { hashMemberPassword } from "@/lib/member-auth"
+import { safeFetch } from "@/lib/safe-url"
 
 // ─── Auth Helper & Payment Gatekeeper ─────────────────────────────────────────
 
@@ -1291,6 +1292,13 @@ const handler = createMcpHandler(
         const auth = authContext.getStore()
         if (!auth) return UNAUTHORIZED
 
+        try {
+          const { assertPublicUrl } = await import("@/lib/safe-url")
+          await assertPublicUrl(url.trim())
+        } catch (e: any) {
+          return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }] }
+        }
+
         const webhook = await db.webhook.create({
           data: {
             tenantId: auth.tenantId,
@@ -1335,6 +1343,15 @@ const handler = createMcpHandler(
           where: { id, tenantId: auth.tenantId }
         })
         if (!existing) return { content: [{ type: "text" as const, text: `❌ Webhook '${id}' not found.` }] }
+
+        if (url) {
+          try {
+            const { assertPublicUrl } = await import("@/lib/safe-url")
+            await assertPublicUrl(url.trim())
+          } catch (e: any) {
+            return { content: [{ type: "text" as const, text: `❌ Webhook URL rejected: ${e?.message || "not allowed"}` }] }
+          }
+        }
 
         const updated = await db.webhook.update({
           where: { id },
@@ -1418,7 +1435,7 @@ const handler = createMcpHandler(
 
         const start = Date.now()
         try {
-          const res = await fetch(webhook.url, {
+          const res = await safeFetch(webhook.url, {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
