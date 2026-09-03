@@ -125,11 +125,23 @@ export const GET = withAdminAuth(
 )
 
 // POST /api/admin/rbac/roles - assign a nav permission to a platform role
+const KNOWN_PLATFORM_ROLE_IDS = new Set(PLATFORM_ROLES.map((r) => r.id))
+
 export const POST = withAdminAuth(
   async (request) => {
     const result = await validateBody(request, assignRolePermissionSchema)
     if ("error" in result) return result.error
     const { roleId, permissionId, granted } = result.data
+
+    // roleId / permissionId must be things we actually know about — no
+    // arbitrary grant rows, no FK-breaking writes.
+    if (!KNOWN_PLATFORM_ROLE_IDS.has(roleId)) {
+      return apiError("validation", { message: `Unknown platform role: ${roleId}` })
+    }
+    const permission = await db.permission.findUnique({ where: { id: permissionId }, select: { id: true } })
+    if (!permission) {
+      return apiError("validation", { message: "Unknown permission" })
+    }
 
     if (roleId === "super_admin" && !granted) {
       return apiError("validation", { message: "Super Admin permissions are locked and cannot be revoked." })

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { getTenantDbById } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { hashMemberPassword } from "@/lib/member-auth"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
@@ -10,11 +10,11 @@ const MEMBER_FIELDS = {
 } as const
 
 const UpdateSchema = z.object({
-  name: z.string().min(1).optional(),
-  role: z.string().optional(),
+  name: z.string().min(1).max(120).optional(),
+  role: z.string().regex(/^[a-z0-9-]{1,60}$/, "role must be a lowercase slug").optional(),
   status: z.enum(["active", "suspended", "pending_verification"]).optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-  password: z.string().min(8).optional(),
+  password: z.string().min(8).max(128).optional(),
 })
 
 export const GET = withStaffAuth(async (_request, context, { access }) => {
@@ -39,6 +39,14 @@ export const PATCH = withStaffAuth(
     if (!body.ok) return body.response
 
     const { password, ...rest } = body.data
+    // A role, if given, must be one this tenant actually defines.
+    if (rest.role !== undefined) {
+      const known = await db.memberRole.findFirst({
+        where: { tenantId: access.tenantId, slug: rest.role },
+        select: { id: true },
+      })
+      if (!known) return apiError("validation", { message: `Unknown member role: ${rest.role}` })
+    }
     const data: Record<string, unknown> = { ...rest }
     if (password) data.passwordHash = await hashMemberPassword(password)
 

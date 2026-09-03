@@ -11,9 +11,9 @@ const LIST_FIELDS = {
 
 const CreateMemberSchema = z.object({
   email: z.string().email().toLowerCase().trim(),
-  name: z.string().min(1).optional(),
-  password: z.string().min(8),
-  role: z.string().default("authenticated"),
+  name: z.string().min(1).max(120).optional(),
+  password: z.string().min(8).max(128),
+  role: z.string().regex(/^[a-z0-9-]{1,60}$/).default("authenticated"),
   status: z.enum(["active", "suspended", "pending_verification"]).default("active"),
   metadata: z.record(z.string(), z.unknown()).optional(),
 })
@@ -99,6 +99,14 @@ export const POST = withStaffAuth(
     const body = await readJson(request, CreateMemberSchema)
     if (!body.ok) return body.response
     const { email, name, password, role, status, metadata } = body.data
+
+    if (role !== "authenticated") {
+      const known = await db.memberRole.findFirst({
+        where: { tenantId: access.tenantId, slug: role },
+        select: { id: true },
+      })
+      if (!known) return apiError("validation", { message: `Unknown member role: ${role}` })
+    }
 
     const tenantDb = await getTenantDbById(access.tenantId)
     const existing = await tenantDb.member.findFirst({ where: { tenantId: access.tenantId, email } })
