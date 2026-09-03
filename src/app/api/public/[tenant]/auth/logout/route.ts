@@ -38,7 +38,8 @@ export async function POST(
       { message: "Logout berhasil. Sesi telah dinonaktifkan." },
       { status: 200, headers: CORS_HEADERS }
     )
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to logout" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/logout]", error)
+    return NextResponse.json({ error: "Failed to logout" }, { status: 500, headers: CORS_HEADERS })
   }
 }

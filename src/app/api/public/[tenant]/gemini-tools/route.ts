@@ -245,7 +245,7 @@ export async function GET(
   } catch (error: any) {
     console.error("Gemini Tools Generator Error:", error)
     return NextResponse.json(
-      { error: "Failed to generate Gemini tools declarations", details: error.message },
+      { error: "Failed to generate Gemini tools declarations" },
       { status: 500, headers: CORS_HEADERS }
     )
   }

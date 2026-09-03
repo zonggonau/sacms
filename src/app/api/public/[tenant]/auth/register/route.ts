@@ -200,9 +200,10 @@ export async function POST(
       },
       { status: 201, headers: CORS_HEADERS }
     )
-  } catch (error: any) {
+  } catch (error) {
+    console.error("[public-auth/register]", error)
     return NextResponse.json(
-      { error: error.message || "Gagal melakukan registrasi" },
+      { error: "Gagal melakukan registrasi" },
       { status: 500, headers: CORS_HEADERS }
     )
   }

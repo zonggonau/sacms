@@ -152,9 +152,10 @@ export async function POST(
       },
       { status: 200, headers: CORS_HEADERS }
     )
-  } catch (error: any) {
+  } catch (error) {
+    console.error("[public-auth/login]", error)
     return NextResponse.json(
-      { error: error.message || "Gagal melakukan login" },
+      { error: "Gagal melakukan login" },
       { status: 500, headers: CORS_HEADERS }
     )
   }

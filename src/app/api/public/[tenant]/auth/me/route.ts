@@ -64,8 +64,9 @@ export async function GET(
     }
 
     return NextResponse.json({ user: member }, { status: 200, headers: CORS_HEADERS })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to fetch profile" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/me]", error)
+    return NextResponse.json({ error: "Failed to fetch profile" }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
@@ -154,7 +155,8 @@ export async function PATCH(
       { message: "Profil berhasil diperbarui", user: updated },
       { status: 200, headers: CORS_HEADERS }
     )
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Gagal memperbarui profil" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/me]", error)
+    return NextResponse.json({ error: "Gagal memperbarui profil" }, { status: 500, headers: CORS_HEADERS })
   }
 }

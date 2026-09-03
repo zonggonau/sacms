@@ -134,7 +134,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         role: { id: member.role, name: member.role, type: member.role },
       },
     }, { status: 200, headers: CORS_HEADERS })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/local/register]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
   }
 }

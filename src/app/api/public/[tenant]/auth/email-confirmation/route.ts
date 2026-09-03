@@ -123,9 +123,10 @@ export async function POST(
       },
       { status: 200, headers: cors },
     )
-  } catch (error: any) {
+  } catch (error) {
+    console.error("[public-auth/email-confirmation]", error)
     return NextResponse.json(
-      { error: error.message ?? "Internal server error" },
+      { error: "Internal server error" },
       { status: 500, headers: CORS_HEADERS },
     )
   }

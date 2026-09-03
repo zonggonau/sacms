@@ -588,7 +588,7 @@ export async function GET(
   } catch (error: any) {
     console.error("OpenAPI Spec Generation Error:", error)
     return NextResponse.json(
-      { error: "Failed to generate OpenAPI specification", details: error.message },
+      { error: "Failed to generate OpenAPI specification" },
       { status: 500, headers: CORS_HEADERS }
     )
   }

@@ -127,7 +127,8 @@ export async function POST(
       },
       { status: 200, headers: CORS_HEADERS }
     )
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Failed to refresh token" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/refresh]", error)
+    return NextResponse.json({ error: "Failed to refresh token" }, { status: 500, headers: CORS_HEADERS })
   }
 }

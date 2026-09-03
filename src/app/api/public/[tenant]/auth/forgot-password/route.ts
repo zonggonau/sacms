@@ -76,7 +76,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }
 
     return NextResponse.json({ ok: true }, { status: 200, headers: CORS_HEADERS })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[public-auth/forgot-password]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
   }
 }

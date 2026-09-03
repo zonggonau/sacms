@@ -38,8 +38,8 @@ export async function GET(request: NextRequest) {
       checkedCount: activeServers.length,
       results,
     })
-  } catch (error: any) {
+  } catch (error) {
     console.error("[Cron Infrastructure Health Error]:", error)
-    return NextResponse.json({ error: error?.message || "Internal Cron Error" }, { status: 500 })
+    return NextResponse.json({ error: "Internal Cron Error" }, { status: 500 })
   }
 }

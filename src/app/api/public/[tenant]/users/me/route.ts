@@ -48,8 +48,9 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       lastLoginAt: member.lastLoginAt,
       role: { id: member.role, name: member.role, type: member.role },
     }, { status: 200, headers: CORS_HEADERS })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
   }
 }
 
@@ -84,7 +85,8 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       metadata: updated.metadata,
       role: { id: updated.role, name: updated.role, type: updated.role },
     }, { status: 200, headers: CORS_HEADERS })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+  } catch (error) {
+    console.error("[]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
   }
 }
