@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { RolesClient } from "./roles-client"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -39,7 +39,8 @@ export default async function RolesPage({ params }: { params: Promise<{ tenant: 
     }),
   ])
 
-  const memberCounts = await db.member.groupBy({
+  const tenantDb = await getTenantDbById(access.tenantId)
+  const memberCounts = await tenantDb.member.groupBy({
     by: ["role"],
     where: { tenantId: access.tenantId },
     _count: true,

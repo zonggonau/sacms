@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { hashMemberPassword } from "@/lib/member-auth"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
@@ -41,15 +41,16 @@ export const GET = withStaffAuth(async (request, _context, { access }) => {
   if (role) where.role = role
   if (status) where.status = status
 
+  const tenantDb = await getTenantDbById(access.tenantId)
   const [members, total] = await Promise.all([
-    db.member.findMany({
+    tenantDb.member.findMany({
       where,
       select: LIST_FIELDS,
       orderBy: { createdAt: "desc" },
       skip: (page - 1) * pageSize,
       take: pageSize,
     }),
-    db.member.count({ where }),
+    tenantDb.member.count({ where }),
   ])
 
   return NextResponse.json({
@@ -86,11 +87,12 @@ export const POST = withStaffAuth(
     if (!body.ok) return body.response
     const { email, name, password, role, status, metadata } = body.data
 
-    const existing = await db.member.findFirst({ where: { tenantId: access.tenantId, email } })
+    const tenantDb = await getTenantDbById(access.tenantId)
+    const existing = await tenantDb.member.findFirst({ where: { tenantId: access.tenantId, email } })
     if (existing) return apiError("conflict", { message: "A member with this email already exists" })
 
     const passwordHash = await hashMemberPassword(password)
-    const member = await db.member.create({
+    const member = await tenantDb.member.create({
       data: { tenantId: access.tenantId, email, name, passwordHash, role, status, metadata: metadata as any },
       select: { id: true, email: true, name: true, avatar: true, role: true, status: true, metadata: true, createdAt: true },
     })

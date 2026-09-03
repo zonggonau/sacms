@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { ensureSystemRoles } from "@/lib/permissions-engine"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
@@ -19,7 +19,8 @@ export const GET = withStaffAuth(async (_request, _context, { access }) => {
     orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }],
   })
 
-  const memberCounts = await db.member.groupBy({ by: ["role"], where: { tenantId: access.tenantId }, _count: true })
+  const tenantDb = await getTenantDbById(access.tenantId)
+  const memberCounts = await tenantDb.member.groupBy({ by: ["role"], where: { tenantId: access.tenantId }, _count: true })
   const countMap = Object.fromEntries(memberCounts.map((r) => [r.role, r._count]))
 
   return NextResponse.json({

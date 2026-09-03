@@ -2,7 +2,7 @@
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-import { db } from "@/lib/database"
+import { db, getTenantDbById } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { MembersClient } from "./members-client"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -22,8 +22,9 @@ export default async function MembersPage({
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect(`/dashboard/${tenantSlug}`)
 
+  const tenantDb = await getTenantDbById(access.tenantId)
   const [members, roles, total, tenant] = await Promise.all([
-    db.member.findMany({
+    tenantDb.member.findMany({
       where: { tenantId: access.tenantId },
       select: { id: true, email: true, name: true, avatar: true, role: true, status: true, createdAt: true, lastLoginAt: true, emailVerified: true },
       orderBy: { createdAt: "desc" },
@@ -33,7 +34,7 @@ export default async function MembersPage({
       where: { tenantId: access.tenantId },
       orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }],
     }),
-    db.member.count({ where: { tenantId: access.tenantId } }),
+    tenantDb.member.count({ where: { tenantId: access.tenantId } }),
     db.tenant.findUnique({
       where: { id: access.tenantId },
       select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
