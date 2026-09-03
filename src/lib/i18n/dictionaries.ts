@@ -19,7 +19,11 @@ export const BRAND = {
   slogan: "Build smarter. Manage easier. Scale faster.",
 }
 
-export const DICTIONARY = {
+import { common } from "./locales/common"
+import { errors } from "./locales/errors"
+import { email } from "./locales/email"
+
+const LANDING_DICTIONARY = {
   id: {
     brand: {
       name: "SaCMS",
@@ -466,5 +470,52 @@ export const DICTIONARY = {
         security: "Security",
       },
     },
+  },
+}
+
+/**
+ * Recursively widens literal types to their base (`"Save"` -> `string`,
+ * `1` -> `number`) so the type constraint below checks *shape*, not exact
+ * wording — the whole point is that `id` and `en` have different words.
+ */
+type Widen<T> = T extends string
+  ? string
+  : T extends number
+    ? number
+    : T extends boolean
+      ? boolean
+      : T extends readonly (infer U)[]
+        ? Widen<U>[]
+        : { [K in keyof T]: Widen<T[K]> }
+
+/**
+ * The full per-locale dictionary: landing namespaces + the cross-cutting
+ * ones (common, errors, email).
+ *
+ * `Dict` is derived from the `id` tree (widened), and the object below is
+ * annotated `Record<Locale, Dict>`, so if the `en` side ever drifts — a
+ * missing key, a wrong shape — it's a compile error, not empty text in
+ * production.
+ */
+export type Dict = Widen<
+  typeof LANDING_DICTIONARY["id"] & {
+    common: typeof common["id"]
+    errors: typeof errors["id"]
+    email: typeof email["id"]
+  }
+>
+
+export const DICTIONARY: Record<Locale, Dict> = {
+  id: {
+    ...LANDING_DICTIONARY.id,
+    common: common.id,
+    errors: errors.id,
+    email: email.id,
+  },
+  en: {
+    ...LANDING_DICTIONARY.en,
+    common: common.en,
+    errors: errors.en,
+    email: email.en,
   },
 }
