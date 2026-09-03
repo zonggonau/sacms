@@ -3,6 +3,8 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
+import { useLanguage } from "@/lib/i18n/context"
+import { LanguageSwitcher } from "@/components/ui/language-switcher"
 import { checkWorkspaceAccessAction } from "@/actions/tenant"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -80,6 +82,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
+  const { dict } = useLanguage()
+  const s = dict.common.sidebar
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
@@ -185,61 +189,61 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
     {
       label: "",
       items: [
-        { title: "Ringkasan", href: "", icon: LayoutDashboard },
+        { title: s.overview, href: "", icon: LayoutDashboard },
       ],
     },
     {
-      label: "KONTEN",
+      label: s.groupContent,
       items: [
-        { title: "CMS Studio Konten", href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        ...(isAdmin ? [{ 
-          title: "Content-Type Builder", 
-          href: isExpired ? "/content-type-builder" : "/content-type-builder/content-types", 
-          icon: DatabaseIcon, 
-          matchPrefix: true 
+        { title: s.cmsStudio, href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
+        ...(isAdmin ? [{
+          title: s.contentTypeBuilder,
+          href: isExpired ? "/content-type-builder" : "/content-type-builder/content-types",
+          icon: DatabaseIcon,
+          matchPrefix: true
         }] : []),
-        ...(isEditor || userRole === "author" ? [{ title: "Pustaka Media", href: "/media", icon: ImageIcon }] : []),
+        ...(isEditor || userRole === "author" ? [{ title: s.mediaLibrary, href: "/media", icon: ImageIcon }] : []),
       ],
     },
     {
-      label: "MANAJEMEN",
+      label: s.groupManagement,
       items: [
-        { 
-          title: "Bantuan & IT Support", 
-          href: "/support", 
-          icon: Headphones, 
+        {
+          title: s.support,
+          href: "/support",
+          icon: Headphones,
           matchPrefix: true,
-          badge: unreadSupportCount > 0 ? `${unreadSupportCount} BARU` : undefined
+          badge: unreadSupportCount > 0 ? `${unreadSupportCount} ${s.badgeNew}` : undefined
         },
-        ...(isAdmin ? [{ title: "Anggota Tim", href: "/users", icon: Users }] : []),
-        ...(isAdmin || isEditor ? [{ title: "Log Aktivitas", href: "/system/audit", icon: ClipboardList }] : []),
-        ...(isAdmin && !isEnterpriseMode ? [{ 
-          title: "Paket & Langganan", 
-          href: "/subscriptions", 
-          icon: CreditCard, 
+        ...(isAdmin ? [{ title: s.teamMembers, href: "/users", icon: Users }] : []),
+        ...(isAdmin || isEditor ? [{ title: s.auditLog, href: "/system/audit", icon: ClipboardList }] : []),
+        ...(isAdmin && !isEnterpriseMode ? [{
+          title: s.subscriptions,
+          href: "/subscriptions",
+          icon: CreditCard,
           matchPrefix: true,
-          badge: isExpired ? "AKTIFKAN" : undefined
+          badge: isExpired ? s.badgeActivate : undefined
         }] : []),
       ],
     },
     {
-      label: "PENGATURAN",
+      label: s.groupSettings,
       items: [
         ...(isAdmin ? [
-          { title: "Domain Kustom", href: "/domains", icon: Globe, matchPrefix: true },
-          { 
-            title: "Infrastruktur & DB", 
-            href: "/infrastructure", 
-            icon: Server, 
+          { title: s.customDomains, href: "/domains", icon: Globe, matchPrefix: true },
+          {
+            title: s.infrastructure,
+            href: "/infrastructure",
+            icon: Server,
             matchPrefix: true,
             badge: effectiveHasDedicatedInfra ? "VPS" : undefined
           },
-          { title: "Developer & API", href: "/developer", icon: Code, matchPrefix: true },
-          { title: "Pengaturan Workspace", href: "/settings", icon: Settings, matchPrefix: true },
+          { title: s.developer, href: "/developer", icon: Code, matchPrefix: true },
+          { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
       ],
     },
-  ].filter(section => section.items.length > 0), [isAdmin, isEditor, isEnterpriseMode, isExpired, userRole, effectiveHasDedicatedInfra])
+  ].filter(section => section.items.length > 0), [s, isAdmin, isEditor, isEnterpriseMode, isExpired, userRole, effectiveHasDedicatedInfra, unreadSupportCount])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
@@ -309,7 +313,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
                 className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-xs text-primary font-bold hover:bg-primary/10 transition-colors text-left cursor-pointer"
               >
                 <LayoutDashboard className="h-3.5 w-3.5" />
-                <span>Ganti Workspace</span>
+                <span>{s.switchWorkspace}</span>
               </button>
             </div>
           </div>
@@ -430,6 +434,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
             </div>
           </button>
+          <LanguageSwitcher className="h-7 shrink-0" />
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-primary" />
@@ -445,7 +450,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
           onClick={handleSignOut}
         >
           <LogOut className="h-3.5 w-3.5 text-destructive" />
-          <span>Keluar</span>
+          <span>{s.signOut}</span>
         </Button>
       </div>
     </div>

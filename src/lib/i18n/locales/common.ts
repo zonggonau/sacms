@@ -73,6 +73,29 @@ export const common = {
     // Common feedback
     changesSaved: "Perubahan berhasil disimpan",
     somethingWentWrong: "Terjadi kesalahan. Silakan coba lagi.",
+
+    // Dashboard / workspace sidebar
+    sidebar: {
+      groupContent: "KONTEN",
+      groupManagement: "MANAJEMEN",
+      groupSettings: "PENGATURAN",
+      overview: "Ringkasan",
+      cmsStudio: "CMS Studio Konten",
+      contentTypeBuilder: "Content-Type Builder",
+      mediaLibrary: "Pustaka Media",
+      support: "Bantuan & IT Support",
+      teamMembers: "Anggota Tim",
+      auditLog: "Log Aktivitas",
+      subscriptions: "Paket & Langganan",
+      customDomains: "Domain Kustom",
+      infrastructure: "Infrastruktur & DB",
+      developer: "Developer & API",
+      workspaceSettings: "Pengaturan Workspace",
+      switchWorkspace: "Ganti Workspace",
+      signOut: "Keluar",
+      badgeNew: "BARU",
+      badgeActivate: "AKTIFKAN",
+    },
   },
   en: {
     save: "Save",
@@ -136,5 +159,27 @@ export const common = {
 
     changesSaved: "Your changes have been saved",
     somethingWentWrong: "Something went wrong. Please try again.",
+
+    sidebar: {
+      groupContent: "CONTENT",
+      groupManagement: "MANAGEMENT",
+      groupSettings: "SETTINGS",
+      overview: "Overview",
+      cmsStudio: "Content Studio",
+      contentTypeBuilder: "Content-Type Builder",
+      mediaLibrary: "Media Library",
+      support: "Help & IT Support",
+      teamMembers: "Team Members",
+      auditLog: "Activity Log",
+      subscriptions: "Plan & Subscription",
+      customDomains: "Custom Domains",
+      infrastructure: "Infrastructure & DB",
+      developer: "Developer & API",
+      workspaceSettings: "Workspace Settings",
+      switchWorkspace: "Switch workspace",
+      signOut: "Sign out",
+      badgeNew: "NEW",
+      badgeActivate: "ACTIVATE",
+    },
   },
 } as const
