@@ -17,11 +17,13 @@ import {
 } from "@/components/ui/select"
 import { Copy, Loader2, Save } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   // API settings
   const [apiKey, setApiKey] = useState("")
@@ -99,8 +101,15 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
   }
 
   const handleGenerateApiKey = async () => {
-    if (!confirm("Apakah Anda yakin ingin membuat kunci API baru? Kunci lama tidak akan dapat digunakan lagi untuk integrasi baru.")) return
-    
+    if (
+      !(await confirm({
+        title: "Buat kunci API baru?",
+        description: "Kunci lama tidak akan dapat digunakan lagi untuk integrasi baru.",
+        confirmLabel: "Buat kunci baru",
+      }))
+    )
+      return
+
     setGeneratingApiKey(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/api-keys`, {
@@ -155,7 +164,9 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
   }
 
   return (
-    <Card className="rounded-2xl border-border/80 shadow-xs">
+    <>
+      {confirmDialog}
+      <Card className="rounded-2xl border-border/80 shadow-xs">
       <CardHeader>
         <CardTitle className="text-base font-bold">Konfigurasi API</CardTitle>
         <CardDescription className="text-xs">
@@ -265,6 +276,7 @@ export function ApiConfiguration({ tenantSlug }: { tenantSlug: string }) {
           </Button>
         </div>
       </CardContent>
-    </Card>
+      </Card>
+    </>
   )
 }

@@ -41,6 +41,7 @@ import {
   ExternalLink, Lock, Code2, AlertTriangle
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { createApiTokenAction, deleteApiTokenAction } from "@/actions/api-keys"
 
 interface ApiToken {
@@ -72,6 +73,7 @@ interface ApiKeysClientProps {
 
 export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: ApiKeysClientProps) {
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [isPending, startTransition] = useTransition()
   
   // API Configuration state
@@ -196,8 +198,16 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
     })
   }
 
-  const handleDeleteToken = (tokenId: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus API key ini? Aplikasi yang menggunakan token ini akan kehilangan akses.")) return
+  const handleDeleteToken = async (tokenId: string) => {
+    if (
+      !(await confirm({
+        title: "Hapus API key ini?",
+        description: "Aplikasi yang menggunakan token ini akan kehilangan akses.",
+        confirmLabel: "Hapus API key",
+        variant: "destructive",
+      }))
+    )
+      return
 
     startTransition(async () => {
       const res = await deleteApiTokenAction(tenantSlug, tokenId)
@@ -228,6 +238,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           

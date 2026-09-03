@@ -39,6 +39,7 @@ import {
   Lock, AlertTriangle, ArrowUpRight, HardDrive, Download, FileCode, BookOpen
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { createMcpTokenAction, deleteMcpTokenAction } from "@/actions/mcp-tokens"
 
@@ -391,6 +392,7 @@ export function MCPDashboardClient({
   existingApiKeys = [],
 }: MCPDashboardClientProps) {
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [isPending, startTransition] = useTransition()
 
   // Protocol MCP Base URL
@@ -516,8 +518,16 @@ export function MCPDashboardClient({
     })
   }
 
-  const handleDeleteToken = (tokenId: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus token MCP ini? AI Editor yang menggunakan token ini tidak akan bisa mengakses workspace lagi.")) return
+  const handleDeleteToken = async (tokenId: string) => {
+    if (
+      !(await confirm({
+        title: "Hapus token MCP ini?",
+        description: "AI Editor yang menggunakan token ini tidak akan bisa mengakses workspace lagi.",
+        confirmLabel: "Hapus token",
+        variant: "destructive",
+      }))
+    )
+      return
 
     startTransition(async () => {
       const res = await deleteMcpTokenAction(tenantSlug, tokenId)
@@ -542,6 +552,7 @@ export function MCPDashboardClient({
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 

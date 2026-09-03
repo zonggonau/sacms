@@ -117,7 +117,7 @@ function useConfirm() {
     })
   }, [])
 
-  const dialog = React.useCallback(() => {
+  const dialog = React.useMemo(() => {
     if (!state) return null
     const { resolve, ...options } = state
     return (

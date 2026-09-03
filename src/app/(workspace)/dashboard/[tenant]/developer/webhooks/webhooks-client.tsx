@@ -36,6 +36,7 @@ import {
 import { WebhookLogsDialog } from "@/components/cms/webhook-logs-dialog"
 import { WebhookTestDialog } from "@/components/developer/webhook-test-dialog"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { createWebhookAction, updateWebhookAction, deleteWebhookAction } from "@/actions/webhooks"
 
 interface WebhookType {
@@ -66,6 +67,7 @@ const availableEvents = [
 
 export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientProps) {
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [isPending, startTransition] = useTransition()
   
   const [showDialog, setShowDialog] = useState(false)
@@ -172,8 +174,16 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
     })
   }
 
-  const handleDelete = (webhookId: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus webhook ini?")) return
+  const handleDelete = async (webhookId: string) => {
+    if (
+      !(await confirm({
+        title: "Hapus webhook ini?",
+        description: "Notifikasi ke URL eksternal ini akan berhenti.",
+        confirmLabel: "Hapus webhook",
+        variant: "destructive",
+      }))
+    )
+      return
 
     startTransition(async () => {
       const res = await deleteWebhookAction(tenantSlug, webhookId)
@@ -187,9 +197,10 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
-          
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
