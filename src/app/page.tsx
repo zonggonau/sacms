@@ -31,6 +31,7 @@ export async function generateMetadata(): Promise<Metadata> {
       url: siteUrl,
       siteName: "SaCMS — Smart Content Management System",
       locale: "id_ID",
+      alternateLocale: ["en_US"],
       type: "website",
       images: [
         {
