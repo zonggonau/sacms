@@ -54,12 +54,24 @@ export const GET = withAdminAuth(
   { allowRoles: ["admin"] },
 )
 
+/** Roles a plain platform admin may create. `super_admin` is super_admin-only. */
+const ADMIN_CREATABLE_ROLES = new Set(["owner", "user", "admin", "employee", "karyawan"])
+
 // POST /api/admin/users - create a user
 export const POST = withAdminAuth(
-  async (request) => {
+  async (request, _context, { session }) => {
     const result = await validateBody(request, createUserSchema)
     if ("error" in result) return result.error
-    const { name, email, role, password, requireVerification = true } = result.data
+    const { name, email, password, requireVerification = true } = result.data
+    const requestedRole = result.data.role || "owner"
+
+    const isSuperAdmin = session.user.role === "super_admin"
+    if (requestedRole === "super_admin" && !isSuperAdmin) {
+      return apiError("forbidden", { message: "Only a super admin can create a super admin account" })
+    }
+    if (!isSuperAdmin && !ADMIN_CREATABLE_ROLES.has(requestedRole)) {
+      return apiError("forbidden", { message: "You cannot create a user with that role" })
+    }
 
     const existing = await db.user.findUnique({ where: { email } })
     if (existing) return apiError("conflict", { message: "User with this email already exists" })
@@ -71,7 +83,7 @@ export const POST = withAdminAuth(
       data: {
         email,
         name: name || null,
-        role: role || "owner",
+        role: requestedRole,
         password: hashedPassword,
         emailVerified: requireVerification ? null : new Date(),
       },

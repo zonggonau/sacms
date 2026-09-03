@@ -67,11 +67,13 @@ export const updateSingleTypeSchema = z.object({
   fields: z.array(fieldDefinitionSchema).optional(),
 }).passthrough()
 
-// User
+// User — `role` is constrained to the known platform roles; the route further
+// gates which of them the *caller* is allowed to assign (super_admin only for
+// super_admin).
 export const createUserSchema = z.object({
   name: z.string().min(1).max(100),
   email: z.string().email(),
-  role: z.string().optional(),
+  role: z.enum(["owner", "user", "admin", "employee", "karyawan", "super_admin"]).optional(),
   password: z.string().min(8).max(128).optional(),
   requireVerification: z.boolean().optional(),
 })
