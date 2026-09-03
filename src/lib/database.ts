@@ -16,7 +16,26 @@ if (process.platform === 'win32' && !process.env.PRISMA_QUERY_ENGINE_LIBRARY) {
   }
 }
 
-import { PrismaClient } from '../../prisma/generated-client'
+import { PrismaClient, Prisma } from '../../prisma/generated-client'
+
+// Re-export the client + model types so nothing outside this module needs the
+// generated-client path directly (see architecture review, finding 6).
+export { PrismaClient, Prisma }
+export type {
+  Tenant,
+  TenantMember,
+  Member,
+  MemberRole,
+  MemberRolePermission,
+  ContentType,
+  ContentEntry,
+  ContentVersion,
+  SchemaField,
+  SingleType,
+  Component,
+  Media,
+  ContentStatus,
+} from '../../prisma/generated-client'
 
 interface TenantClientEntry {
   client: PrismaClient

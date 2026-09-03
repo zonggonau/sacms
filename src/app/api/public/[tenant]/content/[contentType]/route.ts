@@ -1,11 +1,17 @@
 import { NextRequest, NextResponse } from "next/server"
-import { randomUUID, createHash } from "crypto"
+import { createHash } from "crypto"
 import { db, getTenantDb } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
-import { getCache, setCache, invalidatePattern } from "@/lib/cache"
+import { getCache, setCache } from "@/lib/cache"
 import { logApiRequest } from "@/lib/monitoring"
 import { isWorkflowStatus } from "@/lib/content-workflow-rules"
-import { resolvePublicApiActor, authorizeActor } from "@/lib/public-api-actor"
+import {
+  resolvePublicApiActor,
+  authorizeActor,
+  toContentActor,
+  serviceErrorStatus,
+} from "@/lib/public-api-actor"
+import { createContentEntry } from "@/lib/content/entry-service"
 import {
   parseFilters,
   buildFilterSQL,
@@ -643,71 +649,36 @@ export async function POST(
     }
 
     const tenantDb = await getTenantDb(actor.tenantId)
-
-    const contentType = await tenantDb.contentType.findFirst({
-      where: { slug: contentTypeSlug, OR: [{ tenantId: actor.tenantId }, { tenantId: null }] },
-      include: { schemaFields: { orderBy: { order: "asc" } }, tenants: true },
-    })
-    if (!contentType) {
-      return logResponse(NextResponse.json({ error: "Content type not found" }, { status: 404 }), actor.tenantId)
-    }
-    const isGlobal = contentType.tenants.length === 0
-    const isAssigned = contentType.tenants.some((t) => t.tenantId === actor.tenantId && t.enabled)
-    if (!isGlobal && !isAssigned) {
-      return logResponse(
-        NextResponse.json({ error: "Content type not available for this tenant" }, { status: 403 }),
-        actor.tenantId
-      )
-    }
-
-    // Resolve locale (requested → tenant default → "id")
-    const tenantDefaultLocale = await tenantDb.tenantLocale.findFirst({
-      where: { tenantId: actor.tenantId, isDefault: true },
-      select: { locale: true },
-    })
-    const locale =
-      (typeof body.locale === "string" && body.locale.trim()) || tenantDefaultLocale?.locale || "id"
-
-    // Whitelist incoming fields to the content type's known slugs; enforce required.
-    const allowedFieldNames = new Set(contentType.schemaFields.map((f) => f.slug))
-    const cleanData: Record<string, unknown> = {}
-    for (const [k, v] of Object.entries(body.data as Record<string, unknown>)) {
-      if (allowedFieldNames.has(k)) cleanData[k] = v
-    }
-    const missingRequired = contentType.schemaFields
-      .filter((f) => f.required && (cleanData[f.slug] === undefined || cleanData[f.slug] === null || cleanData[f.slug] === ""))
-      .map((f) => f.slug)
-    if (missingRequired.length > 0) {
-      return logResponse(
-        NextResponse.json({ error: "Missing required fields", fields: missingRequired }, { status: 400 }),
-        actor.tenantId
-      )
-    }
-
-    const documentId = randomUUID()
-    const created = await tenantDb.contentEntry.create({
-      data: {
-        contentTypeId: contentType.id,
-        tenantId: actor.tenantId,
-        documentId,
-        locale,
+    const result = await createContentEntry(
+      { client: tenantDb, tenantId: actor.tenantId, tenantSlug: actor.tenantSlug, enforcePlan: true },
+      toContentActor(actor),
+      {
+        contentTypeSlug,
+        data: body.data as Record<string, unknown>,
+        // Headless callers always create DRAFT; the service enforces this too.
         status: "DRAFT",
-        data: cleanData as any,
-        createdBy: actor.kind === "member" ? actor.memberId : null,
-        updatedBy: actor.kind === "member" ? actor.memberId : null,
+        locale: typeof body.locale === "string" ? body.locale : null,
       },
-    })
+    )
+    if (!result.ok) {
+      return logResponse(
+        NextResponse.json({ error: result.message, ...(result.details ? { details: result.details } : {}) }, {
+          status: serviceErrorStatus(result.code),
+        }),
+        actor.tenantId
+      )
+    }
 
-    // Bust the public list/detail cache for this content type.
-    await invalidatePattern(`public_api:${actor.tenantSlug}:${contentTypeSlug}:*`).catch(() => {})
-
+    const created = result.data
+    const createdData =
+      created.data && typeof created.data === "object" ? (created.data as Record<string, unknown>) : {}
     return logResponse(
       NextResponse.json(
         {
           data: {
             id: created.id,
             documentId: created.documentId,
-            ...cleanData,
+            ...createdData,
             locale: created.locale,
             status: created.status,
             createdAt: created.createdAt,
@@ -721,10 +692,7 @@ export async function POST(
   } catch (error) {
     console.error("Error creating content:", error)
     return logResponse(
-      NextResponse.json(
-        { error: "Internal server error", details: error instanceof Error ? error.message : String(error) },
-        { status: 500 }
-      ),
+      NextResponse.json({ error: "Internal server error" }, { status: 500 }),
       null
     )
   }

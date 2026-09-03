@@ -214,3 +214,33 @@ export async function authorizeActor(
 export function actorCanReadDrafts(actor: PublicApiActor): boolean {
   return actor.kind === "api-token" && actor.accessLevel === "full-access"
 }
+
+/**
+ * Translate a `PublicApiActor` into the `ContentActor` the content-entry service
+ * expects. Members and the anonymous public role are ownership-scoped and
+ * DRAFT-only; a full-access token acts as a trusted `system` writer.
+ */
+export function toContentActor(actor: PublicApiActor):
+  | { kind: "member"; memberId: string; ownershipRequired: true }
+  | { kind: "public" }
+  | { kind: "system" } {
+  if (actor.kind === "member") return { kind: "member", memberId: actor.memberId, ownershipRequired: true }
+  if (actor.kind === "public") return { kind: "public" }
+  return { kind: "system" }
+}
+
+/** Map a content-service error code to an HTTP status. */
+export function serviceErrorStatus(code: string): number {
+  switch (code) {
+    case "unauthorized": return 401
+    case "forbidden": return 403
+    case "not_found": return 404
+    case "conflict": return 409
+    case "plan_limit": return 402
+    case "validation":
+    case "invalid_status":
+    case "locale_not_enabled":
+    case "rejected_by_hook":
+    default: return 400
+  }
+}

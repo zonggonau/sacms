@@ -253,15 +253,16 @@ describe("Tenant Content Actions", () => {
       
       vi.mocked(db.webhook.findMany).mockResolvedValue([])
 
-      // Mock transaction writes
-      const mockCreatedEntry = { id: "new-entry-1", data: { title: "My Entry" } }
+      // Mock transaction writes (ContentEntryService.createContentEntry shape)
+      const mockCreatedEntry = { id: "new-entry-1", documentId: "new-entry-1", data: { title: "My Entry" }, status: "DRAFT" }
       vi.mocked(db.$transaction).mockImplementation(async (txCallback: any) => {
         const mockTx = {
           contentEntry: {
-            create: vi.fn().mockResolvedValue({ id: "new-entry-1", contentTypeId: "type-articles", tenantId: "tenant-1", data: { title: "My Entry" } }),
+            create: vi.fn().mockResolvedValue({ id: "new-entry-1", contentTypeId: "type-articles", tenantId: "tenant-1", data: { title: "My Entry" }, status: "DRAFT" }),
             update: vi.fn().mockResolvedValue(mockCreatedEntry),
           },
           contentVersion: {
+            findFirst: vi.fn().mockResolvedValue(null),
             create: vi.fn().mockResolvedValue({}),
           },
         }
