@@ -1,6 +1,7 @@
 import nodemailer from "nodemailer"
 import { Resend } from "resend"
 import { getResolvedMailConfig, getPlatformSettings } from "./settings"
+import { DICTIONARY, DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/dictionaries"
 
 // Cached transporter per config signature
 let cachedTransporter: nodemailer.Transporter | null = null
@@ -295,62 +296,95 @@ type MemberMailTenant = {
   memberPasswordResetRedirect?: string | null
 }
 
-/** Headless-member email-verification email, tenant-aware. */
+/** Resolve the email locale: explicit arg > tenant default > "id". */
+function resolveEmailLocale(explicit?: string | null): Locale {
+  return isLocale(explicit) ? explicit : DEFAULT_LOCALE
+}
+
+function fill(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`)
+}
+
+/** Shared HTML shell for the member auth emails. */
+function memberAuthEmailHtml(copy: {
+  heading: string
+  body: string
+  button: string
+  linkFallback: string
+  expiry: string
+  link: string
+}): string {
+  return `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #0f172a; margin-top: 0;">${copy.heading}</h2>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">${copy.body}</p>
+      <div style="margin: 28px 0;">
+        <a href="${copy.link}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">${copy.button}</a>
+      </div>
+      <p style="color: #64748b; font-size: 13px;">${copy.linkFallback}</p>
+      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${copy.link}" style="color: #f97316;">${copy.link}</a></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">${copy.expiry}</p>
+    </div>`
+}
+
+/**
+ * Headless-member email-verification email, tenant-aware and localised.
+ * `locale` typically comes from Member.metadata.locale.
+ */
 export async function sendMemberVerificationEmail(
   tenant: MemberMailTenant,
   email: string,
   code: string,
   name: string = "there",
+  locale?: string | null,
 ) {
+  const l = resolveEmailLocale(locale)
+  const t = DICTIONARY[l].email.verify
   const baseUrl = await getBaseUrl()
   const link = buildMemberAuthLink(
     tenant.memberEmailConfirmationRedirect,
     `${baseUrl}/t/${tenant.slug}/verify-email`,
     code,
   )
-  const brand = tenant.brandName || tenant.name || "the team"
-  const subject = `Verify your email — ${brand}`
-  const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <h2 style="color: #0f172a; margin-top: 0;">Confirm your email address</h2>
-      <p style="color: #475569; font-size: 14px; line-height: 1.6;">Hi <strong>${name}</strong>, welcome to ${brand}. Please confirm your email address to activate your account:</p>
-      <div style="margin: 28px 0;">
-        <a href="${link}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Confirm email</a>
-      </div>
-      <p style="color: #64748b; font-size: 13px;">Or paste this link into your browser:</p>
-      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${link}" style="color: #f97316;">${link}</a></p>
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-      <p style="color: #94a3b8; font-size: 12px;">This link expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
-    </div>`
+  const brand = tenant.brandName || tenant.name || "SaCMS"
+  const subject = fill(t.subject, { brand })
+  const html = memberAuthEmailHtml({
+    heading: t.heading,
+    body: fill(t.body, { name, brand }),
+    button: t.button,
+    linkFallback: t.linkFallback,
+    expiry: t.expiry,
+    link,
+  })
   return dispatch(subject, html, email, tenant.customEmailSender)
 }
 
-/** Headless-member password-reset email, tenant-aware. */
+/** Headless-member password-reset email, tenant-aware and localised. */
 export async function sendMemberPasswordResetEmail(
   tenant: MemberMailTenant,
   email: string,
   code: string,
+  locale?: string | null,
 ) {
+  const l = resolveEmailLocale(locale)
+  const t = DICTIONARY[l].email.reset
   const baseUrl = await getBaseUrl()
   const link = buildMemberAuthLink(
     tenant.memberPasswordResetRedirect,
     `${baseUrl}/t/${tenant.slug}/reset-password`,
     code,
   )
-  const brand = tenant.brandName || tenant.name || "the team"
-  const subject = `Reset your password — ${brand}`
-  const html = `
-    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
-      <h2 style="color: #0f172a; margin-top: 0;">Reset your password</h2>
-      <p style="color: #475569; font-size: 14px; line-height: 1.6;">We received a request to reset the password for your ${brand} account. Click below to choose a new password:</p>
-      <div style="margin: 28px 0;">
-        <a href="${link}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Reset password</a>
-      </div>
-      <p style="color: #64748b; font-size: 13px;">Or paste this link into your browser:</p>
-      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${link}" style="color: #f97316;">${link}</a></p>
-      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
-      <p style="color: #94a3b8; font-size: 12px;">This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>
-    </div>`
+  const brand = tenant.brandName || tenant.name || "SaCMS"
+  const subject = fill(t.subject, { brand })
+  const html = memberAuthEmailHtml({
+    heading: t.heading,
+    body: fill(t.body, { brand }),
+    button: t.button,
+    linkFallback: t.linkFallback,
+    expiry: t.expiry,
+    link,
+  })
   return dispatch(subject, html, email, tenant.customEmailSender)
 }
 

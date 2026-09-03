@@ -132,7 +132,14 @@ export async function POST(
           passwordResetExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       })
-      void sendMemberVerificationEmail(tenant, email, verifyToken, name || "there").catch((err) => {
+      const memberLocale = (metadata as Record<string, unknown> | undefined)?.locale
+      void sendMemberVerificationEmail(
+        tenant,
+        email,
+        verifyToken,
+        name || "there",
+        typeof memberLocale === "string" ? memberLocale : null,
+      ).catch((err) => {
         console.error(`[register] verification mail failed for tenant ${tenant.slug}:`, err?.message || err)
       })
       return NextResponse.json(

@@ -78,6 +78,19 @@ describe("member auth emails", () => {
     expect(sent[0].html).toContain("lang=en")
   })
 
+  it("localises the email body — Indonesian by default, English when requested", async () => {
+    const { sendMemberVerificationEmail } = await import("@/lib/mail")
+
+    await sendMemberVerificationEmail(baseTenant, "user@example.com", "T1", "Sam")
+    expect(sent[0].html).toContain("Konfirmasi alamat email Anda")
+    expect(sent[0].subject).toContain("Verifikasi alamat email Anda")
+
+    sent.length = 0
+    await sendMemberVerificationEmail(baseTenant, "user@example.com", "T2", "Sam", "en")
+    expect(sent[0].html).toContain("Confirm your email address")
+    expect(sent[0].subject).toContain("Verify your email")
+  })
+
   it("uses the tenant's customEmailSender as the From address when present", async () => {
     const { sendMemberPasswordResetEmail } = await import("@/lib/mail")
     await sendMemberPasswordResetEmail(

@@ -57,7 +57,16 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     // Fire-and-forget: never block the response, never let a mail failure reveal
     // whether the address exists.
-    void sendMemberPasswordResetEmail(tenant, email, resetToken).catch((err) => {
+    const memberLocale =
+      member.metadata && typeof member.metadata === "object"
+        ? (member.metadata as Record<string, unknown>).locale
+        : null
+    void sendMemberPasswordResetEmail(
+      tenant,
+      email,
+      resetToken,
+      typeof memberLocale === "string" ? memberLocale : null,
+    ).catch((err) => {
       console.error(`[forgot-password] mail dispatch failed for tenant ${tenant.slug}:`, err?.message || err)
     })
 
