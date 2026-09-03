@@ -545,7 +545,7 @@ const PLATFORMS: PlatformConfig[] = [
     name: "v0.dev",
     icon: "🔺",
     badge: "AI UI Generator",
-    badgeColor: "bg-zinc-500/10 text-zinc-700 dark:text-zinc-300 border-zinc-500/20",
+    badgeColor: "bg-zinc-500/10 text-foreground/80 border-zinc-500/20",
     configPath: "v0.dev Project Settings → MCP",
     transport: "SSE / HTTP",
     steps: [
@@ -664,8 +664,8 @@ function CopyButton({ text, className = "" }: { text: string; className?: string
 
 function CodeBlock({ code, language = "bash", filename }: { code: string; language?: string; filename?: string }) {
   return (
-    <div className="relative rounded-xl overflow-hidden border border-zinc-200 dark:border-zinc-800/80 bg-zinc-950 text-zinc-100 shadow-sm">
-      <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900/90 border-b border-zinc-800 text-xs font-mono text-zinc-400">
+    <div className="relative rounded-xl overflow-hidden border border-border/80 bg-zinc-950 text-zinc-100 shadow-sm">
+      <div className="flex items-center justify-between px-4 py-2.5 bg-zinc-900/90 border-b border-zinc-800 text-xs font-mono text-muted-foreground">
         <div className="flex items-center gap-2">
           <div className="flex gap-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-red-500/80" />
@@ -675,7 +675,7 @@ function CodeBlock({ code, language = "bash", filename }: { code: string; langua
           {filename && <span className="ml-2 text-zinc-300 font-semibold">{filename}</span>}
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] uppercase tracking-wider text-zinc-500">{language}</span>
+          <span className="text-[11px] uppercase tracking-wider text-muted-foreground">{language}</span>
           <CopyButton text={code} />
         </div>
       </div>
@@ -727,9 +727,9 @@ export function DocsClient() {
   }, [selectedPlatform])
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-100 font-sans selection:bg-orange-500/20 selection:text-orange-500">
+    <div className="min-h-screen bg-muted/40 text-foreground font-sans selection:bg-orange-500/20 selection:text-orange-500">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 w-full border-b border-zinc-200 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 group">
@@ -751,14 +751,14 @@ export function DocsClient() {
             </div>
             <a
               href="#mcp-overview"
-              className="text-xs sm:text-sm font-medium text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors flex items-center gap-1"
+              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors flex items-center gap-1"
             >
               <Plug className="w-3.5 h-3.5 text-violet-500" />
               MCP Server
             </a>
             <a
               href="#content-api"
-              className="text-xs sm:text-sm font-medium text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors hidden sm:block"
+              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors hidden sm:block"
             >
               REST API
             </a>
@@ -779,13 +779,13 @@ export function DocsClient() {
           <div className="lg:sticky lg:top-24 space-y-6">
             {/* Search filter input */}
             <div className="relative">
-              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400" />
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search docs & tools..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all placeholder:text-zinc-400"
+                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all placeholder:text-muted-foreground"
               />
             </div>
 
@@ -804,7 +804,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-overview"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors font-medium"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors font-medium"
                   >
                     ✦ Overview & Architecture
                   </a>
@@ -812,7 +812,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-endpoint"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
                   >
                     ✦ Endpoint & Auth
                   </a>
@@ -820,7 +820,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-tools"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors font-medium flex items-center justify-between"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors font-medium flex items-center justify-between"
                   >
                     <span>✦ Tool Reference (7 Tools)</span>
                     <span className="text-[10px] bg-emerald-100 dark:bg-emerald-950 text-emerald-600 dark:text-emerald-400 px-1 rounded">7</span>
@@ -829,7 +829,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-ide-setup"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
                   >
                     ✦ Cursor, Claude & IDE Setup
                   </a>
@@ -837,7 +837,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-tunneling"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
                   >
                     ✦ Localhost Tunneling
                   </a>
@@ -845,7 +845,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#mcp-recipes"
-                    className="block px-2 py-1 rounded text-zinc-700 dark:text-zinc-300 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
+                    className="block px-2 py-1 rounded text-foreground/80 hover:text-violet-600 dark:hover:text-violet-400 hover:bg-violet-100/50 dark:hover:bg-violet-900/30 transition-colors"
                   >
                     ✦ AI Prompt Recipes
                   </a>
@@ -855,14 +855,14 @@ export function DocsClient() {
 
             {/* Getting Started Nav */}
             <div>
-              <h4 className="font-bold text-xs tracking-wider text-zinc-500 uppercase mb-2.5 px-2">
+              <h4 className="font-bold text-xs tracking-wider text-muted-foreground uppercase mb-2.5 px-2">
                 Getting Started
               </h4>
               <ul className="space-y-1 text-sm">
                 <li>
                   <a
                     href="#introduction"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Introduction
                   </a>
@@ -870,7 +870,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#authentication"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Authentication & Keys
                   </a>
@@ -878,7 +878,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#sdk"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     TypeScript SDK
                   </a>
@@ -888,14 +888,14 @@ export function DocsClient() {
 
             {/* REST API Nav */}
             <div>
-              <h4 className="font-bold text-xs tracking-wider text-zinc-500 uppercase mb-2.5 px-2">
+              <h4 className="font-bold text-xs tracking-wider text-muted-foreground uppercase mb-2.5 px-2">
                 REST API Reference
               </h4>
               <ul className="space-y-1 text-sm">
                 <li>
                   <a
                     href="#content-api"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Content API (Collections)
                   </a>
@@ -903,7 +903,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#filtering"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Advanced Filtering Operators
                   </a>
@@ -911,7 +911,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#single-types"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Single Types API
                   </a>
@@ -919,7 +919,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#graphql"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     GraphQL API Reference
                   </a>
@@ -929,14 +929,14 @@ export function DocsClient() {
 
             {/* Enterprise & Infrastructure Nav */}
             <div>
-              <h4 className="font-bold text-xs tracking-wider text-zinc-500 uppercase mb-2.5 px-2">
+              <h4 className="font-bold text-xs tracking-wider text-muted-foreground uppercase mb-2.5 px-2">
                 Infrastructure & DB
               </h4>
               <ul className="space-y-1 text-sm">
                 <li>
                   <a
                     href="#byodb"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Bring Your Own DB (BYODB)
                   </a>
@@ -944,7 +944,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#domains"
-                    className="block px-2 py-1.5 rounded text-zinc-600 hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-zinc-100 dark:hover:bg-zinc-900 font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Custom Domains & DNS
                   </a>
@@ -969,14 +969,14 @@ export function DocsClient() {
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-zinc-900 dark:text-zinc-50">
+                      <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-foreground">
                         Model Context Protocol (MCP) Server
                       </h1>
                       <span className="px-2 py-0.5 text-xs font-bold bg-violet-100 text-violet-800 dark:bg-violet-900/80 dark:text-violet-200 rounded-full border border-violet-300 dark:border-violet-700">
                         v1.0
                       </span>
                     </div>
-                    <p className="text-sm text-zinc-600 dark:text-zinc-400">
+                    <p className="text-sm text-muted-foreground">
                       Live AI Tooling integration for Claude, Cursor, Windsurf, Copilot, Antigravity, and v0.dev
                     </p>
                   </div>
@@ -986,7 +986,7 @@ export function DocsClient() {
                     href="https://modelcontextprotocol.io"
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-zinc-200 dark:border-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-900 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-border hover:bg-muted transition-colors"
                   >
                     <ExternalLink className="w-3.5 h-3.5" />
                     MCP Spec Docs
@@ -994,7 +994,7 @@ export function DocsClient() {
                 </div>
               </div>
 
-              <p className="text-zinc-700 dark:text-zinc-300 leading-relaxed text-sm sm:text-base mb-6">
+              <p className="text-foreground/80 leading-relaxed text-sm sm:text-base mb-6">
                 SaCMS includes a native <strong>Model Context Protocol (MCP) Server</strong> that bridges your headless CMS content and database schemas directly with modern AI programming assistants.
                 Instead of manually copying schemas, endpoints, or mock JSON into prompt windows, AI agents can dynamically query your schema definitions, inspect content entries, and generate pixel-perfect frontends or TypeScript interfaces autonomously.
               </p>
@@ -1006,17 +1006,17 @@ export function DocsClient() {
                   How SaCMS MCP Works
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800">
+                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
                     <span className="font-bold text-violet-600 dark:text-violet-400 block mb-1">1. AI Client (Cursor / Claude)</span>
-                    <p className="text-zinc-500 dark:text-zinc-400">Issues tool calls over Streamable HTTP or SSE to query content or inspect schemas.</p>
+                    <p className="text-muted-foreground">Issues tool calls over Streamable HTTP or SSE to query content or inspect schemas.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800">
+                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
                     <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">2. SaCMS MCP Server (`/api/mcp`)</span>
-                    <p className="text-zinc-500 dark:text-zinc-400">Authenticates via Bearer Token, resolves tenant workspace, and executes secure database operations.</p>
+                    <p className="text-muted-foreground">Authenticates via Bearer Token, resolves tenant workspace, and executes secure database operations.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-950/60 border border-zinc-200 dark:border-zinc-800">
+                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">3. Live CMS Context</span>
-                    <p className="text-zinc-500 dark:text-zinc-400">AI receives structured schema fields, single type data, or published records to build complete codebases.</p>
+                    <p className="text-muted-foreground">AI receives structured schema fields, single type data, or published records to build complete codebases.</p>
                   </div>
                 </div>
               </div>
@@ -1030,23 +1030,23 @@ export function DocsClient() {
                 </div>
                 <h2 className="text-xl sm:text-2xl font-bold tracking-tight">MCP Server Endpoint & Transports</h2>
               </div>
-              <p className="text-sm text-zinc-600 dark:text-zinc-400">
+              <p className="text-sm text-muted-foreground">
                 The SaCMS MCP Server supports standard <strong>Streamable HTTP</strong> and <strong>Server-Sent Events (SSE)</strong> transports, compatible with all modern MCP-compliant clients.
               </p>
 
               {/* Endpoint card */}
-              <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-100/70 dark:bg-zinc-900/60 space-y-3">
+              <div className="p-4 rounded-xl border border-border bg-zinc-100/70 dark:bg-zinc-900/60 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded text-xs font-bold bg-violet-600 text-white font-mono">POST / GET</span>
-                    <code className="text-sm font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    <code className="text-sm font-mono font-bold text-foreground">
                       {mcpServerUrl}
                     </code>
                   </div>
                   <CopyButton text={mcpServerUrl} />
                 </div>
 
-                <div className="text-xs text-zinc-500 dark:text-zinc-400 space-y-1">
+                <div className="text-xs text-muted-foreground space-y-1">
                   <p>• <strong>Transport:</strong> Streamable HTTP (JSON-RPC 2.0) with SSE fallback</p>
                   <p>• <strong>Protocol Version:</strong> MCP Specification 2024-11-05</p>
                   <p>• <strong>Workspace Isolation:</strong> Automatically scoped to the tenant workspace bound to the API token</p>
@@ -1055,24 +1055,24 @@ export function DocsClient() {
 
               {/* Authentication */}
               <div className="space-y-3 pt-2">
-                <h3 className="text-sm font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
+                <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
                   <Key className="w-4 h-4 text-orange-500" />
                   MCP Authentication
                 </h3>
-                <p className="text-xs sm:text-sm text-zinc-600 dark:text-zinc-400">
+                <p className="text-xs sm:text-sm text-muted-foreground">
                   All requests to the MCP server must include a valid <strong>SaCMS API Token</strong>. You can generate a Read-Only API Token in your dashboard under <code>Dashboard → [Tenant] → Developer → API Keys</code>.
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mb-1">1. HTTP Header (Recommended)</span>
-                    <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-100 dark:bg-zinc-950 p-2 rounded">
+                  <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900">
+                    <span className="text-xs font-bold text-foreground block mb-1">1. HTTP Header (Recommended)</span>
+                    <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-muted p-2 rounded">
                       Authorization: Bearer YOUR_API_TOKEN
                     </pre>
                   </div>
-                  <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
-                    <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100 block mb-1">2. Query Parameter (For SSE / Web clients)</span>
-                    <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-zinc-100 dark:bg-zinc-950 p-2 rounded">
+                  <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900">
+                    <span className="text-xs font-bold text-foreground block mb-1">2. Query Parameter (For SSE / Web clients)</span>
+                    <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-muted p-2 rounded">
                       /api/mcp?token=YOUR_API_TOKEN
                     </pre>
                   </div>
@@ -1084,14 +1084,14 @@ export function DocsClient() {
             {/* TOOL REFERENCE (7 TOOLS) */}
             {/* ============================================================= */}
             <div id="mcp-tools" className="scroll-mt-24 space-y-6">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-border pb-3">
                 <div className="flex items-center gap-2.5">
                   <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400">
                     <Zap className="w-4 h-4" />
                   </div>
                   <div>
                     <h2 className="text-xl sm:text-2xl font-bold tracking-tight">MCP Tool Reference</h2>
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">Complete catalogue of available AI tools and callable methods</p>
+                    <p className="text-xs text-muted-foreground">Complete catalogue of available AI tools and callable methods</p>
                   </div>
                 </div>
                 <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300">
@@ -1106,13 +1106,13 @@ export function DocsClient() {
                   return (
                     <div
                       key={tool.name}
-                      className="rounded-xl border border-zinc-200 dark:border-zinc-800/80 bg-white dark:bg-zinc-900/90 shadow-sm overflow-hidden transition-all"
+                      className="rounded-xl border border-border/80 bg-white dark:bg-zinc-900/90 shadow-sm overflow-hidden transition-all"
                     >
                       {/* Header bar */}
                       <button
                         type="button"
                         onClick={() => toggleTool(tool.name)}
-                        className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-zinc-50 dark:hover:bg-zinc-800/40 transition-colors"
+                        className="w-full p-4 flex items-center justify-between gap-4 text-left hover:bg-muted/40 transition-colors"
                       >
                         <div className="flex items-center gap-3 min-w-0">
                           <div className="w-7 h-7 rounded-lg bg-violet-100 dark:bg-violet-950 flex items-center justify-center text-violet-600 dark:text-violet-400 shrink-0">
@@ -1123,42 +1123,42 @@ export function DocsClient() {
                               <code className="text-sm sm:text-base font-mono font-bold text-violet-600 dark:text-violet-400">
                                 {tool.name}
                               </code>
-                              <span className="text-xs text-zinc-400 font-medium hidden sm:inline">— {tool.title}</span>
+                              <span className="text-xs text-muted-foreground font-medium hidden sm:inline">— {tool.title}</span>
                             </div>
-                            <p className="text-xs text-zinc-500 dark:text-zinc-400 truncate max-w-xl">
+                            <p className="text-xs text-muted-foreground truncate max-w-xl">
                               {tool.description}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-2 shrink-0">
-                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hidden sm:inline-block">
+                          <span className="text-[11px] font-mono px-2 py-0.5 rounded bg-muted text-muted-foreground hidden sm:inline-block">
                             {tool.inputs.length === 0 ? "No arguments" : `${tool.inputs.length} arg${tool.inputs.length > 1 ? "s" : ""}`}
                           </span>
                           {isExpanded ? (
-                            <ChevronDown className="w-4 h-4 text-zinc-400" />
+                            <ChevronDown className="w-4 h-4 text-muted-foreground" />
                           ) : (
-                            <ChevronRight className="w-4 h-4 text-zinc-400" />
+                            <ChevronRight className="w-4 h-4 text-muted-foreground" />
                           )}
                         </div>
                       </button>
 
                       {/* Expanded tool details */}
                       {isExpanded && (
-                        <div className="p-4 sm:p-5 pt-0 border-t border-zinc-100 dark:border-zinc-800/60 space-y-4 text-xs sm:text-sm bg-zinc-50/50 dark:bg-zinc-950/40">
-                          <p className="text-zinc-600 dark:text-zinc-400 pt-3">
+                        <div className="p-4 sm:p-5 pt-0 border-t border-border/60 space-y-4 text-xs sm:text-sm bg-zinc-50/50 dark:bg-zinc-950/40">
+                          <p className="text-muted-foreground pt-3">
                             {tool.description}
                           </p>
 
                           {/* Inputs Table */}
                           {tool.inputs.length > 0 ? (
                             <div className="space-y-2">
-                              <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                              <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Parameters / Arguments
                               </h4>
-                              <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+                              <div className="overflow-x-auto rounded-lg border border-border bg-white dark:bg-zinc-900">
                                 <table className="w-full text-left text-xs">
-                                  <thead className="bg-zinc-100 dark:bg-zinc-800/80 text-zinc-700 dark:text-zinc-300 font-semibold border-b border-zinc-200 dark:border-zinc-800">
+                                  <thead className="bg-muted/80 text-foreground/80 font-semibold border-b border-border">
                                     <tr>
                                       <th className="p-2.5">Field</th>
                                       <th className="p-2.5">Type</th>
@@ -1167,20 +1167,20 @@ export function DocsClient() {
                                       <th className="p-2.5">Description</th>
                                     </tr>
                                   </thead>
-                                  <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800 font-mono">
+                                  <tbody className="divide-y divide-border font-mono">
                                     {tool.inputs.map((input) => (
                                       <tr key={input.name}>
                                         <td className="p-2.5 font-bold text-violet-600 dark:text-violet-400">{input.name}</td>
-                                        <td className="p-2.5 text-zinc-500">{input.type}</td>
+                                        <td className="p-2.5 text-muted-foreground">{input.type}</td>
                                         <td className="p-2.5">
                                           {input.required ? (
                                             <span className="px-1.5 py-0.5 rounded text-[10px] bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300">Yes</span>
                                           ) : (
-                                            <span className="text-zinc-400 text-[10px]">No</span>
+                                            <span className="text-muted-foreground text-[10px]">No</span>
                                           )}
                                         </td>
-                                        <td className="p-2.5 text-zinc-500">{input.default || "—"}</td>
-                                        <td className="p-2.5 font-sans text-zinc-600 dark:text-zinc-400">{input.description}</td>
+                                        <td className="p-2.5 text-muted-foreground">{input.default || "—"}</td>
+                                        <td className="p-2.5 font-sans text-muted-foreground">{input.description}</td>
                                       </tr>
                                     ))}
                                   </tbody>
@@ -1188,7 +1188,7 @@ export function DocsClient() {
                               </div>
                             </div>
                           ) : (
-                            <div className="p-2.5 rounded-lg bg-zinc-100/80 dark:bg-zinc-900/80 text-xs text-zinc-500 flex items-center gap-2">
+                            <div className="p-2.5 rounded-lg bg-zinc-100/80 dark:bg-zinc-900/80 text-xs text-muted-foreground flex items-center gap-2">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                               This tool takes no arguments. Simply call <code>{tool.name}()</code>.
                             </div>
@@ -1196,7 +1196,7 @@ export function DocsClient() {
 
                           {/* Sample response */}
                           <div className="space-y-1.5">
-                            <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+                            <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
                               <span>SAMPLE RESPONSE PAYLOAD (JSON)</span>
                               <CopyButton text={JSON.stringify(tool.sampleResponse, null, 2)} />
                             </div>
@@ -1216,18 +1216,18 @@ export function DocsClient() {
             {/* IDE & AI CLIENT SETUP GUIDES (TABBED) */}
             {/* ============================================================= */}
             <div id="mcp-ide-setup" className="scroll-mt-24 space-y-6">
-              <div className="flex items-center gap-2.5 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5 border-b border-border pb-3">
                 <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center text-purple-600 dark:text-purple-400">
                   <Laptop className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold tracking-tight">AI Client & IDE Setup Guides</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Step-by-step configuration files and connection instructions for every platform</p>
+                  <p className="text-xs text-muted-foreground">Step-by-step configuration files and connection instructions for every platform</p>
                 </div>
               </div>
 
               {/* Platform selector buttons */}
-              <div className="flex flex-wrap gap-2 p-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800">
+              <div className="flex flex-wrap gap-2 p-1.5 rounded-xl bg-muted border border-border">
                 {PLATFORMS.map((p) => {
                   const isActive = selectedPlatform === p.id
                   return (
@@ -1236,8 +1236,8 @@ export function DocsClient() {
                       onClick={() => setSelectedPlatform(p.id)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
                         isActive
-                          ? "bg-white dark:bg-zinc-800 text-zinc-900 dark:text-zinc-50 shadow-sm border border-zinc-200/80 dark:border-zinc-700"
-                          : "text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-100"
+                          ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm border border-zinc-200/80 dark:border-zinc-700"
+                          : "text-muted-foreground hover:text-zinc-900 dark:hover:text-zinc-100"
                       }`}
                     >
                       <span>{p.icon}</span>
@@ -1248,36 +1248,36 @@ export function DocsClient() {
               </div>
 
               {/* Selected Platform Guide Card */}
-              <div className="p-6 rounded-2xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/80 shadow-sm space-y-5">
-                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-100 dark:border-zinc-800/80 pb-4">
+              <div className="p-6 rounded-2xl border border-border bg-white dark:bg-zinc-900/80 shadow-sm space-y-5">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{activePlatformData.icon}</span>
                     <div>
-                      <h3 className="text-lg font-bold text-zinc-900 dark:text-zinc-50">
+                      <h3 className="text-lg font-bold text-foreground">
                         {activePlatformData.name} Integration
                       </h3>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className={`text-[11px] px-2 py-0.5 rounded-full border font-medium ${activePlatformData.badgeColor}`}>
                           {activePlatformData.badge}
                         </span>
-                        <span className="text-[11px] text-zinc-400 font-mono">
+                        <span className="text-[11px] text-muted-foreground font-mono">
                           {activePlatformData.transport}
                         </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="text-xs text-zinc-500 font-mono bg-zinc-100 dark:bg-zinc-800 px-3 py-1 rounded-md">
-                    Config: <span className="text-zinc-900 dark:text-zinc-200 font-semibold">{activePlatformData.configPath}</span>
+                  <div className="text-xs text-muted-foreground font-mono bg-muted px-3 py-1 rounded-md">
+                    Config: <span className="text-foreground font-semibold">{activePlatformData.configPath}</span>
                   </div>
                 </div>
 
                 {/* Step by step */}
                 <div className="space-y-2">
-                  <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                     Setup Steps
                   </h4>
-                  <ol className="space-y-2 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 ml-4 list-decimal marker:font-bold marker:text-violet-600">
+                  <ol className="space-y-2 text-xs sm:text-sm text-foreground/80 ml-4 list-decimal marker:font-bold marker:text-violet-600">
                     {activePlatformData.steps.map((step, idx) => (
                       <li key={idx} className="pl-1 leading-relaxed">
                         {step}
@@ -1288,7 +1288,7 @@ export function DocsClient() {
 
                 {/* Configuration snippet */}
                 <div className="space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold text-zinc-500">
+                  <div className="flex items-center justify-between text-xs font-bold text-muted-foreground">
                     <span>CONFIGURATION FILE CONTENT</span>
                   </div>
                   <CodeBlock
@@ -1323,42 +1323,42 @@ export function DocsClient() {
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold tracking-tight">Tunneling for Local Development</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Connecting cloud AI assistants (v0, Claude Web, etc.) to your local machine</p>
+                  <p className="text-xs text-muted-foreground">Connecting cloud AI assistants (v0, Claude Web, etc.) to your local machine</p>
                 </div>
               </div>
 
-              <div className="p-5 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 text-xs sm:text-sm text-zinc-700 dark:text-zinc-300 space-y-4">
+              <div className="p-5 rounded-xl border border-amber-200 dark:border-amber-900/50 bg-amber-50/40 dark:bg-amber-950/20 text-xs sm:text-sm text-foreground/80 space-y-4">
                 <div className="flex gap-2.5 items-start">
                   <AlertTriangle className="w-5 h-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
                   <p>
-                    Desktop clients like <strong>Cursor</strong> and <strong>Claude Desktop</strong> running on your local machine can directly connect to <code className="font-mono bg-zinc-200 dark:bg-zinc-800 px-1 py-0.5 rounded">http://localhost:3000/api/mcp</code>.
+                    Desktop clients like <strong>Cursor</strong> and <strong>Claude Desktop</strong> running on your local machine can directly connect to <code className="font-mono bg-muted px-1 py-0.5 rounded">http://localhost:3000/api/mcp</code>.
                     However, cloud-hosted services like <strong>v0.dev</strong> or remote IDE instances cannot access your private localhost directly without a secure public tunnel.
                   </p>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
                   <div className="space-y-2">
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <span className="font-bold text-foreground flex items-center gap-1.5">
                       Option A: Cloudflare Tunnel (Free & Fast)
                     </span>
                     <CodeBlock
                       code="cloudflared tunnel --url http://localhost:3000"
                       language="bash"
                     />
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-muted-foreground">
                       Copy the generated <code className="font-mono">https://*.trycloudflare.com/api/mcp</code> URL into your AI agent.
                     </p>
                   </div>
 
                   <div className="space-y-2">
-                    <span className="font-bold text-zinc-900 dark:text-zinc-100 flex items-center gap-1.5">
+                    <span className="font-bold text-foreground flex items-center gap-1.5">
                       Option B: ngrok Tunnel
                     </span>
                     <CodeBlock
                       code="ngrok http 3000"
                       language="bash"
                     />
-                    <p className="text-[11px] text-zinc-500">
+                    <p className="text-[11px] text-muted-foreground">
                       Copy the resulting forwarding HTTPS address + <code className="font-mono">/api/mcp</code>.
                     </p>
                   </div>
@@ -1370,13 +1370,13 @@ export function DocsClient() {
             {/* AI PROMPT RECIPES & WORKFLOWS */}
             {/* ============================================================= */}
             <div id="mcp-recipes" className="scroll-mt-24 space-y-6">
-              <div className="flex items-center gap-2.5 border-b border-zinc-200 dark:border-zinc-800 pb-3">
+              <div className="flex items-center gap-2.5 border-b border-border pb-3">
                 <div className="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
                   <Sparkles className="w-4 h-4" />
                 </div>
                 <div>
                   <h2 className="text-xl sm:text-2xl font-bold tracking-tight">AI Prompt Recipes & Workflows</h2>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">Ready-to-use prompt templates to supercharge your development in Cursor & Claude</p>
+                  <p className="text-xs text-muted-foreground">Ready-to-use prompt templates to supercharge your development in Cursor & Claude</p>
                 </div>
               </div>
 
@@ -1384,7 +1384,7 @@ export function DocsClient() {
                 {PROMPT_RECIPES.map((recipe, i) => (
                   <div
                     key={i}
-                    className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/90 shadow-sm flex flex-col justify-between gap-3 hover:border-violet-500/40 transition-colors"
+                    className="p-4 rounded-xl border border-border bg-white dark:bg-zinc-900/90 shadow-sm flex flex-col justify-between gap-3 hover:border-violet-500/40 transition-colors"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
@@ -1393,10 +1393,10 @@ export function DocsClient() {
                         </span>
                         <CopyButton text={recipe.prompt} />
                       </div>
-                      <h3 className="font-bold text-sm text-zinc-900 dark:text-zinc-100 mb-1.5">
+                      <h3 className="font-bold text-sm text-foreground mb-1.5">
                         {recipe.title}
                       </h3>
-                      <p className="text-xs text-zinc-600 dark:text-zinc-400 italic bg-zinc-50 dark:bg-zinc-950 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800/60 leading-relaxed font-mono">
+                      <p className="text-xs text-muted-foreground italic bg-muted/40 p-2.5 rounded-lg border border-border/60 leading-relaxed font-mono">
                         "{recipe.prompt}"
                       </p>
                     </div>
@@ -1406,21 +1406,21 @@ export function DocsClient() {
             </div>
           </section>
 
-          <hr className="border-zinc-200 dark:border-zinc-800" />
+          <hr className="border-border" />
 
           {/* ================================================================= */}
           {/* GETTING STARTED: INTRODUCTION */}
           {/* ================================================================= */}
           <section id="introduction" className="scroll-mt-24 space-y-4">
-            <h2 className="text-2xl sm:text-3xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-extrabold text-foreground tracking-tight">
               REST API Documentation
             </h2>
-            <p className="text-base text-zinc-600 dark:text-zinc-400 leading-relaxed">
+            <p className="text-base text-muted-foreground leading-relaxed">
               SaCMS provides a powerful, high-performance public REST API to fetch your managed content securely. Built with Next.js 16 App Router, PostgreSQL JSONB, and edge rate-limiting, it supports flexible query parameters, Strapi-compatible filtering, deep population, and full-text search.
             </p>
-            <div className="bg-zinc-100 dark:bg-zinc-900 rounded-xl p-4 border border-zinc-200 dark:border-zinc-800 flex items-center gap-3 font-mono text-xs sm:text-sm">
-              <Terminal className="w-5 h-5 text-zinc-500 shrink-0" />
-              <code className="text-zinc-800 dark:text-zinc-200">
+            <div className="bg-muted rounded-xl p-4 border border-border flex items-center gap-3 font-mono text-xs sm:text-sm">
+              <Terminal className="w-5 h-5 text-muted-foreground shrink-0" />
+              <code className="text-foreground">
                 Base URL: {origin}/api/public/[tenant-slug]
               </code>
             </div>
@@ -1434,7 +1434,7 @@ export function DocsClient() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">REST Authentication</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               All public REST API requests must include your API key in the headers. You can generate read-only or full-access API keys from your SaCMS Dashboard under <strong>Developer Settings → API Keys</strong>.
             </p>
             <CodeBlock
@@ -1452,7 +1452,7 @@ export function DocsClient() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">TypeScript SDK (@sacms/sdk)</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               The official SaCMS TypeScript SDK provides a fluent query builder, built-in rate-limit retries, and strongly-typed content models for Next.js 16 (App Router), React, and Node.js.
             </p>
 
@@ -1502,7 +1502,7 @@ export default async function ArticlesPage() {
         {articles.map((article: any) => (
           <article key={article.id} className="p-4 border rounded-xl">
             <h2 className="text-xl font-bold">{article.title}</h2>
-            <p className="text-sm text-gray-500 mt-1">{new Date(article.createdAt).toLocaleDateString()}</p>
+            <p className="text-sm text-muted-foreground mt-1">{new Date(article.createdAt).toLocaleDateString()}</p>
           </article>
         ))}
       </div>
@@ -1523,7 +1523,7 @@ export default async function ArticlesPage() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">Content API (Collections)</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Fetch multiple entries of a specific Content Type. Supports pagination, full-text search, field selection, and multi-relational population.
             </p>
 
@@ -1552,30 +1552,30 @@ export default async function ArticlesPage() {
           {/* ADVANCED FILTERING */}
           <section id="filtering" className="scroll-mt-24 space-y-6">
             <h3 className="text-xl font-bold tracking-tight">Advanced Filtering Operators</h3>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               SaCMS uses Strapi-compatible filtering syntax: <code>?filters[field][$operator]=value</code>.
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$eq, $ne</span>
-                <span className="text-zinc-500 uppercase">Equal / Not Equal</span>
+                <span className="text-muted-foreground uppercase">Equal / Not Equal</span>
               </div>
-              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$gt, $gte, $lt, $lte</span>
-                <span className="text-zinc-500 uppercase">Comparisons</span>
+                <span className="text-muted-foreground uppercase">Comparisons</span>
               </div>
-              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$contains, $startsWith</span>
-                <span className="text-zinc-500 uppercase">Case-insensitive text match</span>
+                <span className="text-muted-foreground uppercase">Case-insensitive text match</span>
               </div>
-              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$in, $notIn</span>
-                <span className="text-zinc-500 uppercase">Array inclusion (comma separated)</span>
+                <span className="text-muted-foreground uppercase">Array inclusion (comma separated)</span>
               </div>
-              <div className="p-3 rounded-lg border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$null, $notNull</span>
-                <span className="text-zinc-500 uppercase">Nullability check</span>
+                <span className="text-muted-foreground uppercase">Nullability check</span>
               </div>
             </div>
           </section>
@@ -1583,7 +1583,7 @@ export default async function ArticlesPage() {
           {/* SINGLE TYPES API */}
           <section id="single-types" className="scroll-mt-24 space-y-4">
             <h2 className="text-2xl font-bold tracking-tight">Single Types API</h2>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Fetch singleton data structures such as Global Navigation, Homepage Hero, or Site Settings.
             </p>
 
@@ -1617,7 +1617,7 @@ export default async function ArticlesPage() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">GraphQL API Reference</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Execute dynamic GraphQL queries and mutations with full field selection, pagination, and relational populate.
             </p>
 
@@ -1663,7 +1663,7 @@ export default async function ArticlesPage() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">Bring Your Own Database (BYODB)</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Enterprise and Pro workspaces can connect dedicated external PostgreSQL databases and S3 object storage buckets for absolute data isolation and compliance.
             </p>
 
@@ -1702,7 +1702,7 @@ export default async function ArticlesPage() {
               </div>
               <h2 className="text-2xl font-bold tracking-tight">Custom Domains & Cloudflare DNS</h2>
             </div>
-            <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            <p className="text-sm text-muted-foreground">
               Arahkan domain atau subdomain kustom Anda (misal: <code>cms.perusahaan.com</code>) ke SaCMS Cloud untuk white-labeling dashboard dan API endpoint.
             </p>
 
