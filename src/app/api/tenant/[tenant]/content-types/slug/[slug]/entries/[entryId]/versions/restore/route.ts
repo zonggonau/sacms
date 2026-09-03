@@ -2,20 +2,30 @@ import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { findEntryInTenant } from "@/lib/content/entry-access"
 import { z } from "zod"
 
 const RestoreSchema = z.object({ versionId: z.string().min(1) })
 
 export const POST = withStaffAuth(
-  async (request, context, { session }) => {
-    const { tenant: tenantSlug, entryId } = await context.params
+  async (request, context, { session, access }) => {
+    const { tenant: tenantSlug, slug, entryId } = await context.params
     const body = await readJson(request, RestoreSchema)
     if (!body.ok) return body.response
 
     const tenantDb = await getTenantDb(tenantSlug)
 
-    const targetVersion = await tenantDb.contentVersion.findUnique({ where: { id: body.data.versionId } })
-    if (!targetVersion || targetVersion.contentEntryId !== entryId) {
+    const entry = await findEntryInTenant(tenantDb, {
+      entryId,
+      tenantId: access.tenantId,
+      contentTypeSlug: slug,
+    })
+    if (!entry) return apiError("not_found", { message: "Entry not found" })
+
+    const targetVersion = await tenantDb.contentVersion.findFirst({
+      where: { id: body.data.versionId, contentEntryId: entryId },
+    })
+    if (!targetVersion) {
       return apiError("not_found", { message: "Target version not found" })
     }
 
@@ -47,6 +57,7 @@ export const POST = withStaffAuth(
     logAudit({
       action: AuditAction.CONTENT_UPDATED,
       userId: session.user.id,
+      tenantId: access.tenantId ?? undefined,
       entity: "ContentEntry",
       entityId: entryId,
       data: { action: "restore_version", restoredFromVersion: targetVersion.version },

@@ -1,10 +1,18 @@
 import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { withStaffAuth } from "@/lib/api/route-helpers"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { findEntryInTenant } from "@/lib/content/entry-access"
 
-export const GET = withStaffAuth(async (_request, context) => {
-  const { tenant: tenantSlug, entryId } = await context.params
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+  const { tenant: tenantSlug, slug, entryId } = await context.params
   const tenantDb = await getTenantDb(tenantSlug)
+
+  const entry = await findEntryInTenant(tenantDb, {
+    entryId,
+    tenantId: access.tenantId,
+    contentTypeSlug: slug,
+  })
+  if (!entry) return apiError("not_found", { message: "Entry not found" })
 
   const versions = await tenantDb.contentVersion.findMany({
     where: { contentEntryId: entryId },
