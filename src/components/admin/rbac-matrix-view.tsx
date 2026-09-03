@@ -11,6 +11,7 @@ import {
 } from "lucide-react"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import {
   Dialog,
   DialogContent,
@@ -71,7 +72,8 @@ const CATEGORY_CONFIG: Record<string, { label: string; icon: React.ElementType; 
 
 export function RbacMatrixView() {
   const { toast } = useToast()
-  
+  const { confirm, dialog: confirmDialog } = useConfirm()
+
   const [permissions, setPermissions] = useState<Permission[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -239,7 +241,15 @@ export function RbacMatrixView() {
   }
 
   const handleDeletePermission = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus izin ini? Tindakan ini akan mencabutnya dari semua peran.")) return
+    if (
+      !(await confirm({
+        title: "Hapus izin ini?",
+        description: "Izin ini akan dicabut dari semua peran.",
+        confirmLabel: "Hapus izin",
+        variant: "destructive",
+      }))
+    )
+      return
     try {
       const res = await fetch(`/api/admin/rbac/permissions/${id}`, { method: "DELETE" })
       if (res.ok) {
@@ -270,6 +280,7 @@ export function RbacMatrixView() {
 
   return (
     <div className="space-y-6">
+      {confirmDialog}
       {/* Roles Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <Card className="rounded-2xl border border-purple-500/20 bg-card shadow-xs">

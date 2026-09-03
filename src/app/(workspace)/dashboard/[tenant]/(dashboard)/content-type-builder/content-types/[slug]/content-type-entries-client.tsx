@@ -25,6 +25,7 @@ import {
   DropdownMenuLabel
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
 import { getEntriesAction, updateContentEntryStatusAction, deleteEntryAction } from "@/actions/content"
@@ -80,6 +81,7 @@ export default function ContentTypeEntriesClient({
   const { data: session } = useSession()
   const router = useRouter()
   
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [contentType, setContentType] = useState<ContentType | null>(initialContentType)
   const [entries, setEntries] = useState<Entry[]>(initialEntries || [])
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, { label: string; subtitle?: string }>>(initialRelationLabels)
@@ -137,7 +139,14 @@ export default function ContentTypeEntriesClient({
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus entri ini?")) return
+    if (
+      !(await confirm({
+        title: "Hapus entri ini?",
+        confirmLabel: "Hapus entri",
+        variant: "destructive",
+      }))
+    )
+      return
     try {
       const res = await deleteEntryAction(tenantSlug, contentTypeSlug, id)
       if (res.success) {
@@ -153,6 +162,7 @@ export default function ContentTypeEntriesClient({
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           

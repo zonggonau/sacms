@@ -25,6 +25,7 @@ import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import {
   Dialog,
   DialogContent,
@@ -98,6 +99,7 @@ export default function AdminWebhooksPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const [webhooks, setWebhooks] = useState<WebhookItem[]>([])
   const [logs, setLogs] = useState<WebhookLogItem[]>([])
@@ -168,7 +170,14 @@ export default function AdminWebhooksPage() {
   }
 
   const handlePurgeAll = async () => {
-    if (!confirm("Apakah Anda yakin ingin mengosongkan seluruh antrean Dead Letter Queue?")) return
+    if (
+      !(await confirm({
+        title: "Kosongkan seluruh Dead Letter Queue?",
+        confirmLabel: "Kosongkan antrean",
+        variant: "destructive",
+      }))
+    )
+      return
     try {
       const res = await fetch("/api/admin/webhooks", {
         method: "POST",
@@ -203,6 +212,7 @@ export default function AdminWebhooksPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           

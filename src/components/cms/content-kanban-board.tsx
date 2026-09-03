@@ -45,6 +45,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu"
 import { toast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { updateContentEntryStatusAction, deleteEntryAction } from "@/actions/content"
 import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
@@ -159,6 +160,7 @@ export function ContentKanbanBoard({
   onDeleteEntry,
 }: ContentKanbanBoardProps) {
   const router = useRouter()
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [entries, setEntries] = useState<any[]>(initialEntries)
   const [activeCard, setActiveCard] = useState<any | null>(null)
 
@@ -284,7 +286,14 @@ export function ContentKanbanBoard({
   }
 
   const handleDeleteCard = async (entryId: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus entri ini?")) return
+    if (
+      !(await confirm({
+        title: "Hapus entri ini?",
+        confirmLabel: "Hapus entri",
+        variant: "destructive",
+      }))
+    )
+      return
 
     try {
       const res = await deleteEntryAction(entryId, tenantSlug, contentTypeSlug)
@@ -313,6 +322,7 @@ export function ContentKanbanBoard({
 
   return (
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+      {confirmDialog}
       <div className="flex gap-4 overflow-x-auto pb-6 pt-1 px-1 min-h-[calc(100vh-280px)] scrollbar-thin">
         {KANBAN_COLUMNS.map((col) => {
           const colItems = columnEntries[col.id] || []

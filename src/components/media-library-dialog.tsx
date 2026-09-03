@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
 import { Card, CardContent } from "@/components/ui/card"
 import { Upload, Link, Image as ImageIcon, FileText, Loader2, Search, Info } from "lucide-react"
+import { toast } from "sonner"
 
 interface MediaItem {
   id: string
@@ -126,7 +127,7 @@ export function MediaLibraryDialog({
       onOpenChange(false)
     } catch (error: any) {
       console.error("Error uploading:", error)
-      alert(error.message || "Failed to upload file")
+      toast.error(error.message || "Failed to upload file")
     } finally {
       setUploading(false)
     }

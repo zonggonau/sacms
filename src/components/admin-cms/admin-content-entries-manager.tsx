@@ -24,6 +24,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { 
   deleteAdminEntryAction, 
@@ -53,6 +54,7 @@ export function AdminContentEntriesManager({
 }) {
   const router = useRouter()
   
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [statusFilter, setStatusFilter] = useState<string[]>(["DRAFT", "PUBLISHED", "IN_REVIEW", "ARCHIVED"])
@@ -80,7 +82,15 @@ export function AdminContentEntriesManager({
   }
 
   const handleDeleteEntry = async (entryId: string) => {
-    if (!confirm('Delete this entry permanently?')) return
+    if (
+      !(await confirm({
+        title: "Delete this entry?",
+        description: "The entry will be permanently removed.",
+        confirmLabel: "Delete entry",
+        variant: "destructive",
+      }))
+    )
+      return
     try {
       const res = await deleteAdminEntryAction(contentTypeSlug, entryId)
       if (res.success) {
@@ -108,6 +118,7 @@ export function AdminContentEntriesManager({
 
   return (
     <div className="p-6 lg:p-10 space-y-6 animate-in fade-in duration-300">
+      {confirmDialog}
       <div className="sticky top-0 z-30 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 pb-4 -mx-6 px-6 lg:-mx-10 lg:px-10">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-4">

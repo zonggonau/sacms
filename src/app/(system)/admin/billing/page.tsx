@@ -14,6 +14,8 @@ import {
 } from "lucide-react"
 import Link from "next/link"
 import { formatRupiah } from "@/lib/utils"
+import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 
 export default function AdminBillingOverviewPage() {
   const { data: session, status } = useSession()
@@ -21,6 +23,7 @@ export default function AdminBillingOverviewPage() {
   const [data, setData] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -50,22 +53,29 @@ export default function AdminBillingOverviewPage() {
   }, [session?.user?.id, session?.user?.role])
 
   const handleGenerateInvoices = async () => {
-    if (!confirm("Apakah Anda yakin ingin menjalankan siklus billing dan menghasilkan faktur untuk semua langganan aktif?")) return
+    if (
+      !(await confirm({
+        title: "Jalankan siklus billing?",
+        description: "Faktur akan dibuat untuk semua langganan aktif.",
+        confirmLabel: "Jalankan sekarang",
+      }))
+    )
+      return
     setGenerating(true)
     try {
       const res = await fetch("/api/admin/billing/generate-invoices", {
         method: "POST",
       })
       if (res.ok) {
-        alert("Faktur tagihan berhasil diproses!")
+        toast.success("Faktur tagihan berhasil diproses!")
         fetchReports()
       } else {
         const err = await res.json()
-        alert(`Error: ${err.error || "Gagal memproses faktur tagihan"}`)
+        toast.error(err.error || "Gagal memproses faktur tagihan")
       }
     } catch (error) {
       console.error("Failed to generate invoices:", error)
-      alert("Gagal memproses faktur tagihan")
+      toast.error("Gagal memproses faktur tagihan")
     } finally {
       setGenerating(false)
     }
@@ -90,6 +100,7 @@ export default function AdminBillingOverviewPage() {
 
   return (
     <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+      {confirmDialog}
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border/70 pb-5">
         <div>

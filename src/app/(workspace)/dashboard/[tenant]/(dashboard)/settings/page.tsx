@@ -54,6 +54,7 @@ import {
   Lock,
 } from "lucide-react"
 import { toast } from "sonner"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { UsageTab } from "@/components/dashboard/usage-tab"
 import { getContentTypesAction } from "@/actions/content-types"
 
@@ -63,6 +64,7 @@ export default function TenantSettingsPage() {
   const params = useParams()
   const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
+  const { confirm, dialog: confirmDialog } = useConfirm()
 
   const defaultTabParam = searchParams?.get("tab") || "general"
   const [activeTab, setActiveTab] = useState(
@@ -397,8 +399,15 @@ export default function TenantSettingsPage() {
     const file = e.target.files?.[0]
     if (!file) return
 
-    if (!confirm("Apakah Anda yakin ingin mengimpor berkas konfigurasi ini?")) return
-    
+    if (
+      !(await confirm({
+        title: "Impor berkas konfigurasi ini?",
+        description: "Pengaturan workspace saat ini akan ditimpa oleh isi berkas.",
+        confirmLabel: "Impor konfigurasi",
+      }))
+    )
+      return
+
     setSaving(true)
     try {
       const formData = new FormData()
@@ -528,9 +537,10 @@ export default function TenantSettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
-          
+
           {/* Header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>

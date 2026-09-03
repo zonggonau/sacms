@@ -32,6 +32,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import { 
   bulkContentAction, 
@@ -86,6 +87,7 @@ export function ContentEntriesManager({
   const router = useRouter()
   const navBasePath = basePath || `/dashboard/${tenantSlug}/cms`
   
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [selectedIds, setSelectedIds] = useState<string[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [searchTargetField, setSearchTargetField] = useState<string>("all")
@@ -307,7 +309,15 @@ export function ContentEntriesManager({
 
   const handleBulkAction = async (action: "publish" | "draft" | "archive" | "delete") => {
     if (selectedIds.length === 0) return
-    if (action === "delete" && !confirm(`Apakah Anda yakin ingin menghapus ${selectedIds.length} entri terpilih secara permanen?`)) {
+    if (
+      action === "delete" &&
+      !(await confirm({
+        title: `Hapus ${selectedIds.length} entri terpilih?`,
+        description: "Entri akan dihapus secara permanen.",
+        confirmLabel: "Hapus entri",
+        variant: "destructive",
+      }))
+    ) {
       return
     }
 
@@ -326,7 +336,14 @@ export function ContentEntriesManager({
   }
 
   const handleDeleteEntry = async (id: string) => {
-    if (!confirm("Apakah Anda yakin ingin menghapus entri konten ini?")) return
+    if (
+      !(await confirm({
+        title: "Hapus entri konten ini?",
+        confirmLabel: "Hapus entri",
+        variant: "destructive",
+      }))
+    )
+      return
     try {
       const res = await deleteEntryAction(id, tenantSlug, contentTypeSlug)
       if (res.success) {
@@ -373,7 +390,8 @@ export function ContentEntriesManager({
 
   return (
     <div className="flex flex-1 flex-col w-full">
-      <ApiSnippetDialog 
+      {confirmDialog}
+      <ApiSnippetDialog
         open={isApiSnippetOpen} 
         onOpenChange={setIsApiSnippetOpen} 
         tenantSlug={tenantSlug} 

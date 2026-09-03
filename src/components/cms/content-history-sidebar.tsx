@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { Badge } from "@/components/ui/badge"
 import { toast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
 import ReactDiffViewer from "react-diff-viewer-continued"
 import { 
@@ -46,6 +47,7 @@ export function ContentHistorySidebar({
   currentData = {},
   onRestoreSuccess
 }: ContentHistorySidebarProps) {
+  const { confirm, dialog: confirmDialog } = useConfirm()
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
@@ -74,8 +76,15 @@ export function ContentHistorySidebar({
   }, [open, entryId])
 
   const handleRestore = async (versionId: string) => {
-    if (!confirm("Apakah Anda yakin ingin mengembalikan versi ini? Perubahan yang belum disimpan akan tertimpa.")) return
-    
+    if (
+      !(await confirm({
+        title: "Kembalikan ke versi ini?",
+        description: "Perubahan yang belum disimpan akan tertimpa.",
+        confirmLabel: "Pulihkan versi",
+      }))
+    )
+      return
+
     setRestoring(versionId)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/${entryId}/versions/restore`, {
@@ -122,6 +131,8 @@ export function ContentHistorySidebar({
   }
 
   return (
+    <>
+    {confirmDialog}
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button 
@@ -303,5 +314,6 @@ export function ContentHistorySidebar({
         </div>
       </DialogContent>
     </Dialog>
+    </>
   )
 }

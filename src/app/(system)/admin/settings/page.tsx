@@ -24,6 +24,7 @@ import {
   AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
+import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
 import { v4 as uuidv4 } from "uuid"
 
@@ -31,7 +32,8 @@ export default function AdminSettingsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const { toast } = useToast()
-  
+  const { confirm, dialog: confirmDialog } = useConfirm()
+
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [purgingCache, setPurgingCache] = useState(false)
@@ -170,7 +172,14 @@ export default function AdminSettingsPage() {
   }
 
   const handlePurgeCache = async () => {
-    if (!confirm("Apakah Anda yakin ingin membersihkan seluruh cache Edge/Redis platform?")) return
+    if (
+      !(await confirm({
+        title: "Bersihkan seluruh cache Edge/Redis platform?",
+        confirmLabel: "Bersihkan cache",
+        variant: "destructive",
+      }))
+    )
+      return
     setPurgingCache(true)
     try {
       const res = await fetch("/api/admin/settings/purge-cache", { method: "POST" })
@@ -275,6 +284,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="flex flex-1 flex-col w-full">
+      {confirmDialog}
       <div className="flex-1 bg-background text-foreground flex flex-col w-full">
         <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
           
