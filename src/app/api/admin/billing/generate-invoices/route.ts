@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { PLAN_PRICES, getDynamicWorkspacePrices, getDynamicAccountPrices } from "@/lib/midtrans"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
 /**
  * POST /api/admin/billing/generate-invoices
@@ -202,18 +201,7 @@ export async function POST(request: NextRequest) {
  * GET /api/admin/billing/generate-invoices
  * Preview what invoices will be generated (for testing)
  */
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    if (session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async () => {
     // Get all active subscriptions
     const activeSubscriptions = await db.subscription.findMany({
       where: {
@@ -278,11 +266,4 @@ export async function GET(request: NextRequest) {
       preview,
       timestamp: now.toISOString(),
     })
-  } catch (error) {
-    console.error("Error previewing invoices:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+})

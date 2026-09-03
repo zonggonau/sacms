@@ -1,11 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { deleteTenantStorage } from "@/lib/r2"
 import { dropEnterpriseDb } from "@/lib/enterprise-db"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 const updateTenantSchema = z.object({
   name: z.string().min(2).max(100).optional(),
@@ -15,17 +14,8 @@ const updateTenantSchema = z.object({
   databaseUrl: z.string().url().optional().or(z.literal("")).nullable(),
 })
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { tenantId } = await params
+export const GET = withAdminAuth(async (_request, context) => {
+    const { tenantId } = await context.params
     const tenant = await db.tenant.findUnique({
       where: { id: tenantId },
       select: {
@@ -49,67 +39,30 @@ export async function GET(
       }
     })
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
+    if (!tenant) return apiError("not_found", { message: "Tenant not found" })
     return NextResponse.json({ tenant })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { tenantId } = await params
+export const PATCH = withAdminAuth(async (request, context) => {
+    const { tenantId } = await context.params
     const result = await validateBody(request, updateTenantSchema)
     if ("error" in result) return result.error
 
     const data = { ...result.data }
     if (data.databaseUrl === "") data.databaseUrl = null
 
-    const tenant = await db.tenant.update({
-      where: { id: tenantId },
-      data,
-    })
-
+    const tenant = await db.tenant.update({ where: { id: tenantId }, data })
     return NextResponse.json({ tenant })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenantId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const DELETE = withAdminAuth(async (_request, context) => {
+    const { tenantId } = await context.params
 
-    const { tenantId } = await params
-    
-    // Get tenant info for cleanup
-    const tenant = await db.tenant.findUnique({
-      where: { id: tenantId }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+    const tenant = await db.tenant.findUnique({ where: { id: tenantId } })
+    if (!tenant) return apiError("not_found", { message: "Tenant not found" })
 
     if (tenant.slug === "sacms-global" || tenant.slug === "sacms" || tenant.id === "sacms-global" || tenant.name.toLowerCase() === "sacms global") {
-      return NextResponse.json({ error: "Cannot delete global tenant" }, { status: 400 })
+      return apiError("validation", { message: "Cannot delete global tenant" })
     }
 
     // 1. Delete physical assets from storage (R2 or Local)
@@ -178,8 +131,4 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error in admin tenant deletion:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})

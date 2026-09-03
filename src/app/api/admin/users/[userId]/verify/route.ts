@@ -1,23 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { sendVerificationEmail } from "@/lib/mail"
 import { isMailConfigured } from "@/lib/settings"
 import { logAudit } from "@/lib/audit-log"
 import crypto from "crypto"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { userId } = await params
+export const POST = withAdminAuth(
+  async (request, context, { session }) => {
+    const { userId } = await context.params
     const body = await request.json().catch(() => ({}))
     const action = body.action || "send_email" // "send_email" | "manual_verify" | "revoke_verify"
 
@@ -133,8 +124,6 @@ export async function POST(
         error: `Gagal mengirim email: ${mailErr?.message || "Kesalahan server email"}`,
       }, { status: 500 })
     }
-  } catch (error: any) {
-    console.error("[Admin Users] Error in verify route:", error)
-    return NextResponse.json({ error: error?.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

@@ -216,19 +216,32 @@ export function withStaffAuth(
   }
 }
 
+interface AdminAuthOptions {
+  /**
+   * Platform roles allowed in addition to `super_admin`. A few admin-portal
+   * routes (billing reports, user management) also admit a plain `admin`.
+   */
+  allowRoles?: readonly string[]
+}
+
 /**
- * Wrap a route handler for `/api/admin/…`. Requires a `super_admin` session.
+ * Wrap a route handler for `/api/admin/…`. Requires a `super_admin` session
+ * (plus any role in `options.allowRoles`).
  */
 export function withAdminAuth(
   handler: (request: NextRequest, context: RouteContext, ctx: AdminContext) => Promise<Response> | Response,
+  options: AdminAuthOptions = {},
 ) {
+  const allowed = new Set<string>(["super_admin", ...(options.allowRoles ?? [])])
   return async (request: NextRequest, context: RouteContext): Promise<Response> => {
     const routeInfo = { route: routePath(request), method: request.method }
     try {
       const session = await getServerSession(authOptions)
       if (!session?.user) return apiError("unauthorized")
-      if (session.user.role !== "super_admin") {
-        return apiError("forbidden", { message: "Super admin access required" })
+      if (!allowed.has(session.user.role)) {
+        return apiError("forbidden", {
+          message: allowed.size > 1 ? "Admin access required" : "Super admin access required",
+        })
       }
       return await handler(request, context, { session })
     } catch (error) {

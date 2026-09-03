@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 const updateUserSchema = z.object({
   name: z.string().min(2).max(100).optional().nullable(),
@@ -12,17 +11,9 @@ const updateUserSchema = z.object({
   password: z.string().min(6).optional().nullable(),
 })
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { userId } = await params
+export const GET = withAdminAuth(
+  async (_request, context) => {
+    const { userId } = await context.params
     const user = await db.user.findUnique({
       where: { id: userId },
       select: {
@@ -40,27 +31,15 @@ export async function GET(
       }
     })
 
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
-
+    if (!user) return apiError("not_found", { message: "User not found" })
     return NextResponse.json({ user })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const { userId } = await params
+export const PATCH = withAdminAuth(
+  async (request, context) => {
+    const { userId } = await context.params
     const result = await validateBody(request, updateUserSchema)
     if ("error" in result) return result.error
 
@@ -74,32 +53,18 @@ export async function PATCH(
       delete updateData.password // ensure we don't accidentally set it to null if empty
     }
 
-    const user = await db.user.update({
-      where: { id: userId },
-      data: updateData,
-    })
-
+    const user = await db.user.update({ where: { id: userId }, data: updateData })
     return NextResponse.json({ user })
-  } catch (error) {
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ userId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (session?.user?.role !== "super_admin" && session?.user?.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const DELETE = withAdminAuth(
+  async (request, context, { session }) => {
+    const { userId } = await context.params
 
-    const { userId } = await params
-    
-    // Prevent self-deletion
     if (session.user.id === userId) {
-      return NextResponse.json({ error: "You cannot delete yourself" }, { status: 400 })
+      return apiError("validation", { message: "You cannot delete yourself" })
     }
 
     const targetUser = await db.user.findUnique({
@@ -107,9 +72,7 @@ export async function DELETE(
       select: { id: true, email: true },
     })
 
-    if (!targetUser) {
-      return NextResponse.json({ error: "User not found" }, { status: 404 })
-    }
+    if (!targetUser) return apiError("not_found", { message: "User not found" })
 
     // Check email confirmation if provided
     let confirmEmail: string | null = null
@@ -122,10 +85,7 @@ export async function DELETE(
     }
 
     if (confirmEmail && confirmEmail.trim().toLowerCase() !== targetUser.email.trim().toLowerCase()) {
-      return NextResponse.json(
-        { error: "Konfirmasi email tidak sesuai. Penghapusan dibatalkan." },
-        { status: 400 }
-      )
+      return apiError("validation", { message: "Konfirmasi email tidak sesuai. Penghapusan dibatalkan." })
     }
 
     // Delete all related records in transaction to prevent foreign key constraint violations
@@ -184,11 +144,6 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error: any) {
-    console.error("Error deleting user:", error)
-    return NextResponse.json(
-      { error: error?.message || "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

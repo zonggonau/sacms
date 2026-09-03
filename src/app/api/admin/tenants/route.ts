@@ -1,11 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { randomBytes } from "crypto"
 import { slugify } from "@/lib/slug"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
 const createTenantSchema = z.object({
   name: z.string().min(2).max(100),
@@ -33,19 +32,7 @@ async function generateUniqueSlug(name: string): Promise<string> {
   throw new Error(`Could not generate unique slug for "${name}" after 10 attempts`)
 }
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Only super admin can access all tenants
-    if (session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async (request) => {
     const { searchParams } = request.nextUrl
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "10")
@@ -139,34 +126,10 @@ export async function GET(request: NextRequest) {
       db.tenant.count({ where })
     ])
 
-    return NextResponse.json({ 
-      tenants,
-      total,
-      page,
-      totalPages: Math.ceil(total / limit)
-    })
-  } catch (error) {
-    console.error("Error fetching tenants:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+    return NextResponse.json({ tenants, total, page, totalPages: Math.ceil(total / limit) })
+})
 
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    // Only super admin can create tenants
-    if (session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const POST = withAdminAuth(async (request, _context, { session }) => {
     const result = await validateBody(request, createTenantSchema)
     if ("error" in result) return result.error
     const { name, description, plan, status, databaseUrl } = result.data
@@ -222,11 +185,4 @@ export async function POST(request: NextRequest) {
     })
 
     return NextResponse.json({ tenant })
-  } catch (error) {
-    console.error("Error creating tenant:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+})

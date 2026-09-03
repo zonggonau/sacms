@@ -1,28 +1,17 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { createUserSchema } from "@/lib/validations"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
-// GET /api/admin/users - List all users
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// GET /api/admin/users - list account owners & platform admins
+export const GET = withAdminAuth(
+  async (request) => {
     const { searchParams } = new URL(request.url)
     const page = parseInt(searchParams.get("page") || "1")
     const limit = parseInt(searchParams.get("limit") || "24")
     const search = searchParams.get("search")
 
-    // Filter to only include Account Owners and Super Admins
-    // Exclude users who are only workspace staff/members under another owner
     const ownerFilter = {
       OR: [
         { role: { in: ["super_admin", "owner", "admin"] } },
@@ -30,11 +19,7 @@ export async function GET(request: NextRequest) {
         { tenants: { none: {} } },
       ],
     }
-
-    const where: any = {
-      AND: [ownerFilter],
-    }
-
+    const where: any = { AND: [ownerFilter] }
     if (search) {
       where.AND.push({
         OR: [
@@ -49,20 +34,10 @@ export async function GET(request: NextRequest) {
       db.user.findMany({
         where,
         select: {
-          id: true,
-          email: true,
-          name: true,
-          role: true,
-          plan: true,
-          image: true,
-          emailVerified: true,
-          createdAt: true,
+          id: true, email: true, name: true, role: true, plan: true,
+          image: true, emailVerified: true, createdAt: true,
           tenants: {
-            include: {
-              tenant: {
-                select: { id: true, name: true, slug: true, plan: true },
-              },
-            },
+            include: { tenant: { select: { id: true, name: true, slug: true, plan: true } } },
           },
         },
         orderBy: { createdAt: "desc" },
@@ -73,38 +48,21 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       users,
-      pagination: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit)
-      }
+      pagination: { total, page, limit, totalPages: Math.ceil(total / limit) },
     })
-  } catch (error) {
-    console.error("Error fetching users:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-// POST /api/admin/users - Create a new user
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// POST /api/admin/users - create a user
+export const POST = withAdminAuth(
+  async (request) => {
     const result = await validateBody(request, createUserSchema)
     if ("error" in result) return result.error
     const { name, email, role, password, requireVerification = true } = result.data
 
     const existing = await db.user.findUnique({ where: { email } })
-    if (existing) {
-      return NextResponse.json({ error: "User with this email already exists" }, { status: 400 })
-    }
+    if (existing) return apiError("conflict", { message: "User with this email already exists" })
 
     const { hashPassword } = await import("@/lib/auth")
     const hashedPassword = password ? await hashPassword(password) : null
@@ -117,18 +75,9 @@ export async function POST(request: NextRequest) {
         password: hashedPassword,
         emailVerified: requireVerification ? null : new Date(),
       },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        createdAt: true,
-      },
+      select: { id: true, email: true, name: true, role: true, createdAt: true },
     })
-
     return NextResponse.json({ user })
-  } catch (error) {
-    console.error("Error creating user:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
