@@ -9,6 +9,12 @@ interface LanguageContextType {
   dict: (typeof DICTIONARY)["id"]
   /** Access a nested key by path, e.g. t("hero.title"). Falls back to the path (or the given fallback) when missing. */
   t: (path: string, fallback?: string) => string
+  /** Substitute {placeholders} in a string, e.g. fmt(dict.members.subtitle, { count: 3 }). */
+  fmt: (template: string, vars: Record<string, string | number>) => string
+}
+
+function interpolate(template: string, vars: Record<string, string | number>): string {
+  return template.replace(/\{(\w+)\}/g, (_, k) => (k in vars ? String(vars[k]) : `{${k}}`))
 }
 
 const LOCALE_COOKIE = "locale"
@@ -31,6 +37,7 @@ const LanguageContext = createContext<LanguageContextType>({
   setLocale: () => {},
   dict: DICTIONARY[DEFAULT_LOCALE],
   t: (path: string, fallback?: string) => fallback || path,
+  fmt: interpolate,
 })
 
 export function LanguageProvider({
@@ -78,7 +85,7 @@ export function LanguageProvider({
   )
 
   const value = useMemo<LanguageContextType>(
-    () => ({ locale, setLocale, dict, t }),
+    () => ({ locale, setLocale, dict, t, fmt: interpolate }),
     [locale, setLocale, dict, t],
   )
 

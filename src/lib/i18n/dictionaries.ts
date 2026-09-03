@@ -22,6 +22,7 @@ export const BRAND = {
 import { common } from "./locales/common"
 import { errors } from "./locales/errors"
 import { email } from "./locales/email"
+import { members } from "./locales/members"
 
 const LANDING_DICTIONARY = {
   id: {
@@ -502,6 +503,7 @@ export type Dict = Widen<
     common: typeof common["id"]
     errors: typeof errors["id"]
     email: typeof email["id"]
+    members: typeof members["id"]
   }
 >
 
@@ -511,11 +513,13 @@ export const DICTIONARY: Record<Locale, Dict> = {
     common: common.id,
     errors: errors.id,
     email: email.id,
+    members: members.id,
   },
   en: {
     ...LANDING_DICTIONARY.en,
     common: common.en,
     errors: errors.en,
     email: email.en,
+    members: members.en,
   },
 }
