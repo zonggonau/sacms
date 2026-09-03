@@ -8,15 +8,14 @@ import {
   REFRESH_TOKEN_TTL_DAYS,
 } from "@/lib/member-auth"
 import { guardMemberAuth } from "@/lib/member-auth-guard"
+import { authCorsPreflight } from "@/lib/member-auth-cors"
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  const { tenant } = await params
+  return authCorsPreflight(request, tenant)
 }
 
 const LocalLoginSchema = z.object({
@@ -40,11 +39,11 @@ export async function POST(
       return NextResponse.json({ error: guard.error }, {
         status: guard.status,
         headers: guard.retryAfterSeconds
-          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
-          : CORS_HEADERS,
+          ? { ...guard.cors, "Retry-After": String(guard.retryAfterSeconds) }
+          : guard.cors,
       })
     }
-    const { tenant, ip } = guard.ctx
+    const { tenant, ip, cors: CORS_HEADERS } = guard.ctx
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
     }

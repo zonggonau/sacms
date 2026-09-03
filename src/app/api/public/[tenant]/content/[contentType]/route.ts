@@ -13,6 +13,7 @@ import {
   parsePopulate,
   parseSort,
   applyFieldSelection,
+  isSafeFieldIdentifier,
 } from "@/lib/filters"
 
 /**
@@ -258,9 +259,14 @@ export async function GET(
     let entries: Array<Record<string, unknown>>
     let total: number
 
-    // Check if sortField is a dynamic field inside JSON data
+    // Check if sortField is a dynamic field inside JSON data.
+    // It must be a known content-type slug AND a plain SQL identifier — the value
+    // is interpolated into a raw `"data"->>'<slug>'` expression below.
     const validSystemColumns = new Set(["createdAt", "updatedAt", "publishedAt", "id", "status", "locale"])
-    const isDynamicSort = allowedFieldNames.has(sortField) && !validSystemColumns.has(sortField)
+    const isDynamicSort =
+      allowedFieldNames.has(sortField) &&
+      !validSystemColumns.has(sortField) &&
+      isSafeFieldIdentifier(sortField)
 
     if (conditions.length > 0 || orGroups.length > 0 || search || isDynamicSort) {
       // Use raw query for advanced filtering or dynamic sorting on JSON data field

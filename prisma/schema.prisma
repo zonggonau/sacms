@@ -109,6 +109,9 @@ model Tenant {
   // Headless member auth policy
   allowMemberRegistration        Boolean               @default(true)
   requireMemberEmailVerification Boolean               @default(false)
+  /// Exact origins allowed to call the credential-issuing auth endpoints with CORS.
+  /// Empty = fall back to the tenant's own domains (+ localhost in dev).
+  allowedAuthOrigins             String[]              @default([])
   apiKeys                ApiKey[]
   apiRequests            ApiRequest[]
   apiTokens              ApiToken[]

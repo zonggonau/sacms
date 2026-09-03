@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest"
-import { parseFilters, buildFilterSQL } from "../../src/lib/filters"
+import { parseFilters, buildFilterSQL, isSafeFieldIdentifier } from "../../src/lib/filters"
 
 describe("Filter Engine", () => {
   const allowedFields = new Set(["title", "price", "category", "status"])
@@ -59,6 +59,21 @@ describe("Filter Engine", () => {
     })
   })
 
+  describe("isSafeFieldIdentifier", () => {
+    it("accepts slugify-style slugs", () => {
+      expect(isSafeFieldIdentifier("title")).toBe(true)
+      expect(isSafeFieldIdentifier("my-field_2")).toBe(true)
+      expect(isSafeFieldIdentifier("A".repeat(64))).toBe(true)
+    })
+    it("rejects quotes, whitespace, SQL metachars, and over-long input", () => {
+      expect(isSafeFieldIdentifier("pri'ce")).toBe(false)
+      expect(isSafeFieldIdentifier("a b")).toBe(false)
+      expect(isSafeFieldIdentifier("a);--")).toBe(false)
+      expect(isSafeFieldIdentifier("")).toBe(false)
+      expect(isSafeFieldIdentifier("A".repeat(65))).toBe(false)
+    })
+  })
+
   describe("buildFilterSQL", () => {
     it("should generate correct SQL for equality", () => {
       const conditions = [{ field: "title", operator: "$eq", value: "Test" }]
@@ -82,6 +97,17 @@ describe("Filter Engine", () => {
       
       expect(fragments[0]).toBe('"data"->>\'title\' ILIKE $1')
       expect(params).toEqual(["%next%"])
+    })
+
+    it("drops a condition whose field is not a plain slug (SQL-injection guard)", () => {
+      const conditions = [
+        { field: "title", operator: "$eq", value: "ok" },
+        { field: "price'); DROP TABLE content_entries;--", operator: "$eq", value: "x" },
+      ]
+      const { fragments, params } = buildFilterSQL(conditions, [])
+      expect(fragments).toHaveLength(1)
+      expect(fragments[0]).toBe('"data"->>\'title\' = $1')
+      expect(params).toEqual(["ok"])
     })
 
     it("should handle multiple conditions with incremental parameter offsets", () => {

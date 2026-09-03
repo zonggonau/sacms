@@ -2,14 +2,16 @@
 import { z } from "zod"
 import { getTenantDb } from "@/lib/database"
 import { guardMemberAuth } from "@/lib/member-auth-guard"
+import { authCorsPreflight } from "@/lib/member-auth-cors"
 import crypto from "crypto"
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> }
+) {
+  const { tenant } = await params
+  return authCorsPreflight(request, tenant)
 }
-export async function OPTIONS() { return new NextResponse(null, { status: 204, headers: CORS_HEADERS }) }
 
 const Schema = z.object({ email: z.string().email() })
 
@@ -27,11 +29,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       return NextResponse.json({ error: guard.error }, {
         status: guard.status,
         headers: guard.retryAfterSeconds
-          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
-          : CORS_HEADERS,
+          ? { ...guard.cors, "Retry-After": String(guard.retryAfterSeconds) }
+          : guard.cors,
       })
     }
-    const { tenant } = guard.ctx
+    const { tenant, cors: CORS_HEADERS } = guard.ctx
     if (!tenant) return NextResponse.json({ ok: true }, { status: 200, headers: CORS_HEADERS }) // silent 200
 
     const body = await request.json().catch(() => ({}))

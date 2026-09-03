@@ -136,8 +136,13 @@ function conditionToSQL(
   cond: FilterCondition,
   paramIdx: number
 ): { sql: string; params: unknown[] } | null {
-  const jsonPath = `"data"->>'${sanitizeFieldName(cond.field)}'`
-  const numericPath = `("data"->>'${sanitizeFieldName(cond.field)}')::numeric`
+  // Drop the whole condition if the (already field-whitelisted) slug is not a
+  // plain identifier — never interpolate anything questionable into raw SQL,
+  // and don't silently "fix" a hostile field by stripping characters out of it.
+  if (!isSafeFieldIdentifier(cond.field)) return null
+  const field = cond.field
+  const jsonPath = `"data"->>'${field}'`
+  const numericPath = `("data"->>'${field}')::numeric`
 
   switch (cond.operator) {
     case "$eq":
@@ -210,6 +215,18 @@ function conditionToSQL(
  */
 function sanitizeFieldName(field: string): string {
   return field.replace(/[^a-zA-Z0-9_-]/g, "")
+}
+
+/**
+ * A field slug is safe to interpolate into a raw `"data"->>'<slug>'` expression
+ * only if it contains nothing that could break out of the single-quoted JSON key
+ * literal. Slugs are `slugify()`-generated (lowercase alphanumerics, `_`, `-`),
+ * so this both matches every legitimate slug and rejects `'`, `\`, whitespace,
+ * and SQL metacharacters. Callers should already have checked the slug against
+ * the content type's known fields; this is the last-line guard.
+ */
+export function isSafeFieldIdentifier(field: string): boolean {
+  return /^[a-zA-Z0-9_-]{1,64}$/.test(field)
 }
 
 /**
