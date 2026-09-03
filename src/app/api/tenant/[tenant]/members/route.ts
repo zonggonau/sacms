@@ -1,10 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions, hashPassword } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { hashPassword } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 const createMemberSchema = z.object({
   email: z.string().email(),
@@ -14,70 +13,35 @@ const createMemberSchema = z.object({
   customPermissions: z.array(z.string()).optional(),
 })
 
-// GET /api/tenant/[tenant]/members - List all members
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+/** GET /api/tenant/[tenant]/members — list workspace staff members. */
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+  const { tenant: tenantSlug } = await context.params
+  const tenantDb = await getTenantDb(tenantSlug)
 
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const members = await tenantDb.tenantMember.findMany({
+    where: { tenantId: access.tenantId },
+    include: {
+      user: { select: { id: true, name: true, email: true, image: true, role: true } },
+    },
+    orderBy: { joinedAt: "asc" },
+  })
+  return NextResponse.json({ members })
+})
 
+/** POST /api/tenant/[tenant]/members — add a staff member (admin/owner only). */
+export const POST = withStaffAuth(
+  async (request, context, { access, session }) => {
+    const { tenant: tenantSlug } = await context.params
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
-    // Fetch members from the tenant-specific database
-    const members = await tenantDb.tenantMember.findMany({
-      where: { tenantId: tenantId },
-      include: {
-        user: {
-          select: { id: true, name: true, email: true, image: true, role: true },
-        },
-      },
-      orderBy: { joinedAt: "asc" },
-    })
-
-    return NextResponse.json({ members })
-  } catch (error) {
-    console.error("Error fetching members:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-// POST /api/tenant/[tenant]/members - Add/Create new member
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
-    if (access.role !== "admin" && access.role !== "owner") {
-      return NextResponse.json({ error: "Only admins and owners can add members" }, { status: 403 })
-    }
-
-    const tenantId = access.tenantId
-    const tenantDb = await getTenantDb(tenantSlug)
-
-    // Enforce team member limit based on workspace plan
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
     const enforcement = await enforcePlanLimit(tenantId, "team_members", session.user.id)
     if (!enforcement.allowed) {
-      return NextResponse.json({ 
-        error: enforcement.message,
-        current: enforcement.current,
-        max: enforcement.max,
-        plan: enforcement.planSlug,
-      }, { status: 403 })
+      return apiError("plan_limit", {
+        message: enforcement.message,
+        details: { current: enforcement.current, max: enforcement.max, plan: enforcement.planSlug },
+      })
     }
 
     const result = await validateBody(request, createMemberSchema)
@@ -89,7 +53,7 @@ export async function POST(
     
     if (!user) {
       if (!password) {
-        return NextResponse.json({ error: "User not found. Provide a password to create a new account." }, { status: 400 })
+        return apiError("validation", { message: "User not found. Provide a password to create a new account." })
       }
       const hashedPassword = await hashPassword(password)
       user = await db.user.create({
@@ -133,7 +97,7 @@ export async function POST(
       where: { tenantId: tenantId, userId: user.id },
     })
 
-    if (existingMember) return NextResponse.json({ error: "User is already a member" }, { status: 400 })
+    if (existingMember) return apiError("conflict", { message: "User is already a member" })
 
     // 4. Create membership in Master DB
     const member = await db.tenantMember.create({
@@ -172,8 +136,6 @@ export async function POST(
     }
 
     return NextResponse.json({ member })
-  } catch (error) {
-    console.error("Error adding member:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

@@ -1,12 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
-import { isFeatureEnabled } from "@/lib/tenant-plan"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
 const whiteLabelSchema = z.object({
   brandName: z.string().min(1).max(100).optional(),
@@ -20,73 +17,32 @@ const whiteLabelSchema = z.object({
   faviconUrl: z.url().optional().or(z.literal("")),
 })
 
-/**
- * GET /api/tenant/[tenant]/white-label
- * Get white-label settings for the tenant
- */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+/** GET /api/tenant/[tenant]/white-label — branding + custom-domain state. */
+export const GET = withStaffAuth(async (_request, _context, { access }) => {
+  const tenantRecord = await db.tenant.findUnique({
+    where: { id: access.tenantId },
+    select: {
+      customDomain: true,
+      customDomainStatus: true,
+      customDomainVerifiedAt: true,
+      brandName: true,
+      brandLogo: true,
+      primaryColor: true,
+      customEmailSender: true,
+      faviconUrl: true,
+    },
+  })
+  return NextResponse.json(tenantRecord || {})
+})
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const tenantRecord = await db.tenant.findUnique({
-      where: { id: access.tenantId },
-      select: {
-        customDomain: true,
-        customDomainStatus: true,
-        customDomainVerifiedAt: true,
-        brandName: true,
-        brandLogo: true,
-        primaryColor: true,
-        customEmailSender: true,
-        faviconUrl: true,
-      },
-    })
-
-    return NextResponse.json(tenantRecord || {})
-  } catch (error) {
-    console.error("Error fetching white-label settings:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-/**
- * PATCH /api/tenant/[tenant]/white-label
- * Update branding settings (owner/admin only)
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+/** PATCH /api/tenant/[tenant]/white-label — update branding (admin/owner only). */
+export const PATCH = withStaffAuth(
+  async (request, _context, { access, session }) => {
     const result = await validateBody(request, whiteLabelSchema)
     if ("error" in result) return result.error
 
-    // Normalize empty strings to null
     const data = Object.fromEntries(
-      Object.entries(result.data).map(([k, v]) => [k, v === "" ? null : v])
+      Object.entries(result.data).map(([k, v]) => [k, v === "" ? null : v]),
     )
 
     const updated = await db.tenant.update({
@@ -113,8 +69,6 @@ export async function PATCH(
     })
 
     return NextResponse.json(updated)
-  } catch (error) {
-    console.error("Error updating white-label settings:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

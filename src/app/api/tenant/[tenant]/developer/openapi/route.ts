@@ -1,20 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+    const { tenant: tenantSlug } = await context.params
 
     // 1. Fetch all tenant structures
     const [contentTypesRaw, singleTypesRaw] = await Promise.all([
@@ -167,8 +156,4 @@ export async function GET(
     })
 
     return NextResponse.json(spec)
-  } catch (error) {
-    console.error("OpenAPI Generator Error:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})
