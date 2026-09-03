@@ -21,6 +21,8 @@ const CreateMemberSchema = z.object({
 const PolicySchema = z.object({
   allowMemberRegistration: z.boolean().optional(),
   requireMemberEmailVerification: z.boolean().optional(),
+  memberEmailConfirmationRedirect: z.string().url().or(z.literal("")).nullable().optional(),
+  memberPasswordResetRedirect: z.string().url().or(z.literal("")).nullable().optional(),
 })
 
 export const GET = withStaffAuth(async (request, _context, { access }) => {
@@ -65,16 +67,27 @@ export const PATCH = withStaffAuth(
     const body = await readJson(request, PolicySchema)
     if (!body.ok) return body.response
 
-    const data: Record<string, boolean> = {}
+    const data: Record<string, boolean | string | null> = {}
     if (body.data.allowMemberRegistration !== undefined) data.allowMemberRegistration = body.data.allowMemberRegistration
     if (body.data.requireMemberEmailVerification !== undefined) {
       data.requireMemberEmailVerification = body.data.requireMemberEmailVerification
+    }
+    if (body.data.memberEmailConfirmationRedirect !== undefined) {
+      data.memberEmailConfirmationRedirect = body.data.memberEmailConfirmationRedirect || null
+    }
+    if (body.data.memberPasswordResetRedirect !== undefined) {
+      data.memberPasswordResetRedirect = body.data.memberPasswordResetRedirect || null
     }
 
     const tenant = await db.tenant.update({
       where: { id: access.tenantId },
       data,
-      select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
+      select: {
+        allowMemberRegistration: true,
+        requireMemberEmailVerification: true,
+        memberEmailConfirmationRedirect: true,
+        memberPasswordResetRedirect: true,
+      },
     })
     return NextResponse.json({ policy: tenant })
   },

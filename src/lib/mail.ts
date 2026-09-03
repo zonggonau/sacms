@@ -72,7 +72,7 @@ export async function getBaseUrl(): Promise<string> {
       return settings.siteUrl.replace(/\/$/, "")
     }
   } catch {}
-  
+
   if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")) {
     return process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")
   }
@@ -224,6 +224,134 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     console.error("❌ [Mail] SMTP password reset error:", smtpErr)
     throw new Error(smtpErr?.message || "Gagal mengirim email reset kata sandi via SMTP.")
   }
+}
+
+
+/**
+ * Build a member-facing auth link. Headless members live under a tenant and
+ * their frontend is the developer's own app, so the link points at a
+ * tenant-configured redirect when set, otherwise a SaCMS-hosted fallback page
+ * scoped to the tenant. The one-time code is always passed as `?code=`.
+ */
+function buildMemberAuthLink(
+  redirect: string | null | undefined,
+  fallbackPath: string,
+  code: string,
+): string {
+  if (redirect && /^https?:\/\//.test(redirect)) {
+    const url = new URL(redirect)
+    url.searchParams.set("code", code)
+    return url.toString()
+  }
+  // fallbackPath already includes the tenant slug, e.g. /t/acme/verify-email
+  return `${fallbackPath}${fallbackPath.includes("?") ? "&" : "?"}code=${encodeURIComponent(code)}`
+}
+
+async function dispatch(
+  subject: string,
+  html: string,
+  to: string,
+  fromOverride?: string | null,
+) {
+  const { client: resend, fromEmail } = await getResendClient()
+  if (resend) {
+    try {
+      const res = await resend.emails.send({ from: fromOverride || fromEmail, to, subject, html })
+      if (!res.error) {
+        console.log("✅ [Mail] sent via Resend. ID:", res.data?.id)
+        return res
+      }
+      console.warn("⚠️ [Mail] Resend error, falling back to SMTP:", res.error.message || JSON.stringify(res.error))
+    } catch (err: any) {
+      console.warn("⚠️ [Mail] Resend exception, falling back to SMTP:", err?.message || err)
+    }
+  }
+
+  const t = await getTransporter()
+  if (!t) {
+    throw new Error("Layanan email belum dikonfigurasi (Resend API key atau SMTP).")
+  }
+  const mailConfig = await getResolvedMailConfig()
+  const info = await t.sendMail({
+    from: fromOverride || mailConfig.smtpFrom || fromEmail || '"SaCMS" <noreply@mail.sacms.cloud>',
+    to,
+    subject,
+    html,
+  })
+  if (info.messageId && !mailConfig.smtpHost) {
+    console.log("✉️  [Mail] Ethereal preview:", nodemailer.getTestMessageUrl(info))
+  } else {
+    console.log("✅ [Mail] sent via SMTP. MessageId:", info.messageId)
+  }
+  return info
+}
+
+type MemberMailTenant = {
+  slug: string
+  name?: string | null
+  brandName?: string | null
+  customEmailSender?: string | null
+  memberEmailConfirmationRedirect?: string | null
+  memberPasswordResetRedirect?: string | null
+}
+
+/** Headless-member email-verification email, tenant-aware. */
+export async function sendMemberVerificationEmail(
+  tenant: MemberMailTenant,
+  email: string,
+  code: string,
+  name: string = "there",
+) {
+  const baseUrl = await getBaseUrl()
+  const link = buildMemberAuthLink(
+    tenant.memberEmailConfirmationRedirect,
+    `${baseUrl}/t/${tenant.slug}/verify-email`,
+    code,
+  )
+  const brand = tenant.brandName || tenant.name || "the team"
+  const subject = `Verify your email — ${brand}`
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #0f172a; margin-top: 0;">Confirm your email address</h2>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">Hi <strong>${name}</strong>, welcome to ${brand}. Please confirm your email address to activate your account:</p>
+      <div style="margin: 28px 0;">
+        <a href="${link}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Confirm email</a>
+      </div>
+      <p style="color: #64748b; font-size: 13px;">Or paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${link}" style="color: #f97316;">${link}</a></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">This link expires in 24 hours. If you didn't create an account, you can ignore this email.</p>
+    </div>`
+  return dispatch(subject, html, email, tenant.customEmailSender)
+}
+
+/** Headless-member password-reset email, tenant-aware. */
+export async function sendMemberPasswordResetEmail(
+  tenant: MemberMailTenant,
+  email: string,
+  code: string,
+) {
+  const baseUrl = await getBaseUrl()
+  const link = buildMemberAuthLink(
+    tenant.memberPasswordResetRedirect,
+    `${baseUrl}/t/${tenant.slug}/reset-password`,
+    code,
+  )
+  const brand = tenant.brandName || tenant.name || "the team"
+  const subject = `Reset your password — ${brand}`
+  const html = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <h2 style="color: #0f172a; margin-top: 0;">Reset your password</h2>
+      <p style="color: #475569; font-size: 14px; line-height: 1.6;">We received a request to reset the password for your ${brand} account. Click below to choose a new password:</p>
+      <div style="margin: 28px 0;">
+        <a href="${link}" style="background-color: #f97316; color: white; padding: 12px 28px; text-decoration: none; border-radius: 8px; font-weight: bold; font-size: 14px; display: inline-block;">Reset password</a>
+      </div>
+      <p style="color: #64748b; font-size: 13px;">Or paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #f97316; font-size: 13px;"><a href="${link}" style="color: #f97316;">${link}</a></p>
+      <hr style="border: none; border-top: 1px solid #e2e8f0; margin: 24px 0;" />
+      <p style="color: #94a3b8; font-size: 12px;">This link expires in 1 hour. If you didn't request this, you can ignore this email.</p>
+    </div>`
+  return dispatch(subject, html, email, tenant.customEmailSender)
 }
 
 

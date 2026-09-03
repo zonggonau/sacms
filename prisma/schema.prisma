@@ -112,6 +112,13 @@ model Tenant {
   /// Exact origins allowed to call the credential-issuing auth endpoints with CORS.
   /// Empty = fall back to the tenant's own domains (+ localhost in dev).
   allowedAuthOrigins             String[]              @default([])
+  /// Where the member email-verification link should point (the developer's own
+  /// frontend). The one-time code is appended as `?code=<token>`. Empty = use the
+  /// SaCMS-hosted fallback confirmation page.
+  memberEmailConfirmationRedirect String?
+  /// Where the member password-reset link should point. `?code=<token>` is
+  /// appended. Empty = SaCMS-hosted fallback reset page.
+  memberPasswordResetRedirect     String?
   apiKeys                ApiKey[]
   apiRequests            ApiRequest[]
   apiTokens              ApiToken[]

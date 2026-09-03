@@ -13,8 +13,20 @@ import { rateLimit } from "@/lib/rate-limit"
 import { getClientIp } from "@/lib/client-ip"
 import { authCorsHeaders } from "@/lib/member-auth-cors"
 
+export interface MemberAuthTenant {
+  id: string
+  slug: string
+  status: string
+  name: string | null
+  brandName: string | null
+  customEmailSender: string | null
+  requireMemberEmailVerification: boolean
+  memberEmailConfirmationRedirect: string | null
+  memberPasswordResetRedirect: string | null
+}
+
 export interface MemberAuthContext {
-  tenant: { id: string; slug: string; status: string }
+  tenant: MemberAuthTenant
   ip: string
   /** CORS headers to attach to every response from this endpoint. */
   cors: Record<string, string>
@@ -51,7 +63,12 @@ export async function guardMemberAuth(
 
   const tenant = await db.tenant.findFirst({
     where: { OR: [{ slug: tenantParam }, { id: tenantParam }] },
-    select: { id: true, slug: true, status: true, customDomain: true, allowedAuthOrigins: true },
+    select: {
+      id: true, slug: true, status: true, customDomain: true, allowedAuthOrigins: true,
+      name: true, brandName: true, customEmailSender: true,
+      requireMemberEmailVerification: true,
+      memberEmailConfirmationRedirect: true, memberPasswordResetRedirect: true,
+    },
   })
 
   const cors = authCorsHeaders(
@@ -100,6 +117,20 @@ export async function guardMemberAuth(
 
   return {
     ok: true,
-    ctx: { tenant: { id: tenant.id, slug: tenant.slug, status: tenant.status }, ip, cors },
+    ctx: {
+      tenant: {
+        id: tenant.id,
+        slug: tenant.slug,
+        status: tenant.status,
+        name: tenant.name,
+        brandName: tenant.brandName,
+        customEmailSender: tenant.customEmailSender,
+        requireMemberEmailVerification: tenant.requireMemberEmailVerification,
+        memberEmailConfirmationRedirect: tenant.memberEmailConfirmationRedirect,
+        memberPasswordResetRedirect: tenant.memberPasswordResetRedirect,
+      },
+      ip,
+      cors,
+    },
   }
 }

@@ -5,6 +5,8 @@ export interface PlatformSettings {
   siteName: string
   siteDetail: string
   siteTagline: string
+  /** Canonical public base URL, used for links in outgoing emails. */
+  siteUrl: string
   globalTenantId: string
   registrationMode: "open" | "invite_only" | "closed"
   defaultUserPlan: string
@@ -73,6 +75,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   siteName: "SaCMS",
   siteDetail: "Smart Content Management System",
   siteTagline: "Build smarter. Manage easier. Scale faster.",
+  siteUrl: "",
   globalTenantId: "sacms-global",
   registrationMode: "open",
   defaultUserPlan: "free",

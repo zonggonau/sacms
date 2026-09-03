@@ -6,6 +6,7 @@ import { hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, 
 import { ensureSystemRoles } from "@/lib/permissions-engine"
 import { guardMemberAuth } from "@/lib/member-auth-guard"
 import { authCorsPreflight } from "@/lib/member-auth-cors"
+import { sendMemberVerificationEmail } from "@/lib/mail"
 
 export async function OPTIONS(
   request: NextRequest,
@@ -22,6 +23,7 @@ const RegisterSchema = z.object({
 })
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  let CORS_HEADERS: Record<string, string> = {}
   try {
     const { tenant: tenantSlug } = await params
 
@@ -38,7 +40,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           : guard.cors,
       })
     }
-    const { tenant, ip, cors: CORS_HEADERS } = guard.ctx
+    const { tenant, ip, cors } = guard.ctx
+    CORS_HEADERS = cors
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404, headers: CORS_HEADERS })
 
     // Registration policy — resolve the full tenant flags.
@@ -94,7 +97,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           passwordResetExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
         },
       })
-      // TODO: dispatch verification email with `verifyToken`.
+      void sendMemberVerificationEmail(tenant, email, verifyToken, username ?? email.split("@")[0]).catch((err) => {
+        console.error(`[local/register] verification mail failed for tenant ${tenant.slug}:`, err?.message || err)
+      })
       return NextResponse.json(
         {
           ok: true,

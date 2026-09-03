@@ -3,6 +3,7 @@ import { z } from "zod"
 import { getTenantDb } from "@/lib/database"
 import { guardMemberAuth } from "@/lib/member-auth-guard"
 import { authCorsPreflight } from "@/lib/member-auth-cors"
+import { sendMemberPasswordResetEmail } from "@/lib/mail"
 import crypto from "crypto"
 
 export async function OPTIONS(
@@ -16,6 +17,7 @@ export async function OPTIONS(
 const Schema = z.object({ email: z.string().email() })
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  let CORS_HEADERS: Record<string, string> = {}
   try {
     const { tenant: tenantSlug } = await params
 
@@ -33,7 +35,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
           : guard.cors,
       })
     }
-    const { tenant, cors: CORS_HEADERS } = guard.ctx
+    const { tenant, cors } = guard.ctx
+    CORS_HEADERS = cors
     if (!tenant) return NextResponse.json({ ok: true }, { status: 200, headers: CORS_HEADERS }) // silent 200
 
     const body = await request.json().catch(() => ({}))
@@ -52,8 +55,13 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await tenantDb.member.update({ where: { id: member.id }, data: { passwordResetToken: resetTokenHash, passwordResetExpires: resetExpires } })
 
-    // TODO: send email with link: /auth/reset-password?code=${resetToken}
-    // For now, return token in development mode only
+    // Fire-and-forget: never block the response, never let a mail failure reveal
+    // whether the address exists.
+    void sendMemberPasswordResetEmail(tenant, email, resetToken).catch((err) => {
+      console.error(`[forgot-password] mail dispatch failed for tenant ${tenant.slug}:`, err?.message || err)
+    })
+
+    // Still expose the raw code in development to keep local testing frictionless.
     if (process.env.NODE_ENV === "development") {
       return NextResponse.json({ ok: true, _dev_resetCode: resetToken }, { status: 200, headers: CORS_HEADERS })
     }

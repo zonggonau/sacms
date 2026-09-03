@@ -27,6 +27,7 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
+  let CORS_HEADERS: Record<string, string> = {}
   try {
     const { tenant: tenantSlug } = await params
 
@@ -43,7 +44,8 @@ export async function POST(
           : guard.cors,
       })
     }
-    const { tenant, ip, cors: CORS_HEADERS } = guard.ctx
+    const { tenant, ip, cors } = guard.ctx
+    CORS_HEADERS = cors
     if (!tenant) {
       return NextResponse.json({ error: "Tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
     }
