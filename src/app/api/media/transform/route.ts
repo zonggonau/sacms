@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import sharp from "sharp"
 import { getRedis } from "@/lib/redis"
+import { assertPublicUrl, SsrfError } from "@/lib/safe-url"
 
 /**
  * Image Transformation API
@@ -18,15 +19,19 @@ export async function GET(request: NextRequest) {
     return new NextResponse("Missing image URL", { status: 400 })
   }
 
-  // Security: Only allow internal uploads or trusted domains
-  // For now, we'll just check if it's a valid URL
+  // SSRF guard: only fetch plain http(s) URLs that resolve to a public address.
+  let safeUrl: URL
   try {
-    new URL(imageUrl)
-  } catch {
-    return new NextResponse("Invalid image URL", { status: 400 })
+    safeUrl = await assertPublicUrl(imageUrl, { allowHttp: true })
+  } catch (e) {
+    return new NextResponse(
+      e instanceof SsrfError ? e.message : "Invalid image URL",
+      { status: 400 },
+    )
   }
+  const fetchUrl = safeUrl.toString()
 
-  const cacheKey = `img_transform:${Buffer.from(imageUrl).toString('base64').substring(0, 32)}:w${width}:h${height}:q${quality}`
+  const cacheKey = `img_transform:${Buffer.from(fetchUrl).toString('base64').substring(0, 32)}:w${width}:h${height}:q${quality}`
   const redis = getRedis()
 
   // 1. Try to serve from Redis cache
@@ -45,9 +50,11 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    // 2. Fetch original image
-    const response = await fetch(imageUrl)
+    // 2. Fetch original image (redirects disabled so a public URL can't bounce to a private one)
+    const response = await fetch(fetchUrl, { redirect: "error" })
     if (!response.ok) throw new Error("Failed to fetch original image")
+    const contentType = response.headers.get("content-type") ?? ""
+    if (!contentType.startsWith("image/")) throw new Error("Not an image")
     
     const arrayBuffer = await response.arrayBuffer()
     const inputBuffer = Buffer.from(arrayBuffer)

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { resolveWithinBase, SsrfError } from "@/lib/safe-url"
 import fs from "fs"
 import path from "path"
 
@@ -21,9 +22,11 @@ export async function GET(request: NextRequest) {
     if (!key) return NextResponse.json({ error: "Key is required" }, { status: 400 })
 
     // 1. Identify tenant from key (Format: upload/tenant-slug/...)
-    const parts = key.split("/")
+    const parts = key.split("/").filter(Boolean)
     const tenantSlug = parts[1]
-    if (!tenantSlug) return NextResponse.json({ error: "Invalid key format" }, { status: 400 })
+    if (parts[0] !== "upload" || !tenantSlug || !/^[a-z0-9-]+$/i.test(tenantSlug)) {
+      return NextResponse.json({ error: "Invalid key format" }, { status: 400 })
+    }
 
     // 2. Check if user belongs to this tenant
     const tenant = await db.tenant.findUnique({
@@ -41,9 +44,19 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: "Forbidden" }, { status: 403 })
     }
 
-    // 3. Serve the file from local storage
-    const fullPath = path.join(process.cwd(), "public", key)
-    if (!fs.existsSync(fullPath)) {
+    // 3. Serve the file — resolve inside public/upload/<tenantSlug>/ only,
+    //    so a `key` containing `..` can't escape the tenant's own directory.
+    const tenantBase = path.join(process.cwd(), "public", "upload", tenantSlug)
+    let fullPath: string
+    try {
+      fullPath = resolveWithinBase(tenantBase, ...parts.slice(2))
+    } catch (e) {
+      if (e instanceof SsrfError) {
+        return NextResponse.json({ error: "Invalid key" }, { status: 400 })
+      }
+      throw e
+    }
+    if (!fs.existsSync(fullPath) || !fs.statSync(fullPath).isFile()) {
       return NextResponse.json({ error: "File not found" }, { status: 404 })
     }
 
