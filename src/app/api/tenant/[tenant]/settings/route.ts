@@ -1,31 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { updateTenantSettingsSchema } from "@/lib/validations"
 import { Prisma } from "@prisma/client"
 import { isEnterpriseTenant } from "@/lib/license"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 // GET /api/tenant/[tenant]/settings - Get tenant settings
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-
-    // Get tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
-      },
+export const GET = withStaffAuth(async (_request, _context, { access, session }) => {
+    const tenant = await db.tenant.findUnique({
+      where: { id: access.tenantId },
       include: {
         subscriptions: {
           where: { status: { in: ["active", "trialing"] } },
@@ -36,20 +20,7 @@ export async function GET(
     })
 
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+      return apiError("not_found", { message: "Tenant not found" })
     }
 
     // Get tenant settings from Setting model
@@ -144,52 +115,14 @@ export async function GET(
         auditLogging: settingsMap.auditLogging !== "false",
       },
     })
-  } catch (error) {
-    console.error("Error fetching settings:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+})
 
 // PUT /api/tenant/[tenant]/settings - Update tenant settings
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-
-    // Get tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
-      },
-    })
-
+export const PUT = withStaffAuth(
+  async (request, _context, { access, session }) => {
+    const tenant = await db.tenant.findUnique({ where: { id: access.tenantId } })
     if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check admin access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-        role: { in: ["owner", "admin"] },
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden - Admin access required" }, { status: 403 })
+      return apiError("not_found", { message: "Tenant not found" })
     }
 
     const result = await validateBody(request, updateTenantSettingsSchema)
@@ -303,11 +236,6 @@ export async function PUT(
     }
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error updating settings:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { minRole: "admin" },
+)

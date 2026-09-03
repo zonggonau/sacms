@@ -1,209 +1,119 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { z } from "zod"
 import { sendSupportNotificationEmail } from "@/lib/mail"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const sendMessageSchema = z.object({
   message: z.string().min(1, "Pesan tidak boleh kosong"),
   attachments: z.array(z.string()).optional(),
 })
 
-// GET /api/tenant/[tenant]/support/[ticketId] - Get single ticket details and conversation thread
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; ticketId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+/** GET — ticket detail + conversation thread. Marks incoming messages read. */
+export const GET = withStaffAuth(async (_request, context, { access, session }) => {
+  const { ticketId } = await context.params
+  const ticket = await db.supportTicket.findFirst({
+    where: { id: ticketId, tenantId: access.tenantId },
+    include: {
+      user: { select: { id: true, name: true, email: true, image: true, role: true } },
+      tenant: { select: { id: true, name: true, slug: true, plan: true } },
+      messages: { orderBy: { createdAt: "asc" } },
+    },
+  })
+  if (!ticket) return apiError("not_found", { message: "Ticket not found" })
 
-    const { tenant: tenantSlugOrId, ticketId } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ id: tenantSlugOrId }, { slug: tenantSlugOrId }] },
-      select: { id: true, slug: true, name: true }
+  await db.supportMessage
+    .updateMany({
+      where: { ticketId: ticket.id, senderId: { not: session.user.id }, isRead: false },
+      data: { isRead: true },
     })
+    .catch(() => {})
 
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
+  return NextResponse.json({ ticket })
+})
 
-    const ticket = await db.supportTicket.findUnique({
-      where: { id: ticketId },
-      include: {
-        user: { select: { id: true, name: true, email: true, image: true, role: true } },
-        tenant: { select: { id: true, name: true, slug: true, plan: true } },
-        messages: {
-          orderBy: { createdAt: "asc" },
-        }
-      }
-    })
+/** POST — reply to a ticket. */
+export const POST = withStaffAuth(async (request, context, { access, session }) => {
+  const { ticketId } = await context.params
+  const ticket = await db.supportTicket.findFirst({
+    where: { id: ticketId, tenantId: access.tenantId },
+    include: { user: { select: { id: true, name: true, email: true } }, tenant: { select: { slug: true, name: true } } },
+  })
+  if (!ticket) return apiError("not_found", { message: "Ticket not found" })
 
-    if (!ticket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
-    }
+  const parsed = await readJson(request, sendMessageSchema)
+  if (!parsed.ok) return parsed.response
 
-    // Check access
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!isSuperAdmin && ticket.tenantId !== tenant.id) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+  const isSuperAdmin = session.user.role === "super_admin"
+  const senderRole = isSuperAdmin ? "admin" : "user"
 
-    // Mark unread messages as read
-    await db.supportMessage.updateMany({
-      where: {
-        ticketId: ticket.id,
-        senderId: { not: session.user.id },
-        isRead: false,
-      },
-      data: { isRead: true }
+  const newMessage = await db.supportMessage.create({
+    data: {
+      ticketId: ticket.id,
+      senderId: session.user.id,
+      senderRole,
+      message: parsed.data.message,
+      attachments:
+        parsed.data.attachments && parsed.data.attachments.length > 0 ? (parsed.data.attachments as any) : undefined,
+      isRead: false,
+    },
+  })
+
+  const newStatus = !isSuperAdmin && ticket.status === "resolved" ? "open" : ticket.status
+  await db.supportTicket.update({ where: { id: ticket.id }, data: { updatedAt: new Date(), status: newStatus } })
+
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
+  if (isSuperAdmin && ticket.user.email) {
+    sendSupportNotificationEmail({
+      to: ticket.user.email,
+      recipientName: ticket.user.name || "Owner Workspace",
+      ticketId: ticket.id,
+      subject: ticket.subject,
+      senderName: "Tim IT Support SaCMS",
+      senderRole: "admin",
+      messagePreview: parsed.data.message,
+      viewUrl: `${baseUrl}/dashboard/${ticket.tenant?.slug}/support?ticketId=${ticket.id}`,
     }).catch(() => {})
-
-    return NextResponse.json({ ticket })
-  } catch (error: any) {
-    console.error("[Support Ticket Detail GET Error]:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
-
-// POST /api/tenant/[tenant]/support/[ticketId] - Reply to ticket
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; ticketId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlugOrId, ticketId } = await params
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ id: tenantSlugOrId }, { slug: tenantSlugOrId }] },
-      select: { id: true, slug: true, name: true }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    const ticket = await db.supportTicket.findUnique({
-      where: { id: ticketId },
-      include: {
-        user: { select: { id: true, name: true, email: true } },
-      }
-    })
-
-    if (!ticket) {
-      return NextResponse.json({ error: "Ticket not found" }, { status: 404 })
-    }
-
-    const body = await request.json()
-    const parsed = sendMessageSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Pesan tidak valid", details: parsed.error.format() }, { status: 400 })
-    }
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    const senderRole = isSuperAdmin ? "admin" : "user"
-
-    const newMessage = await db.supportMessage.create({
-      data: {
-        ticketId: ticket.id,
-        senderId: session.user.id,
-        senderRole,
-        message: parsed.data.message,
-        attachments: parsed.data.attachments && parsed.data.attachments.length > 0 ? (parsed.data.attachments as any) : undefined,
-        isRead: false,
-      }
-    })
-
-    // Update ticket timestamp and reopen if closed and sent by user
-    const newStatus = !isSuperAdmin && ticket.status === "resolved" ? "open" : ticket.status
-    await db.supportTicket.update({
-      where: { id: ticket.id },
-      data: {
-        updatedAt: new Date(),
-        status: newStatus
-      }
-    })
-
-    // Dispatch email notification
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000"
-    if (isSuperAdmin) {
-      // Admin replied -> Notify ticket owner
-      if (ticket.user.email) {
+  } else if (!isSuperAdmin) {
+    try {
+      const superAdmins = await db.user.findMany({ where: { role: "super_admin" }, select: { email: true } })
+      for (const email of superAdmins.map((a) => a.email).filter(Boolean)) {
         sendSupportNotificationEmail({
-          to: ticket.user.email,
-          recipientName: ticket.user.name || "Owner Workspace",
+          to: email,
+          recipientName: "Tim IT Support SaCMS",
           ticketId: ticket.id,
           subject: ticket.subject,
-          senderName: "Tim IT Support SaCMS",
-          senderRole: "admin",
+          senderName: `${session.user.name || session.user.email} (${ticket.tenant?.name ?? ""})`,
+          senderRole: "user",
           messagePreview: parsed.data.message,
-          viewUrl: `${baseUrl}/dashboard/${tenant.slug}/support?ticketId=${ticket.id}`
+          viewUrl: `${baseUrl}/admin/support?ticketId=${ticket.id}`,
         }).catch(() => {})
       }
-    } else {
-      // Tenant replied -> Notify platform super admins
-      try {
-        const superAdmins = await db.user.findMany({
-          where: { role: "super_admin" },
-          select: { email: true }
-        })
-        const adminEmails = superAdmins.map(a => a.email).filter(Boolean)
-        for (const email of adminEmails) {
-          sendSupportNotificationEmail({
-            to: email,
-            recipientName: "Tim IT Support SaCMS",
-            ticketId: ticket.id,
-            subject: ticket.subject,
-            senderName: `${session.user.name || session.user.email} (${tenant.name})`,
-            senderRole: "user",
-            messagePreview: parsed.data.message,
-            viewUrl: `${baseUrl}/admin/support?ticketId=${ticket.id}`
-          }).catch(() => {})
-        }
-      } catch {}
+    } catch {
+      /* non-fatal */
     }
-
-    return NextResponse.json({ success: true, message: newMessage })
-  } catch (error: any) {
-    console.error("[Support Message Reply Error]:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
   }
-}
 
-// PATCH /api/tenant/[tenant]/support/[ticketId] - Update status or priority
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; ticketId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+  return NextResponse.json({ success: true, message: newMessage })
+})
 
-    const { ticketId } = await params
-    const body = await request.json()
-    const { status, priority } = body
+/** PATCH — update ticket status / priority (admin/owner). */
+export const PATCH = withStaffAuth(
+  async (request, context, { access }) => {
+    const { ticketId } = await context.params
+    const ticket = await db.supportTicket.findFirst({
+      where: { id: ticketId, tenantId: access.tenantId },
+      select: { id: true },
+    })
+    if (!ticket) return apiError("not_found", { message: "Ticket not found" })
 
-    const updateData: any = { updatedAt: new Date() }
+    const { status, priority } = await request.json()
+    const updateData: Record<string, unknown> = { updatedAt: new Date() }
     if (status) updateData.status = status
     if (priority) updateData.priority = priority
 
-    const updated = await db.supportTicket.update({
-      where: { id: ticketId },
-      data: updateData
-    })
-
+    const updated = await db.supportTicket.update({ where: { id: ticket.id }, data: updateData })
     return NextResponse.json({ success: true, ticket: updated })
-  } catch (error: any) {
-    console.error("[Support Ticket Status Update Error]:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

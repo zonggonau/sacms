@@ -1,100 +1,33 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { PLAN_PRICES } from "@/lib/midtrans"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-/**
- * PATCH /api/tenant/[tenant]/subscription/plan
- * Upgrade or downgrade subscription plan
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const body = await request.json()
-    const { planId } = body
-
-    // Validate plan
+/** PATCH /api/tenant/[tenant]/subscription/plan — upgrade / downgrade (admin/owner). */
+export const PATCH = withStaffAuth(
+  async (request, _context, { access }) => {
+    const { planId } = await request.json()
     if (!planId || !["free", "starter", "pro", "enterprise"].includes(planId)) {
-      return NextResponse.json({ error: "Invalid plan" }, { status: 400 })
+      return apiError("validation", { message: "Invalid plan" })
     }
 
-    // Find tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }],
-      },
-      include: {
-        members: true,
-      },
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check if user is owner or admin
-    const membership = tenant.members.find((m) => m.userId === session.user.id)
-    const isSuperAdmin = session.user.role === "super_admin"
-
-    if (
-      !membership ||
-      !["owner", "admin"].includes(membership.role)
-    ) {
-      if (!isSuperAdmin) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      }
-    }
-
-    // Get existing subscription
     const subscription = await db.subscription.findFirst({
-      where: { tenantId: tenant.id },
+      where: { tenantId: access.tenantId },
       orderBy: { createdAt: "desc" },
     })
-
-    if (!subscription) {
-      return NextResponse.json({ error: "Subscription not found" }, { status: 404 })
-    }
-
-    // Check if same plan
-    if (subscription.plan === planId) {
-      return NextResponse.json({ error: "Already on this plan" }, { status: 400 })
-    }
+    if (!subscription) return apiError("not_found", { message: "Subscription not found" })
+    if (subscription.plan === planId) return apiError("validation", { message: "Already on this plan" })
 
     const { getDynamicWorkspacePrices } = await import("@/lib/midtrans")
     const dynamicPrices = await getDynamicWorkspacePrices()
-
     const currentPlanPrice = dynamicPrices[subscription.plan]?.monthly || 0
     const newPlanPrice = dynamicPrices[planId]?.monthly || 0
 
-    // Check for downgrade - can downgrade anytime
-    const isDowngrade = newPlanPrice < currentPlanPrice
-
-    if (isDowngrade) {
-      // Handle downgrade
+    if (newPlanPrice < currentPlanPrice) {
       await db.subscription.update({
         where: { id: subscription.id },
-        data: {
-          plan: planId,
-          currentPeriodEnd: null, // Downgrade effective immediately
-        },
+        data: { plan: planId, currentPeriodEnd: null },
       })
-
-      // Update tenant plan
-      await db.tenant.update({
-        where: { id: tenant.id },
-        data: { plan: planId },
-      })
-
+      await db.tenant.update({ where: { id: access.tenantId }, data: { plan: planId } })
       return NextResponse.json({
         success: true,
         message: "Plan downgraded successfully",
@@ -103,23 +36,14 @@ export async function PATCH(
       })
     }
 
-    // For upgrades, user needs to pay the difference
-    // Calculate prorated amount (simplified - full price for now)
-    const upgradePrice = newPlanPrice
-
     return NextResponse.json({
       success: false,
       requiresPayment: true,
       message: "Payment required to upgrade plan",
       currentPlan: subscription.plan,
       newPlan: planId,
-      upgradePrice,
+      upgradePrice: newPlanPrice,
     })
-  } catch (error) {
-    console.error("Error updating plan:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { minRole: "admin" },
+)

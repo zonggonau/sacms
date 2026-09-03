@@ -1,8 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
 // ──────────────────────────────────────────────────────────
 // Helpers
@@ -70,23 +68,8 @@ function parseOptions(options: any): Record<string, any> {
  * Generates a comprehensive AI prompt for building a frontend
  * application based on this tenant's CMS schema.
  */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const { tenant: tenantSlug } = await params
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
-    }
-
+export const GET = withStaffAuth(async (request, context, { access }) => {
+    const { tenant: tenantSlug } = await context.params
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
     const tenant = access.tenant
@@ -663,11 +646,4 @@ description: Integrates frontend applications with SaCMS headless CMS via REST A
         "Content-Disposition": `attachment; filename="${tenantSlug}-ai-skill.md"`,
       },
     })
-  } catch (error) {
-    console.error("Error generating AI prompt:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+})

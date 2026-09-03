@@ -1,8 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
@@ -45,21 +43,8 @@ const updateTargetSchema = z.object({
  * GET /api/tenant/[tenant]/white-label/domain
  * Get current custom domains and their expected DNS records
  */
-export async function GET(
-  _request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const GET = withStaffAuth(
+  async (request, _context, { access, session }) => {
 
     const tenantRecord = await db.tenant.findUnique({
       where: { id: access.tenantId },
@@ -90,31 +75,16 @@ export async function GET(
     })
 
     return NextResponse.json({ domains })
-  } catch (error) {
-    console.error("Error fetching custom domains:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
 /**
  * POST /api/tenant/[tenant]/white-label/domain
  * Add a new custom domain for the tenant
  */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const POST = withStaffAuth(
+  async (request, _context, { access, session }) => {
 
     if (!(await isFeatureEnabled(access.tenantId, "ENABLE_CUSTOM_DOMAIN"))) {
       return NextResponse.json(
@@ -187,31 +157,16 @@ export async function POST(
       dnsRecords: expectedRecords,
       dnsVerification: expectedRecords.find((r) => r.type === "TXT"),
     })
-  } catch (error) {
-    console.error("Error setting custom domain:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
 /**
  * PUT /api/tenant/[tenant]/white-label/domain
  * Trigger live Vercel-style DNS diagnostics and verification for a domain
  */
-export async function PUT(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const PUT = withStaffAuth(
+  async (request, _context, { access, session }) => {
 
     const result = await validateBody(request, verifyOrDeleteSchema)
     if ("error" in result) return result.error
@@ -263,29 +218,16 @@ export async function PUT(
       diagnostics,
       verified: diagnostics.verified,
     })
-  } catch (error) {
-    console.error("Error verifying custom domain:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
 /**
  * PATCH /api/tenant/[tenant]/white-label/domain
  * Set primary domain for tenant OR update domain portal target
  */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const PATCH = withStaffAuth(
+  async (request, _context, { access, session }) => {
 
     const body = await request.json().catch(() => ({}))
 
@@ -357,31 +299,16 @@ export async function PATCH(
     })
 
     return NextResponse.json({ success: true, domain: updated })
-  } catch (error) {
-    console.error("Error updating domain:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
 /**
  * DELETE /api/tenant/[tenant]/white-label/domain
  * Remove a custom domain
  */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+export const DELETE = withStaffAuth(
+  async (request, _context, { access, session }) => {
 
     const result = await validateBody(request, verifyOrDeleteSchema)
     if ("error" in result) return result.error
@@ -416,8 +343,6 @@ export async function DELETE(
     })
 
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting custom domain:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

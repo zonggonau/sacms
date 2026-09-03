@@ -1,39 +1,18 @@
-import { NextRequest } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 export const dynamic = "force-dynamic"
 export const runtime = "nodejs"
 
-// GET /api/tenant/[tenant]/support/[ticketId]/stream - Server-Sent Events (SSE) Live Stream
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; ticketId: string }> }
-) {
-  const session = await getServerSession(authOptions)
-  if (!session?.user) {
-    return new Response("Unauthorized", { status: 401 })
-  }
+/** GET — Server-Sent Events live stream of a ticket's new messages. */
+export const GET = withStaffAuth(async (request, context, { access }) => {
+  const { ticketId } = await context.params
 
-  const { tenant: tenantSlugOrId, ticketId } = await params
-
-  // Verify ticket exists
-  const ticket = await db.supportTicket.findUnique({
-    where: { id: ticketId },
-    include: {
-      tenant: { select: { id: true, slug: true } }
-    }
+  const ticket = await db.supportTicket.findFirst({
+    where: { id: ticketId, tenantId: access.tenantId },
+    select: { id: true },
   })
-
-  if (!ticket) {
-    return new Response("Ticket not found", { status: 404 })
-  }
-
-  const isSuperAdmin = session.user.role === "super_admin"
-  if (!isSuperAdmin && ticket.tenant?.slug !== tenantSlugOrId && ticket.tenantId !== tenantSlugOrId) {
-    return new Response("Forbidden", { status: 403 })
-  }
+  if (!ticket) return apiError("not_found", { message: "Ticket not found" })
 
   const encoder = new TextEncoder()
 
@@ -94,4 +73,4 @@ export async function GET(
       "X-Accel-Buffering": "no",
     },
   })
-}
+})
