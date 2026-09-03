@@ -1,28 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
-import { getDomainBlueprints, DOMAIN_KNOWLEDGE_LIBRARY } from "@/lib/ai/domain-knowledge"
+import { NextResponse } from "next/server"
+import { getDomainBlueprints } from "@/lib/ai/domain-knowledge"
 import { generateSystemSchema } from "@/lib/ai-schema-generator"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
+export const POST = withStaffAuth(async (req, _context, { access, session }) => {
     const { prompt, templateId } = await req.json()
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
-    }
-
     const tenant = access.tenant
 
     // 1. Check if matching pre-baked template requested
@@ -48,7 +30,7 @@ export async function POST(
     }
 
     if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
+      return apiError("validation", { message: "Prompt is required" })
     }
 
     // 2. Generate Schema Plan via AI (Safe Mode Planning)
@@ -71,10 +53,4 @@ export async function POST(
         estimatedCredits: 25
       }
     })
-  } catch (error: any) {
-    console.error("[PLAN_SCHEMA_ERROR]", error)
-    return NextResponse.json({ 
-      error: error?.message || "Gagal merencanakan skema. Silakan coba lagi." 
-    }, { status: 500 })
-  }
-}
+})

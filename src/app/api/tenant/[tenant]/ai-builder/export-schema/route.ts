@@ -1,23 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
-    
+export const GET = withStaffAuth(async (_req, context, { access }) => {
+    const { tenant: tenantSlug } = await context.params
     const tenantDb = await getTenantDb(tenantSlug)
 
     // Fetch Content Types
@@ -86,8 +72,4 @@ export async function GET(
     }
 
     return NextResponse.json(schema)
-  } catch (error: any) {
-    console.error("Failed to export schema:", error)
-    return NextResponse.json({ error: error.message || "Failed to export schema" }, { status: 500 })
-  }
-}
+})

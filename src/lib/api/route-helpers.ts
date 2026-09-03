@@ -178,10 +178,10 @@ interface StaffAuthOptions {
  * The `[tenant]` param is read from `context.params`.
  */
 export function withStaffAuth(
-  handler: (request: NextRequest, context: RouteContext, ctx: StaffContext) => Promise<NextResponse> | NextResponse,
+  handler: (request: NextRequest, context: RouteContext, ctx: StaffContext) => Promise<Response> | Response,
   options: StaffAuthOptions = {},
 ) {
-  return async (request: NextRequest, context: RouteContext): Promise<NextResponse> => {
+  return async (request: NextRequest, context: RouteContext): Promise<Response> => {
     const routeInfo = { route: routePath(request), method: request.method }
     try {
       const session = await getServerSession(authOptions)
@@ -220,9 +220,9 @@ export function withStaffAuth(
  * Wrap a route handler for `/api/admin/…`. Requires a `super_admin` session.
  */
 export function withAdminAuth(
-  handler: (request: NextRequest, context: RouteContext, ctx: AdminContext) => Promise<NextResponse> | NextResponse,
+  handler: (request: NextRequest, context: RouteContext, ctx: AdminContext) => Promise<Response> | Response,
 ) {
-  return async (request: NextRequest, context: RouteContext): Promise<NextResponse> => {
+  return async (request: NextRequest, context: RouteContext): Promise<Response> => {
     const routeInfo = { route: routePath(request), method: request.method }
     try {
       const session = await getServerSession(authOptions)

@@ -1,38 +1,22 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { createV0Chat, getV0Preview } from "@/lib/v0-client"
 import { deployToVercel } from "@/lib/vercel-client"
 import { randomBytes, createHash } from "crypto"
 import { McpClientBridge } from "@/lib/mcp/mcp-client-bridge"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const { 
-      prompt, 
-      model = "v0-pro", 
-      apiBaseUrl = "http://localhost:3000", 
+export const POST = withStaffAuth(
+  async (req, _context, { access, session }) => {
+    const {
+      prompt,
+      model = "v0-pro",
+      apiBaseUrl = "http://localhost:3000",
       deployToVercelAfter = false,
-      plannedSchema = null 
+      plannedSchema = null,
     } = await req.json()
-    
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
-    }
 
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
+    if (!prompt) return apiError("validation", { message: "Prompt is required" })
 
     const MODEL_CREDIT_MAP: Record<string, number> = {
       "v0-mini": 15,
@@ -41,13 +25,10 @@ export async function POST(
       "v0-max-fast": 40,
     }
     const creditCost = MODEL_CREDIT_MAP[model] || 25
-    
-    // Check user account AI credits
+
     const { enforceUserAiCredits, deductUserAiCredits } = await import("@/lib/plan-enforcement")
     const creditCheck = await enforceUserAiCredits(session.user.id, creditCost)
-    if (!creditCheck.allowed) {
-      return NextResponse.json({ error: creditCheck.message }, { status: 429 })
-    }
+    if (!creditCheck.allowed) return apiError("rate_limited", { message: creditCheck.message })
 
     const tenant = access.tenant
     const bridge = new McpClientBridge(tenant.id, tenant.slug, session.user.id)
@@ -235,8 +216,6 @@ Initialize all components with rich fallback sample data so the live sandbox pre
       filesGenerated: v0Result.files?.length || 0,
       files: v0Result.files || [],
     })
-  } catch (error: any) {
-    console.error("Frontend generation failed:", error)
-    return NextResponse.json({ error: error.message || "Failed to generate frontend" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

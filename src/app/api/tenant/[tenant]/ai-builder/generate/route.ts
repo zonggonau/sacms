@@ -1,31 +1,15 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { createV0Chat } from "@/lib/v0-client"
 import { generateSystemSchema } from "@/lib/ai-schema-generator"
 import { randomBytes, createHash } from "crypto"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
+export const POST = withStaffAuth(
+  async (req, _context, { access, session }) => {
     const { prompt, apiBaseUrl = "http://localhost:3000", schemaOnly = true } = await req.json()
-    if (!prompt) {
-      return NextResponse.json({ error: "Prompt is required" }, { status: 400 })
-    }
+    if (!prompt) return apiError("validation", { message: "Prompt is required" })
 
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
-    
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.slug)
 
@@ -240,8 +224,6 @@ REQUIREMENTS FOR NEXT.JS 16 APP ROUTER:
     })
 
     return NextResponse.json({ success: true, v0ChatId: v0Result.chatId, previewUrl: "" })
-  } catch (error: any) {
-    console.error("AI generation failed:", error)
-    return NextResponse.json({ error: error.message || "Failed to generate" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

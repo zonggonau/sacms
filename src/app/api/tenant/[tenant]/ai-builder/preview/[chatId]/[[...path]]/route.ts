@@ -1,23 +1,11 @@
-import { NextRequest } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { db } from "@/lib/database"
 import { v0, fetchPreview } from "v0"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; chatId: string; path?: string[] }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return new Response("Unauthorized", { status: 401 })
-
-    const resolvedParams = await params
-    const { tenant: tenantSlug, chatId, path = [] } = resolvedParams
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return new Response("Forbidden", { status: 403 })
+export const GET = withStaffAuth(async (request, context, { access }) => {
+    const resolvedParams = await context.params
+    const { tenant: tenantSlug, chatId } = resolvedParams
+    const path: string[] = Array.isArray((resolvedParams as any).path) ? (resolvedParams as any).path : []
 
     // If it's a locally generated site (starts with sacms_gen_)
     if (chatId.startsWith("sacms_gen_")) {
@@ -205,8 +193,4 @@ export async function GET(
     }
 
     return response
-  } catch (error: any) {
-    console.error("Preview proxy error:", error)
-    return new Response(error.message || "Internal Server Error", { status: 500 })
-  }
-}
+})

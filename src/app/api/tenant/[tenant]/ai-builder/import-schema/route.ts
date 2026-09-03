@@ -1,28 +1,14 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
+export const POST = withStaffAuth(
+  async (req, _context, { access }) => {
     const { schema } = await req.json()
     if (!schema || typeof schema !== "object") {
-      return NextResponse.json({ error: "Invalid schema provided" }, { status: 400 })
+      return apiError("validation", { message: "Invalid schema provided" })
     }
 
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
-    
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.slug)
 
@@ -125,8 +111,6 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, imported: importedCount })
-  } catch (error: any) {
-    console.error("Schema import failed:", error)
-    return NextResponse.json({ error: error.message || "Failed to import schema" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

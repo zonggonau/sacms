@@ -1,26 +1,9 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import JSZip from "jszip"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Tenant not found or unauthorized" }, { status: 404 })
-    }
-
+export const GET = withStaffAuth(async (_req, _context, { access }) => {
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.id)
 
@@ -354,8 +337,4 @@ console.log(res.data);
         "Cache-Control": "no-store"
       }
     })
-  } catch (error: any) {
-    console.error("[EXPORT_STARTER_ERROR]", error)
-    return NextResponse.json({ error: "Gagal mengekspor starter project." }, { status: 500 })
-  }
-}
+})

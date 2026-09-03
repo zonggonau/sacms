@@ -1,27 +1,10 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { deployToVercel, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { randomBytes } from "crypto"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
-export async function GET(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const resolvedParams = await params
-    const access = await getTenantAccess(session, resolvedParams.tenant)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
     const tenantId = tenant.id
 
@@ -62,28 +45,10 @@ export async function GET(
       customDomain,
       plan: tenant.plan,
     })
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
-  }
-}
+})
 
-export async function POST(
-  req: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const resolvedParams = await params
-    const access = await getTenantAccess(session, resolvedParams.tenant)
-    
-    if (!access || (access.role !== "admin" && access.role !== "owner" && access.role !== "super_admin")) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const POST = withStaffAuth(
+  async (req, _context, { access }) => {
     const body = await req.json()
     const { action = "deploy", target = "auto", files = [], domain, chatId } = body
 
@@ -280,9 +245,6 @@ export default async function HomePage() {
       vercelProjectId: deployResult.projectId,
       apiKeyName: tokenRecord.name,
     })
-
-  } catch (error: any) {
-    console.error("Error deploying to Vercel via SaCMS Engine:", error)
-    return NextResponse.json({ error: error.message || "Internal Server Error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
