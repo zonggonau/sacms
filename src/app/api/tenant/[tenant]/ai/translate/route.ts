@@ -1,30 +1,13 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { NextResponse } from "next/server"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const POST = withStaffAuth(async (request) => {
     const body = await request.json()
     const { sourceLocale = "id", targetLocale = "en", data = {} } = body
 
     if (!data || Object.keys(data).length === 0) {
-      return NextResponse.json({ error: "Data konten kosong" }, { status: 400 })
+      return apiError("validation", { message: "Data konten kosong" })
     }
 
     const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY
@@ -84,11 +67,4 @@ ${JSON.stringify(data, null, 2)}`
       sourceLocale,
       targetLocale,
     })
-  } catch (error: any) {
-    console.error("[AI Translate API] Error:", error)
-    return NextResponse.json(
-      { error: error.message || "Gagal menerjemahkan konten dengan AI" },
-      { status: 500 }
-    )
-  }
-}
+})

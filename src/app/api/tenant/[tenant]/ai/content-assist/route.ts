@@ -1,8 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { NextResponse } from "next/server"
 import { z } from "zod/v4"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const assistSchema = z.object({
   action: z.enum(["generate", "improve", "translate", "seo"]),
@@ -13,27 +11,9 @@ const assistSchema = z.object({
   fieldSlug: z.string().optional(),
 })
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const body = await request.json()
-    const parsed = assistSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json({ error: "Invalid payload", details: parsed.error.format() }, { status: 400 })
-    }
+export const POST = withStaffAuth(async (request) => {
+    const parsed = await readJson(request, assistSchema)
+    if (!parsed.ok) return parsed.response
 
     const { action, prompt, content = "", targetLanguage = "id", tone = "formal" } = parsed.data
     const apiKey = process.env.OPENAI_API_KEY
@@ -102,8 +82,4 @@ export async function POST(
     }
 
     return NextResponse.json({ success: true, result })
-  } catch (error: any) {
-    console.error("AI Content Assist Error:", error)
-    return NextResponse.json({ error: error.message || "Internal server error" }, { status: 500 })
-  }
-}
+})

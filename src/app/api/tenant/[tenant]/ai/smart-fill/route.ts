@@ -1,8 +1,6 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { NextResponse } from "next/server"
 import { z } from "zod/v4"
+import { withStaffAuth, readJson } from "@/lib/api/route-helpers"
 
 const smartFillSchema = z.object({
   prompt: z.string().min(1),
@@ -20,34 +18,9 @@ const smartFillSchema = z.object({
   language: z.string().optional().default("Indonesian"),
 })
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug } = await params
-    const isGlobalAdmin = session.user.role === "super_admin"
-
-    if (!isGlobalAdmin && tenantSlug !== "global") {
-      const access = await getTenantAccess(session, tenantSlug)
-      if (!access) {
-        return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-      }
-    }
-
-    const body = await request.json()
-    const parsed = smartFillSchema.safeParse(body)
-    if (!parsed.success) {
-      return NextResponse.json(
-        { error: "Invalid payload", details: parsed.error.format() },
-        { status: 400 }
-      )
-    }
+export const POST = withStaffAuth(async (request) => {
+    const parsed = await readJson(request, smartFillSchema)
+    if (!parsed.ok) return parsed.response
 
     const { prompt, contentType, schema, tone, language } = parsed.data
     const apiKey = process.env.OPENAI_API_KEY
@@ -171,11 +144,4 @@ ${schemaDescription}`
     }
 
     return NextResponse.json({ success: true, content: fallbackContent })
-  } catch (error: any) {
-    console.error("Smart Fill API Error:", error)
-    return NextResponse.json(
-      { error: error?.message || "Gagal memproses Smart Fill" },
-      { status: 500 }
-    )
-  }
-}
+})
