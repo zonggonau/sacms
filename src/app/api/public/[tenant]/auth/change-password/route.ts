@@ -1,33 +1,31 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db, getTenantDb } from "@/lib/database"
-import { verifyMemberAccessToken, verifyMemberPassword, hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, REFRESH_TOKEN_TTL_DAYS } from "@/lib/member-auth"
+import { getTenantDb } from "@/lib/database"
+import { verifyMemberPassword, hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, REFRESH_TOKEN_TTL_DAYS } from "@/lib/member-auth"
 import { getClientIp } from "@/lib/client-ip"
+import { authCorsPreflight } from "@/lib/member-auth-cors"
+import { resolveMemberRequest } from "@/lib/member-request"
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> },
+) {
+  const { tenant } = await params
+  return authCorsPreflight(request, tenant)
 }
-export async function OPTIONS() { return new NextResponse(null, { status: 204, headers: CORS_HEADERS }) }
 
 const Schema = z.object({
   currentPassword: z.string().min(1),
-  password: z.string().min(8),
-  passwordConfirmation: z.string().min(8),
+  password: z.string().min(8).max(128),
+  passwordConfirmation: z.string().min(8).max(128),
 }).refine(d => d.password === d.passwordConfirmation, { message: "Passwords do not match", path: ["passwordConfirmation"] })
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const authHeader = request.headers.get("authorization") ?? ""
-    if (!authHeader.startsWith("Bearer ")) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS })
-
-    const payload = verifyMemberAccessToken(authHeader.substring(7).trim())
-    if (!payload) return NextResponse.json({ error: "Invalid token" }, { status: 401, headers: CORS_HEADERS })
-
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true } })
-    if (!tenant || payload.tenantId !== tenant.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401, headers: CORS_HEADERS })
+    const auth = await resolveMemberRequest(request, tenantSlug)
+    if (!auth.ok) return auth.response
+    const { cors: CORS_HEADERS, tenant, payload } = auth
 
     const body = await request.json().catch(() => ({}))
     const parsed = Schema.safeParse(body)
@@ -61,6 +59,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     }, { status: 200, headers: CORS_HEADERS })
   } catch (error) {
     console.error("[public-auth/change-password]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }

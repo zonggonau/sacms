@@ -1,21 +1,21 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db, getTenantDb } from "@/lib/database"
-import { 
-  signMemberAccessToken, 
-  generateRefreshTokenString, 
-  REFRESH_TOKEN_TTL_DAYS
+import { getTenantDb } from "@/lib/database"
+import {
+  signMemberAccessToken,
+  generateRefreshTokenString,
+  REFRESH_TOKEN_TTL_DAYS,
 } from "@/lib/member-auth"
 import { getClientIp } from "@/lib/client-ip"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
+import { authCorsPreflight } from "@/lib/member-auth-cors"
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, x-api-key",
-}
-
-export async function OPTIONS() {
-  return new NextResponse(null, { status: 204, headers: CORS_HEADERS })
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> },
+) {
+  const { tenant } = await params
+  return authCorsPreflight(request, tenant)
 }
 
 const RefreshSchema = z.object({
@@ -26,8 +26,29 @@ export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ tenant: string }> }
 ) {
+  let CORS_HEADERS: Record<string, string> = {}
   try {
     const { tenant: tenantSlug } = await params
+
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "refresh",
+      limit: 20,
+      windowSeconds: 300,
+    })
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...guard.cors, "Retry-After": String(guard.retryAfterSeconds) }
+          : guard.cors,
+      })
+    }
+    const { tenant, cors } = guard.ctx
+    CORS_HEADERS = cors
+    if (!tenant) {
+      return NextResponse.json({ error: "Tenant not found" }, { status: 404, headers: cors })
+    }
+
     const body = await request.json().catch(() => ({}))
     const parsed = RefreshSchema.safeParse(body)
     if (!parsed.success) {
@@ -38,7 +59,7 @@ export async function POST(
     }
 
     const { refreshToken } = parsed.data
-    const tenantDb = (await getTenantDb(tenantSlug)) as any
+    const tenantDb = (await getTenantDb(tenant.slug)) as any
 
     // Find active session
     const session = await tenantDb.memberSession.findUnique({
@@ -56,7 +77,7 @@ export async function POST(
       }
     })
 
-    if (!session) {
+    if (!session || session.tenantId !== tenant.id) {
       return NextResponse.json({ error: "Invalid refresh token" }, { status: 401, headers: CORS_HEADERS })
     }
 
@@ -108,12 +129,13 @@ export async function POST(
       }
     })
 
-    // 3. Sign new JWT Access Token
+    // 3. Sign new JWT Access Token — tenantId and tenantSlug both from the
+    //    resolved tenant so they can never disagree.
     const { token: accessToken, expiresIn } = signMemberAccessToken({
       sub: session.member.id,
       email: session.member.email,
-      tenantId: session.member.tenantId,
-      tenantSlug,
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
       role: session.member.role,
     })
 

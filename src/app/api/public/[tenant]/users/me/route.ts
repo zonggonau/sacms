@@ -1,37 +1,37 @@
-﻿import { NextRequest, NextResponse } from "next/server"
-import { verifyMemberAccessToken } from "@/lib/member-auth"
-import { db, getTenantDb } from "@/lib/database"
+import { NextRequest, NextResponse } from "next/server"
+import { z } from "zod"
+import { getTenantDb } from "@/lib/database"
+import { authCorsPreflight } from "@/lib/member-auth-cors"
+import { resolveMemberRequest } from "@/lib/member-request"
 
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, PUT, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization",
+export async function OPTIONS(
+  request: NextRequest,
+  { params }: { params: Promise<{ tenant: string }> },
+) {
+  const { tenant } = await params
+  return authCorsPreflight(request, tenant)
 }
 
-export async function OPTIONS() { return new NextResponse(null, { status: 204, headers: CORS_HEADERS }) }
-
-function unauthorized() {
-  return NextResponse.json({ error: "Missing or invalid authorization token" }, { status: 401, headers: CORS_HEADERS })
-}
+const UpdateSchema = z.object({
+  name: z.string().max(120).optional(),
+  avatar: z.string().url().optional(),
+  metadata: z.record(z.string(), z.unknown()).optional(),
+})
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const authHeader = request.headers.get("authorization") ?? ""
-    if (!authHeader.startsWith("Bearer ")) return unauthorized()
+    const auth = await resolveMemberRequest(request, tenantSlug)
+    if (!auth.ok) return auth.response
 
-    const payload = verifyMemberAccessToken(authHeader.substring(7).trim())
-    if (!payload) return unauthorized()
-
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true } })
-    if (!tenant || payload.tenantId !== tenant.id) return unauthorized()
-
-    const tenantDb = (await getTenantDb(tenant.slug)) as any
+    const tenantDb = (await getTenantDb(auth.tenant.slug)) as any
     const member = await tenantDb.member.findUnique({
-      where: { id: payload.sub },
+      where: { id: auth.payload.sub },
       select: { id: true, email: true, name: true, avatar: true, role: true, status: true, metadata: true, createdAt: true, updatedAt: true, lastLoginAt: true, emailVerified: true },
     })
-    if (!member || member.status !== "active") return unauthorized()
+    if (!member || member.status !== "active") {
+      return NextResponse.json({ error: "Member not found or inactive" }, { status: 404, headers: auth.cors })
+    }
 
     return NextResponse.json({
       id: member.id,
@@ -47,32 +47,41 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
       updatedAt: member.updatedAt,
       lastLoginAt: member.lastLoginAt,
       role: { id: member.role, name: member.role, type: member.role },
-    }, { status: 200, headers: CORS_HEADERS })
+    }, { status: 200, headers: auth.cors })
   } catch (error) {
-    console.error("[]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+    console.error("[public-users/me]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
 
 export async function PUT(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const authHeader = request.headers.get("authorization") ?? ""
-    if (!authHeader.startsWith("Bearer ")) return unauthorized()
-
-    const payload = verifyMemberAccessToken(authHeader.substring(7).trim())
-    if (!payload) return unauthorized()
-
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true } })
-    if (!tenant || payload.tenantId !== tenant.id) return unauthorized()
+    const auth = await resolveMemberRequest(request, tenantSlug)
+    if (!auth.ok) return auth.response
 
     const body = await request.json().catch(() => ({}))
-    const { name, avatar, metadata } = body
+    const parsed = UpdateSchema.safeParse(body)
+    if (!parsed.success) {
+      return NextResponse.json({ error: "Validation error", details: parsed.error.format() }, { status: 400, headers: auth.cors })
+    }
 
-    const tenantDb = (await getTenantDb(tenant.slug)) as any
+    const tenantDb = (await getTenantDb(auth.tenant.slug)) as any
+    const existing = await tenantDb.member.findUnique({ where: { id: auth.payload.sub } })
+    if (!existing || existing.status !== "active") {
+      return NextResponse.json({ error: "Member not found or inactive" }, { status: 404, headers: auth.cors })
+    }
+
+    const data: Record<string, unknown> = {}
+    if (parsed.data.name !== undefined) data.name = parsed.data.name
+    if (parsed.data.avatar !== undefined) data.avatar = parsed.data.avatar
+    if (parsed.data.metadata !== undefined) {
+      data.metadata = { ...((existing.metadata as Record<string, unknown>) || {}), ...parsed.data.metadata }
+    }
+
     const updated = await tenantDb.member.update({
-      where: { id: payload.sub },
-      data: { ...(name && { name }), ...(avatar && { avatar }), ...(metadata && { metadata }) },
+      where: { id: auth.payload.sub },
+      data,
       select: { id: true, email: true, name: true, avatar: true, role: true, status: true, metadata: true, createdAt: true, updatedAt: true },
     })
 
@@ -84,9 +93,9 @@ export async function PUT(request: NextRequest, { params }: { params: Promise<{ 
       avatar: updated.avatar,
       metadata: updated.metadata,
       role: { id: updated.role, name: updated.role, type: updated.role },
-    }, { status: 200, headers: CORS_HEADERS })
+    }, { status: 200, headers: auth.cors })
   } catch (error) {
-    console.error("[]", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500, headers: CORS_HEADERS })
+    console.error("[public-users/me]", error)
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
   }
 }
