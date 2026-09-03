@@ -18,18 +18,16 @@ interface ResolvedAuth {
 async function resolvePublicToken(request: NextRequest, tenantSlug: string): Promise<{ auth?: ResolvedAuth; error?: string; status?: number }> {
   const authHeader = request.headers.get("authorization")
   const xApiKey = request.headers.get("x-api-key") || request.headers.get("X-API-Key")
-  const url = new URL(request.url)
-  const queryToken = url.searchParams.get("token")
 
   let rawToken = ""
   if (authHeader && authHeader.startsWith("Bearer ")) {
     rawToken = authHeader.replace("Bearer ", "").trim()
   } else if (xApiKey) {
     rawToken = xApiKey.trim()
-  } else if (queryToken) {
-    rawToken = queryToken.trim()
   }
 
+  // The `?token=` query param is deliberately NOT accepted — it leaks into
+  // access logs, Referer headers, and CDN caches.
   if (!rawToken) {
     return { error: "Missing or invalid authorization header (Expected: Authorization: Bearer <TOKEN>)", status: 401 }
   }
@@ -67,14 +65,9 @@ async function resolvePublicToken(request: NextRequest, tenantSlug: string): Pro
     }
   }
 
-  // 2. Check in ApiToken (hashed or plain)
+  // 2. Check in ApiToken (hashed only — plaintext tokens are never stored)
   const apiToken = await db.apiToken.findFirst({
-    where: {
-      OR: [
-        { token: hashedToken },
-        { token: cleanToken },
-      ]
-    },
+    where: { token: hashedToken },
     include: { tenant: true },
   })
 

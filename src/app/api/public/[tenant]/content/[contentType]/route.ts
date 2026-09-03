@@ -101,12 +101,7 @@ export async function GET(
       // Fallback to ApiToken (hashed or direct token value)
       const hashedToken = createHash("sha256").update(token).digest("hex")
       const apiToken = await db.apiToken.findFirst({
-        where: {
-          OR: [
-            { token: hashedToken },
-            { token: token },
-          ],
-        },
+        where: { token: hashedToken },
         include: { tenant: true },
       })
 
