@@ -33,6 +33,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label"
 import { Switch } from "@/components/ui/switch"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { PageContainer } from "@/components/ui/page-container"
+import { PageHeader } from "@/components/ui/page-header"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { toast } from "sonner"
 
 interface Member {
@@ -216,6 +219,7 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [roleFilter, setRoleFilter] = useState("all")
+  const [pendingDelete, setPendingDelete] = useState<string | null>(null)
 
   const filtered = members.filter(m => {
     const matchSearch = !search || m.email.includes(search) || (m.name ?? "").toLowerCase().includes(search.toLowerCase())
@@ -238,7 +242,6 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
   }
 
   const handleDelete = async (memberId: string) => {
-    if (!confirm("Delete this member? This cannot be undone.")) return
     const res = await fetch(`/api/tenant/${tenantSlug}/app-members/${memberId}`, { method: "DELETE" })
     if (res.ok) {
       setMembers(prev => prev.filter(m => m.id !== memberId))
@@ -247,21 +250,31 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Users className="h-6 w-6" /> Application Users</h1>
-          <p className="text-sm text-muted-foreground mt-1">{total} end-user member{total !== 1 ? "s" : ""} across your application</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a href={`/dashboard/${tenantSlug}/users-permissions/roles`} className="gap-2 flex items-center">
-              <Shield className="h-4 w-4" /> Manage Roles
-            </a>
-          </Button>
-          <AddMemberDialog tenantSlug={tenantSlug} roles={roles} onSuccess={m => setMembers(prev => [m, ...prev])} />
-        </div>
-      </div>
+    <PageContainer>
+      <PageHeader
+        title={<span className="flex items-center gap-2"><Users className="h-6 w-6" /> Application Users</span>}
+        description={`${total} end-user member${total !== 1 ? "s" : ""} across your application`}
+        action={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <a href={`/dashboard/${tenantSlug}/users-permissions/roles`} className="gap-2 flex items-center">
+                <Shield className="h-4 w-4" /> Manage Roles
+              </a>
+            </Button>
+            <AddMemberDialog tenantSlug={tenantSlug} roles={roles} onSuccess={m => setMembers(prev => [m, ...prev])} />
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title="Delete this member?"
+        description="This cannot be undone."
+        confirmLabel="Delete member"
+        variant="destructive"
+        onConfirm={async () => { if (pendingDelete) await handleDelete(pendingDelete) }}
+      />
 
       <RegistrationPolicyCard tenantSlug={tenantSlug} initial={policy} />
 
@@ -354,7 +367,7 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
                         {member.status === "active" ? "Suspend" : "Reactivate"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => handleDelete(member.id)}>Delete Member</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setPendingDelete(member.id)}>Delete Member</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>
@@ -363,6 +376,6 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
           </TableBody>
         </Table>
       </div>
-    </div>
+    </PageContainer>
   )
 }

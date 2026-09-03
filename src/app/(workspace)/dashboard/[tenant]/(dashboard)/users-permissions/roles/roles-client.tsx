@@ -2,6 +2,9 @@
 
 import { useMemo, useState } from "react"
 import { Shield, Plus, Users, Lock, Save, Trash2 } from "lucide-react"
+import { PageContainer } from "@/components/ui/page-container"
+import { PageHeader } from "@/components/ui/page-header"
+import { ConfirmDialog } from "@/components/ui/confirm-dialog"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -266,6 +269,7 @@ function PermissionMatrix({
 export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? "")
   const selected = roles.find((r) => r.id === selectedId) ?? roles[0]
+  const [pendingDelete, setPendingDelete] = useState<Role | null>(null)
 
   const refresh = () => {
     // Server component owns the data; a full refresh is the simplest correct path.
@@ -273,8 +277,6 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
   }
 
   const deleteRole = async (role: Role) => {
-    if (role.isSystem) return
-    if (!confirm(`Delete role "${role.name}"? Members with this role fall back to "authenticated".`)) return
     const res = await fetch(`/api/tenant/${tenantSlug}/member-roles/${role.id}`, { method: "DELETE" })
     if (res.ok) {
       toast.success("Role deleted")
@@ -286,28 +288,38 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
   }
 
   return (
-    <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+    <PageContainer>
+      <PageHeader
+        title={
+          <span className="flex items-center gap-2">
             <Shield className="h-6 w-6" /> Roles &amp; Permissions
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Control what each member role can do with your content via the public API.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" asChild>
-            <a
-              href={`/dashboard/${tenantSlug}/users-permissions/members`}
-              className="gap-2 flex items-center"
-            >
-              <Users className="h-4 w-4" /> Members
-            </a>
-          </Button>
-          <CreateRoleDialog tenantSlug={tenantSlug} onCreated={refresh} />
-        </div>
-      </div>
+          </span>
+        }
+        description="Control what each member role can do with your content via the public API."
+        action={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <a
+                href={`/dashboard/${tenantSlug}/users-permissions/members`}
+                className="gap-2 flex items-center"
+              >
+                <Users className="h-4 w-4" /> Members
+              </a>
+            </Button>
+            <CreateRoleDialog tenantSlug={tenantSlug} onCreated={refresh} />
+          </>
+        }
+      />
+
+      <ConfirmDialog
+        open={pendingDelete !== null}
+        onOpenChange={(open) => !open && setPendingDelete(null)}
+        title={`Delete role "${pendingDelete?.name}"?`}
+        description='Members with this role fall back to "authenticated".'
+        confirmLabel="Delete role"
+        variant="destructive"
+        onConfirm={async () => { if (pendingDelete) await deleteRole(pendingDelete) }}
+      />
 
       <div className="grid gap-6 md:grid-cols-[240px_1fr]">
         {/* Role list */}
@@ -360,7 +372,7 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
                   variant="ghost"
                   size="sm"
                   className="text-destructive gap-1"
-                  onClick={() => deleteRole(selected)}
+                  onClick={() => setPendingDelete(selected)}
                 >
                   <Trash2 className="h-4 w-4" /> Delete
                 </Button>
@@ -389,6 +401,6 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
           </div>
         )}
       </div>
-    </div>
+    </PageContainer>
   )
 }
