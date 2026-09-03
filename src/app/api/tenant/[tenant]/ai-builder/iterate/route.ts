@@ -17,4 +17,4 @@ export const POST = withStaffAuth(async (req, context, { access, session }) => {
 
   const previewUrl = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}`
   return NextResponse.json({ success: true, previewUrl, files: iterRes?.files || [] })
-})
+}, { minRole: "admin" })

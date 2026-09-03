@@ -144,4 +144,4 @@ ${schemaDescription}`
     }
 
     return NextResponse.json({ success: true, content: fallbackContent })
-})
+}, { minRole: "editor" })

@@ -8,6 +8,11 @@ import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 // GET /api/tenant/[tenant]/settings - Get tenant settings
 export const GET = withStaffAuth(async (_request, _context, { access, session }) => {
+    // Secrets (DB DSN, storage keys, SMTP password, API key) are only handed
+    // to the workspace owner; a plain admin sees them masked.
+    const canSeeSecrets = access.role === "owner" || session.user.role === "super_admin"
+    const mask = (v: string) => (v ? "••••••••" : "")
+
     const tenant = await db.tenant.findUnique({
       where: { id: access.tenantId },
       include: {
@@ -90,11 +95,11 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         subscriptionStatus: sub?.status || null,
         daysRemaining,
         isEnterprise,
-        // Custom Infrastructure
-        databaseUrl: tenant.databaseUrl || "",
-        storageConfig: tenant.storageConfig || null,
+        // Custom Infrastructure (owner-only)
+        databaseUrl: canSeeSecrets ? tenant.databaseUrl || "" : mask(tenant.databaseUrl || ""),
+        storageConfig: canSeeSecrets ? tenant.storageConfig || null : (tenant.storageConfig ? { configured: true } : null),
         // API settings with defaults
-        apiKey: defaultApiKey,
+        apiKey: canSeeSecrets ? defaultApiKey : mask(defaultApiKey),
         apiVersion: settingsMap.apiVersion || "v1",
         rateLimiting: settingsMap.rateLimiting !== "false",
         requestsPerMinute: parseInt(settingsMap.requestsPerMinute || "60"),
@@ -105,7 +110,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         smtpHost: settingsMap.smtpHost || "",
         smtpPort: settingsMap.smtpPort || "",
         smtpUser: settingsMap.smtpUser || "",
-        smtpPassword: settingsMap.smtpPassword || "",
+        smtpPassword: canSeeSecrets ? settingsMap.smtpPassword || "" : mask(settingsMap.smtpPassword || ""),
         fromEmail: settingsMap.fromEmail || "",
         fromName: settingsMap.fromName || "",
         // Security settings
@@ -115,7 +120,7 @@ export const GET = withStaffAuth(async (_request, _context, { access, session })
         auditLogging: settingsMap.auditLogging !== "false",
       },
     })
-})
+}, { minRole: "admin" })
 
 // PUT /api/tenant/[tenant]/settings - Update tenant settings
 export const PUT = withStaffAuth(

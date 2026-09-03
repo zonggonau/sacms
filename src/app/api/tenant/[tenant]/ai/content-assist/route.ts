@@ -82,4 +82,4 @@ export const POST = withStaffAuth(async (request) => {
     }
 
     return NextResponse.json({ success: true, result })
-})
+}, { minRole: "editor" })

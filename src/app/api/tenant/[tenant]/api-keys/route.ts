@@ -3,16 +3,30 @@ import { db } from "@/lib/database"
 import { randomBytes } from "crypto"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 
-/** GET /api/tenant/[tenant]/api-keys — list workspace API keys. */
-export const GET = withStaffAuth(async (_request, _context, { access }) => {
-  const keys = await db.apiKey.findMany({
-    where: { tenantId: access.tenantId },
-    orderBy: { createdAt: "desc" },
-  })
-  return NextResponse.json({
-    apiKeys: keys.map((k) => ({ id: k.id, name: k.name, key: k.key, createdAt: k.createdAt })),
-  })
-})
+/**
+ * GET /api/tenant/[tenant]/api-keys — list workspace API keys (admin/owner).
+ * The owner sees the full key (it's a single retrievable workspace key);
+ * a plain admin sees only a masked preview. Rotate via POST to get a fresh
+ * full value.
+ */
+export const GET = withStaffAuth(
+  async (_request, _context, { access, session }) => {
+    const canSeeFull = access.role === "owner" || session.user.role === "super_admin"
+    const keys = await db.apiKey.findMany({
+      where: { tenantId: access.tenantId },
+      orderBy: { createdAt: "desc" },
+    })
+    return NextResponse.json({
+      apiKeys: keys.map((k) => ({
+        id: k.id,
+        name: k.name,
+        key: canSeeFull ? k.key : `${k.key.slice(0, 10)}…${k.key.slice(-4)}`,
+        createdAt: k.createdAt,
+      })),
+    })
+  },
+  { minRole: "admin" },
+)
 
 /**
  * POST /api/tenant/[tenant]/api-keys — rotate the workspace API key (admin/owner).

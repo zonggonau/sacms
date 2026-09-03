@@ -67,4 +67,4 @@ ${JSON.stringify(data, null, 2)}`
       sourceLocale,
       targetLocale,
     })
-})
+}, { minRole: "editor" })

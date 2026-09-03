@@ -53,4 +53,4 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
         estimatedCredits: 25
       }
     })
-})
+}, { minRole: "admin" })
