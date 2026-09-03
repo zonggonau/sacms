@@ -19,23 +19,31 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
   // Track latest message timestamp
   let lastCheckedTime = new Date(Date.now() - 5000)
 
+  // Hard cap: a stream lives at most 15 min, then the client must reconnect.
+  const MAX_LIFETIME_MS = 15 * 60 * 1000
+  const POLL_MS = 3000
+  const startedAt = Date.now()
+
   const stream = new ReadableStream({
     async start(controller) {
       // Send initial connection event
       controller.enqueue(encoder.encode(`event: connected\ndata: ${JSON.stringify({ status: "connected", ticketId })}\n\n`))
 
       let isClosed = false
-
-      request.signal.addEventListener("abort", () => {
+      let intervalId: ReturnType<typeof setInterval>
+      const stop = () => {
         isClosed = true
+        clearInterval(intervalId)
         try {
           controller.close()
         } catch {}
-      })
+      }
 
-      const intervalId = setInterval(async () => {
-        if (isClosed || request.signal.aborted) {
-          clearInterval(intervalId)
+      request.signal.addEventListener("abort", stop)
+
+      intervalId = setInterval(async () => {
+        if (isClosed || request.signal.aborted || Date.now() - startedAt > MAX_LIFETIME_MS) {
+          stop()
           return
         }
 
@@ -46,7 +54,8 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
               ticketId,
               createdAt: { gt: lastCheckedTime }
             },
-            orderBy: { createdAt: "asc" }
+            orderBy: { createdAt: "asc" },
+            take: 50,
           })
 
           if (newMessages.length > 0) {
@@ -61,7 +70,7 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
         } catch (e) {
           // Ignore transient query errors during SSE stream
         }
-      }, 1500) // 1.5s sub-second low-latency streaming
+      }, POLL_MS)
     },
   })
 

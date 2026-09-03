@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { withStaffAuth } from "@/lib/api/route-helpers"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
@@ -285,6 +285,13 @@ export const PATCH = withStaffAuth(
 
     const { customDomain, isPrimary } = result.data
 
+    // The domain must belong to this tenant.
+    const owned = await db.customDomain.findFirst({
+      where: { domain: customDomain, tenantId: access.tenantId },
+      select: { id: true },
+    })
+    if (!owned) return apiError("not_found", { message: "Domain not found" })
+
     if (isPrimary) {
       // Unset previous primary domains
       await db.customDomain.updateMany({
@@ -294,7 +301,7 @@ export const PATCH = withStaffAuth(
     }
 
     const updated = await db.customDomain.update({
-      where: { domain: customDomain },
+      where: { id: owned.id },
       data: { isPrimary },
     })
 

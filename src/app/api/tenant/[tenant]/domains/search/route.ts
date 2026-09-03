@@ -7,14 +7,21 @@ import {
   DomainSearchResult,
 } from "@/lib/vercel-registrar"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { rateLimit } from "@/lib/rate-limit"
 
 export const GET = withStaffAuth(
-  async (request) => {
+  async (request, _context, { access }) => {
+    // Each search fans out registrar lookups across every TLD — cap it.
+    const rl = await rateLimit(`domain-search:${access.tenantId}`, { limit: 20, windowSeconds: 60 })
+    if (!rl.success) {
+      return apiError("rate_limited", { message: "Terlalu banyak pencarian domain. Coba lagi sebentar." })
+    }
+
     const { searchParams } = new URL(request.url)
     const rawQuery = searchParams.get("query") || searchParams.get("name") || ""
     const query = rawQuery.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
 
-    if (!query || query.length < 2) {
+    if (!query || query.length < 2 || query.length > 63) {
       return apiError("validation", { message: "Query domain minimal 2 karakter" })
     }
 

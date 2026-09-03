@@ -28,7 +28,7 @@ export async function GET() {
     })
 
     const contentEntries = await db.contentEntry.findMany({
-      where: { tenantId: workspaceId }
+      where: { tenantId: workspaceId, status: "PUBLISHED" }
     })
 
     const collectionsData = contentTypes.reduce((acc, ct) => {
