@@ -27,8 +27,30 @@ vi.mock("@/lib/database", () => ({
     },
     tenantMember: {
       findFirst: vi.fn(),
+      findUnique: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      count: vi.fn(),
+    },
+    memberRole: {
+      findFirst: vi.fn(),
+      findUnique: vi.fn(),
+      findMany: vi.fn(),
+    },
+    setting: {
+      findUnique: vi.fn(),
+      findFirst: vi.fn(),
+      findMany: vi.fn(),
+      upsert: vi.fn(),
+    },
+    siteDeployment: {
+      findFirst: vi.fn(),
+      update: vi.fn(),
+    },
+    siteConversation: {
+      findFirst: vi.fn(),
     },
     contentType: {
       findUnique: vi.fn(),
