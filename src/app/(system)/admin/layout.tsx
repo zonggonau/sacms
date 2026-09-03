@@ -3,7 +3,8 @@ import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
 
-import { db } from "@/lib/database"
+/** Platform roles allowed into the admin portal. */
+const ADMIN_PORTAL_ROLES = ["super_admin", "admin", "employee", "karyawan"]
 
 export default async function AdminLayout({
   children,
@@ -16,19 +17,8 @@ export default async function AdminLayout({
     redirect("/login")
   }
 
-  // Hardcoded built-in admins
-  if (["super_admin", "admin"].includes(session.user.role)) {
-    // allowed
-  } else {
-    // Check if the role is a dynamic SystemRole
-    const systemRole = await db.tenantRole.findFirst({
-      where: { slug: session.user.role, isSystem: true }
-    })
-    
-    // Also support legacy tenant-level employee roles temporarily
-    if (!systemRole && !["employee", "karyawan"].includes(session.user.role)) {
-      redirect("/dashboard")
-    }
+  if (!ADMIN_PORTAL_ROLES.includes(session.user.role)) {
+    redirect("/dashboard")
   }
 
   return (

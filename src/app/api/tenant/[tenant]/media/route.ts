@@ -1,50 +1,33 @@
-import { NextRequest, NextResponse } from "next/server"
-import { db, getTenantDb } from "@/lib/database"
-import { checkPermission, PERMISSIONS } from "@/lib/rbac"
+import { NextResponse } from "next/server"
+import { getTenantDb } from "@/lib/database"
+import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
 import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
-import { isR2Configured, isTenantStorageConfigured, uploadToR2, uploadToLocal } from "@/lib/r2"
-import { getTenantPlanConfig } from "@/lib/tenant-plan"
-import type { Media } from "@prisma/client"
+import { isTenantStorageConfigured, uploadToR2, uploadToLocal } from "@/lib/r2"
+import type { Media } from "@/lib/database"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-// GET - List all media for tenant
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const { tenant: tenantSlug } = await params
-    
-    // RBAC Check (Uses Master DB)
-    const { allowed, tenantId } = await checkPermission(tenantSlug, PERMISSIONS.MEDIA_READ)
-    if (!allowed || !tenantId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
-    // Resolve correct DB (Shared or Isolated)
-    const tenantDb = await getTenantDb(tenantSlug)
-
-    // Get media from the tenant-specific database
-    const media = await tenantDb.media.findMany({
-      where: { tenantId },
-      orderBy: { createdAt: "desc" },
-    }).catch(() => [])
-
-    return NextResponse.json({ media })
-  } catch (error) {
-    console.error("Error fetching media:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
+// GET - list media for a workspace
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+  if (!roleHasPermission(access.role, PERMISSIONS.MEDIA_READ)) {
+    return apiError("forbidden", { message: "Missing media.read permission" })
   }
-}
+  const { tenant: tenantSlug } = await context.params
+  const tenantDb = await getTenantDb(tenantSlug)
 
-// POST - Upload media
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const { tenant: tenantSlug } = await params
+  const media = await tenantDb.media
+    .findMany({ where: { tenantId: access.tenantId }, orderBy: { createdAt: "desc" } })
+    .catch(() => [])
+  return NextResponse.json({ media })
+})
 
-    // RBAC Check
-    const { allowed, tenantId, userId } = await checkPermission(tenantSlug, PERMISSIONS.MEDIA_UPLOAD)
-    if (!allowed || !tenantId) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+// POST - upload media
+export const POST = withStaffAuth(async (request, context, { access, session }) => {
+  if (!roleHasPermission(access.role, PERMISSIONS.MEDIA_UPLOAD)) {
+    return apiError("forbidden", { message: "Missing media.upload permission" })
+  }
+  const { tenant: tenantSlug } = await context.params
+  const tenantId = access.tenantId
+  const userId = session.user.id
 
     const formData = await request.formData()
     const filesRaw = (formData.getAll("files") as File[]).concat(formData.getAll("file") as File[])
@@ -55,7 +38,7 @@ export async function POST(
       files.push(singleFile)
     }
 
-    if (!files || files.length === 0) return NextResponse.json({ error: "No files provided" }, { status: 400 })
+    if (!files || files.length === 0) return apiError("validation", { message: "No files provided" })
 
     const tenantDb = await getTenantDb(tenantSlug)
     const uploadedMedia: Media[] = []
@@ -68,9 +51,9 @@ export async function POST(
     const newFilesSizeMB = Math.ceil(newFilesSizeBytes / (1024 * 1024))
 
     if (!enforcement.allowed || (enforcement.current + newFilesSizeMB > enforcement.max)) {
-      return NextResponse.json({ 
-        error: enforcement.message || `Storage limit exceeded. Your plan allows ${enforcement.max}MB.` 
-      }, { status: 403 })
+      return apiError("plan_limit", {
+        message: enforcement.message || `Storage limit exceeded. Your plan allows ${enforcement.max}MB.`,
+      })
     }
 
     for (const file of files) {
@@ -142,8 +125,4 @@ export async function POST(
       url: uploadedMedia[0]?.url,
       file: uploadedMedia[0],
     })
-  } catch (error) {
-    console.error("Error uploading media:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+})

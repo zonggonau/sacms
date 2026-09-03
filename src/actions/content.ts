@@ -51,7 +51,7 @@ async function resolveWriteContext(
 
   const member = await db.tenantMember.findUnique({
     where: { tenantId_userId: { tenantId: access.tenantId, userId: session.user.id } },
-    select: { role: true },
+    select: { role: true, customPermissions: true },
   })
 
   const tenantDb = await getTenantDb(tenantSlug)
@@ -68,7 +68,10 @@ async function resolveWriteContext(
       kind: "staff",
       userId: session.user.id,
       role: member?.role ?? access.role,
-      customPermissions: null,
+      // Per-member workflow-transition overrides (workflow.* permission strings).
+      customPermissions: Array.isArray(member?.customPermissions)
+        ? (member.customPermissions as string[])
+        : null,
     },
   }
 }

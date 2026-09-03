@@ -1,9 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { assignRolePermissionSchema } from "@/lib/validations"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
 // Platform-level roles for /admin/rbac
 const PLATFORM_ROLES = [
@@ -45,17 +44,9 @@ const DEFAULT_PLATFORM_PERMISSIONS = [
   { name: "rbac.manage", displayName: "Manage Platform RBAC", description: "Configure platform role permissions", category: "security" },
 ]
 
-// GET /api/admin/rbac/roles - List all platform roles with their permissions
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// GET /api/admin/rbac/roles - platform roles with their nav permissions
+export const GET = withAdminAuth(
+  async () => {
     // Ensure permissions table has platform permissions
     let allPerms = await db.permission.findMany()
     const hasPlatformPerms = allPerms.some((p) => p.category === "workspaces" || p.category === "system")
@@ -129,30 +120,19 @@ export async function GET() {
     })
 
     return NextResponse.json({ roles: rolesWithPermissions })
-  } catch (error) {
-    console.error("Error fetching platform roles:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-// POST /api/admin/rbac/roles - Assign permission to platform role
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// POST /api/admin/rbac/roles - assign a nav permission to a platform role
+export const POST = withAdminAuth(
+  async (request) => {
     const result = await validateBody(request, assignRolePermissionSchema)
     if ("error" in result) return result.error
     const { roleId, permissionId, granted } = result.data
 
-    // Super admin permissions are locked and cannot be removed
     if (roleId === "super_admin" && !granted) {
-      return NextResponse.json({ error: "Super Admin permissions are locked and cannot be revoked." }, { status: 400 })
+      return apiError("validation", { message: "Super Admin permissions are locked and cannot be revoked." })
     }
 
     // Upsert role-permission assignment (global only)
@@ -177,8 +157,6 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ rolePermission: rp })
-  } catch (error) {
-    console.error("Error assigning platform permission:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

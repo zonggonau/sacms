@@ -1,21 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { createPermissionSchema } from "@/lib/validations"
+import { withAdminAuth, apiError } from "@/lib/api/route-helpers"
 
-// GET /api/admin/rbac/permissions - List all permissions
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// GET /api/admin/rbac/permissions - platform-admin navigation permissions
+export const GET = withAdminAuth(
+  async () => {
     const permissions = await db.permission.findMany({
       orderBy: [{ category: "asc" }, { name: "asc" }],
     })
@@ -52,39 +43,24 @@ export async function GET() {
     }
 
     return NextResponse.json({ permissions })
-  } catch (error) {
-    console.error("Error fetching permissions:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)
 
-// POST /api/admin/rbac/permissions - Create a new permission
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-    if (session.user.role !== "super_admin" && session.user.role !== "admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+// POST /api/admin/rbac/permissions - create a permission
+export const POST = withAdminAuth(
+  async (request) => {
     const result = await validateBody(request, createPermissionSchema)
     if ("error" in result) return result.error
     const { name, displayName, description, category } = result.data
 
     const existing = await db.permission.findUnique({ where: { name } })
-    if (existing) {
-      return NextResponse.json({ error: "Permission with this name already exists" }, { status: 400 })
-    }
+    if (existing) return apiError("conflict", { message: "Permission with this name already exists" })
 
     const permission = await db.permission.create({
       data: { name, displayName: displayName || name, description: description || null, category: category || "general" },
     })
-
     return NextResponse.json({ permission })
-  } catch (error) {
-    console.error("Error creating permission:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { allowRoles: ["admin"] },
+)

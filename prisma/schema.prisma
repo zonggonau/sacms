@@ -135,7 +135,6 @@ model Tenant {
   oauthClients           OAuthClient[]
   oauthCodes             OAuthCode[]
   oauthTokens            OAuthToken[]
-  roles                  TenantRole[]
   sites                  Site[]
   infrastructureServers  InfrastructureServer[]
   supportTickets         SupportTicket[]
@@ -834,22 +833,6 @@ model RolePermission {
   @@index([tenantId])
   @@index([roleId])
   @@map("role_permissions")
-}
-
-model TenantRole {
-  id          String   @id @default(cuid())
-  tenantId    String
-  name        String
-  slug        String
-  description String?
-  isSystem    Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-
-  @@unique([tenantId, slug])
-  @@index([tenantId])
-  @@map("tenant_roles")
 }
 
 // ─── AI Website Builder (v0 + SaCMS MCP) ─────────────────────────────

@@ -30,6 +30,7 @@ import { z } from "zod"
 import { authOptions } from "@/lib/auth"
 import { getTenantAccess } from "@/lib/tenant-access"
 import type { WorkspaceResource } from "@/lib/plan-enforcement"
+import { roleMeets, type StaffRole } from "@/lib/rbac/staff"
 
 /** Best-effort route path for logs, tolerant of a plain Request in tests. */
 function routePath(request: NextRequest): string {
@@ -150,21 +151,8 @@ export interface AdminContext {
 
 type RouteContext = { params: Promise<Record<string, string>> }
 
-/** Staff role ordering for `minRole`. Higher index = more authority. */
-const STAFF_ROLE_RANK = ["viewer", "contributor", "author", "editor", "admin", "owner"] as const
-type StaffRole = (typeof STAFF_ROLE_RANK)[number]
-
-function roleMeets(role: string, min: StaffRole): boolean {
-  const have = STAFF_ROLE_RANK.indexOf(role as StaffRole)
-  const need = STAFF_ROLE_RANK.indexOf(min)
-  // Unknown roles (e.g. custom) are treated as meeting the bar only when no
-  // minimum is required — callers that pass `minRole` opt into strictness.
-  if (have === -1) return false
-  return have >= need
-}
-
 interface StaffAuthOptions {
-  /** Minimum staff role required (owner > admin > editor > author > contributor > viewer). */
+  /** Minimum staff role required (owner > admin > editor > author > contributor > subscriber > viewer). */
   minRole?: StaffRole
   /** Enforce this plan resource's limit on POST/PUT/PATCH. */
   planResource?: WorkspaceResource
