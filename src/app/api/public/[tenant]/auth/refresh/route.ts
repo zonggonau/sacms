@@ -4,8 +4,9 @@ import { db, getTenantDb } from "@/lib/database"
 import { 
   signMemberAccessToken, 
   generateRefreshTokenString, 
-  REFRESH_TOKEN_TTL_DAYS 
+  REFRESH_TOKEN_TTL_DAYS
 } from "@/lib/member-auth"
+import { getClientIp } from "@/lib/client-ip"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -93,8 +94,7 @@ export async function POST(
     const newExpiresAt = new Date()
     newExpiresAt.setDate(newExpiresAt.getDate() + REFRESH_TOKEN_TTL_DAYS)
 
-    const forwardedFor = request.headers.get("x-forwarded-for")
-    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : session.ipAddress
+    const clientIp = getClientIp(request) || session.ipAddress
     const userAgent = request.headers.get("user-agent") || session.userAgent
 
     await tenantDb.memberSession.create({

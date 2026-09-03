@@ -7,7 +7,9 @@ import {
   generateRefreshTokenString, 
   REFRESH_TOKEN_TTL_DAYS 
 } from "@/lib/member-auth"
-import { rateLimit } from "@/lib/rate-limit"
+import { ensureSystemRoles } from "@/lib/permissions-engine"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
+import crypto from "crypto"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -37,27 +39,33 @@ export async function POST(
       return NextResponse.json({ error: "Tenant identifier required" }, { status: 400, headers: CORS_HEADERS })
     }
 
-    // Rate limiting: 5 registrations per minute per IP
-    const forwardedFor = request.headers.get("x-forwarded-for")
-    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1"
-    const rl = await rateLimit(`auth:register:${tenantSlug}:${clientIp}`, { limit: 5, windowSeconds: 60 })
-    if (!rl.success) {
-      return NextResponse.json(
-        { error: "Terlalu banyak percobaan registrasi. Silakan tunggu 1 menit." },
-        { status: 429, headers: CORS_HEADERS }
-      )
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "register",
+      limit: 5,
+      windowSeconds: 60,
+    })
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant, ip: clientIp } = guard.ctx
+    if (!tenant) {
+      return NextResponse.json({ error: "Workspace tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
     }
 
-    // Resolve tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }]
-      },
-      select: { id: true, slug: true, name: true, status: true }
+    const policy = await db.tenant.findUnique({
+      where: { id: tenant.id },
+      select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
     })
-
-    if (!tenant || tenant.status !== "active") {
-      return NextResponse.json({ error: "Workspace tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
+    if (policy && !policy.allowMemberRegistration) {
+      return NextResponse.json(
+        { error: "Public registration is disabled for this workspace." },
+        { status: 403, headers: CORS_HEADERS }
+      )
     }
 
     const body = await request.json().catch(() => ({}))
@@ -92,6 +100,10 @@ export async function POST(
     // Hash password with bcrypt
     const passwordHash = await hashMemberPassword(password)
 
+    await ensureSystemRoles(tenant.id)
+
+    const requireVerification = !!policy?.requireMemberEmailVerification
+
     // Create member
     const member = await tenantDb.member.create({
       data: {
@@ -100,12 +112,33 @@ export async function POST(
         passwordHash,
         name: name || null,
         avatar: avatar || null,
-        role: "member",
-        status: "active",
+        role: "authenticated",
+        status: requireVerification ? "pending_verification" : "active",
+        emailVerified: requireVerification ? null : new Date(),
         metadata: metadata || {},
-        lastLoginAt: new Date(),
+        lastLoginAt: requireVerification ? null : new Date(),
       }
     })
+
+    if (requireVerification) {
+      const verifyToken = crypto.randomBytes(32).toString("hex")
+      const verifyTokenHash = crypto.createHash("sha256").update(verifyToken).digest("hex")
+      await tenantDb.member.update({
+        where: { id: member.id },
+        data: {
+          passwordResetToken: verifyTokenHash,
+          passwordResetExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      })
+      return NextResponse.json(
+        {
+          message: "Account created. Please verify your email address before signing in.",
+          requiresEmailVerification: true,
+          ...(process.env.NODE_ENV === "development" ? { _dev_verifyToken: verifyToken } : {}),
+        },
+        { status: 202, headers: CORS_HEADERS }
+      )
+    }
 
     // Generate Refresh Token & Session
     const refreshToken = generateRefreshTokenString()

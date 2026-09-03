@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db, getTenantDb } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import { 
   verifyMemberPassword, 
   signMemberAccessToken, 
   generateRefreshTokenString, 
   REFRESH_TOKEN_TTL_DAYS 
 } from "@/lib/member-auth"
-import { rateLimit } from "@/lib/rate-limit"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -34,26 +34,21 @@ export async function POST(
       return NextResponse.json({ error: "Tenant identifier required" }, { status: 400, headers: CORS_HEADERS })
     }
 
-    // Rate limiting: 10 attempts per minute per IP
-    const forwardedFor = request.headers.get("x-forwarded-for")
-    const clientIp = forwardedFor ? forwardedFor.split(",")[0].trim() : "127.0.0.1"
-    const rl = await rateLimit(`auth:login:${tenantSlug}:${clientIp}`, { limit: 10, windowSeconds: 60 })
-    if (!rl.success) {
-      return NextResponse.json(
-        { error: "Terlalu banyak percobaan login. Silakan tunggu 1 menit." },
-        { status: 429, headers: CORS_HEADERS }
-      )
-    }
-
-    // Resolve tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [{ slug: tenantSlug }, { id: tenantSlug }]
-      },
-      select: { id: true, slug: true, name: true, status: true }
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "login",
+      limit: 10,
+      windowSeconds: 60,
     })
-
-    if (!tenant || tenant.status !== "active") {
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant, ip: clientIp } = guard.ctx
+    if (!tenant) {
       return NextResponse.json({ error: "Workspace tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
     }
 

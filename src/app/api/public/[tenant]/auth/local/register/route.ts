@@ -1,9 +1,10 @@
-﻿import { NextRequest, NextResponse } from "next/server"
+import { NextRequest, NextResponse } from "next/server"
+import crypto from "crypto"
 import { z } from "zod"
 import { db, getTenantDb } from "@/lib/database"
 import { hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, REFRESH_TOKEN_TTL_DAYS } from "@/lib/member-auth"
-import { rateLimit } from "@/lib/rate-limit"
 import { ensureSystemRoles } from "@/lib/permissions-engine"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -22,12 +23,34 @@ const RegisterSchema = z.object({
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
-    const rl = await rateLimit(`auth:register:${tenantSlug}:${ip}`, { limit: 5, windowSeconds: 60 })
-    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429, headers: CORS_HEADERS })
 
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true, status: true } })
-    if (!tenant || tenant.status !== "active") return NextResponse.json({ error: "Tenant not found" }, { status: 404, headers: CORS_HEADERS })
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "register",
+      limit: 5,
+      windowSeconds: 60,
+    })
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant, ip } = guard.ctx
+    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404, headers: CORS_HEADERS })
+
+    // Registration policy — resolve the full tenant flags.
+    const policy = await db.tenant.findUnique({
+      where: { id: tenant.id },
+      select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
+    })
+    if (policy && !policy.allowMemberRegistration) {
+      return NextResponse.json(
+        { error: "Public registration is disabled for this workspace." },
+        { status: 403, headers: CORS_HEADERS }
+      )
+    }
 
     const body = await request.json().catch(() => ({}))
     const parsed = RegisterSchema.safeParse(body)
@@ -44,6 +67,8 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     await ensureSystemRoles(tenant.id)
 
+    const requireVerification = !!policy?.requireMemberEmailVerification
+
     const member = await tenantDb.member.create({
       data: {
         tenantId: tenant.id,
@@ -51,10 +76,34 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
         name: username ?? email.split("@")[0],
         passwordHash,
         role: "authenticated",
-        status: "active",
-        emailVerified: new Date(), // auto-confirm for now; set null to require email confirmation
+        status: requireVerification ? "pending_verification" : "active",
+        emailVerified: requireVerification ? null : new Date(),
       },
     })
+
+    // If email verification is required, do NOT issue a session — the client must
+    // confirm first. A verification token is stored (reusing the reset-token columns).
+    if (requireVerification) {
+      const verifyToken = crypto.randomBytes(32).toString("hex")
+      const verifyTokenHash = crypto.createHash("sha256").update(verifyToken).digest("hex")
+      await tenantDb.member.update({
+        where: { id: member.id },
+        data: {
+          passwordResetToken: verifyTokenHash,
+          passwordResetExpires: new Date(Date.now() + 24 * 60 * 60 * 1000),
+        },
+      })
+      // TODO: dispatch verification email with `verifyToken`.
+      return NextResponse.json(
+        {
+          ok: true,
+          requiresEmailVerification: true,
+          message: "Account created. Please verify your email address before signing in.",
+          ...(process.env.NODE_ENV === "development" ? { _dev_verifyToken: verifyToken } : {}),
+        },
+        { status: 202, headers: CORS_HEADERS }
+      )
+    }
 
     const refreshToken = generateRefreshTokenString()
     const sessionExpires = new Date()

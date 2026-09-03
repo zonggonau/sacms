@@ -1,8 +1,9 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
 import crypto from "crypto"
-import { db, getTenantDb } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import { hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, REFRESH_TOKEN_TTL_DAYS } from "@/lib/member-auth"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -20,7 +21,21 @@ const Schema = z.object({
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true } })
+
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "reset",
+      limit: 10,
+      windowSeconds: 300,
+    })
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant, ip } = guard.ctx
     if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404, headers: CORS_HEADERS })
 
     const body = await request.json().catch(() => ({}))
@@ -43,7 +58,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const refreshToken = generateRefreshTokenString()
     const sessionExpires = new Date(); sessionExpires.setDate(sessionExpires.getDate() + REFRESH_TOKEN_TTL_DAYS)
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
     await tenantDb.memberSession.create({ data: { memberId: member.id, tenantId: tenant.id, refreshToken, userAgent: request.headers.get("user-agent"), ipAddress: ip, expiresAt: sessionExpires } })
 
     const { token: jwt } = signMemberAccessToken({ sub: member.id, email: member.email, tenantId: tenant.id, tenantSlug: tenant.slug, role: member.role })

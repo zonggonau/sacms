@@ -1,13 +1,13 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db, getTenantDb } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import {
   verifyMemberPassword,
   signMemberAccessToken,
   generateRefreshTokenString,
   REFRESH_TOKEN_TTL_DAYS,
 } from "@/lib/member-auth"
-import { rateLimit } from "@/lib/rate-limit"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -31,17 +31,21 @@ export async function POST(
   try {
     const { tenant: tenantSlug } = await params
 
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
-    const rl = await rateLimit(`auth:local:${tenantSlug}:${ip}`, { limit: 10, windowSeconds: 60 })
-    if (!rl.success) {
-      return NextResponse.json({ error: "Too many login attempts. Please wait 1 minute." }, { status: 429, headers: CORS_HEADERS })
-    }
-
-    const tenant = await db.tenant.findFirst({
-      where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] },
-      select: { id: true, slug: true, status: true },
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "login",
+      limit: 10,
+      windowSeconds: 60,
     })
-    if (!tenant || tenant.status !== "active") {
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant, ip } = guard.ctx
+    if (!tenant) {
       return NextResponse.json({ error: "Tenant not found or inactive" }, { status: 404, headers: CORS_HEADERS })
     }
 

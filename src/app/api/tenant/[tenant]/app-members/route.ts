@@ -55,6 +55,40 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
   }
 }
 
+const PolicySchema = z.object({
+  allowMemberRegistration: z.boolean().optional(),
+  requireMemberEmailVerification: z.boolean().optional(),
+})
+
+/** PATCH — update the workspace's headless member-auth policy. */
+export async function PATCH(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    const { tenant: tenantSlug } = await params
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+
+    const body = await request.json().catch(() => ({}))
+    const parsed = PolicySchema.safeParse(body)
+    if (!parsed.success) return NextResponse.json({ error: "Validation failed", details: parsed.error.format() }, { status: 400 })
+
+    const data: Record<string, boolean> = {}
+    if (parsed.data.allowMemberRegistration !== undefined) data.allowMemberRegistration = parsed.data.allowMemberRegistration
+    if (parsed.data.requireMemberEmailVerification !== undefined) data.requireMemberEmailVerification = parsed.data.requireMemberEmailVerification
+
+    const tenant = await db.tenant.update({
+      where: { id: access.tenantId },
+      data,
+      select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
+    })
+
+    return NextResponse.json({ policy: tenant })
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message ?? "Internal server error" }, { status: 500 })
+  }
+}
+
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const session = await getServerSession(authOptions)

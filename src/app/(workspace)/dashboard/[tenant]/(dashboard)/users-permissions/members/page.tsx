@@ -22,7 +22,7 @@ export default async function MembersPage({
   const access = await getTenantAccess(session, tenantSlug)
   if (!access) redirect(`/dashboard/${tenantSlug}`)
 
-  const [members, roles, total] = await Promise.all([
+  const [members, roles, total, tenant] = await Promise.all([
     db.member.findMany({
       where: { tenantId: access.tenantId },
       select: { id: true, email: true, name: true, avatar: true, role: true, status: true, createdAt: true, lastLoginAt: true, emailVerified: true },
@@ -34,6 +34,10 @@ export default async function MembersPage({
       orderBy: [{ isSystem: "desc" }, { createdAt: "asc" }],
     }),
     db.member.count({ where: { tenantId: access.tenantId } }),
+    db.tenant.findUnique({
+      where: { id: access.tenantId },
+      select: { allowMemberRegistration: true, requireMemberEmailVerification: true },
+    }),
   ])
 
   return (
@@ -43,6 +47,10 @@ export default async function MembersPage({
         initialMembers={members as any}
         roles={roles as any}
         total={total}
+        policy={{
+          allowMemberRegistration: tenant?.allowMemberRegistration ?? true,
+          requireMemberEmailVerification: tenant?.requireMemberEmailVerification ?? false,
+        }}
       />
     </Suspense>
   )

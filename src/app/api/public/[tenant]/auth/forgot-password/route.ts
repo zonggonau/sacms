@@ -1,7 +1,7 @@
 ﻿import { NextRequest, NextResponse } from "next/server"
 import { z } from "zod"
-import { db, getTenantDb } from "@/lib/database"
-import { rateLimit } from "@/lib/rate-limit"
+import { getTenantDb } from "@/lib/database"
+import { guardMemberAuth } from "@/lib/member-auth-guard"
 import crypto from "crypto"
 
 const CORS_HEADERS = {
@@ -16,11 +16,22 @@ const Schema = z.object({ email: z.string().email() })
 export async function POST(request: NextRequest, { params }: { params: Promise<{ tenant: string }> }) {
   try {
     const { tenant: tenantSlug } = await params
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
-    const rl = await rateLimit(`auth:forgot:${tenantSlug}:${ip}`, { limit: 5, windowSeconds: 300 })
-    if (!rl.success) return NextResponse.json({ error: "Too many requests." }, { status: 429, headers: CORS_HEADERS })
 
-    const tenant = await db.tenant.findFirst({ where: { OR: [{ slug: tenantSlug }, { id: tenantSlug }] }, select: { id: true, slug: true, name: true } })
+    const guard = await guardMemberAuth(request, tenantSlug, {
+      endpoint: "forgot",
+      limit: 5,
+      windowSeconds: 300,
+      allowUnknownTenant: true,
+    })
+    if (!guard.ok) {
+      return NextResponse.json({ error: guard.error }, {
+        status: guard.status,
+        headers: guard.retryAfterSeconds
+          ? { ...CORS_HEADERS, "Retry-After": String(guard.retryAfterSeconds) }
+          : CORS_HEADERS,
+      })
+    }
+    const { tenant } = guard.ctx
     if (!tenant) return NextResponse.json({ ok: true }, { status: 200, headers: CORS_HEADERS }) // silent 200
 
     const body = await request.json().catch(() => ({}))

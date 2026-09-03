@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import type { NextRequest } from "next/server"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getRedis } from "@/lib/redis"
+import { getClientIp, isLoopbackIp } from "@/lib/client-ip"
 
 // The canonical hostname of this app (without https://)
 const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
@@ -15,7 +16,7 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
   const host = request.headers.get("host")?.split(":")[0] || ""
-  const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
+  const ip = getClientIp(request)
 
   // ==================== PLATFORM SETTINGS & MAINTENANCE CHECK ====================
   const redis = getRedis()
@@ -90,7 +91,6 @@ export async function proxy(request: NextRequest) {
   // ==================== RATE LIMITING ====================
   // Apply rate limiting to all API routes with appropriate configs
   if (pathname.startsWith("/api/public/")) {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     const rl = await rateLimit(`ip:${ip}`, RATE_LIMITS.publicApi)
 
     if (!rl.success) {
@@ -115,13 +115,10 @@ export async function proxy(request: NextRequest) {
 
   // B6 Fix: Rate limit auth endpoints (Brute-force protection for login attempts)
   if (pathname.startsWith("/api/auth/")) {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
-    const isLocalIp = ip === "127.0.0.1" || ip === "::1" || ip === "localhost"
-
     // Only strictly rate-limit login credential submission (POST /api/auth/callback/credentials)
     const isLoginAttempt = request.method === "POST" && pathname.includes("/callback/credentials")
 
-    if (!isLocalIp) {
+    if (!isLoopbackIp(ip)) {
       const config = isLoginAttempt ? RATE_LIMITS.auth : { limit: 300, windowSeconds: 60 }
       const rl = await rateLimit(`auth:${ip}${isLoginAttempt ? ":login" : ""}`, config)
 
@@ -148,7 +145,6 @@ export async function proxy(request: NextRequest) {
 
   // B6 Fix: Rate limit tenant management API (300 req/min per IP)
   if (pathname.startsWith("/api/tenant/")) {
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0] || "127.0.0.1"
     const rl = await rateLimit(`api:${ip}`, RATE_LIMITS.api)
 
     if (!rl.success) {

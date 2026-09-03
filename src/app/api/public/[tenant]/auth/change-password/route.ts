@@ -2,6 +2,7 @@
 import { z } from "zod"
 import { db, getTenantDb } from "@/lib/database"
 import { verifyMemberAccessToken, verifyMemberPassword, hashMemberPassword, signMemberAccessToken, generateRefreshTokenString, REFRESH_TOKEN_TTL_DAYS } from "@/lib/member-auth"
+import { getClientIp } from "@/lib/client-ip"
 
 const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
@@ -48,7 +49,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const refreshToken = generateRefreshTokenString()
     const sessionExpires = new Date(); sessionExpires.setDate(sessionExpires.getDate() + REFRESH_TOKEN_TTL_DAYS)
-    const ip = request.headers.get("x-forwarded-for")?.split(",")[0].trim() ?? "127.0.0.1"
+    const ip = getClientIp(request)
     await tenantDb.memberSession.create({ data: { memberId: member.id, tenantId: tenant.id, refreshToken, userAgent: request.headers.get("user-agent"), ipAddress: ip, expiresAt: sessionExpires } })
 
     const { token: jwt } = signMemberAccessToken({ sub: member.id, email: member.email, tenantId: tenant.id, tenantSlug: tenant.slug, role: member.role })

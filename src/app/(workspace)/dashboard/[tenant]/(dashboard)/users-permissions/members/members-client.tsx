@@ -31,6 +31,8 @@ import {
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Label } from "@/components/ui/label"
+import { Switch } from "@/components/ui/switch"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { toast } from "sonner"
 
 interface Member {
@@ -52,11 +54,84 @@ interface Role {
   isSystem: boolean
 }
 
+interface MemberAuthPolicy {
+  allowMemberRegistration: boolean
+  requireMemberEmailVerification: boolean
+}
+
 interface Props {
   tenantSlug: string
   initialMembers: Member[]
   roles: Role[]
   total: number
+  policy: MemberAuthPolicy
+}
+
+function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; initial: MemberAuthPolicy }) {
+  const [policy, setPolicy] = useState<MemberAuthPolicy>(initial)
+  const [saving, setSaving] = useState<string | null>(null)
+
+  const update = async (patch: Partial<MemberAuthPolicy>) => {
+    const key = Object.keys(patch)[0]
+    setSaving(key)
+    const prev = policy
+    setPolicy((p) => ({ ...p, ...patch }))
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/app-members`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(patch),
+      })
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}))
+        throw new Error(data.error ?? "Failed to update policy")
+      }
+      toast.success("Registration policy updated")
+    } catch (err: any) {
+      setPolicy(prev)
+      toast.error(err.message)
+    } finally {
+      setSaving(null)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base">Headless Auth Policy</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="allow-reg">Allow public self-registration</Label>
+            <p className="text-xs text-muted-foreground">
+              When off, the <code className="text-[11px]">/auth/register</code> endpoints reject new sign-ups.
+            </p>
+          </div>
+          <Switch
+            id="allow-reg"
+            checked={policy.allowMemberRegistration}
+            disabled={saving === "allowMemberRegistration"}
+            onCheckedChange={(v) => update({ allowMemberRegistration: v })}
+          />
+        </div>
+        <div className="flex items-center justify-between gap-4">
+          <div className="space-y-0.5">
+            <Label htmlFor="require-verify">Require email verification</Label>
+            <p className="text-xs text-muted-foreground">
+              New members are created as <code className="text-[11px]">pending_verification</code> and get no session until they confirm.
+            </p>
+          </div>
+          <Switch
+            id="require-verify"
+            checked={policy.requireMemberEmailVerification}
+            disabled={saving === "requireMemberEmailVerification"}
+            onCheckedChange={(v) => update({ requireMemberEmailVerification: v })}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  )
 }
 
 const STATUS_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
@@ -136,7 +211,7 @@ function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string;
   )
 }
 
-export function MembersClient({ tenantSlug, initialMembers, roles, total }: Props) {
+export function MembersClient({ tenantSlug, initialMembers, roles, total, policy }: Props) {
   const [members, setMembers] = useState<Member[]>(initialMembers)
   const [search, setSearch] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
@@ -187,6 +262,8 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total }: Prop
           <AddMemberDialog tenantSlug={tenantSlug} roles={roles} onSuccess={m => setMembers(prev => [m, ...prev])} />
         </div>
       </div>
+
+      <RegistrationPolicyCard tenantSlug={tenantSlug} initial={policy} />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
