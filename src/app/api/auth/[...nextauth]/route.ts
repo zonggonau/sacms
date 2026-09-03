@@ -1,15 +1,19 @@
 import NextAuth from "next-auth"
 import { authOptions } from "@/lib/auth"
 import type { NextRequest } from "next/server"
+import { resolveTrustedOrigin } from "@/lib/trusted-host"
 
-async function auth(req: NextRequest, ctx: any) {
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || "localhost:3001"
-  const proto = req.headers.get("x-forwarded-proto") || "http"
-  
-  process.env.NEXTAUTH_URL = `${proto}://${host}`
-  
-  // Re-instantiate NextAuth handler dynamically to ensure it picks up the overridden NEXTAUTH_URL
-  return NextAuth(authOptions)(req, ctx)
+/**
+ * SaCMS serves many hosts (platform subdomains + tenant custom domains), so
+ * NEXTAUTH_URL must track the request host — but only for a host we actually
+ * serve. resolveTrustedOrigin() rejects an arbitrary X-Forwarded-Host, which
+ * would otherwise poison OAuth callbacks and email links (host-header
+ * injection → account takeover).
+ */
+async function auth(req: NextRequest, ctx: unknown) {
+  process.env.NEXTAUTH_URL = await resolveTrustedOrigin(req)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return NextAuth(authOptions)(req as any, ctx as any)
 }
 
 export { auth as GET, auth as POST }

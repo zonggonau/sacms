@@ -1,36 +1,20 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/lib/database"
-
-function getSafeRedirectUrl(req: NextRequest, pathWithQuery: string): URL {
-  // Read forwarded headers from Caddy / Reverse Proxy
-  const host = req.headers.get("x-forwarded-host") || req.headers.get("host") || ""
-  const proto = req.headers.get("x-forwarded-proto") || (host.includes("localhost") ? "http" : "https")
-  
-  // If host is a valid public host (e.g. sacms.cloud or custom domain), use it
-  if (host && !host.includes("0.0.0.0") && !host.startsWith("127.0.0.1") && !host.startsWith("app:")) {
-    return new URL(pathWithQuery, `${proto}://${host}`)
-  }
-
-  // Fallback to NEXT_PUBLIC_APP_URL, NEXTAUTH_URL, or production domain
-  if (process.env.NEXT_PUBLIC_APP_URL && process.env.NEXT_PUBLIC_APP_URL.startsWith("http")) {
-    return new URL(pathWithQuery, process.env.NEXT_PUBLIC_APP_URL)
-  }
-  if (process.env.NEXTAUTH_URL && process.env.NEXTAUTH_URL.startsWith("http") && !process.env.NEXTAUTH_URL.includes("localhost")) {
-    return new URL(pathWithQuery, process.env.NEXTAUTH_URL)
-  }
-  if (process.env.NODE_ENV === "production") {
-    return new URL(pathWithQuery, "https://sacms.cloud")
-  }
-  return new URL(pathWithQuery, "http://localhost:3000")
-}
+import { resolveTrustedOrigin } from "@/lib/trusted-host"
 
 export async function GET(req: NextRequest) {
+  // Trusted origin only — never build the redirect from a raw X-Forwarded-Host
+  // (host-header injection → the verification link lands on an attacker host).
+  const origin = await resolveTrustedOrigin(req)
+  const redirectTo = (pathWithQuery: string) =>
+    NextResponse.redirect(new URL(pathWithQuery, origin))
+
   try {
     const { searchParams } = new URL(req.url)
     const token = searchParams.get("token")?.trim()
 
     if (!token) {
-      return NextResponse.redirect(getSafeRedirectUrl(req, "/login?error=MissingToken"))
+      return redirectTo("/login?error=MissingToken")
     }
 
     // 1. Find the verification token in database
@@ -39,14 +23,14 @@ export async function GET(req: NextRequest) {
     })
 
     if (!verificationToken) {
-      return NextResponse.redirect(getSafeRedirectUrl(req, "/login?error=InvalidToken"))
+      return redirectTo("/login?error=InvalidToken")
     }
 
     // 2. Check token expiration
     if (new Date() > verificationToken.expires) {
       // Token expired, delete it
       await db.verificationToken.deleteMany({ where: { token } }).catch(() => {})
-      return NextResponse.redirect(getSafeRedirectUrl(req, "/login?error=TokenExpired"))
+      return redirectTo("/login?error=TokenExpired")
     }
 
     // 3. Find target user
@@ -55,7 +39,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!user) {
-      return NextResponse.redirect(getSafeRedirectUrl(req, "/login?error=UserNotFound"))
+      return redirectTo("/login?error=UserNotFound")
     }
 
     // 4. Update user's emailVerified field
@@ -73,9 +57,9 @@ export async function GET(req: NextRequest) {
 
     // 6. Redirect to login with success message
     const emailParam = encodeURIComponent(user.email)
-    return NextResponse.redirect(getSafeRedirectUrl(req, `/login?verified=true&email=${emailParam}`))
+    return redirectTo(`/login?verified=true&email=${emailParam}`)
   } catch (error) {
     console.error("Verification Error:", error)
-    return NextResponse.redirect(getSafeRedirectUrl(req, "/login?error=InternalError"))
+    return redirectTo("/login?error=InternalError")
   }
 }
