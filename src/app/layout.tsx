@@ -5,6 +5,8 @@ import { Toaster } from "@/components/ui/sonner"
 import { Providers } from "@/components/providers"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
+import { cookies } from "next/headers"
+import { DEFAULT_LOCALE, isLocale } from "@/lib/i18n/dictionaries"
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -88,13 +90,17 @@ export default async function RootLayout({
 }>) {
   const session = await getServerSession(authOptions)
 
+  const cookieStore = await cookies()
+  const cookieLocale = cookieStore.get("locale")?.value
+  const locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE
+
   return (
-    <html lang="en" suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning>
       <body
         suppressHydrationWarning
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-background text-foreground overflow-x-hidden`}
       >
-        <Providers session={session}>
+        <Providers session={session} locale={locale}>
           {children}
           <Toaster />
         </Providers>

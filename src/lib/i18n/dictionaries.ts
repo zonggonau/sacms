@@ -1,5 +1,18 @@
 export type Locale = "id" | "en"
 
+/** Supported UI locales, in switcher order. */
+export const LOCALES = ["id", "en"] as const
+export const DEFAULT_LOCALE: Locale = "id"
+
+export const LOCALE_LABELS: Record<Locale, string> = {
+  id: "Bahasa Indonesia",
+  en: "English",
+}
+
+export function isLocale(value: unknown): value is Locale {
+  return value === "id" || value === "en"
+}
+
 export const BRAND = {
   name: "SaCMS",
   detail: "Smart Content Management System",
