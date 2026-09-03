@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server"
-import { db, getTenantDb } from "@/lib/database"
+import { getTenantDb } from "@/lib/database"
 import JSZip from "jszip"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 
@@ -7,13 +7,9 @@ export const GET = withStaffAuth(async (_req, _context, { access }) => {
     const tenant = access.tenant
     const tenantDb = await getTenantDb(tenant.id)
 
-    // 1. Fetch available API key or token for tenant
-    let apiKey = await db.apiKey.findFirst({
-      where: { tenantId: tenant.id },
-      orderBy: { createdAt: "desc" }
-    })
-
-    const tokenValue = apiKey?.key || "sacms_demo_read_only_token"
+    // The starter kit ships a placeholder — the developer pastes their own
+    // token. Never bake a live workspace API token into a download.
+    const tokenValue = "<paste-your-sacms-api-token>"
     const baseUrl = process.env.NEXTAUTH_URL || "http://localhost:3000"
 
     // 2. Fetch schema collections
@@ -337,4 +333,4 @@ console.log(res.data);
         "Cache-Control": "no-store"
       }
     })
-})
+}, { minRole: "admin" })

@@ -1,5 +1,31 @@
 import { NextRequest, NextResponse } from "next/server"
-import { graphql, buildSchema } from "graphql"
+import {
+  graphql, buildSchema, parse, validate, specifiedRules,
+  NoSchemaIntrospectionCustomRule, GraphQLError,
+  type ValidationRule, type ASTNode,
+} from "graphql"
+
+const MAX_QUERY_DEPTH = 10
+
+/** Reject documents nested deeper than MAX_QUERY_DEPTH (DoS guard). */
+const depthLimitRule: ValidationRule = (context) => ({
+  OperationDefinition(node) {
+    const depthOf = (n: ASTNode, current: number): number => {
+      if (current > MAX_QUERY_DEPTH) {
+        context.reportError(new GraphQLError(`Query exceeds maximum depth of ${MAX_QUERY_DEPTH}`))
+        return current
+      }
+      let max = current
+      const sels = (n as { selectionSet?: { selections: readonly ASTNode[] } }).selectionSet?.selections ?? []
+      for (const sel of sels) {
+        if (sel.kind === "Field") max = Math.max(max, depthOf(sel, current + 1))
+        else if ((sel as { selectionSet?: unknown }).selectionSet) max = Math.max(max, depthOf(sel, current))
+      }
+      return max
+    }
+    depthOf(node, 0)
+  },
+})
 import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { buildDynamicTypeDefs, buildDynamicResolvers } from "@/lib/graphql-schema"
@@ -171,6 +197,27 @@ export async function POST(
     const schema = buildSchema(typeDefs)
     const resolvers = buildDynamicResolvers(resolvedTenantId, tenantDb)
 
+    // Depth limit always; disable introspection for API-token callers
+    // (workspace sessions may still introspect for the playground).
+    let document
+    try {
+      document = parse(query)
+    } catch (e) {
+      return logResponse(NextResponse.json(
+        { errors: [{ message: e instanceof Error ? e.message : "Invalid query" }] },
+        { status: 400 },
+      ))
+    }
+    const rules: ValidationRule[] = [...specifiedRules, depthLimitRule]
+    if (!allowMutations) rules.push(NoSchemaIntrospectionCustomRule)
+    const validationErrors = validate(schema, document, rules)
+    if (validationErrors.length > 0) {
+      return logResponse(NextResponse.json(
+        { errors: validationErrors.map((err) => ({ message: err.message })) },
+        { status: 400 },
+      ))
+    }
+
     // Check if query contains mutation and token/session doesn't allow it
     const isMutation = /^\s*(mutation\b|mutation\s*\{)/i.test(query) || query.trim().startsWith("mutation")
     if (isMutation && !allowMutations) {
@@ -182,7 +229,9 @@ export async function POST(
 
     // Execute query
     let gqlResult: any
-    const cacheKey = `graphql:${resolvedTenantId}:${Buffer.from(query).toString("base64")}:${JSON.stringify(variables || {})}`
+    // Include the caller's privilege in the key — a full-access result (draft
+    // content visible) must not be served to a read-only token.
+    const cacheKey = `graphql:${resolvedTenantId}:${allowMutations ? "rw" : "ro"}:${Buffer.from(query).toString("base64")}:${JSON.stringify(variables || {})}`
 
     if (!isMutation) {
       const cached = await getCache(cacheKey)

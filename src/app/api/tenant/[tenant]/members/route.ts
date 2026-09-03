@@ -4,13 +4,14 @@ import { db, getTenantDb } from "@/lib/database"
 import { validateBody } from "@/lib/validate"
 import { z } from "zod/v4"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { STAFF_ROLES, roleMeets, type StaffRole } from "@/lib/rbac/staff"
 
 const createMemberSchema = z.object({
   email: z.string().email(),
-  role: z.string().default("viewer"),
-  name: z.string().optional(),
-  password: z.string().min(8).optional(), // Optional for invite, required for create
-  customPermissions: z.array(z.string()).optional(),
+  role: z.enum(STAFF_ROLES).default("viewer"),
+  name: z.string().max(120).optional(),
+  password: z.string().min(8).max(128).optional(), // Optional for invite, required for create
+  customPermissions: z.array(z.string().max(80)).max(50).optional(),
 })
 
 /** GET /api/tenant/[tenant]/members — list workspace staff members. */
@@ -48,9 +49,18 @@ export const POST = withStaffAuth(
     if ("error" in result) return result.error
     const { email, role, name, password, customPermissions } = result.data
 
+    // You can't grant a workspace role above your own (super_admin bypasses).
+    if (
+      session.user.role !== "super_admin" &&
+      roleMeets(role, access.role as StaffRole) &&
+      role !== access.role
+    ) {
+      return apiError("forbidden", { message: "You cannot assign a role higher than your own" })
+    }
+
     // 1. Find or Create User in Master DB
     let user = await db.user.findUnique({ where: { email } })
-    
+
     if (!user) {
       if (!password) {
         return apiError("validation", { message: "User not found. Provide a password to create a new account." })
@@ -62,7 +72,10 @@ export const POST = withStaffAuth(
           name: name || email.split('@')[0],
           password: hashedPassword,
           role: "user",
-          emailVerified: new Date(),
+          // Not pre-verified: the invitee must confirm the address. Pre-
+          // verifying a typed-in email lets an admin seed an account the
+          // real owner would later merge into via OAuth.
+          emailVerified: null,
         }
       })
     }

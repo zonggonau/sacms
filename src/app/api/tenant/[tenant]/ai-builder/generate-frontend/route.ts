@@ -8,13 +8,18 @@ import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 export const POST = withStaffAuth(
   async (req, _context, { access, session }) => {
-    const {
-      prompt,
-      model = "v0-pro",
-      apiBaseUrl = "http://localhost:3000",
-      deployToVercelAfter = false,
-      plannedSchema = null,
-    } = await req.json()
+    const body = await req.json().catch(() => ({}))
+    const prompt = typeof body?.prompt === "string" ? body.prompt.slice(0, 8000) : ""
+    const model = typeof body?.model === "string" ? body.model : "v0-pro"
+    const deployToVercelAfter = body?.deployToVercelAfter === true
+    const plannedSchema = body?.plannedSchema ?? null
+
+    // Always the platform's own origin — never a client-supplied base URL.
+    const apiBaseUrl = (
+      process.env.NEXT_PUBLIC_APP_URL ||
+      process.env.NEXTAUTH_URL ||
+      "http://localhost:3000"
+    ).replace(/\/$/, "")
 
     if (!prompt) return apiError("validation", { message: "Prompt is required" })
 
