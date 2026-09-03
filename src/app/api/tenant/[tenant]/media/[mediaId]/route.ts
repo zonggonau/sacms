@@ -1,190 +1,47 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { db, getTenantDb } from "@/lib/database"
+import { NextResponse } from "next/server"
+import { getTenantDb } from "@/lib/database"
 import { deleteFromStorage } from "@/lib/r2"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-// PATCH /api/tenant/[tenant]/media/[mediaId] - Update metadata
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; mediaId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+/** PATCH — update media metadata. */
+export const PATCH = withStaffAuth(async (request, context, { access }) => {
+  const { tenant: tenantSlug, mediaId } = await context.params
+  const { name, alt, caption } = await request.json()
 
-    const { tenant: tenantSlug, mediaId } = await params
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [
-          { slug: tenantSlug },
-          { id: tenantSlug }
-        ]
-      }
-    })
-    if (!tenant) return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
+  const tenantDb = await getTenantDb(tenantSlug)
+  const existing = await tenantDb.media.findFirst({ where: { id: mediaId, tenantId: access.tenantId } })
+  if (!existing) return apiError("not_found", { message: "Media not found" })
 
-    const membership = await db.tenantMember.findFirst({
-      where: { tenantId: tenant.id, userId: session.user.id },
-    })
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const updated = await tenantDb.media.update({
+    where: { id: mediaId },
+    data: {
+      name: name !== undefined ? name : undefined,
+      alt: alt !== undefined ? alt : undefined,
+      caption: caption !== undefined ? caption : undefined,
+    },
+  })
+  return NextResponse.json({ media: updated })
+})
 
-    const body = await request.json()
-    const { name, alt, caption } = body
+/** DELETE — remove a media asset and its stored file. */
+export const DELETE = withStaffAuth(async (_request, context, { access }) => {
+  const { tenant: tenantSlug, mediaId } = await context.params
+  const tenantDb = await getTenantDb(tenantSlug)
 
-    const tenantDb = await getTenantDb(tenantSlug)
-    const updated = await tenantDb.media.update({
-      where: { id: mediaId, tenantId: tenant.id },
-      data: {
-        name: name !== undefined ? name : undefined,
-        alt: alt !== undefined ? alt : undefined,
-        caption: caption !== undefined ? caption : undefined,
-      },
-    })
+  const media = await tenantDb.media.findFirst({ where: { id: mediaId, tenantId: access.tenantId } })
+  if (!media) return apiError("not_found", { message: "Media not found" })
 
-    return NextResponse.json({ media: updated })
-  } catch (error) {
-    console.error("Error updating media:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  if (media.storageKey) await deleteFromStorage(media.storageKey)
+  await tenantDb.media.delete({ where: { id: mediaId } })
+  return NextResponse.json({ success: true })
+})
 
-// DELETE /api/tenant/[tenant]/media/[mediaId]
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; mediaId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
+/** GET — single media asset. */
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+  const { tenant: tenantSlug, mediaId } = await context.params
+  const tenantDb = await getTenantDb(tenantSlug)
 
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug, mediaId } = await params
-
-    // Get tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [
-          { slug: tenantSlug },
-          { id: tenantSlug }
-        ]
-      }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const tenantDb = await getTenantDb(tenantSlug)
-
-    // Check if media exists and belongs to tenant
-    const media = await tenantDb.media.findFirst({
-      where: {
-        id: mediaId,
-        tenantId: tenant.id,
-      },
-    })
-
-    if (!media) {
-      return NextResponse.json({ error: "Media not found" }, { status: 404 })
-    }
-
-    // Delete from R2, S3, MinIO, or Local Storage
-    if (media.storageKey) {
-      await deleteFromStorage(media.storageKey)
-    }
-
-    await tenantDb.media.delete({
-      where: { id: mediaId },
-    })
-
-    return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting media:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
-
-// GET /api/tenant/[tenant]/media/[mediaId] - Get single media
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; mediaId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug, mediaId } = await params
-
-    // Get tenant
-    const tenant = await db.tenant.findFirst({
-      where: {
-        OR: [
-          { slug: tenantSlug },
-          { id: tenantSlug }
-        ]
-      }
-    })
-
-    if (!tenant) {
-      return NextResponse.json({ error: "Tenant not found" }, { status: 404 })
-    }
-
-    // Check access
-    const membership = await db.tenantMember.findFirst({
-      where: {
-        tenantId: tenant.id,
-        userId: session.user.id,
-      },
-    })
-
-    const isSuperAdmin = session.user.role === "super_admin"
-    if (!membership && !isSuperAdmin) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
-    const tenantDb = await getTenantDb(tenantSlug)
-
-    // Get media
-    const media = await tenantDb.media.findFirst({
-      where: {
-        id: mediaId,
-        tenantId: tenant.id,
-      },
-    })
-
-    if (!media) {
-      return NextResponse.json({ error: "Media not found" }, { status: 404 })
-    }
-
-    return NextResponse.json({ media })
-  } catch (error) {
-    console.error("Error fetching media:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+  const media = await tenantDb.media.findFirst({ where: { id: mediaId, tenantId: access.tenantId } })
+  if (!media) return apiError("not_found", { message: "Media not found" })
+  return NextResponse.json({ media })
+})

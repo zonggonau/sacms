@@ -1,26 +1,16 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-type Context = { params: Promise<{ tenant: string }> }
-
-export async function POST(request: NextRequest, context: Context) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-
+export const POST = withStaffAuth(
+  async (request, context, { access }) => {
     const { tenant: tenantSlug } = await context.params
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) return NextResponse.json({ error: "Forbidden or Tenant not found" }, { status: 403 })
-
     const tenantId = access.tenantId
     const tenantDb = await getTenantDb(tenantSlug)
 
     const formData = await request.formData()
     const file = formData.get("file") as File
-    if (!file) return NextResponse.json({ error: "No file provided" }, { status: 400 })
+    if (!file) return apiError("validation", { message: "No file provided" })
 
     const text = await file.text()
     const payload = JSON.parse(text)
@@ -131,9 +121,6 @@ export async function POST(request: NextRequest, context: Context) {
     })
 
     return NextResponse.json({ success: true })
-
-  } catch (error) {
-    console.error("Import error:", error)
-    return NextResponse.json({ error: "Failed to import data or constraint violation" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

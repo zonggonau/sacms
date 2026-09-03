@@ -1,10 +1,8 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { getTenantDb } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import fs from "fs"
 import path from "path"
+import { withStaffAuth } from "@/lib/api/route-helpers"
 
 /**
  * Helper to clean HTML tags from rich text/textarea values
@@ -116,23 +114,8 @@ function generateOfficialDocxXml(title: string, entryData: Record<string, unknow
 </w:document>`
 }
 
-export async function GET(
-  request: NextRequest,
-  context: { params: Promise<{ tenant: string; slug: string; id: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant: tenantSlug, slug: contentTypeSlug, id: entryId } = await context.params
-
-    const access = await getTenantAccess(session, tenantSlug)
-    if (!access) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withStaffAuth(async (_request, context, { access }) => {
+    const { slug: contentTypeSlug, id: entryId } = await context.params
     const tenantDb = await getTenantDb(access.tenant.slug)
 
     // 1. Fetch content type and schema fields
@@ -353,8 +336,4 @@ export async function GET(
         "Cache-Control": "no-cache",
       },
     })
-  } catch (error: any) {
-    console.error("[EXPORT_DOCX_ERROR]:", error)
-    return NextResponse.json({ error: error.message || "Failed to generate document" }, { status: 500 })
-  }
-}
+})

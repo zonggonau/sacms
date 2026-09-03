@@ -1,7 +1,4 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { NextResponse } from "next/server"
 import {
   checkDomainAvailability,
   getDomainPrice,
@@ -9,29 +6,16 @@ import {
   SUPPORTED_TLDS,
   DomainSearchResult,
 } from "@/lib/vercel-registrar"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withStaffAuth(
+  async (request) => {
     const { searchParams } = new URL(request.url)
     const rawQuery = searchParams.get("query") || searchParams.get("name") || ""
     const query = rawQuery.trim().toLowerCase().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
 
     if (!query || query.length < 2) {
-      return NextResponse.json({ error: "Query domain minimal 2 karakter" }, { status: 400 })
+      return apiError("validation", { message: "Query domain minimal 2 karakter" })
     }
 
     // Extract base keyword without TLD if user entered an extension
@@ -97,16 +81,7 @@ export async function GET(
 
     const results = await Promise.all(searchPromises)
 
-    return NextResponse.json({
-      query,
-      baseKeyword,
-      results,
-    })
-  } catch (error: any) {
-    console.error("[Domain Search API] Error searching domain:", error)
-    return NextResponse.json(
-      { error: error.message || "Gagal melakukan pencarian domain" },
-      { status: 500 }
-    )
-  }
-}
+    return NextResponse.json({ query, baseKeyword, results })
+  },
+  { minRole: "admin" },
+)

@@ -1,8 +1,5 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { createSnapPayment } from "@/lib/midtrans"
 import {
   checkDomainAvailability,
@@ -10,23 +7,10 @@ import {
   convertUsdToIdr,
   ContactInformation,
 } from "@/lib/vercel-registrar"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const POST = withStaffAuth(
+  async (request, _context, { access }) => {
     const body = await request.json()
     const { domain, contactInformation } = body as {
       domain: string
@@ -34,36 +18,27 @@ export async function POST(
     }
 
     if (!domain || typeof domain !== "string") {
-      return NextResponse.json({ error: "Nama domain wajib diisi" }, { status: 400 })
+      return apiError("validation", { message: "Nama domain wajib diisi" })
     }
 
     const cleanDomain = domain.toLowerCase().trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "")
 
     if (!contactInformation?.firstName || !contactInformation?.email || !contactInformation?.phone) {
-      return NextResponse.json(
-        { error: "Data kontak pendaftar (nama, email, no. telp) wajib diisi" },
-        { status: 400 }
-      )
+      return apiError("validation", {
+        message: "Data kontak pendaftar (nama, email, no. telp) wajib diisi",
+      })
     }
 
-    // 1. Verify availability
     const avail = await checkDomainAvailability(cleanDomain)
     if (!avail.available) {
-      return NextResponse.json(
-        { error: `Domain ${cleanDomain} saat ini tidak tersedia untuk didaftarkan.` },
-        { status: 400 }
-      )
+      return apiError("validation", {
+        message: `Domain ${cleanDomain} saat ini tidak tersedia untuk didaftarkan.`,
+      })
     }
 
-    // 2. Check if already added in SaCMS
-    const existingInDb = await db.customDomain.findUnique({
-      where: { domain: cleanDomain },
-    })
+    const existingInDb = await db.customDomain.findUnique({ where: { domain: cleanDomain } })
     if (existingInDb) {
-      return NextResponse.json(
-        { error: `Domain ${cleanDomain} sudah terdaftar di sistem SaCMS.` },
-        { status: 409 }
-      )
+      return apiError("conflict", { message: `Domain ${cleanDomain} sudah terdaftar di sistem SaCMS.` })
     }
 
     // 3. Get pricing
@@ -126,11 +101,6 @@ export async function POST(
       amount: priceIdr,
       domain: cleanDomain,
     })
-  } catch (error: any) {
-    console.error("[Domain Checkout API] Error initiating checkout:", error)
-    return NextResponse.json(
-      { error: error.message || "Gagal membuat transaksi checkout domain" },
-      { status: 500 }
-    )
-  }
-}
+  },
+  { minRole: "admin" },
+)
