@@ -1,11 +1,18 @@
 import { NextResponse } from "next/server"
 import { iterateV0Chat } from "@/lib/v0-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { chatBelongsToTenant } from "@/lib/ai/chat-access"
 
 export const POST = withStaffAuth(async (req, context, { access, session }) => {
   const { tenant: tenantSlug } = await context.params
-  const { chatId, prompt } = await req.json()
+  const body = await req.json().catch(() => ({}))
+  const chatId = typeof body?.chatId === "string" ? body.chatId : ""
+  const prompt = typeof body?.prompt === "string" ? body.prompt.slice(0, 5000) : ""
   if (!chatId || !prompt) return apiError("validation", { message: "Missing chatId or prompt" })
+
+  if (!(await chatBelongsToTenant(chatId, access.tenantId))) {
+    return apiError("not_found", { message: "Chat not found" })
+  }
 
   // Personal AI credits: 5 per UI iteration.
   const { enforceUserAiCredits, deductUserAiCredits } = await import("@/lib/plan-enforcement")

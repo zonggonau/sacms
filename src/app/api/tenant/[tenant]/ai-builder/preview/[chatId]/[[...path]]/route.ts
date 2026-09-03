@@ -1,6 +1,7 @@
 import { db } from "@/lib/database"
 import { v0, fetchPreview } from "v0"
 import { withStaffAuth } from "@/lib/api/route-helpers"
+import { chatBelongsToTenant } from "@/lib/ai/chat-access"
 
 export const GET = withStaffAuth(async (request, context, { access }) => {
     const resolvedParams = await context.params
@@ -129,6 +130,11 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
       return new Response(html, {
         headers: { "Content-Type": "text/html; charset=utf-8" },
       })
+    }
+
+    // A real v0 chatId must belong to this tenant.
+    if (!(await chatBelongsToTenant(chatId, access.tenantId))) {
+      return new Response("Not found", { status: 404 })
     }
 
     // Try fetching from v0
