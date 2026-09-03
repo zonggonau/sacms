@@ -1,21 +1,9 @@
 import { NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { db } from "@/lib/database"
 import { calculateLiveFinancialReports } from "@/lib/billing/financial-engine"
+import { withAdminAuth } from "@/lib/api/route-helpers"
 
-export async function GET() {
-  try {
-    const session = await getServerSession(authOptions)
-
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    if (session.user.role !== "super_admin") {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+export const GET = withAdminAuth(async () => {
     const now = new Date()
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
     const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000)
@@ -131,12 +119,5 @@ export async function GET() {
       recentTenants,
       topTenants,
     })
-  } catch (error) {
-    console.error("Error fetching stats:", error)
-    return NextResponse.json(
-      { error: "Internal server error" },
-      { status: 500 }
-    )
-  }
-}
+})
 
