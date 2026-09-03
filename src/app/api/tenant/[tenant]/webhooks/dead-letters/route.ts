@@ -1,30 +1,12 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { z } from "zod"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { replayDeadLetter } from "@/lib/webhooks"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
-/**
- * GET /api/tenant/[tenant]/webhooks/dead-letters
- * List dead letter queue entries for a tenant
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
-
+/** GET /api/tenant/[tenant]/webhooks/dead-letters — list DLQ entries. */
+export const GET = withStaffAuth(
+  async (request, _context, { access }) => {
     const { searchParams } = new URL(request.url)
     const status = searchParams.get("status") || undefined
     const page = Math.max(1, parseInt(searchParams.get("page") || "1"))
@@ -38,9 +20,7 @@ export async function GET(
     const [entries, total] = await Promise.all([
       db.webhookDeadLetter.findMany({
         where,
-        include: {
-          webhook: { select: { id: true, name: true, url: true } },
-        },
+        include: { webhook: { select: { id: true, name: true, url: true } } },
         orderBy: { createdAt: "desc" },
         skip: (page - 1) * pageSize,
         take: pageSize,
@@ -50,59 +30,30 @@ export async function GET(
 
     return NextResponse.json({
       data: entries,
-      pagination: {
-        page,
-        pageSize,
-        total,
-        totalPages: Math.ceil(total / pageSize),
-      },
+      pagination: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
     })
-  } catch (error) {
-    console.error("Error listing dead letters:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
-/**
- * POST /api/tenant/[tenant]/webhooks/dead-letters
- * Replay a dead letter entry: body = { deadLetterId: string }
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+const ReplaySchema = z.object({ deadLetterId: z.string().min(1) })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access || !["owner", "admin"].includes(access.role)) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-    }
+/** POST /api/tenant/[tenant]/webhooks/dead-letters — replay one entry. */
+export const POST = withStaffAuth(
+  async (request, _context, { access }) => {
+    const body = await readJson(request, ReplaySchema)
+    if (!body.ok) return body.response
 
-    const body = await request.json()
-    const deadLetterId = body?.deadLetterId
-    if (!deadLetterId || typeof deadLetterId !== "string") {
-      return NextResponse.json({ error: "deadLetterId is required" }, { status: 400 })
-    }
-
-    // Verify the dead letter belongs to this tenant
     const dl = await db.webhookDeadLetter.findUnique({
-      where: { id: deadLetterId },
+      where: { id: body.data.deadLetterId },
       include: { webhook: { select: { tenantId: true } } },
     })
     if (!dl || dl.webhook.tenantId !== access.tenantId) {
-      return NextResponse.json({ error: "Not found" }, { status: 404 })
+      return apiError("not_found", { message: "Dead-letter entry not found" })
     }
 
-    const success = await replayDeadLetter(deadLetterId)
-
-    return NextResponse.json({ success, deadLetterId })
-  } catch (error) {
-    console.error("Error replaying dead letter:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+    const success = await replayDeadLetter(body.data.deadLetterId)
+    return NextResponse.json({ success, deadLetterId: body.data.deadLetterId })
+  },
+  { minRole: "admin" },
+)

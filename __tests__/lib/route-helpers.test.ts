@@ -97,12 +97,12 @@ describe("withStaffAuth", () => {
     expect(handler).toHaveBeenCalledOnce()
   })
 
-  it("enforces the plan limit on POST and returns 402", async () => {
+  it("enforces the plan limit on POST and returns 403", async () => {
     mockSession.mockResolvedValue({ user: { id: "u1" } } as any)
     mockAccess.mockResolvedValue({ tenantId: "t1", userId: "u1", role: "admin", isGlobal: false, tenant: {} } as any)
     mockPlan.mockResolvedValue({ allowed: false, message: "cap reached", current: 10, max: 10, planSlug: "free" } as any)
     const res = await withStaffAuth(handler, { planResource: "content_entries" as any })(req({}), ctx())
-    expect(res.status).toBe(402)
+    expect(res.status).toBe(403)
     const body = await res.json()
     expect(body.code).toBe("plan_limit")
   })

@@ -59,7 +59,9 @@ const DEFAULT_STATUS: Record<ApiErrorCode, number> = {
   validation: 400,
   conflict: 409,
   rate_limited: 429,
-  plan_limit: 402,
+  // Historically plan-limit denials returned 403; keep that so existing clients
+  // that branch on the status don't regress.
+  plan_limit: 403,
   internal: 500,
 }
 

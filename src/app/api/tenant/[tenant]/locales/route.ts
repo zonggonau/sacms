@@ -1,92 +1,43 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
 import { validateBody } from "@/lib/validate"
 import { addLocaleSchema } from "@/lib/validations"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
-/**
- * GET /api/tenant/[tenant]/locales
- * List all locales for the tenant
- */
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+/** GET /api/tenant/[tenant]/locales — list locales + the plan's locale limit. */
+export const GET = withStaffAuth(async (_request, _context, { access, session }) => {
+  const locales = await db.tenantLocale.findMany({
+    where: { tenantId: access.tenantId },
+    orderBy: [{ isDefault: "desc" }, { locale: "asc" }],
+  })
 
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+  const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
+  const enforcement = await enforcePlanLimit(access.tenantId, "locales", session.user.id)
 
-    const locales = await db.tenantLocale.findMany({
-      where: { tenantId: access.tenantId },
-      orderBy: [{ isDefault: "desc" }, { locale: "asc" }],
-    })
+  return NextResponse.json({
+    locales,
+    limit: enforcement.max,
+    current: enforcement.current,
+    isLimitReached: enforcement.current >= enforcement.max,
+  })
+})
 
-    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(access.tenantId, "locales", session.user.id)
-
-    return NextResponse.json({ 
-      locales,
-      limit: enforcement.max,
-      current: enforcement.current,
-      isLimitReached: enforcement.current >= enforcement.max
-    })
-  } catch (error) {
-    console.error("Error fetching locales:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
-
-/**
- * POST /api/tenant/[tenant]/locales
- * Add a locale to the tenant
- */
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
-    if (access.role !== "owner" && access.role !== "admin") {
-      return NextResponse.json({ error: "Only admins can manage locales" }, { status: 403 })
-    }
-
+/** POST /api/tenant/[tenant]/locales — add a locale (admin/owner only). */
+export const POST = withStaffAuth(
+  async (request, _context, { access, session }) => {
     const result = await validateBody(request, addLocaleSchema)
     if ("error" in result) return result.error
-
     const { locale, name, isDefault } = result.data
 
-    // Enforce locale limit based on workspace plan
     const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
     const enforcement = await enforcePlanLimit(access.tenantId, "locales", session.user.id)
     if (!enforcement.allowed) {
-      return NextResponse.json(
-        { 
-          error: enforcement.message,
-          current: enforcement.current,
-          max: enforcement.max,
-          plan: enforcement.planSlug,
-        },
-        { status: 403 }
-      )
+      return apiError("plan_limit", {
+        message: enforcement.message,
+        details: { current: enforcement.current, max: enforcement.max, plan: enforcement.planSlug },
+      })
     }
 
-    // If setting as default, unset existing default
     if (isDefault) {
       await db.tenantLocale.updateMany({
         where: { tenantId: access.tenantId, isDefault: true },
@@ -94,24 +45,22 @@ export async function POST(
       })
     }
 
-    const tenantLocale = await db.tenantLocale.create({
-      data: {
-        tenantId: access.tenantId,
-        locale,
-        name,
-        isDefault: isDefault || enforcement.current === 0, // First locale is always default
-      },
-    })
-
-    return NextResponse.json({ locale: tenantLocale }, { status: 201 })
-  } catch (error: any) {
-    if (error?.code === "P2002") {
-      return NextResponse.json(
-        { error: "Locale already exists for this tenant" },
-        { status: 409 }
-      )
+    try {
+      const tenantLocale = await db.tenantLocale.create({
+        data: {
+          tenantId: access.tenantId,
+          locale,
+          name,
+          isDefault: isDefault || enforcement.current === 0,
+        },
+      })
+      return NextResponse.json({ locale: tenantLocale }, { status: 201 })
+    } catch (error: any) {
+      if (error?.code === "P2002") {
+        return apiError("conflict", { message: "Locale already exists for this workspace" })
+      }
+      throw error
     }
-    console.error("Error adding locale:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)

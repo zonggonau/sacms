@@ -1,90 +1,39 @@
-import { NextRequest, NextResponse } from "next/server"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { NextResponse } from "next/server"
+import { z } from "zod"
 import { db } from "@/lib/database"
-import { getTenantAccess } from "@/lib/tenant-access"
+import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
-/**
- * DELETE /api/tenant/[tenant]/locales/[localeId]
- * Remove a locale from the tenant (cannot remove default locale)
- */
-export async function DELETE(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; localeId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
-
-    const { tenant, localeId } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
-
-    if (access.role !== "owner" && access.role !== "admin") {
-      return NextResponse.json({ error: "Only admins can manage locales" }, { status: 403 })
-    }
-
-    const locale = await db.tenantLocale.findFirst({
-      where: { id: localeId, tenantId: access.tenantId },
-    })
-
-    if (!locale) {
-      return NextResponse.json({ error: "Locale not found" }, { status: 404 })
-    }
-
+/** DELETE /api/tenant/[tenant]/locales/[localeId] — remove a locale (not the default). */
+export const DELETE = withStaffAuth(
+  async (_request, context, { access }) => {
+    const { localeId } = await context.params
+    const locale = await db.tenantLocale.findFirst({ where: { id: localeId, tenantId: access.tenantId } })
+    if (!locale) return apiError("not_found", { message: "Locale not found" })
     if (locale.isDefault) {
-      return NextResponse.json(
-        { error: "Cannot delete the default locale. Set another locale as default first." },
-        { status: 400 }
-      )
+      return apiError("validation", {
+        message: "Cannot delete the default locale. Set another locale as default first.",
+      })
     }
 
     await db.tenantLocale.delete({ where: { id: localeId } })
-
     return NextResponse.json({ success: true })
-  } catch (error) {
-    console.error("Error deleting locale:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
 
-/**
- * PATCH /api/tenant/[tenant]/locales/[localeId]
- * Update a locale (e.g. set as default)
- */
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ tenant: string; localeId: string }> }
-) {
-  try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
-    }
+const PatchSchema = z.object({ isDefault: z.boolean().optional() })
 
-    const { tenant, localeId } = await params
-    const access = await getTenantAccess(session, tenant)
-    if (!access) return NextResponse.json({ error: "Forbidden" }, { status: 403 })
+/** PATCH /api/tenant/[tenant]/locales/[localeId] — update a locale (e.g. set default). */
+export const PATCH = withStaffAuth(
+  async (request, context, { access }) => {
+    const { localeId } = await context.params
+    const body = await readJson(request, PatchSchema)
+    if (!body.ok) return body.response
 
-    if (access.role !== "owner" && access.role !== "admin") {
-      return NextResponse.json({ error: "Only admins can manage locales" }, { status: 403 })
-    }
+    const locale = await db.tenantLocale.findFirst({ where: { id: localeId, tenantId: access.tenantId } })
+    if (!locale) return apiError("not_found", { message: "Locale not found" })
 
-    const body = await request.json()
-    const { isDefault } = body
-
-    const locale = await db.tenantLocale.findFirst({
-      where: { id: localeId, tenantId: access.tenantId },
-    })
-
-    if (!locale) {
-      return NextResponse.json({ error: "Locale not found" }, { status: 404 })
-    }
-
-    if (isDefault) {
-      // Unset existing default
+    if (body.data.isDefault) {
       await db.tenantLocale.updateMany({
         where: { tenantId: access.tenantId, isDefault: true },
         data: { isDefault: false },
@@ -93,12 +42,9 @@ export async function PATCH(
 
     const updated = await db.tenantLocale.update({
       where: { id: localeId },
-      data: { isDefault: isDefault ?? locale.isDefault },
+      data: { isDefault: body.data.isDefault ?? locale.isDefault },
     })
-
     return NextResponse.json({ locale: updated })
-  } catch (error) {
-    console.error("Error updating locale:", error)
-    return NextResponse.json({ error: "Internal server error" }, { status: 500 })
-  }
-}
+  },
+  { minRole: "admin" },
+)
