@@ -3,6 +3,7 @@ import { db } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
 import { getCache, setCache } from "@/lib/cache"
 import { createHash } from "crypto"
+import { secureEquals } from "@/lib/secure-compare"
 import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import {
@@ -76,7 +77,7 @@ export async function GET(
         where: { key: "systemApiKey" }
       })
 
-      if (!systemApiKeySetting || systemApiKeySetting.value !== token) {
+      if (!secureEquals(systemApiKeySetting?.value, token)) {
         return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
       }
     }

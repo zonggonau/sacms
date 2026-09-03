@@ -12,9 +12,6 @@ export default async function BillingPage() {
     redirect("/login")
   }
 
-  const globalToken = process.env.NEXT_PUBLIC_SYSTEM_API_KEY || "cf_cc0045e6f75d9cb58a5a81a4b03dbc5602258b70c06c5c6ce8be304e9474b5fd"
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3001"
-
   const { isEnterpriseTenant } = await import("@/lib/license")
   const enterprise = await isEnterpriseTenant(session.user.id)
 

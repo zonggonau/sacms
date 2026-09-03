@@ -6,6 +6,7 @@ import { getCache, setCache } from "@/lib/cache"
 import { SYSTEM_TENANT_SLUG } from "@/lib/constants"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { createHash } from "crypto"
+import { secureEquals } from "@/lib/secure-compare"
 
 /**
  * Public API for Global Single Types (Landing Page components, FAQ, Hero, etc.)
@@ -44,7 +45,7 @@ export async function GET(
 
     if (!apiToken && !apiKey) {
       const systemApiKeySetting = await db.setting.findUnique({ where: { key: "systemApiKey" } })
-      if (!systemApiKeySetting || systemApiKeySetting.value !== token) {
+      if (!secureEquals(systemApiKeySetting?.value, token)) {
         return NextResponse.json({ error: "Invalid API token" }, { status: 401 })
       }
     }
