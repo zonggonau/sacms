@@ -124,11 +124,18 @@ export async function registerUser(formData: any) {
     })
 
     if (isFirstUser) {
-      return { 
-        success: true, 
+      // Let the edge proxy stop probing /api/auth/check-first-user on every landing hit.
+      try {
+        const { getRedis } = await import("@/lib/redis")
+        await getRedis()?.set("system:first-user-done", "1")
+      } catch {
+        // non-fatal: proxy falls back to the self-fetch
+      }
+      return {
+        success: true,
         isFirstUser: true,
         autoVerified: true,
-        message: "Akun Super Admin berhasil dibuat. Silakan masuk." 
+        message: "Akun Super Admin berhasil dibuat. Silakan masuk."
       }
     }
 

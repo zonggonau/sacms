@@ -13,8 +13,31 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
  * Security proxy: adds security headers, CORS, API versioning,
  * rate limiting, custom domain routing, and self-hosted mode enforcement.
  */
+/**
+ * Paths that never need platform checks, routing, or rate limiting — bail out
+ * before touching Redis or doing any other work.
+ */
+function isSkippablePath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/_next/") ||
+    pathname === "/favicon.ico" ||
+    pathname === "/robots.txt" ||
+    pathname === "/sitemap.xml" ||
+    pathname === "/opengraph-image" ||
+    /\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|woff2?|ttf|otf|eot|css|js|map|txt|xml|webmanifest)$/i.test(pathname)
+  )
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // Fast path: static assets and Next internals need none of the logic below.
+  if (isSkippablePath(pathname)) {
+    const response = NextResponse.next()
+    applySecurityHeaders(response, pathname)
+    return response
+  }
+
   const host = request.headers.get("host")?.split(":")[0] || ""
   const ip = getClientIp(request)
 
@@ -56,20 +79,43 @@ export async function proxy(request: NextRequest) {
   }
 
   // ==================== FIRST USER REDIRECT ====================
-  // If no users exist, redirect /login and / to /register
-  const firstUserPaths = ["/login", "/"]
-  if (firstUserPaths.includes(pathname) && !pathname.startsWith("/api/")) {
-    try {
-      const checkUrl = new URL("/api/auth/check-first-user", request.url).toString()
-      const res = await fetch(checkUrl, { signal: AbortSignal.timeout(3000) })
-      if (res.ok) {
-        const data = await res.json()
-        if (data.isFirstUser) {
-          return NextResponse.redirect(new URL("/register", request.url))
+  // If no super-admin exists yet, send /login and / to /register.
+  // Once one exists it can never revert, so a permanent Redis flag lets us skip
+  // the self-fetch on every landing-page hit thereafter.
+  if ((pathname === "/login" || pathname === "/")) {
+    let firstUserResolved = false
+    let isFirstUser = false
+
+    if (redis) {
+      try {
+        const done = await redis.get<string>("system:first-user-done")
+        if (done) {
+          firstUserResolved = true
+          isFirstUser = false
         }
+      } catch {
+        // fall through to the self-fetch
       }
-    } catch {
-      // Fail silently — let the page render normally
+    }
+
+    if (!firstUserResolved) {
+      try {
+        const checkUrl = new URL("/api/auth/check-first-user", request.url).toString()
+        const res = await fetch(checkUrl, { signal: AbortSignal.timeout(3000) })
+        if (res.ok) {
+          const data = await res.json()
+          isFirstUser = !!data.isFirstUser
+          if (!isFirstUser && redis) {
+            redis.set("system:first-user-done", "1").catch(() => {})
+          }
+        }
+      } catch {
+        // Fail silently — let the page render normally
+      }
+    }
+
+    if (isFirstUser) {
+      return NextResponse.redirect(new URL("/register", request.url))
     }
   }
 
@@ -686,7 +732,8 @@ function applyCorsHeaders(response: NextResponse, request?: NextRequest) {
 
 export const config = {
   matcher: [
-    // Match all API routes and pages, skip static files
-    "/((?!_next/static|_next/image|favicon.ico|robots.txt).*)",
+    // Match all API routes and pages; skip Next internals and common static assets
+    // (a defence-in-depth match for isSkippablePath()).
+    "/((?!_next/static|_next/image|favicon.ico|robots.txt|sitemap.xml|.*\\.(?:ico|png|jpg|jpeg|gif|svg|webp|avif|woff2?|ttf|otf|eot|css|js|map|webmanifest)$).*)",
   ],
 }
