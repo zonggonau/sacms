@@ -174,6 +174,9 @@ export function WebsiteBuilderClient({
   const [previewUrl, setPreviewUrl] = useState(initialProject?.previewUrl || "")
   const [projectStatus, setProjectStatus] = useState<"draft" | "project">(initialProject?.status || "draft")
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
+  // Bumped to force a real iframe remount on Refresh — a URL hash change alone
+  // doesn't reliably reload iframe content across browsers.
+  const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0)
   
   // v0.dev Clone Studio Multi-Tab View ("preview" | "code" | "console")
   const [activeViewerTab, setActiveViewerTab] = useState<"preview" | "code" | "console">("preview")
@@ -1149,7 +1152,7 @@ export async function fetchContent(collection: string) {
                       <Button 
                         variant="outline" 
                         size="sm" 
-                        onClick={() => setPreviewUrl(p => p + "#r")} 
+                        onClick={() => setPreviewRefreshNonce(n => n + 1)} 
                         className="gap-1 h-7 text-xs rounded-lg border-border/80"
                       >
                         <RefreshCw className="h-3 w-3" /> Refresh
@@ -1174,11 +1177,12 @@ export async function fetchContent(collection: string) {
                     deviceMode === "desktop" ? "w-full" : deviceMode === "tablet" ? "w-[768px] max-w-full" : "w-[375px] max-w-full"
                   }`}>
                     {previewUrl ? (
-                      <iframe 
-                        src={previewUrl} 
-                        className="w-full h-full border-0 bg-background" 
-                        title="Preview" 
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals" 
+                      <iframe
+                        key={previewRefreshNonce}
+                        src={previewUrl}
+                        className="w-full h-full border-0 bg-background"
+                        title="Preview"
+                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                       />
                     ) : (
                       <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-muted/20">
