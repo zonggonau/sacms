@@ -50,10 +50,15 @@ ufw default allow outgoing
 ufw allow 22/tcp comment 'SSH'
 ufw allow 80/tcp comment 'HTTP (Caddy/Certbot)'
 ufw allow 443/tcp comment 'HTTPS (Caddy/SSL)'
-ufw allow 81/tcp comment 'SaCMS Custom Port Gateway'
+# Port 81 ("SaCMS Custom Port Gateway") intentionally NOT opened — it fronted
+# an unauthenticated Caddy handler that reverse-proxied to any local port the
+# caller named via a query parameter, reachable from the public internet with
+# no auth. Nothing in the app or scripts actually calls it; removed from
+# Caddyfile too. Do not re-open without adding real authentication to
+# whatever it's meant to expose.
 # Enable UFW non-interactively
 ufw --force enable
-echo "Firewall active and ports 22, 80, 443, 81 open."
+echo "Firewall active and ports 22, 80, 443 open."
 
 # 4. Create App Directory Structure
 echo "==> [4/6] Creating directory structure at /opt/sacms..."
@@ -68,6 +73,12 @@ if [ ! -f /opt/sacms/.env ]; then
     echo "Generating default production /opt/sacms/.env..."
     RANDOM_SECRET=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
     CRON_RANDOM=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
+    # Separate random value from RANDOM_SECRET/CRON_RANDOM above — previously
+    # the DB password reused a fixed "Z0ngg0n4U_Secure_" prefix plus only 8
+    # random hex chars, so every server bootstrapped by this script shared a
+    # guessable, low-entropy password pattern.
+    DB_RANDOM_SECRET=$(openssl rand -hex 24 2>/dev/null || date +%s%N | sha256sum | head -c 48)
+    DOMAIN_VERIFY_RANDOM=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
     cat <<EOF > /opt/sacms/.env
 # SaCMS Production Environment for 164.68.116.79 & sacms.cloud
 NODE_ENV=production
@@ -79,17 +90,28 @@ PUBLIC_CNAME_TARGET=cname.sacms.cloud
 
 # Database Configuration (PostgreSQL 17)
 POSTGRES_USER=sacms
-POSTGRES_PASSWORD=Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}
+POSTGRES_PASSWORD=${DB_RANDOM_SECRET}
 POSTGRES_DB=sacms
-DATABASE_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms?schema=public
-DIRECT_URL=postgresql://sacms:Z0ngg0n4U_Secure_${RANDOM_SECRET:0:8}@postgres:5432/sacms?schema=public
+DATABASE_URL=postgresql://sacms:${DB_RANDOM_SECRET}@postgres:5432/sacms?schema=public
+DIRECT_URL=postgresql://sacms:${DB_RANDOM_SECRET}@postgres:5432/sacms?schema=public
 
 # Redis Caching & Edge Rate Limiting
 REDIS_URL=redis://redis:6379
 
 # Cron & Selfhost Mode
 CRON_SECRET=${CRON_RANDOM}
+# SELFHOST_MODE grants every tenant unlimited custom domains (bypasses plan
+# limits) — correct default ONLY for a genuinely single-tenant self-hosted
+# install. If this VPS ever serves multiple real tenants, set this to
+# "false" — leaving it "true" on a shared/multi-tenant deployment silently
+# disables domain-count plan enforcement for everyone (the app now logs a
+# warning for this at runtime, but the safer move is not shipping it true
+# by default for a deployment that might not be self-host-only).
 SELFHOST_MODE=true
+
+# Custom Domain Verification — signs the TXT ownership-verification token
+# with real HMAC-SHA256 instead of the weaker built-in fallback.
+DOMAIN_VERIFY_SECRET=${DOMAIN_VERIFY_RANDOM}
 
 # Email Notification (Resend)
 RESEND_API_KEY=${RESEND_API_KEY:-""}
@@ -103,7 +125,11 @@ NEXT_PUBLIC_MIDTRANS_CLIENT_KEY=${MIDTRANS_CLIENT_KEY:-""}
 NEXT_PUBLIC_MIDTRANS_SNAP_URL=https://app.sandbox.midtrans.com/snap/snap.js
 
 # AI Website Builder & Edge Generator
-NEXT_PUBLIC_SYSTEM_API_KEY=${NEXT_PUBLIC_SYSTEM_API_KEY:-""}
+# (NEXT_PUBLIC_SYSTEM_API_KEY intentionally removed — it isn't read anywhere
+# in the app. The real systemApiKey used by public content routes lives in
+# the Setting table, not an env var; a NEXT_PUBLIC_-prefixed one would have
+# been bundled into client-side JS and exposed to every visitor if it were
+# ever wired up.)
 DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-""}
 VERCEL_ACCESS_TOKEN=${VERCEL_ACCESS_TOKEN:-""}
 V0_API_KEY=${V0_API_KEY:-""}
