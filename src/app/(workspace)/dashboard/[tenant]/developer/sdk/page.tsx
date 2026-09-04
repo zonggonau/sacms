@@ -270,13 +270,16 @@ export default function SdkDocsPage() {
                     ))}
                   </div>
                 </CardHeader>
-                <CardContent className="p-5">
-                  <CodeBlock 
-                    id="install" 
+                <CardContent className="p-5 space-y-3">
+                  <CodeBlock
+                    id="install"
                     title="Terminal"
-                    lang="bash" 
-                    code={getInstallCommand(packageManager)} 
+                    lang="bash"
+                    code={getInstallCommand(packageManager)}
                   />
+                  <p className="text-[11px] text-muted-foreground">
+                    Belum tersedia di npm registry publik — clone/link paket <code className="font-mono bg-muted px-1 py-0.5 rounded">mini-services/sdk</code> dari repo SaCMS secara lokal, atau hubungi tim platform untuk akses registry privat.
+                  </p>
                 </CardContent>
               </Card>
 
@@ -326,7 +329,7 @@ const articles = await cms.collection('articles')
   .where('category', 'eq', 'tech')
   .search('nextjs')
   .populate(['author'])
-  .sort('createdAt', 'desc')
+  .sort('createdAt:desc')
   .page(1)
   .limit(20)
   .fetch()

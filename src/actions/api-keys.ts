@@ -30,7 +30,7 @@ export async function getApiTokensAction(tenantSlug: string) {
     if (!access) return { error: "Forbidden or Tenant not found" }
 
     const tokens = await db.apiToken.findMany({
-      where: { 
+      where: {
         tenantId: access.tenantId,
         type: { not: "mcp" }
       },
@@ -45,7 +45,11 @@ export async function getApiTokensAction(tenantSlug: string) {
         lastUsedAt: true,
         expiresAt: true,
         createdAt: true,
-        token: true,
+        // NOT `token` — that column holds the SHA-256 hash of the secret,
+        // not the secret itself. The plain token is only ever returned once,
+        // at creation, from createApiTokenAction. Serving the hash back here
+        // let the client display a fake "token prefix" that was actually
+        // hash bytes, not the real key.
       },
     })
 
@@ -105,7 +109,7 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
       },
     })
     
-    revalidatePath(`/dashboard/${tenantSlug}/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
 
     const { token: _storedHash, ...safeApiToken } = apiToken
 
@@ -147,7 +151,7 @@ export async function deleteApiTokenAction(tenantSlug: string, tokenId: string) 
       where: { id: tokenId },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
 
     return { success: true }
   } catch (error) {

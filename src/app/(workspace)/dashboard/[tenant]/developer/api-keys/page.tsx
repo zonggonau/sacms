@@ -16,18 +16,23 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
 
   const tenant = access.tenant
 
-  const [tokensData, settings, apiKeys] = await Promise.all([
+  const [tokensData, settings, legacyApiKeys] = await Promise.all([
     getApiTokensAction(tenantSlug),
     db.setting.findMany({
       where: {
         OR: [{ tenantId: tenant.id }, { tenantId: null }]
       }
     }),
+    // Legacy singleton credential (pre-dates the multi-token ApiToken model).
+    // Always full-access, with no expiry/permission granularity — surfaced
+    // here (masked, revoke-only) so it's no longer an invisible, unmanageable
+    // live credential. Never mint new ones from this UI; only /api/tenant/
+    // [tenant]/api-keys (used nowhere else now) can still rotate it.
     db.apiKey.findMany({
       where: { tenantId: tenant.id },
       orderBy: { createdAt: "desc" },
-      take: 1
-    })
+      select: { id: true, name: true, createdAt: true, expiresAt: true },
+    }),
   ])
 
   const settingsMap: Record<string, string> = {}
@@ -37,7 +42,6 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
 
   const initialSettings = {
     tenantId: tenant.id,
-    apiKey: apiKeys[0]?.key || "",
     apiVersion: settingsMap.apiVersion || "v1",
     rateLimiting: settingsMap.rateLimiting !== "false",
     requestsPerMinute: settingsMap.requestsPerMinute || "60",
@@ -46,9 +50,15 @@ export default async function TenantApiKeysPage({ params }: { params: Promise<{ 
   }
 
   return (
-    <ApiKeysClient 
-      initialTokens={(tokensData.tokens as any) || []} 
-      tenantSlug={tenantSlug} 
+    <ApiKeysClient
+      initialTokens={(tokensData.tokens as any) || []}
+      legacyApiKeys={legacyApiKeys.map(k => ({
+        id: k.id,
+        name: k.name,
+        createdAt: k.createdAt,
+        expiresAt: k.expiresAt,
+      }))}
+      tenantSlug={tenantSlug}
       initialSettings={initialSettings}
     />
   )

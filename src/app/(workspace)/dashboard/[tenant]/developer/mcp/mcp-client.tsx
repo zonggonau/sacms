@@ -328,56 +328,64 @@ const PLATFORMS: PlatformInfo[] = [
 
 interface McpToolDoc {
   name: string
-  category: "schema" | "content" | "single" | "webhook" | "hosting"
+  category: "schema" | "content" | "single" | "webhook" | "hosting" | "member"
   description: string
   inputs: string[]
 }
 
+// Kept in sync by hand with the real server.registerTool(...) calls in
+// src/app/api/mcp/[[...transport]]/route.ts — names, descriptions, and
+// top-level input keys below are transcribed from that file, not invented.
+// A previous version of this catalog listed tool names (list_entries,
+// get_entry, create_entry, bulk_create_entries, get_api_docs, etc.) that
+// never existed on the server — anyone following those names or the "IDE
+// Recipes" examples referencing them got a hard MCP error.
 const MCP_TOOLS_CATALOG: McpToolDoc[] = [
-  { name: "get_full_schema", category: "schema", description: "Mengambil seluruh struktur Content Types, Single Types, dan Components workspace sekaligus.", inputs: [] },
-  { name: "list_field_types", category: "schema", description: "Mendaftar seluruh 33 tipe field resmi SaCMS (textarea, richText, currency, relation, repeater, mediaMultiple, dll.) beserta format opsi konfigurasi.", inputs: ["category?"] },
-  { name: "list_content_types", category: "schema", description: "Mendaftar seluruh model koleksi konten beserta skema field dan jumlah entri aktif.", inputs: [] },
-  { name: "get_content_type", category: "schema", description: "Mendapatkan skema detail dari Content Type tertentu berdasarkan slug atau ID.", inputs: ["slug"] },
+  { name: "get_full_schema", category: "schema", description: "Mengambil seluruh skema database workspace — semua Content Types, Single Types, dan Components beserta field-nya. Panggil ini PERTAMA saat membangun/scaffolding aplikasi frontend.", inputs: [] },
+  { name: "list_field_types", category: "schema", description: "Mendaftar seluruh 33 tipe field resmi SaCMS (text, richText, currency, relation, repeater, mediaMultiple, dll.) beserta aturan validasi dan opsi konfigurasi.", inputs: ["category?"] },
+  { name: "list_content_types", category: "schema", description: "Mendaftar seluruh Content Type (koleksi seperti artikel, produk, kategori) beserta skema field dan jumlah entri.", inputs: [] },
+  { name: "get_content_type", category: "schema", description: "Mengambil skema detail dan metadata dari satu Content Type berdasarkan slug atau ID.", inputs: ["slug"] },
   { name: "create_content_type", category: "schema", description: "Membuat Content Type (koleksi) baru lengkap dengan daftar field skema.", inputs: ["name", "slug", "description", "fields"] },
-  { name: "update_content_type", category: "schema", description: "Menambah, mengedit, atau menghapus field pada Content Type yang ada.", inputs: ["slug", "name", "fields"] },
-  { name: "delete_content_type", category: "schema", description: "Menghapus model Content Type dan seluruh entri data di dalamnya.", inputs: ["slug"] },
+  { name: "update_content_type", category: "schema", description: "Memperbarui nama/deskripsi Content Type, atau menambah/mengganti field skemanya.", inputs: ["slug", "name", "description", "fields"] },
+  { name: "delete_content_type", category: "schema", description: "Menghapus permanen Content Type, skema field-nya, dan seluruh entri konten tersimpan di dalamnya.", inputs: ["slug"] },
 
-  { name: "list_entries", category: "content", description: "Query entri data dengan filter Strapi, pencarian teks, sort, pagination, dan populate relasi.", inputs: ["contentTypeSlug", "page", "pageSize", "search", "filters", "sort", "populate"] },
-  { name: "get_entry", category: "content", description: "Mengambil satu entri konten spesifik berdasarkan ID dengan relasi data ter-populate.", inputs: ["contentTypeSlug", "id", "locale", "populate"] },
-  { name: "create_entry", category: "content", description: "Menambahkan entri konten baru dengan status DRAFT atau langsung PUBLISHED.", inputs: ["contentTypeSlug", "data", "status", "locale"] },
-  { name: "update_entry", category: "content", description: "Memperbarui nilai field pada entri konten yang sudah ada.", inputs: ["contentTypeSlug", "id", "data", "status"] },
-  { name: "delete_entry", category: "content", description: "Menghapus entri konten dari database.", inputs: ["contentTypeSlug", "id"] },
-  { name: "bulk_create_entries", category: "content", description: "Memasukkan banyak entri konten sekaligus (batch seeding / import).", inputs: ["contentTypeSlug", "entries", "status"] },
-  { name: "bulk_delete_entries", category: "content", description: "Menghapus beberapa entri konten secara bersamaan berdasarkan daftar ID.", inputs: ["contentTypeSlug", "ids"] },
+  { name: "query_content", category: "content", description: "Mengambil entri konten (published atau draft) dari satu Content Type dengan pagination, pencarian, dan sorting.", inputs: ["contentTypeSlug", "page", "limit", "status", "search", "sortOrder"] },
+  { name: "create_content_entry", category: "content", description: "Menambahkan entri konten baru ke sebuah Content Type dengan payload data JSON.", inputs: ["contentTypeSlug", "data", "status"] },
+  { name: "update_content_entry", category: "content", description: "Memperbarui entri konten yang sudah ada berdasarkan ID-nya.", inputs: ["id", "data", "status"] },
+  { name: "delete_content_entry", category: "content", description: "Menghapus satu entri konten spesifik berdasarkan ID.", inputs: ["id"] },
 
-  { name: "get_single_type", category: "single", description: "Mengambil data halaman tunggal (misal: Homepage, Pengaturan Website, Footer).", inputs: ["slug", "locale"] },
-  { name: "update_single_type", category: "single", description: "Menyimpan dan mempublikasikan data pada model Single Type.", inputs: ["slug", "data", "publish", "locale"] },
-  { name: "create_single_type", category: "single", description: "Mendefinisikan model Single Type baru di workspace.", inputs: ["name", "slug", "description", "fields"] },
-  { name: "list_components", category: "single", description: "Mendaftar seluruh blok komponen reusable (CTA, Hero, Feature Card).", inputs: [] },
-  { name: "create_component", category: "single", description: "Membuat komponen skema baru untuk dipakai berulang di Content Type.", inputs: ["name", "slug", "category", "fields"] },
+  { name: "list_single_types", category: "single", description: "Mendaftar seluruh Single Type (skema halaman tunggal seperti Homepage, Pengaturan Situs).", inputs: [] },
+  { name: "get_single_type", category: "single", description: "Mengambil skema field dan data konten tersimpan dari satu Single Type.", inputs: ["singleTypeSlug"] },
+  { name: "create_single_type", category: "single", description: "Membuat Single Type baru (skema halaman tunggal, mis. 'Homepage', 'Halaman Kontak') dengan field dan data awal opsional.", inputs: ["name", "slug", "description", "fields", "initialData"] },
+  { name: "update_single_type_content", category: "single", description: "Menyimpan/memperbarui nilai data singleton pada sebuah Single Type (mis. judul hero banner, link footer).", inputs: ["singleTypeSlug", "data", "locale"] },
+  { name: "delete_single_type", category: "single", description: "Menghapus permanen sebuah Single Type, skema field, dan data kontennya.", inputs: ["singleTypeSlug"] },
 
-  { name: "list_webhooks", category: "webhook", description: "Mendaftar webhook event yang aktif di workspace.", inputs: [] },
-  { name: "create_webhook", category: "webhook", description: "Mendaftarkan webhook baru untuk trigger deploy Vercel/Netlify atau notifikasi.", inputs: ["name", "url", "events", "secret"] },
-  { name: "update_webhook", category: "webhook", description: "Memperbarui URL target, event trigger, atau status aktif endpoint webhook.", inputs: ["id", "url", "events", "enabled"] },
-  { name: "delete_webhook", category: "webhook", description: "Menghapus endpoint webhook.", inputs: ["id"] },
-  { name: "test_webhook", category: "webhook", description: "Mengirimkan test ping payload ke endpoint webhook untuk verifikasi koneksi.", inputs: ["id"] },
-  { name: "get_api_docs", category: "webhook", description: "Mengambil panduan REST & GraphQL API lengkap beserta contoh fetch Next.js.", inputs: [] },
-  { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa fitur live gateway API publik, filtering Strapi, dan status webhook.", inputs: [] },
-  { name: "get_api_info", category: "webhook", description: "Mengambil informasi dasar versi API SaCMS dan spesifikasi server MCP.", inputs: [] },
+  { name: "list_components", category: "single", description: "Mendaftar seluruh Component reusable (mis. Hero Section, Feature Card, FAQ Item) beserta skema field-nya.", inputs: [] },
+  { name: "create_component", category: "single", description: "Membuat skema Component baru yang bisa dipakai berulang di dalam Content Type dan Single Type.", inputs: ["name", "slug", "category", "description", "fields"] },
+  { name: "delete_component", category: "single", description: "Menghapus permanen sebuah Component dan skema field-nya.", inputs: ["componentSlug"] },
+
+  { name: "list_webhooks", category: "webhook", description: "Mendaftar seluruh webhook yang dikonfigurasi, event yang di-subscribe, URL, dan statusnya.", inputs: [] },
+  { name: "create_webhook", category: "webhook", description: "Mendaftarkan endpoint webhook baru untuk menerima notifikasi event CMS (mis. 'content.created', 'content.published').", inputs: ["name", "url", "events", "secret", "enabled"] },
+  { name: "update_webhook", category: "webhook", description: "Memperbarui konfigurasi webhook yang ada (nama, URL, event yang di-subscribe, status aktif).", inputs: ["id", "name", "url", "events", "enabled"] },
+  { name: "delete_webhook", category: "webhook", description: "Menghapus permanen sebuah konfigurasi webhook beserta riwayat log-nya.", inputs: ["id"] },
+  { name: "test_webhook", category: "webhook", description: "Mengirimkan event test tiruan ke sebuah endpoint webhook untuk verifikasi konektivitas dan status respons.", inputs: ["id"] },
+
+  { name: "inspect_api_capabilities", category: "webhook", description: "Memeriksa izin API key aktif (read, write, delete, schema, webhooks) untuk menentukan apakah membangun komponen read-only atau interaktif.", inputs: [] },
+  { name: "get_api_info", category: "webhook", description: "Mengambil dokumentasi REST API lengkap, daftar endpoint, sintaks filtering, dan contoh kode integrasi untuk workspace ini.", inputs: ["baseUrl?"] },
 
   // Multi-Tenant End-User & Member Auth MCP Tools
-  { name: "list_members", category: "member", description: "Mendaftar akun end-user/member website dengan filter search, role (vip, member), dan status.", inputs: ["page", "pageSize", "search", "role", "status"] },
-  { name: "get_member", category: "member", description: "Mengambil data detail profil member, metadata kustom, dan riwayat sesi aktif.", inputs: ["idOrEmail"] },
-  { name: "create_member", category: "member", description: "Mendaftarkan member baru secara programmatic dengan password ter-hash bcrypt 12 rounds.", inputs: ["email", "password", "name", "role", "metadata"] },
-  { name: "update_member", category: "member", description: "Mengubah status member (active/suspended), role, password baru, atau metadata kustom.", inputs: ["idOrEmail", "name", "role", "status", "password", "metadata"] },
-  { name: "delete_member", category: "member", description: "Menghapus akun member dan me-revoke seluruh sesi login aktif secara permanen.", inputs: ["idOrEmail"] },
+  { name: "list_members", category: "member", description: "Mendaftar akun end-user/member website dengan filter pencarian, role, dan status.", inputs: ["page", "pageSize", "search", "role", "status"] },
+  { name: "get_member", category: "member", description: "Mengambil data detail profil dan metadata member spesifik berdasarkan ID atau email.", inputs: ["idOrEmail"] },
+  { name: "create_member", category: "member", description: "Mendaftarkan member baru secara programatik dengan password ter-hash bcrypt.", inputs: ["email", "password", "name", "role", "metadata"] },
+  { name: "update_member", category: "member", description: "Mengubah profil member yang ada — role, status ('active'/'suspended'), password baru, atau metadata kustom.", inputs: ["idOrEmail", "name", "role", "status", "password", "metadata"] },
+  { name: "delete_member", category: "member", description: "Menghapus permanen akun member dan me-revoke seluruh sesi login aktifnya.", inputs: ["idOrEmail"] },
 
   // Hosting & Cloud Deployment MCP Tools
-  { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website / frontend langsung ke Vercel Serverless hosting.", inputs: ["projectName", "files", "envVars"] },
-  { name: "get_vercel_deployment_status", category: "hosting", description: "Mengecek status build dan URL produksi dari deployment Vercel.", inputs: ["deploymentId"] },
-  { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada project Vercel.", inputs: ["projectId", "domain"] },
-  { name: "get_contabo_infrastructure_status", category: "hosting", description: "Memeriksa status live kesehatan server VPS Contabo, CPU, RAM, dan database dedicated.", inputs: [] },
-  { name: "provision_contabo_vps", category: "hosting", description: "Menjalankan provisioning otomatis server Dedicated VPS Contabo untuk workspace berbayar.", inputs: ["plan", "region"] },
+  { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website/frontend langsung ke Vercel Serverless hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },
+  { name: "get_vercel_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment Vercel.", inputs: ["deploymentId"] },
+  { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project Vercel, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
+  { name: "get_contabo_infrastructure_status", category: "hosting", description: "Memeriksa status kesehatan appliance VPS Contabo dedicated — alamat IP, spek CPU/RAM, dan status PostgreSQL/MinIO.", inputs: [] },
+  { name: "provision_contabo_vps", category: "hosting", description: "Menjalankan provisioning otomatis VPS Contabo dedicated (PostgreSQL 17, Redis, MinIO S3) untuk workspace tier VPS berbayar.", inputs: ["plan", "region"] },
 ]
 
 export function MCPDashboardClient({
@@ -920,7 +928,7 @@ export function MCPDashboardClient({
               </TabsTrigger>
               <TabsTrigger value="recommendations" className="rounded-xl font-bold text-xs py-2 text-muted-foreground hover:text-foreground data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
                 <Lightbulb className="h-3.5 w-3.5 mr-1.5" />
-                Rekomendasi 💡
+                Roadmap (Belum Tersedia)
               </TabsTrigger>
             </TabsList>
 
@@ -1060,17 +1068,17 @@ export function MCPDashboardClient({
                     <Button
                       size="sm"
                       variant="ghost"
-                      onClick={() => handleCopy("Gunakan tool bulk_create_entries untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.", "Prompt Batch Seeder")}
+                      onClick={() => handleCopy("Gunakan tool create_content_entry secara berulang untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.", "Prompt Batch Seeder")}
                       className="h-7 px-2 text-xs font-bold text-primary"
                     >
                       <Copy className="h-3 w-3 mr-1" /> Salin Prompt
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Mengisi database CMS dengan banyak data contoh realistis dalam satu kali panggil untuk mempercepat pengujian UI frontend.
+                    Mengisi database CMS dengan banyak data contoh realistis untuk mempercepat pengujian UI frontend. Belum ada tool bulk-insert khusus — AI Editor akan memanggil create_content_entry berulang kali.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
-                    Gunakan tool bulk_create_entries untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.
+                    Gunakan tool create_content_entry secara berulang untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.
                   </pre>
                 </Card>
 
@@ -1129,10 +1137,21 @@ export function MCPDashboardClient({
               </div>
             </TabsContent>
 
-            {/* TAB 3: RECOMMENDED MCP TOOLS */}
+            {/* TAB 3: RECOMMENDED MCP TOOLS — none of these exist yet on the
+                server (see server.registerTool(...) calls in
+                api/mcp/[[...transport]]/route.ts for the real, callable set
+                shown on the "36 Tools Live" tab). This tab is a roadmap of
+                ideas, not documentation of live capability — an AI editor
+                calling any tool name shown below will get a hard MCP error. */}
             <TabsContent value="recommendations" className="space-y-4">
+              <div className="p-3.5 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                <span>
+                  Tool di tab ini <strong>belum diimplementasikan</strong> — ini adalah ide roadmap, bukan dokumentasi tool yang bisa dipanggil sekarang. Memanggil nama tool di bawah dari AI Editor akan menghasilkan error MCP.
+                </span>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                
+
                 {/* 1. Media Assets */}
                 <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
                   <div className="flex items-center gap-3">

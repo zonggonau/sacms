@@ -1,9 +1,18 @@
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { getTenantAccess } from "@/lib/tenant-access"
+import { redirect } from "next/navigation"
 import { getWebhooksAction } from "@/actions/webhooks"
 import { WebhooksClient } from "./webhooks-client"
 
 export default async function TenantWebhooksPage({ params }: { params: Promise<{ tenant: string }> }) {
+  const session = await getServerSession(authOptions)
+  if (!session?.user) redirect("/login")
+
   const { tenant } = await params
-  
+  const access = await getTenantAccess(session, tenant)
+  if (!access) redirect("/dashboard")
+
   const webhooksData = await getWebhooksAction(tenant)
   
   if (webhooksData.error) {

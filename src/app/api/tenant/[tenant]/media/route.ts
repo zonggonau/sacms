@@ -5,6 +5,7 @@ import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE
 import { isTenantStorageConfigured, uploadToR2, uploadToLocal } from "@/lib/r2"
 import type { Media } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
 
 // GET - list media for a workspace
 export const GET = withStaffAuth(async (_request, context, { access }) => {
@@ -118,6 +119,10 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       })
 
       uploadedMedia.push(media)
+
+      triggerWebhooks(tenantId, WebhookEvents.MEDIA_UPLOADED, {
+        media: { id: media.id, name: media.name, mimeType: media.mimeType, size: media.size, url: media.url },
+      }).catch(() => {})
     }
 
     return NextResponse.json({

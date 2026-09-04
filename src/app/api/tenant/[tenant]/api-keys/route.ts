@@ -64,3 +64,25 @@ export const POST = withStaffAuth(
   },
   { minRole: "admin" },
 )
+
+/**
+ * DELETE /api/tenant/[tenant]/api-keys?id=<id> — revoke a legacy workspace
+ * API key (admin/owner). This is the only credential type this route ever
+ * mints and manages; there is no create-new-legacy-key path exposed in the
+ * UI — only revoke — since the ApiToken model is the current, correctly
+ * scoped credential type. This exists purely so an already-issued legacy
+ * key can be turned off without DB access.
+ */
+export const DELETE = withStaffAuth(
+  async (request, _context, { access }) => {
+    const id = new URL(request.url).searchParams.get("id")
+    if (!id) return NextResponse.json({ error: "Missing id" }, { status: 400 })
+
+    const existing = await db.apiKey.findFirst({ where: { id, tenantId: access.tenantId } })
+    if (!existing) return NextResponse.json({ error: "API key not found" }, { status: 404 })
+
+    await db.apiKey.delete({ where: { id } })
+    return NextResponse.json({ success: true })
+  },
+  { minRole: "admin" },
+)

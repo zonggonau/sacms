@@ -3,6 +3,7 @@ import { getTenantDb } from "@/lib/database"
 import { deleteFromStorage } from "@/lib/r2"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
+import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
 
 /** PATCH — update media metadata (needs media.upload). */
 export const PATCH = withStaffAuth(async (request, context, { access }) => {
@@ -46,6 +47,11 @@ export const DELETE = withStaffAuth(async (_request, context, { access }) => {
     }
   }
   await tenantDb.media.delete({ where: { id: mediaId } })
+
+  triggerWebhooks(access.tenantId, WebhookEvents.MEDIA_DELETED, {
+    media: { id: media.id, name: media.name },
+  }).catch(() => {})
+
   return NextResponse.json({ success: true })
 })
 

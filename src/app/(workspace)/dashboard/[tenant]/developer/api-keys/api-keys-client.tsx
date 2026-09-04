@@ -36,7 +36,7 @@ import {
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
-  Plus, Key, Copy, Trash2, Loader2, ShieldCheck, Check, 
+  Plus, Key, Copy, Trash2, Loader2, ShieldCheck,
   Save, Globe, Shield, Terminal, Settings2, Sliders, CheckCircle,
   ExternalLink, Lock, Code2, AlertTriangle
 } from "lucide-react"
@@ -48,7 +48,6 @@ interface ApiToken {
   id: string
   tenantId: string
   name: string
-  token: string
   permissions: string[]
   expiresAt: Date | string | null
   lastUsedAt: Date | string | null
@@ -57,7 +56,6 @@ interface ApiToken {
 
 interface ApiSettings {
   tenantId: string
-  apiKey?: string
   apiVersion: string
   rateLimiting: boolean
   requestsPerMinute: string
@@ -65,13 +63,21 @@ interface ApiSettings {
   corsOrigins: string
 }
 
+interface LegacyApiKey {
+  id: string
+  name: string
+  createdAt: Date | string
+  expiresAt: Date | string | null
+}
+
 interface ApiKeysClientProps {
   initialTokens: ApiToken[]
+  legacyApiKeys?: LegacyApiKey[]
   tenantSlug: string
   initialSettings: ApiSettings
 }
 
-export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: ApiKeysClientProps) {
+export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, initialSettings }: ApiKeysClientProps) {
   const { toast } = useToast()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [isPending, startTransition] = useTransition()
@@ -87,6 +93,8 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
 
   // Token state & dialogs
   const [tokensList, setTokensList] = useState<ApiToken[]>(initialTokens)
+  const [legacyKeysList, setLegacyKeysList] = useState<LegacyApiKey[]>(legacyApiKeys)
+  const [revokingLegacyId, setRevokingLegacyId] = useState<string | null>(null)
   const [showCreateDialog, setShowCreateDialog] = useState(false)
   const [newTokenName, setNewTokenName] = useState("")
   const [newTokenPermissions, setNewTokenPermissions] = useState<string[]>(["read"])
@@ -225,6 +233,31 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
         })
       }
     })
+  }
+
+  const handleRevokeLegacyKey = async (id: string) => {
+    if (
+      !(await confirm({
+        title: "Cabut kunci legacy ini?",
+        description: "Ini adalah kredensial full-access lama (bukan API Token biasa). Aplikasi yang masih memakainya akan langsung kehilangan akses.",
+        confirmLabel: "Cabut Kunci",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    setRevokingLegacyId(id)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/api-keys?id=${id}`, { method: "DELETE" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || "Gagal mencabut kunci")
+      setLegacyKeysList(prev => prev.filter(k => k.id !== id))
+      toast({ title: "Kunci Legacy Dicabut", description: "Kredensial lama telah dinonaktifkan." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mencabut Kunci", description: err.message })
+    } finally {
+      setRevokingLegacyId(null)
+    }
   }
 
   const formatDate = (dateString: Date | string | null) => {
@@ -390,6 +423,48 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
             </Card>
           </div>
 
+          {/* Legacy full-access credential warning — surfaces the older
+              singleton ApiKey model so it's no longer an invisible,
+              unrevokable-from-here live credential. */}
+          {legacyKeysList.length > 0 && (
+            <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
+              <CardHeader className="p-5 pb-3">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  Kredensial Legacy Full-Access Terdeteksi
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                  Ini adalah kunci API dari sistem lama — selalu <strong>full-access</strong> (tidak bisa dibatasi read-only) dan terpisah dari daftar API Keys di atas. Disarankan untuk mencabutnya dan bermigrasi ke API Key baru.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="px-5 pb-5">
+                <div className="space-y-2">
+                  {legacyKeysList.map((key) => (
+                    <div key={key.id} className="flex items-center justify-between p-3 bg-card rounded-xl border border-border/60">
+                      <div className="flex items-center gap-2.5">
+                        <Key className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+                        <div>
+                          <p className="text-xs font-bold text-foreground">{key.name}</p>
+                          <p className="text-[10px] text-muted-foreground">Dibuat {formatDate(key.createdAt)} · Full-Access</p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleRevokeLegacyKey(key.id)}
+                        disabled={revokingLegacyId === key.id}
+                        className="h-7 text-xs font-bold text-destructive hover:bg-destructive/10 rounded-lg"
+                      >
+                        {revokingLegacyId === key.id ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Trash2 className="h-3.5 w-3.5 mr-1" />}
+                        Cabut
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* Main Layout Tabs */}
           <Tabs defaultValue="keys" className="space-y-6">
             <TabsList className="bg-muted/40 border border-border/80 p-1 rounded-2xl grid grid-cols-2 max-w-md h-auto gap-1">
@@ -431,7 +506,7 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
                       <TableHeader className="bg-muted/30 border-b border-border/60">
                         <TableRow>
                           <TableHead className="font-bold text-xs pl-6">Nama Kunci</TableHead>
-                          <TableHead className="font-bold text-xs">Token Prefix</TableHead>
+                          <TableHead className="font-bold text-xs">Token</TableHead>
                           <TableHead className="font-bold text-xs">Hak Akses</TableHead>
                           <TableHead className="font-bold text-xs">Dibuat</TableHead>
                           <TableHead className="font-bold text-xs">Terakhir Dipakai</TableHead>
@@ -448,19 +523,12 @@ export function ApiKeysClient({ initialTokens, tenantSlug, initialSettings }: Ap
                               </div>
                             </TableCell>
                             <TableCell className="py-3">
-                              <div className="flex items-center gap-1.5">
-                                <code className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-foreground">
-                                  {(apiKey.token || "").substring(0, 16)}...
-                                </code>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
-                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground"
-                                  onClick={() => handleCopy(apiKey.token || "", "Token", apiKey.id)}
-                                >
-                                  {copiedId === apiKey.id ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5" />}
-                                </Button>
-                              </div>
+                              <span
+                                className="text-xs bg-muted/60 font-mono px-2 py-0.5 rounded-lg border border-border/60 text-muted-foreground tracking-widest"
+                                title="Untuk keamanan, token asli hanya ditampilkan sekali saat dibuat dan tidak dapat diambil kembali."
+                              >
+                                ••••••••••••••••
+                              </span>
                             </TableCell>
                             <TableCell className="py-3">
                               <div className="flex gap-1 flex-wrap">
