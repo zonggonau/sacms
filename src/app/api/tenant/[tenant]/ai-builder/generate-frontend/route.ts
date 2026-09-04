@@ -224,6 +224,11 @@ Initialize all components with rich fallback sample data so the live sandbox pre
       // the client should show a "sedang membangun" state and poll, not an
       // empty/broken one.
       generating: v0Result.generating === true,
+      // Set only when v0's cloud API itself failed/errored (e.g. the v0.app
+      // account is out of credits) and generation fell back to local demo
+      // content — the client should surface this honestly rather than
+      // implying a real AI build succeeded.
+      v0Error: v0Result.v0Error,
     })
   },
   { minRole: "admin" },

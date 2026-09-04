@@ -263,7 +263,7 @@ export default function HomePage() {
 export async function createV0Chat(
   prompt: string,
   modelName: string = "v0-pro"
-): Promise<{ chatId: string; files: V0File[]; previewUrl: string; generating?: boolean }> {
+): Promise<{ chatId: string; files: V0File[]; previewUrl: string; generating?: boolean; v0Error?: string }> {
   const modelProfiles: Record<string, string> = {
     "v0-mini": "AI Engine Profile: SaCMS AI Mini (Fast & Lightweight). Target: Single-page compact Next.js App Router layout with fast rendering and essential interactive components.",
     "v0-pro": "AI Engine Profile: SaCMS AI Pro (Production Standard). Target: Full-scale Next.js 16 App Router application with dynamic data querying, responsive UI, and rich states.",
@@ -286,8 +286,18 @@ export async function createV0Chat(
   )
 
   let chat: any = null
+  let v0ErrorMessage: string | undefined
   try {
-    const v0CreatePromise = v0.chats.create({ message: finalPrompt }).catch((err) => {
+    // IMPORTANT: `v0.chats.create` (POST /chats) only creates an empty chat
+    // shell — it does NOT trigger generation. Its response reports
+    // usage.tokens.total: 0 and the chat's updatedAt never advances, no
+    // matter how long you poll it. `createAsync` (POST /chats/async) is the
+    // call that actually kicks off a real background generation job. Using
+    // `create` here was the root cause of chats silently going nowhere
+    // (mistaken for "still building" and polled forever, or timed out and
+    // replaced with the disguised local fallback) — the chat existed, but
+    // nothing was ever generating inside it.
+    const v0CreatePromise = v0.chats.createAsync({ message: finalPrompt }).catch((err) => {
       console.warn("[v0-client] Cloud v0 API call failed:", err.message)
       return null
     })
@@ -295,6 +305,15 @@ export async function createV0Chat(
     const raceResult = await Promise.race([v0CreatePromise, timeoutPromise])
     if (raceResult && !("timeout" in raceResult)) {
       chat = raceResult
+      // v0 returns 200 with an `{ error: { message } }` body for account-level
+      // failures (e.g. "You are out of credits") rather than an HTTP error —
+      // catch that here so it isn't silently swallowed as a false success.
+      const apiError = (chat as any)?.error?.message
+      if (apiError) {
+        console.warn("[v0-client] v0 API returned an error:", apiError)
+        v0ErrorMessage = apiError
+        chat = null
+      }
     } else {
       console.warn("[v0-client] Cloud v0 chat creation timed out (25s), engaging local generator fallback.")
     }
@@ -302,9 +321,14 @@ export async function createV0Chat(
     console.warn("[v0-client] Exception creating v0 chat:", err.message)
   }
 
+  // createAsync's success shape is `{ data: { chatId, messageId } }` (flat
+  // `chatId` field) — different from `create`'s `{ data: { chat: { id } } }`.
+  // Cover both so this keeps working if the SDK's response shape changes.
   const chatId: string =
+    (chat as any)?.data?.chatId ||
     (chat as any)?.data?.chat?.id ||
     (chat as any)?.data?.id ||
+    (chat as any)?.chatId ||
     (chat as any)?.chat?.id ||
     (chat as any)?.id ||
     ""
@@ -340,8 +364,10 @@ export async function createV0Chat(
     }
   }
 
-  // Only reach here if the cloud v0 API call itself failed or timed out —
-  // a real local fallback, not a disguised one.
+  // Only reach here if the cloud v0 API call itself failed, timed out, or
+  // returned an account-level error (e.g. out of v0 credits) — a real local
+  // fallback, not a disguised one. Surface the real reason so the caller can
+  // tell the user what actually happened instead of a generic failure.
   const fallbackChatId = `sacms_gen_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`
   const fallbackFiles = generateFallbackFiles(prompt, modelName)
 
@@ -349,6 +375,7 @@ export async function createV0Chat(
     chatId: fallbackChatId,
     files: fallbackFiles,
     previewUrl: "",
+    v0Error: v0ErrorMessage,
   }
 }
 
