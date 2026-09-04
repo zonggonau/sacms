@@ -213,13 +213,17 @@ Initialize all components with rich fallback sample data so the live sandbox pre
       console.warn("Could not sync Site record:", siteErr.message)
     }
 
-    return NextResponse.json({ 
-      success: true, 
-      v0ChatId: v0Result.chatId, 
+    return NextResponse.json({
+      success: true,
+      v0ChatId: v0Result.chatId,
       previewUrl,
       vercelProjectId,
       filesGenerated: v0Result.files?.length || 0,
       files: v0Result.files || [],
+      // True when v0 accepted the chat but hasn't streamed files back yet —
+      // the client should show a "sedang membangun" state and poll, not an
+      // empty/broken one.
+      generating: v0Result.generating === true,
     })
   },
   { minRole: "admin" },

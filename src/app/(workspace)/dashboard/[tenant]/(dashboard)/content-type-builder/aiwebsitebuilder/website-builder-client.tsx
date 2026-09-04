@@ -451,6 +451,7 @@ export async function fetchContent(collection: string) {
       setPreviewUrl(data.previewUrl)
       setProjectStatus("draft")
 
+      const isStillGenerating = data.generating === true
       if (data.files && Array.isArray(data.files) && data.files.length > 0) {
         setGeneratedFiles(data.files)
       }
@@ -468,21 +469,35 @@ export async function fetchContent(collection: string) {
       // Add console logs
       setConsoleLogs(prev => [
         ...prev,
-        { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` }
+        isStillGenerating
+          ? { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "info", text: `[Build] AI Engine masih menyusun kode untuk "${prompt.substring(0, 30)}..." — buka tab Preview untuk memantau progres.` }
+          : { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` }
       ])
 
       setMessages([
         { role: 'user', content: prompt },
-        { 
-          role: 'ai', 
-          content: `✅ **Website & Skema Database Berhasil Dibangun!**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio (${currentModelConfig.name}):** Kode frontend Next.js App Router telah selesai di-generate dan terhubung ke SaCMS Content API.\n\nAnda dapat melihat Live Interactive Preview di tab **Preview**, melihat & menyalin kode di tab **Code**, atau memantau proses di tab **Console**.` 
-        }
+        isStillGenerating
+          ? {
+              role: 'ai',
+              content: `⏳ **Skema Database Selesai — Website Sedang Dibangun AI**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio (${currentModelConfig.name}):** Kode frontend sedang di-generate. Untuk build yang kompleks ini bisa memakan waktu 1-2 menit.\n\nBuka tab **Preview** untuk memantau progres secara live — halaman akan otomatis refresh begitu selesai.`
+            }
+          : {
+              role: 'ai',
+              content: `✅ **Website & Skema Database Berhasil Dibangun!**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio (${currentModelConfig.name}):** Kode frontend Next.js App Router telah selesai di-generate dan terhubung ke SaCMS Content API.\n\nAnda dapat melihat Live Interactive Preview di tab **Preview**, melihat & menyalin kode di tab **Code**, atau memantau proses di tab **Console**.`
+            }
       ])
-      
-      toast({
-        title: "Website Berhasil Dibangun!",
-        description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS.",
-      })
+
+      toast(
+        isStillGenerating
+          ? {
+              title: "AI Sedang Membangun Website...",
+              description: "Skema database sudah siap. Kode frontend masih di-generate — pantau progresnya di tab Preview.",
+            }
+          : {
+              title: "Website Berhasil Dibangun!",
+              description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS.",
+            }
+      )
       router.refresh()
       refreshCredits()
     } catch (err: any) {

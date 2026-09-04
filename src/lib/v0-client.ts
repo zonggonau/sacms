@@ -263,7 +263,7 @@ export default function HomePage() {
 export async function createV0Chat(
   prompt: string,
   modelName: string = "v0-pro"
-): Promise<{ chatId: string; files: V0File[]; previewUrl: string }> {
+): Promise<{ chatId: string; files: V0File[]; previewUrl: string; generating?: boolean }> {
   const modelProfiles: Record<string, string> = {
     "v0-mini": "AI Engine Profile: SaCMS AI Mini (Fast & Lightweight). Target: Single-page compact Next.js App Router layout with fast rendering and essential interactive components.",
     "v0-pro": "AI Engine Profile: SaCMS AI Pro (Production Standard). Target: Full-scale Next.js 16 App Router application with dynamic data querying, responsive UI, and rich states.",
@@ -274,9 +274,15 @@ export async function createV0Chat(
   const modelInstruction = modelProfiles[modelName] || modelProfiles["v0-pro"]
   const finalPrompt = `${modelInstruction}\n\n${prompt}`
 
-  // Timeout guard (20 seconds) for cloud v0 API
+  // Only the *creation* call (starting the chat) gets a timeout guard — this
+  // is normally near-instant. It must NOT gate on the chat's generation
+  // finishing: v0 builds progressively in the background and commonly takes
+  // well past 20s for a full app, so racing the whole thing against 20s used
+  // to discard a perfectly healthy, still-running v0 chat and silently
+  // replace it with a fake local one — which is why the preview showed
+  // "sandbox tidak tersedia" while v0.dev's own UI still showed it building.
   const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
-    setTimeout(() => resolve({ timeout: true }), 20000)
+    setTimeout(() => resolve({ timeout: true }), 25000)
   )
 
   let chat: any = null
@@ -290,22 +296,25 @@ export async function createV0Chat(
     if (raceResult && !("timeout" in raceResult)) {
       chat = raceResult
     } else {
-      console.warn("[v0-client] Cloud v0 API timed out (20s), engaging high-quality local generator fallback.")
+      console.warn("[v0-client] Cloud v0 chat creation timed out (25s), engaging local generator fallback.")
     }
   } catch (err: any) {
     console.warn("[v0-client] Exception creating v0 chat:", err.message)
   }
 
-  let chatId =
+  const chatId: string =
     (chat as any)?.data?.chat?.id ||
     (chat as any)?.data?.id ||
     (chat as any)?.chat?.id ||
     (chat as any)?.id ||
     ""
 
-  let files: V0File[] = []
-
+  // The chat was created successfully — v0 is a real, addressable project now,
+  // even if it hasn't finished generating files yet. Keep this chatId; do NOT
+  // fall back to a fake one just because `getFiles` is still empty. The
+  // preview route already knows how to poll a real chatId until it's ready.
   if (chatId) {
+    let files: V0File[] = []
     try {
       const filesRes = await v0.chats.getFiles({ chatId })
       const rawFiles = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
@@ -316,27 +325,30 @@ export async function createV0Chat(
         }))
       }
     } catch (fErr) {
-      console.warn("Could not fetch v0 files:", fErr)
+      console.warn("Could not fetch v0 files (chat may still be generating):", fErr)
+    }
+
+    const previewUrl = await getV0Preview(chatId)
+
+    return {
+      chatId,
+      files,
+      previewUrl,
+      // No files yet doesn't mean failure — v0 streams files in as it builds.
+      // Callers should treat this as "still working", not "broken".
+      generating: files.length === 0,
     }
   }
 
-  // Fallback if cloud v0 did not return valid files
-  if (!chatId || files.length === 0) {
-    chatId = `sacms_gen_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`
-    files = generateFallbackFiles(prompt, modelName)
-  }
-
-  let previewUrl = ""
-  if (chatId.startsWith("sacms_gen_")) {
-    previewUrl = ""
-  } else {
-    previewUrl = await getV0Preview(chatId)
-  }
+  // Only reach here if the cloud v0 API call itself failed or timed out —
+  // a real local fallback, not a disguised one.
+  const fallbackChatId = `sacms_gen_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 7)}`
+  const fallbackFiles = generateFallbackFiles(prompt, modelName)
 
   return {
-    chatId,
-    files,
-    previewUrl,
+    chatId: fallbackChatId,
+    files: fallbackFiles,
+    previewUrl: "",
   }
 }
 

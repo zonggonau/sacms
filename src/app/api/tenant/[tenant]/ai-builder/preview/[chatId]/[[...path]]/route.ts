@@ -81,7 +81,9 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
     if (!previewData || !previewData.url || !previewData.token) {
       // Cap retries — without this the meta-refresh spins forever if the
       // underlying v0 chat is permanently broken, with no error ever shown.
-      const MAX_ATTEMPTS = 20 // ~60s at 3s intervals
+      // v0 generation for a full app can genuinely take 1-2 minutes, so give
+      // it real room before declaring it dead.
+      const MAX_ATTEMPTS = 40 // ~2min at 3s intervals
       const attempt = Number(request.nextUrl.searchParams.get("_attempt") || "0")
 
       if (attempt >= MAX_ATTEMPTS) {
@@ -103,6 +105,13 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
         `, { status: 504, headers: { "Content-Type": "text/html; charset=utf-8" } })
       }
 
+      const secondsWaited = attempt * 3
+      const statusLine = secondsWaited < 20
+        ? "Sandbox sedang memuat berkas Next.js Anda..."
+        : secondsWaited < 60
+        ? "AI masih menyusun komponen &amp; halaman — build kompleks bisa memakan waktu 1-2 menit."
+        : "Hampir selesai — v0 sedang menyelesaikan build terakhir, mohon tunggu sebentar lagi."
+
       return new Response(`
         <!DOCTYPE html>
         <html>
@@ -113,13 +122,13 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
               .spinner { width: 36px; height: 36px; border: 3px solid #27272a; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite; margin-bottom: 16px; }
               @keyframes spin { to { transform: rotate(360deg); } }
               h3 { margin: 0 0 6px; font-size: 14px; font-weight: 700; color: #f4f4f5; }
-              p { margin: 0; font-size: 12px; }
+              p { margin: 0; font-size: 12px; max-width: 320px; text-align: center; line-height: 1.5; }
             </style>
           </head>
           <body>
             <div class="spinner"></div>
-            <h3>Mengompilasi Frontend Website...</h3>
-            <p>Sandbox sedang memuat berkas Next.js Anda...</p>
+            <h3>Website Sedang Dibangun oleh AI...</h3>
+            <p>${statusLine}</p>
           </body>
         </html>
       `, { headers: { "Content-Type": "text/html; charset=utf-8" } })
