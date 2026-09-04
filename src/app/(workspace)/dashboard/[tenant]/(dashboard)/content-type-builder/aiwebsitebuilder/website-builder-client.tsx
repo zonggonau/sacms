@@ -18,7 +18,7 @@ import {
   ShieldCheck, Layers, FileText, Check, LayoutGrid, Key, Shield, Terminal,
   Copy, Activity, BarChart2, Maximize2, Minimize2, Code2, Folder, FileCode,
   ChevronDown, ChevronUp, ChevronRight, History, Play, RotateCw,
-  CreditCard, Calendar, Flame, HardDrive
+  CreditCard, Calendar, Flame, HardDrive, Server
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -261,7 +261,18 @@ export async function fetchContent(collection: string) {
   const [isDeployModalOpen, setIsDeployModalOpen] = useState(false)
 
   // 1-Year Managed Cloud Hosting state
-  const [hostingInfo, setHostingInfo] = useState<{ isHostingActive: boolean; hostingStatus: string; hostingExpiresAt: string | null } | null>(null)
+  const [hostingInfo, setHostingInfo] = useState<{
+    isHostingActive: boolean
+    hostingStatus: string
+    hostingExpiresAt: string | null
+    hasDedicatedVps: boolean
+    vpsIp: string | null
+    vpsServerName: string | null
+    vpsDeploymentUrl: string | null
+    vercelDeploymentUrl: string | null
+    customDomain: string | null
+    plan: string | null
+  } | null>(null)
   const [isHostingModalOpen, setIsHostingModalOpen] = useState(false)
   const [selectedHostingPlan, setSelectedHostingPlan] = useState<"hosting_annual_1yr" | "hosting_bundle_domain_1yr">("hosting_bundle_domain_1yr")
   const [isProcessingHostingPayment, setIsProcessingHostingPayment] = useState(false)
