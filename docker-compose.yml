@@ -5,8 +5,10 @@ services:
       - "127.0.0.1:3000:3000"
     env_file:
       - .env
+    volumes:
+      - ./scripts/healthcheck.js:/app/scripts/healthcheck.js:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/api/health || exit 1"]
+      test: ["CMD", "bun", "scripts/healthcheck.js"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -49,6 +51,8 @@ services:
     restart: unless-stopped
 
   caddy:
+    profiles:
+      - docker-caddy
     image: caddy:2-alpine
     restart: unless-stopped
     ports:

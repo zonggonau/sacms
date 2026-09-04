@@ -6,6 +6,9 @@ on:
       - master
       - develop
       - aisacms
+      - feature/route-groups
+      - Main
+      - main
   pull_request:
     branches:
       - master
@@ -67,7 +70,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/aisacms' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/aisacms' || github.ref == 'refs/heads/feature/route-groups' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/main' }}
 
       - name: Build & Push Ultra-Fast Image (5s)
         if: github.event_name != 'pull_request'
@@ -84,7 +87,7 @@ jobs:
     name: 🚀 Live Zero-Downtime Deploy (164.68.116.79)
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms' || github.ref == 'refs/heads/feature/route-groups' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/main'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4
@@ -103,6 +106,7 @@ jobs:
             mkdir -p /opt/sacms/db/backups
             mkdir -p /opt/sacms/caddy_data
             mkdir -p /opt/sacms/caddy_config
+            mkdir -p /opt/sacms/scripts
 
       - name: Sync Compose and Caddy Config to VPS
         uses: appleboy/scp-action@v0.1.7
@@ -114,7 +118,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 10m
-          source: "docker-compose.yml,Caddyfile"
+          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js"
           target: "/opt/sacms"
 
       - name: Execute Zero-Downtime Deployment & DB Migration
@@ -150,6 +154,25 @@ jobs:
               echo "Please set up /opt/sacms/.env or add ENV_PRODUCTION to GitHub Secrets."
             else
               echo "ℹ️ Preserving existing /opt/sacms/.env on server."
+            fi
+
+            # Normalize internal container hostnames for Docker Compose network
+            sed -i 's|@localhost:5432|@postgres:5432|g' /opt/sacms/.env 2>/dev/null || true
+            sed -i 's|redis://localhost:6379|redis://redis:6379|g' /opt/sacms/.env 2>/dev/null || true
+
+            # Clean up obsolete PM2 processes to ensure port 3000 is always dedicated to Docker
+            if command -v pm2 &> /dev/null; then
+              pm2 stop sacms-dev 2>/dev/null || true
+              pm2 delete sacms-dev 2>/dev/null || true
+              pm2 save --force 2>/dev/null || true
+              pm2 kill 2>/dev/null || true
+            fi
+            docker rm -f sacms-redis sacms-postgres 2>/dev/null || true
+
+            # Sync Caddy configuration with host systemd Caddy service
+            if [ -f /opt/sacms/Caddyfile ] && [ -d /etc/caddy ]; then
+              cp /opt/sacms/Caddyfile /etc/caddy/Caddyfile 2>/dev/null || true
+              systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || true
             fi
 
             # Prioritize IPv4 on Contabo VPS to prevent IPv6 connection reset drops on large GHCR image layers
