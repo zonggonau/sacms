@@ -133,8 +133,23 @@ export function WebsiteBuilderClient({
   const { toast } = useToast()
   const router = useRouter()
   
-  const creditsRemaining = initialAiCredits?.remaining ?? 0
-  const isUnlimited = initialAiCredits?.isUnlimited ?? false
+  // Kept as live state (not a pure derived constant) so it can be refreshed
+  // after a generate/iterate call without a full page reload — otherwise the
+  // "Saldo AI" badge stays at its page-load value even after credits are spent.
+  const [creditsRemaining, setCreditsRemaining] = useState(initialAiCredits?.remaining ?? 0)
+  const [isUnlimited, setIsUnlimited] = useState(initialAiCredits?.isUnlimited ?? false)
+
+  const refreshCredits = async () => {
+    try {
+      const res = await fetch("/api/ai/account-credits")
+      if (!res.ok) return
+      const data = await res.json()
+      if (typeof data.creditsRemaining === "number") setCreditsRemaining(data.creditsRemaining)
+      if (typeof data.isUnlimited === "boolean") setIsUnlimited(data.isUnlimited)
+    } catch {
+      // Non-critical — the badge just keeps its last known value.
+    }
+  }
 
   // Selected AI Model
   const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "v0-pro")
@@ -451,6 +466,7 @@ export async function fetchContent(collection: string) {
         description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS.",
       })
       router.refresh()
+      refreshCredits()
     } catch (err: any) {
       console.error(err)
       toast({
@@ -522,6 +538,7 @@ export async function fetchContent(collection: string) {
           ...prev,
           { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Fast Refresh] Recompiled v${nextVerNum} for: ${msg.substring(0, 30)}...` }
         ])
+        refreshCredits()
       } else {
         throw new Error(data?.error || "Gagal menerapkan iterasi")
       }
@@ -1034,8 +1051,8 @@ export async function fetchContent(collection: string) {
                     <button
                       key={idx}
                       onClick={() => handleIterate(item.prompt)}
-                      disabled={loading}
-                      className="px-2.5 py-1 rounded-lg bg-background border border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 text-[10px] font-medium transition-all shadow-2xs cursor-pointer"
+                      disabled={loading || (creditsRemaining < 5 && !isUnlimited)}
+                      className="px-2.5 py-1 rounded-lg bg-background border border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 text-[10px] font-medium transition-all shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {item.label}
                     </button>
