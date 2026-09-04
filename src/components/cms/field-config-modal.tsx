@@ -263,9 +263,9 @@ export function FieldConfigModal({
                       Aktifkan agar field ini tampil pada form input data dan tabel entri di CMS Studio.
                     </p>
                   </div>
-                  <Switch 
-                    id="showInCms" 
-                    checked={editingField?.showInCms ?? editingField?.options?.showInCms ?? true} 
+                  <Switch
+                    id="showInCms"
+                    checked={editingField?.showInCms ?? editingField?.options?.showInCms ?? true}
                     onCheckedChange={(checked) => setEditingField(prev => {
                       if (!prev) return null
                       let currentOpts = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {}
@@ -274,6 +274,80 @@ export function FieldConfigModal({
                     })}
                   />
                 </div>
+
+                {/* Conditional Visibility — show this field in the entry form
+                    only when another field matches a value. Scoped to a
+                    single condition (targetField op value); other fields on
+                    this content type that support a plain scalar comparison
+                    are offered as the target. */}
+                {(() => {
+                  const opts = typeof editingField?.options === 'object' && editingField?.options !== null ? editingField.options : {}
+                  const showIf = opts.showIf as { targetFieldSlug?: string; operator?: "equals" | "notEquals"; value?: string } | undefined
+                  const candidateFields = fields.filter(f => f.id !== editingField?.id && ["text", "select", "boolean", "number"].includes(f.type))
+
+                  const updateShowIf = (patch: Partial<NonNullable<typeof showIf>> | null) => {
+                    setEditingField(prev => {
+                      if (!prev) return null
+                      const currentOpts = typeof prev.options === 'object' && prev.options !== null ? { ...prev.options } : {}
+                      if (patch === null) {
+                        const { showIf: _drop, ...rest } = currentOpts
+                        return { ...prev, options: rest }
+                      }
+                      const nextShowIf = { operator: "equals", ...(currentOpts.showIf || {}), ...patch }
+                      return { ...prev, options: { ...currentOpts, showIf: nextShowIf } }
+                    })
+                  }
+
+                  return (
+                    <div className="p-3.5 bg-muted/30 border border-border/60 rounded-xl space-y-3">
+                      <div className="flex items-center space-x-2.5">
+                        <Checkbox
+                          id="conditionalVisibility"
+                          checked={!!showIf?.targetFieldSlug}
+                          disabled={candidateFields.length === 0}
+                          onCheckedChange={(checked) => updateShowIf(checked ? { targetFieldSlug: candidateFields[0]?.slug || "" } : null)}
+                        />
+                        <Label htmlFor="conditionalVisibility" className="text-xs font-semibold cursor-pointer text-foreground">
+                          Tampilkan Bersyarat (Conditional Visibility)
+                        </Label>
+                      </div>
+                      {candidateFields.length === 0 && (
+                        <p className="text-[11px] text-muted-foreground pl-6">
+                          Tambahkan field teks, pilihan, angka, atau boolean lain terlebih dahulu untuk dijadikan syarat.
+                        </p>
+                      )}
+                      {showIf?.targetFieldSlug && (
+                        <div className="grid grid-cols-3 gap-2 pl-6">
+                          <Select value={showIf.targetFieldSlug} onValueChange={(v) => updateShowIf({ targetFieldSlug: v })}>
+                            <SelectTrigger className="bg-background border border-input h-9 rounded-xl text-xs col-span-1">
+                              <SelectValue placeholder="Field" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border border-border bg-card">
+                              {candidateFields.map(f => (
+                                <SelectItem key={f.slug} value={f.slug} className="rounded-lg text-xs cursor-pointer">{f.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={showIf.operator || "equals"} onValueChange={(v) => updateShowIf({ operator: v as "equals" | "notEquals" })}>
+                            <SelectTrigger className="bg-background border border-input h-9 rounded-xl text-xs col-span-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border border-border bg-card">
+                              <SelectItem value="equals" className="rounded-lg text-xs cursor-pointer">sama dengan</SelectItem>
+                              <SelectItem value="notEquals" className="rounded-lg text-xs cursor-pointer">tidak sama dengan</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Input
+                            value={showIf.value ?? ""}
+                            onChange={(e) => updateShowIf({ value: e.target.value })}
+                            placeholder="Nilai"
+                            className="bg-background border border-input h-9 rounded-xl text-xs col-span-1"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )
+                })()}
 
                 <div className="grid grid-cols-2 gap-3">
                   <div className="flex items-center space-x-2.5 p-3 bg-muted/30 border border-border/60 rounded-xl">

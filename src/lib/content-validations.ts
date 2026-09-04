@@ -1,4 +1,5 @@
 import { z } from "zod"
+import { isFieldVisible } from "@/lib/field-visibility"
 
 interface FieldDefinition {
   slug: string
@@ -9,18 +10,24 @@ interface FieldDefinition {
 }
 
 /**
- * Generates a dynamic Zod schema based on Content Type fields
+ * Generates a dynamic Zod schema based on Content Type fields.
+ *
+ * `data` (the submitted payload) is optional but should be passed whenever
+ * available: a field hidden by conditional visibility (options.showIf)
+ * never got a chance to be filled in, so requiring it here would make the
+ * entry permanently unsavable whenever its showIf condition isn't met.
  */
 export function generateContentSchema(
   fields: FieldDefinition[],
-  options: { enforceRequired?: boolean } = {}
+  options: { enforceRequired?: boolean; data?: Record<string, unknown> } = {}
 ) {
   const enforceRequired = options.enforceRequired ?? true
+  const data = options.data ?? {}
   const schemaShape: Record<string, z.ZodTypeAny> = {}
 
   fields.forEach((field) => {
     let fieldSchema: z.ZodTypeAny
-    const isRequired = enforceRequired && field.required
+    const isRequired = enforceRequired && field.required && isFieldVisible(field, data)
     const requiredParams = isRequired ? { message: `${field.name} is required` } : undefined
 
     switch (field.type) {
@@ -166,7 +173,8 @@ export async function validateContentEntry(
   data: unknown,
   options: { enforceRequired?: boolean } = {}
 ) {
-  const schema = generateContentSchema(fields, options)
+  const dataObj = (data && typeof data === "object" && !Array.isArray(data)) ? (data as Record<string, unknown>) : {}
+  const schema = generateContentSchema(fields, { ...options, data: dataObj })
   try {
     const validatedData = await schema.parseAsync(data || {})
     return { success: true, data: validatedData, errors: null }

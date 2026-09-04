@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo, useEffect } from "react"
+import { useState, useMemo, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { 
   ArrowLeft, Plus, Edit, Trash2, FileText, Eye, 
@@ -225,6 +225,73 @@ export function ContentEntriesManager({
       })
     } finally {
       setDownloadingDocxId(null)
+    }
+  }
+
+  // ── Export / Import entry data (JSON) ──────────────────────────────────
+  const importFileInputRef = useRef<HTMLInputElement>(null)
+  const [isExportingEntries, setIsExportingEntries] = useState(false)
+  const [isImportingEntries, setIsImportingEntries] = useState(false)
+
+  const handleExportEntries = async () => {
+    setIsExportingEntries(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/export`)
+      if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}))
+        throw new Error(errJson.error || "Gagal mengekspor data")
+      }
+      const payload = await res.json()
+
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `sacms-entries-${contentTypeSlug}-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+
+      toast({ title: "Data Diekspor", description: `${payload.count} entri berhasil diunduh sebagai JSON.` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mengekspor Data", description: err.message })
+    } finally {
+      setIsExportingEntries(false)
+    }
+  }
+
+  const handleImportFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-selecting the same file
+    if (!file) return
+
+    setIsImportingEntries(true)
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      if (!parsed || !Array.isArray(parsed.entries)) {
+        throw new Error("Format JSON tidak valid — berkas harus berisi { entries: [...] } (hasil dari fitur Ekspor Data)")
+      }
+
+      const res = await fetch(`/api/tenant/${tenantSlug}/content-types/slug/${contentTypeSlug}/entries/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entries: parsed.entries }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal mengimpor data")
+
+      toast({
+        title: "Data Diimpor",
+        description: `${data.imported} entri baru ditambahkan sebagai draft.${data.failed > 0 ? ` ${data.failed} entri gagal (lihat konsol).` : ""}`,
+      })
+      if (data.failed > 0) console.warn("[Import Entries] Failures:", data.failures)
+      router.refresh()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mengimpor Data", description: err.message })
+    } finally {
+      setIsImportingEntries(false)
     }
   }
 
@@ -806,6 +873,43 @@ export function ContentEntriesManager({
                       <Trash2 className="h-3 w-3 mr-1" /> Hapus
                     </Button>
                   </div>
+                )}
+
+                {/* Export entries as JSON */}
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={handleExportEntries}
+                  disabled={isExportingEntries}
+                  className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                  title="Ekspor semua data entri content type ini sebagai JSON"
+                >
+                  {isExportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                </Button>
+
+                {/* Import entries from JSON */}
+                {canCreateEntry && (
+                  <>
+                    <input
+                      ref={importFileInputRef}
+                      type="file"
+                      accept="application/json"
+                      className="hidden"
+                      onChange={handleImportFileSelected}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => importFileInputRef.current?.click()}
+                      disabled={isImportingEntries}
+                      className="h-9 w-9 rounded-xl border-border/80 shadow-xs hover:bg-muted/40"
+                      title="Impor entri dari berkas JSON (hasil Ekspor Data) — masuk sebagai draft"
+                    >
+                      {isImportingEntries ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5 text-primary rotate-180" />}
+                    </Button>
+                  </>
                 )}
 
                 {/* Column Visibility Manager Button */}

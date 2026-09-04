@@ -54,6 +54,7 @@ import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { DocumentTemplateField } from "@/components/content/field-renderers/document-template-field"
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
+import { isFieldVisible } from "@/lib/field-visibility"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
 import { getEntryAction, updateEntryAction } from "@/actions/content"
@@ -418,7 +419,7 @@ export default function CTBEditEntryClient({
                     <CardDescription className="text-xs">Update your entry fields below.</CardDescription>
                   </CardHeader>
                   <CardContent className="p-4 space-y-4">
-                    {contentType.fields.map((field) => (
+                    {contentType.fields.filter((field) => isFieldVisible(field, formData)).map((field) => (
                       <div key={field.id} className="space-y-1.5">
                         <Label className="text-xs font-bold text-foreground">
                           {field.name}

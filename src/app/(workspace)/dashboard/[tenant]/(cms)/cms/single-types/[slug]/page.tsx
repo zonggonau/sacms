@@ -38,6 +38,7 @@ import { IconField } from "@/components/content/field-renderers/icon-field"
 import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
+import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
 interface Field {
@@ -329,7 +330,7 @@ export default function CMSSingleTypeDetailPage() {
                   <p className="font-bold text-xs text-foreground">Belum ada field yang didefinisikan untuk halaman ini</p>
                 </div>
               ) : (
-                singleType.fields.map((field) => (
+                singleType.fields.filter((field) => isFieldVisible(field, formData)).map((field) => (
                   <div key={field.id} className="space-y-1.5 pb-2">
                     {renderField(field)}
                   </div>

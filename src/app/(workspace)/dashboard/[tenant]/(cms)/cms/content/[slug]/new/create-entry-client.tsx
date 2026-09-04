@@ -65,6 +65,7 @@ import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { DocumentTemplateField } from "@/components/content/field-renderers/document-template-field"
 import { ValidationField } from "@/components/content/field-renderers/validation-fields"
+import { isFieldVisible } from "@/lib/field-visibility"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
@@ -553,6 +554,7 @@ export default function CMSCreateEntryClient({
                     const visibleFields = (contentType?.fields || []).filter((f: any) => {
                       if (f.showInCms === false) return false
                       if (typeof f.options === 'object' && f.options !== null && f.options.showInCms === false) return false
+                      if (!isFieldVisible(f, formData)) return false
                       return true
                     })
 
