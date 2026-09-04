@@ -13,7 +13,7 @@ const SEED_SCHEMAS = [
     fields: [
       { name: "title", slug: "title", type: "text", required: true },
       { name: "slug", slug: "slug", type: "slug", required: true },
-      { name: "content", slug: "content", type: "richtext" },
+      { name: "content", slug: "content", type: "richText" },
       { name: "featured_image", slug: "featured_image", type: "media" },
       { name: "status", slug: "status", type: "select", options: ["Draft", "Published"] },
     ],
@@ -28,7 +28,7 @@ const SEED_SCHEMAS = [
     fields: [
       { name: "judul", slug: "judul", type: "text", required: true },
       { name: "slug", slug: "slug", type: "slug", required: true },
-      { name: "konten", slug: "konten", type: "richtext" },
+      { name: "konten", slug: "konten", type: "richText" },
       { name: "kategori", slug: "kategori", type: "select", options: ["Pemerintahan", "UMKM", "Pariwisata"] },
     ],
     entries: [

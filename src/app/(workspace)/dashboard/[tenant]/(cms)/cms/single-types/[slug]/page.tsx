@@ -37,6 +37,7 @@ import { PercentField } from "@/components/content/field-renderers/percent-field
 import { IconField } from "@/components/content/field-renderers/icon-field"
 import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
+import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 
 interface Field {
@@ -146,7 +147,7 @@ export default function CMSSingleTypeDetailPage() {
           {field.name}
           {field.required && <span className="text-destructive font-bold">*</span>}
         </Label>
-        {["text", "rich_text", "textarea"].includes(field.type) && (
+        {["text", "richText", "textarea"].includes(field.type) && (
           <AIAssistantDialog 
             fieldName={field.name}
             contentTypeSlug={singleType?.slug || ""} 
@@ -168,7 +169,7 @@ export default function CMSSingleTypeDetailPage() {
       case "textarea":
         return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
-      case "rich_text":
+      case "richText":
         return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "number":
@@ -181,7 +182,16 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-1.5">{renderLabelWithAI()}<DateField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "datetime":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="datetime" /></div>
+
+      case "time":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField label="" value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="time" /></div>
+
+      case "email":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ValidationField value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="email" /></div>
+
+      case "uid":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ValidationField value={value as string || ""} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="uid" /></div>
 
       case "select":
         let opts: string[] = []
@@ -192,9 +202,12 @@ export default function CMSSingleTypeDetailPage() {
         return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "media":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label="" value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label="" value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="image" /></div>
 
-      case "media_multiple":
+      case "file":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField label="" value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="file" /></div>
+
+      case "mediaMultiple":
         return <div className="space-y-1.5">{renderLabelWithAI()}<MediaMultipleField label="" value={Array.isArray(value) ? value : []} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation":

@@ -64,6 +64,7 @@ import { IconField } from "@/components/content/field-renderers/icon-field"
 import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { DocumentTemplateField } from "@/components/content/field-renderers/document-template-field"
+import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { AIAssistantDialog } from "@/components/content/ai-assistant-dialog"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { ContentHistorySidebar } from "@/components/cms/content-history-sidebar"
@@ -352,7 +353,7 @@ export default function CMSEditEntryClient({
       case "textarea":
         return <div className="space-y-1.5">{renderLabelWithAI()}<TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
-      case "richtext":
+      case "richText":
         return <div className="space-y-1.5">{renderLabelWithAI()}<RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "markdown":
@@ -370,11 +371,20 @@ export default function CMSEditEntryClient({
       case "date":
         return <div className="space-y-1.5">{renderLabelWithAI()}<DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
-      case "daterange":
+      case "dateRange":
         return <div className="space-y-1.5">{renderLabelWithAI()}<DateRangeField value={value as any} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
 
       case "datetime":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="datetime" /></div>
+
+      case "time":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="time" /></div>
+
+      case "email":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ValidationField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="email" /></div>
+
+      case "uid":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<ValidationField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="uid" /></div>
 
       case "select":
         return <div className="space-y-1.5">{renderLabelWithAI()}<SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={field.options?.options || field.options || []} required={field.required} /></div>
@@ -386,9 +396,12 @@ export default function CMSEditEntryClient({
         return <div className="space-y-1.5">{renderLabelWithAI()}<TagsField value={value as string[]} onChange={v => handleFieldChange(field.slug, v)} /></div>
 
       case "media":
-        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="image" /></div>
 
-      case "media_multiple":
+      case "file":
+        return <div className="space-y-1.5">{renderLabelWithAI()}<MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="file" /></div>
+
+      case "mediaMultiple":
         return <div className="space-y-1.5">{renderLabelWithAI()}<MediaMultipleField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "relation": {
@@ -414,7 +427,7 @@ export default function CMSEditEntryClient({
       case "component":
         return <div className="space-y-1.5"><ComponentField label={field.name} componentSlug={field.options?.componentSlug} value={value} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} repeatable={field.options?.repeatable} /></div>
 
-      case "dynamic_zone":
+      case "repeater":
         return <div className="space-y-1.5"><DynamicZoneField label={field.name} allowedComponents={field.options?.allowedComponents || []} value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} /></div>
 
       case "json":

@@ -483,7 +483,7 @@ export function DocxTemplateWizard({
                             <SelectItem value="date" className="text-xs">Tanggal</SelectItem>
                             <SelectItem value="currency" className="text-xs">Mata Uang</SelectItem>
                             <SelectItem value="media" className="text-xs">Gambar / Media</SelectItem>
-                            <SelectItem value="richtext" className="text-xs">Rich Text (HTML)</SelectItem>
+                            <SelectItem value="richText" className="text-xs">Rich Text (HTML)</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>

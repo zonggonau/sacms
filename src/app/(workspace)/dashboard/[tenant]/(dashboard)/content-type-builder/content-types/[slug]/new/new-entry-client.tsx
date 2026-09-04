@@ -53,6 +53,7 @@ import { IconField } from "@/components/content/field-renderers/icon-field"
 import { SeoField } from "@/components/content/field-renderers/seo-field"
 import { CodeField } from "@/components/content/field-renderers/code-field"
 import { DocumentTemplateField } from "@/components/content/field-renderers/document-template-field"
+import { ValidationField } from "@/components/content/field-renderers/validation-fields"
 import { AISmartFill } from "@/components/content/ai-smart-fill"
 import { getContentTypeBySlugAction } from "@/actions/content-types"
 import { createEntryAction } from "@/actions/content"
@@ -244,7 +245,7 @@ export default function CTBNewEntryClient({
       case "textarea":
         return <TextareaField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
 
-      case "richtext":
+      case "richText":
         return <RichTextField value={value as string} onChange={v => handleFieldChange(field.slug, v)} />
 
       case "number":
@@ -257,15 +258,27 @@ export default function CTBNewEntryClient({
         return <DateField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
 
       case "datetime":
-        return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} />
+        return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="datetime" />
+
+      case "time":
+        return <DateTimeField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="time" />
+
+      case "email":
+        return <ValidationField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="email" />
+
+      case "uid":
+        return <ValidationField value={value as string} onChange={v => handleFieldChange(field.slug, v)} required={field.required} type="uid" />
 
       case "select":
         return <SelectField value={value as string} onChange={v => handleFieldChange(field.slug, v)} options={field.options?.options || []} required={field.required} />
 
       case "media":
-        return <MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
+        return <MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="image" />
 
-      case "media_multiple":
+      case "file":
+        return <MediaField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} type="file" />
+
+      case "mediaMultiple":
         return <MediaMultipleField value={value as any} onChange={v => handleFieldChange(field.slug, v)} tenantSlug={tenantSlug} />
 
       case "relation": {
