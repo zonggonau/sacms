@@ -11,14 +11,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle
 } from "@/components/ui/dialog"
-import { 
+import {
   Sparkles, Rocket, Loader2, Globe,
   Monitor, ExternalLink, RefreshCw, Send, Bot, Database, AlertCircle, Zap,
   Tablet, Smartphone, ArrowRight, CheckCircle2, Cpu, Trash2, Download,
   ShieldCheck, Layers, FileText, Check, LayoutGrid, Key, Shield, Terminal,
   Copy, Activity, BarChart2, Maximize2, Minimize2, Code2, Folder, FileCode,
   ChevronDown, ChevronUp, ChevronRight, History, Play, RotateCw,
-  CreditCard, Calendar, Flame, HardDrive, Server
+  CreditCard, Calendar, Flame, HardDrive, Server,
+  Plus, Star, ArrowUp, PanelLeft, MoreHorizontal
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
@@ -156,6 +157,10 @@ export function WebsiteBuilderClient({
   // Selected AI Model
   const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "v0-pro")
   const currentModelConfig = AI_MODELS.find(m => m.id === selectedModel) || AI_MODELS[1]
+  // v0.app-style model picker dropdown (used by both the empty-state composer
+  // and the active-state follow-up composer) — purely a presentation toggle,
+  // the underlying selectedModel state and AI_MODELS list are unchanged.
+  const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
 
   // Generation Mode: 'instant' | 'safe'
   const [generationMode, setGenerationMode] = useState<"instant" | "safe">("safe")
@@ -957,122 +962,93 @@ export async function fetchContent(collection: string) {
             ? "fixed inset-0 z-50 w-screen h-screen rounded-none border-0 p-3 bg-background" 
             : "min-h-[750px]"
         }`}>
-          {/* Studio Action Bar */}
-          <div className="h-12 border-b border-border/60 flex items-center justify-between px-4 bg-muted/30 shrink-0">
-            <div className="flex items-center gap-2">
-              <Globe className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold text-foreground">SaCMS Live Studio</span>
-              
-              {/* Version History Selector Pills */}
-              <div className="flex items-center gap-1 bg-background/80 border border-border/80 rounded-lg p-0.5 ml-2">
-                <History className="h-3 w-3 text-muted-foreground ml-1.5" />
-                {versionHistory.map((ver) => (
-                  <button
-                    key={ver.version}
-                    onClick={() => {
-                      setActiveVersionNumber(ver.version)
-                      if (ver.previewUrl) setPreviewUrl(ver.previewUrl)
-                    }}
-                    className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded-md transition-all ${
-                      activeVersionNumber === ver.version
-                        ? "bg-primary text-primary-foreground shadow-xs"
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    v{ver.version}
-                  </button>
-                ))}
-              </div>
-
-              {/* Status Badge */}
-              <Badge 
-                variant="outline" 
-                className={`text-[10px] font-bold ${
-                  projectStatus === "project" 
-                    ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10" 
+          {/* Studio Top Bar — v0.app style: project switcher left, Preview/Code tabs center, Publish right */}
+          <div className="h-12 border-b border-border/60 flex items-center justify-between px-3 bg-card shrink-0">
+            <div className="flex items-center gap-1.5 min-w-0">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setIsFullscreen(!isFullscreen)}
+                className="h-7 w-7 rounded-md text-muted-foreground hover:bg-muted"
+                title={isFullscreen ? "Keluar Fullscreen (Esc)" : "Fullscreen"}
+              >
+                {isFullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
+              </Button>
+              <Star className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium text-foreground truncate max-w-[220px]">{tenantSlug}</span>
+              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              <Badge
+                variant="outline"
+                className={`text-[10px] font-bold ml-1 shrink-0 ${
+                  projectStatus === "project"
+                    ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10"
                     : "border-amber-500/30 text-amber-500 bg-amber-500/10"
                 }`}
               >
                 {projectStatus === "project" ? "PRODUCTION" : "DRAFT"}
               </Badge>
+            </div>
 
-              <Badge variant="outline" className="text-[10px] font-mono border-emerald-500/30 text-emerald-500 bg-emerald-500/10 hidden sm:inline-flex">
-                MCP Connected
-              </Badge>
+            {/* Center Tab Switcher: Preview | Code | Console */}
+            <div className="flex items-center bg-muted p-0.5 rounded-full border border-border/60 shrink-0">
+              <button
+                onClick={() => setActiveViewerTab("preview")}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                  activeViewerTab === "preview"
+                    ? "bg-background text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Globe className="h-3.5 w-3.5" />
+                <span>Preview</span>
+              </button>
+              <button
+                onClick={() => setActiveViewerTab("code")}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                  activeViewerTab === "code"
+                    ? "bg-background text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Code2 className="h-3.5 w-3.5" />
+                <span>Code</span>
+              </button>
+              <button
+                onClick={() => setActiveViewerTab("console")}
+                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-semibold rounded-full transition-all ${
+                  activeViewerTab === "console"
+                    ? "bg-background text-foreground shadow-2xs"
+                    : "text-muted-foreground hover:text-foreground"
+                }`}
+              >
+                <Terminal className="h-3.5 w-3.5" />
+                <span>Console</span>
+              </button>
             </div>
 
             {/* Right Action Tools */}
-            <div className="flex items-center gap-2">
-              {/* Tab Switcher: Preview | Code | Console */}
-              <div className="flex items-center bg-muted p-0.5 rounded-xl border border-border/60">
-                <button
-                  onClick={() => setActiveViewerTab("preview")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                    activeViewerTab === "preview"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Monitor className="h-3.5 w-3.5" />
-                  <span>Preview</span>
-                </button>
-                <button
-                  onClick={() => setActiveViewerTab("code")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                    activeViewerTab === "code"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Code2 className="h-3.5 w-3.5" />
-                  <span>Code</span>
-                </button>
-                <button
-                  onClick={() => setActiveViewerTab("console")}
-                  className={`flex items-center gap-1 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                    activeViewerTab === "console"
-                      ? "bg-background text-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  }`}
-                >
-                  <Terminal className="h-3.5 w-3.5" />
-                  <span>Console</span>
-                </button>
-              </div>
-
-              {/* Fullscreen Button */}
-              <Button
-                variant={isFullscreen ? "secondary" : "outline"}
-                size="sm"
-                onClick={() => setIsFullscreen(!isFullscreen)}
-                className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
-                title={isFullscreen ? "Keluar Fullscreen (Esc)" : "Fullscreen"}
-              >
-                {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-primary" /> : <Maximize2 className="h-3.5 w-3.5 text-primary" />}
-                <span className="hidden md:inline">{isFullscreen ? "Keluar" : "Fullscreen"}</span>
-              </Button>
-
+            <div className="flex items-center gap-1.5 shrink-0">
               {/* Download Starter ZIP Action */}
               <Button
-                variant="outline"
-                size="sm"
+                variant="ghost"
+                size="icon"
                 onClick={() => window.open(`/api/tenant/${tenantSlug}/ai-builder/export-starter`, '_blank')}
-                className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
                 title="Unduh Source Code Next.js 16 siap jalan"
               >
-                <Download className="h-3.5 w-3.5 text-primary" /> Unduh ZIP
+                <Download className="h-3.5 w-3.5" />
               </Button>
 
               {/* Export Schema JSON */}
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={handleExportSchema}
                 disabled={isExportingSchema}
-                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
                 title="Ekspor skema Content Type, Single Type & Komponen sebagai JSON"
               >
-                {isExportingSchema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCode className="h-3.5 w-3.5 text-primary" />}
+                {isExportingSchema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCode className="h-3.5 w-3.5" />}
               </Button>
 
               {/* Import Schema JSON */}
@@ -1084,55 +1060,58 @@ export async function fetchContent(collection: string) {
                 onChange={handleImportFileSelected}
               />
               <Button
-                variant="outline"
+                variant="ghost"
                 size="icon"
                 onClick={() => importFileInputRef.current?.click()}
-                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
                 title="Impor skema Content Type, Single Type & Komponen dari JSON"
               >
-                <Folder className="h-3.5 w-3.5 text-primary" />
+                <Folder className="h-3.5 w-3.5" />
               </Button>
 
               {/* Hubungkan Custom Domain — hanya setelah project sudah pernah di-deploy */}
               {projectStatus === "project" && (
                 <Button
-                  variant="outline"
-                  size="sm"
+                  variant="ghost"
+                  size="icon"
                   onClick={() => setIsDomainModalOpen(true)}
-                  className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
+                  className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
                   title="Hubungkan domain kustom ke website ini"
                 >
-                  <Globe className="h-3.5 w-3.5 text-primary" /> Domain
+                  <Globe className="h-3.5 w-3.5" />
                 </Button>
               )}
 
-              {/* 1-Click Deploy ke VPS / Cloud */}
               <Button
-                variant="default"
-                size="sm"
-                onClick={handleDeployToVercel}
-                disabled={isDeploying}
-                className={cn(
-                  "gap-1.5 h-8 text-xs font-bold rounded-xl shadow-xs cursor-pointer",
-                  hostingInfo?.hasDedicatedVps
-                    ? "bg-purple-600 hover:bg-purple-700 text-white border border-purple-500/30"
-                    : "bg-primary text-primary-foreground"
-                )}
-                title={hostingInfo?.hasDedicatedVps ? "Deploy langsung ke Dedicated VPS Anda (Rp 0 Biaya)" : "Deploy ke Cloud Edge"}
-              >
-                {isDeploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Rocket className="h-3.5 w-3.5" />}
-                {hostingInfo?.hasDedicatedVps ? "Deploy ke VPS (Rp 0)" : "Deploy ke Cloud"}
-              </Button>
-
-              {/* Hapus Draft / Project Action */}
-              <Button 
-                variant="outline" 
-                size="icon" 
+                variant="ghost"
+                size="icon"
                 onClick={() => setIsDeleteDialogOpen(true)}
-                className="h-8 w-8 rounded-xl border-destructive/30 text-destructive hover:bg-destructive/10"
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                 title="Hapus Project"
               >
                 <Trash2 className="h-3.5 w-3.5" />
+              </Button>
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled
+                className="h-8 text-xs font-semibold rounded-full border-border/80 hidden sm:inline-flex"
+                title="Undang kolaborator (segera hadir)"
+              >
+                Invite
+              </Button>
+
+              {/* 1-Click Deploy ke VPS / Cloud — restyled as v0.app's black "Publish" button */}
+              <Button
+                size="sm"
+                onClick={handleDeployToVercel}
+                disabled={isDeploying}
+                className="gap-1.5 h-8 text-xs font-semibold rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-xs cursor-pointer px-3.5"
+                title={hostingInfo?.hasDedicatedVps ? "Deploy langsung ke Dedicated VPS Anda (Rp 0 Biaya)" : "Deploy ke Cloud Edge"}
+              >
+                {isDeploying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Globe className="h-3.5 w-3.5" />}
+                Publish
               </Button>
             </div>
           </div>
@@ -1140,82 +1119,115 @@ export async function fetchContent(collection: string) {
           {/* Main Studio Body (Split Left & Right) */}
           <div className="flex flex-1 overflow-hidden">
             
-            {/* ── LEFT PANE: Chat, Reasoner & Iteration Box ── */}
-            <div className="w-80 lg:w-96 border-r border-border/60 flex flex-col bg-muted/20 shrink-0">
-              
-              {/* Agentic Reasoning Accordion */}
-              <div className="border-b border-border/60 bg-background/50 p-2.5">
+            {/* ── LEFT PANE: v0.app-style understated commentary log + composer ── */}
+            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col bg-card shrink-0">
+
+              {/* Agentic Reasoning — collapsed pill row, matches the small "step" rows in v0.app's log */}
+              <div className="border-b border-border/60 px-3 py-2">
                 <button
                   onClick={() => setIsReasoningOpen(!isReasoningOpen)}
-                  className="flex items-center justify-between w-full text-left text-xs font-bold text-foreground hover:text-primary transition-colors"
+                  className="flex items-center gap-1.5 w-full text-left text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
                 >
-                  <span className="flex items-center gap-1.5">
-                    <Cpu className="h-3.5 w-3.5 text-primary" />
-                    Agentic Reasoning Pipeline
-                  </span>
-                  {isReasoningOpen ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                  <Cpu className="h-3 w-3 shrink-0" />
+                  <span className="flex-1">Agentic Reasoning Pipeline</span>
+                  {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
                 </button>
 
                 {isReasoningOpen && (
-                  <div className="mt-2.5 space-y-1.5 text-[11px] text-muted-foreground">
+                  <div className="mt-2 space-y-1.5 pl-4.5 text-[11px] text-muted-foreground">
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       <span>Analisis Kebutuhan Prompt & Scope</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       <span>Query Skema Database via MCP Server</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       <span>Scaffold Next.js 16 App Router & Tailwind</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
                       <span>Live Sandbox Verification</span>
                     </div>
                   </div>
                 )}
               </div>
 
-              {/* Chat Message Stream */}
-              <ScrollArea className="flex-1 p-4">
-                <div className="space-y-4">
+              {/* Commentary Log — plain left-aligned paragraphs, not chat bubbles */}
+              <ScrollArea className="flex-1">
+                <div className="px-3.5 py-3 space-y-3.5">
                   {messages.map((msg, i) => (
-                    <div key={i} className={`flex flex-col gap-1.5 ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                      <span className="text-[10px] font-semibold text-muted-foreground px-1">
-                        {msg.role === 'user' ? 'Anda' : 'SaCMS AI Assistant'}
-                      </span>
-                      <div className={`px-3.5 py-2 rounded-2xl max-w-[90%] text-xs leading-relaxed whitespace-pre-wrap shadow-xs ${
-                        msg.role === 'user' 
-                          ? 'bg-primary text-primary-foreground rounded-br-xs font-medium' 
-                          : 'bg-card border border-border/60 text-card-foreground rounded-bl-xs'
-                      }`}>
+                    <div key={i} className="space-y-1">
+                      {msg.role === 'user' ? (
+                        <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wide">Anda</div>
+                      ) : null}
+                      <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
                         {msg.content}
-                      </div>
+                      </p>
                     </div>
                   ))}
                   {loading && (
-                    <div className="flex flex-col gap-1.5 items-start">
-                      <span className="text-[10px] font-semibold text-muted-foreground px-1">SaCMS AI Assistant</span>
-                      <div className="px-3.5 py-2 rounded-2xl bg-card border border-border/60 flex items-center gap-2.5 rounded-bl-xs shadow-xs">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />
-                        <span className="text-xs text-muted-foreground">{loadingStep || "Menyesuaikan kode frontend..."}</span>
+                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                      <span>{loadingStep || "Menyesuaikan kode frontend..."}</span>
+                    </div>
+                  )}
+
+                  {/* Version history — small step rows, v0.app style */}
+                  {versionHistory.length > 0 && (
+                    <div className="space-y-1 pt-1">
+                      {versionHistory.map((ver) => (
+                        <button
+                          key={ver.version}
+                          onClick={() => {
+                            setActiveVersionNumber(ver.version)
+                            if (ver.previewUrl) setPreviewUrl(ver.previewUrl)
+                          }}
+                          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer ${
+                            activeVersionNumber === ver.version
+                              ? "bg-muted text-foreground font-medium"
+                              : "text-muted-foreground hover:bg-muted/60"
+                          }`}
+                        >
+                          <History className="h-3 w-3 shrink-0" />
+                          <span className="truncate flex-1">v{ver.version} — {ver.prompt.substring(0, 40)}{ver.prompt.length > 40 ? "…" : ""}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Out of Credit card — v0.app style */}
+                  {!isUnlimited && creditsRemaining <= 0 && (
+                    <div className="rounded-xl border border-border bg-muted/40 p-3.5 space-y-2.5">
+                      <div className="space-y-1">
+                        <h4 className="text-[13px] font-bold text-foreground">Out of Credit</h4>
+                        <p className="text-[11px] text-muted-foreground leading-relaxed">
+                          Saldo AI Anda habis. Tambahkan credit untuk melanjutkan.
+                        </p>
                       </div>
+                      <Button
+                        size="sm"
+                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                        className="w-full h-8 text-xs font-semibold rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
+                      >
+                        Buy Credit
+                      </Button>
                     </div>
                   )}
                 </div>
               </ScrollArea>
 
               {/* Quick Iteration Chips */}
-              <div className="p-2 border-t border-border/60 bg-muted/40 overflow-x-auto">
+              <div className="p-2 border-t border-border/60 overflow-x-auto">
                 <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
                   {QUICK_ITERATION_SUGGESTIONS.map((item, idx) => (
                     <button
                       key={idx}
                       onClick={() => handleIterate(item.prompt)}
                       disabled={loading || (creditsRemaining < 5 && !isUnlimited)}
-                      className="px-2.5 py-1 rounded-lg bg-background border border-border/80 text-muted-foreground hover:text-foreground hover:border-primary/40 text-[10px] font-medium transition-all shadow-2xs cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                      className="px-2.5 py-1 rounded-full bg-muted/60 border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/40 text-[10px] font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {item.label}
                     </button>
@@ -1223,11 +1235,11 @@ export async function fetchContent(collection: string) {
                 </div>
               </div>
 
-              {/* Chat Input Bar */}
-              <div className="p-3 bg-background border-t border-border/60 shrink-0 space-y-2">
-                <div className="relative flex items-end gap-2 bg-background rounded-xl border border-border/80 p-1 shadow-xs focus-within:ring-1 focus-within:ring-primary">
+              {/* Follow-up Composer — v0.app style rounded bordered box */}
+              <div className="p-3 border-t border-border/60 shrink-0 space-y-1.5">
+                <div className="rounded-xl border border-border/80 overflow-hidden">
                   <Textarea
-                    placeholder={creditsRemaining <= 0 && !isUnlimited ? "Saldo AI habis. Silakan top up..." : "Minta revisi desain ke SaCMS AI..."}
+                    placeholder={creditsRemaining <= 0 && !isUnlimited ? "Saldo AI habis. Silakan top up..." : "Ask a follow-up…"}
                     value={iterationPrompt}
                     onChange={e => setIterationPrompt(e.target.value)}
                     onKeyDown={e => {
@@ -1237,26 +1249,48 @@ export async function fetchContent(collection: string) {
                       }
                     }}
                     disabled={loading || (creditsRemaining <= 0 && !isUnlimited)}
-                    className="min-h-[38px] max-h-[200px] resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent py-2 text-xs"
+                    className="min-h-[52px] max-h-[200px] resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent px-3 pt-2.5 pb-1 text-xs"
                   />
-                  <Button 
-                    size="icon" 
-                    className="h-8 w-8 shrink-0 rounded-lg mb-0.5 mr-0.5 bg-primary"
-                    onClick={() => handleIterate()} 
-                    disabled={loading || !iterationPrompt.trim() || (creditsRemaining <= 0 && !isUnlimited)}
-                  >
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center justify-between px-2 pb-1.5">
+                    <div className="flex items-center gap-1">
+                      <Button variant="ghost" size="icon" disabled className="h-7 w-7 rounded-full text-muted-foreground">
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-muted-foreground bg-muted/60">
+                        <Cpu className="h-3 w-3" />
+                        {currentModelConfig.name}
+                        <ChevronDown className="h-2.5 w-2.5" />
+                      </span>
+                    </div>
+                    <Button
+                      size="icon"
+                      className="h-7 w-7 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      onClick={() => handleIterate()}
+                      disabled={loading || !iterationPrompt.trim() || (creditsRemaining <= 0 && !isUnlimited)}
+                    >
+                      <ArrowUp className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
 
                 <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
-                  <span className="flex items-center gap-1 font-medium">
-                    <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
-                    Biaya iterasi: 5 Credits
-                  </span>
-                  <span className="text-[10px] text-muted-foreground">
-                    Terkoneksi ke REST API SaCMS
-                  </span>
+                  {!isUnlimited && creditsRemaining <= 0 ? (
+                    <span>
+                      You are out of credits.{" "}
+                      <button
+                        type="button"
+                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                        className="text-primary font-semibold hover:underline cursor-pointer"
+                      >
+                        Buy credits
+                      </button>
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1 font-medium">
+                      <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                      Biaya iterasi: 5 Credits
+                    </span>
+                  )}
                 </div>
               </div>
             </div>
@@ -1265,91 +1299,92 @@ export async function fetchContent(collection: string) {
             <div className="flex-1 bg-muted/10 flex flex-col overflow-hidden">
               
               {activeViewerTab === "preview" && (
-                /* ── TAB 1: Live Interactive Preview ── */
-                <div className="flex-1 p-3 flex flex-col items-center justify-center overflow-hidden">
-                  
-                  {/* Viewport Control Bar */}
-                  <div className="w-full flex items-center justify-between pb-2 px-1">
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center bg-background rounded-lg border border-border/80 p-0.5 shadow-2xs">
-                        <Button
-                          variant={deviceMode === "desktop" ? "secondary" : "ghost"}
-                          size="icon"
-                          onClick={() => setDeviceMode("desktop")}
-                          className="h-6 w-6 rounded-md"
-                          title="Desktop (100%)"
-                        >
-                          <Monitor className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant={deviceMode === "tablet" ? "secondary" : "ghost"}
-                          size="icon"
-                          onClick={() => setDeviceMode("tablet")}
-                          className="h-6 w-6 rounded-md"
-                          title="Tablet (768px)"
-                        >
-                          <Tablet className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant={deviceMode === "mobile" ? "secondary" : "ghost"}
-                          size="icon"
-                          onClick={() => setDeviceMode("mobile")}
-                          className="h-6 w-6 rounded-md"
-                          title="Mobile (375px)"
-                        >
-                          <Smartphone className="h-3 w-3" />
-                        </Button>
-                      </div>
+                /* ── TAB 1: Live Interactive Preview — v0.app browser-chrome toolbar ── */
+                <div className="flex-1 flex flex-col overflow-hidden bg-muted/20">
 
-                      {/* Mock URL address bar */}
-                      <div className="hidden sm:flex items-center gap-2 bg-background border border-border/80 rounded-lg px-3 py-1 text-[11px] font-mono text-muted-foreground max-w-sm truncate shadow-2xs">
-                        <Globe className="h-3 w-3 text-primary shrink-0" />
-                        <span className="truncate">{previewUrl || "https://sandbox.sacms.cloud"}</span>
-                      </div>
+                  {/* Sub-toolbar: version selector + address bar + actions */}
+                  <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card shrink-0">
+                    <span className="hidden md:flex items-center gap-1 text-xs font-medium text-muted-foreground shrink-0">
+                      Latest <ChevronDown className="h-3 w-3" />
+                    </span>
+
+                    <div className="flex items-center bg-muted rounded-md p-0.5 shrink-0">
+                      <Button
+                        variant={deviceMode === "desktop" ? "secondary" : "ghost"}
+                        size="icon"
+                        onClick={() => setDeviceMode("desktop")}
+                        className="h-6 w-6 rounded"
+                        title="Desktop (100%)"
+                      >
+                        <Monitor className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant={deviceMode === "tablet" ? "secondary" : "ghost"}
+                        size="icon"
+                        onClick={() => setDeviceMode("tablet")}
+                        className="h-6 w-6 rounded"
+                        title="Tablet (768px)"
+                      >
+                        <Tablet className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant={deviceMode === "mobile" ? "secondary" : "ghost"}
+                        size="icon"
+                        onClick={() => setDeviceMode("mobile")}
+                        className="h-6 w-6 rounded"
+                        title="Mobile (375px)"
+                      >
+                        <Smartphone className="h-3 w-3" />
+                      </Button>
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => setPreviewRefreshNonce(n => n + 1)} 
-                        className="gap-1 h-7 text-xs rounded-lg border-border/80"
-                      >
-                        <RefreshCw className="h-3 w-3" /> Refresh
-                      </Button>
+                    {/* Browser-chrome pill address bar */}
+                    <div className="flex-1 flex items-center gap-2 bg-muted rounded-full px-3 py-1.5 text-[11px] font-mono text-muted-foreground min-w-0">
+                      <ChevronDown className="h-3 w-3 rotate-90 shrink-0 opacity-50" />
+                      <ChevronDown className="h-3 w-3 -rotate-90 shrink-0 opacity-50" />
+                      <span className="truncate flex-1">{previewUrl || "https://sandbox.sacms.cloud"}</span>
+                    </div>
+
+                    <div className="flex items-center gap-0.5 shrink-0">
                       {previewUrl && (
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          asChild 
-                          className="gap-1 h-7 text-xs rounded-lg border-border/80"
-                        >
-                          <a href={previewUrl} target="_blank" rel="noopener noreferrer">
-                            <ExternalLink className="h-3 w-3" /> Tab Baru
+                        <Button variant="ghost" size="icon" asChild className="h-7 w-7 rounded-full text-muted-foreground">
+                          <a href={previewUrl} target="_blank" rel="noopener noreferrer" title="Buka di tab baru">
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </a>
                         </Button>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setPreviewRefreshNonce(n => n + 1)}
+                        className="h-7 w-7 rounded-full text-muted-foreground"
+                        title="Refresh"
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
 
                   {/* Frame Container */}
-                  <div className={`flex-1 rounded-xl overflow-hidden border border-border/80 shadow-xs bg-background flex flex-col transition-all duration-300 ${
-                    deviceMode === "desktop" ? "w-full" : deviceMode === "tablet" ? "w-[768px] max-w-full" : "w-[375px] max-w-full"
-                  }`}>
-                    {previewUrl ? (
-                      <iframe
-                        key={previewRefreshNonce}
-                        src={previewUrl}
-                        className="w-full h-full border-0 bg-background"
-                        title="Preview"
-                        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                      />
-                    ) : (
-                      <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-muted/20">
-                        <Monitor className="h-6 w-6 text-muted-foreground" />
-                        <p className="text-xs">Preview website sedang disiapkan...</p>
-                      </div>
-                    )}
+                  <div className="flex-1 p-3 flex items-center justify-center overflow-hidden">
+                    <div className={`h-full rounded-xl overflow-hidden border border-border/80 shadow-xs bg-background flex flex-col transition-all duration-300 ${
+                      deviceMode === "desktop" ? "w-full" : deviceMode === "tablet" ? "w-[768px] max-w-full" : "w-[375px] max-w-full"
+                    }`}>
+                      {previewUrl ? (
+                        <iframe
+                          key={previewRefreshNonce}
+                          src={previewUrl}
+                          className="w-full h-full border-0 bg-background"
+                          title="Preview"
+                          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
+                        />
+                      ) : (
+                        <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-muted/20">
+                          <Monitor className="h-6 w-6 text-muted-foreground" />
+                          <p className="text-xs">Preview website sedang disiapkan...</p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -1446,191 +1481,155 @@ export async function fetchContent(collection: string) {
           </div>
         </div>
       ) : (
-        /* ── UNIFIED PROMPT-DRIVEN AI ARCHITECTURE STUDIO ── */
-        <div className={`flex flex-col transition-all ${
-          isFullscreen 
-            ? "fixed inset-0 z-50 w-screen h-screen bg-background p-4 md:p-6 overflow-auto" 
-            : "gap-6"
+        /* ── v0.app-STYLE EMPTY STATE: "What do you want to create?" ── */
+        <div className={`flex flex-1 flex-col items-center justify-center transition-all ${
+          isFullscreen
+            ? "fixed inset-0 z-50 w-screen h-screen bg-background p-4 md:p-6 overflow-auto"
+            : "min-h-[520px] py-10"
         }`}>
+          <div className="w-full max-w-2xl mx-auto px-4 space-y-5">
+            <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight text-center">
+              Website apa yang ingin Anda buat?
+            </h2>
 
-          {/* ── MAIN PROMPT & ARCHITECTURE STUDIO CARD ── */}
-          <div className="rounded-3xl bg-card border border-border/80 shadow-xs p-6 md:p-8 space-y-6">
-            
-            {/* Header Title & Controls */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-              <div className="space-y-1.5">
-                <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-primary/20 bg-primary/5 text-xs font-semibold text-primary">
-                  <Database className="h-3.5 w-3.5" />
-                  SaCMS MCP Server + Autonomous AI Architecture Engine
+            {/* ── Prompt Composer Card ── */}
+            <div className="rounded-2xl bg-card border border-border/80 shadow-md overflow-visible">
+              <Textarea
+                placeholder="Minta SaCMS AI membangun website..."
+                className="resize-none min-h-[96px] text-sm rounded-2xl rounded-b-none border-0 shadow-none bg-transparent p-4 focus-visible:ring-0"
+                value={mainPrompt}
+                onChange={e => setMainPrompt(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault()
+                    if (generationMode === "safe") handlePlanSchema(mainPrompt)
+                    else handleGenerateWebsite()
+                  }
+                }}
+              />
+
+              {/* Toolbar row */}
+              <div className="flex items-center justify-between gap-2 px-3 pb-3 pt-1">
+                <div className="flex items-center gap-1.5 relative">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted"
+                    title="Lampirkan (segera hadir)"
+                    disabled
+                  >
+                    <Plus className="h-4 w-4" />
+                  </Button>
+
+                  {/* Model selector pill */}
+                  <button
+                    type="button"
+                    onClick={() => setIsModelPickerOpen(v => !v)}
+                    className="flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-full border border-border/80 bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
+                  >
+                    <Cpu className="h-3.5 w-3.5 text-primary" />
+                    <span>{currentModelConfig.name}</span>
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+
+                  {/* Model picker dropdown */}
+                  {isModelPickerOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsModelPickerOpen(false)} />
+                      <div className="absolute bottom-10 left-0 z-50 w-72 rounded-xl bg-card border border-border shadow-xl p-1.5">
+                        <div className="px-1 pb-1">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1.5">
+                            Pilih Model AI Engine
+                          </span>
+                        </div>
+                        {AI_MODELS.map((m) => {
+                          const isSelected = selectedModel === m.id
+                          return (
+                            <button
+                              key={m.id}
+                              type="button"
+                              onClick={() => { setSelectedModel(m.id); setIsModelPickerOpen(false) }}
+                              className={cn(
+                                "flex items-center justify-between w-full gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer",
+                                isSelected ? "bg-primary/10 text-primary font-bold" : "text-foreground hover:bg-muted"
+                              )}
+                            >
+                              <span className="flex items-center gap-2 min-w-0">
+                                <span className="w-5 h-5 rounded-md bg-muted flex items-center justify-center shrink-0">
+                                  <Bot className="h-3 w-3 text-primary" />
+                                </span>
+                                <span className="truncate">
+                                  <span className="font-semibold">{m.name}</span>
+                                  <span className="text-muted-foreground font-normal ml-1.5">· {m.credits} Credits</span>
+                                </span>
+                              </span>
+                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </>
+                  )}
                 </div>
-                <h2 className="text-2xl md:text-3xl font-black text-foreground tracking-tight">
-                  Jelaskan Ide Website Anda
-                </h2>
-                <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-                  Ketik ide atau kebutuhan sistem website Anda. SaCMS MCP Server akan secara otomatis merancang skema database (koleksi Content Types & Single Types), mengisi dummy data, dan mengompilasi kode frontend Next.js App Router.
-                </p>
-              </div>
 
-              {/* Action Controls: Fullscreen & Safe Mode Toggle */}
-              <div className="flex items-center gap-2 self-start md:self-auto shrink-0 flex-wrap">
-                <Button
-                  variant={isFullscreen ? "secondary" : "outline"}
-                  size="sm"
-                  onClick={() => setIsFullscreen(!isFullscreen)}
-                  className="gap-1.5 h-9 text-xs font-bold rounded-xl border-border/80 hover:bg-muted transition-all cursor-pointer"
-                  title={isFullscreen ? "Keluar dari Layar Penuh (Esc)" : "Mode Layar Penuh (Fullscreen)"}
-                >
-                  {isFullscreen ? <Minimize2 className="h-3.5 w-3.5 text-primary" /> : <Maximize2 className="h-3.5 w-3.5 text-primary" />}
-                  <span>{isFullscreen ? "Keluar Fullscreen" : "Fullscreen"}</span>
-                </Button>
-
-                {/* Safe Mode Toggle */}
-                <div className="flex items-center gap-1 bg-muted/60 p-1 rounded-xl border border-border/80">
+                <div className="flex items-center gap-2">
                   <button
                     type="button"
-                    onClick={() => setGenerationMode("safe")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      generationMode === "safe" 
-                        ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                    onClick={() => setGenerationMode(generationMode === "safe" ? "instant" : "safe")}
+                    className="flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer"
+                    title="Mode Aman: tinjau skema database sebelum membangun. Mode Instan: langsung bangun."
                   >
-                    <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                    Mode Aman (Tinjau Skema)
+                    <span>{generationMode === "safe" ? "Mode Aman" : "Mode Instan"}</span>
+                    <ChevronDown className="h-3 w-3" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => setGenerationMode("instant")}
-                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                      generationMode === "instant" 
-                        ? "bg-card text-foreground shadow-xs border border-primary/40 ring-1 ring-primary/20" 
-                        : "text-muted-foreground hover:text-foreground"
-                    }`}
+                  <Button
+                    size="icon"
+                    onClick={() => {
+                      if (generationMode === "safe") handlePlanSchema(mainPrompt)
+                      else handleGenerateWebsite()
+                    }}
+                    disabled={loading || isPlanning || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
+                    className="h-8 w-8 rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-none disabled:opacity-40"
+                    title={generationMode === "safe" ? `Tinjau Skema & Bangun (-${currentModelConfig.credits} Credits)` : `Bangun Instan (-${currentModelConfig.credits} Credits)`}
                   >
-                    <Zap className="h-3.5 w-3.5 text-primary" />
-                    Mode Instan
-                  </button>
+                    {(loading || isPlanning) ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
+                  </Button>
                 </div>
               </div>
             </div>
 
-            {/* Prompt Textarea */}
-            <div className="space-y-3">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-bold text-foreground">Instruksi / Prompt Kebutuhan Website:</span>
-                  <span className="text-[11px] text-muted-foreground">Ketik ide kustom bebas atau pilih contoh kilat di bawah</span>
-                </div>
-                <Textarea 
-                  placeholder="Contoh: Buat website resort pariwisata modern dengan katalog tipe kamar (Deluxe, Ocean Villa), paket diving wisata bahari, fasilitas restoran seafood, galeri foto, dan formulir reservasi online..."
-                  className="resize-none min-h-[140px] text-xs md:text-sm rounded-2xl border-border/80 bg-background p-4 focus-visible:ring-primary leading-relaxed shadow-xs"
-                  value={mainPrompt}
-                  onChange={e => setMainPrompt(e.target.value)}
-                />
-              </div>
+            {/* Credits usage bar */}
+            <div className="flex items-center justify-between px-3.5 py-2 rounded-xl bg-muted/50 text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1.5">
+                <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
+                {isUnlimited ? "Saldo AI: Unlimited" : `Anda memiliki ${creditsRemaining} Credits tersisa`}
+              </span>
+              <button
+                type="button"
+                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                className="text-primary hover:underline font-semibold cursor-pointer"
+              >
+                Beli credits
+              </button>
+            </div>
 
-              {/* Quick Inspiration Chips */}
-              <div className="space-y-1.5 pt-0.5">
-                <span className="text-[11px] font-bold text-muted-foreground flex items-center gap-1">
-                  <Sparkles className="h-3 w-3 text-primary" /> Ide Cepat (Klik untuk menyalin):
-                </span>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {QUICK_PROMPT_INSPIRATIONS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setMainPrompt(item.prompt)}
-                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium bg-muted/40 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-border/60 transition-all text-muted-foreground cursor-pointer"
-                    >
-                      <span>{item.icon}</span>
-                      <span>{item.label}</span>
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Model Selection Selector */}
-              <div className="space-y-2 pt-2">
-                <div className="flex items-center gap-2 text-xs font-bold text-foreground">
-                  <Cpu className="h-3.5 w-3.5 text-primary" />
-                  <span>Pilih Model AI Engine:</span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                  {AI_MODELS.map((m) => {
-                    const isSelected = selectedModel === m.id
-                    return (
-                      <div
-                        key={m.id}
-                        onClick={() => setSelectedModel(m.id)}
-                        className={`p-3.5 rounded-2xl border transition-all cursor-pointer flex flex-col justify-between gap-2 text-left relative ${
-                          isSelected
-                            ? "bg-primary/5 border-primary shadow-xs ring-1 ring-primary"
-                            : "bg-background border-border/80 hover:border-primary/40"
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-xs font-bold text-foreground">{m.name}</span>
-                            <Badge 
-                              variant={isSelected ? "default" : "outline"} 
-                              className={`text-[9px] px-1.5 py-0 h-4 font-mono font-bold ${
-                                isSelected ? "bg-primary text-primary-foreground" : "text-muted-foreground"
-                              }`}
-                            >
-                              {m.badge}
-                            </Badge>
-                          </div>
-                          <p className="text-[11px] text-muted-foreground leading-tight">{m.description}</p>
-                        </div>
-
-                        <div className="flex items-center justify-between pt-1 border-t border-border/40 text-[11px]">
-                          <span className="font-semibold text-primary">{m.credits} Credits</span>
-                          {isSelected && <CheckCircle2 className="h-3.5 w-3.5 text-primary shrink-0" />}
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Bottom Action Bar */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-3 border-t border-border/60">
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
-                  <span>
-                    {generationMode === "safe" 
-                      ? "Mode Aman: Verifikasi skema database sebelum generasi kode frontend"
-                      : "Mode Instan: Otomatis eksekusi skema & bangun frontend langsung"}
-                  </span>
-                </div>
-
-                <Button 
-                  size="lg"
-                  className="gap-2 font-bold text-xs md:text-sm rounded-xl bg-primary text-primary-foreground shadow-xs h-11 px-6"
-                  onClick={() => {
-                    if (generationMode === "safe") {
-                      handlePlanSchema(mainPrompt)
-                    } else {
-                      handleGenerateWebsite()
-                    }
-                  }} 
-                  disabled={loading || isPlanning || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
-                >
-                  {isPlanning ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" /> Merancang Skema Database...
-                    </>
-                  ) : generationMode === "safe" ? (
-                    <>
-                      <ShieldCheck className="h-4 w-4" /> Tinjau Skema & Bangun (-{currentModelConfig.credits} Credits)
-                    </>
-                  ) : (
-                    <>
-                      <Rocket className="h-4 w-4" /> Bangun Instan (-{currentModelConfig.credits} Credits)
-                    </>
-                  )}
-                </Button>
+            {/* Quick Inspiration Chips */}
+            <div className="space-y-1.5 pt-1">
+              <span className="text-[11px] font-bold text-muted-foreground flex items-center justify-center gap-1">
+                <Sparkles className="h-3 w-3 text-primary" /> Ide Cepat
+              </span>
+              <div className="flex flex-wrap items-center justify-center gap-1.5">
+                {QUICK_PROMPT_INSPIRATIONS.map((item, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    onClick={() => setMainPrompt(item.prompt)}
+                    className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium bg-muted/40 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-border/60 transition-all text-muted-foreground cursor-pointer"
+                  >
+                    <span>{item.icon}</span>
+                    <span>{item.label}</span>
+                  </button>
+                ))}
               </div>
             </div>
           </div>
