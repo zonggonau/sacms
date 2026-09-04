@@ -913,11 +913,24 @@ export async function fetchContent(collection: string) {
                 <Download className="h-3.5 w-3.5 text-primary" /> Unduh ZIP
               </Button>
 
+              {/* Hubungkan Custom Domain — hanya setelah project sudah pernah di-deploy */}
+              {projectStatus === "project" && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsDomainModalOpen(true)}
+                  className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
+                  title="Hubungkan domain kustom ke website ini"
+                >
+                  <Globe className="h-3.5 w-3.5 text-primary" /> Domain
+                </Button>
+              )}
+
               {/* 1-Click Deploy ke VPS / Cloud */}
-              <Button 
-                variant="default" 
-                size="sm" 
-                onClick={handleDeployToVercel} 
+              <Button
+                variant="default"
+                size="sm"
+                onClick={handleDeployToVercel}
                 disabled={isDeploying}
                 className={cn(
                   "gap-1.5 h-8 text-xs font-bold rounded-xl shadow-xs cursor-pointer",
@@ -1641,6 +1654,125 @@ export async function fetchContent(collection: string) {
             <Button onClick={() => setIsDeployModalOpen(false)} className="rounded-xl text-xs font-bold">
               Tutup
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── CUSTOM DOMAIN MODAL ── */}
+      <Dialog open={isDomainModalOpen} onOpenChange={(open) => {
+        setIsDomainModalOpen(open)
+        if (!open) { setCustomDomainResult(null); setCustomDomainInput("") }
+      }}>
+        <DialogContent className="sm:max-w-lg rounded-2xl border border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-lg font-black text-foreground flex items-center gap-2">
+              <Globe className="h-5 w-5 text-primary" />
+              Hubungkan Domain Kustom
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Arahkan domain Anda sendiri (mis. <code className="text-[11px]">situs.perusahaan.com</code>) ke website ini.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            {!customDomainResult ? (
+              <div className="space-y-2">
+                <Label htmlFor="custom-domain-input" className="text-xs font-bold text-foreground">
+                  Nama Domain
+                </Label>
+                <Input
+                  id="custom-domain-input"
+                  value={customDomainInput}
+                  onChange={(e) => setCustomDomainInput(e.target.value)}
+                  placeholder="situs.perusahaan.com"
+                  className="h-9 text-xs rounded-xl"
+                  disabled={isVerifyingDomain}
+                  onKeyDown={(e) => e.key === "Enter" && handleConfigureDomain()}
+                />
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {(customDomainResult.domain?.simulated || customDomainResult.dns?.simulated) && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+                    <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Ini adalah contoh, bukan konfigurasi nyata.</p>
+                      <p className="mt-0.5 text-amber-700/80 dark:text-amber-400/80">
+                        Integrasi Vercel belum dikonfigurasi platform ini — hubungi administrator SaCMS.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Domain</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        "text-[10px] font-bold",
+                        customDomainResult.domain?.verified
+                          ? "border-emerald-500/30 text-emerald-500 bg-emerald-500/10"
+                          : "border-amber-500/30 text-amber-500 bg-amber-500/10"
+                      )}
+                    >
+                      {customDomainResult.domain?.verified ? "Terverifikasi" : "Menunggu DNS"}
+                    </Badge>
+                  </div>
+                  <p className="text-xs font-mono font-bold text-foreground">{customDomainResult.domain?.name}</p>
+                </div>
+
+                <div className="p-4 rounded-xl bg-muted/40 border border-border space-y-2">
+                  <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    Atur DNS Record berikut di penyedia domain Anda:
+                  </span>
+                  <div className="space-y-1.5 font-mono text-[11px]">
+                    <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background border border-border/60">
+                      <span className="text-muted-foreground">CNAME</span>
+                      <span className="text-foreground font-bold truncate">{customDomainResult.dns?.cname || "cname.vercel-dns.com"}</span>
+                    </div>
+                    {customDomainResult.dns?.aRecord && (
+                      <div className="flex items-center justify-between gap-2 p-2 rounded-lg bg-background border border-border/60">
+                        <span className="text-muted-foreground">A</span>
+                        <span className="text-foreground font-bold truncate">{customDomainResult.dns.aRecord}</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            {!customDomainResult ? (
+              <>
+                <Button
+                  variant="ghost"
+                  className="rounded-xl text-xs"
+                  onClick={() => setIsDomainModalOpen(false)}
+                  disabled={isVerifyingDomain}
+                >
+                  Batal
+                </Button>
+                <Button
+                  onClick={handleConfigureDomain}
+                  disabled={isVerifyingDomain || !customDomainInput.trim()}
+                  className="rounded-xl text-xs font-bold"
+                >
+                  {isVerifyingDomain ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Memverifikasi...
+                    </>
+                  ) : (
+                    "Hubungkan Domain"
+                  )}
+                </Button>
+              </>
+            ) : (
+              <Button onClick={() => setIsDomainModalOpen(false)} className="rounded-xl text-xs font-bold">
+                Tutup
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
