@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo } from "react"
+import { useState, useEffect, useMemo, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -322,6 +322,12 @@ export async function fetchContent(collection: string) {
   // Delete project state
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+
+  // Schema import/export state
+  const [isExportingSchema, setIsExportingSchema] = useState(false)
+  const [isImportingSchema, setIsImportingSchema] = useState(false)
+  const [pendingImportSchema, setPendingImportSchema] = useState<any | null>(null)
+  const [pendingImportFileName, setPendingImportFileName] = useState("")
 
   // ESC key for fullscreen
   useEffect(() => {
@@ -749,6 +755,79 @@ export async function fetchContent(collection: string) {
     }
   }
 
+  // ────────────────────────────────────────────────────────────────────────────
+  // Export / Import Schema (Content Types, Single Types, Components as JSON)
+  // ────────────────────────────────────────────────────────────────────────────
+  const importFileInputRef = useRef<HTMLInputElement>(null)
+
+  const handleExportSchema = async () => {
+    setIsExportingSchema(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/export-schema`)
+      if (!res.ok) throw new Error("Gagal mengambil skema")
+      const schema = await res.json()
+
+      const blob = new Blob([JSON.stringify(schema, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `sacms-schema-${tenantSlug}-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      URL.revokeObjectURL(url)
+
+      const total = (schema.contentTypes?.length || 0) + (schema.singleTypes?.length || 0) + (schema.components?.length || 0)
+      toast({ title: "Skema Diekspor", description: `${total} struktur (Content Type, Single Type, Komponen) berhasil diunduh.` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mengekspor Skema", description: err.message })
+    } finally {
+      setIsExportingSchema(false)
+    }
+  }
+
+  const handleImportFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = "" // allow re-selecting the same file
+    if (!file) return
+
+    try {
+      const text = await file.text()
+      const parsed = JSON.parse(text)
+      if (typeof parsed !== "object" || parsed === null) throw new Error("Format JSON tidak valid")
+      setPendingImportSchema(parsed)
+      setPendingImportFileName(file.name)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Berkas Tidak Valid", description: err.message || "Gagal membaca berkas JSON." })
+    }
+  }
+
+  const handleConfirmImportSchema = async () => {
+    if (!pendingImportSchema) return
+    setIsImportingSchema(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/import-schema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ schema: pendingImportSchema }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal mengimpor skema")
+
+      toast({
+        title: "Skema Diimpor",
+        description: `${data.imported} struktur baru ditambahkan. Struktur dengan slug yang sudah ada dilewati.`,
+      })
+      setPendingImportSchema(null)
+      setPendingImportFileName("")
+      router.refresh()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Mengimpor Skema", description: err.message })
+    } finally {
+      setIsImportingSchema(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-full gap-6 w-full max-w-7xl mx-auto">
       
@@ -923,14 +1002,44 @@ export async function fetchContent(collection: string) {
               </Button>
 
               {/* Download Starter ZIP Action */}
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => window.open(`/api/tenant/${tenantSlug}/ai-builder/export-starter`, '_blank')}
                 className="gap-1.5 h-8 text-xs font-bold rounded-xl border-border/80 hover:bg-muted"
                 title="Unduh Source Code Next.js 16 siap jalan"
               >
                 <Download className="h-3.5 w-3.5 text-primary" /> Unduh ZIP
+              </Button>
+
+              {/* Export Schema JSON */}
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={handleExportSchema}
+                disabled={isExportingSchema}
+                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted"
+                title="Ekspor skema Content Type, Single Type & Komponen sebagai JSON"
+              >
+                {isExportingSchema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCode className="h-3.5 w-3.5 text-primary" />}
+              </Button>
+
+              {/* Import Schema JSON */}
+              <input
+                ref={importFileInputRef}
+                type="file"
+                accept="application/json"
+                className="hidden"
+                onChange={handleImportFileSelected}
+              />
+              <Button
+                variant="outline"
+                size="icon"
+                onClick={() => importFileInputRef.current?.click()}
+                className="h-8 w-8 rounded-xl border-border/80 hover:bg-muted"
+                title="Impor skema Content Type, Single Type & Komponen dari JSON"
+              >
+                <Folder className="h-3.5 w-3.5 text-primary" />
               </Button>
 
               {/* Hubungkan Custom Domain — hanya setelah project sudah pernah di-deploy */}
@@ -1794,6 +1903,61 @@ export async function fetchContent(collection: string) {
                 Tutup
               </Button>
             )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── IMPORT SCHEMA CONFIRM MODAL ── */}
+      <Dialog open={!!pendingImportSchema} onOpenChange={(open) => {
+        if (!open && !isImportingSchema) { setPendingImportSchema(null); setPendingImportFileName("") }
+      }}>
+        <DialogContent className="rounded-2xl border border-border bg-card">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground flex items-center gap-2">
+              <Folder className="h-4 w-4 text-primary" /> Impor Skema dari JSON
+            </DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Struktur baru dari <strong className="text-foreground font-mono">{pendingImportFileName}</strong> akan ditambahkan ke workspace ini. Struktur dengan slug yang sudah ada akan dilewati — impor tidak menimpa data yang sudah ada.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="p-3 rounded-xl bg-muted/40 border border-border text-xs space-y-1">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Content Types</span>
+              <span className="font-bold text-foreground">{pendingImportSchema?.contentTypes?.length || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Single Types</span>
+              <span className="font-bold text-foreground">{pendingImportSchema?.singleTypes?.length || 0}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Komponen</span>
+              <span className="font-bold text-foreground">{pendingImportSchema?.components?.length || 0}</span>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="ghost"
+              className="rounded-xl text-xs"
+              onClick={() => { setPendingImportSchema(null); setPendingImportFileName("") }}
+              disabled={isImportingSchema}
+            >
+              Batal
+            </Button>
+            <Button
+              onClick={handleConfirmImportSchema}
+              disabled={isImportingSchema}
+              className="rounded-xl text-xs font-bold"
+            >
+              {isImportingSchema ? (
+                <>
+                  <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Mengimpor...
+                </>
+              ) : (
+                "Impor Skema"
+              )}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
