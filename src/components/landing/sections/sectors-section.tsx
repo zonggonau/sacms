@@ -3,31 +3,28 @@
 import { Landmark, Store, Newspaper, ShoppingCart, ShieldCheck } from "lucide-react"
 import { getIcon } from "../icon-map"
 import type { SectorItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
-  const { dict, locale } = useLanguage()
-
   const defaultSectors = [
     {
       icon: "Building2",
-      label: dict.sectors?.items?.agency?.title || "Digital Agency & Software House",
-      desc: dict.sectors?.items?.agency?.desc || "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah.",
+      label: "Digital Agency & Software House",
+      desc: "Kelola puluhan website klien dari satu dasbor white-label tanpa pusing biaya server terpisah.",
     },
     {
       icon: "Landmark",
-      label: dict.sectors?.items?.gov?.title || "Pemerintah & BUMN",
-      desc: dict.sectors?.items?.gov?.desc || "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem.",
+      label: "Pemerintah & BUMN",
+      desc: "Keamanan database terisolasi (Gov VDS), kedaulatan data lokal, dan kepatuhan audit sistem.",
     },
     {
       icon: "ShoppingBag",
-      label: dict.sectors?.items?.ecommerce?.title || "E-Commerce & Startup",
-      desc: dict.sectors?.items?.ecommerce?.desc || "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern.",
+      label: "E-Commerce & Startup",
+      desc: "Manajemen inventaris dinamis, API transaksi kilat, dan integrasi headless storefront modern.",
     },
     {
       icon: "Code2",
-      label: dict.sectors?.items?.solo?.title || "Solo Builders & Developers",
-      desc: dict.sectors?.items?.solo?.desc || "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant.",
+      label: "Solo Builders & Developers",
+      desc: "Luncurkan MVP dalam hitungan jam dengan paket ekonomis, visual schema builder, dan AI website assistant.",
     },
   ]
 
@@ -43,13 +40,13 @@ export function SectorsSection({ sectors = [] }: { sectors?: SectorItem[] }) {
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-12 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.sectors.badge}
+            Solusi Sektoral
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.sectors.title}
+            Disesuaikan untuk Berbagai Kebutuhan Industri
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.sectors.subtitle}
+            Dari solo developer, agensi digital, toko online modern, hingga portal digital pemerintah dan enterprise.
           </p>
         </div>
         

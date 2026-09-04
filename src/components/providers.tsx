@@ -17,17 +17,12 @@ if (typeof window !== "undefined" && process.env.NODE_ENV === "development") {
   };
 }
 
-import { LanguageProvider } from "@/lib/i18n/context"
-import type { Locale } from "@/lib/i18n/dictionaries"
-
 export function Providers({
   children,
   session,
-  locale,
 }: {
   children: React.ReactNode
   session?: any
-  locale?: Locale
 }) {
   return (
     <ThemeProvider
@@ -37,9 +32,7 @@ export function Providers({
       disableTransitionOnChange
     >
       <NextAuthSessionProvider session={session ?? null} refetchOnWindowFocus={false}>
-        <LanguageProvider initialLocale={locale}>
-          {children}
-        </LanguageProvider>
+        {children}
       </NextAuthSessionProvider>
     </ThemeProvider>
   )

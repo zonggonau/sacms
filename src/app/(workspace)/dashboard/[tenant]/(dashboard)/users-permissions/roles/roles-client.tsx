@@ -5,7 +5,6 @@ import { Shield, Plus, Users, Lock, Save, Trash2 } from "lucide-react"
 import { PageContainer } from "@/components/ui/page-container"
 import { PageHeader } from "@/components/ui/page-header"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { useLanguage } from "@/lib/i18n/context"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -70,8 +69,6 @@ function toMatrix(permissions: RolePermission[]): Record<string, boolean> {
 }
 
 function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCreated: () => void }) {
-  const { dict, fmt } = useLanguage()
-  const r = dict.members.roles
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: "", slug: "", description: "" })
@@ -86,8 +83,8 @@ function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCre
         body: JSON.stringify(form),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? dict.common.somethingWentWrong)
-      toast.success(fmt(r.createDialog.created, { name: form.name }))
+      if (!res.ok) throw new Error(data.error ?? "Terjadi kesalahan. Silakan coba lagi.")
+      toast.success(`Peran "${form.name}" dibuat`)
       setOpen(false)
       setForm({ name: "", slug: "", description: "" })
       onCreated()
@@ -102,17 +99,17 @@ function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCre
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-2">
-          <Plus className="h-4 w-4" /> {r.newRole}
+          <Plus className="h-4 w-4" /> Peran Baru
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{r.createDialog.title}</DialogTitle>
-          <DialogDescription>{r.createDialog.description}</DialogDescription>
+          <DialogTitle>Buat Peran Anggota</DialogTitle>
+          <DialogDescription>Peran khusus untuk workspace ini. Anggota yang ditugaskan mewarisi izin kontennya.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
           <div className="space-y-1">
-            <Label htmlFor="role-name">{r.createDialog.name} *</Label>
+            <Label htmlFor="role-name">Nama *</Label>
             <Input
               id="role-name"
               placeholder="VIP Member"
@@ -129,7 +126,7 @@ function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCre
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="role-slug">{r.createDialog.slug} *</Label>
+            <Label htmlFor="role-slug">Slug *</Label>
             <Input
               id="role-slug"
               placeholder="vip-member"
@@ -140,20 +137,20 @@ function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCre
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="role-desc">{r.createDialog.descriptionField}</Label>
+            <Label htmlFor="role-desc">Deskripsi</Label>
             <Input
               id="role-desc"
-              placeholder={r.createDialog.optional}
+              placeholder="Opsional"
               value={form.description}
               onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
             />
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <Button type="button" variant="outline" onClick={() => setOpen(false)}>
-              {dict.common.cancel}
+              Batal
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? r.createDialog.creating : r.createDialog.create}
+              {loading ? "Membuat…" : "Buat Peran"}
             </Button>
           </div>
         </form>
@@ -171,14 +168,12 @@ function PermissionMatrix({
   role: Role
   contentTypes: ContentType[]
 }) {
-  const { dict, fmt } = useLanguage()
-  const r = dict.members.roles
   const ACTION_LABELS: Record<Action, string> = {
-    find: r.matrix.list,
-    findOne: r.matrix.read,
-    create: r.matrix.create,
-    update: r.matrix.update,
-    delete: r.matrix.delete,
+    find: "Daftar",
+    findOne: "Baca",
+    create: "Buat",
+    update: "Ubah",
+    delete: "Hapus",
   }
   const [matrix, setMatrix] = useState<Record<string, boolean>>(() => toMatrix(role.permissions))
   const [saving, setSaving] = useState(false)
@@ -186,7 +181,7 @@ function PermissionMatrix({
   const dirty = JSON.stringify(matrix) !== initial
 
   const rows: { slug: string; label: string }[] = [
-    { slug: "*", label: r.matrix.allContentTypes },
+    { slug: "*", label: "Semua tipe konten" },
     ...contentTypes.map((ct) => ({ slug: ct.slug, label: ct.name })),
   ]
 
@@ -209,8 +204,8 @@ function PermissionMatrix({
         body: JSON.stringify({ permissions }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? dict.common.somethingWentWrong)
-      toast.success(fmt(r.matrix.savedFor, { name: role.name }))
+      if (!res.ok) throw new Error(data.error ?? "Terjadi kesalahan. Silakan coba lagi.")
+      toast.success(`Izin disimpan untuk "${role.name}"`)
     } catch (err: any) {
       toast.error(err.message)
     } finally {
@@ -224,7 +219,7 @@ function PermissionMatrix({
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead className="min-w-[180px]">{r.matrix.contentType}</TableHead>
+              <TableHead className="min-w-[180px]">Tipe Konten</TableHead>
               {ACTIONS.map((a) => (
                 <TableHead key={a} className="text-center">
                   {ACTION_LABELS[a]}
@@ -262,7 +257,7 @@ function PermissionMatrix({
       <div className="flex justify-end">
         <Button size="sm" onClick={save} disabled={!dirty || saving} className="gap-2">
           <Save className="h-4 w-4" />
-          {saving ? r.matrix.saving : dirty ? r.matrix.saveChanges : r.matrix.saved}
+          {saving ? "Menyimpan…" : dirty ? "Simpan Perubahan" : "Tersimpan"}
         </Button>
       </div>
     </div>
@@ -281,8 +276,6 @@ function withBold(text: string) {
 }
 
 export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
-  const { dict, fmt } = useLanguage()
-  const r = dict.members.roles
   const [selectedId, setSelectedId] = useState<string>(roles[0]?.id ?? "")
   const selected = roles.find((role) => role.id === selectedId) ?? roles[0]
   const [pendingDelete, setPendingDelete] = useState<Role | null>(null)
@@ -295,11 +288,11 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
   const deleteRole = async (role: Role) => {
     const res = await fetch(`/api/tenant/${tenantSlug}/member-roles/${role.id}`, { method: "DELETE" })
     if (res.ok) {
-      toast.success(r.deleted)
+      toast.success("Peran dihapus")
       refresh()
     } else {
       const data = await res.json().catch(() => ({}))
-      toast.error(data.error ?? dict.common.somethingWentWrong)
+      toast.error(data.error ?? "Terjadi kesalahan. Silakan coba lagi.")
     }
   }
 
@@ -308,10 +301,10 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
       <PageHeader
         title={
           <span className="flex items-center gap-2">
-            <Shield className="h-6 w-6" /> {r.title}
+            <Shield className="h-6 w-6" /> Peran & Perizinan
           </span>
         }
-        description={r.subtitle}
+        description="Kontrol apa yang boleh dilakukan tiap peran anggota terhadap konten Anda via public API."
         action={
           <>
             <Button variant="outline" size="sm" asChild>
@@ -319,7 +312,7 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
                 href={`/dashboard/${tenantSlug}/users-permissions/members`}
                 className="gap-2 flex items-center"
               >
-                <Users className="h-4 w-4" /> {r.membersLink}
+                <Users className="h-4 w-4" /> Anggota
               </a>
             </Button>
             <CreateRoleDialog tenantSlug={tenantSlug} onCreated={refresh} />
@@ -330,9 +323,9 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
-        title={fmt(r.confirmDeleteTitle, { name: pendingDelete?.name ?? "" })}
-        description={r.confirmDeleteDesc}
-        confirmLabel={r.confirmDeleteLabel}
+        title={`Hapus peran "${pendingDelete?.name ?? ""}"?`}
+        description='Anggota dengan peran ini kembali ke "authenticated".'
+        confirmLabel="Hapus peran"
         variant="destructive"
         onConfirm={async () => { if (pendingDelete) await deleteRole(pendingDelete) }}
       />
@@ -359,7 +352,7 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
                   {role.slug}
                 </Badge>
                 <span className="text-xs text-muted-foreground">
-                  {fmt(r.memberCount, { count: role.memberCount })}
+                  {`${role.memberCount} anggota`}
                 </span>
               </div>
             </button>
@@ -375,7 +368,7 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
                   {selected.name}
                   {selected.isSystem && (
                     <Badge variant="secondary" className="text-xs">
-                      {r.system}
+                      Sistem
                     </Badge>
                   )}
                 </h2>
@@ -390,19 +383,19 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
                   className="text-destructive gap-1"
                   onClick={() => setPendingDelete(selected)}
                 >
-                  <Trash2 className="h-4 w-4" /> {r.deleteLabel}
+                  <Trash2 className="h-4 w-4" /> Hapus
                 </Button>
               )}
             </div>
 
             {selected.isSystem && selected.slug === "public" && (
               <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
-                {withBold(r.publicHint)}
+                {withBold("Peran **Public** berlaku untuk permintaan API tanpa autentikasi. Secara default hanya boleh melihat dan membaca konten terbit.")}
               </p>
             )}
             {selected.isSystem && selected.slug === "authenticated" && (
               <p className="text-xs text-muted-foreground bg-muted/40 rounded-md px-3 py-2">
-                {withBold(r.authenticatedHint)}
+                {withBold("Peran **Authenticated** berlaku untuk anggota yang login tanpa peran yang lebih spesifik.")}
               </p>
             )}
 

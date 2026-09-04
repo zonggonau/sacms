@@ -2,43 +2,40 @@
 
 import { getIcon } from "../icon-map"
 import type { FeatureItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 import { Cpu, Server, Layers, LayoutTemplate, HardDrive, CreditCard } from "lucide-react"
 
 export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
-  const { dict, locale } = useLanguage()
-
   // Default localized features fallback
   const defaultFeatures = [
     {
       icon: "Layers",
-      title: dict.features?.items?.multiTenancy?.title || "Hybrid Multi-Tenancy & Dedicated Appliance",
-      description: dict.features?.items?.multiTenancy?.desc || "Mulai dari shared multi-tenant hemat biaya hingga PostgreSQL 17 + MinIO Appliance terisolasi penuh.",
+      title: "Hybrid Multi-Tenancy & Dedicated Appliance",
+      description: "Mulai dari shared multi-tenant hemat biaya hingga PostgreSQL 17 + MinIO Appliance terisolasi penuh untuk privasi data absolut.",
     },
     {
       icon: "Sparkles",
-      title: dict.features?.items?.aiBuilder?.title || "1-Prompt AI Fullstack Website Engine",
-      description: dict.features?.items?.aiBuilder?.desc || "Bangun landing page & website instan berbasis Next.js dengan AI prompt, preview interaktif, dan 1-click edge deploy.",
+      title: "1-Prompt AI Fullstack Website Engine",
+      description: "Bangun landing page & website instan berbasis Next.js dengan AI prompt, preview interaktif, export kode, dan 1-click edge deploy.",
     },
     {
       icon: "Database",
-      title: dict.features?.items?.apiFirst?.title || "Dynamic GraphQL, REST API & MCP",
-      description: dict.features?.items?.apiFirst?.desc || "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol.",
+      title: "Dynamic GraphQL, REST API & MCP",
+      description: "Skema otomatis sesuai data model Anda, query filter canggih ala Strapi, dan integrasi AI IDE via Model Context Protocol (MCP).",
     },
     {
       icon: "Globe",
-      title: dict.features?.items?.customDns?.title || "Vercel-Style Custom DNS & Registrar",
-      description: dict.features?.items?.customDns?.desc || "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
+      title: "Vercel-Style Custom DNS & Registrar",
+      description: "Manajemen domain instan dengan verifikasi otomatis A-Record Apex, CNAME Subdomain, dan pencarian domain terintegrasi.",
     },
     {
       icon: "CreditCard",
-      title: dict.features?.items?.billing?.title || "Billing Otomatis QRIS & Midtrans",
-      description: dict.features?.items?.billing?.desc || "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota.",
+      title: "Billing Otomatis QRIS & Midtrans",
+      description: "Tagihan otomatis berbasis workspace dan akun (QRIS, VA, Kartu Kredit) dengan proteksi akses dan top-up kuota terintegrasi.",
     },
     {
       icon: "ShieldCheck",
-      title: dict.features?.items?.workflow?.title || "Enterprise RBAC & 7-Stage Workflow",
-      description: dict.features?.items?.workflow?.desc || "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published).",
+      title: "Enterprise RBAC & 7-Stage Workflow",
+      description: "Kontrol hak akses tim bertingkat dan alur publikasi konten terstruktur (Draft -> In Review -> Scheduled -> Published) lengkap dengan audit log.",
     },
   ]
 
@@ -54,13 +51,13 @@ export function FeaturesBento({ features = [] }: { features?: FeatureItem[] }) {
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm shadow-sm shadow-primary/20">
-            {dict.features.badge}
+            Keunggulan Platform
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-3xl mx-auto leading-tight">
-            {dict.features.title}
+            Dibangun untuk Skalabilitas, Kecepatan & Keamanan Maksimal
           </h2>
           <p className="text-muted-foreground text-sm sm:text-base max-w-2xl mx-auto font-medium leading-relaxed">
-            {dict.features.subtitle}
+            Arsitektur headless API-first yang memberi Anda kebebasan penuh untuk mendistribusikan konten ke berbagai platform.
           </p>
         </div>
 

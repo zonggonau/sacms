@@ -3,12 +3,9 @@
 import Link from "next/link"
 import type { FooterData } from "../types"
 import { Logo } from "@/components/ui/logo"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function FooterSection({ footer }: { footer: FooterData | null }) {
-  const { dict, locale } = useLanguage()
-
-  const brandDesc = footer?.description || dict.footer.brandDesc
+  const brandDesc = footer?.description || "SaCMS — Smart Content Management System. Build smarter. Manage easier. Scale faster. Platform SaaS Headless CMS terdepan untuk transformasi digital."
 
   return (
     <footer className="pt-20 pb-10 bg-background border-t border-border/50 relative overflow-hidden">
@@ -31,54 +28,54 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
           <div className="lg:col-span-3 grid grid-cols-2 md:grid-cols-3 gap-8">
             <div>
               <p className="font-bold text-foreground mb-4 text-xs uppercase tracking-widest text-primary">
-                {dict.footer.sections.product}
+                Produk
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
                 <Link href="/#fitur" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.features}
+                  Fitur
                 </Link>
                 <Link href="/#pricing" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.pricing}
+                  Harga
                 </Link>
                 <Link href="/#addons" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.addons.badge}
+                  Ekstra & Booster
                 </Link>
                 <Link href="/#sektor" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.sectors.badge}
+                  Solusi Sektoral
                 </Link>
               </div>
             </div>
 
             <div>
               <p className="font-bold text-foreground mb-4 text-xs uppercase tracking-widest text-primary">
-                {dict.footer.sections.company}
+                Perusahaan
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
                 <Link href="/#about" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.about}
+                  Tentang
                 </Link>
                 <Link href="/#testimonials" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.testimonials.badge}
+                  Testimoni
                 </Link>
                 <Link href="/#faq" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.faq.badge}
+                  Pertanyaan Umum
                 </Link>
               </div>
             </div>
 
             <div>
               <p className="font-bold text-foreground mb-4 text-xs uppercase tracking-widest text-primary">
-                {dict.footer.sections.resources}
+                Sumber Daya
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
                 <Link href="/docs" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.docs}
+                  Docs
                 </Link>
                 <Link href="/login" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.login}
+                  Masuk
                 </Link>
                 <Link href="/register" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  {dict.nav.getStarted}
+                  Mulai Gratis
                 </Link>
               </div>
             </div>
@@ -87,7 +84,7 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
 
         <div className="border-t border-border/50 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4 text-center sm:text-left">
           <p className="text-xs sm:text-sm text-muted-foreground font-medium">
-            © {new Date().getFullYear()} <span className="text-foreground font-bold">{footer?.brand_name || "SaCMS"}</span>. {dict.footer.rights}
+            © {new Date().getFullYear()} <span className="text-foreground font-bold">{footer?.brand_name || "SaCMS"}</span>. Hak cipta dilindungi undang-undang. Smart Content Management System.
           </p>
         </div>
       </div>

@@ -3,11 +3,8 @@
 import { getIcon } from "../icon-map"
 import { formatRupiah } from "@/lib/utils"
 import type { AddonItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
-  const { dict, locale } = useLanguage()
-
   if (!addons || addons.length === 0) return null
 
   return (
@@ -20,13 +17,13 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.addons.badge}
+            Ekstra & Booster
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.addons.title}
+            Tingkatkan Kapasitas Sesuai Kebutuhan
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.addons.subtitle}
+            Paket top-up kuota AI, penyimpanan S3, dan API calls tambahan tanpa perlu upgrade tier.
           </p>
         </div>
 
@@ -61,7 +58,7 @@ export function AddonsSection({ addons = [] }: { addons?: AddonItem[] }) {
                       </span>
                     ) : (
                       <span className="inline-flex items-center text-xs font-bold text-green-500 px-3 py-1 bg-green-500/10 rounded-full">
-                        {locale === "en" ? "Free" : "Gratis"}
+                        Gratis
                       </span>
                     )}
                   </div>

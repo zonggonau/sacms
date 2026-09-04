@@ -2,11 +2,8 @@
 
 import { Quote } from "lucide-react"
 import type { TestimonialItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function TestimonialsSection({ testimonials = [] }: { testimonials?: TestimonialItem[] }) {
-  const { dict } = useLanguage()
-
   if (!testimonials || testimonials.length === 0) return null
 
   return (
@@ -19,13 +16,13 @@ export function TestimonialsSection({ testimonials = [] }: { testimonials?: Test
       <div className="container px-6 max-w-7xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.testimonials.badge}
+            Testimoni
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.testimonials.title}
+            Apa Kata Para Pengembang & Bisnis
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.testimonials.subtitle}
+            Cerita nyata dari tim yang mempercepat peluncuran produk mereka bersama SaCMS.
           </p>
         </div>
 

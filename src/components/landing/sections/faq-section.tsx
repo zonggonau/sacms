@@ -3,16 +3,28 @@
 import { useState } from "react"
 import { ChevronDown } from "lucide-react"
 import type { FaqItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
-  const { dict, locale } = useLanguage()
   const [openFaq, setOpenFaq] = useState<number | null>(0)
 
-  const defaultFaq: FaqItem[] = dict.faq.items.map(item => ({
-    question: item.q,
-    answer: item.a,
-  }))
+  const defaultFaq: FaqItem[] = [
+    {
+      question: "Apa itu SaCMS (Smart Content Management System)?",
+      answer: "SaCMS adalah Smart Content Management System headless multi-tenant modern berbasis Next.js 16 dan PostgreSQL 17. SaCMS memisahkan penyimpanan data dari frontend untuk memberikan kebebasan penuh dalam mendistribusikan konten.",
+    },
+    {
+      question: "Bagaimana cara kerja Dedicated VPS/VDS?",
+      answer: "Saat Anda berlangganan paket Cloud VPS atau Gov VDS, sistem kami secara otomatis mem-provisioning server cloud terisolasi dengan database PostgreSQL 17, Object Storage S3, dan hosting frontend khusus untuk workspace Anda.",
+    },
+    {
+      question: "Metode pembayaran apa saja yang didukung?",
+      answer: "Kami mendukung seluruh pembayaran lokal via Midtrans: QRIS, GoPay, OVO, ShopeePay, Transfer Bank (BCA, Mandiri, BNI, BRI, Permata), dan Kartu Kredit Visa/Mastercard.",
+    },
+    {
+      question: "Apakah saya bisa menggunakan database PostgreSQL saya sendiri (BYODB)?",
+      answer: "Ya! Anda dapat memasukkan string koneksi PostgreSQL Anda sendiri (seperti Supabase, Neon, AWS RDS) langsung di menu Pengaturan Workspace.",
+    },
+  ]
 
   const activeFaq = faq && faq.length > 0 ? faq : defaultFaq
 
@@ -26,13 +38,13 @@ export function FaqSection({ faq = [] }: { faq?: FaqItem[] }) {
       <div className="container px-6 max-w-4xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.faq.badge}
+            Pertanyaan Umum
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.faq.title}
+            Semua yang Perlu Anda Ketahui
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.faq.subtitle}
+            Pertanyaan yang sering diajukan seputar platform, keamanan, dan metode pembayaran.
           </p>
         </div>
 

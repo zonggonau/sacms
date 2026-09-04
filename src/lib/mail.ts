@@ -1,7 +1,6 @@
 import nodemailer from "nodemailer"
 import { Resend } from "resend"
 import { getResolvedMailConfig, getPlatformSettings } from "./settings"
-import { DICTIONARY, DEFAULT_LOCALE, isLocale, type Locale } from "./i18n/dictionaries"
 
 // Cached transporter per config signature
 let cachedTransporter: nodemailer.Transporter | null = null
@@ -296,11 +295,6 @@ type MemberMailTenant = {
   memberPasswordResetRedirect?: string | null
 }
 
-/** Resolve the email locale: explicit arg > tenant default > "id". */
-function resolveEmailLocale(explicit?: string | null): Locale {
-  return isLocale(explicit) ? explicit : DEFAULT_LOCALE
-}
-
 function fill(template: string, vars: Record<string, string>): string {
   return template.replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? `{${k}}`)
 }
@@ -328,19 +322,34 @@ function memberAuthEmailHtml(copy: {
     </div>`
 }
 
-/**
- * Headless-member email-verification email, tenant-aware and localised.
- * `locale` typically comes from Member.metadata.locale.
- */
+/** Headless-member email copy, in Bahasa Indonesia — SaCMS's sole UI language. */
+const MEMBER_EMAIL_COPY = {
+  verify: {
+    subject: "Verifikasi alamat email Anda — {brand}",
+    heading: "Konfirmasi alamat email Anda",
+    body: "Hai {name}, selamat datang di {brand}. Silakan konfirmasi alamat email Anda untuk mengaktifkan akun:",
+    button: "Konfirmasi email",
+    linkFallback: "Atau tempel tautan ini di browser Anda:",
+    expiry: "Tautan ini kedaluwarsa dalam 24 jam. Jika Anda tidak membuat akun, abaikan email ini.",
+  },
+  reset: {
+    subject: "Atur ulang kata sandi Anda — {brand}",
+    heading: "Atur ulang kata sandi Anda",
+    body: "Kami menerima permintaan untuk mengatur ulang kata sandi akun {brand} Anda. Klik di bawah untuk memilih kata sandi baru:",
+    button: "Atur ulang kata sandi",
+    linkFallback: "Atau tempel tautan ini di browser Anda:",
+    expiry: "Tautan ini kedaluwarsa dalam 1 jam. Jika Anda tidak meminta ini, abaikan email ini.",
+  },
+} as const
+
+/** Headless-member email-verification email, tenant-aware. */
 export async function sendMemberVerificationEmail(
   tenant: MemberMailTenant,
   email: string,
   code: string,
   name: string = "there",
-  locale?: string | null,
 ) {
-  const l = resolveEmailLocale(locale)
-  const t = DICTIONARY[l].email.verify
+  const t = MEMBER_EMAIL_COPY.verify
   const baseUrl = await getBaseUrl()
   const link = buildMemberAuthLink(
     tenant.memberEmailConfirmationRedirect,
@@ -360,15 +369,13 @@ export async function sendMemberVerificationEmail(
   return dispatch(subject, html, email, tenant.customEmailSender)
 }
 
-/** Headless-member password-reset email, tenant-aware and localised. */
+/** Headless-member password-reset email, tenant-aware. */
 export async function sendMemberPasswordResetEmail(
   tenant: MemberMailTenant,
   email: string,
   code: string,
-  locale?: string | null,
 ) {
-  const l = resolveEmailLocale(locale)
-  const t = DICTIONARY[l].email.reset
+  const t = MEMBER_EMAIL_COPY.reset
   const baseUrl = await getBaseUrl()
   const link = buildMemberAuthLink(
     tenant.memberPasswordResetRedirect,

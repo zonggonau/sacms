@@ -5,20 +5,18 @@ import Link from "next/link"
 import type { CtaData } from "../types"
 import { useSession } from "next-auth/react"
 import { LayoutDashboard } from "lucide-react"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function CtaBanner({ cta }: { cta: CtaData | null }) {
   const { data: session, status } = useSession()
-  const { dict, locale } = useLanguage()
 
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
   const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
-  const title = cta?.title || dict.cta.title
-  const description = cta?.description || dict.cta.description
-  const buttonPrimary = cta?.button_primary_text || dict.cta.buttonPrimary
-  const buttonSecondary = cta?.button_secondary_text || dict.cta.buttonSecondary
+  const title = cta?.title || "Build smarter. Manage easier. Scale faster."
+  const description = cta?.description || "Daftar sekarang di SaCMS (Smart Content Management System) dan nikmati kemudahan mengelola konten multi-tenant dengan teknologi kelas dunia."
+  const buttonPrimary = cta?.button_primary_text || "Mulai Gratis Sekarang"
+  const buttonSecondary = cta?.button_secondary_text || "Hubungi Penjualan"
 
   return (
     <section className="py-24 lg:py-32 relative overflow-hidden bg-background">
@@ -45,7 +43,7 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
                 <Link href={dashboardUrl}>
                   <Button size="lg" className="w-full sm:w-auto h-11 px-8 bg-white text-primary hover:bg-white/90 rounded-full font-bold text-sm shadow-xl shadow-black/10 transition-all hover:scale-105 gap-2">
                     <LayoutDashboard className="w-4 h-4" />
-                    {dict.nav.dashboard}
+                    Buka Dashboard
                   </Button>
                 </Link>
               ) : (

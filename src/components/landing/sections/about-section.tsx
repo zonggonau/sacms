@@ -1,13 +1,10 @@
 "use client"
 
 import type { AboutData } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function AboutSection({ about }: { about: AboutData | null }) {
-  const { dict, locale } = useLanguage()
-
-  const title = about?.title || dict.about.title
-  const description = about?.description || `<p>${dict.about.desc1}</p><p class="mt-3">${dict.about.desc2}</p>`
+  const title = about?.title || "Smart Content Management System"
+  const description = about?.description || `<p>SaCMS (Smart Content Management System) lahir dengan misi: 'Build smarter. Manage easier. Scale faster.' Kami mendemokratisasi teknologi enterprise-grade untuk seluruh pengembang, bisnis, dan instansi.</p><p class="mt-3">Dibangun dengan arsitektur headless modern, kami memastikan setiap data terkelola dengan aman, terisolasi, dan berkinerja maksimal.</p>`
 
   return (
     <section id="about" className="py-24 sm:py-32 relative bg-background border-t border-border/50 overflow-hidden">
@@ -20,7 +17,7 @@ export function AboutSection({ about }: { about: AboutData | null }) {
         <div className="flex-1 space-y-6">
           <div>
             <div className="inline-flex items-center justify-center px-4 py-1.5 mb-4 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-              {dict.about.badge}
+              Tentang SaCMS
             </div>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-black text-foreground tracking-tight leading-tight">
               {title}
@@ -44,10 +41,10 @@ export function AboutSection({ about }: { about: AboutData | null }) {
 
         <div className="flex-1 w-full grid grid-cols-2 gap-4 sm:gap-6">
           {[
-            { label: locale === "en" ? "Founded" : "Didirikan", value: about?.founded || "2026", icon: "🚀" },
-            { label: locale === "en" ? "Architecture" : "Arsitektur", value: "Multi-Tenant", icon: "🏢" },
-            { label: locale === "en" ? "API Protocol" : "Protokol API", value: "REST + GraphQL", icon: "⚡" },
-            { label: locale === "en" ? "Storage" : "Penyimpanan", value: "Cloudflare R2 / S3", icon: "☁️" },
+            { label: "Didirikan", value: about?.founded || "2026", icon: "🚀" },
+            { label: "Arsitektur", value: "Multi-Tenant", icon: "🏢" },
+            { label: "Protokol API", value: "REST + GraphQL", icon: "⚡" },
+            { label: "Penyimpanan", value: "Cloudflare R2 / S3", icon: "☁️" },
           ].map((item, i) => (
             <div 
               key={item.label} 

@@ -5,7 +5,6 @@ import Link from "next/link"
 import type { HeroData } from "../types"
 import { useSession } from "next-auth/react"
 import { LayoutDashboard, Database, Shield, Zap, CreditCard, Sparkles } from "lucide-react"
-import { useLanguage } from "@/lib/i18n/context"
 
 function HighlightedHeadline({ text }: { text: string }) {
   const words = (text || "").split(" ")
@@ -21,17 +20,16 @@ function HighlightedHeadline({ text }: { text: string }) {
 
 export function HeroSection({ data }: { data: HeroData | null }) {
   const { data: session, status } = useSession()
-  const { dict, locale } = useLanguage()
 
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
   const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
   const badgeText = data?.badge_text || ""
-  const headlineText = data?.headline || dict.hero.title
-  const subheadlineText = data?.subheadline || dict.hero.subtitle
-  const ctaPrimary = data?.cta_primary || dict.hero.ctaPrimary
-  const ctaSecondary = data?.cta_secondary || dict.hero.ctaSecondary
+  const headlineText = data?.headline || "Build smarter. Manage easier. Scale faster."
+  const subheadlineText = data?.subheadline || "Platform Smart Content Management System (SaCMS) modern dengan Dedicated PostgreSQL 17 Appliance, AI Website Builder bawaan, Edge Custom DNS, Dynamic GraphQL, dan Billing Midtrans otomatis."
+  const ctaPrimary = data?.cta_primary || "Coba Gratis Sekarang"
+  const ctaSecondary = data?.cta_secondary || "Dokumentasi API"
 
   return (
     <section className="min-h-[80vh] flex items-center justify-center pt-24 pb-16 relative overflow-hidden">
@@ -64,7 +62,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
             <Link href={dashboardUrl}>
               <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40 gap-2">
                 <LayoutDashboard className="w-4 h-4" />
-                {dict.nav.dashboard}
+                Buka Dashboard
               </Button>
             </Link>
           ) : (

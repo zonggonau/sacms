@@ -1,4 +1,4 @@
-﻿"use client"
+"use client"
 
 import { useState } from "react"
 import { Users, UserPlus, Search, Shield, MoreHorizontal, CheckCircle, XCircle, Clock } from "lucide-react"
@@ -36,7 +36,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { PageContainer } from "@/components/ui/page-container"
 import { PageHeader } from "@/components/ui/page-header"
 import { ConfirmDialog } from "@/components/ui/confirm-dialog"
-import { useLanguage } from "@/lib/i18n/context"
 import { toast } from "sonner"
 
 interface Member {
@@ -72,8 +71,6 @@ interface Props {
 }
 
 function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; initial: MemberAuthPolicy }) {
-  const { dict } = useLanguage()
-  const m = dict.members
   const [policy, setPolicy] = useState<MemberAuthPolicy>(initial)
   const [saving, setSaving] = useState<string | null>(null)
 
@@ -90,9 +87,9 @@ function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; i
       })
       if (!res.ok) {
         const data = await res.json().catch(() => ({}))
-        throw new Error(data.error ?? dict.common.somethingWentWrong)
+        throw new Error(data.error ?? "Terjadi kesalahan. Silakan coba lagi.")
       }
-      toast.success(m.policy.updated)
+      toast.success("Kebijakan registrasi diperbarui")
     } catch (err: any) {
       setPolicy(prev)
       toast.error(err.message)
@@ -104,12 +101,12 @@ function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; i
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-base">{m.policy.heading}</CardTitle>
+        <CardTitle className="text-base">Kebijakan Auth Headless</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <Label htmlFor="allow-reg">{m.policy.allowRegistration}</Label>
+            <Label htmlFor="allow-reg">Izinkan registrasi mandiri</Label>
             <p className="text-xs text-muted-foreground">
               <code className="text-[11px]">/auth/register</code>
             </p>
@@ -123,7 +120,7 @@ function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; i
         </div>
         <div className="flex items-center justify-between gap-4">
           <div className="space-y-0.5">
-            <Label htmlFor="require-verify">{m.policy.requireVerification}</Label>
+            <Label htmlFor="require-verify">Wajibkan verifikasi email</Label>
             <p className="text-xs text-muted-foreground">
               <code className="text-[11px]">pending_verification</code>
             </p>
@@ -141,8 +138,6 @@ function RegistrationPolicyCard({ tenantSlug, initial }: { tenantSlug: string; i
 }
 
 function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string; roles: Role[]; onSuccess: (m: Member) => void }) {
-  const { dict } = useLanguage()
-  const m = dict.members
   const [open, setOpen] = useState(false)
   const [loading, setLoading] = useState(false)
   const [form, setForm] = useState({ name: "", email: "", password: "", role: "authenticated" })
@@ -157,8 +152,8 @@ function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string;
         body: JSON.stringify(form),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error ?? dict.common.somethingWentWrong)
-      toast.success(m.actions.created)
+      if (!res.ok) throw new Error(data.error ?? "Terjadi kesalahan. Silakan coba lagi.")
+      toast.success("Pengguna berhasil dibuat")
       onSuccess(data.member)
       setOpen(false)
       setForm({ name: "", email: "", password: "", role: "authenticated" })
@@ -173,29 +168,29 @@ function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string;
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
         <Button size="sm" className="gap-2">
-          <UserPlus className="h-4 w-4" /> {dict.common.add}
+          <UserPlus className="h-4 w-4" /> Tambah
         </Button>
       </DialogTrigger>
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>{m.addUser}</DialogTitle>
-          <DialogDescription>{m.subtitle.replace("{count}", String(roles.length))}</DialogDescription>
+          <DialogTitle>Tambah Pengguna Aplikasi</DialogTitle>
+          <DialogDescription>{`${roles.length} anggota end-user di seluruh aplikasi Anda`}</DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4 mt-2">
           <div className="space-y-1">
-            <Label htmlFor="name">{m.form.name}</Label>
-            <Input id="name" placeholder={m.form.namePlaceholder} value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
+            <Label htmlFor="name">Nama</Label>
+            <Input id="name" placeholder="Nama lengkap" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="email">{m.form.email} *</Label>
+            <Label htmlFor="email">Email *</Label>
             <Input id="email" type="email" placeholder="user@example.com" required value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="password">{m.form.password} *</Label>
-            <Input id="password" type="password" placeholder={m.form.passwordPlaceholder} required minLength={8} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
+            <Label htmlFor="password">Kata Sandi *</Label>
+            <Input id="password" type="password" placeholder="Min. 8 karakter" required minLength={8} value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} />
           </div>
           <div className="space-y-1">
-            <Label htmlFor="role">{m.form.role}</Label>
+            <Label htmlFor="role">Peran</Label>
             <Select value={form.role} onValueChange={v => setForm(f => ({ ...f, role: v }))}>
               <SelectTrigger id="role"><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -204,8 +199,8 @@ function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string;
             </Select>
           </div>
           <div className="flex justify-end gap-2 pt-2">
-            <Button type="button" variant="outline" onClick={() => setOpen(false)}>{dict.common.cancel}</Button>
-            <Button type="submit" disabled={loading}>{loading ? m.form.creating : m.form.create}</Button>
+            <Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button>
+            <Button type="submit" disabled={loading}>{loading ? "Membuat…" : "Buat Pengguna"}</Button>
           </div>
         </form>
       </DialogContent>
@@ -214,12 +209,10 @@ function AddMemberDialog({ tenantSlug, roles, onSuccess }: { tenantSlug: string;
 }
 
 export function MembersClient({ tenantSlug, initialMembers, roles, total, policy }: Props) {
-  const { dict, fmt, locale } = useLanguage()
-  const m = dict.members
   const STATUS_BADGES: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-    active: { label: m.filters.active, variant: "default" },
-    suspended: { label: m.filters.suspended, variant: "destructive" },
-    pending_verification: { label: m.filters.pending, variant: "secondary" },
+    active: { label: "Aktif", variant: "default" },
+    suspended: { label: "Ditangguhkan", variant: "destructive" },
+    pending_verification: { label: "Menunggu", variant: "secondary" },
   }
   const [members, setMembers] = useState<Member[]>(initialMembers)
   const [search, setSearch] = useState("")
@@ -243,7 +236,7 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
     })
     if (res.ok) {
       setMembers(prev => prev.map(mem => mem.id === member.id ? { ...mem, status: newStatus } : mem))
-      toast.success(newStatus === "active" ? m.actions.reactivated : m.actions.suspended)
+      toast.success(newStatus === "active" ? "Pengguna diaktifkan kembali" : "Pengguna ditangguhkan")
     }
   }
 
@@ -251,20 +244,20 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
     const res = await fetch(`/api/tenant/${tenantSlug}/app-members/${memberId}`, { method: "DELETE" })
     if (res.ok) {
       setMembers(prev => prev.filter(mem => mem.id !== memberId))
-      toast.success(m.actions.deleted)
+      toast.success("Pengguna dihapus")
     }
   }
 
   return (
     <PageContainer>
       <PageHeader
-        title={<span className="flex items-center gap-2"><Users className="h-6 w-6" /> {m.title}</span>}
-        description={fmt(m.subtitle, { count: total })}
+        title={<span className="flex items-center gap-2"><Users className="h-6 w-6" /> Pengguna Aplikasi</span>}
+        description={`${total} anggota end-user di seluruh aplikasi Anda`}
         action={
           <>
             <Button variant="outline" size="sm" asChild>
               <a href={`/dashboard/${tenantSlug}/users-permissions/roles`} className="gap-2 flex items-center">
-                <Shield className="h-4 w-4" /> {m.manageRoles}
+                <Shield className="h-4 w-4" /> Kelola Peran
               </a>
             </Button>
             <AddMemberDialog tenantSlug={tenantSlug} roles={roles} onSuccess={mem => setMembers(prev => [mem, ...prev])} />
@@ -275,9 +268,9 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
       <ConfirmDialog
         open={pendingDelete !== null}
         onOpenChange={(open) => !open && setPendingDelete(null)}
-        title={m.actions.confirmDeleteTitle}
-        description={m.actions.confirmDeleteDesc}
-        confirmLabel={m.actions.confirmDeleteLabel}
+        title="Hapus pengguna ini?"
+        description="Tindakan ini tidak dapat dibatalkan."
+        confirmLabel="Hapus pengguna"
         variant="destructive"
         onConfirm={async () => { if (pendingDelete) await handleDelete(pendingDelete) }}
       />
@@ -288,21 +281,21 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
       <div className="flex gap-3 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input className="pl-9" placeholder={m.filters.search} value={search} onChange={e => setSearch(e.target.value)} />
+          <Input className="pl-9" placeholder="Cari berdasarkan email atau nama…" value={search} onChange={e => setSearch(e.target.value)} />
         </div>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-36"><SelectValue placeholder={m.filters.status} /></SelectTrigger>
+          <SelectTrigger className="w-36"><SelectValue placeholder="Status" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{m.filters.allStatus}</SelectItem>
-            <SelectItem value="active">{m.filters.active}</SelectItem>
-            <SelectItem value="suspended">{m.filters.suspended}</SelectItem>
-            <SelectItem value="pending_verification">{m.filters.pending}</SelectItem>
+            <SelectItem value="all">Semua Status</SelectItem>
+            <SelectItem value="active">Aktif</SelectItem>
+            <SelectItem value="suspended">Ditangguhkan</SelectItem>
+            <SelectItem value="pending_verification">Menunggu</SelectItem>
           </SelectContent>
         </Select>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40"><SelectValue placeholder={m.filters.role} /></SelectTrigger>
+          <SelectTrigger className="w-40"><SelectValue placeholder="Peran" /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="all">{m.filters.allRoles}</SelectItem>
+            <SelectItem value="all">Semua Peran</SelectItem>
             {roles.map(r => <SelectItem key={r.id} value={r.slug}>{r.name}</SelectItem>)}
           </SelectContent>
         </Select>
@@ -313,11 +306,11 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/40">
-              <TableHead>{m.table.user}</TableHead>
-              <TableHead>{m.table.role}</TableHead>
-              <TableHead>{m.table.status}</TableHead>
-              <TableHead>{m.table.joined}</TableHead>
-              <TableHead>{m.table.lastLogin}</TableHead>
+              <TableHead>Pengguna</TableHead>
+              <TableHead>Peran</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Bergabung</TableHead>
+              <TableHead>Login Terakhir</TableHead>
               <TableHead className="w-12"></TableHead>
             </TableRow>
           </TableHeader>
@@ -325,7 +318,7 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
             {filtered.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} className="text-center py-12 text-muted-foreground">
-                  {search || statusFilter !== "all" || roleFilter !== "all" ? dict.common.noResults : dict.common.noData}
+                  {search || statusFilter !== "all" || roleFilter !== "all" ? "Tidak ada hasil" : "Belum ada data"}
                 </TableCell>
               </TableRow>
             ) : filtered.map(member => (
@@ -337,13 +330,13 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
                       <AvatarFallback className="text-xs">{(member.name ?? member.email).slice(0, 2).toUpperCase()}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <div className="font-medium text-sm">{member.name ?? <span className="text-muted-foreground italic">{m.table.noName}</span>}</div>
+                      <div className="font-medium text-sm">{member.name ?? <span className="text-muted-foreground italic">Tanpa nama</span>}</div>
                       <div className="text-xs text-muted-foreground">{member.email}</div>
                     </div>
                     {member.emailVerified ? (
-                      <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-1" title={m.table.emailVerified} />
+                      <CheckCircle className="h-3.5 w-3.5 text-green-500 ml-1" title="Email terverifikasi" />
                     ) : (
-                      <XCircle className="h-3.5 w-3.5 text-muted-foreground ml-1" title={m.table.emailNotVerified} />
+                      <XCircle className="h-3.5 w-3.5 text-muted-foreground ml-1" title="Email belum terverifikasi" />
                     )}
                   </div>
                 </TableCell>
@@ -356,10 +349,10 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
                   </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {new Date(member.createdAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { day: "2-digit", month: "short", year: "numeric" })}
+                  {new Date(member.createdAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" })}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
-                  {member.lastLoginAt ? new Date(member.lastLoginAt).toLocaleDateString(locale === "id" ? "id-ID" : "en-US", { day: "2-digit", month: "short", year: "numeric" }) : <span className="italic">{m.table.never}</span>}
+                  {member.lastLoginAt ? new Date(member.lastLoginAt).toLocaleDateString("id-ID", { day: "2-digit", month: "short", year: "numeric" }) : <span className="italic">Belum pernah</span>}
                 </TableCell>
                 <TableCell>
                   <DropdownMenu>
@@ -370,10 +363,10 @@ export function MembersClient({ tenantSlug, initialMembers, roles, total, policy
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                       <DropdownMenuItem onClick={() => handleSuspend(member)}>
-                        {member.status === "active" ? m.filters.suspended : m.actions.reactivated}
+                        {member.status === "active" ? "Ditangguhkan" : "Pengguna diaktifkan kembali"}
                       </DropdownMenuItem>
                       <DropdownMenuSeparator />
-                      <DropdownMenuItem className="text-destructive" onClick={() => setPendingDelete(member.id)}>{m.actions.deleteUser}</DropdownMenuItem>
+                      <DropdownMenuItem className="text-destructive" onClick={() => setPendingDelete(member.id)}>Hapus Pengguna</DropdownMenuItem>
                     </DropdownMenuContent>
                   </DropdownMenu>
                 </TableCell>

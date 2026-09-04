@@ -2,17 +2,34 @@
 
 import { getIcon } from "../icon-map"
 import type { WorkflowStep } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }) {
-  const { dict, locale } = useLanguage()
-
-  const defaultSteps: WorkflowStep[] = dict.workflow.steps.map((s, idx) => ({
-    step: s.step,
-    title: s.title,
-    description: s.desc,
-    icon: idx === 0 ? "FolderPlus" : idx === 1 ? "FileEdit" : idx === 2 ? "Send" : "BarChart3",
-  }))
+  const defaultSteps: WorkflowStep[] = [
+    {
+      step: 1,
+      title: "Buat Workspace & Skema Konten",
+      description: "Tentukan struktur data sesuai kebutuhan Anda melalui visual schema builder.",
+      icon: "FolderPlus",
+    },
+    {
+      step: 2,
+      title: "Tulis & Kolaborasi dengan Tim",
+      description: "Buat artikel, produk, atau halaman dengan dukungan AI Content Generator.",
+      icon: "FileEdit",
+    },
+    {
+      step: 3,
+      title: "Publikasi via Multi-Channel API",
+      description: "Distribusikan konten ke Web Next.js, Mobile App iOS/Android, atau IoT secara realtime.",
+      icon: "Send",
+    },
+    {
+      step: 4,
+      title: "Pantau Traffic & Analitik",
+      description: "Lacak performa API, kuota penggunaan, dan log audit keamanan dalam satu dashboard.",
+      icon: "BarChart3",
+    },
+  ]
 
   const activeSteps = workflow && workflow.length > 0 ? workflow : defaultSteps
 
@@ -26,13 +43,13 @@ export function WorkflowSection({ workflow = [] }: { workflow?: WorkflowStep[] }
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.workflow.badge}
+            Cara Kerja
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.workflow.title}
+            Alur Kerja Super Cepat dalam 4 Langkah
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.workflow.subtitle}
+            Bangun dan publikasikan konten Anda dari ide hingga online dalam hitungan menit.
           </p>
         </div>
 

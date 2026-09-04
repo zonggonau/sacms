@@ -2,11 +2,8 @@
 
 import Image from "next/image"
 import type { OwnerItem } from "../types"
-import { useLanguage } from "@/lib/i18n/context"
 
 export function TeamSection({ owners }: { owners: OwnerItem[] }) {
-  const { dict } = useLanguage()
-
   if (owners.length === 0) return null
 
   return (
@@ -19,13 +16,13 @@ export function TeamSection({ owners }: { owners: OwnerItem[] }) {
       <div className="container px-6 max-w-6xl mx-auto relative z-10">
         <div className="text-center mb-16 space-y-3">
           <div className="inline-flex items-center justify-center px-4 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-primary text-xs font-bold uppercase tracking-widest backdrop-blur-sm">
-            {dict.team.badge}
+            Tim Pengembang
           </div>
           <h2 className="text-3xl md:text-4xl font-black text-foreground tracking-tight max-w-2xl mx-auto">
-            {dict.team.title}
+            Dibuat dengan Dedikasi untuk Indonesia
           </h2>
           <p className="text-sm sm:text-base text-muted-foreground max-w-2xl mx-auto font-medium">
-            {dict.team.subtitle}
+            Para insinyur perangkat lunak dan arsitek cloud yang berkomitmen membangun infrastruktur digital terbaik.
           </p>
         </div>
 

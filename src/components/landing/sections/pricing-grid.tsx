@@ -4,7 +4,6 @@ import { useState } from "react"
 import { Check, Server, Zap, Sparkles, Layers, ShieldCheck, HardDrive } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
-import { useLanguage } from "@/lib/i18n/context"
 
 interface PricingGridProps {
   plans?: any[]
@@ -19,14 +18,13 @@ export function PricingGrid({
   label, 
   bgClass = "bg-card" 
 }: PricingGridProps) {
-  const { dict } = useLanguage()
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'cloud' | 'vps' | 'storage' | 'vds'>('all')
 
   if (!plans || plans.length === 0) return null
 
-  const sectionLabel = label || dict.pricing.badge
-  const sectionTitle = title || dict.pricing.title
-  const sectionSubtitle = dict.pricing.subtitle
+  const sectionLabel = label || "Paket Workspace"
+  const sectionTitle = title || "Pilihan Paket Fleksibel & Transparan"
+  const sectionSubtitle = "Mulai dari Cloud Ekonomis untuk UMKM hingga Dedicated Server (VPS & VDS) terisolasi penuh untuk perusahaan dan instansi pemerintah."
 
   // Helper to normalize plan slug/id
   const getPlanSlug = (plan: any) => {
@@ -114,7 +112,7 @@ export function PricingGrid({
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                   }`}
                 >
-                  <Layers className="h-3.5 w-3.5" /> {dict.pricing.tabs.all} ({categoryCounts.all})
+                  <Layers className="h-3.5 w-3.5" /> Semua ({categoryCounts.all})
                 </button>
                 {categoryCounts.cloud > 0 && (
                   <button
@@ -126,7 +124,7 @@ export function PricingGrid({
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <Sparkles className="h-3.5 w-3.5 text-blue-400" /> {dict.pricing.tabs.cloud} ({categoryCounts.cloud})
+                    <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Cloud SaaS ({categoryCounts.cloud})
                   </button>
                 )}
                 {categoryCounts.vps > 0 && (
@@ -139,7 +137,7 @@ export function PricingGrid({
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <Server className="h-3.5 w-3.5 text-purple-400" /> {dict.pricing.tabs.vps} ({categoryCounts.vps})
+                    <Server className="h-3.5 w-3.5 text-purple-400" /> Cloud VPS ({categoryCounts.vps})
                   </button>
                 )}
                 {categoryCounts.storage > 0 && (
@@ -152,7 +150,7 @@ export function PricingGrid({
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <HardDrive className="h-3.5 w-3.5 text-emerald-500" /> {dict.pricing.tabs.storage} ({categoryCounts.storage})
+                    <HardDrive className="h-3.5 w-3.5 text-emerald-500" /> VPS Storage ({categoryCounts.storage})
                   </button>
                 )}
                 {categoryCounts.vds > 0 && (
@@ -165,7 +163,7 @@ export function PricingGrid({
                         : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }`}
                   >
-                    <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> {dict.pricing.tabs.vds} ({categoryCounts.vds})
+                    <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> Cloud VDS ({categoryCounts.vds})
                   </button>
                 )}
               </div>
@@ -206,19 +204,19 @@ export function PricingGrid({
                 {/* Badges */}
                 {isVds ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-amber-500 to-amber-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
-                    <Zap className="h-3 w-3" /> {dict.pricing.badges.dedicatedVds}
+                    <Zap className="h-3 w-3" /> 100% Dedicated CPU
                   </div>
                 ) : isStorage ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-emerald-500 to-teal-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
-                    <HardDrive className="h-3 w-3" /> {dict.pricing.badges.dedicatedStorage}
+                    <HardDrive className="h-3 w-3" /> Dedicated MinIO Storage
                   </div>
                 ) : isVps ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-blue-600 text-white text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
-                    <Server className="h-3 w-3" /> {dict.pricing.badges.dedicatedVps}
+                    <Server className="h-3 w-3" /> Dedicated VPS
                   </div>
                 ) : isPopular ? (
                   <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 bg-gradient-to-r from-primary to-blue-500 text-primary-foreground text-[10px] font-black px-3.5 py-1 rounded-full uppercase tracking-wider shadow-md flex items-center gap-1">
-                    <Sparkles className="h-3 w-3" /> {dict.pricing.badges.popular}
+                    <Sparkles className="h-3 w-3" /> Paling Populer
                   </div>
                 ) : null}
 
@@ -236,16 +234,16 @@ export function PricingGrid({
                     <div className="mb-6 pb-6 border-b border-border/60">
                       <div className="flex items-baseline gap-1">
                         <span className="text-2xl sm:text-3xl font-black text-foreground tracking-tight">
-                          {yearlyPrice > 0 ? formatRupiah(yearlyPrice) : dict.pricing.period.freeForever}
+                          {yearlyPrice > 0 ? formatRupiah(yearlyPrice) : "Gratis"}
                         </span>
                         {yearlyPrice > 0 && (
-                          <span className="text-xs text-muted-foreground font-semibold">{dict.pricing.period.yearly}</span>
+                          <span className="text-xs text-muted-foreground font-semibold">/tahun</span>
                         )}
                       </div>
                       {price > 0 && (
                         <div className="text-[11px] font-semibold text-muted-foreground mt-1 text-primary/90 flex items-center gap-1">
                           <ShieldCheck className="h-3 w-3 text-emerald-500 shrink-0" />
-                          {dict.pricing.period.monthlyEquivalent} {formatRupiah(price)}/bln {dict.pricing.period.yearlyBilling}
+                          Setara {formatRupiah(price)}/bln (Tagihan Tahunan)
                         </div>
                       )}
                     </div>
@@ -274,7 +272,7 @@ export function PricingGrid({
                           : "bg-muted hover:bg-muted/80 text-foreground hover:text-primary hover:scale-[1.01]"
                       }`}
                     >
-                      {plan.cta_text || plan.cta || (price === 0 ? dict.pricing.cta.free : dict.pricing.cta.paid)}
+                      {plan.cta_text || plan.cta || (price === 0 ? "Mulai Gratis" : "Langganan Sekarang")}
                     </Button>
                   </Link>
                 </div>

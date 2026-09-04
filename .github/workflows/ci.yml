@@ -5,10 +5,6 @@ on:
     branches:
       - master
       - develop
-      - aisacms
-      - feature/route-groups
-      - Main
-      - main
   pull_request:
     branches:
       - master
@@ -70,7 +66,7 @@ jobs:
           tags: |
             type=ref,event=branch
             type=sha,prefix=sha-
-            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' || github.ref == 'refs/heads/aisacms' || github.ref == 'refs/heads/feature/route-groups' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/main' }}
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/master' }}
 
       - name: Build & Push Ultra-Fast Image (5s)
         if: github.event_name != 'pull_request'
@@ -87,7 +83,7 @@ jobs:
     name: 🚀 Live Zero-Downtime Deploy (164.68.116.79)
     needs: [build-and-push]
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop' || github.ref == 'refs/heads/aisacms' || github.ref == 'refs/heads/feature/route-groups' || github.ref == 'refs/heads/Main' || github.ref == 'refs/heads/main'
+    if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/develop'
     steps:
       - name: Checkout Repository
         uses: actions/checkout@v4

@@ -3,8 +3,6 @@
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import { useToast } from "@/hooks/use-toast"
-import { useLanguage } from "@/lib/i18n/context"
-import { LanguageSwitcher } from "@/components/ui/language-switcher"
 import { checkWorkspaceAccessAction } from "@/actions/tenant"
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -46,6 +44,29 @@ import { useState, useEffect, useMemo } from "react"
 import { signOut } from "next-auth/react"
 import { ProfileModal } from "@/components/dashboard/profile-modal"
 
+/** Sidebar copy — Bahasa Indonesia only (SaCMS's sole UI language). */
+const s = {
+  groupContent: "KONTEN",
+  groupManagement: "MANAJEMEN",
+  groupSettings: "PENGATURAN",
+  overview: "Ringkasan",
+  cmsStudio: "CMS Studio Konten",
+  contentTypeBuilder: "Content-Type Builder",
+  mediaLibrary: "Pustaka Media",
+  support: "Bantuan & IT Support",
+  teamMembers: "Anggota Tim",
+  auditLog: "Log Aktivitas",
+  subscriptions: "Paket & Langganan",
+  customDomains: "Domain Kustom",
+  infrastructure: "Infrastruktur & DB",
+  developer: "Developer & API",
+  workspaceSettings: "Pengaturan Workspace",
+  switchWorkspace: "Ganti Workspace",
+  signOut: "Keluar",
+  badgeNew: "BARU",
+  badgeActivate: "AKTIFKAN",
+} as const
+
 interface TenantSidebarProps {
   tenantId?: string
   tenantSlug?: string
@@ -82,8 +103,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
   const pathname = usePathname()
   const router = useRouter()
   const { toast } = useToast()
-  const { dict } = useLanguage()
-  const s = dict.common.sidebar
   const { theme, setTheme } = useTheme()
   const [mobileOpen, setMobileOpen] = useState(false)
   const [workspaceSwitcherOpen, setWorkspaceSwitcherOpen] = useState(false)
@@ -434,7 +453,6 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               <p className="text-[10px] text-muted-foreground truncate">{session?.user?.email}</p>
             </div>
           </button>
-          <LanguageSwitcher className="h-7 shrink-0" />
           <Button variant="ghost" size="icon" className="h-7 w-7 rounded-lg shrink-0 hover:bg-muted" onClick={() => setTheme(theme === "dark" ? "light" : "dark")}>
             {mounted ? (
               theme === "dark" ? <Sun className="h-3.5 w-3.5 text-amber-500" /> : <Moon className="h-3.5 w-3.5 text-primary" />
