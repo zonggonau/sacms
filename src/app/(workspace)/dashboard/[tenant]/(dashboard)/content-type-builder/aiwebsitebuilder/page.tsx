@@ -29,10 +29,17 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
   const frontendPrompt = settings.find(s => s.key === `${tenant.id}_v0FrontendPrompt`)?.value || null
   const rawStatus = settings.find(s => s.key === `${tenant.id}_v0Status`)?.value || null
   const savedModel = settings.find(s => s.key === `${tenant.id}_v0Model`)?.value || "v0-pro"
-  const projectStatus: "draft" | "project" = rawStatus === "project" || (previewUrl?.includes("vercel.app") ?? false) ? "project" : "draft"
+  // A previewUrl pointing at a real hosted deployment (Vercel's *.vercel.app,
+  // or v0's own *.v0.build sandbox domain) counts as a real, live build —
+  // not just vercel.app. Missing this meant a v0.build URL saved directly in
+  // Settings got silently overwritten below on every page load.
+  const isRealHostedPreviewUrl = (url: string | null) =>
+    Boolean(url && (url.includes(".vercel.app") || url.includes(".v0.build")))
+  const projectStatus: "draft" | "project" = rawStatus === "project" || isRealHostedPreviewUrl(previewUrl) ? "project" : "draft"
 
-  // Overwrite legacy URLs or missing URLs with our local proxy route
-  if (v0ChatId && (!previewUrl || (!previewUrl.startsWith('/') && !previewUrl.includes('vercel.app')))) {
+  // Overwrite legacy/missing URLs with our local proxy route — but never a
+  // URL that's already a real hosted deployment.
+  if (v0ChatId && !previewUrl?.startsWith('/') && !isRealHostedPreviewUrl(previewUrl)) {
     previewUrl = `/api/tenant/${tenantSlug}/ai-builder/preview/${v0ChatId}`
   }
 
