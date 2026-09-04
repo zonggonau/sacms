@@ -759,8 +759,15 @@ export async function fetchContent(collection: string) {
       if (res.ok && data.success) {
         setCustomDomainResult(data)
         const isSimulated = Boolean(data.domain?.simulated || data.dns?.simulated)
+        const dnsCheckFailed = Boolean(data.dns?.error)
         toast(
-          isSimulated
+          dnsCheckFailed
+            ? {
+                variant: "destructive",
+                title: "Domain Ditambahkan, Cek DNS Gagal",
+                description: "Domain berhasil didaftarkan ke Vercel, tapi pengecekan status DNS gagal (bukan berarti DNS Anda salah) — coba refresh status sebentar lagi.",
+              }
+            : isSimulated
             ? {
                 variant: "destructive",
                 title: "Domain Belum Benar-Benar Terhubung",

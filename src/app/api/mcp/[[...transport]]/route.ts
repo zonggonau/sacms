@@ -1698,8 +1698,14 @@ export default async function NewsPage() {
                   cnameTarget: config.cname,
                   aRecordTarget: config.aRecord,
                   configured: config.configured,
+                  // When set, the check against Vercel itself failed —
+                  // `configured: false` above does NOT mean the domain's DNS
+                  // is actually wrong, just that we couldn't verify it.
+                  checkError: config.error,
                 },
-                message: result.verified ? "✅ Domain terverifikasi dan aktif!" : "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
+                message: config.error
+                  ? "⚠️ Domain ditambahkan, tapi pengecekan status DNS ke Vercel gagal — coba cek lagi nanti, ini bukan berarti DNS Anda salah."
+                  : result.verified ? "✅ Domain terverifikasi dan aktif!" : "⚠️ Domain ditambahkan, silakan konfigurasi DNS record di registrar domain Anda."
               }, null, 2)
             }]
           }

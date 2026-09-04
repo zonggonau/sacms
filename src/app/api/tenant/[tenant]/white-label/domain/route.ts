@@ -6,12 +6,29 @@ import { z } from "zod/v4"
 import { logAudit, AuditAction } from "@/lib/audit-log"
 import { getRedis } from "@/lib/redis"
 import { isFeatureEnabled, getTenantPlanConfig } from "@/lib/tenant-plan"
+import { rateLimit } from "@/lib/rate-limit"
 import {
   parseDomainInfo,
   getExpectedDnsRecords,
   diagnoseDomainDns,
-  buildVerificationToken,
+  buildServerVerificationToken,
 } from "@/lib/domain-dns"
+
+/**
+ * Substitutes the server-only, cryptographically strong HMAC verification
+ * token (when DOMAIN_VERIFY_SECRET is configured) into the TXT record shown
+ * to the user, in place of getExpectedDnsRecords' client-safe token — this
+ * route runs server-only so it's safe to use the real secret here, unlike
+ * domain-parser.ts which is bundled into the client for the "add domain"
+ * live preview.
+ */
+function withServerVerificationValue<T extends { type: string; value: string }>(
+  records: T[],
+  tenantId: string,
+): T[] {
+  const strongToken = buildServerVerificationToken(tenantId)
+  return records.map((r) => (r.type === "TXT" ? { ...r, value: strongToken } : r))
+}
 
 const setDomainSchema = z.object({
   customDomain: z
@@ -61,7 +78,7 @@ export const GET = withStaffAuth(
 
     const domains = tenantRecord.customDomains.map((d) => {
       const info = parseDomainInfo(d.domain)
-      const expectedRecords = getExpectedDnsRecords(d.domain, access.tenantId)
+      const expectedRecords = withServerVerificationValue(getExpectedDnsRecords(d.domain, access.tenantId), access.tenantId)
       return {
         ...d,
         domainInfo: info,
@@ -69,7 +86,7 @@ export const GET = withStaffAuth(
         dnsVerification: expectedRecords.find((r) => r.type === "TXT") || {
           type: "TXT",
           name: info.isApex ? "_sacms-challenge" : `_sacms-challenge.${info.subdomainPrefix}`,
-          value: buildVerificationToken(access.tenantId),
+          value: buildServerVerificationToken(access.tenantId),
         },
       }
     })
@@ -103,7 +120,19 @@ export const POST = withStaffAuth(
       where: { tenantId: access.tenantId },
     })
 
-    const isSelfHost = process.env.SELFHOST_MODE === "true" || process.env.NODE_ENV === "development"
+    // SELFHOST_MODE grants unlimited domains — intended for a single-tenant
+    // self-hosted deployment where plan limits don't apply. If it's ever set
+    // "true" on a real multi-tenant production install, every workspace
+    // silently gets an unlimited domain quota with no visible signal that
+    // plan enforcement is off — so make that loud rather than silent.
+    const isSelfHostEnv = process.env.SELFHOST_MODE === "true"
+    if (isSelfHostEnv && process.env.NODE_ENV === "production") {
+      console.warn(
+        "[white-label/domain] SELFHOST_MODE=true in a production environment — custom-domain plan limits are DISABLED for all tenants. " +
+        "This is expected for a single-tenant self-hosted install; if this is a shared multi-tenant deployment, unset SELFHOST_MODE."
+      )
+    }
+    const isSelfHost = isSelfHostEnv || process.env.NODE_ENV === "development"
     const maxAllowed = isSelfHost ? 9999 : (planConfig.max_custom_domains || 25)
 
     if (currentDomainCount >= maxAllowed) {
@@ -139,7 +168,7 @@ export const POST = withStaffAuth(
       },
     })
 
-    const expectedRecords = getExpectedDnsRecords(customDomain, access.tenantId)
+    const expectedRecords = withServerVerificationValue(getExpectedDnsRecords(customDomain, access.tenantId), access.tenantId)
     const info = parseDomainInfo(customDomain)
 
     logAudit({
@@ -167,6 +196,17 @@ export const POST = withStaffAuth(
  */
 export const PUT = withStaffAuth(
   async (request, _context, { access, session }) => {
+
+    // DNS diagnostics perform several live resolver lookups per call — cheap
+    // individually, but a tight retry loop (manual or scripted) could hammer
+    // the DNS resolver. Cap at a level generous enough for a human clicking
+    // "Cek Status" repeatedly while fixing DNS, but not for a spam loop.
+    const rl = await rateLimit(`domain-dns-check:${access.tenantId}`, { limit: 20, windowSeconds: 60 })
+    if (!rl.success) {
+      return apiError("rate_limited", {
+        message: "Terlalu banyak permintaan cek status DNS. Silakan tunggu sebentar sebelum mencoba lagi.",
+      })
+    }
 
     const result = await validateBody(request, verifyOrDeleteSchema)
     if ("error" in result) return result.error

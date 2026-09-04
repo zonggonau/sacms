@@ -1,4 +1,5 @@
 import { resolve4, resolveCname, resolveTxt } from "dns/promises"
+import { createHmac } from "crypto"
 import {
   PUBLIC_GATEWAY_IP,
   PUBLIC_CNAME_TARGET,
@@ -18,6 +19,23 @@ export {
   buildVerificationToken,
 }
 export type { DomainInfo, ExpectedDnsRecord, DnsDiagnosticsResult }
+
+/**
+ * Server-only, cryptographically real verification token — HMAC-SHA256
+ * keyed on a server secret, unlike domain-parser.ts's buildVerificationToken
+ * (base64 of "{tenantId}:hardcoded-string", guessable by anyone who knows a
+ * tenantId). This module (`domain-dns.ts`, using Node's `dns/promises`) is
+ * never bundled into client code — this file MUST stay server-only, so this
+ * is safe to key on a real secret. Falls back to the weaker client-safe
+ * token when no secret is configured, matching prior behavior rather than
+ * breaking domain verification for deployments that haven't set one yet.
+ */
+export function buildServerVerificationToken(tenantId: string): string {
+  const secret = process.env.DOMAIN_VERIFY_SECRET
+  if (!secret) return buildVerificationToken(tenantId)
+  const hmac = createHmac("sha256", secret).update(tenantId).digest("hex").slice(0, 32)
+  return `sacms-verify=${hmac}`
+}
 
 /**
  * Helper to resolve TXT records across multiple candidate hostnames in parallel with a timeout
@@ -57,7 +75,11 @@ async function queryTxtCandidates(hosts: string[]): Promise<{ allTxts: string[];
 }
 
 /**
- * Diagnoses live DNS records for a custom domain (Vercel-style Server Resolver)
+ * Diagnoses live DNS records for a custom domain. This is SaCMS's own
+ * self-hosted DNS verification (real Node `dns/promises` resolver lookups
+ * against the live domain) — it has no relationship to Vercel or its API;
+ * that's a separate system (src/lib/vercel-client.ts) used only by the AI
+ * Website Builder's Vercel-hosted-frontend domain feature.
  */
 export async function diagnoseDomainDns(domain: string, tenantId: string): Promise<DnsDiagnosticsResult> {
   const info = parseDomainInfo(domain)
@@ -98,9 +120,14 @@ export async function diagnoseDomainDns(domain: string, tenantId: string): Promi
     routingValid = true
   }
 
-  // 2. Build multi-host candidates for TXT verification
-  const expectedToken = buildVerificationToken(tenantId)
+  // 2. Build multi-host candidates for TXT verification. Accept the strong
+  // HMAC token (when DOMAIN_VERIFY_SECRET is configured) OR the legacy
+  // client-safe token, so domains verified before this change (or on a
+  // deployment without the secret set) keep working.
+  const expectedToken = buildServerVerificationToken(tenantId)
+  const legacyToken = buildVerificationToken(tenantId)
   const rawTokenHash = expectedToken.replace(/^sacms-verify=/, "").trim()
+  const rawLegacyHash = legacyToken.replace(/^sacms-verify=/, "").trim()
 
   const txtCandidates: string[] = info.isApex
     ? [
@@ -127,11 +154,13 @@ export async function diagnoseDomainDns(domain: string, tenantId: string): Promi
   for (const txt of liveTxts) {
     const isExactToken = txt === expectedToken || txt.includes(expectedToken)
     const isRawHash = rawTokenHash.length > 8 && (txt === rawTokenHash || txt.includes(rawTokenHash))
+    const isLegacyToken = txt === legacyToken || txt.includes(legacyToken)
+    const isLegacyRawHash = rawLegacyHash.length > 8 && (txt === rawLegacyHash || txt.includes(rawLegacyHash))
     const isTenantId = tenantId.length > 6 && txt.includes(tenantId)
     const isCaseInsensitiveHash =
       rawTokenHash.length > 8 && txt.toLowerCase().includes(rawTokenHash.toLowerCase())
 
-    if (isExactToken || isRawHash || isTenantId || isCaseInsensitiveHash) {
+    if (isExactToken || isRawHash || isLegacyToken || isLegacyRawHash || isTenantId || isCaseInsensitiveHash) {
       txtValid = true
       matchedTxtRecord = txt
       break

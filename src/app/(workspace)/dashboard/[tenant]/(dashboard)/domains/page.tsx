@@ -398,6 +398,19 @@ export default function TenantDomainsPage() {
             </Button>
           </div>
 
+          {/* Scope clarification — this page and the AI Website Builder's
+              custom domain feature are two separate systems (this one
+              points a domain at your SaCMS CMS/API/workspace via SaCMS's
+              own DNS routing; the AI Builder's is for the Vercel-hosted
+              generated frontend). Easy to conflate since both are called
+              "custom domain" — call that out explicitly. */}
+          <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-muted/40 border border-border/60 text-[11px] text-muted-foreground">
+            <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+            <p>
+              Domain di halaman ini menghubungkan ke <strong>CMS, API, dan workspace SaCMS</strong> Anda. Jika Anda membangun website terpisah dengan <strong>AI Website Builder</strong> (hosting Vercel), domain kustom untuk situs tersebut dikonfigurasi dari tab <strong>Domain</strong> di halaman AI Website Builder itu sendiri — bukan di sini.
+            </p>
+          </div>
+
           {/* Add Domain Card */}
           <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
             <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
@@ -504,7 +517,12 @@ export default function TenantDomainsPage() {
                     size="sm"
                     onClick={() => {
                       const allText = domains.flatMap(dom => {
-                        const recs = getExpectedDnsRecords(dom.domain, session?.user?.id || "tenant")
+                        // Use the server-computed records (dom.dnsRecords) —
+                        // not a client recomputation — so the TXT value shown
+                        // here always matches what the server actually
+                        // verifies against (keyed by tenantId, not the
+                        // logged-in user's id).
+                        const recs = dom.dnsRecords || []
                         return recs.map(r => `${r.type}\t${r.name}\t${r.value}\t${r.ttl}\t# ${dom.domain} (${r.description})`)
                       }).join("\n")
                       copyText(allText, "all-unified-records")
@@ -537,7 +555,7 @@ export default function TenantDomainsPage() {
                       </CardDescription>
                     </div>
                     <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[11px] font-mono font-bold self-start sm:self-auto">
-                      {domains.reduce((acc, d) => acc + getExpectedDnsRecords(d.domain, session?.user?.id || "tenant").length, 0)} Total Record
+                      {domains.reduce((acc, d) => acc + (d.dnsRecords?.length || 0), 0)} Total Record
                     </Badge>
                   </div>
                 </CardHeader>
@@ -558,7 +576,7 @@ export default function TenantDomainsPage() {
                       </thead>
                       <tbody className="divide-y divide-border/60">
                         {domains.flatMap((dom, domIdx) => {
-                          const expectedRecords = getExpectedDnsRecords(dom.domain, session?.user?.id || "tenant")
+                          const expectedRecords = dom.dnsRecords || []
                           const diagnostics = diagnosticsMap[dom.domain]
 
                           return expectedRecords.map((rec, recIdx) => {
@@ -683,7 +701,7 @@ export default function TenantDomainsPage() {
               <div className="space-y-6">
                 {domains.map((dom) => {
                   const info = parseDomainInfo(dom.domain)
-                  const expectedRecords = getExpectedDnsRecords(dom.domain, session?.user?.id || "tenant")
+                  const expectedRecords = dom.dnsRecords || []
                   const isVerifying = verifyingMap[dom.domain] || false
                   const diagnostics = diagnosticsMap[dom.domain]
 

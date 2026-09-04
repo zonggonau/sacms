@@ -205,6 +205,12 @@ export async function getDomainConfig(domain: string): Promise<{
   aRecord?: string
   configured: boolean
   simulated?: boolean
+  /** Set when the Vercel API call itself failed (bad token, rate limit,
+   *  5xx, etc.) — `configured: false` in that case does NOT mean the
+   *  domain's DNS is actually misconfigured, it means we couldn't check.
+   *  Callers MUST surface this distinctly rather than telling the user
+   *  their DNS is wrong when it's really our API call that failed. */
+  error?: string
 }> {
   const token = await getVercelToken()
   if (!token) {
@@ -216,13 +222,17 @@ export async function getDomainConfig(domain: string): Promise<{
   })
 
   if (!res.ok) {
-    return { cname: "cname.vercel-dns.com", aRecord: "76.76.21.21", configured: false }
+    const errBody = await res.json().catch(() => ({ message: res.statusText }))
+    return {
+      configured: false,
+      error: `Failed to check domain configuration with Vercel: ${errBody.error?.message || errBody.message || res.statusText}`,
+    }
   }
 
   const data = await res.json()
   return {
-    cname: data.cnames?.[0] || data.recommendedCNAME?.[0] || "cname.vercel-dns.com",
-    aRecord: data.aValues?.[0] || "76.76.21.21",
+    cname: data.cnames?.[0] || data.recommendedCNAME?.[0]?.value || "cname.vercel-dns.com",
+    aRecord: data.aValues?.[0] || data.recommendedIPv4?.[0]?.value?.[0] || "76.76.21.21",
     configured: data.misconfigured === false
   }
 }
