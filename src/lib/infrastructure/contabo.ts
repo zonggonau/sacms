@@ -761,6 +761,25 @@ export async function restartContaboInstance(instanceId: string | number): Promi
 }
 
 /**
+ * Start a stopped Contabo VPS instance
+ */
+export async function startContaboInstance(instanceId: string | number): Promise<boolean> {
+  if (typeof instanceId === 'string' && instanceId.startsWith('sim-')) {
+    return true
+  }
+
+  const token = await getAccessToken()
+  const creds = getContaboCredentials()
+
+  const res = await fetch(`${creds.apiUrl}/${instanceId}/actions/start`, {
+    method: 'POST',
+    headers: getRequestHeaders(token),
+  })
+
+  return res.ok
+}
+
+/**
  * Stop/Suspend a Contabo VPS instance
  */
 export async function stopContaboInstance(instanceId: string | number): Promise<boolean> {

@@ -5,6 +5,7 @@ import { generateCloudInitScript } from './cloud-init'
 import {
   createContaboInstance,
   getContaboInstance,
+  startContaboInstance,
   restartContaboInstance,
   stopContaboInstance,
   deleteContaboInstance,
@@ -399,22 +400,28 @@ export async function checkServerHealth(serverId: string): Promise<{
   const healthy = dbOk && mediaOk
   const healthStatus = healthy ? 'healthy' : dbOk || mediaOk ? 'degraded' : 'unhealthy'
 
-  // Compute live resource metrics snapshot
-  const ramUsageMb = Math.round(server.ramMb * (healthy ? 0.22 : 0.08))
-  const diskUsageGb = +(server.diskGb * (healthy ? 0.08 : 0.02)).toFixed(1)
+  // Only record what was actually measured. There is no in-VPS metrics
+  // agent and Contabo's public API exposes no OS-level telemetry (CPU/RAM/
+  // disk usage) — this used to fabricate those numbers with Math.random(),
+  // which looked like real monitoring data but was never connected to
+  // anything on the actual server. cpuCores/ramTotalMb/diskTotalGb are real
+  // (from the provisioned spec); everything else genuinely unmeasured is
+  // explicitly null so the UI can say "not available" instead of lying.
   const metricsSnapshot = {
-    cpuUsagePercent: healthy ? Math.floor(Math.random() * 12) + 8 : 0,
+    cpuUsagePercent: null,
     cpuCores: server.cpuCount,
-    ramUsageMb,
+    ramUsageMb: null,
     ramTotalMb: server.ramMb,
-    ramUsagePercent: Math.round((ramUsageMb / server.ramMb) * 100),
-    diskUsageGb,
+    ramUsagePercent: null,
+    diskUsageGb: null,
     diskTotalGb: server.diskGb,
-    diskUsagePercent: Math.round((diskUsageGb / server.diskGb) * 100),
-    dbConnectionsActive: dbOk ? 4 : 0,
-    dbConnectionsMax: 100,
-    dbLatencyMs: dbOk ? 12 : null,
-    mediaLatencyMs: mediaOk ? 18 : null,
+    diskUsagePercent: null,
+    dbConnectionsActive: null,
+    dbConnectionsMax: null,
+    dbLatencyMs: null,
+    mediaLatencyMs: null,
+    dbOk,
+    mediaOk,
     updatedAt: new Date().toISOString(),
   }
 
@@ -433,6 +440,28 @@ export async function checkServerHealth(serverId: string): Promise<{
     mediaOk,
     message: healthy ? 'All systems operational' : `DB: ${dbOk ? 'OK' : 'FAIL'}, Media: ${mediaOk ? 'OK' : 'FAIL'}`,
   }
+}
+
+/**
+ * Start a stopped server
+ */
+export async function startServer(serverId: string): Promise<boolean> {
+  const server = await db.infrastructureServer.findUnique({
+    where: { id: serverId },
+  })
+  if (!server || !server.providerServerId) return false
+  return startContaboInstance(server.providerServerId)
+}
+
+/**
+ * Stop/suspend a running server
+ */
+export async function stopServer(serverId: string): Promise<boolean> {
+  const server = await db.infrastructureServer.findUnique({
+    where: { id: serverId },
+  })
+  if (!server || !server.providerServerId) return false
+  return stopContaboInstance(server.providerServerId)
 }
 
 /**

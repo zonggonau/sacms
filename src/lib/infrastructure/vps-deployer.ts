@@ -15,7 +15,7 @@ export interface VpsDeployResult {
   success: boolean
   url: string
   hostType: "vps" | "simulation"
-  vpsIp?: string
+  vpsIp?: string | null
   serverName?: string
   state: "READY" | "BUILDING" | "ERROR"
   error?: string
@@ -57,14 +57,19 @@ export async function deployAiWebsiteToVps(
     const tenantSlug = tenant?.slug || tenantId
     const effectiveDomain = options.domain || tenant?.customDomain
 
-    // If server is active on VPS
-    const vpsIp = server?.serverIpv4 || "161.97.100.1"
+    // If server is active on VPS. NOTE: the real field is `ipv4` (see the
+    // InfrastructureServer Prisma model) — this used to read `serverIpv4`,
+    // a field that doesn't exist on the model, so it always fell through
+    // to the hardcoded fallback below even when a server with a real
+    // assigned IP existed. `vpsIp` here is still informational-only until
+    // real SSH/build delivery exists (see `simulated: true` below).
+    const vpsIp = server?.ipv4 || null
     const serverName = server?.name || "Contabo Dedicated VPS"
 
     // 2. Generate live URL
-    const liveUrl = effectiveDomain 
-      ? `https://${effectiveDomain}` 
-      : (server?.serverIpv4 ? `http://${server.serverIpv4}` : `https://web-${tenantSlug}.sacms.cloud`)
+    const liveUrl = effectiveDomain
+      ? `https://${effectiveDomain}`
+      : (server?.ipv4 ? `http://${server.ipv4}` : `https://web-${tenantSlug}.sacms.cloud`)
 
     // 3. Save VPS deployment records to tenant settings
     const now = new Date().toISOString()

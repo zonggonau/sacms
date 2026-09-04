@@ -1804,6 +1804,24 @@ export default async function NewsPage() {
           }
         }
 
+        // Provisioning places a real, billed order on Contabo. Without this
+        // check, calling this tool again on a tenant that already has a
+        // live/in-progress server would create a second real paid instance
+        // with no duplicate guard anywhere else in the stack.
+        const existingServer = await db.infrastructureServer.findFirst({
+          where: { tenantId: auth.tenantId, status: { in: ["pending", "provisioning", "configuring", "active", "suspended"] } },
+          orderBy: { createdAt: "desc" },
+        })
+        if (existingServer) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: `❌ Workspace ini sudah memiliki server dedicated (status: ${existingServer.status}, dibuat ${existingServer.createdAt.toISOString()}). Provisioning ulang akan membuat instance Contabo BARU yang ditagih terpisah. Hapus/nonaktifkan server yang ada terlebih dahulu di /dashboard/${auth.tenantSlug}/infrastructure jika Anda benar-benar ingin membuat yang baru.`
+            }],
+            isError: true,
+          }
+        }
+
         try {
           const result = await provisionTenantInfrastructure(auth.tenantId, {
             plan,

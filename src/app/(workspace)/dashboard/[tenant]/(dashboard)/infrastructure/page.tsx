@@ -36,8 +36,21 @@ import {
   Network,
   CloudLightning,
   Settings2,
+  Play,
+  Square,
+  Power,
 } from "lucide-react"
 import { toast } from "sonner"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 export default function TenantInfrastructurePage() {
   const { data: session, status: authStatus } = useSession()
@@ -51,6 +64,10 @@ export default function TenantInfrastructurePage() {
   const [tenantSettings, setTenantSettings] = useState<any>(null)
   const [testingHealth, setTestingHealth] = useState(false)
   const [activeTab, setActiveTab] = useState<"overview" | "console">("overview")
+
+  // VPS lifecycle control (start/stop/restart) state
+  const [vpsAction, setVpsAction] = useState<"start" | "stop" | "restart" | null>(null)
+  const [confirmAction, setConfirmAction] = useState<"start" | "stop" | "restart" | null>(null)
 
   // BYODB & BYOS State
   const [databaseUrl, setDatabaseUrl] = useState("")
@@ -131,6 +148,31 @@ export default function TenantInfrastructurePage() {
       toast.error("Pengecekan koneksi infrastruktur gagal")
     } finally {
       setTestingHealth(false)
+    }
+  }
+
+  const handleVpsAction = async (action: "start" | "stop" | "restart") => {
+    setConfirmAction(null)
+    setVpsAction(action)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/infrastructure`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action }),
+      })
+      const data = await res.json()
+      if (res.ok && data.success) {
+        const labels = { start: "dinyalakan", stop: "dihentikan", restart: "di-restart" }
+        toast.success(`Sinyal ${labels[action]} berhasil dikirim ke VPS. Perubahan status memerlukan beberapa saat.`)
+        // Give Contabo a moment to reflect the action before we re-poll.
+        setTimeout(() => fetchInfrastructure(), 3000)
+      } else {
+        toast.error(data.message || data.error || `Gagal mengirim sinyal ${action} ke VPS`)
+      }
+    } catch {
+      toast.error("Terjadi kesalahan saat menghubungi server")
+    } finally {
+      setVpsAction(null)
     }
   }
 
@@ -524,7 +566,7 @@ export default function TenantInfrastructurePage() {
               {infraServer && (
                 <Card className="rounded-2xl border border-emerald-500/30 bg-emerald-500/5 shadow-xs overflow-hidden">
                   <CardHeader className="p-5 pb-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
                       <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                         <Server className="h-4 w-4 text-emerald-500" />
                         Appliance Server Dedicated Aktif ({infraServer.name || "Cloud VPS"})
@@ -553,9 +595,89 @@ export default function TenantInfrastructurePage() {
                         <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 capitalize">{infraServer.healthStatus || "healthy"}</p>
                       </div>
                     </div>
+
+                    {/* Resource usage — honest about what's actually measured.
+                        No in-VPS metrics agent exists yet and Contabo's API
+                        exposes no OS-level telemetry, so CPU/RAM/disk usage
+                        genuinely can't be shown here — only what the health
+                        check actually verifies (DB and media reachability). */}
+                    <div className="p-3.5 rounded-xl bg-muted/40 border border-dashed border-border/80 flex items-start gap-2.5">
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Metrik penggunaan CPU/RAM/Disk real-time belum tersedia — memerlukan agent monitoring di dalam VPS yang belum diimplementasikan. "Test Health Check" di bawah hanya memverifikasi konektivitas database dan media storage, bukan penggunaan resource.
+                      </p>
+                    </div>
+
+                    {/* VPS Power Controls — only meaningful when this row is
+                        backed by a real Contabo instance (providerServerId),
+                        not a BYODB-only row. */}
+                    {infraServer.providerServerId && (
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider mr-1">Kontrol Daya VPS:</span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmAction("start")}
+                          disabled={vpsAction !== null}
+                          className="h-8 rounded-lg text-xs font-bold border-emerald-500/30 text-emerald-600 hover:bg-emerald-500/10 cursor-pointer"
+                        >
+                          {vpsAction === "start" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Play className="h-3.5 w-3.5 mr-1.5" />}
+                          Nyalakan
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmAction("stop")}
+                          disabled={vpsAction !== null}
+                          className="h-8 rounded-lg text-xs font-bold border-amber-500/30 text-amber-600 hover:bg-amber-500/10 cursor-pointer"
+                        >
+                          {vpsAction === "stop" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Square className="h-3.5 w-3.5 mr-1.5" />}
+                          Hentikan
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setConfirmAction("restart")}
+                          disabled={vpsAction !== null}
+                          className="h-8 rounded-lg text-xs font-bold border-blue-500/30 text-blue-600 hover:bg-blue-500/10 cursor-pointer"
+                        >
+                          {vpsAction === "restart" ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Power className="h-3.5 w-3.5 mr-1.5" />}
+                          Restart
+                        </Button>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               )}
+
+              {/* Power action confirmation dialog */}
+              <AlertDialog open={confirmAction !== null} onOpenChange={(open) => !open && setConfirmAction(null)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>
+                      {confirmAction === "start" && "Nyalakan VPS ini?"}
+                      {confirmAction === "stop" && "Hentikan VPS ini?"}
+                      {confirmAction === "restart" && "Restart VPS ini?"}
+                    </AlertDialogTitle>
+                    <AlertDialogDescription>
+                      {confirmAction === "stop"
+                        ? "Website dan API yang berjalan di server ini akan langsung tidak dapat diakses sampai Anda menyalakannya kembali. Data tidak akan hilang."
+                        : confirmAction === "restart"
+                        ? "Server akan reboot — akan ada downtime singkat (biasanya 30-90 detik) selama proses restart."
+                        : "Sinyal nyala akan dikirim ke server. Proses booting biasanya memakan waktu beberapa puluh detik."}
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel className="cursor-pointer">Batal</AlertDialogCancel>
+                    <AlertDialogAction
+                      onClick={() => confirmAction && handleVpsAction(confirmAction)}
+                      className="cursor-pointer"
+                    >
+                      Ya, Lanjutkan
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
 
               {/* BYODB: Custom PostgreSQL Connection */}
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
