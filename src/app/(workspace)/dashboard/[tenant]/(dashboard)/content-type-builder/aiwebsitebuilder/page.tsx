@@ -45,6 +45,24 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
   const stCount = await tenantDb.singleType.count({ where: { tenantId: tenant.id } })
   const hasSchema = ctCount > 0 || stCount > 0
 
+  // Hydrate the Code tab from the last-generated site's actual files, instead
+  // of always falling back to the hardcoded demo files on every page load.
+  let initialFiles: { name: string; content: string }[] | null = null
+  if (v0ChatId) {
+    try {
+      const site = await db.site.findFirst({
+        where: { tenantId: tenant.id },
+        orderBy: { updatedAt: "desc" },
+        include: { files: { orderBy: { path: "asc" } } },
+      })
+      if (site && site.files.length > 0) {
+        initialFiles = site.files.map((f) => ({ name: f.path, content: f.content }))
+      }
+    } catch {
+      // Non-critical — the client falls back to its built-in demo files.
+    }
+  }
+
   // Check user AI credit balance
   const { enforceUserAiCredits } = await import("@/lib/plan-enforcement")
   const creditStatus = await enforceUserAiCredits(session.user.id, 0)
@@ -68,6 +86,7 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
           frontendPrompt,
           status: projectStatus,
           model: savedModel,
+          files: initialFiles,
         } : null}
       />
     </div>

@@ -41,6 +41,8 @@ interface WebsiteBuilderClientProps {
     frontendPrompt: string | null
     status?: "draft" | "project"
     model?: string
+    /** The last-generated site's real files, if any were persisted to SiteFile. */
+    files?: { name: string; content: string }[] | null
   } | null
 }
 
@@ -184,8 +186,10 @@ export function WebsiteBuilderClient({
   const [selectedFileIndex, setSelectedFileIndex] = useState(0)
   const [copiedCode, setCopiedCode] = useState(false)
   
-  // Generated Multi-File Code Tree
-  const [generatedFiles, setGeneratedFiles] = useState<Array<{ name: string; content: string }>>([
+  // Generated Multi-File Code Tree — hydrated from the last-generated site's
+  // real SiteFile rows when available (see page.tsx), so the Code tab
+  // survives a page reload instead of always resetting to the demo files.
+  const DEMO_FILES: Array<{ name: string; content: string }> = [
     {
       name: "app/page.tsx",
       content: `"use client"
@@ -233,7 +237,10 @@ export async function fetchContent(collection: string) {
   return res.json()
 }`
     }
-  ])
+  ]
+  const [generatedFiles, setGeneratedFiles] = useState<Array<{ name: string; content: string }>>(
+    initialProject?.files && initialProject.files.length > 0 ? initialProject.files : DEMO_FILES
+  )
 
   // Version History Trail
   const [versionHistory, setVersionHistory] = useState<Array<{

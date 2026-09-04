@@ -12,12 +12,12 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
     if (chatId.startsWith("sacms_gen_")) {
       let hasGeneratedCode = false
       try {
-        const site = await (db as any).site?.findFirst({
+        const site = await db.site.findFirst({
           where: { tenantId: access.tenantId },
-          include: { siteFiles: true },
+          include: { files: true },
           orderBy: { updatedAt: "desc" },
         })
-        const pageFile = site?.siteFiles?.find((f: any) => f.path.includes("page.tsx") || f.path.includes("page.jsx"))
+        const pageFile = site?.files?.find((f) => f.path.includes("page.tsx") || f.path.includes("page.jsx"))
         hasGeneratedCode = Boolean(pageFile?.content)
       } catch {}
 
