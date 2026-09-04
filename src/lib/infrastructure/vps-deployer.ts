@@ -19,11 +19,21 @@ export interface VpsDeployResult {
   serverName?: string
   state: "READY" | "BUILDING" | "ERROR"
   error?: string
+  /** true when this call did NOT actually SSH/build/start anything on the VPS
+   *  — it only recorded intent in Settings. Real Contabo delivery (file
+   *  transfer, build, process supervision) is not implemented yet; callers
+   *  MUST surface this rather than presenting it as a live production deploy. */
+  simulated?: boolean
 }
 
 /**
  * Deploy AI Website Builder output directly to the tenant's Dedicated Contabo VPS.
  * Hosts Next.js frontend alongside PostgreSQL 17 and MinIO S3 at 0 additional cost.
+ *
+ * NOTE: this currently only provisions a URL and records deployment metadata
+ * in Settings — it does not yet SSH into the Contabo server, transfer the
+ * generated files, run a build, or supervise a process. Every result is
+ * flagged `simulated: true` until that real delivery path is implemented.
  */
 export async function deployAiWebsiteToVps(
   tenantId: string,
@@ -92,7 +102,11 @@ export async function deployAiWebsiteToVps(
       hostType: server ? "vps" : "simulation",
       vpsIp,
       serverName,
-      state: "READY"
+      state: "READY",
+      // Always true today — see the NOTE above deployAiWebsiteToVps. Even when
+      // a real `server` record exists, no file transfer/build/process start
+      // has actually happened yet.
+      simulated: true,
     }
   } catch (error: any) {
     console.error("[VPS Deployer Error]", error)

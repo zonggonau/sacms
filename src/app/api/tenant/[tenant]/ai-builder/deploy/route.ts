@@ -2,7 +2,8 @@ import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { deployToVercel, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { randomBytes } from "crypto"
-import { withStaffAuth } from "@/lib/api/route-helpers"
+import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
+import { isTenantPlanPaid, resolveHostingTarget } from "@/lib/infrastructure/hosting-plan"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
@@ -23,13 +24,17 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
     const hostingStatus = (tenant as any).hostingStatus || hostingStatusSetting || "trial"
     const hostingExpiresAt = (tenant as any).hostingExpiresAt || (hostingExpiresAtSetting ? new Date(hostingExpiresAtSetting) : null)
 
-    const vpsServer = await db.infrastructureServer.findFirst({
-      where: { tenantId, status: { in: ["active", "provisioning", "ready"] } },
-      orderBy: { createdAt: "desc" }
-    })
-    const hasDedicatedVps = Boolean(vpsServer || tenant.databaseUrl || tenant.plan?.toLowerCase().includes("vps") || tenant.plan?.toLowerCase().includes("vds"))
+    const hostingTarget = resolveHostingTarget(tenant.plan)
+    const vpsServer = hostingTarget === "vps"
+      ? await db.infrastructureServer.findFirst({
+          where: { tenantId, status: { in: ["active", "provisioning", "ready"] } },
+          orderBy: { createdAt: "desc" }
+        })
+      : null
+    const hasDedicatedVps = hostingTarget === "vps"
     const vpsUrl = settings.find(s => s.key === `${tenantId}_vpsDeploymentUrl`)?.value || (vpsServer?.serverIpv4 ? `http://${vpsServer.serverIpv4}` : null)
 
+    const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
     const isEnterprise = Boolean(tenant.plan?.toLowerCase().includes("enterprise") || session.user.role === "super_admin")
     const isHostingActive = hasDedicatedVps || isEnterprise || Boolean(hostingStatus === "active" && hostingExpiresAt && new Date(hostingExpiresAt) > new Date())
 
@@ -38,6 +43,8 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
       hostingExpiresAt,
       isHostingActive,
       hasDedicatedVps,
+      hostingTarget,
+      isPaid,
       vpsIp: vpsServer?.serverIpv4 || null,
       vpsServerName: vpsServer?.name || null,
       vpsDeploymentUrl: vpsUrl,
@@ -48,7 +55,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
 })
 
 export const POST = withStaffAuth(
-  async (req, _context, { access }) => {
+  async (req, _context, { access, session }) => {
     const body = await req.json()
     const { action = "deploy", target = "auto", files = [], domain, chatId } = body
 
@@ -56,13 +63,23 @@ export const POST = withStaffAuth(
     const tenantId = tenant.id
     const tenantSlug = tenant.slug
 
-    // ── ACTION 0: DEPLOY TO DEDICATED VPS (0 EXTRA HOSTING COST) ──────────────
-    const vpsServer = await db.infrastructureServer.findFirst({
-      where: { tenantId, status: { in: ["active", "provisioning", "ready"] } },
-    })
-    const hasDedicatedVps = Boolean(vpsServer || tenant.databaseUrl || tenant.plan?.toLowerCase().includes("vps") || tenant.plan?.toLowerCase().includes("vds"))
+    // ── BILLING GATE: deploying to production requires a paid plan ──────────
+    // Free-plan workspaces can still generate/preview via v0 — they just can't
+    // push to production hosting until they upgrade. (Trial/payment-expired
+    // tenants never reach this route at all — SubscriptionGate blocks the
+    // whole dashboard for those before the page even renders.)
+    const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
+    if ((action === "deploy" || action === "domain") && !isPaid) {
+      return apiError("plan_limit", {
+        message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
+        details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
+      })
+    }
 
-    if (action === "deploy" && (target === "vps" || (target === "auto" && hasDedicatedVps))) {
+    // ── ACTION 0: DEPLOY TO DEDICATED CONTABO VPS (VPS/VDS-tier plans) ──────
+    const hostingTarget = resolveHostingTarget(tenant.plan)
+
+    if (action === "deploy" && (target === "vps" || (target === "auto" && hostingTarget === "vps"))) {
       const { deployAiWebsiteToVps } = await import("@/lib/infrastructure/vps-deployer")
       const vpsResult = await deployAiWebsiteToVps(tenantId, { files, domain, chatId })
       return NextResponse.json(vpsResult)

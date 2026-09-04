@@ -291,6 +291,8 @@ export async function fetchContent(collection: string) {
     hostingStatus: string
     hostingExpiresAt: string | null
     hasDedicatedVps: boolean
+    hostingTarget: "vercel" | "vps"
+    isPaid: boolean
     vpsIp: string | null
     vpsServerName: string | null
     vpsDeploymentUrl: string | null
@@ -584,6 +586,19 @@ export async function fetchContent(collection: string) {
   const handleDeployToVercel = async () => {
     // 1. Check hosting status first
     const statusData = await fetchHostingStatus()
+
+    // Free-plan workspaces can't push to production hosting — send them to
+    // billing instead of letting the deploy call round-trip and fail.
+    if (statusData && statusData.isPaid === false) {
+      toast({
+        variant: "destructive",
+        title: "Perlu Upgrade Paket",
+        description: "Deploy ke hosting produksi memerlukan paket berbayar.",
+      })
+      router.push(`/dashboard/${tenantSlug}/subscriptions`)
+      return
+    }
+
     if (statusData && !statusData.isHostingActive) {
       setIsHostingModalOpen(true)
       return
@@ -624,6 +639,13 @@ export async function fetchContent(collection: string) {
                 description: `Website produksi aktif di: ${data.url || "Cloud Edge"}`,
               }
         )
+      } else if (res.status === 403 && data?.code === "plan_limit") {
+        toast({
+          variant: "destructive",
+          title: "Perlu Upgrade Paket",
+          description: data?.error || "Deploy ke hosting produksi memerlukan paket berbayar.",
+        })
+        router.push(data?.details?.redirectTo || `/dashboard/${tenantSlug}/subscriptions`)
       } else {
         throw new Error(data?.error || "Gagal deploy ke cloud")
       }
@@ -709,6 +731,13 @@ export async function fetchContent(collection: string) {
               }
             : { title: "Konfigurasi Domain Berhasil", description: `Domain ${customDomainInput} siap dihubungkan!` }
         )
+      } else if (res.status === 403 && data?.code === "plan_limit") {
+        toast({
+          variant: "destructive",
+          title: "Perlu Upgrade Paket",
+          description: data?.error || "Custom domain memerlukan paket berbayar.",
+        })
+        router.push(data?.details?.redirectTo || `/dashboard/${tenantSlug}/subscriptions`)
       } else {
         throw new Error(data.error || "Gagal mengonfigurasi domain")
       }
