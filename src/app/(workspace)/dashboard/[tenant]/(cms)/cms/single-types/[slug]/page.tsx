@@ -216,13 +216,14 @@ export default function CMSSingleTypeDetailPage() {
         return (
           <div className="space-y-1.5">
             {renderLabelWithAI()}
-            <RelationSelectField 
-              label="" 
-              tenantSlug={tenantSlug} 
-              targetSlug={field.relationSlug || relOpts?.targetSlug || relOpts?.targetContentType || ""} 
-              multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany" || relOpts?.multiple === true} 
-              value={value as any} 
-              onChange={v => handleFieldChange(field.slug, v)} 
+            <RelationSelectField
+              label=""
+              tenantSlug={tenantSlug}
+              targetSlug={field.relationSlug || relOpts?.targetSlug || relOpts?.targetContentType || ""}
+              multiple={relOpts?.relationType === "manyToMany" || relOpts?.relationType === "oneToMany" || relOpts?.multiple === true}
+              value={value as any}
+              onChange={v => handleFieldChange(field.slug, v)}
+              relationType={relOpts?.relationType}
             />
           </div>
         )

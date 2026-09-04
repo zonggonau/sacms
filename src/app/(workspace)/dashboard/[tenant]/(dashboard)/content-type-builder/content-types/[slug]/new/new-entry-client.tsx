@@ -294,6 +294,7 @@ export default function CTBNewEntryClient({
             targetSlug={targetSlug}
             required={field.required}
             multiple={isMultiple}
+            relationType={field.options?.relationType}
           />
         )
       }

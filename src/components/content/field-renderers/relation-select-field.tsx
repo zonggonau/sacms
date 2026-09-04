@@ -37,6 +37,15 @@ interface Entry {
   data: any
 }
 
+export type RelationCardinality = "oneToOne" | "oneToMany" | "manyToOne" | "manyToMany"
+
+const RELATION_CARDINALITY_LABEL: Record<RelationCardinality, string> = {
+  oneToOne: "Satu ke Satu",
+  manyToOne: "Banyak ke Satu",
+  oneToMany: "Satu ke Banyak",
+  manyToMany: "Banyak ke Banyak",
+}
+
 interface RelationSelectFieldProps {
   value: string | string[] | null
   onChange: (value: string | string[]) => void
@@ -46,6 +55,10 @@ interface RelationSelectFieldProps {
   required?: boolean
   multiple?: boolean
   placeholder?: string
+  /** The configured relation cardinality, if known — drives the badge shown
+   *  next to the field label so users can see what kind of link this is,
+   *  independent of the single/multiple select behavior it renders as. */
+  relationType?: RelationCardinality | string | null
 }
 
 export function RelationSelectField({
@@ -57,6 +70,7 @@ export function RelationSelectField({
   required,
   multiple = false,
   placeholder,
+  relationType,
 }: RelationSelectFieldProps) {
   const [open, setOpen] = useState(false)
   const [entries, setEntries] = useState<Entry[]>([])
@@ -260,13 +274,24 @@ export function RelationSelectField({
 
   return (
     <div className="space-y-3">
-      {(label || loading) && (
-        <div className={cn("flex items-center", label ? "justify-between" : "justify-end")}>
-          {label && (
-            <Label className="text-xs font-bold text-foreground">
-              {label} {required && <span className="text-destructive">*</span>}
-            </Label>
-          )}
+      {(label || loading || relationType) && (
+        <div className={cn("flex items-center gap-2", label ? "justify-between" : "justify-end")}>
+          <div className="flex items-center gap-1.5">
+            {label && (
+              <Label className="text-xs font-bold text-foreground">
+                {label} {required && <span className="text-destructive">*</span>}
+              </Label>
+            )}
+            {relationType && relationType in RELATION_CARDINALITY_LABEL && (
+              <Badge
+                variant="outline"
+                className="text-[9px] font-mono font-bold px-1.5 py-0 h-4 border-border/60 text-muted-foreground"
+                title={`Relasi ${RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]} ke ${targetSlug}`}
+              >
+                {RELATION_CARDINALITY_LABEL[relationType as RelationCardinality]}
+              </Badge>
+            )}
+          </div>
           {loading && <Loader2 className="h-3.5 w-3.5 animate-spin text-primary" />}
         </div>
       )}

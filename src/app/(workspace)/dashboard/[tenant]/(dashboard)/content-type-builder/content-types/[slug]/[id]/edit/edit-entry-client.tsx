@@ -287,6 +287,7 @@ export default function CTBEditEntryClient({
             targetSlug={targetSlug}
             required={field.required}
             multiple={isRelMultiple}
+            relationType={field.options?.relationType}
           />
         )
       }

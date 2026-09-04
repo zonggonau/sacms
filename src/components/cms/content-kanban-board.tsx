@@ -296,7 +296,7 @@ export function ContentKanbanBoard({
       return
 
     try {
-      const res = await deleteEntryAction(entryId, tenantSlug, contentTypeSlug)
+      const res = await deleteEntryAction(tenantSlug, contentTypeSlug, entryId)
       if (res.error) {
         toast({
           title: "Gagal Menghapus",

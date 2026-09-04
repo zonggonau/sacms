@@ -60,7 +60,10 @@ export default async function CMSContentTypeEntriesPage({
     })
   }
 
-  // Fetch entries (default to first 100 or so for simplicity, matching the old UI that filtered in memory)
+  // First page only — ContentEntriesManager's "Muat Lebih Banyak" button
+  // fetches subsequent pages client-side via getEntriesAction once the user
+  // scrolls past this initial batch, so collections larger than 200 stay
+  // fully searchable instead of being silently truncated.
   const entries = await tenantDb.contentEntry.findMany({
     where: {
       contentTypeId: contentType.id,

@@ -10,6 +10,21 @@ import {
   Columns, ChevronDown, X, Link2, FileDown, Loader2
 } from "lucide-react"
 import { ApiSnippetDialog } from "@/components/cms/api-snippet-dialog"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog"
+import {
+  Select as UiSelect,
+  SelectContent as UiSelectContent,
+  SelectItem as UiSelectItem,
+  SelectTrigger as UiSelectTrigger,
+  SelectValue as UiSelectValue,
+} from "@/components/ui/select"
 import { ContentKanbanBoard } from "@/components/cms/content-kanban-board"
 import { ColumnSettingsModal } from "@/components/cms/column-settings-modal"
 import { Button } from "@/components/ui/button"
@@ -34,10 +49,11 @@ import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
-import { 
-  bulkContentAction, 
-  deleteEntryAction, 
-  updateContentEntryStatusAction 
+import {
+  bulkContentAction,
+  deleteEntryAction,
+  updateContentEntryStatusAction,
+  getEntriesAction,
 } from "@/actions/content"
 import { extractEntryLabel, extractEntrySubtitle, RelationLabelItem } from "@/lib/relation-labels"
 import { allowedUserTransitions, isWorkflowStatus, WorkflowStatus } from "@/lib/content-workflow-rules"
@@ -96,6 +112,66 @@ export function ContentEntriesManager({
   const [isColumnModalOpen, setIsColumnModalOpen] = useState(false)
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table")
   const [relationLabelsMap, setRelationLabelsMap] = useState<Record<string, RelationLabelItem>>(initialRelationLabels)
+
+  // The server only hands us the first page (see cms/content/[slug]/page.tsx —
+  // capped at 200 for the initial render). Search/filter here run in-memory
+  // over whatever's in `entries`, which used to mean anything past that cap
+  // was silently unreachable — "Muat Lebih Banyak" below fetches further
+  // pages on demand via the same getEntriesAction the server uses, so large
+  // collections stay fully searchable rather than truncated.
+  const [entries, setEntries] = useState<any[]>(initialEntries)
+  const [entriesPage, setEntriesPage] = useState(1)
+  const [hasMoreEntries, setHasMoreEntries] = useState(initialEntries.length >= 200)
+  const [isLoadingMore, setIsLoadingMore] = useState(false)
+  const ENTRIES_PAGE_SIZE = 100
+
+  // router.refresh() after a delete/status-change/bulk action re-runs the
+  // server component and hands us a fresh `initialEntries` prop — but
+  // useState(initialEntries) only applies on mount, so without this the
+  // list would silently keep showing stale data (and any "loaded more"
+  // pages would be lost) on every such refresh. Reset pagination to page 1
+  // since the fresh prop is itself the first page.
+  useEffect(() => {
+    setEntries(initialEntries)
+    setEntriesPage(1)
+    setHasMoreEntries(initialEntries.length >= 200)
+  }, [initialEntries])
+
+  const handleLoadMoreEntries = async () => {
+    setIsLoadingMore(true)
+    try {
+      const nextPage = entriesPage + 1
+      const result = await getEntriesAction(tenantSlug, contentTypeSlug, {
+        page: nextPage,
+        pageSize: ENTRIES_PAGE_SIZE,
+      })
+      if ("error" in result && result.error) {
+        toast({ variant: "destructive", title: "Gagal Memuat Data", description: result.error })
+        return
+      }
+      const newEntries = (result.entries || []).map((e: any) => {
+        let parsedData = e.data
+        if (typeof e.data === "string") {
+          try { parsedData = JSON.parse(e.data) } catch { parsedData = {} }
+        }
+        return { ...e, data: parsedData }
+      })
+      setEntries(prev => {
+        const existingIds = new Set(prev.map((e: any) => e.id))
+        return [...prev, ...newEntries.filter((e: any) => !existingIds.has(e.id))]
+      })
+      if (result.relationLabels) {
+        setRelationLabelsMap(prev => ({ ...prev, ...result.relationLabels }))
+      }
+      setEntriesPage(nextPage)
+      const total = result.meta?.pagination?.total ?? 0
+      setHasMoreEntries(nextPage * ENTRIES_PAGE_SIZE < total)
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Memuat Data", description: err.message || "Terjadi kesalahan" })
+    } finally {
+      setIsLoadingMore(false)
+    }
+  }
 
   // Default visible columns: first 4 fields
   const defaultColumns = useMemo(() => {
@@ -220,7 +296,7 @@ export function ContentEntriesManager({
 
   // Filtered entries by query, target field, and workflow status
   const filteredEntries = useMemo(() => {
-    return initialEntries.filter(entry => {
+    return entries.filter(entry => {
       const data = entry.data || {}
       const matchesStatus = statusFilter.includes(entry.status)
       if (!matchesStatus) return false
@@ -289,7 +365,7 @@ export function ContentEntriesManager({
         }
       }
     })
-  }, [initialEntries, searchQuery, searchTargetField, statusFilter, relationLabelsMap])
+  }, [entries, searchQuery, searchTargetField, statusFilter, relationLabelsMap])
 
   const handleToggleSelectAll = () => {
     if (selectedIds.length === filteredEntries.length) {
@@ -304,6 +380,58 @@ export function ContentEntriesManager({
       setSelectedIds(selectedIds.filter(item => item !== id))
     } else {
       setSelectedIds([...selectedIds, id])
+    }
+  }
+
+  // Bulk "set field value" — scalar field types only (see bulkContentAction's
+  // SCALAR_BULK_TYPES guard server-side); relations/media/components need
+  // structural merging that isn't safe to mass-apply from a single value.
+  const [isBulkEditOpen, setIsBulkEditOpen] = useState(false)
+  const [bulkEditFieldSlug, setBulkEditFieldSlug] = useState<string>("")
+  const [bulkEditValue, setBulkEditValue] = useState<string>("")
+  const [isBulkEditSubmitting, setIsBulkEditSubmitting] = useState(false)
+
+  const BULK_EDITABLE_TYPES = new Set([
+    "text", "textarea", "richText", "markdown", "number", "currency", "percent",
+    "date", "datetime", "time", "select", "boolean", "email", "url", "phone", "uid", "rating", "color",
+  ])
+  const bulkEditableFields = useMemo(
+    () => (contentType?.fields || []).filter((f: any) => BULK_EDITABLE_TYPES.has(f.type)),
+    [contentType]
+  )
+  const bulkEditField = bulkEditableFields.find((f: any) => f.slug === bulkEditFieldSlug)
+
+  const handleSubmitBulkEdit = async () => {
+    if (!bulkEditField) return
+    setIsBulkEditSubmitting(true)
+    try {
+      let value: unknown = bulkEditValue
+      if (bulkEditField.type === "boolean") value = bulkEditValue === "true"
+      else if (["number", "currency", "percent", "rating"].includes(bulkEditField.type)) value = Number(bulkEditValue)
+
+      const res = await bulkContentAction(tenantSlug, contentTypeSlug, selectedIds, "setField", {
+        slug: bulkEditField.slug,
+        value,
+      })
+      if (res.success && "count" in res) {
+        toast({ title: "Edit Massal Berhasil", description: `${res.count} entri diperbarui.` })
+        setIsBulkEditOpen(false)
+        setBulkEditFieldSlug("")
+        setBulkEditValue("")
+        setSelectedIds([])
+        router.refresh()
+      } else {
+        const failedCount = "failed" in res ? res.failed : undefined
+        toast({
+          variant: "destructive",
+          title: "Edit Massal Gagal",
+          description: ("error" in res && res.error) || (failedCount ? `${failedCount} entri gagal diperbarui.` : "Gagal memproses edit massal"),
+        })
+      }
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Terjadi Kesalahan", description: error.message || "Gagal memproses edit massal" })
+    } finally {
+      setIsBulkEditSubmitting(false)
     }
   }
 
@@ -345,7 +473,7 @@ export function ContentEntriesManager({
     )
       return
     try {
-      const res = await deleteEntryAction(id, tenantSlug, contentTypeSlug)
+      const res = await deleteEntryAction(tenantSlug, contentTypeSlug, id)
       if (res.success) {
         toast({ title: "Entri Dihapus" })
         router.refresh()
@@ -391,6 +519,84 @@ export function ContentEntriesManager({
   return (
     <div className="flex flex-1 flex-col w-full">
       {confirmDialog}
+
+      <Dialog open={isBulkEditOpen} onOpenChange={setIsBulkEditOpen}>
+        <DialogContent className="sm:max-w-md rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-foreground">Edit Massal ({selectedIds.length} Entri)</DialogTitle>
+            <DialogDescription className="text-xs text-muted-foreground">
+              Pilih satu field dan nilai baru — akan diterapkan ke semua entri yang dipilih.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-3 py-2">
+            <div className="space-y-1.5">
+              <label className="text-xs font-bold text-foreground">Field</label>
+              <UiSelect value={bulkEditFieldSlug} onValueChange={setBulkEditFieldSlug}>
+                <UiSelectTrigger className="h-9 rounded-xl text-xs">
+                  <UiSelectValue placeholder="Pilih field..." />
+                </UiSelectTrigger>
+                <UiSelectContent>
+                  {bulkEditableFields.map((f: any) => (
+                    <UiSelectItem key={f.slug} value={f.slug} className="text-xs">{f.name}</UiSelectItem>
+                  ))}
+                </UiSelectContent>
+              </UiSelect>
+            </div>
+
+            {bulkEditField && (
+              <div className="space-y-1.5">
+                <label className="text-xs font-bold text-foreground">Nilai Baru</label>
+                {bulkEditField.type === "boolean" ? (
+                  <UiSelect value={bulkEditValue} onValueChange={setBulkEditValue}>
+                    <UiSelectTrigger className="h-9 rounded-xl text-xs">
+                      <UiSelectValue placeholder="Pilih nilai..." />
+                    </UiSelectTrigger>
+                    <UiSelectContent>
+                      <UiSelectItem value="true" className="text-xs">True</UiSelectItem>
+                      <UiSelectItem value="false" className="text-xs">False</UiSelectItem>
+                    </UiSelectContent>
+                  </UiSelect>
+                ) : bulkEditField.type === "select" ? (
+                  <UiSelect value={bulkEditValue} onValueChange={setBulkEditValue}>
+                    <UiSelectTrigger className="h-9 rounded-xl text-xs">
+                      <UiSelectValue placeholder="Pilih nilai..." />
+                    </UiSelectTrigger>
+                    <UiSelectContent>
+                      {(bulkEditField.options?.options || bulkEditField.options || []).map((opt: string, i: number) => (
+                        <UiSelectItem key={i} value={opt} className="text-xs">{opt}</UiSelectItem>
+                      ))}
+                    </UiSelectContent>
+                  </UiSelect>
+                ) : (
+                  <Input
+                    className="h-9 rounded-xl text-xs"
+                    type={["number", "currency", "percent", "rating"].includes(bulkEditField.type) ? "number" : bulkEditField.type === "date" ? "date" : bulkEditField.type === "datetime" ? "datetime-local" : bulkEditField.type === "time" ? "time" : bulkEditField.type === "email" ? "email" : "text"}
+                    value={bulkEditValue}
+                    onChange={e => setBulkEditValue(e.target.value)}
+                    placeholder={`Nilai baru untuk ${bulkEditField.name}...`}
+                  />
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setIsBulkEditOpen(false)} className="rounded-xl text-xs">
+              Batal
+            </Button>
+            <Button
+              onClick={handleSubmitBulkEdit}
+              disabled={!bulkEditField || isBulkEditSubmitting}
+              className="rounded-xl text-xs font-bold gap-1.5"
+            >
+              {isBulkEditSubmitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+              Terapkan ke {selectedIds.length} Entri
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ApiSnippetDialog
         open={isApiSnippetOpen} 
         onOpenChange={setIsApiSnippetOpen} 
@@ -571,14 +777,25 @@ export function ContentEntriesManager({
                     >
                       <CheckCircle2 className="h-3 w-3 mr-1 text-emerald-500" /> Publish
                     </Button>
-                    <Button 
-                      size="sm" 
-                      variant="ghost" 
-                      className="h-7 text-xs font-bold rounded-lg" 
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-7 text-xs font-bold rounded-lg"
                       onClick={() => handleBulkAction('draft')}
                     >
                       <FileText className="h-3 w-3 mr-1 text-muted-foreground" /> Draft
                     </Button>
+                    {bulkEditableFields.length > 0 && (
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 text-xs font-bold rounded-lg"
+                        onClick={() => setIsBulkEditOpen(true)}
+                        title="Ubah nilai satu field di semua entri terpilih"
+                      >
+                        <Edit className="h-3 w-3 mr-1 text-primary" /> Edit Field
+                      </Button>
+                    )}
                     <Separator orientation="vertical" className="h-4 bg-border" />
                     <Button 
                       size="sm" 
@@ -986,6 +1203,20 @@ export function ContentEntriesManager({
               </Table>
             </CardContent>
           </Card>
+          )}
+
+          {hasMoreEntries && (
+            <div className="flex justify-center pt-4">
+              <Button
+                variant="outline"
+                onClick={handleLoadMoreEntries}
+                disabled={isLoadingMore}
+                className="h-9 text-xs font-bold rounded-xl gap-1.5"
+              >
+                {isLoadingMore ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+                Muat Lebih Banyak ({entries.length} dimuat)
+              </Button>
+            </div>
           )}
 
         </div>

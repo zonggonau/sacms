@@ -446,9 +446,16 @@ export async function updateContentEntryStatusAction(tenantSlug: string, content
 }
 
 /**
- * Perform bulk action on multiple entries
+ * Perform bulk action on multiple entries. `fieldUpdate` is required when
+ * action === "setField" — {slug, value} to write into every selected entry.
  */
-export async function bulkContentAction(tenantSlug: string, contentTypeSlug: string, entryIds: string[], action: string) {
+export async function bulkContentAction(
+  tenantSlug: string,
+  contentTypeSlug: string,
+  entryIds: string[],
+  action: string,
+  fieldUpdate?: { slug: string; value: unknown },
+) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) return { error: "Unauthorized" }
@@ -518,6 +525,30 @@ export async function bulkContentAction(tenantSlug: string, contentTypeSlug: str
            if ("success" in result && result.success) successCount++
            else failures.push({ entryId: entry.id, error: ("error" in result && result.error) || `${action} failed` })
         }
+      }
+    } else if (action === "setField") {
+      if (!fieldUpdate || !fieldUpdate.slug) return { error: "fieldUpdate.slug is required for setField" }
+      const targetField = await tenantDb.schemaField.findFirst({ where: { contentTypeId: contentType.id, slug: fieldUpdate.slug } })
+      if (!targetField) return { error: `Field '${fieldUpdate.slug}' not found on this content type` }
+      // Relation/component/media/repeater values need real structural merging
+      // per field type (arrays vs single ids, JSON shape) — mass-writing a
+      // single scalar into them safely isn't well-defined here, so bulk
+      // set is scoped to plain scalar field types for now.
+      const SCALAR_BULK_TYPES = new Set([
+        "text", "textarea", "richText", "markdown", "number", "currency", "percent",
+        "date", "datetime", "time", "select", "boolean", "email", "url", "phone", "uid", "rating", "color",
+      ])
+      if (!SCALAR_BULK_TYPES.has(targetField.type)) {
+        return { error: `Bulk edit belum didukung untuk tipe field '${targetField.type}'` }
+      }
+      for (const entry of entries) {
+        const existingData = (typeof entry.data === "string" ? JSON.parse(entry.data) : entry.data) || {}
+        const result = await updateEntryAction(tenantSlug, contentTypeSlug, entry.id, {
+          data: { ...existingData, [fieldUpdate.slug]: fieldUpdate.value },
+          locale: entry.locale,
+        })
+        if ("success" in result && result.success) successCount++
+        else failures.push({ entryId: entry.id, error: ("error" in result && result.error) || "setField failed" })
       }
     } else {
       return { error: "Invalid action" }

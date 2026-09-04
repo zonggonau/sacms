@@ -412,13 +412,14 @@ export default function CMSEditEntryClient({
         return (
           <div className="space-y-1.5">
             {renderLabelWithAI()}
-            <RelationSelectField 
-              value={value as any} 
-              onChange={v => handleFieldChange(field.slug, v)} 
-              targetSlug={targetSlug} 
-              tenantSlug={tenantSlug} 
-              required={field.required} 
-              multiple={isMultiple} 
+            <RelationSelectField
+              value={value as any}
+              onChange={v => handleFieldChange(field.slug, v)}
+              targetSlug={targetSlug}
+              tenantSlug={tenantSlug}
+              required={field.required}
+              multiple={isMultiple}
+              relationType={field.options?.relationType}
             />
           </div>
         )
