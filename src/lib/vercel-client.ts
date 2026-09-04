@@ -44,6 +44,10 @@ export interface VercelDeploymentResult {
   state: string
   projectId?: string
   projectName?: string
+  /** true when VERCEL_ACCESS_TOKEN isn't configured and this is a fabricated,
+   *  non-functional result — callers MUST surface this, never present it as a
+   *  real deployment. */
+  simulated?: boolean
 }
 
 export interface VercelDomainResult {
@@ -57,6 +61,8 @@ export interface VercelDomainResult {
     domain: string
     value: string
   }[]
+  /** true when VERCEL_ACCESS_TOKEN isn't configured — see VercelDeploymentResult. */
+  simulated?: boolean
 }
 
 /**
@@ -69,7 +75,10 @@ export async function deployToVercel(
 ): Promise<VercelDeploymentResult> {
   const token = await getVercelToken()
   
-  // Safe Fallback if token is not configured in local development
+  // Fallback for local dev without a token: fabricate a result so the flow is
+  // exercisable end-to-end, but it MUST be flagged `simulated` — callers are
+  // expected to reject/warn on this in any environment that isn't local dev,
+  // rather than presenting it as a real deployment.
   if (!token) {
     console.warn("[Vercel Client] VERCEL_ACCESS_TOKEN not set in settings or env. Simulating instant deployment.")
     const sanitizedName = projectName.toLowerCase().replace(/[^a-z0-9-]/g, "-")
@@ -79,6 +88,7 @@ export async function deployToVercel(
       state: "READY",
       projectId: `prj_${Date.now()}`,
       projectName: sanitizedName,
+      simulated: true,
     }
   }
 
@@ -127,10 +137,10 @@ export async function deployToVercel(
 /**
  * Get deployment status
  */
-export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string }> {
+export async function getDeploymentStatus(deploymentId: string): Promise<{ state: string; url: string; simulated?: boolean }> {
   const token = await getVercelToken()
   if (!token) {
-    return { state: "READY", url: `https://sacms-site.vercel.app` }
+    return { state: "READY", url: `https://sacms-site.vercel.app`, simulated: true }
   }
 
   const res = await fetch(`${VERCEL_API_BASE}/v13/deployments/${deploymentId}${getTeamQuery()}`, {
@@ -158,7 +168,8 @@ export async function addDomainToProject(
       name: domain,
       verified: true,
       verificationRequired: false,
-      verificationRecords: []
+      verificationRecords: [],
+      simulated: true,
     }
   }
 
@@ -193,10 +204,11 @@ export async function getDomainConfig(domain: string): Promise<{
   cname?: string
   aRecord?: string
   configured: boolean
+  simulated?: boolean
 }> {
   const token = await getVercelToken()
   if (!token) {
-    return { cname: "cname.vercel-dns.com", aRecord: "76.76.21.21", configured: true }
+    return { cname: "cname.vercel-dns.com", aRecord: "76.76.21.21", configured: true, simulated: true }
   }
 
   const res = await fetch(`${VERCEL_API_BASE}/v6/domains/${domain}/config${getTeamQuery()}`, {

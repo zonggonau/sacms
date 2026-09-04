@@ -237,13 +237,15 @@ export default async function HomePage() {
       })
     ])
 
-    return NextResponse.json({ 
-      success: true, 
+    return NextResponse.json({
+      success: true,
       deploymentId: deployResult.id,
       url: deployResult.url,
       state: deployResult.state,
       vercelProjectId: deployResult.projectId,
       apiKeyName: tokenRecord.name,
+      simulated: deployResult.simulated ?? false,
+      hostType: deployResult.simulated ? "simulation" : "vercel",
     })
   },
   { minRole: "admin" },

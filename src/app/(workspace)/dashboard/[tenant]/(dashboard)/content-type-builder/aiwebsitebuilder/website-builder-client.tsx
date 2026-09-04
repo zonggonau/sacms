@@ -575,13 +575,22 @@ export async function fetchContent(collection: string) {
       const data = await res.json()
 
       if (res.ok && data.success) {
+        const isSimulated = Boolean(data.simulated || data.hostType === "simulation")
         setProjectStatus("project")
         setDeploymentInfo(data)
         setIsDeployModalOpen(true)
-        toast({ 
-          title: isVps ? "Deploy ke Dedicated VPS Berhasil!" : "Deploy ke Cloud Berhasil!", 
-          description: `Website produksi aktif di: ${data.url || "Cloud Edge"}` 
-        })
+        toast(
+          isSimulated
+            ? {
+                variant: "destructive",
+                title: "Deploy Simulasi — Belum Ada Server Nyata",
+                description: "Konfigurasikan VPS atau integrasi Vercel untuk deploy produksi sesungguhnya.",
+              }
+            : {
+                title: isVps ? "Deploy ke Dedicated VPS Berhasil!" : "Deploy ke Cloud Berhasil!",
+                description: `Website produksi aktif di: ${data.url || "Cloud Edge"}`,
+              }
+        )
       } else {
         throw new Error(data?.error || "Gagal deploy ke cloud")
       }
@@ -657,7 +666,16 @@ export async function fetchContent(collection: string) {
       const data = await res.json()
       if (res.ok && data.success) {
         setCustomDomainResult(data)
-        toast({ title: "Konfigurasi Domain Berhasil", description: `Domain ${customDomainInput} siap dihubungkan!` })
+        const isSimulated = Boolean(data.domain?.simulated || data.dns?.simulated)
+        toast(
+          isSimulated
+            ? {
+                variant: "destructive",
+                title: "Domain Belum Benar-Benar Terhubung",
+                description: "Integrasi Vercel belum dikonfigurasi — catatan DNS di bawah bersifat contoh, bukan konfigurasi nyata.",
+              }
+            : { title: "Konfigurasi Domain Berhasil", description: `Domain ${customDomainInput} siap dihubungkan!` }
+        )
       } else {
         throw new Error(data.error || "Gagal mengonfigurasi domain")
       }
@@ -1551,14 +1569,31 @@ export async function fetchContent(collection: string) {
           <DialogHeader>
             <DialogTitle className="text-lg font-black text-foreground flex items-center gap-2">
               <Rocket className="h-5 w-5 text-primary" />
-              Deploy ke Cloud Berhasil!
+              {deploymentInfo?.simulated || deploymentInfo?.hostType === "simulation"
+                ? "Deploy Simulasi Selesai"
+                : "Deploy ke Cloud Berhasil!"}
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground">
-              Aplikasi Next.js Anda kini telah aktif di jaringan cloud edge berkecepatan tinggi.
+              {deploymentInfo?.simulated || deploymentInfo?.hostType === "simulation"
+                ? "Ini adalah pratinjau alur deploy — belum ada infrastruktur produksi nyata yang dikonfigurasi."
+                : "Aplikasi Next.js Anda kini telah aktif di jaringan cloud edge berkecepatan tinggi."}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-2">
+            {(deploymentInfo?.simulated || deploymentInfo?.hostType === "simulation") && (
+              <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 flex items-start gap-2.5 text-xs text-amber-700 dark:text-amber-400">
+                <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold">Tidak ada deploy nyata yang terjadi.</p>
+                  <p className="mt-0.5 text-amber-700/80 dark:text-amber-400/80">
+                    {deploymentInfo?.hostType === "vps"
+                      ? "Belum ada server VPS dedicated yang terhubung ke workspace ini. URL di bawah bersifat placeholder dan tidak akan bisa diakses."
+                      : "Integrasi Vercel belum dikonfigurasi oleh administrator platform. URL di bawah bersifat placeholder dan tidak akan bisa diakses."}
+                  </p>
+                </div>
+              </div>
+            )}
             {deploymentInfo?.hostType === "vps" ? (
               <div className="p-3 rounded-xl bg-purple-500/10 border border-purple-500/20 text-xs text-purple-600 dark:text-purple-400 flex items-center justify-between">
                 <div className="flex items-center gap-2">
