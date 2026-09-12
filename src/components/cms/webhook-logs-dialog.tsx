@@ -74,7 +74,7 @@ export function WebhookLogsDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden border border-border shadow-none rounded-none h-[80vh] flex flex-col bg-card">
+      <DialogContent className="sm:max-w-[900px] p-0 overflow-hidden border border-border shadow-none rounded-2xl h-[80vh] flex flex-col bg-card">
         <div className="bg-muted/30 p-6 border-b border-border shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-none border border-border bg-orange-500 flex items-center justify-center text-white">

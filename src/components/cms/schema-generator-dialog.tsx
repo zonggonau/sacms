@@ -135,7 +135,7 @@ export function SchemaGeneratorDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border border-border shadow-none rounded-none max-h-[90vh] flex flex-col bg-card">
+      <DialogContent className="sm:max-w-[550px] p-0 overflow-hidden border border-border shadow-none rounded-2xl max-h-[90vh] flex flex-col bg-card">
         <div className="bg-muted p-8 border-b border-border text-foreground shrink-0">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-12 h-12 rounded-none bg-muted border border-border flex items-center justify-center">
