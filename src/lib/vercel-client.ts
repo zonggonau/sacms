@@ -188,6 +188,32 @@ export async function getVercelDeploymentProtectionStatus(
 }
 
 /**
+ * Whether a Vercel project still exists — used to detect "the user deleted
+ * this project directly on vercel.com" instead of trusting our own stored
+ * vercelDeploymentUrl/vercelProjectId forever.
+ *
+ * Returns `false` only on a definitive 404 (confirmed deleted). Any other
+ * outcome (no token configured, network error, rate limit, 5xx) returns
+ * `null` — "couldn't verify" — so a transient failure never gets treated
+ * as "deleted" and hides a site that's actually still live.
+ */
+export async function checkVercelProjectExists(projectId: string): Promise<boolean | null> {
+  const token = await getVercelToken()
+  if (!token) return null
+
+  try {
+    const res = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectId}${getTeamQuery()}`, {
+      headers: await getVercelHeaders(),
+    })
+    if (res.status === 404) return false
+    if (res.ok) return true
+    return null
+  } catch {
+    return null
+  }
+}
+
+/**
  * Turn off Vercel's "Vercel Authentication" deployment protection for a
  * project, so its deployment URLs (including the per-deployment ones with a
  * random suffix, not just the production alias) are viewable by anyone with

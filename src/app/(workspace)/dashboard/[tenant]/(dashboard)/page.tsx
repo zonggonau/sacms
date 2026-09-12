@@ -119,11 +119,23 @@ export default async function TenantDashboardPage({
   const vercelSettingRecord = (await db.setting.findUnique({ where: { key: `${tenantId}_vercelDeploymentUrl` } }).catch(() => null))?.value
   const effectiveVercelUrl = tenantData?.vercelDeploymentUrl || vercelSettingRecord || null
 
+  // Confirm the Vercel project is actually still there before showing it as
+  // "Live" — a project deleted directly on vercel.com otherwise keeps
+  // showing forever, since nothing else ever re-checks it. A confirmed
+  // deletion self-heals the stale DB fields too.
+  const { resolveTenantHostingStatus } = await import("@/lib/infrastructure/hosting-status")
+  const hostingStatus = await resolveTenantHostingStatus(
+    tenantId,
+    effectiveVercelUrl,
+    tenantData?.vercelProjectId || null,
+    tenantDb,
+  )
+
   const stats = {
     tenant: {
       ...access.tenant,
-      vercelDeploymentUrl: effectiveVercelUrl,
-      vercelProjectId: tenantData?.vercelProjectId || null,
+      vercelDeploymentUrl: hostingStatus.url,
+      vercelProjectId: hostingStatus.projectId,
       customDomain: tenantData?.customDomain || null,
     },
     contentTypeCount: contentTypeCount || contentTypes.length,

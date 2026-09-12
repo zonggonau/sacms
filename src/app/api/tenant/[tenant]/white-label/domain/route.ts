@@ -123,9 +123,18 @@ export const GET = withStaffAuth(
     const vercelProjectIdSetting = settings.find((s) => s.key === `${access.tenantId}_vercelProjectId`)?.value
     const vercelCustomDomainSetting = settings.find((s) => s.key === `${access.tenantId}_customDomain`)?.value
 
-    const vercelUrl = tenantRecord.vercelDeploymentUrl || vercelDeploymentUrlSetting || siteRecord?.deployments?.[0]?.url || null
-    const vercelProjectId = tenantRecord.vercelProjectId || vercelProjectIdSetting || null
+    const rawVercelUrl = tenantRecord.vercelDeploymentUrl || vercelDeploymentUrlSetting || siteRecord?.deployments?.[0]?.url || null
+    const rawVercelProjectId = tenantRecord.vercelProjectId || vercelProjectIdSetting || null
     const vercelCustomDomain = vercelCustomDomainSetting || siteRecord?.customDomain || null
+
+    // Same live-check as the ai-builder/deploy route — a project deleted
+    // directly on vercel.com must not keep showing as deployed here either,
+    // since the Hosting tab falls back to this endpoint's vercelDeployment
+    // when the other one reports nothing.
+    const { resolveTenantHostingStatus } = await import("@/lib/infrastructure/hosting-status")
+    const vercelStatus = await resolveTenantHostingStatus(access.tenantId, rawVercelUrl, rawVercelProjectId)
+    const vercelUrl = vercelStatus.url
+    const vercelProjectId = vercelStatus.projectId
 
     let vercelSubdomain: string | null = null
     if (vercelUrl) {

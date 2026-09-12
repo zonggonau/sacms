@@ -238,6 +238,42 @@ export default function TenantDashboardClient({
         </Card>
       )}
 
+      {/* Not-yet-deployed / deployment removed prompt — shown whenever there's
+          no confirmed-live Vercel deployment (either it was never deployed,
+          or the project was deleted directly on vercel.com and the backend
+          detected that and cleared the stale record). */}
+      {!currentTenant?.vercelDeploymentUrl && (
+        <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex items-center gap-3.5 min-w-0">
+              <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Globe className="h-5 w-5" />
+              </div>
+              <div className="space-y-0.5 min-w-0">
+                <span className="text-xs font-bold text-foreground">Website Frontend Belum Di-deploy</span>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Belum ada situs live di Vercel untuk workspace ini. Bangun lewat AI Website Builder lalu deploy dalam satu klik.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button asChild size="sm" className="rounded-xl h-8 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs">
+                <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
+                  <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                  Bangun & Deploy Sekarang
+                </Link>
+              </Button>
+              <Button variant="ghost" size="sm" asChild className="rounded-xl h-8 px-3 text-xs text-muted-foreground hover:text-foreground">
+                <Link href={`/dashboard/${tenantId}/infrastructure?tab=hosting`}>
+                  Detail Hosting
+                  <ArrowRight className="h-3 w-3 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* AI Spotlight Hero Card */}
       <Card className="relative overflow-hidden border-border/80 bg-gradient-to-br from-primary/10 via-purple-500/5 to-background rounded-2xl p-5 md:p-6 shadow-xs border">
         <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5 relative z-10">

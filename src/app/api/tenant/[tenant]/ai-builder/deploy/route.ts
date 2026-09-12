@@ -33,9 +33,18 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
 
     const hostingStatusSetting = settings.find((s) => s.key === `${tenantId}_hostingStatus`)?.value
     const hostingExpiresAtSetting = settings.find((s) => s.key === `${tenantId}_hostingExpiresAt`)?.value
-    const vercelUrl = (tenant as any).vercelDeploymentUrl || settings.find((s) => s.key === `${tenantId}_vercelDeploymentUrl`)?.value || null
-    const vercelProjectId = (tenant as any).vercelProjectId || settings.find((s) => s.key === `${tenantId}_vercelProjectId`)?.value || null
+    const rawVercelUrl = (tenant as any).vercelDeploymentUrl || settings.find((s) => s.key === `${tenantId}_vercelDeploymentUrl`)?.value || null
+    const rawVercelProjectId = (tenant as any).vercelProjectId || settings.find((s) => s.key === `${tenantId}_vercelProjectId`)?.value || null
     const customDomain = (tenant as any).customDomain || settings.find((s) => s.key === `${tenantId}_customDomain`)?.value || null
+
+    // Confirm the Vercel project is actually still there before reporting it
+    // as deployed — a project deleted directly on vercel.com otherwise keeps
+    // showing as "Live" forever in the Hosting tab, since nothing else ever
+    // re-checks it. A confirmed deletion self-heals the stale DB fields too.
+    const { resolveTenantHostingStatus } = await import("@/lib/infrastructure/hosting-status")
+    const vercelStatus = await resolveTenantHostingStatus(tenantId, rawVercelUrl, rawVercelProjectId)
+    const vercelUrl = vercelStatus.url
+    const vercelProjectId = vercelStatus.projectId
 
     const hostingStatus = (tenant as any).hostingStatus || hostingStatusSetting || "trial"
     const hostingExpiresAt = (tenant as any).hostingExpiresAt || (hostingExpiresAtSetting ? new Date(hostingExpiresAtSetting) : null)
