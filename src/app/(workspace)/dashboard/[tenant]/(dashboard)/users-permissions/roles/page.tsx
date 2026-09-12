@@ -38,8 +38,15 @@ export default async function RolesPage({ params }: { params: Promise<{ tenant: 
     }),
     db.contentType.findMany({
       where: {
-        OR: [{ tenantId: access.tenantId }, { tenantId: null }],
-        ...EXCLUDE_PLATFORM_CONTENT_TYPES,
+        // The platform-internal exclusion only applies to the *global*
+        // (tenantId: null) content types — a tenant's own content type
+        // must never be hidden here just because its slug happens to
+        // collide with a platform one (e.g. a tenant naming their own
+        // blog schema "posts", same as SaCMS's own global blog type).
+        OR: [
+          { tenantId: access.tenantId },
+          { tenantId: null, ...EXCLUDE_PLATFORM_CONTENT_TYPES },
+        ],
       },
       select: { id: true, name: true, slug: true },
       orderBy: { name: "asc" },

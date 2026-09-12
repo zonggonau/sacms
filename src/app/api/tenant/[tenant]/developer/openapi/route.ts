@@ -10,8 +10,13 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
     const [contentTypesRaw, singleTypesRaw] = await Promise.all([
       db.contentType.findMany({
         where: {
-          OR: [{ tenantId: access.tenantId }, { tenantId: null }],
-          ...EXCLUDE_PLATFORM_CONTENT_TYPES,
+          // Exclude platform-internal types only among the *global*
+          // (tenantId: null) rows — never hide a tenant's own content type
+          // just because its slug happens to match a platform one.
+          OR: [
+            { tenantId: access.tenantId },
+            { tenantId: null, ...EXCLUDE_PLATFORM_CONTENT_TYPES },
+          ],
         },
         include: { schemaFields: true }
       }),
