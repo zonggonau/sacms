@@ -186,11 +186,21 @@ export async function POST(
     }
     const { query, variables } = validationResult.data
 
-    // Build dynamic schema for this tenant using the correct DB client
-    const { getTenantDb } = await import("@/lib/database")
     if (!resolvedTenantId) {
       return logResponse(NextResponse.json({ errors: [{ message: "Tenant ID is missing" }] }, { status: 400 }))
     }
+
+    const { checkApiCallQuota } = await import("@/lib/plan-enforcement")
+    const quota = await checkApiCallQuota(resolvedTenantId)
+    if (!quota.allowed) {
+      return logResponse(NextResponse.json(
+        { errors: [{ message: quota.message }] },
+        { status: 429, headers: { "Retry-After": "3600" } },
+      ))
+    }
+
+    // Build dynamic schema for this tenant using the correct DB client
+    const { getTenantDb } = await import("@/lib/database")
     const tenantDb = await getTenantDb(resolvedTenantId)
 
     const typeDefs = await buildDynamicTypeDefs(resolvedTenantId, allowMutations, tenantDb)

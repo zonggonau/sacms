@@ -489,6 +489,31 @@ async function getUserOverride(userId: string): Promise<UserOverride | null> {
   }
 }
 
+// ==================== PUBLIC API QUOTA (COST GUARDRAIL) ====================
+
+/**
+ * Monthly `api_calls` quota check for the public content API
+ * (/api/public/[tenant]/...) — the actual traffic driver behind a
+ * shared-DB (free/pro) tenant's real hosting cost, since every request
+ * their deployed Vercel frontend makes to fetch content lands here.
+ * `max_api_calls` was already defined per plan tier but never enforced
+ * anywhere before this.
+ *
+ * Deliberately fails OPEN: if the quota check itself errors (DB hiccup,
+ * a test's mock not implementing every model, etc.), the request is
+ * allowed through rather than taking down the entire public API for every
+ * tenant over a bug in cost accounting.
+ */
+export async function checkApiCallQuota(tenantId: string): Promise<{ allowed: boolean; message: string }> {
+  try {
+    const result = await enforcePlanLimit(tenantId, "api_calls")
+    return { allowed: result.allowed, message: result.message }
+  } catch (error) {
+    console.error("[plan-enforcement] api_calls quota check failed, allowing request:", error)
+    return { allowed: true, message: "OK (quota check unavailable)" }
+  }
+}
+
 // ==================== HELPERS ====================
 
 function formatResourceName(resource: string): string {

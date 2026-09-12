@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { db, getTenantDb } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
+import { checkApiCallQuota } from "@/lib/plan-enforcement"
 import { getCache, setCache } from "@/lib/cache"
 import { logApiRequest } from "@/lib/monitoring"
 import { isWorkflowStatus } from "@/lib/content-workflow-rules"
@@ -102,6 +103,19 @@ export async function GET(
             "Retry-After": String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
           },
         }
+      ))
+    }
+
+    // Monthly plan quota (max_api_calls) — separate from the rate limit
+    // above, which only guards against short-burst abuse regardless of
+    // plan. This is what actually keeps a shared-DB (free/pro) tenant's
+    // traffic bounded to what their plan pays for, since every request
+    // their deployed Vercel frontend makes to fetch content lands here.
+    const quota = await checkApiCallQuota(tenantId)
+    if (!quota.allowed) {
+      return logResponse(NextResponse.json(
+        { error: quota.message, code: "PLAN_LIMIT_REACHED" },
+        { status: 429, headers: { "Retry-After": "3600" } },
       ))
     }
 
@@ -590,6 +604,14 @@ export async function POST(
       return logResponse(
         NextResponse.json({ error: "Write rate limit exceeded. Slow down." }, { status: 429 }),
         actor.tenantId
+      )
+    }
+
+    const quota = await checkApiCallQuota(actor.tenantId)
+    if (!quota.allowed) {
+      return logResponse(
+        NextResponse.json({ error: quota.message, code: "PLAN_LIMIT_REACHED" }, { status: 429, headers: { "Retry-After": "3600" } }),
+        actor.tenantId,
       )
     }
 

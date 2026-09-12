@@ -5,6 +5,7 @@ import { resolveContentData } from "@/lib/content-resolver"
 import { logApiRequest } from "@/lib/monitoring"
 import { getCache, setCache, invalidatePattern } from "@/lib/cache"
 import { createHash } from "crypto"
+import { checkApiCallQuota } from "@/lib/plan-enforcement"
 
 interface ResolvedAuth {
   tenantId: string
@@ -145,6 +146,14 @@ export async function GET(
       return logResponse(NextResponse.json(
         { error: "Rate limit exceeded. Try again later." },
         { status: 429 }
+      ))
+    }
+
+    const quota = await checkApiCallQuota(auth.tenantId)
+    if (!quota.allowed) {
+      return logResponse(NextResponse.json(
+        { error: quota.message, code: "PLAN_LIMIT_REACHED" },
+        { status: 429, headers: { "Retry-After": "3600" } },
       ))
     }
 
@@ -309,6 +318,14 @@ export async function PUT(
     }
 
     resolvedTenantId = auth.tenantId
+
+    const quota = await checkApiCallQuota(auth.tenantId)
+    if (!quota.allowed) {
+      return logResponse(NextResponse.json(
+        { error: quota.message, code: "PLAN_LIMIT_REACHED" },
+        { status: 429, headers: { "Retry-After": "3600" } },
+      ))
+    }
 
     const { searchParams } = new URL(request.url)
     const defaultLocale = (await db.tenantLocale.findFirst({

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { db, getTenantDb } from "@/lib/database"
 import { rateLimit, RATE_LIMITS } from "@/lib/rate-limit"
+import { checkApiCallQuota } from "@/lib/plan-enforcement"
 import { getCache, setCache } from "@/lib/cache"
 import { logApiRequest } from "@/lib/monitoring"
 import {
@@ -90,6 +91,14 @@ async function writeHandler(
     const rl = await rateLimit(rlKey, { limit: 10, windowSeconds: 10 })
     if (!rl.success) {
       return log(NextResponse.json({ error: "Write rate limit exceeded. Slow down." }, { status: 429 }), actor.tenantId)
+    }
+
+    const quota = await checkApiCallQuota(actor.tenantId)
+    if (!quota.allowed) {
+      return log(
+        NextResponse.json({ error: quota.message, code: "PLAN_LIMIT_REACHED" }, { status: 429, headers: { "Retry-After": "3600" } }),
+        actor.tenantId,
+      )
     }
 
     const tenantDb = await getTenantDb(actor.tenantId)
@@ -243,6 +252,14 @@ export async function GET(
             "Retry-After": String(Math.ceil((rateLimitResult.resetAt - Date.now()) / 1000)),
           },
         }
+      ))
+    }
+
+    const quota = await checkApiCallQuota(tenantId)
+    if (!quota.allowed) {
+      return logResponse(NextResponse.json(
+        { error: quota.message, code: "PLAN_LIMIT_REACHED" },
+        { status: 429, headers: { "Retry-After": "3600" } },
       ))
     }
 
