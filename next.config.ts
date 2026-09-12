@@ -31,7 +31,13 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  serverExternalPackages: ["node:inspector"],
+  // ssh2 (used by lib/infrastructure/ssh-client.ts for deploy_to_vps) ships
+  // non-ESM-placeable assets in its crypto module — Turbopack's production
+  // build fails trying to bundle it into a route's server chunk. Marking it
+  // external means Next.js requires it straight from node_modules at
+  // runtime instead of bundling it, which is the supported way to handle
+  // native/CJS-only packages like this.
+  serverExternalPackages: ["node:inspector", "ssh2"],
   allowedDevOrigins: [
     "localhost:3000",
     "localhost:3001",
