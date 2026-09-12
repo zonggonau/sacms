@@ -183,8 +183,18 @@ const COLLECTION_TYPES = [
       { slug: "max_storage",        name: "Max Storage (MB)",   type: "number", required: true, order: 8 },
       { slug: "max_locales",        name: "Max Locales",        type: "number", required: true, order: 9 },
       { slug: "max_api_calls",      name: "Max API Calls/mo",   type: "number", required: true, order: 10 },
-      { slug: "description", name: "Description",   type: "text",    required: false, order: 11 },
-      { slug: "features",    name: "Features",      type: "json",    required: false, order: 12 },
+      // Informational fair-use figure for shared-Vercel-hosting plans
+      // (Cloud Ekonomis: free/pro/business) — NOT a literally metered byte
+      // count (Vercel doesn't expose a stable per-project bandwidth API to
+      // enforce against). It's the marketing-facing number tied to the
+      // max_api_calls quota that IS actually enforced (see
+      // checkApiCallQuota() in lib/plan-enforcement.ts) — every request a
+      // tenant's deployed frontend makes to fetch content lands there.
+      // Left 0/unset for VPS/VDS plans: their bandwidth is bounded by their
+      // own dedicated appliance's bandwidthMbps, not a shared Vercel account.
+      { slug: "fair_use_bandwidth_gb", name: "Fair-Use Bandwidth (GB/bulan)", type: "number", required: false, order: 11 },
+      { slug: "description", name: "Description",   type: "text",    required: false, order: 12 },
+      { slug: "features",    name: "Features",      type: "json",    required: false, order: 13 },
     ],
   },
   {
@@ -455,14 +465,16 @@ const SEED_DATA: Record<string, any> = {
       max_content_entries: 500, 
       max_team_members: 1, 
       max_storage: 100, 
-      max_locales: 1, 
+      max_locales: 1,
       max_api_calls: 1000,
+      fair_use_bandwidth_gb: 2,
       features: [
         "Unlimited Content Schemas & Tipe Data",
         "500 Entri Konten Dinamis",
         "1 Anggota Tim",
         "100 MB Cloudflare R2 Storage",
         "1.000 API Calls / bulan",
+        "Fair-Use Bandwidth ~2 GB/bulan (Shared Cloud Edge)",
         "50 Bonus AI Credits Awal (Top-Up jika habis)",
         "Live Sandbox Preview (AI Website Builder)",
         "Community Support"
@@ -480,13 +492,15 @@ const SEED_DATA: Record<string, any> = {
       max_content_entries: 10000, 
       max_team_members: 10, 
       max_storage: 5120, 
-      max_locales: 5, 
+      max_locales: 5,
       max_api_calls: 100000,
+      fair_use_bandwidth_gb: 50,
       features: [
         "10.000 Entri Konten & Unlimited Schemas",
         "10 Anggota Tim & Kolaborasi Multi-Role",
         "5 GB Cloud Storage Media Assets",
         "100.000 API Requests / bulan",
+        "Fair-Use Bandwidth ~50 GB/bulan (Shared Cloud Edge)",
         "500 AI Credits Awal (Top-Up untuk build lanjutan)",
         "🌐 Cloud Edge Global Hosting SUDAH TERMASUK (Rp 0 Tambahan)",
         "🏷️ GRATIS 1 Domain Kustom (.com / .id) Selama 1 Tahun",
@@ -506,13 +520,15 @@ const SEED_DATA: Record<string, any> = {
       max_content_entries: 50000, 
       max_team_members: 25, 
       max_storage: 10240, 
-      max_locales: 10, 
+      max_locales: 10,
       max_api_calls: 1000000,
+      fair_use_bandwidth_gb: 250,
       features: [
         "50.000 Entri Konten & Unlimited Schemas",
         "25 Anggota Tim (Multi-Level Approvals & Workflow)",
         "10 GB Cloud Storage Media Assets",
         "1.000.000 API Requests / bulan",
+        "Fair-Use Bandwidth ~250 GB/bulan (Shared Cloud Edge)",
         "1.500 AI Credits Awal (Top-Up untuk build lanjutan)",
         "🌐 Cloud Edge Global Hosting SUDAH TERMASUK (Rp 0 Ekstra)",
         "🏷️ GRATIS 1 Domain Premium (.go.id / .ac.id / .co.id / .com)",
