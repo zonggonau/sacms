@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState, useMemo } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -43,6 +43,7 @@ export default function TenantSubscriptionsPage() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
 
@@ -55,6 +56,9 @@ export default function TenantSubscriptionsPage() {
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
   const [planCategory, setPlanCategory] = useState<'all' | 'cloud' | 'vps' | 'vds' | 'storage'>('all')
+  const [activeSection, setActiveSection] = useState<'plans' | 'addons'>(
+    searchParams?.get('tab') === 'addons' ? 'addons' : 'plans'
+  )
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
@@ -479,15 +483,45 @@ export default function TenantSubscriptionsPage() {
             </div>
           </div>
 
-          {/* Main Plans Grid */}
+          {/* Plans / Add-ons Section Tabs */}
           {!isEnterpriseMode && (
+            <div className="flex items-center gap-1 border-b border-border/60">
+              <button
+                type="button"
+                onClick={() => setActiveSection('plans')}
+                className={cn(
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px",
+                  activeSection === 'plans'
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Layers className="h-3.5 w-3.5" /> Paket Langganan ({mainPlans.length})
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveSection('addons')}
+                className={cn(
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px",
+                  activeSection === 'addons'
+                    ? "border-primary text-foreground"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
+              </button>
+            </div>
+          )}
+
+          {/* Main Plans Grid */}
+          {!isEnterpriseMode && activeSection === 'plans' && (
             <div className="space-y-6">
               {/* Header Title & Description on Top */}
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Paket Langganan Workspace</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket Cloud, VPS, atau VDS terisolasi penuh.</p>
               </div>
-              
+
               {/* Category Switcher Tabs Below */}
               {(() => {
                 const cloudCount = mainPlans.filter((p) => {
@@ -686,11 +720,18 @@ export default function TenantSubscriptionsPage() {
           )}
 
           {/* Add-ons Section */}
-          {!isEnterpriseMode && addonPlans.length > 0 && (
+          {!isEnterpriseMode && activeSection === 'addons' && (
             <div className="space-y-3">
-              <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" /> Add-on & Ekstra Kuota
-              </h2>
+              <div className="space-y-1">
+                <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Add-on & Ekstra Kuota</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Tambahan kuota dan fitur di luar paket utama workspace.</p>
+              </div>
+              {addonPlans.length === 0 ? (
+                <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl">
+                  <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
+                  <p className="font-bold text-xs text-foreground">Belum ada add-on tersedia</p>
+                </div>
+              ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {addonPlans.map((addon) => (
                   <Card key={addon.id} className="border border-border/80 bg-card/60 shadow-xs rounded-2xl overflow-hidden hover:border-primary/50 transition-all duration-200">
@@ -768,6 +809,7 @@ export default function TenantSubscriptionsPage() {
                   </Card>
                 ))}
               </div>
+              )}
             </div>
           )}
 
