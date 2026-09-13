@@ -178,7 +178,7 @@ export default function AdminTransactionsPage() {
                     Gateway Midtrans
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-0.5">Seluruh riwayat pembayaran dan status checkout platform.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Riwayat pembayaran dan status checkout.</p>
               </div>
             </div>
             <div className="flex items-center gap-2.5">

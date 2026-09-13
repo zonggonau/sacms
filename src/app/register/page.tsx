@@ -223,8 +223,7 @@ export default function RegisterPage() {
               </div>
               <h3 className="text-xl font-black tracking-tight">Pendaftaran Berhasil!</h3>
               <p className="text-xs sm:text-sm font-medium text-muted-foreground mb-4 leading-relaxed">
-                Tautan aktivasi telah dikirimkan ke <strong className="text-foreground">{formData.email}</strong>. 
-                Silakan cek kotak masuk atau folder spam email Anda untuk mengaktifkan akun.
+                Tautan aktivasi telah dikirim ke <strong className="text-foreground">{formData.email}</strong>.
               </p>
 
               <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground space-y-2 mb-4">

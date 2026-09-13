@@ -105,7 +105,7 @@ export default function LabaRugiPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Laporan finansial real-time yang memperhitungkan Gross Revenue, Beban Pokok Server (COGS), dan Laba Bersih.
+            Pendapatan, beban pokok server, dan laba bersih real-time.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -229,7 +229,7 @@ export default function LabaRugiPage() {
             <h3 className="text-sm font-bold text-foreground">Analisis Efisiensi Biaya Pokok</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Dengan margin laba kotor sebesar <strong className="text-foreground">{s.grossMarginPercent}%</strong>, SaCMS memiliki bantalan kas yang sangat sehat untuk menopang beban SLA 99.9%, penggantian hardware darurat, dan tim engineering on-call.
+            Margin laba kotor saat ini <strong className="text-foreground">{s.grossMarginPercent}%</strong>.
           </p>
         </Card>
 
@@ -239,7 +239,7 @@ export default function LabaRugiPage() {
             <h3 className="text-sm font-bold text-foreground">Rekomendasi Manajemen Kas</h3>
           </div>
           <p className="text-xs text-muted-foreground leading-relaxed">
-            Disarankan untuk mengalokasikan <strong className="text-foreground">10% - 15% dari Net Profit</strong> ke cadangan kas hedging kurs valuta asing (EUR/USD) untuk mengantisipasi fluktuasi tagihan Contabo & Cloudflare.
+            Alokasikan <strong className="text-foreground">10-15% dari Net Profit</strong> untuk cadangan kurs EUR/USD.
           </p>
         </Card>
       </div>

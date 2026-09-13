@@ -272,7 +272,7 @@ export default function AdminWebhooksPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-                Pantau pengiriman webhook sistem, kegagalan request (DLQ), dan picu pengiriman ulang instan (*manual retry*).
+                Pengiriman webhook, kegagalan request, dan retry manual.
               </p>
             </div>
 

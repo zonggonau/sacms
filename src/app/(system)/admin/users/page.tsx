@@ -525,7 +525,7 @@ function AdminUsersContent() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-                Kelola akun pengguna platform, batas limit khusus, dan konfigurasi matriks perizinan RBAC tingkat platform.
+                Kelola akun pengguna dan matriks perizinan RBAC platform.
               </p>
             </div>
             
@@ -673,7 +673,7 @@ function AdminUsersContent() {
             <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
               <CardTitle className="text-sm font-bold text-foreground">Direktori Pemilik Akun</CardTitle>
               <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                {totalUsersCount} akun ditemukan &middot; Anggota tim internal dikelola di dalam masing-masing workspace
+                {totalUsersCount} akun ditemukan
               </CardDescription>
             </CardHeader>
             <CardContent className="p-4 space-y-3">

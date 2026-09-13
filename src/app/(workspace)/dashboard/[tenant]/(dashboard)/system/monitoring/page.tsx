@@ -181,7 +181,7 @@ export default function SystemMonitoringPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold tracking-tight">System Monitoring</h1>
-              <p className="text-sm text-muted-foreground">API performance, webhook health, and system metrics</p>
+              <p className="text-sm text-muted-foreground">API, webhook, and search metrics</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchStats} disabled={loading}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />

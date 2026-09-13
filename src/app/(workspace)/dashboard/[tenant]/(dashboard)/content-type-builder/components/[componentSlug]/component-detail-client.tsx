@@ -229,7 +229,7 @@ export default function ComponentDetailClient({
                 <Info className="h-5 w-5 text-primary shrink-0" />
                 <div>
                   <p className="text-xs font-bold text-foreground">Catatan Penggunaan</p>
-                  <p className="text-[11px] text-muted-foreground mt-0.5">Komponen ini dapat disematkan ke skema koleksi atau single type sebagai field bertipe "Component".</p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">Dapat disematkan sebagai field bertipe "Component".</p>
                 </div>
               </div>
             </div>

@@ -107,7 +107,7 @@ export default function MarginKeuntunganPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Transparansi biaya pokok Contabo (EUR), kurs konversi, margin laba kotor 500%, dan laba bersih per tier paket.
+            Biaya pokok, kurs konversi, dan margin laba per tier paket.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -181,7 +181,7 @@ export default function MarginKeuntunganPage() {
         <CardHeader className="p-5 pb-4 border-b border-border/60 bg-muted/20">
           <CardTitle className="text-sm font-bold text-foreground">Daftar Lengkap Harga Jual & Struktur Biaya Modal</CardTitle>
           <CardDescription className="text-[11px] text-muted-foreground">
-            Harga tahunan dihitung 10x harga bulanan (Bonus 2 Bulan Gratis untuk Pelanggan).
+            Harga tahunan dihitung 10x harga bulanan.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">

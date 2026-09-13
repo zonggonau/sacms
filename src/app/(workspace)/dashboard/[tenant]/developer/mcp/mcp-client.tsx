@@ -426,7 +426,7 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Hubungkan AI Editor (Antigravity, VS Code) ke SaCMS untuk manipulasi skema dan data real-time.
+                  Hubungkan AI Editor ke SaCMS untuk manipulasi skema dan data real-time.
                 </p>
               </div>
             </div>
@@ -454,7 +454,7 @@ export function MCPDashboardClient({
                     </Badge>
                   </div>
                   <p className="text-xs text-amber-800/80 dark:text-amber-300/80 mt-1 max-w-2xl">
-                    Endpoint MCP hanya dapat diakses saat workspace memiliki status pembayaran <strong>PAID</strong>. Silakan aktifkan langganan Anda untuk mulai menghubungkan Antigravity atau VS Code.
+                    Endpoint MCP memerlukan status pembayaran <strong>PAID</strong>.
                   </p>
                 </div>
               </div>
@@ -491,9 +491,9 @@ export function MCPDashboardClient({
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
                     {hostingType === "dedicated_vps" && vpsDetails ? (
-                      <>Instance VPS aktif: <strong>{vpsDetails.hostname || vpsDetails.ipv4}</strong> ({vpsDetails.cpuCount} vCPU, {Math.round(vpsDetails.ramMb / 1024)}GB RAM) • Unbuffered Native SSE Stream</>
+                      <>Instance VPS aktif: <strong>{vpsDetails.hostname || vpsDetails.ipv4}</strong> ({vpsDetails.cpuCount} vCPU, {Math.round(vpsDetails.ramMb / 1024)}GB RAM)</>
                     ) : (
-                      <>Berjalan di Vercel Serverless Edge Pool dengan auto-scaling dan shared multi-tenant database pool.</>
+                      <>Vercel Serverless Edge Pool dengan auto-scaling.</>
                     )}
                   </p>
                 </div>
@@ -522,7 +522,7 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Endpoint stream JSON-RPC 2.0 untuk Antigravity dan VS Code.
+                  Endpoint stream JSON-RPC 2.0.
                 </p>
               </div>
               <div className="flex gap-2">
@@ -558,7 +558,7 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Token terpilih akan otomatis diinjeksikan pada seluruh contoh konfigurasi dan instruksi di bawah.
+                  Otomatis diinjeksikan pada contoh konfigurasi di bawah.
                 </p>
               </div>
             </div>
@@ -640,7 +640,7 @@ export function MCPDashboardClient({
             <div className="flex items-center justify-between">
               <div>
                 <h2 className="text-base font-bold tracking-tight text-foreground">Pilih Ekosistem AI & Platform Editor</h2>
-                <p className="text-xs text-muted-foreground">Pilih platform AI Anda untuk melihat panduan setup step-by-step dan file konfigurasi instan.</p>
+                <p className="text-xs text-muted-foreground">Panduan setup dan file konfigurasi per platform.</p>
               </div>
             </div>
 
@@ -816,7 +816,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Menghasilkan file deklarasi TypeScript (`.d.ts`) otomatis dari skema database live SaCMS untuk autocompletion di IDE.
+                    Menghasilkan file deklarasi TypeScript (`.d.ts`) dari skema live untuk autocompletion IDE.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Gunakan MCP sacms tool get_full_schema. Tolong generate file types/sacms.d.ts yang mendefinisikan TypeScript interface 100% type-safe untuk seluruh Content Types, Single Types, dan Components di workspace ini lengkap dengan JSDoc documentation.
@@ -842,7 +842,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Membuat halaman frontend Next.js App Router lengkap dengan fetch data real-time, SEO meta tags, dan Tailwind CSS.
+                    Halaman Next.js App Router dengan fetch data real-time dan SEO meta tags.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Gunakan MCP sacms tool get_content_type untuk koleksi 'articles'. Buatkan halaman listing app/blog/page.tsx dengan filter search dan pagination, serta detail app/blog/[slug]/page.tsx menggunakan React Server Components dan Tailwind CSS.
@@ -868,7 +868,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Membuat model koleksi data baru langsung dari instruksi bahasa alami di IDE menggunakan 33 tipe field presisi.
+                    Model koleksi data baru dari instruksi bahasa alami, 33 tipe field tersedia.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Panggil tool list_field_types untuk memeriksa tipe field yang didukung. Kemudian buatkan Content Type baru bernama 'Products' (slug: 'products') dengan field: title (text), slug (slug), description (richText), price (currency: IDR), gallery (mediaMultiple), status (select), dan category (relation ke 'categories').
@@ -894,7 +894,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Mengisi database CMS dengan banyak data contoh realistis untuk mempercepat pengujian UI frontend. Belum ada tool bulk-insert khusus — AI Editor akan memanggil create_content_entry berulang kali.
+                    Mengisi data contoh untuk pengujian UI. Belum ada bulk-insert — dipanggil berulang lewat create_content_entry.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Gunakan tool create_content_entry secara berulang untuk memasukkan 10 data dummy realistis ke koleksi 'products' lengkap dengan status PUBLISHED, harga, dan deskripsi berbahasa Indonesia.
@@ -920,7 +920,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Menerbitkan website ke internet dan mengembalikan live URL produksi dalam hitungan detik.
+                    Menerbitkan website dan mengembalikan live URL produksi.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Deploy seluruh source code project frontend ini ke Vercel hosting menggunakan MCP tool deploy_to_vercel dengan project name 'my-sacms-app'.
@@ -946,7 +946,7 @@ export function MCPDashboardClient({
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Menghasilkan form login & register end-user lengkap dengan JWT access token, refresh token rotation, dan proteksi route.
+                    Form login & register dengan JWT access token dan proteksi route.
                   </p>
                   <pre className="p-3 bg-muted/40 rounded-xl border border-border/60 font-mono text-[11px] text-foreground overflow-x-auto whitespace-pre-wrap">
                     Buatkan form autentikasi Next.js (app/login/page.tsx & app/register/page.tsx) yang memanggil endpoint Headless Auth SaCMS (/api/public/{tenantSlug}/auth/login dan /register), menyimpan Access Token JWT di cookie, dan mengambil profil member dari /api/public/{tenantSlug}/auth/me.
@@ -984,7 +984,7 @@ export function MCPDashboardClient({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Memungkinkan AI agent mengunduh gambar dari internet, mengunggahnya ke Cloudflare R2 bucket SaCMS, menghasilkan thumbnail, dan mengaitkan media tersebut ke field entri artikel atau produk.
+                    AI agent mengunggah gambar ke Cloudflare R2, menghasilkan thumbnail, dan mengaitkannya ke field entri.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     <code className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded text-foreground font-bold">upload_media_by_url</code>
@@ -1005,7 +1005,7 @@ export function MCPDashboardClient({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    AI agent dapat mencari entri artikel yang relevan secara konseptual menggunakan embedding vector tanpa harus bergantung pada pencarian kata kunci eksak (keyword matching).
+                    Mencari entri relevan secara konseptual lewat embedding vector, tanpa keyword matching.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     <code className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded text-foreground font-bold">semantic_search_entries</code>
@@ -1025,7 +1025,7 @@ export function MCPDashboardClient({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Memfasilitasi AI workflow automation untuk mengajukan review konten (<code className="font-mono text-[10px]">IN_REVIEW</code>), menyetujui artikel (<code className="font-mono text-[10px]">APPROVED</code>), atau menjadwalkan publish otomatis.
+                    Mengajukan review konten (<code className="font-mono text-[10px]">IN_REVIEW</code>), menyetujui (<code className="font-mono text-[10px]">APPROVED</code>), atau menjadwalkan publish.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     <code className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded text-foreground font-bold">publish_entry</code>
@@ -1046,7 +1046,7 @@ export function MCPDashboardClient({
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    AI Editor dapat meminta MCP untuk langsung meng-generate file <code className="font-mono text-[10px]">types/sacms.ts</code> dan klien fetch yang 100% type-safe sesuai skema Content Type yang baru dibuat.
+                    Generate <code className="font-mono text-[10px]">types/sacms.ts</code> dan klien fetch type-safe sesuai skema.
                   </p>
                   <div className="flex gap-1.5 flex-wrap">
                     <code className="text-[10px] font-mono bg-muted px-2 py-0.5 rounded text-foreground font-bold">export_typescript_types</code>
@@ -1080,7 +1080,7 @@ export function MCPDashboardClient({
                   />
                 </div>
                 <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs text-muted-foreground">
-                  Token ini memiliki hak akses penuh untuk membaca skema, mengubah model konten, dan mengelola entri data melalui protokol MCP.
+                  Token ini memiliki hak akses penuh via protokol MCP.
                 </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0 pt-2">

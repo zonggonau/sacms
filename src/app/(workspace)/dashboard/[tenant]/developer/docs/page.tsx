@@ -60,7 +60,7 @@ export default function APIDocsPage() {
               </Badge>
             </div>
             <p className="text-sm text-muted-foreground mt-1 font-medium">
-              Eksplorasi dan uji coba REST API publik untuk seluruh skema di workspace <span className="font-mono font-bold text-foreground">/{tenantSlug}</span>.
+              Referensi REST API untuk workspace <span className="font-mono font-bold text-foreground">/{tenantSlug}</span>.
             </p>
           </div>
 

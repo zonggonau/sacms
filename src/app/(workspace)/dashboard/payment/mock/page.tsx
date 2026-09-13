@@ -75,9 +75,7 @@ function MockCheckoutContent() {
         </div>
         <CardTitle>Checkout Mock Midtrans</CardTitle>
         <CardDescription>
-          Tidak ada <code>MIDTRANS_SERVER_KEY</code> yang dikonfigurasi, jadi pembayaran ini disimulasikan
-          agar alur checkout tetap bisa diuji secara lengkap tanpa kredensial asli. Halaman ini tidak akan
-          pernah muncul di production dengan kredensial yang valid.
+          Tidak ada <code>MIDTRANS_SERVER_KEY</code> dikonfigurasi — pembayaran disimulasikan. Tidak muncul di production dengan kredensial valid.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

@@ -218,7 +218,7 @@ export default function TenantAuditLogsPage() {
               </div>
               <div>
                 <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Audit Log & Aktivitas</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Pemantauan kepatuhan dan jejak audit perubahan pada workspace.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Jejak audit perubahan pada workspace.</p>
               </div>
             </div>
             <Button 
@@ -366,7 +366,7 @@ export default function TenantAuditLogsPage() {
             <div>
               <p className="text-xs font-bold text-foreground">Transparansi & Keamanan Audit</p>
               <p className="text-[11px] leading-relaxed text-muted-foreground mt-0.5">
-                Audit Trail SaCMS mencatat bukti mutasi data secara permanen di tingkat database workspace untuk akuntabilitas tim.
+                Mutasi data dicatat secara permanen di database workspace.
               </p>
             </div>
           </div>

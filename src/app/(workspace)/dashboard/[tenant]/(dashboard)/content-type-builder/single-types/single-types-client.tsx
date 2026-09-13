@@ -141,7 +141,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Kelola struktur skema konten tunggal (seperti Beranda, Pengaturan Global, atau Tentang Kami).
+                Kelola skema konten tunggal.
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -357,7 +357,7 @@ export function SingleTypesClient({ initialSingleTypes, tenantSlug, limit = 3, c
           <div className="p-3.5 bg-muted/30 border border-border/60 rounded-2xl flex items-start gap-3">
             <ShieldCheck className="h-4 w-4 text-emerald-500 mt-0.5 shrink-0" />
             <div className="text-[11px] text-muted-foreground leading-relaxed">
-              <strong>Single Type</strong> didesain untuk konten halaman tunggal (seperti Beranda, Tentang Kami, atau Pengaturan). Skema kustom bersifat privat untuk workspace ini.
+              <strong>Single Type</strong> untuk konten halaman tunggal. Skema kustom bersifat privat untuk workspace ini.
             </div>
           </div>
 

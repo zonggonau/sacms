@@ -238,7 +238,7 @@ export default function AdminSupportPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Pusat komunikasi interaktif & pemecahan kendala untuk Workspace Owners dan Tim IT SaCMS.
+            Pusat tiket support untuk Workspace Owners.
           </p>
         </div>
 
@@ -542,7 +542,7 @@ export default function AdminSupportPage() {
               <Headphones className="h-14 w-14 mb-3 text-muted-foreground/30" />
               <h3 className="text-sm font-bold text-foreground mb-1">Pilih Tiket dari Daftar</h3>
               <p className="text-xs max-w-sm">
-                Pilih salah satu tiket di sebelah kiri untuk melihat percakapan lengkap dan membalas pertanyaan owner workspace.
+                Pilih tiket di sebelah kiri untuk melihat percakapan.
               </p>
             </div>
           )}

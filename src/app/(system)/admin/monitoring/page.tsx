@@ -163,7 +163,7 @@ export default function AdminMonitoringPage() {
                   Real-time
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Metrik performa infrastruktur server dan pemantauan lalu lintas API gateway.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Metrik performa server dan lalu lintas API.</p>
             </div>
             
             <div className="flex items-center gap-3">
@@ -228,7 +228,7 @@ export default function AdminMonitoringPage() {
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                 <div>
                   <CardTitle className="text-sm font-bold text-foreground">Log Lalu Lintas API</CardTitle>
-                  <CardDescription className="text-xs text-muted-foreground mt-0.5">Pemantauan riwayat pemanggilan endpoint secara real-time</CardDescription>
+                  <CardDescription className="text-xs text-muted-foreground mt-0.5">Riwayat pemanggilan endpoint secara real-time</CardDescription>
                 </div>
                 
                 <div className="flex flex-wrap items-center gap-2">
@@ -404,7 +404,7 @@ export default function AdminMonitoringPage() {
               </div>
               <h3 className="text-sm font-bold text-foreground">Infrastruktur Terintegrasi</h3>
               <p className="text-xs text-muted-foreground max-w-sm mx-auto mt-1 leading-relaxed">
-                Seluruh metrik performa dipantau otomatis. Gunakan log ini untuk mengidentifikasi bottleneck latensi atau anomali akses API.
+                Metrik performa dipantau otomatis untuk mendeteksi anomali.
               </p>
             </Card>
           </div>

@@ -117,7 +117,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Struktur data modular yang dapat disematkan berulang kali ke dalam berbagai tipe konten.
+                Struktur data modular yang dapat disematkan ke tipe konten.
               </p>
             </div>
             <div className="flex items-center gap-3">
@@ -211,7 +211,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
                     <Puzzle className="h-8 w-8 mx-auto opacity-30 text-muted-foreground" />
                     <p className="text-xs font-bold text-foreground">Komponen tidak ditemukan</p>
                     <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
-                      Komponen membantu Anda menyusun struktur data bertingkat seperti blok SEO, alamat, atau section layout.
+                      Buat komponen untuk struktur data yang dapat digunakan ulang.
                     </p>
                   </div>
                 ) : (
@@ -307,7 +307,7 @@ export function ComponentsClient({ initialComponents, tenantSlug, limit = 3, cur
           <div className="p-3.5 bg-muted/30 border border-border/60 rounded-2xl flex items-start gap-3">
             <Info className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <div className="text-[11px] text-muted-foreground leading-relaxed">
-              <strong>Komponen</strong> adalah struktur data modular yang dapat disematkan berulang kali ke berbagai Content Types (misal: Meta SEO, Alamat Kontak, atau Social Links).
+              <strong>Komponen</strong> adalah struktur data modular yang dapat disematkan ke berbagai Content Types.
             </div>
           </div>
         </div>

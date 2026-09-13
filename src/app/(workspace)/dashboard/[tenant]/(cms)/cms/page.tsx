@@ -107,7 +107,7 @@ export default async function CMSDashboardPage({
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Halo {session.user.name?.split(' ')[0]} 👋 Siap untuk mengelola dan mempublikasikan konten hari ini?
+            Halo {session.user.name?.split(' ')[0]}, kelola konten Anda hari ini.
           </p>
         </div>
 
@@ -167,7 +167,7 @@ export default async function CMSDashboardPage({
               <div className="py-16 text-center text-muted-foreground space-y-2">
                 <PenTool className="h-8 w-8 mx-auto opacity-30" />
                 <p className="text-xs font-semibold text-foreground">Belum ada konten yang dibuat</p>
-                <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">Pilih koleksi konten di menu samping untuk membuat entri pertama Anda.</p>
+                <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">Pilih koleksi konten untuk membuat entri pertama.</p>
               </div>
             ) : (
               <div className="divide-y divide-border/60">
@@ -237,7 +237,7 @@ export default async function CMSDashboardPage({
             </CardHeader>
             <CardContent className="p-4 pt-1 space-y-3">
               <p className="text-xs text-muted-foreground leading-relaxed">
-                Manfaatkan <strong>AI Content Assistant</strong> di setiap editor konten untuk membuat artikel, menerjemahkan bahasa, atau meringkas teks secara instan.
+                Gunakan <strong>AI Content Assistant</strong> untuk menulis, menerjemahkan, atau meringkas teks.
               </p>
               <Button variant="outline" className="w-full font-bold rounded-xl border-border/80 h-8 text-xs bg-muted/30 hover:bg-muted/60" asChild>
                 <Link href={`/dashboard/${tenantSlug}/cms/media`}>Buka Media Library</Link>

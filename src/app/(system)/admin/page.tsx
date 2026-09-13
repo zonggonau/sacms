@@ -167,7 +167,7 @@ export default function GlobalAdminDashboard() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Pemantauan menyeluruh ekosistem multi-tenant, infrastruktur database dedicated, dan stabilitas operasional.
+                Ringkasan ekosistem tenant dan kesehatan infrastruktur.
               </p>
             </div>
             <div className="flex items-center gap-2.5 shrink-0">
@@ -335,7 +335,7 @@ export default function GlobalAdminDashboard() {
             <CardHeader className="p-4 px-5 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-xs font-bold uppercase tracking-wider text-foreground">Super Admin Quick Operations</CardTitle>
-                <CardDescription className="text-[11px] text-muted-foreground">Eksekusi pemeliharaan cache, antrean webhook gagal, dan sinkronisasi harga dalam 1-klik.</CardDescription>
+                <CardDescription className="text-[11px] text-muted-foreground">Tindakan pemeliharaan satu klik.</CardDescription>
               </div>
               <Sparkles className="h-4 w-4 text-primary" />
             </CardHeader>

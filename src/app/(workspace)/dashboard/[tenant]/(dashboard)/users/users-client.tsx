@@ -375,7 +375,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Kelola akses tim dan izin transisi alur kerja ({current} dari {limit} kuota anggota digunakan).
+              {current} dari {limit} kuota anggota digunakan.
             </p>
           </div>
           
@@ -402,8 +402,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
           <div className="space-y-0.5">
             <p className="font-bold text-foreground">Hierarki Peran di Workspace:</p>
             <p className="text-muted-foreground leading-relaxed text-[11px]">
-              Seluruh peran di dalam workspace ini dikelola secara mandiri oleh <strong>Owner Workspace</strong>. 
-              Anggota yang ditambahkan hanya memiliki akses pada ruang kerja ini dan terisolasi dari akses tingkat platform Super Admin.
+              Peran dikelola oleh <strong>Owner Workspace</strong> dan terisolasi dari akses Super Admin.
             </p>
           </div>
         </div>
@@ -429,8 +428,8 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
               <div className="space-y-0.5">
                 <h4 className="font-bold text-xs text-destructive">Batas Maksimal Anggota Tercapai</h4>
                 <p className="text-[11px] text-muted-foreground">
-                  Anda telah menggunakan <span className="font-bold text-foreground">{current}</span> dari batas {" "}
-                  <span className="font-bold text-foreground">{limit}</span> anggota tim. Tingkatkan paket Anda untuk mengundang lebih banyak anggota.
+                  Menggunakan <span className="font-bold text-foreground">{current}</span> dari {" "}
+                  <span className="font-bold text-foreground">{limit}</span> kuota anggota.
                 </p>
               </div>
             </div>
@@ -611,7 +610,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
             <div className="p-3 bg-muted/30 rounded-xl border border-border/60 flex gap-2.5 text-xs text-muted-foreground">
               <AlertCircle className="h-4 w-4 text-primary shrink-0 mt-0.5" />
               <p className="leading-relaxed text-[11px]">
-                Kata sandi baru akan berlaku pada sesi masuk berikutnya anggota ini.
+                Berlaku pada sesi masuk berikutnya.
               </p>
             </div>
           </div>
@@ -642,7 +641,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
             </DialogDescription>
           </DialogHeader>
           <div className="py-2 text-[11px] text-muted-foreground">
-            Pengguna akan kehilangan semua hak akses pada konten, media, dan pengaturan di ruang kerja ini.
+            Semua hak akses pada workspace ini akan dicabut.
           </div>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button variant="outline" onClick={() => setIsDeleteOpen(false)} disabled={isPending} className="rounded-xl text-xs font-bold h-9">
@@ -667,7 +666,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
           <DialogHeader>
             <DialogTitle className="text-base font-bold">Tambah Anggota Workspace</DialogTitle>
             <DialogDescription className="text-xs">
-              Masukkan kredensial akun untuk menambahkan anggota baru ke workspace ini.
+              Masukkan kredensial anggota baru.
             </DialogDescription>
           </DialogHeader>
           <form onSubmit={handleCreateMember} className="space-y-3 py-2">
@@ -747,7 +746,7 @@ export function UsersClient({ initialMembers, tenantSlug, limit, current }: User
             </DialogDescription>
           </DialogHeader>
           <div className="py-2 text-xs text-muted-foreground leading-relaxed bg-muted/30 p-3 rounded-xl border border-border/50">
-            Untuk dapat menambahkan anggota tim baru, silakan tingkatkan (*upgrade*) paket langganan workspace Anda.
+            Upgrade paket langganan untuk menambah anggota tim.
           </div>
           <DialogFooter className="gap-2 sm:gap-0 pt-2">
             <Button variant="outline" onClick={() => setIsLimitModalOpen(false)} className="rounded-xl text-xs font-bold h-9">

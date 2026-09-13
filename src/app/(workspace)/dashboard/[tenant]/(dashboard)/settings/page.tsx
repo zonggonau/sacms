@@ -556,7 +556,7 @@ export default function TenantSettingsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Kelola informasi umum workspace, branding kustom, kredensial SMTP, kebijakan keamanan, dan kuota pemakaian.
+                Informasi workspace, branding, SMTP, keamanan, dan penggunaan.
               </p>
             </div>
 
@@ -681,7 +681,7 @@ export default function TenantSettingsPage() {
                     Informasi Profil Workspace
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Nama dan deskripsi yang mengidentifikasi workspace ini.
+                    Nama dan deskripsi workspace.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-5">
@@ -762,7 +762,7 @@ export default function TenantSettingsPage() {
                     Frontend Preview & Live Draft URL
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Tentukan URL website frontend untuk tombol &quot;Live Preview&quot; saat tim editorial mengedit draf konten.
+                    URL frontend untuk tombol Live Preview.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-3">
@@ -801,7 +801,7 @@ export default function TenantSettingsPage() {
                         </Badge>
                       </div>
                       <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                        Ganti logo, warna tema, dan identitas SaCMS dengan brand perusahaan Anda.
+                        Ganti logo, warna tema, dan identitas brand.
                       </CardDescription>
                     </CardHeader>
                     
@@ -1016,7 +1016,7 @@ export default function TenantSettingsPage() {
                       Konfigurasi Pengiriman Email (SMTP)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Gunakan server SMTP khusus untuk mengirimkan undangan anggota dan notifikasi workspace.
+                      Server SMTP untuk undangan dan notifikasi workspace.
                     </CardDescription>
                   </div>
 
@@ -1118,7 +1118,7 @@ export default function TenantSettingsPage() {
                     Kebijakan Keamanan & Audit Log
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Atur autentikasi 2FA, pembatasan IP Whitelist, dan pencatatan audit perubahan konten.
+                    2FA, IP whitelist, dan audit log.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-5">
@@ -1126,7 +1126,7 @@ export default function TenantSettingsPage() {
                     <div>
                       <Label className="text-xs font-semibold text-foreground">Wajibkan Two-Factor Authentication (2FA)</Label>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Mengharuskan seluruh anggota tim mengaktifkan 2FA saat login ke workspace ini.
+                        Wajibkan 2FA untuk semua anggota tim.
                       </p>
                     </div>
                     <Switch checked={twoFactorRequired} onCheckedChange={setTwoFactorRequired} />
@@ -1139,7 +1139,7 @@ export default function TenantSettingsPage() {
                       <div>
                         <Label className="text-xs font-semibold text-foreground">Pembatasan IP (IP Whitelist)</Label>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Batasi akses dashboard dan API hanya dari rentang alamat IP tepercaya.
+                          Batasi akses hanya dari IP tepercaya.
                         </p>
                       </div>
                       <Switch checked={ipWhitelist} onCheckedChange={setIpWhitelist} />
@@ -1179,7 +1179,7 @@ export default function TenantSettingsPage() {
                     <div>
                       <Label className="text-xs font-semibold text-foreground">Pencatatan Audit Log Lengkap</Label>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Catat riwayat modifikasi skema, entri konten, dan aktivitas autentikasi anggota.
+                        Catat riwayat perubahan skema, konten, dan login.
                       </p>
                     </div>
                     <Switch checked={auditLogging} onCheckedChange={setAuditLogging} />
@@ -1202,7 +1202,7 @@ export default function TenantSettingsPage() {
                     Ekspor & Impor Data Cadangan Workspace
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Unduh data skema dan entri konten atau pulihkan dari berkas JSON cadangan.
+                    Ekspor atau pulihkan data dari berkas JSON.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
@@ -1244,7 +1244,7 @@ export default function TenantSettingsPage() {
                     Kosongkan Semua Entri Konten
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Menghapus seluruh rekaman entri konten di semua model, tetapi tetap mempertahankan struktur skema tipe konten.
+                    Hapus semua entri konten, skema tetap utuh.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 flex items-center justify-between">
@@ -1271,7 +1271,7 @@ export default function TenantSettingsPage() {
                       Cadangkan Data Workspace (Instant Snapshot Backup)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Ekspor seluruh skema model konten, entri data JSONB, komponen, dan metadata media ke dalam satu berkas JSON terstruktur.
+                      Ekspor seluruh data workspace ke satu berkas JSON.
                     </CardDescription>
                   </div>
                   <Button
@@ -1299,7 +1299,7 @@ export default function TenantSettingsPage() {
                     Hapus Workspace Secara Permanen
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Menghapus seluruh database workspace, media storage, token API, dan langganan secara permanen.
+                    Hapus seluruh data workspace secara permanen.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 pt-0 flex items-center justify-between">
@@ -1329,7 +1329,7 @@ export default function TenantSettingsPage() {
                   Kirim Email Uji Coba (Test SMTP)
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-1">
-                  Kirim email percobaan untuk memverifikasi bahwa konfigurasi server SMTP Anda berfungsi normal.
+                  Verifikasi konfigurasi SMTP dengan email percobaan.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1380,7 +1380,7 @@ export default function TenantSettingsPage() {
                   Konfirmasi Kosongkan Konten
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-1">
-                  Tindakan ini akan menghapus <strong>seluruh entri konten</strong> pada semua model di workspace ini secara permanen.
+                  Menghapus <strong>seluruh entri konten</strong> secara permanen.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1425,7 +1425,7 @@ export default function TenantSettingsPage() {
                   Konfirmasi Hapus Workspace
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-1">
-                  Tindakan ini akan menghapus workspace <strong>{name}</strong> beserta seluruh data di dalamnya secara permanen.
+                  Menghapus workspace <strong>{name}</strong> dan seluruh datanya secara permanen.
                 </DialogDescription>
               </DialogHeader>
 

@@ -833,8 +833,7 @@ export function DocsClient() {
               </div>
 
               <p className="text-foreground/80 leading-relaxed text-sm sm:text-base mb-6">
-                SaCMS includes a native <strong>Model Context Protocol (MCP) Server</strong> that bridges your headless CMS content and database schemas directly with modern AI programming assistants.
-                Instead of manually copying schemas, endpoints, or mock JSON into prompt windows, AI agents can dynamically query your schema definitions, inspect content entries, and generate pixel-perfect frontends or TypeScript interfaces autonomously.
+                SaCMS includes a native <strong>Model Context Protocol (MCP) Server</strong> that lets AI assistants query your schemas and content directly, without manual copy-pasting.
               </p>
 
               {/* Architecture Diagram Box */}
@@ -1254,7 +1253,7 @@ export function DocsClient() {
               REST API Documentation
             </h2>
             <p className="text-base text-muted-foreground leading-relaxed">
-              SaCMS provides a powerful, high-performance public REST API to fetch your managed content securely. Built with Next.js 16 App Router, PostgreSQL JSONB, and edge rate-limiting, it supports flexible query parameters, Strapi-compatible filtering, deep population, and full-text search.
+              A public REST API for fetching your managed content, with filtering, deep population, and full-text search.
             </p>
             <div className="bg-muted rounded-xl p-4 border border-border flex items-center gap-3 font-mono text-xs sm:text-sm">
               <Terminal className="w-5 h-5 text-muted-foreground shrink-0" />
@@ -1273,7 +1272,7 @@ export function DocsClient() {
               <h2 className="text-2xl font-bold tracking-tight">REST Authentication</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              All public REST API requests must include your API key in the headers. You can generate read-only or full-access API keys from your SaCMS Dashboard under <strong>Developer Settings → API Keys</strong>.
+              All public REST API requests must include your API key in the headers, generated from <strong>Developer Settings → API Keys</strong>.
             </p>
             <CodeBlock
               code="x-api-key: your_api_key_here\n# Or Authorization header:\nAuthorization: Bearer your_api_key_here"
@@ -1291,7 +1290,7 @@ export function DocsClient() {
               <h2 className="text-2xl font-bold tracking-tight">TypeScript SDK (@sacms/sdk)</h2>
             </div>
             <p className="text-sm text-muted-foreground">
-              The official SaCMS TypeScript SDK provides a fluent query builder, built-in rate-limit retries, and strongly-typed content models for Next.js 16 (App Router), React, and Node.js.
+              A fluent query builder with built-in rate-limit retries and strongly-typed content models.
             </p>
 
             <div className="space-y-3">

@@ -267,7 +267,7 @@ export default function BillingClient({
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
         <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Billing & Quota Akun</h2>
-        <p className="text-xs text-muted-foreground mt-1">Kelola kapasitas workspace akun Anda dan isi ulang kuota AI Frontend builder.</p>
+        <p className="text-xs text-muted-foreground mt-1">Kelola kapasitas workspace dan kuota AI Frontend builder.</p>
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
@@ -362,7 +362,7 @@ export default function BillingClient({
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-base font-bold tracking-tight text-foreground">Paket Akun (Langganan Tahunan)</h3>
-                  <p className="text-xs text-muted-foreground">Tingkatkan kapasitas total workspace yang dapat dibuat oleh akun Anda.</p>
+                  <p className="text-xs text-muted-foreground">Tingkatkan kapasitas total workspace akun Anda.</p>
                 </div>
                 <Badge className="bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2.5 py-0.5 rounded-full">
                   Billing Tahunan (Hemat 2 Bulan)
@@ -461,7 +461,7 @@ export default function BillingClient({
                   <h3 className="text-base font-bold tracking-tight text-foreground">AI Plan (Frontend Builder Credits)</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Paket credit AI sekali pakai (never expire) untuk generate Next.js frontend, schema, dan iterasi di semua workspace.
+                  Credit AI sekali pakai, tidak pernah kedaluwarsa, untuk semua workspace.
                 </p>
               </div>
               <div className="flex items-center gap-2 text-xs bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-600 dark:text-amber-400 shrink-0 font-medium">
@@ -558,7 +558,7 @@ export default function BillingClient({
                   Riwayat Transaksi & Invoice
                 </h3>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Daftar seluruh pembayaran akun, invoice langganan, dan riwayat add-on AI booster.
+                  Riwayat pembayaran akun, invoice, dan add-on AI booster.
                 </p>
               </div>
             </div>
@@ -909,7 +909,7 @@ export default function BillingClient({
               <div>
                 <h3 className="text-xl font-bold">Master Infrastructure Override</h3>
                 <p className="text-sm text-muted-foreground">
-                  Configure default database and S3 credentials for all new workspaces created under this account.
+                  Default database and S3 credentials for new workspaces.
                 </p>
               </div>
               <Button onClick={handleSaveInfra} disabled={savingInfra}>

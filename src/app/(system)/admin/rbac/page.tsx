@@ -55,7 +55,7 @@ export default function AdminRbacRedirectPage() {
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Konfigurasi batas kapabilitas platform antara Super Admin dan Account Owner.
+                  Batas kapabilitas Super Admin dan Account Owner.
                 </p>
               </div>
             </div>

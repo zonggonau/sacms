@@ -308,7 +308,7 @@ export default function TenantSubscriptionsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Langganan & Tagihan</h1>
-              <p className="text-xs text-muted-foreground mt-1">Kelola paket langganan workspace dan pantau riwayat pembayaran.</p>
+              <p className="text-xs text-muted-foreground mt-1">Kelola paket dan riwayat pembayaran.</p>
             </div>
             <div className="flex items-center gap-3 bg-card p-2 px-4 rounded-xl border border-border/80 shadow-xs">
               <Package className="h-5 w-5 text-primary" />
@@ -324,7 +324,7 @@ export default function TenantSubscriptionsPage() {
               <CardContent className="p-16 relative flex flex-col items-center justify-center text-center">
                 <ShieldCheck className="h-16 w-16 text-primary mb-4 opacity-40" />
                 <h2 className="text-2xl font-black tracking-tight text-foreground">Akun Sistem Global</h2>
-                <p className="text-muted-foreground mt-2 max-w-lg mx-auto text-xs leading-relaxed">Tagihan, paket, dan batas sumber daya tidak berlaku untuk workspace sistem global. Workspace ini memiliki akses platform tak terbatas.</p>
+                <p className="text-muted-foreground mt-2 max-w-lg mx-auto text-xs leading-relaxed">Tagihan dan batas paket tidak berlaku untuk workspace sistem ini.</p>
               </CardContent>
             </Card>
           ) : (
@@ -485,7 +485,7 @@ export default function TenantSubscriptionsPage() {
               {/* Header Title & Description on Top */}
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Paket Langganan Workspace</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket SaCMS Cloud Ekonomis, SaCMS Dedicated Business VPS, atau SaCMS Gov Enterprise VDS terisolasi penuh.</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket Cloud, VPS, atau VDS terisolasi penuh.</p>
               </div>
               
               {/* Category Switcher Tabs Below */}
@@ -788,7 +788,7 @@ export default function TenantSubscriptionsPage() {
                   <div className="text-center py-16 text-muted-foreground">
                     <CreditCard className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                     <p className="font-bold text-xs text-foreground">Belum ada riwayat tagihan</p>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">Semua faktur pembayaran Anda di masa mendatang akan tercatat di sini.</p>
+                    <p className="text-[11px] text-muted-foreground mt-0.5">Faktur pembayaran akan tercatat di sini.</p>
                   </div>
                 ) : (
                   <div className="divide-y divide-border/60">
@@ -855,7 +855,7 @@ export default function TenantSubscriptionsPage() {
                 <div>
                   <h3 className="text-base font-bold tracking-tight text-foreground">Infrastruktur Khusus Workspace</h3>
                   <p className="text-xs text-muted-foreground mt-0.5">
-                    Kustomisasi koneksi database PostgreSQL dan bucket S3 khusus untuk workspace ini.
+                    Koneksi database dan bucket S3 khusus workspace ini.
                   </p>
                 </div>
                 <Button onClick={handleSaveInfra} disabled={savingInfra} className="rounded-xl font-bold text-xs h-9 bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs">

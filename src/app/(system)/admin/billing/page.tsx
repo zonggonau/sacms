@@ -111,7 +111,7 @@ export default function AdminBillingOverviewPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Ikhtisar performa pendapatan, laba kotor (*Gross Margin*), estimasi biaya server COGS, dan arus kas langganan.
+            Pendapatan, margin kotor, dan arus kas langganan.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -285,7 +285,7 @@ export default function AdminBillingOverviewPage() {
                   Laporan Laba & Rugi (P&L) <ArrowUpRight className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Laporan finansial lengkap dengan rincian pendapatan kotor, potongan modal server Contabo, biaya gateway Midtrans, dan laba bersih.
+                  Rincian pendapatan, biaya server, dan laba bersih.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-primary mt-4 inline-block">Buka Laporan P&L &rarr;</span>
@@ -303,7 +303,7 @@ export default function AdminBillingOverviewPage() {
                   Katalog Margin Paket <ArrowUpRight className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Tabel unit economics seluruh paket VPS (12jt-39.5jt) & VDS (50jt-150jt) lengkap dengan kalkulasi modal EUR vs kurs IDR.
+                  Margin tiap paket VPS dan VDS berdasarkan kurs EUR/IDR.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-primary mt-4 inline-block">Buka Katalog Margin &rarr;</span>
@@ -321,7 +321,7 @@ export default function AdminBillingOverviewPage() {
                   Unit Economics per Tenant <ArrowUpRight className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Pantau margin profit dan efisiensi biaya server untuk setiap workspace aktif untuk menghindari resource hogging.
+                  Margin profit dan efisiensi biaya server per workspace.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-primary mt-4 inline-block">Buka Laporan Tenant &rarr;</span>
@@ -339,7 +339,7 @@ export default function AdminBillingOverviewPage() {
                   Log Transaksi Midtrans <ArrowUpRight className="h-4 w-4 opacity-50 group-hover:opacity-100" />
                 </h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Daftar transaksi real-time gateway Midtrans, audit log pembayaran, status settlement faktur, dan ekspor CSV.
+                  Transaksi Midtrans, status settlement, dan ekspor CSV.
                 </p>
               </div>
               <span className="text-[11px] font-bold text-primary mt-4 inline-block">Buka Transaksi &rarr;</span>

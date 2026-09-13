@@ -468,7 +468,7 @@ export default function CMSCreateEntryClient({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Isi informasi dan data untuk membuat konten baru pada model koleksi <code className="font-mono font-bold text-foreground">{contentTypeSlug}</code>.
+                  Buat entri baru untuk <code className="font-mono font-bold text-foreground">{contentTypeSlug}</code>.
                 </p>
               </div>
             </div>

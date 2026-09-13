@@ -290,7 +290,7 @@ export default function AdminTenantsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Kelola seluruh instance tenant, perizinan, batas kuota, dan status akun platform.
+                Kelola tenant, kuota, dan status akun.
               </p>
             </div>
             

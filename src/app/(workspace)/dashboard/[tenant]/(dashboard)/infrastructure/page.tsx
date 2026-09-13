@@ -21,10 +21,10 @@ const TABS: { key: TabKey; label: string; icon: typeof Server }[] = [
 ]
 
 const OVERVIEW_CARDS: { key: Exclude<TabKey, "overview">; title: string; desc: string; icon: typeof Server }[] = [
-  { key: "hosting", title: "Hosting", desc: "Deployment Vercel situs frontend, health-ping, hubungkan URL manual.", icon: Rocket },
-  { key: "domains", title: "Domains", desc: "Custom domain (@ / CNAME), verifikasi DNS, domain utama, beli domain.", icon: Globe },
-  { key: "environment", title: "Environment", desc: "Variabel yang diteruskan ke build frontend Vercel.", icon: Variable },
-  { key: "database", title: "Database & Storage", desc: "PostgreSQL & object storage: shared pool, dedicated appliance, atau BYODB.", icon: Database },
+  { key: "hosting", title: "Hosting", desc: "Status deployment Vercel dan URL frontend.", icon: Rocket },
+  { key: "domains", title: "Domains", desc: "Custom domain dan verifikasi DNS.", icon: Globe },
+  { key: "environment", title: "Environment", desc: "Variabel build frontend.", icon: Variable },
+  { key: "database", title: "Database & Storage", desc: "PostgreSQL dan object storage.", icon: Database },
 ]
 
 function InfrastructureShell() {
@@ -71,7 +71,7 @@ function InfrastructureShell() {
           <div>
             <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Hosting &amp; Infrastruktur</h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              Deployment Vercel, domain, environment, database &amp; storage workspace — dalam satu tempat.
+              Hosting, domain, environment, dan database dalam satu tempat.
             </p>
           </div>
         </div>

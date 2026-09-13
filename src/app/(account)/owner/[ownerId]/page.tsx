@@ -112,7 +112,7 @@ export default async function OwnerDashboardPage({
               </Badge>
             </div>
             <p className="text-xs text-muted-foreground max-w-2xl">
-              Portal manajemen terpusat untuk akun Owner <strong>{ownerUser.name || ownerUser.email}</strong>. Seluruh workspace, subdomain, dan pengaturan kustom Anda terkelola secara otomatis.
+              Kelola seluruh workspace untuk akun Owner <strong>{ownerUser.name || ownerUser.email}</strong>.
             </p>
           </div>
 
@@ -180,7 +180,7 @@ export default async function OwnerDashboardPage({
               </div>
               <h3 className="font-bold text-sm text-foreground">Belum Ada Workspace</h3>
               <p className="text-xs text-muted-foreground">
-                Mulai buat workspace pertama Anda untuk mulai mengelola konten, API, dan skema data.
+                Buat workspace pertama Anda untuk mulai mengelola konten.
               </p>
               <Link href="/dashboard">
                 <Button size="sm" className="rounded-xl mt-2 font-bold text-xs bg-primary text-primary-foreground">

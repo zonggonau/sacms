@@ -105,7 +105,7 @@ function CreateRoleDialog({ tenantSlug, onCreated }: { tenantSlug: string; onCre
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle>Buat Peran Anggota</DialogTitle>
-          <DialogDescription>Peran khusus untuk workspace ini. Anggota yang ditugaskan mewarisi izin kontennya.</DialogDescription>
+          <DialogDescription>Peran khusus dengan izin konten sendiri.</DialogDescription>
         </DialogHeader>
         <form onSubmit={submit} className="space-y-4 mt-2">
           <div className="space-y-1">
@@ -304,7 +304,7 @@ export function RolesClient({ tenantSlug, roles, contentTypes }: Props) {
             <Shield className="h-6 w-6" /> Peran & Perizinan
           </span>
         }
-        description="Kontrol apa yang boleh dilakukan tiap peran anggota terhadap konten Anda via public API."
+        description="Kontrol akses tiap peran anggota terhadap konten via public API."
         action={
           <>
             <Button variant="outline" size="sm" asChild>

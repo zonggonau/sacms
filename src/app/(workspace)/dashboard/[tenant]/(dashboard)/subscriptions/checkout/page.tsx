@@ -379,7 +379,7 @@ export default function CheckoutPage() {
               </Button>
               <div>
                 <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Langganan</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran dengan aman.</p>
+                <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran.</p>
               </div>
             </div>
 
@@ -429,7 +429,7 @@ export default function CheckoutPage() {
                       <div className="space-y-1">
                         <p className="font-bold">Peringatan Kapasitas Paket Terpilih</p>
                         <p className="text-[11px] leading-relaxed text-amber-700 dark:text-amber-300/90">
-                          Penggunaan Anda saat ini ({entriesUsage.toLocaleString()} entri / {schemasUsage} model) melebihi batas kuota paket ini ({plan.maxContentEntries?.toLocaleString()} entri / {plan.maxContentTypes} model). Data yang sudah ada tetap aman dan dapat diakses, namun Anda tidak dapat menambah konten baru sampai batas kuota disesuaikan.
+                          Penggunaan Anda ({entriesUsage.toLocaleString()} entri / {schemasUsage} model) melebihi kuota paket ini ({plan.maxContentEntries?.toLocaleString()} entri / {plan.maxContentTypes} model). Konten baru tidak dapat ditambahkan sampai kuota disesuaikan.
                         </p>
                       </div>
                     </div>
@@ -544,7 +544,7 @@ export default function CheckoutPage() {
               <div className="p-4 bg-muted/20 border border-border/60 rounded-xl flex items-center gap-3 text-xs text-muted-foreground">
                 <ShieldCheck className="h-5 w-5 text-primary shrink-0" />
                 <p className="leading-relaxed">
-                  Transaksi diproses secara aman menggunakan payment gateway <strong>Midtrans</strong>. Kredensial kartu atau akun finansial Anda terlindungi dengan enkripsi standar industri.
+                  Transaksi diproses aman melalui <strong>Midtrans</strong>.
                 </p>
               </div>
             </div>

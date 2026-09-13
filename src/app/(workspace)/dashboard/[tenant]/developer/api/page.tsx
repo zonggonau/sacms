@@ -462,7 +462,7 @@ export default function ApiExplorerPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Uji endpoint REST API publik secara langsung, eksplorasi parameter query & filter Strapi-style, dan ekspor spesifikasi OpenAPI.
+                Uji endpoint REST API secara langsung dan ekspor spesifikasi OpenAPI.
               </p>
             </div>
 
@@ -570,7 +570,7 @@ export default function ApiExplorerPage() {
                     Request Builder
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Pilih skema konten atau ketik endpoint untuk mengirim request.
+                    Pilih skema atau ketik endpoint.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">
@@ -691,7 +691,7 @@ export default function ApiExplorerPage() {
                       Parameter & Filter Cheat Sheet
                     </CardTitle>
                     <CardDescription className="text-[11px] text-muted-foreground mt-0.5">
-                      Klik contoh parameter untuk langsung menambahkannya ke URL request.
+                      Klik parameter untuk menambahkannya ke URL.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -915,7 +915,7 @@ export default function ApiExplorerPage() {
                       <Globe className="h-10 w-10 mb-3 opacity-20 text-primary" />
                       <p className="text-xs font-bold text-foreground">Belum ada request yang dikirim</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5 max-w-xs">
-                        Pilih endpoint di kolom sebelah kiri dan klik <strong>Kirim Request</strong> untuk melihat respon server.
+                        Klik <strong>Kirim Request</strong> untuk melihat respon server.
                       </p>
                     </div>
                   )}

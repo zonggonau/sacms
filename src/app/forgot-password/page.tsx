@@ -52,7 +52,7 @@ export default function ForgotPasswordPage() {
           </Link>
           <h1 className="text-xl font-bold mb-1">Lupa Kata Sandi</h1>
           <p className="text-xs text-muted-foreground text-center">
-            Masukkan email Anda dan kami akan mengirimkan tautan untuk mengatur ulang kata sandi Anda.
+            Masukkan email untuk menerima tautan reset kata sandi.
           </p>
         </div>
 

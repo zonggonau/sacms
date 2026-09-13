@@ -112,7 +112,7 @@ export default function CustomerLicensePage() {
             </div>
             <CardTitle className="text-xl font-bold">Mode Standar (Standard Mode)</CardTitle>
             <CardDescription className="text-xs max-w-md mx-auto mt-1">
-              Workspace ini berjalan dalam mode standar dengan batasan kuota paket. Untuk akses tanpa batas dan dukungan mandiri (Self-Hosted), <strong>silakan hubungi Administrator</strong>.
+              Workspace berjalan dengan batasan kuota paket standar.
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4 pt-2">
@@ -150,7 +150,7 @@ export default function CustomerLicensePage() {
                     required
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Masukkan serial key yang Anda peroleh dari Administrator sistem.
+                    Serial key diperoleh dari Administrator sistem.
                   </p>
                 </div>
                 <div className="flex gap-2.5">
@@ -179,7 +179,7 @@ export default function CustomerLicensePage() {
 
             <div className="text-center pt-3 border-t border-border/60">
               <p className="text-xs text-muted-foreground">
-                Butuh bantuan implementasi atau konsultasi SLA khusus?{" "}
+                Butuh konsultasi SLA?{" "}
                 <a
                   href="mailto:admin@sacms.cloud?subject=Konsultasi%20Enterprise%20SaCMS"
                   className="text-primary font-semibold hover:underline inline-flex items-center gap-1"

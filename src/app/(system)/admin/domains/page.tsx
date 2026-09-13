@@ -207,7 +207,7 @@ export default function AdminCustomDomainsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-                Pantau domain kustom yang didaftarkan tenant, status verifikasi DNS CNAME/A record, dan sertifikat SSL platform.
+                Domain kustom tenant, verifikasi DNS, dan sertifikat SSL.
               </p>
             </div>
 

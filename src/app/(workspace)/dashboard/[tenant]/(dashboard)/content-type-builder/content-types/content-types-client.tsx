@@ -119,7 +119,7 @@ export function ContentTypesClient({ initialContentTypes, tenantSlug, limit = 3,
                   {initialContentTypes.length}
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Kelola struktur skema koleksi multi-entri (seperti Artikel, Produk, atau Pengguna).</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Kelola skema koleksi multi-entri.</p>
             </div>
             <div className="flex items-center gap-2.5">
               <Button

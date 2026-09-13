@@ -317,7 +317,7 @@ export default function AdminSettingsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Pusat kendali operasional, API keys pihak ketiga, email delivery, payment gateway, dan perizinan sistem SaCMS.
+                Konfigurasi API keys, email, payment gateway, dan sistem.
               </p>
             </div>
             <div className="flex items-center gap-2.5">
@@ -406,7 +406,7 @@ export default function AdminSettingsPage() {
                       </Badge>
                     </div>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pilih provider AI utama untuk generator konten, AI site builder, dan asisten redaksi.
+                      Provider AI untuk generator konten dan site builder.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -469,7 +469,7 @@ export default function AdminSettingsPage() {
                       Koleksi Kunci API AI (Real-Time Fallback)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kunci yang diisi di sini akan langsung digunakan sistem tanpa perlu merestart server. Jika kosong, sistem otomatis fallback ke file <code>.env</code>.
+                      Berlaku langsung tanpa restart. Kosong akan fallback ke <code>.env</code>.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -644,7 +644,7 @@ export default function AdminSettingsPage() {
                       Konfigurasi Pengiriman Email
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pilih menggunakan Resend API atau SMTP kustom (Gmail, SendGrid, Mailgun, dll).
+                      Resend API atau SMTP kustom.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -749,7 +749,7 @@ export default function AdminSettingsPage() {
                       Uji Coba Pengiriman Email Live
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kirim email tes langsung ke kotak masuk Anda untuk memverifikasi autentikasi SMTP / Resend.
+                      Verifikasi autentikasi SMTP / Resend.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -767,7 +767,7 @@ export default function AdminSettingsPage() {
                     <div className="p-4 rounded-xl bg-primary/5 border border-primary/20 space-y-2">
                       <h4 className="text-xs font-bold text-primary">Informasi Email Otomatis SaCMS</h4>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Pengaturan email ini digunakan untuk:
+                        Digunakan untuk:
                       </p>
                       <ul className="text-[11px] text-muted-foreground list-disc pl-4 space-y-0.5">
                         <li>Verifikasi alamat email pengguna saat mendaftar</li>
@@ -801,7 +801,7 @@ export default function AdminSettingsPage() {
                       Payment Gateway Midtrans Snap
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pengaturan kredensial Midtrans untuk QRIS, Virtual Account (BCA, Mandiri, BRI, BNI), dan Kartu Kredit.
+                      Kredensial Midtrans untuk QRIS, VA, dan Kartu Kredit.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -861,7 +861,7 @@ export default function AdminSettingsPage() {
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold text-foreground">Webhook URL Notifikasi</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Salin URL ini dan masukkan ke Dashboard Midtrans $\rightarrow$ Settings $\rightarrow$ Configuration $\rightarrow$ Notification URL.
+                      Masukkan ke Dashboard Midtrans &rarr; Settings &rarr; Notification URL.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -904,9 +904,7 @@ export default function AdminSettingsPage() {
                       Penyimpanan Berkas (Cloudflare R2 / AWS S3)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kredensial S3 Object Storage untuk media upload pustaka konten. Jika sudah diset di environment
-                      server (R2_ACCOUNT_ID, dst.), nilainya otomatis terisi di sini — cukup klik Simpan untuk
-                      mengunci sebagai pengaturan platform.
+                      Kredensial S3 Object Storage untuk media upload.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-3.5">
@@ -977,7 +975,7 @@ export default function AdminSettingsPage() {
                       Otomatisasi Contabo Cloud VPS / VDS API
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kredensial OAuth2 API Contabo untuk auto-provision Dedicated PostgreSQL & MinIO Appliance.
+                      Kredensial OAuth2 untuk auto-provision server dedicated.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-3.5">
@@ -1051,7 +1049,7 @@ export default function AdminSettingsPage() {
                       ID Workspace Induk (System Master)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Tenant global yang menyajikan data publik seperti Landing Page, Paket Langganan, dan Addon.
+                      Tenant global untuk data publik platform.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1097,7 +1095,7 @@ export default function AdminSettingsPage() {
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold text-foreground">Registrasi & Kebijakan Domain</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Batasan hak akses saat pengguna baru mendaftar di SaCMS.
+                      Batasan hak akses saat registrasi akun baru.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1148,7 +1146,7 @@ export default function AdminSettingsPage() {
                       Mode Pemeliharaan & Rate Limit
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kendali akses global saat update server dan pembatasan traffic API.
+                      Kendali akses global dan rate limit API.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1189,7 +1187,7 @@ export default function AdminSettingsPage() {
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold text-foreground">Retensi Log</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Log audit dan API request lebih lama dari batas ini akan otomatis dihapus oleh cron harian.
+                      Log lebih lama dari batas ini terhapus otomatis oleh cron harian.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
@@ -1221,12 +1219,12 @@ export default function AdminSettingsPage() {
                   <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
                     <CardTitle className="text-sm font-bold text-foreground">Edge & Redis Cache Flushing</CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Bersihkan seluruh cache respon API publik dan setting platform.
+                      Bersihkan cache respon API dan setting platform.
                     </CardDescription>
                   </CardHeader>
                   <CardContent className="p-5 space-y-4">
                     <p className="text-xs text-muted-foreground leading-relaxed">
-                      Tombol ini akan menghapus semua cache Redis untuk rate-limit, domain mapping, dynamic pricing, dan platform settings secara instan.
+                      Menghapus cache Redis untuk rate-limit, domain mapping, dan pricing.
                     </p>
                     <Button 
                       variant="destructive"

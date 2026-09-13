@@ -285,7 +285,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Kelola kredensial autentikasi API, rate limiting, dan CORS origins untuk integrasi aplikasi frontend.
+                Kelola kredensial API, rate limiting, dan CORS origins.
               </p>
             </div>
             
@@ -312,7 +312,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                   <DialogHeader>
                     <DialogTitle className="text-base font-bold text-foreground">Buat API Key Baru</DialogTitle>
                     <DialogDescription className="text-xs text-muted-foreground">
-                      Generate token otorisasi untuk mengakses Content REST dan GraphQL API.
+                      Token untuk mengakses REST dan GraphQL API.
                     </DialogDescription>
                   </DialogHeader>
                   <div className="space-y-4 py-2">
@@ -434,7 +434,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                   Kredensial Legacy Full-Access Terdeteksi
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Ini adalah kunci API dari sistem lama — selalu <strong>full-access</strong> (tidak bisa dibatasi read-only) dan terpisah dari daftar API Keys di atas. Disarankan untuk mencabutnya dan bermigrasi ke API Key baru.
+                  Kunci lama, selalu <strong>full-access</strong>. Disarankan mencabut dan bermigrasi ke API Key baru.
                 </CardDescription>
               </CardHeader>
               <CardContent className="px-5 pb-5">
@@ -488,7 +488,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       Daftar Kunci API (API Keys)
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Gunakan kunci di bawah ini pada header HTTP <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code> untuk memanggil REST dan GraphQL API.
+                      Gunakan pada header <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code>.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -498,7 +498,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       <Key className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
                       <p className="font-bold text-xs text-foreground">Belum ada API Key</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
-                        Gunakan tombol <strong>Buat API Key Baru</strong> di pojok kanan atas untuk generate token integrasi.
+                        Klik <strong>Buat API Key Baru</strong> untuk membuat token.
                       </p>
                     </div>
                   ) : (
@@ -576,7 +576,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       Konfigurasi REST API & Keamanan
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Atur versi API, pembatasan kuota request per menit (Rate Limiting), dan domain CORS yang diizinkan.
+                      Atur versi API, rate limiting, dan domain CORS.
                     </CardDescription>
                   </div>
                   <Button 
@@ -603,7 +603,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       </SelectContent>
                     </Select>
                     <p className="text-[11px] text-muted-foreground">
-                      Versi default yang digunakan untuk merespons permintaan REST API.
+                      Versi default untuk respons REST API.
                     </p>
                   </div>
 
@@ -615,7 +615,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       <div>
                         <Label className="text-xs font-semibold text-foreground">Rate Limiting Terintegrasi</Label>
                         <p className="text-[11px] text-muted-foreground mt-0.5">
-                          Batasi jumlah request per menit untuk mencegah abuse dan DDoS pada API publik.
+                          Batasi jumlah request per menit.
                         </p>
                       </div>
                       <Switch checked={rateLimiting} onCheckedChange={setRateLimiting} />
@@ -661,7 +661,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       className="rounded-xl text-xs font-mono bg-background border-border/80 p-3"
                     />
                     <p className="text-[11px] text-muted-foreground">
-                      Masukkan satu URL domain per baris. Gunakan <code className="bg-muted px-1 py-0.5 rounded font-mono">*</code> untuk mengizinkan semua origin.
+                      Satu URL domain per baris. Gunakan <code className="bg-muted px-1 py-0.5 rounded font-mono">*</code> untuk semua origin.
                     </p>
                   </div>
 
@@ -691,7 +691,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                 </div>
                 <DialogTitle className="text-base font-bold text-foreground">API Key Berhasil Dibuat</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Pastikan Anda menyalin API key ini sekarang. Demi keamanan, token utuh ini hanya ditampilkan sekali saat dibuat!
+                  Salin kunci ini sekarang — hanya ditampilkan sekali.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-3 py-3">

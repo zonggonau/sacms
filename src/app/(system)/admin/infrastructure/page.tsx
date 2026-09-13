@@ -867,7 +867,7 @@ export default function AdminInfrastructurePage() {
               </Badge>
             </div>
             <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              Pantau kesehatan dedicated server (PostgreSQL 17 + MinIO S3 + Caddy SSL + DNS) dan ambil tindakan pemulihan jika terjadi gangguan.
+              Kesehatan dedicated server dan tindakan pemulihan.
             </p>
           </div>
 
@@ -990,7 +990,7 @@ export default function AdminInfrastructurePage() {
 
           <TabsContent value="vps" className="mt-4">
             <p className="text-xs text-muted-foreground mb-3">
-              Semua Cloud VPS di akun Contabo. Baris yang terhubung ke tenant menampilkan status kesehatan SaCMS &amp; aksi troubleshooting.
+              Seluruh Cloud VPS di akun Contabo.
             </p>
             {renderContaboTable(providers?.contabo.vps || [], "VPS", "CONTABO_CLIENT_ID / CONTABO_CLIENT_SECRET / CONTABO_API_USER / CONTABO_API_PASSWORD")}
           </TabsContent>
@@ -1098,7 +1098,7 @@ export default function AdminInfrastructurePage() {
                         Periksa Kesehatan (Ping)
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Kirim sinyal uji ke port PostgreSQL dan MinIO S3 untuk memastikan layanan merespons normal.
+                        Uji port PostgreSQL dan MinIO S3.
                       </p>
                     </div>
                     <Button
@@ -1125,7 +1125,7 @@ export default function AdminInfrastructurePage() {
                         Uji Koneksi PostgreSQL
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Lakukan query uji <code className="bg-muted px-1 rounded font-mono">SELECT 1</code> langsung ke database dedicated.
+                        Query uji <code className="bg-muted px-1 rounded font-mono">SELECT 1</code> ke database dedicated.
                       </p>
                     </div>
                     <Button
@@ -1152,7 +1152,7 @@ export default function AdminInfrastructurePage() {
                         Perbaiki Skema Tabel (Sync Schema)
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Terapkan ulang migrasi tabel Prisma jika database mengalami korupsi atau tabel hilang.
+                        Terapkan ulang migrasi tabel Prisma.
                       </p>
                     </div>
                     <Button
@@ -1179,7 +1179,7 @@ export default function AdminInfrastructurePage() {
                         Perbarui DNS Cloudflare
                       </div>
                       <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Daftarkan ulang subdomain <code className="bg-muted px-1 rounded font-mono">db-</code> dan <code className="bg-muted px-1 rounded font-mono">media-</code> jika DNS tidak merespons.
+                        Daftarkan ulang subdomain <code className="bg-muted px-1 rounded font-mono">db-</code> dan <code className="bg-muted px-1 rounded font-mono">media-</code>.
                       </p>
                     </div>
                     <Button
@@ -1590,7 +1590,7 @@ export default function AdminInfrastructurePage() {
                   <Server className="h-5 w-5 text-primary" /> Provision Dedicated Server
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Alokasikan VPS/VDS appliance khusus (PostgreSQL 17 + MinIO S3 + UFW Firewall) di Contabo Cloud.
+                  Alokasikan VPS/VDS appliance khusus di Contabo Cloud.
                 </DialogDescription>
               </DialogHeader>
 
@@ -1661,7 +1661,7 @@ export default function AdminInfrastructurePage() {
                     </SelectContent>
                   </Select>
                   <p className="text-[11px] text-muted-foreground">
-                    Lokasi Singapore (SIN) memberikan latensi paling rendah & optimal untuk pengguna di Indonesia.
+                    Singapore (SIN) memberikan latensi terendah untuk pengguna Indonesia.
                   </p>
                 </div>
 

@@ -108,7 +108,7 @@ export default function TenantEconomicsPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Analisis laba bersih dan efisiensi biaya server untuk masing-masing workspace pelanggan aktif.
+            Laba bersih dan efisiensi biaya server per workspace.
           </p>
         </div>
         <div className="flex items-center gap-2.5">
@@ -142,7 +142,7 @@ export default function TenantEconomicsPage() {
         <CardHeader className="p-5 pb-4 border-b border-border/60 bg-muted/20">
           <CardTitle className="text-sm font-bold text-foreground">Rincian Finansial Tiap Workspace</CardTitle>
           <CardDescription className="text-[11px] text-muted-foreground">
-            Memetakan biaya server riil per instance terhadap pendapatan bulanan.
+            Biaya server riil terhadap pendapatan bulanan.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-0">

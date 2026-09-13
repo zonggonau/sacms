@@ -129,7 +129,7 @@ export default function SdkDocsPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Panduan integrasi resmi TypeScript SDK, REST API cURL endpoints, dan antarmuka tipe data type-safe untuk aplikasi Next.js & Frontend.
+                Integrasi TypeScript SDK, REST API, dan tipe data type-safe.
               </p>
             </div>
 
@@ -169,7 +169,7 @@ export default function SdkDocsPage() {
                   Parameter Dasar Workspace ({tenantSlug})
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Konfigurasi endpoint dan slug yang digunakan oleh SDK dan REST client.
+                  Endpoint dan slug untuk SDK dan REST client.
                 </CardDescription>
               </div>
               <Button
@@ -249,7 +249,7 @@ export default function SdkDocsPage() {
                       1. Instalasi SDK
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Pasang library client resmi SaCMS ke project Next.js, Node.js, atau frontend Anda.
+                      Pasang library client SaCMS ke project Anda.
                     </CardDescription>
                   </div>
 
@@ -278,7 +278,7 @@ export default function SdkDocsPage() {
                     code={getInstallCommand(packageManager)}
                   />
                   <p className="text-[11px] text-muted-foreground">
-                    Belum tersedia di npm registry publik — clone/link paket <code className="font-mono bg-muted px-1 py-0.5 rounded">mini-services/sdk</code> dari repo SaCMS secara lokal, atau hubungi tim platform untuk akses registry privat.
+                    Belum tersedia di npm publik — clone/link paket <code className="font-mono bg-muted px-1 py-0.5 rounded">mini-services/sdk</code> secara lokal, atau hubungi tim platform.
                   </p>
                 </CardContent>
               </Card>
@@ -290,7 +290,7 @@ export default function SdkDocsPage() {
                     2. Inisialisasi Klien (Client Setup)
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Buat instance klien SaCMS dengan kredensial workspace Anda.
+                    Buat instance klien dengan kredensial workspace.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-3">
@@ -316,7 +316,7 @@ export const cms = new SaCMS({
                     3. Pengambilan Data Entri (Fluent Query Builder)
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Mengambil koleksi data dengan chaining method yang ekspresif, type-safe, dan otomatis menangani filter.
+                    Mengambil koleksi data dengan chaining method type-safe.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-3">
@@ -385,7 +385,7 @@ console.log(homepage.data)`}
                     4. Mutasi Data (Create, Update, Delete)
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Membuat, memperbarui, atau menghapus entri konten (memerlukan API key dengan izin Write).
+                    Memerlukan API key dengan izin Write.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-3">
@@ -422,7 +422,7 @@ await cms.collection('articles').delete(newArticle.data.id)`}
                     5. Eksekusi Raw GraphQL Query
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Kueri GraphQL dinamis dengan nested field selection.
+                    Kueri GraphQL dengan nested field selection.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-3">
@@ -462,7 +462,7 @@ await cms.collection('articles').delete(newArticle.data.id)`}
                     Format Autentikasi Request cURL
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Sertakan header Bearer Token pada setiap pemanggilan HTTP API publik.
+                    Sertakan header Bearer Token pada setiap request.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5">
@@ -532,7 +532,7 @@ await cms.collection('articles').delete(newArticle.data.id)`}
                     Type Safety & IntelliSense dengan TypeScript
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                    Definisi antarmuka tipe data TypeScript untuk struktur payload dan entri skema CMS.
+                    Antarmuka tipe data untuk payload dan entri skema.
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="p-5 space-y-4">

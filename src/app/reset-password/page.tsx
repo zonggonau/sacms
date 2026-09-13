@@ -92,7 +92,7 @@ function ResetPasswordForm() {
         </div>
         <h3 className="text-base font-bold">Kata Sandi Berhasil Diperbarui</h3>
         <p className="text-xs text-muted-foreground mb-6 leading-relaxed">
-          Kata sandi Anda telah berhasil diubah. Silakan masuk menggunakan kata sandi baru Anda.
+          Silakan masuk dengan kata sandi baru Anda.
         </p>
         <Link href="/login">
           <Button className="w-full h-9 bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs rounded-xl shadow-xs">
@@ -108,7 +108,7 @@ function ResetPasswordForm() {
       <div className="text-center space-y-4">
         <h3 className="text-base font-bold text-destructive">Tautan Tidak Valid</h3>
         <p className="text-xs text-muted-foreground mb-6">
-          Tautan reset kata sandi tidak valid atau telah kadaluarsa. Silakan ajukan tautan baru.
+          Tautan reset kata sandi tidak valid atau sudah kadaluarsa.
         </p>
         <Link href="/forgot-password">
           <Button variant="outline" className="w-full h-9 rounded-xl text-xs font-semibold">

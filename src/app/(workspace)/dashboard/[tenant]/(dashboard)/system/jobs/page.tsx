@@ -197,7 +197,7 @@ export default function SystemJobsPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h1 className="text-xl font-bold tracking-tight">Jobs & Scheduled Tasks</h1>
-              <p className="text-sm text-muted-foreground">Scheduled publishing, webhook retries, and background tasks</p>
+              <p className="text-sm text-muted-foreground">Background tasks and retries</p>
             </div>
             <Button variant="outline" size="sm" onClick={fetchJobs} disabled={loading}>
               <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${loading ? "animate-spin" : ""}`} />
@@ -232,7 +232,7 @@ export default function SystemJobsPage() {
           <Card>
             <CardHeader className="pb-3">
               <CardTitle className="text-sm">All Jobs</CardTitle>
-              <CardDescription className="text-xs">Background tasks and scheduled operations</CardDescription>
+              <CardDescription className="text-xs">All background and scheduled jobs</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {loading ? (
@@ -309,8 +309,7 @@ export default function SystemJobsPage() {
                   <div>
                     <h3 className="text-sm font-semibold">Scheduled Publishing</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      A cron job runs every minute to check for entries with status SCHEDULED
-                      whose scheduledAt timestamp has passed, automatically publishing them.
+                      A cron job publishes scheduled entries every minute.
                     </p>
                   </div>
                 </div>
@@ -323,8 +322,7 @@ export default function SystemJobsPage() {
                   <div>
                     <h3 className="text-sm font-semibold">Webhook Retry & DLQ</h3>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Failed webhook deliveries are queued in a dead letter queue (DLQ)
-                      and retried with exponential backoff. Max 3 retry attempts.
+                      Failed deliveries retry with exponential backoff, up to 3 attempts.
                     </p>
                   </div>
                 </div>

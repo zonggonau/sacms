@@ -224,7 +224,7 @@ function CheckoutContent() {
           </Button>
           <div>
             <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Paket Akun</h1>
-            <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian langganan akun dan selesaikan pembayaran dengan aman.</p>
+            <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian langganan dan selesaikan pembayaran.</p>
           </div>
         </div>
 
@@ -287,7 +287,7 @@ function CheckoutContent() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-foreground">Batas Kuota Workspace</p>
-                    <p className="text-[11px] text-muted-foreground">Kapasitas workspace mandiri yang dapat aktif bersamaan</p>
+                    <p className="text-[11px] text-muted-foreground">Workspace mandiri yang dapat aktif bersamaan</p>
                   </div>
                 </div>
                 <Badge variant="secondary" className="font-mono font-bold text-xs px-2.5 py-1">
@@ -353,7 +353,7 @@ function CheckoutContent() {
               
               <div className="space-y-2 text-xs text-muted-foreground leading-relaxed">
                 <p>
-                  Mendukung seluruh metode pembayaran lokal: <strong>QRIS, GoPay, OVO, ShopeePay, Virtual Account Bank</strong>, dan <strong>Kartu Kredit</strong>.
+                  Mendukung <strong>QRIS, GoPay, OVO, ShopeePay, Virtual Account Bank</strong>, dan <strong>Kartu Kredit</strong>.
                 </p>
                 <div className="flex items-center gap-2 pt-2 text-[11px] text-emerald-600 dark:text-emerald-400 font-semibold">
                   <ShieldCheck className="h-4 w-4 shrink-0" />

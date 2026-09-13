@@ -118,7 +118,7 @@ export default async function BlogPage() {
             </h1>
 
             <p className="text-sm sm:text-base md:text-lg text-muted-foreground font-medium leading-relaxed">
-              Temukan panduan praktis, analisis arsitektur multi-tenant, dan strategi pengiriman konten digital kelas dunia bersama <strong>SaCMS</strong>.
+              Panduan praktis dan catatan teknis dari tim <strong>SaCMS</strong>.
             </p>
           </div>
 

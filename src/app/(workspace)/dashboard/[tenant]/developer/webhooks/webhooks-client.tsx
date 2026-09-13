@@ -206,7 +206,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
             <div>
               <h1 className="text-2xl font-black tracking-tight text-foreground">Webhooks & Integrasi Event</h1>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Konfigurasi notifikasi HTTP POST otomatis ke URL eksternal saat konten atau media berubah.
+                Notifikasi HTTP POST otomatis saat konten atau media berubah.
               </p>
             </div>
             <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
@@ -220,7 +220,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
               <Webhook className="h-4 w-4" />
             </div>
             <p className="leading-relaxed">
-              Webhook mengirimkan payload JSON real-time ke endpoint server Anda (seperti Vercel, CI/CD deploy hooks, atau Slack) saat ada mutasi data di workspace ini.
+              Mengirimkan payload JSON real-time ke endpoint Anda saat ada mutasi data.
             </p>
           </div>
 
@@ -231,7 +231,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                 <Zap className="h-8 w-8 mx-auto text-muted-foreground/30 mb-2" />
                 <p className="font-bold text-xs text-foreground mb-0.5">Belum ada webhook yang dikonfigurasi</p>
                 <p className="text-[11px] text-muted-foreground mb-4">
-                  Buat webhook untuk mulai menerima notifikasi event secara instan.
+                  Buat webhook untuk menerima notifikasi event.
                 </p>
                 <Button onClick={handleOpenCreate} className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
                   <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat Webhook
@@ -243,7 +243,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
               <CardHeader className="p-4 border-b border-border/60 bg-muted/20">
                 <CardTitle className="text-sm font-bold text-foreground">Daftar Webhook Terdaftar</CardTitle>
                 <CardDescription className="text-xs text-muted-foreground">
-                  Pantau status pengiriman webhook dan riwayat pengiriman event.
+                  Status dan riwayat pengiriman event.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
@@ -360,7 +360,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                   {editingWebhook ? "Edit Webhook" : "Buat Webhook Baru"}
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Konfigurasikan URL penerima dan event yang ingin dilanggan.
+                  Atur URL penerima dan event yang dilanggan.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">
@@ -387,7 +387,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                       className="rounded-xl h-9 text-xs bg-background border-border/80"
                     />
                     <p className="text-[10px] text-muted-foreground">
-                      URL tujuan yang akan menerima HTTP POST request saat event terpicu.
+                      Menerima HTTP POST saat event terpicu.
                     </p>
                   </div>
                   <div className="space-y-1.5">
@@ -439,7 +439,7 @@ export function WebhooksClient({ initialWebhooks, tenantSlug }: WebhooksClientPr
                   <div>
                     <p className="font-bold text-xs text-foreground">Status Aktif</p>
                     <p className="text-[10px] text-muted-foreground">
-                      Webhook hanya akan mengirim event jika opsi ini diaktifkan.
+                      Hanya mengirim event saat diaktifkan.
                     </p>
                   </div>
                   <Switch checked={enabled} onCheckedChange={setEnabled} />

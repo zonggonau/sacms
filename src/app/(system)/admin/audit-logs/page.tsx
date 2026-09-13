@@ -141,7 +141,7 @@ export default function AdminAuditLogsPage() {
                   Immutable Log
                 </Badge>
               </div>
-              <p className="text-xs text-muted-foreground mt-0.5">Rekaman riwayat seluruh aktivitas platform, perubahan data, dan akses administratif.</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Riwayat aktivitas platform dan akses administratif.</p>
             </div>
             <Button variant="outline" onClick={() => fetchLogs(page)} disabled={refreshing} className="rounded-xl h-9 text-xs font-bold shadow-xs border-border/80">
               <RefreshCw className={cn("h-3.5 w-3.5 mr-1.5", refreshing && "animate-spin")} /> Segarkan Log
@@ -293,7 +293,7 @@ export default function AdminAuditLogsPage() {
             <div>
               <p className="text-xs font-bold text-emerald-700 dark:text-emerald-300 uppercase tracking-wider">Log Kepatuhan Tidak Dapat Diubah (Immutable)</p>
               <p className="text-xs leading-relaxed mt-0.5 text-muted-foreground">
-                Rekaman audit trail bersifat non-repudiable. Seluruh aktivitas administratif dilindungi dari modifikasi maupun penghapusan untuk menjamin integritas dan keamanan sistem.
+                Aktivitas administratif dilindungi dari modifikasi dan penghapusan.
               </p>
             </div>
           </div>

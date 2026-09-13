@@ -104,7 +104,7 @@ export default function AdminDatabasesPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5 max-w-2xl">
-                Pantau koneksi database utama, integrasi cache Upstash Redis, serta *dynamic routing* untuk tenant Enterprise dengan database terisolasi.
+                Koneksi database utama, cache Redis, dan routing tenant Enterprise.
               </p>
             </div>
 

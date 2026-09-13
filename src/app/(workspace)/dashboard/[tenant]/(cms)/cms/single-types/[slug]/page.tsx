@@ -368,7 +368,7 @@ export default function CMSSingleTypeDetailPage() {
               <h4 className="font-bold text-xs uppercase tracking-wider text-foreground">Data Terisolasi</h4>
             </div>
             <p className="text-[11px] leading-relaxed text-muted-foreground">
-              Perubahan pada halaman ini khusus disimpan untuk workspace <strong>{tenantSlug}</strong> dan aman dari workspace lain.
+              Data khusus workspace <strong>{tenantSlug}</strong>.
             </p>
           </div>
         </div>

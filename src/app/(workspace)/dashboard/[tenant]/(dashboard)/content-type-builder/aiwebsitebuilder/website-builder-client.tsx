@@ -929,7 +929,7 @@ export async function fetchContent(collection: string) {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Bangun, uji secara live, dan deploy website Next.js 16 full-stack dengan integrasi SaCMS MCP Server & Public Content API.
+            Bangun dan deploy website Next.js dengan AI.
           </p>
         </div>
 
@@ -1955,7 +1955,7 @@ export async function fetchContent(collection: string) {
               Publikasikan Website ke Cloud Edge
             </DialogTitle>
             <DialogDescription className="text-xs text-muted-foreground leading-relaxed">
-              Website AI Anda siap di-deploy ke jaringan cloud global dengan garansi uptime 99.9%, SSL HTTPS otomatis, dan performa kilat.
+              Deploy website Anda dengan uptime 99.9% dan SSL otomatis.
             </DialogDescription>
           </DialogHeader>
 

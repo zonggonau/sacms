@@ -297,7 +297,7 @@ export default function EnterpriseLicensesPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-0.5">
-                Generate serial key RSA offline & online untuk instansi dan pelanggan Enterprise Self-Hosted.
+                Generate serial key RSA untuk pelanggan Enterprise Self-Hosted.
               </p>
             </div>
             
@@ -314,7 +314,7 @@ export default function EnterpriseLicensesPage() {
                     <Key className="h-4 w-4 text-primary" /> Generate Lisensi Enterprise
                   </DialogTitle>
                   <DialogDescription className="text-xs">
-                    Buat serial key berlisensi resmi RSA untuk pelanggan mandiri (self-hosted).
+                    Buat serial key RSA untuk pelanggan self-hosted.
                   </DialogDescription>
                 </DialogHeader>
 
@@ -441,7 +441,7 @@ export default function EnterpriseLicensesPage() {
                   Serial Lisensi Berhasil Dibuat
                 </CardTitle>
                 <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                  Salin kunci serial ini dan berikan kepada pelanggan. Jaga kerahasiaan kunci ini.
+                  Salin dan berikan kunci ini ke pelanggan secara rahasia.
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-5 pt-0 space-y-3">

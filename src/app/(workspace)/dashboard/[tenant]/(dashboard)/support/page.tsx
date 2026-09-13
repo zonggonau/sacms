@@ -258,7 +258,7 @@ export default function TenantSupportPage() {
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Saluran komunikasi langsung dengan tim teknis & customer service SaCMS.
+            Komunikasi langsung dengan tim teknis SaCMS.
           </p>
         </div>
 
@@ -272,7 +272,7 @@ export default function TenantSupportPage() {
             <DialogHeader>
               <DialogTitle className="text-base font-bold">Buat Tiket Bantuan Baru</DialogTitle>
               <DialogDescription className="text-xs">
-                Sampaikan kendala atau pertanyaan Anda langsung kepada tim teknis SaCMS.
+                Sampaikan kendala atau pertanyaan ke tim teknis.
               </DialogDescription>
             </DialogHeader>
 
