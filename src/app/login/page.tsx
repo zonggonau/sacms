@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, type CSSProperties } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
 import { signIn, useSession } from "next-auth/react"
@@ -12,6 +12,13 @@ import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
 import { resendVerificationAction } from "@/actions/auth"
 
+interface TenantBrand {
+  name: string
+  logo: string | null
+  primaryColor: string | null
+  faviconUrl: string | null
+}
+
 export default function LoginPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -22,9 +29,38 @@ export default function LoginPage() {
   const [unverifiedEmail, setUnverifiedEmail] = useState<string | null>(null)
   const [showPassword, setShowPassword] = useState(false)
   const { data: session, status } = useSession()
-  
+  const [brand, setBrand] = useState<TenantBrand | null>(null)
+
   const initialEmail = searchParams.get("email") || ""
   const redirectTo = searchParams.get("redirect_to") || ""
+  const workspaceSlug = searchParams.get("ws") || ""
+
+  // Load tenant white-label branding when the login link carries ?ws=<slug>
+  useEffect(() => {
+    if (!workspaceSlug) return
+    let cancelled = false
+    fetch(`/api/public/${workspaceSlug}/brand`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (cancelled || !data || data.error) return
+        setBrand({
+          name: data.name,
+          logo: data.logo || null,
+          primaryColor: data.primaryColor || null,
+          faviconUrl: data.faviconUrl || null,
+        })
+        if (data.faviconUrl) {
+          const link = (document.querySelector("link[rel='icon']") as HTMLLinkElement) || document.createElement("link")
+          link.rel = "icon"
+          link.href = data.faviconUrl
+          document.head.appendChild(link)
+        }
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [workspaceSlug])
 
   const [formData, setFormData] = useState({
     email: initialEmail,
@@ -194,7 +230,10 @@ export default function LoginPage() {
     }
   }
 
-  const registerHref = redirectTo ? `/register?redirect_to=${encodeURIComponent(redirectTo)}` : "/register"
+  const registerParams = new URLSearchParams()
+  if (redirectTo) registerParams.set("redirect_to", redirectTo)
+  if (workspaceSlug) registerParams.set("ws", workspaceSlug)
+  const registerHref = registerParams.toString() ? `/register?${registerParams.toString()}` : "/register"
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background text-foreground px-4 relative overflow-hidden">
@@ -204,18 +243,27 @@ export default function LoginPage() {
         <div className="absolute -bottom-[20%] -right-[10%] w-[50%] h-[50%] bg-[radial-gradient(ellipse_at_center,_var(--tw-gradient-stops))] from-blue-500/20 via-transparent to-transparent blur-3xl opacity-50" />
       </div>
 
-      <div className="w-full max-w-md relative z-10">
+      <div
+        className="w-full max-w-md relative z-10"
+        style={brand?.primaryColor ? ({ "--primary": brand.primaryColor } as CSSProperties) : undefined}
+      >
         <div className="bg-card/40 backdrop-blur-2xl border border-border/50 rounded-[2rem] p-8 sm:p-10 shadow-2xl shadow-primary/5">
           <div className="flex flex-col items-center mb-8">
             <Link href="/" className="inline-block mb-4">
-              <Logo iconSize="lg" showText={true} showDetail={true} useOrange={true} />
+              {brand?.logo ? (
+                <img src={brand.logo} alt={brand.name} className="h-9 max-w-[180px] object-contain" />
+              ) : (
+                <Logo iconSize="lg" showText={true} showDetail={!brand} useOrange={true} customName={brand?.name} />
+              )}
             </Link>
-            <div className="inline-flex items-center px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold rounded-full mb-3">
-              Build smarter. Manage easier. Scale faster.
-            </div>
+            {!brand && (
+              <div className="inline-flex items-center px-3 py-1 bg-primary/10 border border-primary/20 text-primary text-[11px] font-bold rounded-full mb-3">
+                Build smarter. Manage easier. Scale faster.
+              </div>
+            )}
             <h1 className="text-xl sm:text-2xl font-black tracking-tight mb-1">Masuk ke Akun</h1>
             <p className="text-xs sm:text-sm font-medium text-muted-foreground text-center">
-              Akses workspace dan kelola konten digital Anda
+              {brand ? `Akses workspace ${brand.name}` : "Akses workspace dan kelola konten digital Anda"}
             </p>
           </div>
 

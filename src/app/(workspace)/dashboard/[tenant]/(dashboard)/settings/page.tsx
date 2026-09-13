@@ -52,6 +52,8 @@ import {
   Image as ImageIcon,
   KeyRound,
   Lock,
+  Copy,
+  LogIn,
 } from "lucide-react"
 import { toast } from "sonner"
 import { useConfirm } from "@/components/ui/confirm-dialog"
@@ -998,6 +1000,31 @@ export default function TenantSettingsPage() {
                         <code className="block bg-background px-2 py-1 rounded font-mono text-[10px] border border-border/80 break-all">
                           GET /api/public/{tenantSlug}/brand
                         </code>
+                      </div>
+
+                      <div className="rounded-xl border border-border/60 bg-muted/20 p-3 space-y-1.5 text-[11px] text-muted-foreground">
+                        <p className="font-bold text-foreground flex items-center gap-1">
+                          <LogIn className="h-3 w-3 text-primary" /> Tautan Login Bermerek
+                        </p>
+                        <p>Bagikan tautan ini agar anggota tim melihat logo dan warna brand Anda saat masuk.</p>
+                        <div className="flex items-center gap-1.5">
+                          <code className="flex-1 bg-background px-2 py-1 rounded font-mono text-[10px] border border-border/80 break-all">
+                            {typeof window !== "undefined" ? window.location.origin : ""}/login?ws={tenantSlug}
+                          </code>
+                          <Button
+                            type="button"
+                            size="icon"
+                            variant="outline"
+                            className="h-7 w-7 shrink-0 rounded-lg"
+                            onClick={() => {
+                              const url = `${window.location.origin}/login?ws=${tenantSlug}`
+                              navigator.clipboard.writeText(url)
+                              toast.success("Tautan login disalin")
+                            }}
+                          >
+                            <Copy className="h-3 w-3" />
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
