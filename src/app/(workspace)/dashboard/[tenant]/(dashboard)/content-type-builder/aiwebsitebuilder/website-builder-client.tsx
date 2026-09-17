@@ -306,7 +306,6 @@ export async function fetchContent(collection: string) {
     isPaid: boolean
     vpsIp: string | null
     vpsServerName: string | null
-    vpsDeploymentUrl: string | null
     vercelDeploymentUrl: string | null
     customDomain: string | null
     plan: string | null

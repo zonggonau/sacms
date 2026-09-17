@@ -21,16 +21,18 @@ export async function GET(request: NextRequest) {
     const key = searchParams.get("key")
     if (!key) return NextResponse.json({ error: "Key is required" }, { status: 400 })
 
-    // 1. Identify tenant from key (Format: upload/tenant-slug/...)
+    // 1. Identify the workspace from the key: `<tenantId>/...` in the platform bucket,
+    //    or the legacy/local `upload/<tenant-slug>/...`.
     const parts = key.split("/").filter(Boolean)
-    const tenantSlug = parts[1]
-    if (parts[0] !== "upload" || !tenantSlug || !/^[a-z0-9-]+$/i.test(tenantSlug)) {
+    const isLegacyKey = parts[0] === "upload"
+    const tenantRef = isLegacyKey ? parts[1] : parts[0]
+    if (!tenantRef || !/^[a-z0-9-]+$/i.test(tenantRef) || parts.some((p) => p === ".." || p === ".")) {
       return NextResponse.json({ error: "Invalid key format" }, { status: 400 })
     }
 
     // 2. Check if user belongs to this tenant
     const tenant = await db.tenant.findUnique({
-      where: { slug: tenantSlug },
+      where: isLegacyKey ? { slug: tenantRef } : { id: tenantRef },
       select: { id: true }
     })
 
@@ -46,9 +48,9 @@ export async function GET(request: NextRequest) {
 
     // 3. Reject any `key` that could escape the tenant's own directory
     //    before it's used against either local disk or the storage bucket.
-    const tenantBase = path.join(process.cwd(), "public", "upload", tenantSlug)
+    const tenantBase = path.join(process.cwd(), "public", "upload", tenantRef)
     try {
-      resolveWithinBase(tenantBase, ...parts.slice(2))
+      resolveWithinBase(tenantBase, ...parts.slice(isLegacyKey ? 2 : 1))
     } catch (e) {
       if (e instanceof SsrfError) {
         return NextResponse.json({ error: "Invalid key" }, { status: 400 })

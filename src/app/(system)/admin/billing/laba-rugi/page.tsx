@@ -16,6 +16,7 @@ import {
 import Link from "next/link"
 import { formatRupiah } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { NocodeFinanceSection } from "@/components/admin/nocode-finance-section"
 
 export default function LabaRugiPage() {
   const { data: session, status } = useSession()
@@ -55,12 +56,10 @@ export default function LabaRugiPage() {
     const rows = [
       ["KOMPONEN LAPORAN LABA RUGI", "BULANAN (IDR)", "TAHUNAN PROYEKSI (IDR)"],
       ["1. PENDAPATAN KOTOR (GROSS REVENUE)", s.mrr, s.arr],
-      ["   - Cloud VPS Dedicated Appliance", data.categoryStats.vps.mrr, data.categoryStats.vps.mrr * 12],
-      ["   - Gov & Enterprise VDS", data.categoryStats.vds.mrr, data.categoryStats.vds.mrr * 12],
       ["   - Shared SaaS Cloud", data.categoryStats.cloud.mrr, data.categoryStats.cloud.mrr * 12],
       ["", "", ""],
       ["2. BIAYA POKOK INFRASTRUKTUR (COGS)", s.estimatedMonthlyCogs, s.estimatedYearlyCogs],
-      ["   - Dedicated Server Contabo (EUR)", s.estimatedMonthlyCogs, s.estimatedYearlyCogs],
+      ["   - Estimasi biaya infrastruktur", s.estimatedMonthlyCogs, s.estimatedYearlyCogs],
       ["", "", ""],
       ["3. LABA KOTOR (GROSS PROFIT)", s.monthlyGrossProfit, s.yearlyGrossProfit],
       ["   - Gross Profit Margin (%)", `${s.grossMarginPercent}%`, `${s.grossMarginPercent}%`],
@@ -148,18 +147,6 @@ export default function LabaRugiPage() {
                 <TableCell className="text-right font-bold text-emerald-600">100.0%</TableCell>
               </TableRow>
               <TableRow>
-                <TableCell className="pl-8 text-muted-foreground">- Dedicated Cloud VPS Appliance</TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah(data?.categoryStats?.vps?.mrr || 0)}</TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah((data?.categoryStats?.vps?.mrr || 0) * 12)}</TableCell>
-                <TableCell className="text-right text-muted-foreground">-</TableCell>
-              </TableRow>
-              <TableRow>
-                <TableCell className="pl-8 text-muted-foreground">- Gov & Enterprise Dedicated VDS</TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah(data?.categoryStats?.vds?.mrr || 0)}</TableCell>
-                <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah((data?.categoryStats?.vds?.mrr || 0) * 12)}</TableCell>
-                <TableCell className="text-right text-muted-foreground">-</TableCell>
-              </TableRow>
-              <TableRow>
                 <TableCell className="pl-8 text-muted-foreground">- Shared Cloud SaaS (Pro / Business)</TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah(data?.categoryStats?.cloud?.mrr || 0)}</TableCell>
                 <TableCell className="text-right font-mono text-muted-foreground">{formatRupiah((data?.categoryStats?.cloud?.mrr || 0) * 12)}</TableCell>
@@ -243,6 +230,8 @@ export default function LabaRugiPage() {
           </p>
         </Card>
       </div>
+
+      <NocodeFinanceSection sacmsMonthlyRevenue={s.mrr} sacmsMonthlyGrossProfit={s.monthlyGrossProfit} />
     </div>
   )
 }

@@ -60,11 +60,6 @@ export interface PlatformSettings {
   r2BucketName: string
   r2PublicUrl: string
 
-  // Dynamic Dedicated Infrastructure (Contabo)
-  contaboClientId: string
-  contaboClientSecret: string
-  contaboApiUser: string
-  contaboApiPassword: string
 
   // System Retention
   auditLogRetentionDays: string
@@ -129,11 +124,6 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   r2BucketName: "",
   r2PublicUrl: "",
 
-  // Contabo Defaults
-  contaboClientId: "",
-  contaboClientSecret: "",
-  contaboApiUser: "",
-  contaboApiPassword: "",
 
   // Retention
   auditLogRetentionDays: "90",
@@ -175,10 +165,6 @@ const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   r2SecretAccessKey: "R2_SECRET_ACCESS_KEY",
   r2BucketName: "R2_BUCKET_NAME",
   r2PublicUrl: "R2_PUBLIC_URL",
-  contaboClientId: "CONTABO_CLIENT_ID",
-  contaboClientSecret: "CONTABO_CLIENT_SECRET",
-  contaboApiUser: "CONTABO_API_USER",
-  contaboApiPassword: "CONTABO_API_PASSWORD",
 }
 
 function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
@@ -328,17 +314,4 @@ export async function getResolvedStorageConfig() {
     publicUrl: settings.r2PublicUrl || process.env.R2_PUBLIC_URL || "",
   }
 }
-
-export async function getResolvedContaboConfig() {
-  const settings = await getPlatformSettings()
-  return {
-    clientId: settings.contaboClientId || process.env.CONTABO_CLIENT_ID || "",
-    clientSecret: settings.contaboClientSecret || process.env.CONTABO_CLIENT_SECRET || "",
-    apiUser: settings.contaboApiUser || process.env.CONTABO_API_USER || "",
-    apiPassword: settings.contaboApiPassword || process.env.CONTABO_API_PASSWORD || "",
-    authUrl: process.env.CONTABO_AUTH_URL || "https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token",
-    apiUrl: process.env.CONTABO_API_URL || "https://api.contabo.com/v1/compute/instances",
-  }
-}
-
 

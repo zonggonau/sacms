@@ -1,7 +1,7 @@
 import { db } from "../src/lib/database"
 
 async function main() {
-  console.log("🚀 Syncing 3x3 White-Label Pricing (No Contabo / Vercel Branding) to CMS Database...")
+  console.log("🚀 Syncing 3x3 White-Label Pricing (No Vercel Branding) to CMS Database...")
 
   const ct = await db.contentType.findFirst({
     where: { slug: "sacms-workspace-pricing" }

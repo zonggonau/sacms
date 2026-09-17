@@ -114,7 +114,7 @@ jobs:
           port: ${{ secrets.SERVER_PORT || 22 }}
           timeout: 60s
           command_timeout: 10m
-          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js"
+          source: "docker-compose.yml,Caddyfile,scripts/healthcheck.js,docker/cron/crontab"
           target: "/opt/sacms"
 
       - name: Execute Zero-Downtime Deployment & DB Migration
@@ -171,7 +171,7 @@ jobs:
               systemctl reload caddy 2>/dev/null || systemctl restart caddy 2>/dev/null || true
             fi
 
-            # Prioritize IPv4 on Contabo VPS to prevent IPv6 connection reset drops on large GHCR image layers
+            # Prioritize IPv4 on the SaCMS VPS to prevent IPv6 connection reset drops on large GHCR image layers
             if [ -f /etc/gai.conf ]; then
               sed -i 's/#precedence ::ffff:0:0\/96  100/precedence ::ffff:0:0\/96  100/' /etc/gai.conf 2>/dev/null || true
             else

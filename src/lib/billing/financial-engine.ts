@@ -1,10 +1,9 @@
-import { CONTABO_PLANS } from "@/lib/infrastructure/contabo"
 import { db } from "@/lib/database"
 
 export interface PlanEconomics {
   slug: string
   name: string
-  category: "vps" | "vds" | "storage" | "cloud" | "account" | "addon"
+  category: "cloud" | "account" | "addon"
   monthlyPrice: number
   yearlyPrice: number
   estimatedMonthlyCogsEur: number
@@ -37,42 +36,7 @@ export function getPlansUnitEconomics(): PlanEconomics[] {
   const eurRate = DEFAULT_EUR_IDR_RATE
   const results: PlanEconomics[] = []
 
-  // 1. VPS & Storage & VDS Plans
-  for (const [slug, plan] of Object.entries(CONTABO_PLANS)) {
-    const isVds = plan.type === "VDS"
-    const isStorage = plan.type === "Storage"
-    const isVps = plan.type === "VPS"
-    const category = isVds ? "vds" : isStorage ? "storage" : "vps"
-
-    const monthlyPrice = plan.monthlyPriceIdr
-    const yearlyPrice = monthlyPrice * 10
-    const monthlyCogsIdr = Math.round(plan.monthlyPriceEur * eurRate)
-    const yearlyCogsIdr = monthlyCogsIdr * 12
-
-    const monthlyGrossProfit = monthlyPrice - monthlyCogsIdr
-    const yearlyGrossProfit = yearlyPrice - yearlyCogsIdr
-    const grossMargin = monthlyPrice > 0 ? Math.round((monthlyGrossProfit / monthlyPrice) * 1000) / 10 : 0
-    const gatewayFee = calculateMidtransFee(monthlyPrice)
-    const netProfit = monthlyGrossProfit - gatewayFee
-    const netMargin = monthlyPrice > 0 ? Math.round((netProfit / monthlyPrice) * 1000) / 10 : 0
-
-    results.push({
-      slug,
-      name: plan.name,
-      category,
-      monthlyPrice,
-      yearlyPrice,
-      estimatedMonthlyCogsEur: plan.monthlyPriceEur,
-      estimatedMonthlyCogsIdr: monthlyCogsIdr,
-      monthlyGrossProfitIdr: monthlyGrossProfit,
-      yearlyGrossProfitIdr: yearlyGrossProfit,
-      grossProfitMarginPercent: grossMargin,
-      gatewayFeeEstimateIdr: gatewayFee,
-      netProfitMarginPercent: netMargin,
-    })
-  }
-
-  // 2. Shared Cloud SaaS Plans
+  // 1. Shared Cloud SaaS Plans
   const cloudPlans = [
     { slug: "free", name: "SaCMS Free Forever", monthlyPrice: 0, yearlyPrice: 0, cogsIdr: 5000 },
     { slug: "pro", name: "SaCMS Cloud Pro", monthlyPrice: 249000, yearlyPrice: 1490000, cogsIdr: 35000 },
@@ -214,14 +178,11 @@ export async function calculateLiveFinancialReports() {
 
   // Category Aggregations
   const categoryStats = {
-    vps: { count: 0, mrr: 0, cogs: 0, profit: 0 },
-    vds: { count: 0, mrr: 0, cogs: 0, profit: 0 },
-    storage: { count: 0, mrr: 0, cogs: 0, profit: 0 },
     cloud: { count: 0, mrr: 0, cogs: 0, profit: 0 },
   }
 
   for (const tb of tenantBreakdown) {
-    const cat = (tb.category as "vps" | "vds" | "storage" | "cloud") || "cloud"
+    const cat = (tb.category as "cloud") || "cloud"
     if (categoryStats[cat]) {
       categoryStats[cat].count += 1
       categoryStats[cat].mrr += tb.monthlyRevenue

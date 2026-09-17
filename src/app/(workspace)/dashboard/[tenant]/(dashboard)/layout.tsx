@@ -85,8 +85,8 @@ export default async function TenantDashboardLayout({
     redirect(`/dashboard/${access.tenant.slug || access.tenant.id}/cms`)
   }
 
-  // Check trial / subscription expiration and suspension status, plus dedicated infrastructure availability
-  const [subscription, tenantData, infraServer] = await Promise.all([
+  // Check trial / subscription expiration and suspension status
+  const [subscription, tenantData] = await Promise.all([
     db.subscription.findFirst({
       where: { tenantId: access.tenantId },
       orderBy: { currentPeriodEnd: "desc" }
@@ -95,12 +95,6 @@ export default async function TenantDashboardLayout({
       where: { id: access.tenantId },
       select: { status: true, databaseUrl: true, plan: true }
     }),
-    db.infrastructureServer.findFirst({
-      where: {
-        tenantId: access.tenantId,
-        status: { in: ["active", "provisioning", "configuring", "suspended", "error"] }
-      }
-    })
   ])
 
   // Enterprise mode bypasses subscription checks
@@ -112,9 +106,6 @@ export default async function TenantDashboardLayout({
 
   const hasDedicatedInfra = Boolean(
     tenantData?.databaseUrl ||
-    infraServer ||
-    tenantData?.plan?.toLowerCase().includes("vps") ||
-    tenantData?.plan?.toLowerCase().includes("dedicated") ||
     tenantData?.plan?.toLowerCase().includes("enterprise") ||
     enterprise
   )

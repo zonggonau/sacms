@@ -19,15 +19,15 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
   // ApiKey's full plaintext value.
   const canSeeFullApiKey = access.role === "owner" || session.user.role === "super_admin"
 
-  // Fetch existing tokens, keys, subscriptions, and infrastructure for this tenant
-  const [tenant, tokens, apiKeys, subscription, vpsServer] = await Promise.all([
+  // Fetch existing tokens, keys, and subscription for this tenant
+  const [tenant, tokens, apiKeys, subscription] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
     }),
     db.apiToken.findMany({
       where: { tenantId: tenantSummary.id },
-      select: { id: true, name: true, description: true, type: true, token: true, createdAt: true, lastUsedAt: true },
+      select: { id: true, name: true, description: true, type: true, createdAt: true, lastUsedAt: true },
       orderBy: { createdAt: "desc" },
     }),
     db.apiKey.findMany({
@@ -39,10 +39,6 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       where: { tenantId: tenantSummary.id },
       orderBy: { createdAt: "desc" },
     }),
-    db.infrastructureServer.findFirst({
-      where: { tenantId: tenantSummary.id },
-      orderBy: { createdAt: "desc" },
-    }),
   ])
 
   const currentStatus = tenant?.status ?? "active"
@@ -51,8 +47,6 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
 
   // Determine Paid & Hosting Plan status
   const isPaid = (currentStatus === "active" && (subscription?.status === "active" || subscription?.status === "paid" || subscription?.status === "trialing")) || currentHostingStatus === "active"
-  const isVpsPlan = currentPlan.startsWith("vps-") || currentPlan === "enterprise"
-  const hostingType = isVpsPlan ? "dedicated_vps" : "shared_vercel"
 
   return (
     <MCPDashboardClient
@@ -60,16 +54,7 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
       tenantId={tenantSummary.id}
       plan={currentPlan}
       isPaid={isPaid}
-      hostingType={hostingType}
       subscriptionStatus={subscription?.status || "inactive"}
-      vpsDetails={vpsServer ? {
-        hostname: vpsServer.hostname || null,
-        ipv4: vpsServer.ipv4 || null,
-        status: vpsServer.status,
-        plan: vpsServer.plan,
-        cpuCount: vpsServer.cpuCount,
-        ramMb: vpsServer.ramMb,
-      } : null}
       existingTokens={tokens.map(t => ({
         id: t.id,
         name: t.name,

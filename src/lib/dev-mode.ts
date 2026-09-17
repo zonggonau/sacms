@@ -2,10 +2,10 @@
  * Central policy for "should this paid/external service be mocked?"
  *
  * Every integration in SaCMS that depends on a paid third-party service
- * (Midtrans, Vercel, v0.dev, Contabo, Cloudflare R2) should gate its mock
+ * (Midtrans, Vercel, v0.dev, Cloudflare R2) should gate its mock
  * fallback through `shouldUseMockServices()` / `isMockAllowed()` rather than
  * inventing its own ad-hoc check. Before this module existed, each client
- * decided independently whether to simulate — several (Vercel, Contabo,
+ * decided independently whether to simulate — several (Vercel,
  * v0.dev) only checked "is the API key missing?" with no regard for
  * NODE_ENV, which meant a misconfigured production deployment (env var
  * typo'd or simply forgotten) would silently start fabricating successful
@@ -30,7 +30,6 @@ export type MockableService =
   | "midtrans"
   | "vercel"
   | "v0"
-  | "contabo"
   | "r2"
 
 /** True outside of `production` — covers local dev (`next dev`) and the

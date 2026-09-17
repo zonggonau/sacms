@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server"
-import { getTenantDb } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { roleHasPermission, PERMISSIONS } from "@/lib/rbac/staff"
 import { isAllowedMimeType, isAllowedFileSize, validateMagicBytes, MAX_FILE_SIZE } from "@/lib/validations"
-import { isTenantStorageConfigured, uploadToR2, uploadToLocal } from "@/lib/r2"
+import { uploadTenantMedia } from "@/lib/r2"
 import type { Media } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { triggerWebhooks, WebhookEvents } from "@/lib/webhooks"
@@ -44,17 +44,13 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
     const tenantDb = await getTenantDb(tenantSlug)
     const uploadedMedia: Media[] = []
 
-    // Check storage limit
-    const { enforcePlanLimit } = await import("@/lib/plan-enforcement")
-    const enforcement = await enforcePlanLimit(tenantId, "storage", userId)
-    
+    // Storage quota of this workspace, counted in bytes including the files being uploaded.
+    // Applies to every uploader, super admins included.
+    const { checkStorageUpload } = await import("@/lib/plan-enforcement")
     const newFilesSizeBytes = files.reduce((acc, file) => acc + file.size, 0)
-    const newFilesSizeMB = Math.ceil(newFilesSizeBytes / (1024 * 1024))
-
-    if (!enforcement.allowed || (enforcement.current + newFilesSizeMB > enforcement.max)) {
-      return apiError("plan_limit", {
-        message: enforcement.message || `Storage limit exceeded. Your plan allows ${enforcement.max}MB.`,
-      })
+    const storage = await checkStorageUpload(tenantId, newFilesSizeBytes)
+    if (!storage.allowed) {
+      return apiError("plan_limit", { message: storage.message })
     }
 
     for (const file of files) {
@@ -77,25 +73,18 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       let mediumUrl: string | null = null
       let width: number | null = null
       let height: number | null = null
+      let variantBytes = 0
 
       try {
-        const canUseS3 = await isTenantStorageConfigured(tenantSlug)
-        if (canUseS3) {
-          const result = await uploadToR2(tenantSlug, buffer, file.name, mimeType)
-          url = result.url
-          storageKey = result.storageKey
-          thumbnailUrl = result.thumbnailUrl
-          mediumUrl = result.mediumUrl
-          width = result.width
-          height = result.height
-        } else {
-          const result = await uploadToLocal(tenantSlug, buffer, file.name, mimeType)
-          url = result.url
-          storageKey = result.storageKey
-          thumbnailUrl = result.thumbnailUrl
-          width = result.width
-          height = result.height
-        }
+        const tenantRow = await db.tenant.findUnique({ where: { id: tenantId }, select: { id: true, slug: true } })
+        const result = await uploadTenantMedia(tenantRow ?? { id: tenantId, slug: tenantSlug }, buffer, file.name, mimeType)
+        url = result.url
+        storageKey = result.storageKey
+        thumbnailUrl = result.thumbnailUrl
+        mediumUrl = result.mediumUrl
+        width = result.width
+        height = result.height
+        variantBytes = result.variantBytes
       } catch (error: any) {
         return NextResponse.json({ error: error.message || "Failed to upload file to storage" }, { status: 503 })
       }
@@ -114,6 +103,7 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
           mediumUrl,
           width,
           height,
+          variantBytes,
           uploadedBy: userId,
         },
       })

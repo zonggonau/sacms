@@ -41,7 +41,6 @@ interface SystemHealth {
   database: { status: "healthy" | "degraded" | "down", latencyMs: number, message?: string }
   redis: { status: "healthy" | "degraded" | "down", latencyMs: number, message?: string }
   storage: { status: "healthy" | "degraded" | "down", latencyMs: number, message?: string }
-  infrastructure: { status: "healthy" | "degraded" | "down", latencyMs: number, message?: string }
 }
 
 export default function GlobalAdminDashboard() {
@@ -315,19 +314,6 @@ export default function GlobalAdminDashboard() {
               </Badge>
             </div>
 
-            {/* Contabo Provisioning */}
-            <div className="p-3.5 rounded-2xl bg-card border border-border/80 flex items-center justify-between shadow-xs">
-              <div className="flex items-center gap-3">
-                <div className={`w-3 h-3 rounded-full ${health?.infrastructure.status === 'healthy' ? 'bg-emerald-500 animate-pulse' : 'bg-blue-500'}`} />
-                <div>
-                  <div className="text-xs font-bold text-foreground">Contabo Appliance</div>
-                  <div className="text-[10px] text-muted-foreground">VPS & VDS Gateway</div>
-                </div>
-              </div>
-              <Badge variant="outline" className="text-[10px] font-bold border-blue-500/30 text-blue-600 bg-blue-500/10 uppercase">
-                {health?.infrastructure.status || "Ready"}
-              </Badge>
-            </div>
           </div>
 
           {/* Quick Actions Bar */}

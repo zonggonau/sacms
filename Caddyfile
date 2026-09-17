@@ -13,7 +13,11 @@
 }
 
 # Main SaCMS Domain & Core Subdomains (Automatic Let's Encrypt HTTPS via HTTP-01)
-sacms.cloud, www.sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud {
+# developer.sacms.cloud is the SaCMS entry point. The apex sacms.cloud (+ www) now
+# belongs to SaCMS nocode on Vercel; they stay listed here only until the apex DNS
+# record is moved to Vercel. After that cutover no traffic reaches this block for
+# them and both hostnames should be removed.
+developer.sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud, sacms.cloud, www.sacms.cloud {
 	reverse_proxy 127.0.0.1:3000 {
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-Proto {scheme}
@@ -26,6 +30,12 @@ http://164.68.116.79, http://localhost {
 		header_up X-Forwarded-Host {host}
 		header_up X-Forwarded-Proto http
 	}
+}
+
+# Workspace media in MinIO (docker compose profile "storage"), public read:
+# https://media.sacms.cloud/sacms-media/<tenantId>/...
+media.sacms.cloud {
+	reverse_proxy 127.0.0.1:9000
 }
 
 # ── On-Demand TLS for ALL Tenant Custom Domains & Subdomains ─────────────────

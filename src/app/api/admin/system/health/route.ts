@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { db } from "@/lib/database"
 import { getRedis } from "@/lib/redis"
-import { isContaboConfigured } from "@/lib/infrastructure/contabo"
 import { withAdminAuth } from "@/lib/api/route-helpers"
 
 export const GET = withAdminAuth(async () => {
@@ -58,13 +57,6 @@ export const GET = withAdminAuth(async () => {
       message: hasR2 ? "Cloudflare R2 storage configured" : "Local/Mock storage mode"
     }
 
-    // 4. Contabo Appliance API
-    const contaboConfigured = isContaboConfigured()
-    healthChecks.infrastructure = {
-      status: contaboConfigured ? "healthy" : "degraded",
-      latencyMs: 0,
-      message: contaboConfigured ? "Contabo API active" : "Simulation mode (mock credentials)"
-    }
 
     return NextResponse.json({
       timestamp: new Date().toISOString(),

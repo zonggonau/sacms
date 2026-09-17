@@ -123,10 +123,6 @@ export default function AdminSettingsPage() {
     r2SecretAccessKey: "",
     r2BucketName: "",
     r2PublicUrl: "",
-    contaboClientId: "",
-    contaboClientSecret: "",
-    contaboApiUser: "",
-    contaboApiPassword: "",
 
     // Retention
     auditLogRetentionDays: "90",
@@ -870,7 +866,7 @@ export default function AdminSettingsPage() {
                       <div className="flex gap-2">
                         <Input 
                           readOnly 
-                          value="https://sacms.cloud/api/billing/midtrans/webhooks"
+                          value="https://developer.sacms.cloud/api/billing/midtrans/webhooks"
                           className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
                         />
                         <Button 
@@ -878,7 +874,7 @@ export default function AdminSettingsPage() {
                           size="sm" 
                           className="h-9 rounded-xl text-xs"
                           onClick={() => {
-                            navigator.clipboard.writeText("https://sacms.cloud/api/billing/midtrans/webhooks")
+                            navigator.clipboard.writeText("https://developer.sacms.cloud/api/billing/midtrans/webhooks")
                             toast({ title: "Tersalin", description: "Webhook URL Midtrans berhasil disalin." })
                           }}
                         >
@@ -961,73 +957,6 @@ export default function AdminSettingsPage() {
                           onChange={e => setSettings(prev => ({ ...prev, r2PublicUrl: e.target.value }))}
                           placeholder="https://media.sacms.cloud"
                           className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Contabo Provisioner */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Server className="h-4 w-4 text-primary" />
-                      Otomatisasi Contabo Cloud VPS / VDS API
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Kredensial OAuth2 untuk auto-provision server dedicated.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-3.5">
-                    <div className="space-y-1">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contabo Client ID</Label>
-                      <Input 
-                        value={settings.contaboClientId}
-                        onChange={e => setSettings(prev => ({ ...prev, contaboClientId: e.target.value }))}
-                        placeholder="INT-14950307"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                    </div>
-                    <div className="space-y-1">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Contabo Client Secret</Label>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('contaboSecret', 'contaboClientSecret')}>
-                          {showMasks.contaboSecret ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {showMasks.contaboSecret ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <Input
-                        type={showMasks.contaboSecret ? "text" : "password"}
-                        value={settings.contaboClientSecret}
-                        onChange={e => setSettings(prev => ({ ...prev, contaboClientSecret: e.target.value }))}
-                        placeholder="DZtSUAEP••••••••"
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                    </div>
-                    <div className="grid grid-cols-2 gap-3">
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground">API User (Email)</Label>
-                        <Input 
-                          value={settings.contaboApiUser}
-                          onChange={e => setSettings(prev => ({ ...prev, contaboApiUser: e.target.value }))}
-                          placeholder="user@domain.com"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold text-muted-foreground">API Password</Label>
-                          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('contaboPass', 'contaboApiPassword')}>
-                            {showMasks.contaboPass ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                            {showMasks.contaboPass ? "Sembunyikan" : "Tampilkan"}
-                          </Button>
-                        </div>
-                        <Input
-                          type={showMasks.contaboPass ? "text" : "password"}
-                          value={settings.contaboApiPassword}
-                          onChange={e => setSettings(prev => ({ ...prev, contaboApiPassword: e.target.value }))}
-                          placeholder="••••••••••••"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
                         />
                       </div>
                     </div>

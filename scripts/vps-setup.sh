@@ -80,11 +80,11 @@ if [ ! -f /opt/sacms/.env ]; then
     DB_RANDOM_SECRET=$(openssl rand -hex 24 2>/dev/null || date +%s%N | sha256sum | head -c 48)
     DOMAIN_VERIFY_RANDOM=$(openssl rand -hex 32 2>/dev/null || date +%s%N | sha256sum | head -c 64)
     cat <<EOF > /opt/sacms/.env
-# SaCMS Production Environment for 164.68.116.79 & sacms.cloud
+# SaCMS Production Environment for 164.68.116.79 & developer.sacms.cloud
 NODE_ENV=production
 NEXTAUTH_SECRET=${RANDOM_SECRET}
-NEXTAUTH_URL=https://sacms.cloud
-NEXT_PUBLIC_APP_URL=https://sacms.cloud
+NEXTAUTH_URL=https://developer.sacms.cloud
+NEXT_PUBLIC_APP_URL=https://developer.sacms.cloud
 PUBLIC_GATEWAY_IP=164.68.116.79
 PUBLIC_CNAME_TARGET=cname.sacms.cloud
 
@@ -134,14 +134,6 @@ DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY:-""}
 VERCEL_ACCESS_TOKEN=${VERCEL_ACCESS_TOKEN:-""}
 V0_API_KEY=${V0_API_KEY:-""}
 
-# Contabo Dedicated Appliance Provisioning
-CONTABO_CLIENT_ID=${CONTABO_CLIENT_ID:-""}
-CONTABO_CLIENT_SECRET=${CONTABO_CLIENT_SECRET:-""}
-CONTABO_API_USER=${CONTABO_API_USER:-""}
-CONTABO_API_PASSWORD=${CONTABO_API_PASSWORD:-""}
-CONTABO_AUTH_URL=https://auth.contabo.com/auth/realms/contabo/protocol/openid-connect/token
-CONTABO_API_URL=https://api.contabo.com/v1/compute/instances
-INFRA_BASE_DOMAIN=sacms.cloud
 EOF
     chmod 600 /opt/sacms/.env
     echo "Created /opt/sacms/.env with complete production credentials."

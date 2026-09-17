@@ -63,7 +63,7 @@ const updateTargetSchema = z.object({
 export const GET = withStaffAuth(
   async (request, _context, { access, session }) => {
 
-    const [tenantRecord, settings, siteRecord, vpsServer] = await Promise.all([
+    const [tenantRecord, settings, siteRecord] = await Promise.all([
       db.tenant.findUnique({
         where: { id: access.tenantId },
         include: {
@@ -80,7 +80,6 @@ export const GET = withStaffAuth(
               `${access.tenantId}_vercelDeploymentUrl`,
               `${access.tenantId}_vercelProjectId`,
               `${access.tenantId}_customDomain`,
-              `${access.tenantId}_vpsDeploymentUrl`,
             ],
           },
         },
@@ -93,11 +92,7 @@ export const GET = withStaffAuth(
             take: 1,
           },
         },
-      }),
-      db.infrastructureServer.findFirst({
-        where: { tenantId: access.tenantId, status: { in: ["active", "provisioning", "ready"] } },
-        orderBy: { createdAt: "desc" },
-      }),
+      })
     ])
 
     if (!tenantRecord) {
@@ -157,20 +152,9 @@ export const GET = withStaffAuth(
         }
       : null
 
-    const vpsDeploymentUrlSetting = settings.find((s) => s.key === `${access.tenantId}_vpsDeploymentUrl`)?.value
-    const vpsDeployment = vpsServer?.ipv4
-      ? {
-          url: vpsDeploymentUrlSetting || `http://${vpsServer.ipv4}`,
-          ip: vpsServer.ipv4,
-          serverName: vpsServer.name,
-          status: vpsServer.status,
-        }
-      : null
-
     return NextResponse.json({
       domains,
       vercelDeployment,
-      vpsDeployment,
     })
   },
   { minRole: "admin" },

@@ -83,7 +83,7 @@ export async function getBaseUrl(): Promise<string> {
     return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "")
   }
   if (process.env.NODE_ENV === "production") {
-    return "https://sacms.cloud"
+    return "https://developer.sacms.cloud"
   }
   return process.env.NEXTAUTH_URL?.replace(/\/$/, "") || "http://localhost:3000"
 }
@@ -469,4 +469,9 @@ export async function sendSupportNotificationEmail({
   })
 
   return info
+}
+
+/** Billing notices (service expiry reminders) to one recipient. */
+export async function sendBillingNoticeEmail(to: string, subject: string, html: string) {
+  return dispatch(subject, html, to)
 }

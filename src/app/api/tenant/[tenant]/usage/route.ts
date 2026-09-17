@@ -63,14 +63,8 @@ export const GET = withStaffAuth(async (_request, context, { access }) => {
       calls: apiCallsByDate[date]
     }))
 
-    // 3. Calculate Storage (Safe fallback if media table not yet created on isolated/custom DB)
-    const storageResult = await tenantDb.media.aggregate({
-      where: { tenantId },
-      _sum: { size: true },
-    }).catch(() => ({ _sum: { size: 0 } }))
-    
-    // Storage in MB
-    const totalStorageMB = Math.ceil(((storageResult as any)?._sum?.size || 0) / (1024 * 1024))
+    // 3. Storage in MB, including generated image versions (same figure the quota uses)
+    const totalStorageMB = Math.ceil(storageLimit.current / (1024 * 1024))
 
     // 4. Calculate Content Types & Entries (Safe fallback)
     const totalContentTypes = await tenantDb.contentType.count({

@@ -9,7 +9,10 @@ import { isEnterpriseTenant } from "./license"
  * Supports custom plan overrides via the CustomPlanOverride table.
  *
  * ENTERPRISE MODE: If this instance is running under a valid enterprise license,
- * ALL plan limits are bypassed (unlimited workspaces, team, storage, etc.)
+ * plan limits are bypassed (unlimited workspaces, team, etc.).
+ *
+ * STORAGE is the exception to every other bypass: it is metered per workspace for all plans,
+ * including Enterprise and uploads by super admins (see getStorageQuota).
  *
  * Usage:
  *   const result = await enforcePlanLimit(tenantId, "content_types")
@@ -36,6 +39,97 @@ export interface EnforcementResult {
   max: number
   message: string
   planSlug: string
+}
+
+// ==================== STORAGE QUOTA ====================
+
+const MB = 1024 * 1024
+
+/** `max` reported for a workspace whose storage is not metered. */
+export const UNLIMITED_STORAGE_BYTES = Number.MAX_SAFE_INTEGER
+
+export interface StorageQuota {
+  /** Original files plus their generated thumbnail/medium versions. */
+  usedBytes: number
+  /** null when not metered: the workspace stores media in its own S3 bucket (BYOS), or the
+   *  whole instance runs under an enterprise license. */
+  limitBytes: number | null
+  planBytes: number
+  /** Storage add-ons that are active right now. */
+  addonBytes: number
+  planSlug: string
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes >= 1024 * MB) return `${(bytes / (1024 * MB)).toFixed(1)} GB`
+  return `${(bytes / MB).toFixed(1)} MB`
+}
+
+/** Instance-level enterprise license (self-hosted install). A per-tenant license does not lift the storage quota. */
+async function isInstanceEnterpriseLicensed(): Promise<boolean> {
+  try {
+    const { getGlobalWorkspaceId } = await import('@/lib/settings')
+    return await isEnterpriseTenant(await getGlobalWorkspaceId())
+  } catch {
+    return false
+  }
+}
+
+async function getStorageUsedBytes(tenantId: string): Promise<number> {
+  const tenantDb = await getTenantDb(tenantId)
+  try {
+    const result = await tenantDb.media.aggregate({ where: { tenantId }, _sum: { size: true, variantBytes: true } })
+    return Number(result._sum.size ?? 0) + Number(result._sum.variantBytes ?? 0)
+  } catch {
+    // A connected database (BYODB) may not have the variantBytes column yet.
+    const result = await tenantDb.media.aggregate({ where: { tenantId }, _sum: { size: true } }).catch(() => null)
+    return Number(result?._sum?.size ?? 0)
+  }
+}
+
+/** Storage quota of one workspace: plan (or admin override) + active add-ons. */
+export async function getStorageQuota(tenantId: string): Promise<StorageQuota> {
+  const now = new Date()
+  const [tenant, planConfig, override, usedBytes, addons, instanceLicensed] = await Promise.all([
+    db.tenant.findUnique({ where: { id: tenantId }, select: { storageConfig: true } }),
+    getTenantPlanConfig(tenantId),
+    getWorkspaceOverride(tenantId),
+    getStorageUsedBytes(tenantId),
+    db.storageAddon
+      .aggregate({ where: { tenantId, startsAt: { lte: now }, expiresAt: { gt: now } }, _sum: { bytes: true } })
+      .catch(() => null),
+    isInstanceEnterpriseLicensed(),
+  ])
+
+  const planBytes = (override?.maxStorage ?? planConfig.max_storage) * MB
+  const addonBytes = Number(addons?._sum?.bytes ?? 0)
+  const metered = !tenant?.storageConfig && !instanceLicensed
+
+  return {
+    usedBytes,
+    limitBytes: metered ? planBytes + addonBytes : null,
+    planBytes,
+    addonBytes,
+    planSlug: planConfig.plan_slug,
+  }
+}
+
+/** Whether `incomingBytes` more still fit in the workspace's storage quota. */
+export async function checkStorageUpload(
+  tenantId: string,
+  incomingBytes: number
+): Promise<{ allowed: boolean; quota: StorageQuota; message: string }> {
+  const quota = await getStorageQuota(tenantId)
+  if (quota.limitBytes === null || quota.usedBytes + incomingBytes <= quota.limitBytes) {
+    return { allowed: true, quota, message: "OK" }
+  }
+  return {
+    allowed: false,
+    quota,
+    message:
+      `Kuota storage workspace tidak cukup: terpakai ${formatBytes(quota.usedBytes)} dari ${formatBytes(quota.limitBytes)}, ` +
+      `file yang diunggah ${formatBytes(incomingBytes)}. Hapus media yang tidak dipakai atau beli storage tambahan.`,
+  }
 }
 
 // ==================== ENTERPRISE BYPASS ====================
@@ -91,6 +185,21 @@ export async function enforcePlanLimit(
   resource: WorkspaceResource,
   userId?: string
 ): Promise<EnforcementResult> {
+  // Storage is metered for every workspace; none of the bypasses below apply to it.
+  if (resource === "storage") {
+    const quota = await getStorageQuota(tenantId)
+    const allowed = quota.limitBytes === null || quota.usedBytes < quota.limitBytes
+    return {
+      allowed,
+      current: quota.usedBytes,
+      max: quota.limitBytes ?? UNLIMITED_STORAGE_BYTES,
+      planSlug: quota.planSlug,
+      message: allowed
+        ? "OK"
+        : `Limit reached: storage (${formatBytes(quota.usedBytes)}/${formatBytes(quota.limitBytes!)}). Delete unused media or buy extra storage.`,
+    }
+  }
+
   // 0. Enterprise Mode Bypass (tenant specific)
   const bypass = await enterpriseBypass(tenantId)
   if (bypass) return bypass
@@ -119,17 +228,14 @@ export async function enforcePlanLimit(
   const override = await getWorkspaceOverride(tenantId)
 
   // 3b. Fetch tenant top-up extras
-  let topupExtras: { storageExtraBytes?: bigint | number; apiCallsExtra?: number } | null = null
+  let topupExtras: { apiCallsExtra?: number } | null = null
   try {
     const tData = await db.tenant.findUnique({
       where: { id: tenantId },
-      select: { storageExtraBytes: true, apiCallsExtra: true } as any
+      select: { apiCallsExtra: true }
     })
     if (tData) {
-      topupExtras = {
-        storageExtraBytes: (tData as any).storageExtraBytes,
-        apiCallsExtra: (tData as any).apiCallsExtra
-      }
+      topupExtras = { apiCallsExtra: tData.apiCallsExtra }
     }
   } catch {}
 
@@ -142,8 +248,8 @@ export async function enforcePlanLimit(
   // 6. Check
   const allowed = currentUsage < effectiveMax
 
-  const displayCurrent = resource === "storage" ? `${(currentUsage / (1024 * 1024)).toFixed(1)}MB` : currentUsage
-  const displayMax = resource === "storage" ? `${(effectiveMax / (1024 * 1024)).toFixed(0)}MB` : effectiveMax
+  const displayCurrent = currentUsage
+  const displayMax = effectiveMax
 
   return {
     allowed,
@@ -164,7 +270,7 @@ function getEffectiveWorkspaceMax(
   planConfig: PlanConfig,
   override: WorkspaceOverride | null,
   resource: WorkspaceResource,
-  topupExtras?: { storageExtraBytes?: bigint | number; apiCallsExtra?: number } | null
+  topupExtras?: { apiCallsExtra?: number } | null
 ): number {
   switch (resource) {
     case "content_types":
@@ -173,12 +279,9 @@ function getEffectiveWorkspaceMax(
       return override?.maxContentEntries ?? planConfig.max_content_entries
     case "team_members":
       return override?.maxTeamMembers ?? planConfig.max_team_members
-    case "storage": {
-      const mbMax = override?.maxStorage ?? planConfig.max_storage
-      const baseBytes = mbMax * 1024 * 1024 // convert MB to bytes for comparison with db.media size
-      const extraBytes = Number(topupExtras?.storageExtraBytes || 0)
-      return baseBytes + extraBytes
-    }
+    case "storage":
+      // Handled by getStorageQuota before this is reached.
+      return 0
     case "locales":
       return override?.maxLocales ?? planConfig.max_locales
     case "api_calls": {
@@ -411,15 +514,8 @@ async function getWorkspaceUsage(tenantId: string, resource: WorkspaceResource):
       }
       case "team_members":
         return db.tenantMember.count({ where: { tenantId, role: { not: "owner" } } })
-      case "storage": {
-        // Sum of all media files sizes for this tenant (from tenant-specific DB)
-        const tenantDb = await getTenantDb(tenantId)
-        const result = await tenantDb.media.aggregate({
-          where: { tenantId },
-          _sum: { size: true },
-        }).catch(() => ({ _sum: { size: 0 } }))
-        return (result as any)?._sum?.size || 0
-      }
+      case "storage":
+        return getStorageUsedBytes(tenantId)
       case "locales":
         return db.tenantLocale.count({ where: { tenantId, isEnabled: true } })
       case "api_calls":

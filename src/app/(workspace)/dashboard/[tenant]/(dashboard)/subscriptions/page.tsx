@@ -301,7 +301,7 @@ export default function TenantSubscriptionsPage() {
   const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
   const mainPlans = plans.filter(p => p.type === "workspace")
-  const addonPlans = plans.filter(p => p.type === "addons")
+  const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false)
 
   return (
     <div className="flex flex-1 flex-col w-full">
@@ -726,6 +726,7 @@ export default function TenantSubscriptionsPage() {
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Add-on & Ekstra Kuota</h2>
                 <p className="text-xs sm:text-sm text-muted-foreground">Tambahan kuota dan fitur di luar paket utama workspace.</p>
               </div>
+              <ActiveServices tenantSlug={tenantSlug} />
               {addonPlans.length === 0 ? (
                 <div className="text-center py-16 text-muted-foreground border border-dashed border-border/60 rounded-2xl">
                   <Package className="h-8 w-8 mx-auto mb-2 text-muted-foreground/30" />
@@ -761,7 +762,7 @@ export default function TenantSubscriptionsPage() {
                                   <>
                                     {formatPrice(addon.price)}
                                     <span className="text-[10px] text-muted-foreground font-normal ml-1">
-                                      {addon.isTopup ? "(Sekali Bayar)" : "/bulan"}
+                                      {addon.billingPeriod === "month" || !addon.isTopup ? "/bulan" : "(Sekali Bayar)"}
                                     </span>
                                   </>
                                 )}
@@ -985,5 +986,70 @@ export default function TenantSubscriptionsPage() {
         </div>
       </div>
     </div>
+  )
+}
+
+type BillingServices = {
+  storageAddons: { id: string; bytes: number; startsAt: string; expiresAt: string; renewed: boolean }[]
+  managedInfra: { status: string; paidUntil: string } | null
+}
+
+const MANAGED_INFRA_STATUS: Record<string, string> = {
+  awaiting_setup: "Menunggu setup tim IT SaCMS",
+  active: "Aktif",
+  expired: "Kedaluwarsa",
+  cancelled: "Dibatalkan",
+}
+
+/** Paid monthly services of this workspace, each with a renew button. */
+function ActiveServices({ tenantSlug }: { tenantSlug: string }) {
+  const router = useRouter()
+  const [services, setServices] = useState<BillingServices | null>(null)
+
+  useEffect(() => {
+    if (!tenantSlug) return
+    fetch(`/api/tenant/${tenantSlug}/billing/services`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => data && setServices(data))
+      .catch(() => {})
+  }, [tenantSlug])
+
+  if (!services || (services.storageAddons.length === 0 && !services.managedInfra)) return null
+  const date = (value: string) => new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
+
+  return (
+    <Card className="border border-border/80 bg-card/60 shadow-xs rounded-2xl">
+      <CardContent className="p-4 space-y-3">
+        <p className="text-sm font-bold text-foreground">Layanan aktif workspace</p>
+        {services.storageAddons.map((addon) => (
+          <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div>
+              <p className="font-semibold text-foreground">Extra Storage {Math.round(addon.bytes / 1024 ** 3)} GB</p>
+              <p className="text-muted-foreground">Berlaku {date(addon.startsAt)} – {date(addon.expiresAt)}</p>
+            </div>
+            {addon.renewed ? (
+              <span className="text-muted-foreground">Sudah diperpanjang</span>
+            ) : (
+              <Button size="sm" className="rounded-xl h-8 text-xs" onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=topup_storage_10gb&renew=${addon.id}`)}>
+                Perpanjang
+              </Button>
+            )}
+          </div>
+        ))}
+        {services.managedInfra && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div>
+              <p className="font-semibold text-foreground">Database & Storage Sendiri — {MANAGED_INFRA_STATUS[services.managedInfra.status] ?? services.managedInfra.status}</p>
+              <p className="text-muted-foreground">Dibayar sampai {date(services.managedInfra.paidUntil)}</p>
+            </div>
+            {services.managedInfra.status !== "cancelled" && (
+              <Button size="sm" className="rounded-xl h-8 text-xs" onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=managed_byodb_monthly`)}>
+                Perpanjang 1 Bulan
+              </Button>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   )
 }

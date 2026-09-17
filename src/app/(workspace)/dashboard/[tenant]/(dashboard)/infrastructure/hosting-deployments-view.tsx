@@ -65,20 +65,6 @@ interface VercelDeploymentData {
   updatedAt?: string
 }
 
-interface VpsServerData {
-  id: string
-  name: string | null
-  hostname: string | null
-  ipv4: string | null
-  region: string
-  plan: string
-  diskGb: number
-  ramMb: number
-  cpuCount: number
-  status: string
-  healthStatus: string
-}
-
 interface PingMetrics {
   status: number
   statusText: string
@@ -151,8 +137,6 @@ export function HostingDeploymentsView({
 
   const [loading, setLoading] = useState(true)
   const [vercelDeployment, setVercelDeployment] = useState<VercelDeploymentData | null>(null)
-  const [vpsServer, setVpsServer] = useState<VpsServerData | null>(null)
-  const [vpsDeploymentUrl, setVpsDeploymentUrl] = useState<string | null>(null)
   const [copiedId, setCopiedId] = useState<string | null>(null)
   const [refreshing, setRefreshing] = useState(false)
 
@@ -263,26 +247,6 @@ export function HostingDeploymentsView({
           setLinkUrlInput(formattedUrl)
           setLinkProjectIdInput(activeProjectId || "")
         }
-
-        if (deployData.vpsServer) {
-          setVpsServer(deployData.vpsServer)
-        } else if (domainData?.vpsDeployment) {
-          setVpsServer({
-            id: "vps-appliance",
-            name: domainData.vpsDeployment.serverName || "Dedicated VPS",
-            hostname: domainData.vpsDeployment.ip,
-            ipv4: domainData.vpsDeployment.ip,
-            region: "EU",
-            plan: "vps-s",
-            diskGb: 75,
-            ramMb: 8192,
-            cpuCount: 4,
-            status: domainData.vpsDeployment.status || "active",
-            healthStatus: "healthy",
-          })
-        }
-
-        setVpsDeploymentUrl(deployData.vpsDeploymentUrl || domainData?.vpsDeployment?.url || null)
       }
     } catch {
       toast.error("Gagal memuat status deployment")
@@ -845,150 +809,6 @@ export function HostingDeploymentsView({
                     <p className="text-[11px] text-muted-foreground">Sertifikat SSL otomatis diperpanjang</p>
                   </Card>
                 </div>
-              </div>
-
-              {/* CONTABO DEDICATED VPS SECTION */}
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <Server className="h-4 w-4 text-blue-500" />
-                    <h2 className="text-base font-bold text-foreground">
-                      Dedicated Contabo VPS Appliance
-                    </h2>
-                  </div>
-                  <Button asChild variant="ghost" size="sm" className="h-8 text-xs font-semibold text-primary">
-                    <Link href={`/dashboard/${tenantSlug}/infrastructure`}>
-                      Buka Konsol Infrastruktur
-                      <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                    </Link>
-                  </Button>
-                </div>
-
-                {vpsServer ? (
-                  <Card className="rounded-2xl border-2 border-blue-500/30 bg-gradient-to-br from-blue-500/5 via-card to-card shadow-sm overflow-hidden">
-                    <CardHeader className="p-5 pb-3 border-b border-blue-500/20 bg-blue-500/5">
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-xl bg-blue-500/15 border border-blue-500/30 flex items-center justify-center text-blue-600 dark:text-blue-400 shrink-0">
-                            <Server className="h-5 w-5" />
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <CardTitle className="text-base font-bold text-foreground">
-                                {vpsServer.name || "Contabo Dedicated VPS Instance"}
-                              </CardTitle>
-                              <Badge className="bg-blue-500/20 text-blue-600 dark:text-blue-400 border-blue-500/30 text-[11px] font-bold px-2 py-0.5 rounded-full">
-                                ● {vpsServer.status.toUpperCase()}
-                              </Badge>
-                            </div>
-                            <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                              Dedicated Server Appliance untuk PostgreSQL 17 Database, MinIO S3 Storage, dan Nginx Reverse Proxy.
-                            </CardDescription>
-                          </div>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          <Button asChild variant="outline" size="sm" className="rounded-xl h-8 px-3 text-xs font-semibold">
-                            <Link href={`/dashboard/${tenantSlug}/infrastructure`}>
-                              Kelola Server
-                            </Link>
-                          </Button>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-5 space-y-4">
-                      <div className="p-4 rounded-xl bg-background/80 border border-blue-500/20 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                        <div>
-                          <div className="text-[11px] font-bold text-muted-foreground uppercase">IP Publik & Endpoint VPS</div>
-                          <code className="text-sm md:text-base font-mono font-bold text-foreground">
-                            {vpsDeploymentUrl || (vpsServer.ipv4 ? `http://${vpsServer.ipv4}` : "-")}
-                          </code>
-                        </div>
-                        <div className="flex items-center gap-2 shrink-0">
-                          {vpsServer.ipv4 && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => copyText(vpsServer.ipv4!, "vps-ip")}
-                              className="rounded-xl h-8 px-3 text-xs"
-                            >
-                              {copiedId === "vps-ip" ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                              Salin IP
-                            </Button>
-                          )}
-                          <a
-                            href={vpsDeploymentUrl || `http://${vpsServer.ipv4}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center justify-center rounded-xl h-8 px-3.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white gap-1.5"
-                          >
-                            Buka VPS
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 text-xs">
-                        <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
-                          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                            <Cpu className="h-3 w-3 text-primary" /> CPU Core:
-                          </div>
-                          <div className="font-bold text-foreground mt-0.5">{vpsServer.cpuCount || 4} vCPU Cores</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
-                          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                            <HardDrive className="h-3 w-3 text-primary" /> RAM & Disk:
-                          </div>
-                          <div className="font-bold text-foreground mt-0.5">
-                            {Math.round((vpsServer.ramMb || 8192) / 1024)} GB / {vpsServer.diskGb || 75} GB NVMe
-                          </div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
-                          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                            <Globe className="h-3 w-3 text-primary" /> Region:
-                          </div>
-                          <div className="font-bold text-foreground mt-0.5">{vpsServer.region || "EU (Germany)"}</div>
-                        </div>
-                        <div className="p-3 rounded-xl bg-muted/30 border border-border/60">
-                          <div className="text-[11px] text-muted-foreground font-medium flex items-center gap-1">
-                            <ShieldCheck className="h-3 w-3 text-emerald-500" /> Database Status:
-                          </div>
-                          <div className="font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">PostgreSQL 17 Terisolasi</div>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="rounded-2xl border border-dashed border-border/80 bg-muted/20 p-5">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                      <div className="flex items-start gap-3.5">
-                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-600 shrink-0 mt-0.5">
-                          <Server className="h-5 w-5" />
-                        </div>
-                        <div className="space-y-1">
-                          <h3 className="text-sm font-bold text-foreground">
-                            Dedicated Contabo VPS Appliance
-                          </h3>
-                          <p className="text-xs text-muted-foreground max-w-2xl leading-relaxed">
-                            Anda dapat mengaktifkan Dedicated Server mandiri di Contabo Data Center untuk kebutuhan isolasi database PostgreSQL 17 penuh, MinIO Object Storage, dan private hosting enterprise.
-                          </p>
-                        </div>
-                      </div>
-
-                      <Button
-                        asChild
-                        variant="outline"
-                        className="rounded-xl h-9 px-4 text-xs font-bold border-border/80 shrink-0 cursor-pointer"
-                      >
-                        <Link href={`/dashboard/${tenantSlug}/infrastructure`}>
-                          <Server className="h-3.5 w-3.5 mr-1.5 text-blue-600" />
-                          Kelola di Menu Infrastruktur
-                          <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                        </Link>
-                      </Button>
-                    </div>
-                  </Card>
-                )}
               </div>
 
               {/* QUICK DEVELOPER & MCP INSTRUCTIONS CARD */}

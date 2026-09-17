@@ -155,14 +155,11 @@ export function MediaLibraryView({
 
       if (infraRes.ok) {
         const infraData = await infraRes.json()
-        if (infraData.server) {
-          setStorageProvider(`MinIO S3 (${infraData.server.name || "Dedicated VPS"})`)
-          setIsDedicatedStorage(true)
-        } else if (infraData.isCustomStorageConfigured) {
+        if (infraData.isCustomStorageConfigured) {
           setStorageProvider("Custom S3 (BYOS)")
           setIsDedicatedStorage(true)
         } else {
-          setStorageProvider("Cloudflare R2 (Shared Cluster)")
+          setStorageProvider("Storage bersama SaCMS")
           setIsDedicatedStorage(false)
         }
       }

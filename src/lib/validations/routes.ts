@@ -50,6 +50,8 @@ export const checkoutSchema = z.object({
   tenantId: z.string().min(1).optional(),
   type: z.enum(["workspace", "account", "ai_credits"]).optional().default("workspace"),
   interval: z.enum(["month", "year"]).optional().default("month"),
+  /** Storage add-on being renewed: the new month starts when that one expires. */
+  renewsAddonId: z.string().min(1).max(64).optional(),
 })
 
 export const graphqlRequestSchema = z.object({

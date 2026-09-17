@@ -228,34 +228,6 @@ export default function AdminBillingOverviewPage() {
           </div>
 
           <div className="space-y-3">
-            {/* VPS */}
-            <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-foreground">
-                  <Server className="h-3.5 w-3.5 text-primary" /> Dedicated Cloud VPS
-                </span>
-                <span className="text-foreground">{formatRupiah(data?.categoryStats?.vps?.mrr || 0)}/bln</span>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>{data?.categoryStats?.vps?.count || 0} Server Aktif</span>
-                <span className="text-emerald-600 font-bold">Laba: {formatRupiah(data?.categoryStats?.vps?.profit || 0)}</span>
-              </div>
-            </div>
-
-            {/* VDS */}
-            <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1.5">
-              <div className="flex justify-between items-center text-xs font-bold">
-                <span className="flex items-center gap-1.5 text-foreground">
-                  <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> Gov & Enterprise VDS
-                </span>
-                <span className="text-foreground">{formatRupiah(data?.categoryStats?.vds?.mrr || 0)}/bln</span>
-              </div>
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>{data?.categoryStats?.vds?.count || 0} Core Fisik Lock</span>
-                <span className="text-emerald-600 font-bold">Laba: {formatRupiah(data?.categoryStats?.vds?.profit || 0)}</span>
-              </div>
-            </div>
-
             {/* Cloud Shared */}
             <div className="p-3 rounded-xl border border-border/70 bg-muted/20 space-y-1.5">
               <div className="flex justify-between items-center text-xs font-bold">

@@ -18,8 +18,6 @@ export const SECRET_SETTING_KEYS = [
   "smtpPass",
   "midtransServerKey",
   "r2SecretAccessKey",
-  "contaboClientSecret",
-  "contaboApiPassword",
 ] as const satisfies readonly (keyof PlatformSettings)[]
 
 export type SecretSettingKey = (typeof SECRET_SETTING_KEYS)[number]

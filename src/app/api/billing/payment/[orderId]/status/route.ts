@@ -1,3 +1,4 @@
+import { fulfillAddonOrder, mergeProviderResponse } from "@/lib/billing/addon-fulfillment"
 import { NextRequest, NextResponse } from "next/server"
 import { getServerSession } from "next-auth"
 import { authOptions } from "@/lib/auth"
@@ -52,7 +53,7 @@ export async function GET(
               transactionId: midtransStatus.transaction_id || null,
               transactionTime: midtransStatus.transaction_time ? new Date(midtransStatus.transaction_time) : new Date(),
               fraudStatus: midtransStatus.fraud_status || null,
-              rawResponse: midtransStatus as any,
+              rawResponse: mergeProviderResponse(transaction.rawResponse, midtransStatus) as any,
             },
           })
 
@@ -93,19 +94,6 @@ export async function GET(
                     hostingExpiresAt: hostingExpiry,
                   } as any,
                 })
-
-                // Auto-provision dedicated VPS/VDS if plan is Enterprise / VPS / VDS
-                if (planLower.includes("enterprise") || planLower.includes("vps") || planLower.includes("vds") || planLower.includes("postgres")) {
-                  const { provisionTenantInfrastructure } = await import("@/lib/infrastructure/provisioner")
-                  provisionTenantInfrastructure(sub.tenantId, {
-                    plan: sub.plan,
-                    subscriptionId: sub.id,
-                  }).then(res => {
-                    console.log(`[PaymentStatus] Auto-provisioned infrastructure for tenant ${sub.tenantId}:`, res.status)
-                  }).catch(err => {
-                    console.error(`[PaymentStatus] Failed auto-provisioning infrastructure for tenant ${sub.tenantId}:`, err)
-                  })
-                }
               } else if (orderId.startsWith("ACC") && sub.userId) {
                 await db.user.update({
                   where: { id: sub.userId },
@@ -142,11 +130,8 @@ export async function GET(
                     where: { id: sub.tenantId },
                     data: { aiCreditsExtra: { increment: 2000000 } } as any
                   })
-                } else if (addonId === "topup_storage_10gb") {
-                  await db.tenant.update({
-                    where: { id: sub.tenantId },
-                    data: { storageExtraBytes: { increment: BigInt(10 * 1024 * 1024 * 1024) } } as any
-                  })
+                } else if (await fulfillAddonOrder({ tenantId: sub.tenantId, orderId, raw, userId: sub.userId })) {
+                  // storage add-on or managed database/storage service
                 } else if (addonId === "topup_api_500k") {
                   await db.tenant.update({
                     where: { id: sub.tenantId },
@@ -245,7 +230,7 @@ export async function GET(
         } else if (midtransStatus && (midtransStatus.transaction_status === "cancel" || midtransStatus.transaction_status === "deny" || midtransStatus.transaction_status === "expire")) {
           await db.paymentTransaction.update({
             where: { id: transaction.id },
-            data: { status: "failed", rawResponse: midtransStatus as any },
+            data: { status: "failed", rawResponse: mergeProviderResponse(transaction.rawResponse, midtransStatus) as any },
           })
           transaction.status = "failed"
 

@@ -20,7 +20,6 @@ import { NextResponse } from "next/server"
 import { createHash } from "crypto"
 import { AsyncLocalStorage } from "async_hooks"
 import { deployToVercel, getDeploymentStatus, addDomainToProject, getDomainConfig, upsertVercelProjectEnv, disableVercelDeploymentProtection, type VercelEnvTarget } from "@/lib/vercel-client"
-import { provisionTenantInfrastructure } from "@/lib/infrastructure/provisioner"
 import { FIELD_TYPES, FIELD_CATEGORIES } from "@/lib/field-types"
 import { hashMemberPassword } from "@/lib/member-auth"
 import { safeFetch } from "@/lib/safe-url"
@@ -35,8 +34,6 @@ interface AuthContext {
   permissions: string[]
   plan: string
   isPaid: boolean
-  hostingType: "shared_vercel" | "dedicated_vps"
-  vpsHost?: string
   isSuperAdmin?: boolean
   paymentError?: string
 }
@@ -60,6 +57,7 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
       ]
     },
     select: { 
+      id: true,
       tenantId: true, 
       permissions: true,
       tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } } 
@@ -114,26 +112,6 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
     paymentError = `❌ Payment Required: Akses MCP dinonaktifkan untuk workspace '${tenantData.slug}'. Status langganan Anda belum aktif/dibayar (status: ${activeSubscription?.status || "unpaid"}). Silakan aktifkan pembayaran melalui dashboard workspace.`
   }
 
-  // ─── Plan & Dedicated VPS vs Shared Vercel Resolution ──────────────────────
-  const isVpsPlan = tenantData.plan.startsWith("vps-") || tenantData.plan === "enterprise"
-  let hostingType: "shared_vercel" | "dedicated_vps" = "shared_vercel"
-  let vpsHost: string | undefined = undefined
-
-  if (isVpsPlan) {
-    const vpsServer = await db.infrastructureServer.findFirst({
-      where: {
-        tenantId: tenantData.id,
-        status: { in: ["active", "configuring", "provisioning"] }
-      },
-      orderBy: { createdAt: "desc" }
-    })
-
-    if (vpsServer) {
-      hostingType = "dedicated_vps"
-      vpsHost = vpsServer.hostname || vpsServer.ipv4 || undefined
-    }
-  }
-
   return {
     tenantId: tenantData.id,
     tenantSlug: tenantData.slug,
@@ -141,8 +119,6 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
     permissions,
     plan: tenantData.plan,
     isPaid,
-    hostingType,
-    vpsHost,
     isSuperAdmin: false,
     paymentError,
   }
@@ -178,14 +154,16 @@ function hasScope(auth: AuthContext, scope: Scope): boolean {
 }
 
 function permissionDenied(scope: Scope) {
+  const howToGrant = `Ask a workspace admin to grant it under Developer & API → API Tokens, or use a token with "full_access".`
   return {
     content: [{
       type: "text" as const,
-      text: `❌ Forbidden: this API token does not have the "${scope}" permission. Ask a workspace admin to grant it under Developer & API → API Tokens, or use a token with "full_access".`
+      text: `❌ Forbidden: this API token does not have the "${scope}" permission. ${howToGrant}`
     }],
     isError: true,
   }
 }
+
 
 
 // ─── MCP Handler with Complete CRUD Capabilities ─────────────────────────────
@@ -1942,7 +1920,7 @@ export default async function NewsPage() {
     )
 
     // =========================================================================
-    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (VERCEL & CONTABO VPS)
+    // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (VERCEL)
     // =========================================================================
 
     // ── deploy_to_vercel ─────────────────────────────────────────────────────
@@ -1980,7 +1958,7 @@ export default async function NewsPage() {
           // vars + fixed SACMS_* connection vars), then let the caller's
           // envVars override any non-reserved key.
           const { resolveFrontendEnv, pushEnvToVercelProject } = await import("@/lib/infrastructure/frontend-env")
-          const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://sacms.cloud"
+          const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://developer.sacms.cloud"
           const resolvedEnv = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, apiOrigin)
           const mergedEnv: Record<string, string> = { ...(envVars as Record<string, string> | undefined), ...resolvedEnv }
 
@@ -2034,87 +2012,6 @@ export default async function NewsPage() {
           }
         }
       }
-    )
-
-    // ── deploy_to_vps ─────────────────────────────────────────────────────────
-    server.registerTool(
-      "deploy_to_vps",
-      {
-        title: "Deploy Website to Dedicated Contabo VPS",
-        description:
-          "Deploy a Next.js/Node project straight to this workspace's own dedicated Contabo VPS over SSH — " +
-          "the alternative to deploy_to_vercel for workspaces on a VPS/VDS/Storage plan with a provisioned " +
-          "appliance. Requires a package.json; a Dockerfile is auto-generated if the project doesn't include one. " +
-          "The workspace's saved Environment vars (see the dashboard's Environment tab) are always injected " +
-          "automatically as .env.production, merged with the fixed SACMS_* connection vars.",
-        inputSchema: {
-          files: z.array(z.object({
-            name: z.string().describe("File path relative to the project root (e.g. 'package.json', 'app/page.tsx')"),
-            content: z.string().describe("Raw file content"),
-          })).describe("The full project's files (must include package.json)"),
-          domain: z.string().optional().describe("Domain to record as the live URL (defaults to the VPS's own generated subdomain)"),
-        },
-      },
-      async ({ files, domain }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        if (!auth.isPaid) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Payment Required: Fitur deploy VPS memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`,
-            }],
-            isError: true,
-          }
-        }
-
-        if (auth.hostingType !== "dedicated_vps") {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Workspace ini tidak punya dedicated VPS aktif. Upgrade ke paket VPS/VDS/Storage dan tunggu provisioning selesai, atau pakai deploy_to_vercel untuk hosting shared.`,
-            }],
-            isError: true,
-          }
-        }
-
-        try {
-          const { deployAiWebsiteToVps } = await import("@/lib/infrastructure/vps-deployer")
-          const { resolveFrontendEnv } = await import("@/lib/infrastructure/frontend-env")
-          const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://sacms.cloud"
-          const env = await resolveFrontendEnv(auth.tenantId, auth.tenantSlug, apiOrigin)
-
-          const result = await deployAiWebsiteToVps(auth.tenantId, {
-            files: files as { name: string; content: string }[],
-            domain,
-            env,
-          })
-
-          if (!result.success) {
-            return {
-              content: [{
-                type: "text" as const,
-                text: `❌ Deploy ke VPS gagal: ${result.error}${result.buildLogTail ? `\n\n--- Log build (60 baris terakhir) ---\n${result.buildLogTail}` : ""}`,
-              }],
-              isError: true,
-            }
-          }
-
-          return {
-            content: [{
-              type: "text" as const,
-              text: `🚀 Deploy ke VPS Sukses!\n- Live URL: ${result.url}\n- VPS IP: ${result.vpsIp}\n- Server: ${result.serverName}\n- File terkirim: ${result.deliveryFileCount}\n- Env terkirim: ${(result.envFileVars || []).join(", ")}`,
-            }],
-          }
-        } catch (err: any) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Gagal deploy ke VPS: ${err.message}` }],
-            isError: true,
-          }
-        }
-      },
     )
 
     // ── get_vercel_deployment_status ─────────────────────────────────────────
@@ -2375,138 +2272,6 @@ export default async function NewsPage() {
           }
         }
       },
-    )
-
-    // ── get_contabo_infrastructure_status ────────────────────────────────────
-    server.registerTool(
-      "get_contabo_infrastructure_status",
-      {
-        title: "Get Dedicated Contabo VPS Status",
-        description: "Inspect dedicated Contabo VPS appliance health, IP address, CPU/RAM specs, and PostgreSQL/MinIO status for this workspace.",
-        inputSchema: {},
-      },
-      async () => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "read")) return permissionDenied("read")
-
-        const serverInfo = await db.infrastructureServer.findFirst({
-          where: { tenantId: auth.tenantId },
-          orderBy: { createdAt: "desc" }
-        })
-
-        if (!serverInfo) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({
-                hasDedicatedVps: false,
-                currentPlan: auth.plan,
-                message: "Workspace ini menggunakan Shared Vercel Cloud. Upgrade ke paket VPS (vps-s, vps-m, vps-l, enterprise) untuk mengaktifkan Dedicated Contabo VPS Appliance."
-              }, null, 2)
-            }]
-          }
-        }
-
-        return {
-          content: [{
-            type: "text" as const,
-            text: JSON.stringify({
-              hasDedicatedVps: true,
-              serverId: serverInfo.id,
-              status: serverInfo.status,
-              healthStatus: serverInfo.healthStatus,
-              hostname: serverInfo.hostname,
-              ipv4: serverInfo.ipv4,
-              plan: serverInfo.plan,
-              cpuCount: serverInfo.cpuCount,
-              ramMb: serverInfo.ramMb,
-              diskGb: serverInfo.diskGb,
-              dbHost: serverInfo.dbHost,
-              mediaHost: serverInfo.mediaHost,
-              lastHealthCheckAt: serverInfo.lastHealthCheckAt,
-            }, null, 2)
-          }]
-        }
-      }
-    )
-
-    // ── provision_contabo_vps ────────────────────────────────────────────────
-    server.registerTool(
-      "provision_contabo_vps",
-      {
-        title: "Provision Dedicated Contabo VPS Appliance",
-        description: "Trigger automated provisioning of a dedicated Contabo VPS (PostgreSQL 17, Redis, MinIO S3) for a paid VPS-tier workspace.",
-        inputSchema: {
-          plan: z.enum(["vps-s", "vps-m", "vps-l", "vps-xl"]).default("vps-s").describe("Contabo VPS instance size"),
-          region: z.enum(["EU", "US-central", "SIN"]).default("EU").describe("Datacenter region"),
-        },
-      },
-      async ({ plan, region }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        if (!auth.isPaid) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Payment Required: Provisioning VPS memerlukan status pembayaran PAID. Silakan bayar invoice langganan di: /dashboard/${auth.tenantSlug}/subscriptions`
-            }],
-            isError: true,
-          }
-        }
-
-        const isVpsEligible = auth.plan.startsWith("vps-") || auth.plan === "enterprise"
-        if (!isVpsEligible) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Paket workspace Anda saat ini '${auth.plan}' adalah Shared Cloud. Silakan upgrade ke paket VPS di dashboard untuk provisioning dedicated server.`
-            }],
-            isError: true,
-          }
-        }
-
-        // Provisioning places a real, billed order on Contabo. Without this
-        // check, calling this tool again on a tenant that already has a
-        // live/in-progress server would create a second real paid instance
-        // with no duplicate guard anywhere else in the stack.
-        const existingServer = await db.infrastructureServer.findFirst({
-          where: { tenantId: auth.tenantId, status: { in: ["pending", "provisioning", "configuring", "active", "suspended"] } },
-          orderBy: { createdAt: "desc" },
-        })
-        if (existingServer) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Workspace ini sudah memiliki server dedicated (status: ${existingServer.status}, dibuat ${existingServer.createdAt.toISOString()}). Provisioning ulang akan membuat instance Contabo BARU yang ditagih terpisah. Hapus/nonaktifkan server yang ada terlebih dahulu di /dashboard/${auth.tenantSlug}/infrastructure jika Anda benar-benar ingin membuat yang baru.`
-            }],
-            isError: true,
-          }
-        }
-
-        try {
-          const result = await provisionTenantInfrastructure(auth.tenantId, {
-            plan,
-            region,
-          })
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify(result, null, 2)
-            }]
-          }
-        } catch (err: any) {
-          return {
-            content: [{
-              type: "text" as const,
-              text: `❌ Gagal melakukan provisioning Contabo VPS: ${err.message}`
-            }],
-            isError: true,
-          }
-        }
-      }
     )
 
     // ─── SECTION 7: MULTI-TENANT END-USERS & MEMBER AUTH ─────────────────────
@@ -2895,8 +2660,8 @@ function patchRequestUrl(req: Request): Request {
  *     be throttled before that lookup runs, not after.
  *  2. Per tenant, once authenticated, scaled by plan (reusing the same
  *     getTenantRateLimit() tiers the public content API uses) — so even a
- *     valid token can't hammer expensive tools (deploy_to_vercel,
- *     provision_contabo_vps) or the DB without bound.
+ *     valid token can't hammer expensive tools (deploy_to_vercel) or the DB
+ *     without bound.
  */
 async function handleMcpRequest(req: Request): Promise<Response> {
   try {

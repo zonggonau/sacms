@@ -16,6 +16,7 @@ import {
 } from "lucide-react"
 import { formatRupiah } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
+import { NocodeFinanceSection } from "@/components/admin/nocode-finance-section"
 
 export default function MarginKeuntunganPage() {
   const { data: session, status } = useSession()
@@ -132,30 +133,6 @@ export default function MarginKeuntunganPage() {
             Semua ({catalog.length})
           </Button>
           <Button 
-            variant={categoryFilter === "vps" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => setCategoryFilter("vps")} 
-            className="rounded-xl text-xs font-bold h-8"
-          >
-            <Server className="h-3.5 w-3.5 mr-1 text-purple-400" /> Cloud VPS
-          </Button>
-          <Button 
-            variant={categoryFilter === "storage" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => setCategoryFilter("storage")} 
-            className="rounded-xl text-xs font-bold h-8"
-          >
-            <Layers className="h-3.5 w-3.5 mr-1 text-emerald-500" /> VPS Storage
-          </Button>
-          <Button 
-            variant={categoryFilter === "vds" ? "default" : "outline"} 
-            size="sm" 
-            onClick={() => setCategoryFilter("vds")} 
-            className="rounded-xl text-xs font-bold h-8"
-          >
-            <ShieldCheck className="h-3.5 w-3.5 mr-1 text-amber-500" /> Cloud VDS
-          </Button>
-          <Button 
             variant={categoryFilter === "cloud" ? "default" : "outline"} 
             size="sm" 
             onClick={() => setCategoryFilter("cloud")} 
@@ -240,6 +217,11 @@ export default function MarginKeuntunganPage() {
           </Table>
         </CardContent>
       </Card>
+
+      <NocodeFinanceSection
+        sacmsMonthlyRevenue={data?.summary?.mrr}
+        sacmsMonthlyGrossProfit={data?.summary?.monthlyGrossProfit}
+      />
     </div>
   )
 }

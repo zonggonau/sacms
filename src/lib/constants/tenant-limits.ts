@@ -223,7 +223,7 @@ export const DEFAULT_LIMITS: Record<string, PlanConfig> = {
     max_content_entries: 20000,
     max_team_members: 20,
     max_api_calls: 1000000,
-    max_storage: 10240, // 10GB
+    max_storage: 51200, // 50GB
     max_locales: 20,
     audit_log_retention: 365,
     support_level: "24/7 Dedicated Support",

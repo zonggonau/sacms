@@ -6,6 +6,15 @@ import { getPaymentProvider } from "@/lib/payment"
 import { getDynamicAccountPrices, getDynamicWorkspacePrices, PlanType, calculatePeriodEndDate } from "@/lib/midtrans"
 import { validateBody } from "@/lib/validate"
 import { checkoutSchema } from "@/lib/validations"
+import { STORAGE_ADDON_ID, STORAGE_ADDON_PRICE_IDR, storageAddonRenewalRefusal } from "@/lib/billing/storage-addon"
+import {
+  MANAGED_INFRA_MONTHLY_FEE_IDR,
+  MANAGED_INFRA_MONTHLY_ID,
+  MANAGED_INFRA_SETUP_FEE_IDR,
+  MANAGED_INFRA_SETUP_ID,
+  isManagedInfraProduct,
+  managedInfraOrderRefusal,
+} from "@/lib/billing/managed-infra"
 
 /**
  * POST /api/checkout
@@ -22,7 +31,7 @@ export async function POST(request: NextRequest) {
 
     const result = await validateBody(request, checkoutSchema)
     if ("error" in result) return result.error
-    const { planId, tenantId, interval, type } = result.data
+    const { planId, tenantId, interval, type, renewsAddonId } = result.data
 
     const isAiCreditPack = type === "ai_credits" || planId.startsWith("ai_pack_")
     const isAccountPlan = !isAiCreditPack && (type === "account" || !tenantId)
@@ -84,10 +93,23 @@ export async function POST(request: NextRequest) {
       const BUILTIN_TOPUPS: Record<string, { name: string; price: number; quotaType: string; amountUnits: number }> = {
         topup_ai_500k: { name: "AI Booster (500K Tokens)", price: 25000, quotaType: "ai_tokens", amountUnits: 500000 },
         topup_ai_2m: { name: "AI Power Pack (2M Tokens)", price: 75000, quotaType: "ai_tokens", amountUnits: 2000000 },
-        topup_storage_10gb: { name: "Extra Storage (10 GB)", price: 35000, quotaType: "storage", amountUnits: 10 * 1024 * 1024 * 1024 },
+        [STORAGE_ADDON_ID]: { name: "Extra Storage (10 GB / bulan)", price: STORAGE_ADDON_PRICE_IDR, quotaType: "storage", amountUnits: 10 * 1024 * 1024 * 1024 },
+        [MANAGED_INFRA_SETUP_ID]: { name: "Database & Storage Sendiri — Setup + Bulan Pertama", price: MANAGED_INFRA_SETUP_FEE_IDR + MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
+        [MANAGED_INFRA_MONTHLY_ID]: { name: "Database & Storage Sendiri — Perpanjangan 1 Bulan", price: MANAGED_INFRA_MONTHLY_FEE_IDR, quotaType: "managed_infra", amountUnits: 1 },
         topup_api_500k: { name: "Extra API Quota (500K Calls)", price: 30000, quotaType: "api_calls", amountUnits: 500000 },
         hosting_annual_1yr: { name: "Cloud Edge Hosting (1 Tahun)", price: 650000, quotaType: "hosting_annual", amountUnits: 1 },
         hosting_bundle_domain_1yr: { name: "Cloud Edge Hosting + Domain .com (1 Tahun)", price: 850000, quotaType: "hosting_bundle", amountUnits: 1 },
+      }
+
+      if (isManagedInfraProduct(planId)) {
+        const refusal = await managedInfraOrderRefusal(tenant.id, planId)
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
+      }
+      if (renewsAddonId) {
+        const refusal = planId === STORAGE_ADDON_ID
+          ? await storageAddonRenewalRefusal(tenant.id, renewsAddonId)
+          : "Hanya add-on storage yang bisa diperpanjang."
+        if (refusal) return NextResponse.json({ error: refusal }, { status: 409 })
       }
 
       if (BUILTIN_TOPUPS[planId]) {
@@ -254,7 +276,7 @@ export async function POST(request: NextRequest) {
     const rawResponse = isAiCreditPack
       ? { isAddon: true, addonId: planId, credits: creditAmount, type: "ai_credits" }
       : isAddon
-        ? { isAddon, addonId: planId }
+        ? { isAddon, addonId: planId, ...(renewsAddonId && planId === STORAGE_ADDON_ID ? { renewsAddonId } : {}) }
         : undefined
 
     // Create payment transaction record

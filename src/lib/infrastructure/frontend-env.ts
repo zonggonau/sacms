@@ -7,9 +7,8 @@ import { randomBytes } from "crypto"
  * plus whatever custom vars the workspace added on the Environment tab.
  *
  * This is the single source of truth used by every deploy path (the
- * dashboard deploy route, the `deploy_to_vercel` MCP tool, and the Contabo
- * VPS deployer) so the frontend's `.env` is assembled the same way whether
- * it ships to Vercel or to a dedicated VPS.
+ * dashboard deploy route and the `deploy_to_vercel` MCP tool) so the
+ * frontend's `.env` is assembled the same way on every deploy.
  */
 
 /** Setting row (one JSON array per tenant) holding the user's custom vars. */

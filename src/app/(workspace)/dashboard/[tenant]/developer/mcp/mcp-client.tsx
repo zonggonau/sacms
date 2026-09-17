@@ -68,16 +68,7 @@ interface MCPDashboardClientProps {
   tenantId: string
   plan?: string
   isPaid?: boolean
-  hostingType?: "shared_vercel" | "dedicated_vps"
   subscriptionStatus?: string
-  vpsDetails?: {
-    hostname: string | null
-    ipv4: string | null
-    status: string
-    plan: string
-    cpuCount: number
-    ramMb: number
-  } | null
   existingTokens: MCPTokenItem[]
   existingApiKeys?: ApiKeyItem[]
 }
@@ -224,13 +215,10 @@ const MCP_TOOLS_CATALOG: McpToolDoc[] = [
 
   // Hosting & Cloud Deployment MCP Tools
   { name: "deploy_to_vercel", category: "hosting", description: "Deploy file source code website/frontend langsung ke Vercel Serverless hosting. Mengembalikan URL deployment produksi.", inputs: ["projectName", "files", "envVars"] },
-  { name: "deploy_to_vps", category: "hosting", description: "Deploy project Next.js/Node langsung ke dedicated Contabo VPS workspace ini lewat SSH — build & restart otomatis, env dari tab Environment ikut disuntikkan. Untuk workspace paket VPS/VDS/Storage.", inputs: ["files", "domain?"] },
   { name: "get_vercel_deployment_status", category: "hosting", description: "Mengecek progres build, status ready, dan URL live dari sebuah deployment Vercel.", inputs: ["deploymentId"] },
   { name: "configure_vercel_domain", category: "hosting", description: "Menghubungkan dan memverifikasi domain kustom pada sebuah project Vercel, dengan diagnostik DNS.", inputs: ["projectId", "domain"] },
   { name: "add_vercel_env", category: "hosting", description: "Membuat / memperbarui environment variable pada project Vercel workspace ini (upsert). Nilai dienkripsi kecuali diawali NEXT_PUBLIC_. Ikut tampil di tab Environment dashboard.", inputs: ["key", "value", "projectId?", "targets?"] },
   { name: "make_vercel_deployment_public", category: "hosting", description: "Nonaktifkan proteksi 'Vercel Authentication' pada project Vercel workspace ini, agar URL deployment (termasuk URL per-deployment berakhiran acak) bisa dibuka siapa saja tanpa login Vercel.", inputs: ["projectId?"] },
-  { name: "get_contabo_infrastructure_status", category: "hosting", description: "Memeriksa status kesehatan appliance VPS Contabo dedicated — alamat IP, spek CPU/RAM, dan status PostgreSQL/MinIO.", inputs: [] },
-  { name: "provision_contabo_vps", category: "hosting", description: "Menjalankan provisioning otomatis VPS Contabo dedicated (PostgreSQL 17, Redis, MinIO S3) untuk workspace tier VPS berbayar.", inputs: ["plan", "region"] },
 ]
 
 export function MCPDashboardClient({
@@ -238,9 +226,7 @@ export function MCPDashboardClient({
   tenantId,
   plan = "free",
   isPaid = false,
-  hostingType = "shared_vercel",
   subscriptionStatus = "inactive",
-  vpsDetails = null,
   existingTokens,
   existingApiKeys = [],
 }: MCPDashboardClientProps) {
@@ -251,15 +237,9 @@ export function MCPDashboardClient({
   // Protocol MCP Base URL
   const [mcpUrl, setMcpUrl] = useState("")
   useEffect(() => {
-    if (hostingType === "dedicated_vps" && vpsDetails?.hostname) {
-      setMcpUrl(`https://${vpsDetails.hostname}/api/mcp`)
-    } else if (hostingType === "dedicated_vps" && vpsDetails?.ipv4) {
-      setMcpUrl(`http://${vpsDetails.ipv4}:3000/api/mcp`)
-    } else {
-      const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
-      setMcpUrl(`${origin}/api/mcp`)
-    }
-  }, [hostingType, vpsDetails])
+    const origin = typeof window !== "undefined" ? window.location.origin : "http://localhost:3000"
+    setMcpUrl(`${origin}/api/mcp`)
+  }, [])
 
   // Token management state
   const [tokens, setTokens] = useState<MCPTokenItem[]>(existingTokens)
@@ -467,34 +447,20 @@ export function MCPDashboardClient({
           ) : (
             <div className="rounded-2xl border border-border/80 bg-card p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-xs">
               <div className="flex items-center gap-3">
-                <div className={cn(
-                  "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
-                  hostingType === "dedicated_vps" 
-                    ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20"
-                    : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
-                )}>
-                  {hostingType === "dedicated_vps" ? <Cpu className="h-4 w-4" /> : <Globe className="h-4 w-4" />}
+                <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                  <Globe className="h-4 w-4" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs font-bold text-foreground">
-                      {hostingType === "dedicated_vps" ? "Dedicated Contabo VPS Appliance" : "Vercel Serverless (Shared Cloud)"}
+                      Vercel Serverless (Shared Cloud)
                     </span>
-                    <Badge className={cn(
-                      "text-[9px] font-bold uppercase px-2 py-0.5",
-                      hostingType === "dedicated_vps"
-                        ? "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20"
-                        : "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20"
-                    )}>
+                    <Badge className="text-[9px] font-bold uppercase px-2 py-0.5 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20">
                       Plan: {plan.toUpperCase()} • PAID
                     </Badge>
                   </div>
                   <p className="text-[11px] text-muted-foreground mt-0.5">
-                    {hostingType === "dedicated_vps" && vpsDetails ? (
-                      <>Instance VPS aktif: <strong>{vpsDetails.hostname || vpsDetails.ipv4}</strong> ({vpsDetails.cpuCount} vCPU, {Math.round(vpsDetails.ramMb / 1024)}GB RAM)</>
-                    ) : (
-                      <>Vercel Serverless Edge Pool dengan auto-scaling.</>
-                    )}
+                    Vercel Serverless Edge Pool dengan auto-scaling.
                   </p>
                 </div>
               </div>
@@ -1080,7 +1046,7 @@ export function MCPDashboardClient({
                   />
                 </div>
                 <div className="p-3 bg-muted/30 border border-border/60 rounded-xl text-xs text-muted-foreground">
-                  Token ini memiliki hak akses penuh via protokol MCP.
+                  Token ini bisa membaca dan mengubah konten, skema, dan webhook via protokol MCP.
                 </div>
               </div>
               <DialogFooter className="gap-2 sm:gap-0 pt-2">

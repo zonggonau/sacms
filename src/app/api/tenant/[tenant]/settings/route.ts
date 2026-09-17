@@ -164,28 +164,20 @@ export const PUT = withStaffAuth(
     const oldStorageConfig = tenant.storageConfig && typeof tenant.storageConfig === "object" ? tenant.storageConfig : null
     const isStorageChanging = storageConfig !== undefined && JSON.stringify(storageConfig || null) !== JSON.stringify(oldStorageConfig)
 
-    // Only require Enterprise license/plan if user is configuring or changing to a non-empty custom infrastructure
-    if ((isDbUrlChanging && normalizedNewDbUrl !== "") || (isStorageChanging && hasCustomStorage)) {
-      const { getGlobalWorkspaceId } = await import("@/lib/settings");
-      const globalId = await getGlobalWorkspaceId();
-      let isEnterprise = await isEnterpriseTenant(globalId, session.user.id)
-      if (!isEnterprise) {
-        isEnterprise = await isEnterpriseTenant(tenant.id, session.user.id)
+    // The workspace's own database/storage is a managed service: the SaCMS IT team connects and
+    // disconnects it (lib/billing/managed-infra.ts). Only a self-hosted instance with an enterprise
+    // license lets its own admins change it.
+    if (isDbUrlChanging || isStorageChanging) {
+      let allowed = session.user.role === "super_admin"
+      if (!allowed) {
+        const { getGlobalWorkspaceId } = await import("@/lib/settings")
+        allowed = await isEnterpriseTenant(await getGlobalWorkspaceId(), session.user.id)
       }
-      if (!isEnterprise) {
-        const planLower = (tenant.plan || "").toLowerCase()
-        if (
-          planLower.includes("enterprise") ||
-          planLower.includes("vps") ||
-          planLower.includes("vds") ||
-          planLower.includes("postgres") ||
-          session.user.role === "super_admin"
-        ) {
-          isEnterprise = true
-        }
-      }
-      if (!isEnterprise) {
-        return NextResponse.json({ error: "Paket Enterprise / Lisensi Dedicated diperlukan untuk konfigurasi infrastruktur kustom" }, { status: 403 })
+      if (!allowed) {
+        return NextResponse.json(
+          { error: "Database & storage sendiri disambungkan oleh tim IT SaCMS. Pesan layanannya di menu Langganan → Add-on." },
+          { status: 403 },
+        )
       }
     }
 
@@ -201,6 +193,11 @@ export const PUT = withStaffAuth(
         where: { id: tenant.id },
         data: tenantUpdateData,
       })
+    }
+
+    if (isDbUrlChanging || isStorageChanging) {
+      const { activateManagedInfraIfConnected } = await import("@/lib/billing/managed-infra")
+      await activateManagedInfraIfConnected(tenant.id, Boolean(normalizedNewDbUrl || hasCustomStorage))
     }
 
     // Update settings in Setting model

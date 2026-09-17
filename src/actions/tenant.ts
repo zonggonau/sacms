@@ -220,7 +220,7 @@ export async function deleteTenantAction(tenantId: string) {
     }
 
     if (tenant.slug) {
-      await deleteTenantStorage(tenant.slug)
+      await deleteTenantStorage({ id: tenant.id, slug: tenant.slug })
     }
 
     if (tenant.databaseUrl) {

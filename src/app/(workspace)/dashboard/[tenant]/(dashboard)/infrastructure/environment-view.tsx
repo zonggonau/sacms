@@ -124,7 +124,7 @@ export function EnvironmentView({ tenantSlug }: { tenantSlug: string }) {
             </CardTitle>
             <CardDescription className="text-xs">
               Untuk <strong>frontend</strong> saja (mis. API key layanan pihak ketiga). Otomatis dikirim ke Vercel
-              (env project) atau ditulis ke <code className="font-mono">.env</code> di VPS Contabo setiap kali situs
+              (env project) setiap kali situs
               di-deploy — lewat dashboard maupun MCP. Berlaku pada <strong>deploy berikutnya</strong>.
             </CardDescription>
           </div>

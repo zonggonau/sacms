@@ -67,7 +67,7 @@ export const DELETE = withAdminAuth(async (_request, context) => {
 
     // 1. Delete physical assets from storage (R2 or Local)
     if (tenant.slug) {
-      await deleteTenantStorage(tenant.slug)
+      await deleteTenantStorage({ id: tenant.id, slug: tenant.slug })
     }
 
     // 2. Drop dedicated database if exists (Hybrid Multitenancy)
@@ -112,18 +112,6 @@ export const DELETE = withAdminAuth(async (_request, context) => {
     await db.customPlanOverride.deleteMany({
       where: { tenantId }
     }).catch(err => console.warn("Failed to clean up custom plan overrides:", err))
-
-    // Clean up infrastructure credentials if any
-    const infraServers = await db.infrastructureServer.findMany({
-      where: { tenantId },
-      select: { id: true }
-    })
-    const serverIds = infraServers.map(s => s.id)
-    if (serverIds.length > 0) {
-      await db.infrastructureCredential.deleteMany({
-        where: { serverId: { in: serverIds } }
-      }).catch(err => console.warn("Failed to clean up infrastructure credentials:", err))
-    }
 
     // 5. Delete tenant from master database
     await db.tenant.delete({

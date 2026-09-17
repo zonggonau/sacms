@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const tenantSlug = "global"
 
     let fileUrl = ""
-    if (isR2Configured()) {
+    if (await isR2Configured()) {
       const r2Res = await uploadToR2(tenantSlug, buffer, filename, mimeType)
       fileUrl = r2Res.url
     } else {

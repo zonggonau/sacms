@@ -3,14 +3,13 @@ import { db } from "@/lib/database"
 import { deployToVercel, addDomainToProject, getDomainConfig } from "@/lib/vercel-client"
 import { randomBytes } from "crypto"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
-import { isTenantPlanPaid, resolveHostingTarget } from "@/lib/infrastructure/hosting-plan"
+import { isTenantPlanPaid } from "@/lib/infrastructure/hosting-plan"
 
 export const GET = withStaffAuth(async (_req, _context, { access, session }) => {
     const tenant = access.tenant
     const tenantId = tenant.id
 
-    const [settings, vpsServer] = await Promise.all([
-      db.setting.findMany({
+    const settings = await db.setting.findMany({
         where: {
           tenantId,
           key: {
@@ -20,16 +19,10 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
               `${tenantId}_vercelDeploymentUrl`,
               `${tenantId}_vercelProjectId`,
               `${tenantId}_customDomain`,
-              `${tenantId}_vpsDeploymentUrl`,
             ],
           },
         },
-      }),
-      db.infrastructureServer.findFirst({
-        where: { tenantId },
-        orderBy: { createdAt: "desc" },
-      }),
-    ])
+      })
 
     const hostingStatusSetting = settings.find((s) => s.key === `${tenantId}_hostingStatus`)?.value
     const hostingExpiresAtSetting = settings.find((s) => s.key === `${tenantId}_hostingExpiresAt`)?.value
@@ -49,39 +42,14 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
     const hostingStatus = (tenant as any).hostingStatus || hostingStatusSetting || "trial"
     const hostingExpiresAt = (tenant as any).hostingExpiresAt || (hostingExpiresAtSetting ? new Date(hostingExpiresAtSetting) : null)
 
-    const hostingTarget = resolveHostingTarget(tenant.plan)
-    const hasDedicatedVps = Boolean(vpsServer?.ipv4 || hostingTarget === "vps")
-    const vpsUrl = settings.find((s) => s.key === `${tenantId}_vpsDeploymentUrl`)?.value || (vpsServer?.ipv4 ? `http://${vpsServer.ipv4}` : null)
-
     const isPaid = isTenantPlanPaid(tenant.plan) || session.user.role === "super_admin"
     const isEnterprise = Boolean(tenant.plan?.toLowerCase().includes("enterprise") || session.user.role === "super_admin")
-    const isHostingActive = hasDedicatedVps || isEnterprise || Boolean(hostingStatus === "active" && hostingExpiresAt && new Date(hostingExpiresAt) > new Date())
+    const isHostingActive = isEnterprise || Boolean(hostingStatus === "active" && hostingExpiresAt && new Date(hostingExpiresAt) > new Date())
 
     return NextResponse.json({
       hostingStatus,
       hostingExpiresAt,
       isHostingActive,
-      hasDedicatedVps,
-      hostingTarget,
-      isPaid,
-      vpsIp: vpsServer?.ipv4 || null,
-      vpsServerName: vpsServer?.name || null,
-      vpsDeploymentUrl: vpsUrl,
-      vpsServer: vpsServer
-        ? {
-            id: vpsServer.id,
-            name: vpsServer.name,
-            hostname: vpsServer.hostname,
-            ipv4: vpsServer.ipv4,
-            region: vpsServer.region,
-            plan: vpsServer.plan,
-            diskGb: vpsServer.diskGb,
-            ramMb: vpsServer.ramMb,
-            cpuCount: vpsServer.cpuCount,
-            status: vpsServer.status,
-            healthStatus: vpsServer.healthStatus,
-          }
-        : null,
       vercelDeploymentUrl: vercelUrl,
       vercelProjectId,
       customDomain,
@@ -97,7 +65,7 @@ export const GET = withStaffAuth(async (_req, _context, { access, session }) => 
 export const POST = withStaffAuth(
   async (req, _context, { access, session }) => {
     const body = await req.json().catch(() => ({}))
-    const { action = "deploy", target = "auto", files = [], domain, chatId } = body
+    const { action = "deploy", files = [], domain } = body
 
     const tenant = access.tenant
     const tenantId = tenant.id
@@ -157,18 +125,6 @@ export const POST = withStaffAuth(
         message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
         details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
       })
-    }
-
-    // ── ACTION 0: DEPLOY TO DEDICATED CONTABO VPS (VPS/VDS-tier plans) ──────
-    const hostingTarget = resolveHostingTarget(tenant.plan)
-
-    if (action === "deploy" && (target === "vps" || (target === "auto" && hostingTarget === "vps"))) {
-      const { deployAiWebsiteToVps } = await import("@/lib/infrastructure/vps-deployer")
-      const { resolveFrontendEnv } = await import("@/lib/infrastructure/frontend-env")
-      const vpsOrigin = req.nextUrl.origin || "http://localhost:3000"
-      const env = await resolveFrontendEnv(tenantId, tenantSlug, vpsOrigin)
-      const vpsResult = await deployAiWebsiteToVps(tenantId, { files, domain, chatId, env })
-      return NextResponse.json(vpsResult)
     }
 
     // ── ACTION: LINK / UPDATE VERCEL DEPLOYMENT URL ─────────────────────────
@@ -409,7 +365,7 @@ export default async function HomePage() {
 
     // 3. Execute Vercel Deployment — the frontend's full env (custom vars
     //    from the Environment tab + fixed SACMS_* connection vars) is
-    //    assembled once and shared with the VPS path (see below).
+    //    assembled once.
     const { resolveFrontendEnv, pushEnvToVercelProject } = await import("@/lib/infrastructure/frontend-env")
     const envVars = await resolveFrontendEnv(tenantId, tenantSlug, origin)
 

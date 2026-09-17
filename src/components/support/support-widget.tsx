@@ -378,7 +378,7 @@ export function SupportWidget({ tenantSlug, tenantName }: SupportWidgetProps) {
                     <SelectTrigger className="h-8.5 rounded-xl text-xs bg-muted/20"><SelectValue /></SelectTrigger>
                     <SelectContent className="rounded-xl">
                       <SelectItem value="technical" className="text-xs">Teknis CMS</SelectItem>
-                      <SelectItem value="infrastructure" className="text-xs">Dedicated VPS/DB</SelectItem>
+                      <SelectItem value="infrastructure" className="text-xs">Database & Storage</SelectItem>
                       <SelectItem value="domain" className="text-xs">Custom Domain</SelectItem>
                       <SelectItem value="billing" className="text-xs">Billing</SelectItem>
                       <SelectItem value="general" className="text-xs">Umum</SelectItem>

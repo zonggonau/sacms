@@ -18,10 +18,10 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
   if (!tenant) return DEFAULT_LIMITS.free
 
   try {
-    if (!db.tenant) return DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
+    if (!db.tenant) return DEFAULT_LIMITS[String(tenant.plan).toLowerCase()] || DEFAULT_LIMITS.free
     const globalId = await (await import("@/lib/settings")).getGlobalWorkspaceId();
     const globalTenant = await db.tenant.findUnique({ where: { id: globalId } })
-    if (!globalTenant) return DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
+    if (!globalTenant) return DEFAULT_LIMITS[String(tenant.plan).toLowerCase()] || DEFAULT_LIMITS.free
     const allPricing = await db.contentEntry.findMany({
       where: {
         tenantId: globalTenant.id,
@@ -32,12 +32,12 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
 
     const match = allPricing.find((e: any) => {
       const data = typeof e.data === "string" ? JSON.parse(e.data) : e.data
-      return data.plan_slug === tenant.plan
+      return String(data.plan_slug).toLowerCase() === String(tenant.plan).toLowerCase()
     })
 
     if (match) {
       const data = typeof match.data === "string" ? JSON.parse(match.data) : match.data
-      const base = DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
+      const base = DEFAULT_LIMITS[String(tenant.plan).toLowerCase()] || DEFAULT_LIMITS.free
       return {
         plan_slug: data.plan_slug || base.plan_slug,
         max_content_types: Number(data.max_content_types) || base.max_content_types,
@@ -56,7 +56,7 @@ export async function getTenantPlanConfig(tenantId: string): Promise<PlanConfig>
     console.error("Error fetching dynamic plan config:", error)
   }
 
-  return DEFAULT_LIMITS[tenant.plan] || DEFAULT_LIMITS.free
+  return DEFAULT_LIMITS[String(tenant.plan).toLowerCase()] || DEFAULT_LIMITS.free
 }
 
 /**

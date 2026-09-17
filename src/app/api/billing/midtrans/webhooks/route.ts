@@ -1,3 +1,4 @@
+import { fulfillAddonOrder, mergeProviderResponse } from "@/lib/billing/addon-fulfillment"
 import { NextRequest, NextResponse } from "next/server"
 import { getPaymentProvider } from "@/lib/payment"
 import { db } from "@/lib/database"
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest) {
         transactionId: transactionId || null,
         transactionTime: transactionTime || null,
         fraudStatus: fraudStatus || null,
-        rawResponse: body as any,
+        rawResponse: mergeProviderResponse(transaction.rawResponse, body) as any,
       },
     })
 
@@ -97,24 +98,6 @@ export async function POST(request: NextRequest) {
           } as any,
         })
 
-        // Auto-provision dedicated VPS/VDS if plan is Enterprise, VPS, or VDS
-        if (
-          planName.toLowerCase().includes("enterprise") || 
-          planName.toLowerCase().includes("vps") || 
-          planName.toLowerCase().includes("vds") || 
-          planName.toLowerCase().includes("postgres")
-        ) {
-          const { provisionTenantInfrastructure } = await import("@/lib/infrastructure/provisioner")
-          // Run provisioning asynchronously so webhook responds immediately
-          provisionTenantInfrastructure(tenantId, {
-            plan: planName,
-            subscriptionId: transaction.subscriptionId!,
-          }).then(res => {
-            console.log(`[Webhook] Auto-provisioned VPS/VDS for tenant ${tenantId}:`, res.status)
-          }).catch(err => {
-            console.error(`[Webhook] Failed auto-provisioning VPS/VDS for tenant ${tenantId}:`, err)
-          })
-        }
       } else if (orderId.startsWith("ACC") && transaction.subscription) {
         await db.user.update({
           where: { id: transaction.subscription.userId },
@@ -164,11 +147,8 @@ export async function POST(request: NextRequest) {
               where: { id: tenantId },
               data: { aiCreditsExtra: { increment: 2000000 } } as any
             })
-          } else if (addonId === "topup_storage_10gb") {
-            await db.tenant.update({
-              where: { id: tenantId },
-              data: { storageExtraBytes: { increment: BigInt(10 * 1024 * 1024 * 1024) } } as any
-            })
+          } else if (await fulfillAddonOrder({ tenantId, orderId: transaction.orderId, raw, userId: transaction.subscription?.userId })) {
+            // storage add-on or managed database/storage service
           } else if (addonId === "topup_api_500k") {
             await db.tenant.update({
               where: { id: tenantId },

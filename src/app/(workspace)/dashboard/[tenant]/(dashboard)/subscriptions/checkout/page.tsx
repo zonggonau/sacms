@@ -37,6 +37,7 @@ export default function CheckoutPage() {
   
   const tenantSlug = params?.tenant as string
   const planId = searchParams.get("plan")
+  const renewsAddonId = searchParams.get("renew")
   const initialInterval = (searchParams.get("interval") as 'month' | 'year') || 'year'
 
   const [interval, setInterval] = useState<'month' | 'year'>(initialInterval)
@@ -218,7 +219,8 @@ export default function CheckoutPage() {
           planId: plan.id,
           tenantId: isAccount ? null : (currentTenant?.id || tenantSlug),
           interval: interval,
-          type: isAccount ? "account" : "workspace"
+          type: isAccount ? "account" : "workspace",
+          ...(renewsAddonId ? { renewsAddonId } : {}),
         }),
       })
 

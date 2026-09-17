@@ -97,7 +97,70 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Object storage for workspace media: bucket sacms-media, one folder per workspace id.
+  # Enabled with COMPOSE_PROFILES=storage; served publicly through Caddy at media.sacms.cloud.
+  minio:
+    profiles:
+      - storage
+    image: quay.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
+    command: server /data --console-address ":9001"
+    ports:
+      - "127.0.0.1:9000:9000"
+      - "127.0.0.1:9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  # Creates the media bucket (public read) and the app's own access key. Idempotent.
+  minio-init:
+    profiles:
+      - storage
+    image: quay.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-}
+      S3_BUCKET: ${S3_BUCKET:-sacms-media}
+      S3_ACCESS_KEY_ID: ${S3_ACCESS_KEY_ID:-}
+      S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:-}
+    entrypoint: >
+      sh -c '
+        set -e
+        mc alias set local http://minio:9000 "$$MINIO_ROOT_USER" "$$MINIO_ROOT_PASSWORD"
+        mc mb --ignore-existing --region us-east-1 "local/$$S3_BUCKET"
+        mc anonymous set download "local/$$S3_BUCKET"
+        mc admin user add local "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY"
+        mc admin policy attach local readwrite --user "$$S3_ACCESS_KEY_ID" || true
+      '
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: "no"
+
+  # Scheduled calls to the app's cron routes (Authorization: Bearer CRON_SECRET).
+  # Enabled with COMPOSE_PROFILES=cron once CRON_SECRET is in .env.
+  cron:
+    profiles:
+      - cron
+    image: alpine:3.20
+    environment:
+      CRON_SECRET: ${CRON_SECRET:-}
+    volumes:
+      - ./docker/cron/crontab:/etc/crontabs/root:ro
+    entrypoint: ["sh", "-c", "apk add --no-cache curl >/dev/null && printenv | grep ^CRON_SECRET= > /etc/cron.env && exec crond -f -l 6"]
+    depends_on:
+      - app
+    restart: unless-stopped
+
 volumes:
+  minio_data:
   postgres_data:
   redis_data:
   caddy_data:

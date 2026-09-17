@@ -1,7 +1,7 @@
 # SaCMS — AI Assistant Context & Developer Guidelines
 
 ## 🌟 Apa ini?
-**SaCMS** adalah SaaS Headless CMS multi-tenant modern berbasis Next.js 16 (App Router). Ini adalah alternatif Strapi enterprise-grade dengan built-in billing (Midtrans), multi-tenancy native (Shared Pool & Dedicated PostgreSQL Appliance), custom domain DNS management ala Vercel, white-label branding, dan AI-powered content generation.
+**SaCMS** adalah SaaS Headless CMS multi-tenant modern berbasis Next.js 16 (App Router). Ini adalah alternatif Strapi enterprise-grade dengan built-in billing (Midtrans), multi-tenancy native (Shared Pool), custom domain DNS management ala Vercel, white-label branding, dan AI-powered content generation.
 
 ---
 
@@ -33,7 +33,7 @@ src/
             content-types/               ← Content Types management
             content-type-builder/        ← Visual Schema Drag & Drop Builder
             domains/                     ← Custom Domains & Vercel DNS Diagnostics
-            infrastructure/              ← Dedicated PostgreSQL & MinIO Appliance
+            infrastructure/              ← dijadwalkan dihapus (docs/16 §5.13)
             subscriptions/               ← Billing, Plans & Add-on Credits
             users/                       ← Team Members & RBAC Roles
             system/audit/                ← System Audit Logging
