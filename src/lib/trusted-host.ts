@@ -24,7 +24,7 @@ function fallbackOrigin(): string {
       : null)
   if (env) return env.replace(/\/$/, "")
   return process.env.NODE_ENV === "production"
-    ? `https://${ROOT_DOMAIN}`
+    ? `https://developer.${ROOT_DOMAIN}`
     : "http://localhost:3000"
 }
 

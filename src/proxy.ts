@@ -223,7 +223,7 @@ export async function proxy(request: NextRequest) {
     request.cookies.get("__Secure-next-auth.session-token")
   )
 
-  let platformSubdomain: "api" | "cms" | "admin" | null = null
+  let platformSubdomain: "api" | "cms" | "admin" | "developer" | null = null
   let dynamicSubdomain: string | null = null
 
   if (cleanHost === `api.${ROOT_DOMAIN}` || cleanHost === "api.localhost") {
@@ -232,6 +232,11 @@ export async function proxy(request: NextRequest) {
     platformSubdomain = "cms"
   } else if (cleanHost === `admin.${ROOT_DOMAIN}` || cleanHost === "admin.localhost") {
     platformSubdomain = "admin"
+  } else if (cleanHost === `developer.${ROOT_DOMAIN}` || cleanHost === "developer.localhost") {
+    // Main SaCMS entry (landing, auth, pricing, dashboard). The apex ROOT_DOMAIN
+    // belongs to SaCMS nocode on Vercel, so this host must fall through to normal
+    // app routing instead of being read as a workspace named "developer".
+    platformSubdomain = "developer"
   } else if (cleanHost.endsWith(`.${ROOT_DOMAIN}`) && cleanHost !== `www.${ROOT_DOMAIN}` && cleanHost !== ROOT_DOMAIN) {
     dynamicSubdomain = cleanHost.replace(`.${ROOT_DOMAIN}`, "")
   } else if (cleanHost.endsWith(".localhost") && cleanHost !== "localhost") {
@@ -534,7 +539,7 @@ export async function proxy(request: NextRequest) {
   let domainTarget: string = "cms"
   let version = "v1"
 
-  if (host && host !== APP_HOST && !host.includes("localhost")) {
+  if (host && host !== APP_HOST && platformSubdomain !== "developer" && !host.includes("localhost")) {
     const redis = getRedis()
     if (redis) {
       const rawValue = await redis.get<string>(`domain:${host}`)

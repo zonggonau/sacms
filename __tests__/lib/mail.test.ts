@@ -3,7 +3,7 @@ import { getBaseUrl } from "@/lib/mail"
 
 vi.mock("@/lib/settings", () => ({
   getPlatformSettings: vi.fn().mockResolvedValue({
-    siteUrl: "https://sacms.cloud",
+    siteUrl: "https://developer.sacms.cloud",
     resendApiKey: "",
     smtpHost: "",
   }),
@@ -30,7 +30,7 @@ describe("Mail Library Tests", () => {
 
   it("should resolve base URL from platform settings correctly", async () => {
     const url = await getBaseUrl()
-    expect(url).toBe("https://sacms.cloud")
+    expect(url).toBe("https://developer.sacms.cloud")
   })
 
   it("should fallback to production default if siteUrl is not configured in settings", async () => {
@@ -41,7 +41,7 @@ describe("Mail Library Tests", () => {
     delete process.env.NEXT_PUBLIC_APP_URL
 
     const url = await getBaseUrl()
-    expect(url).toBe("https://sacms.cloud")
+    expect(url).toBe("https://developer.sacms.cloud")
   })
 
   it("should resolve localhost for local development", async () => {

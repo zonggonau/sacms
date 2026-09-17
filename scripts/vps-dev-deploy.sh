@@ -2,7 +2,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 # SaCMS VPS Live Development Launcher
 # Deploys and runs SaCMS in DEVELOPMENT mode on VPS 164.68.116.79
-# Domain: sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud
+# Domain: developer.sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud
 #
 # Usage:
 #   bash scripts/vps-dev-deploy.sh [SERVER_IP] [SERVER_USER]
@@ -24,7 +24,7 @@ TARGET_DIR="/opt/sacms"
 echo "========================================================"
 echo "🚀 Deploying SaCMS in DEVELOPMENT MODE to ${SERVER_IP}"
 echo "Branch: ${DEPLOY_BRANCH}"
-echo "Domains: sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud"
+echo "Domains: developer.sacms.cloud, admin.sacms.cloud, cms.sacms.cloud, api.sacms.cloud"
 echo "========================================================"
 
 # If run directly on the server
@@ -46,7 +46,7 @@ if [ "$(hostname -I 2>/dev/null | grep -o "$SERVER_IP" || echo "")" = "$SERVER_I
 
     echo "========================================================"
     echo "✨ SaCMS is now running in LIVE DEVELOPMENT mode!"
-    echo "🌍 Apex Domain : https://sacms.cloud"
+    echo "🌍 Developer   : https://developer.sacms.cloud"
     echo "⚙️ Admin Hub   : https://admin.sacms.cloud"
     echo "✍️ CMS Portal  : https://cms.sacms.cloud"
     echo "🌐 Public API  : https://api.sacms.cloud"
@@ -80,7 +80,7 @@ fi
 
 # Generate .env if missing
 if [ ! -f .env ]; then
-    echo "--> Generating .env for sacms.cloud..."
+    echo "--> Generating .env for developer.sacms.cloud..."
     # Random per-deploy Postgres password — this used to be a hardcoded
     # string ("Z0ngg0n4U_SecurePass") committed to this script, meaning
     # every server ever bootstrapped this way shared the same DB password.
@@ -88,8 +88,8 @@ if [ ! -f .env ]; then
     cat <<ENVEOF > .env
 NODE_ENV=development
 NEXTAUTH_SECRET=$(openssl rand -hex 32)
-NEXTAUTH_URL=https://sacms.cloud
-NEXT_PUBLIC_APP_URL=https://sacms.cloud
+NEXTAUTH_URL=https://developer.sacms.cloud
+NEXT_PUBLIC_APP_URL=https://developer.sacms.cloud
 NEXT_PUBLIC_ROOT_DOMAIN=sacms.cloud
 NEXTAUTH_COOKIE_DOMAIN=.sacms.cloud
 PUBLIC_GATEWAY_IP=164.68.116.79

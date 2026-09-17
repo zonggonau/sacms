@@ -167,6 +167,47 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("x-middleware-rewrite")).toContain("/api/public/klinik/content/posts")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
   })
+
+  // developer.sacms.cloud is the SaCMS entry point; the apex belongs to SaCMS nocode.
+  // Before this host was reserved it matched the *.sacms.cloud branch and was
+  // rewritten to /dashboard/developer/cms — a workspace that does not exist.
+  it("should NOT treat developer.sacms.cloud as a workspace subdomain", async () => {
+    const req = new NextRequest("http://developer.sacms.cloud/", {
+      headers: {
+        host: "developer.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+    expect(res.headers.get("X-Subdomain-Portal")).not.toBe("workspace")
+    expect(res.headers.get("X-Tenant-Slug")).toBeNull()
+  })
+
+  it("should pass developer.sacms.cloud/dashboard/tenant through unchanged", async () => {
+    const req = new NextRequest("http://developer.sacms.cloud/dashboard/delvia", {
+      headers: {
+        host: "developer.sacms.cloud",
+        cookie: "next-auth.session-token=valid-token-mock",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
+    expect(res.headers.get("X-Tenant-Slug")).toBeNull()
+  })
+
+  it("should keep cms.sacms.cloud routing to the CMS dashboard", async () => {
+    const req = new NextRequest("http://cms.sacms.cloud/delvia/media", {
+      headers: {
+        host: "cms.sacms.cloud",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/delvia/cms/media")
+    expect(res.headers.get("X-Subdomain-Portal")).toBe("cms")
+  })
 })
 
 describe("Portal URLs Generator Helper", () => {
@@ -179,5 +220,10 @@ describe("Portal URLs Generator Helper", () => {
 
     const apiUrl = getPortalUrl("api", "intanjaya", "/content/berita")
     expect(apiUrl).toContain("api.sacms.cloud/intanjaya/content/berita")
+  })
+
+  it("should point the app portal at developer.sacms.cloud, not the apex", () => {
+    expect(getPortalBaseUrl("app")).toMatch(/^https?:\/\/developer\.sacms\.cloud$/)
+    expect(getPortalUrl("app", "intanjaya")).toMatch(/developer\.sacms\.cloud\/dashboard\/intanjaya$/)
   })
 })

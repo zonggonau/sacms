@@ -5,7 +5,9 @@
  * - admin: admin.sacms.cloud (Workspace Hub, Schema Builder, Subscriptions, Users, Settings)
  * - cms:   cms.sacms.cloud (Content Entries, Media Library, Single Types, Visual Grid)
  * - api:   api.sacms.cloud (Public REST API, GraphQL, Webhooks, Interactive Docs)
- * - app:   sacms.cloud (Apex Landing page, Auth, Pricing)
+ * - app:   developer.sacms.cloud (Landing page, Auth, Pricing, Dashboard)
+ *
+ * The apex (sacms.cloud) is NOT SaCMS — it belongs to SaCMS nocode on Vercel.
  */
 
 export type PortalType = "admin" | "cms" | "api" | "app"
@@ -38,7 +40,7 @@ export function getPortalBaseUrl(portal: PortalType): string {
       return `${protocol}://api.${rootDomain}`
     case "app":
     default:
-      return `${protocol}://${rootDomain}`
+      return `${protocol}://developer.${rootDomain}`
   }
 }
 

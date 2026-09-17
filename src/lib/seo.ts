@@ -6,7 +6,7 @@
 
 export function getSiteUrl(): string {
   const envUrl = process.env.NEXTAUTH_URL || process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL
-  if (!envUrl) return "https://sacms.cloud"
+  if (!envUrl) return "https://developer.sacms.cloud"
   if (envUrl.startsWith("http://") || envUrl.startsWith("https://")) return envUrl.replace(/\/$/, "")
   return `https://${envUrl.replace(/\/$/, "")}`
 }

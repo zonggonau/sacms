@@ -43,6 +43,7 @@ const nextConfig: NextConfig = {
     "localhost:3001",
     "sacms.cloud",
     "*.sacms.cloud",
+    "developer.sacms.cloud",
     "cms.sacms.cloud",
     "admin.sacms.cloud",
     "api.sacms.cloud",

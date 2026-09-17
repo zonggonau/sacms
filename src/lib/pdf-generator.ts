@@ -78,7 +78,7 @@ export function generateInvoicePDF(data: InvoiceData) {
   doc.setFont('helvetica', 'normal')
   doc.setFontSize(8.5)
   doc.setTextColor(180, 190, 210)
-  doc.text('Enterprise Headless CMS  ·  billing@sacms.cloud  ·  www.sacms.cloud', ML, 29)
+  doc.text('Enterprise Headless CMS  ·  billing@sacms.cloud  ·  developer.sacms.cloud', ML, 29)
 
   // "INVOICE" — right side, with proper right inset
   rgb(doc, C.white, 'text')

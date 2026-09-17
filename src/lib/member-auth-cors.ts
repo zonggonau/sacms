@@ -58,8 +58,7 @@ function tenantOwnOrigins(tenant: AuthCorsTenant): string[] {
   const root = (process.env.NEXT_PUBLIC_ROOT_DOMAIN || "sacms.cloud").toLowerCase()
   const origins = [
     `https://${tenant.slug}.${root}`,
-    `https://${root}`,
-    `https://www.${root}`,
+    `https://developer.${root}`,
   ]
   if (tenant.customDomain) {
     origins.push(`https://${tenant.customDomain}`, `https://www.${tenant.customDomain}`)
