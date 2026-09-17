@@ -16,7 +16,6 @@ import {
 } from "lucide-react"
 import { formatRupiah } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { NocodeFinanceSection } from "@/components/admin/nocode-finance-section"
 
 export default function MarginKeuntunganPage() {
   const { data: session, status } = useSession()
@@ -217,11 +216,6 @@ export default function MarginKeuntunganPage() {
           </Table>
         </CardContent>
       </Card>
-
-      <NocodeFinanceSection
-        sacmsMonthlyRevenue={data?.summary?.mrr}
-        sacmsMonthlyGrossProfit={data?.summary?.monthlyGrossProfit}
-      />
     </div>
   )
 }

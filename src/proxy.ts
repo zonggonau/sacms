@@ -233,9 +233,10 @@ export async function proxy(request: NextRequest) {
   } else if (cleanHost === `admin.${ROOT_DOMAIN}` || cleanHost === "admin.localhost") {
     platformSubdomain = "admin"
   } else if (cleanHost === `developer.${ROOT_DOMAIN}` || cleanHost === "developer.localhost") {
-    // Main SaCMS entry (landing, auth, pricing, dashboard). The apex ROOT_DOMAIN
-    // belongs to SaCMS nocode on Vercel, so this host must fall through to normal
-    // app routing instead of being read as a workspace named "developer".
+    // Alternate alias for the main SaCMS entry (landing, auth, pricing, dashboard).
+    // The apex ROOT_DOMAIN itself already serves the same app normally (it falls
+    // through to the default catch-all below), so this just keeps the alias working
+    // instead of being read as a workspace named "developer".
     platformSubdomain = "developer"
   } else if (cleanHost.endsWith(`.${ROOT_DOMAIN}`) && cleanHost !== `www.${ROOT_DOMAIN}` && cleanHost !== ROOT_DOMAIN) {
     dynamicSubdomain = cleanHost.replace(`.${ROOT_DOMAIN}`, "")

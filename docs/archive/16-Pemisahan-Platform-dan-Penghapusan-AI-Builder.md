@@ -1,7 +1,21 @@
 # Pemisahan Platform & Penghapusan AI Website Builder
 
+> **⚠️ DIBATALKAN (17 September 2026).** Produk `sacms-for-user-nocode` yang menjadi dasar
+> seluruh rencana pemisahan di dokumen ini sudah dihapus oleh pemilik sistem. SaCMS kembali
+> ke model tunggal semula: register → beli plan → buat workspace → AI Website Builder di
+> dalam workspace (tetap deploy ke Vercel). Bagian yang mengasumsikan produk nocode masih ada
+> — pemisahan domain apex, endpoint provisioning M2M, panel `/admin/nocode`, penghapusan AI
+> Website Builder, dan "SaCMS hanya menjual Enterprise" — **tidak berlaku lagi** dan sudah
+> dikembalikan di kode. Diarsipkan di sini hanya sebagai riwayat keputusan.
+>
+> Bagian yang **tetap berlaku** karena berdiri sendiri dari keputusan nocode (§5.13 dan
+> seterusnya): penghapusan provisioning VPS/Contabo per tenant (alasannya teknis, bukan
+> soal nocode — lihat "Kenapa VPS per tenant dihentikan"), perbaikan kuota storage (satuan
+> byte, penghitungan varian gambar, bypass Enterprise/`super_admin` yang ditutup), add-on
+> storage bulanan, dan layanan BYODB/BYOS terkelola manual oleh tim IT.
+
 **Tanggal:** 16 September 2026
-**Status:** Rencana — menunggu persetujuan pemilik sistem
+**Status:** ~~Rencana — menunggu persetujuan pemilik sistem~~ Dibatalkan 17 September 2026
 **Mengubah:** [03-Technical_Design_Document](./03-Technical_Design_Document.md) §2.2,
 [04-API_Specification](./04-API_Specification.md), [12-AI_Integration](./12-AI_Integration.md),
 [13-White_Label_and_Custom_Domain](./13-White_Label_and_Custom_Domain.md)

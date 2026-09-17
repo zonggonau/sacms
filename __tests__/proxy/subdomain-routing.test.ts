@@ -168,9 +168,9 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
   })
 
-  // developer.sacms.cloud is the SaCMS entry point; the apex belongs to SaCMS nocode.
-  // Before this host was reserved it matched the *.sacms.cloud branch and was
-  // rewritten to /dashboard/developer/cms — a workspace that does not exist.
+  // developer.sacms.cloud is an alias entry point alongside the apex. Before this
+  // host was reserved it matched the *.sacms.cloud branch and was rewritten to
+  // /dashboard/developer/cms — a workspace that does not exist.
   it("should NOT treat developer.sacms.cloud as a workspace subdomain", async () => {
     const req = new NextRequest("http://developer.sacms.cloud/", {
       headers: {
@@ -222,8 +222,8 @@ describe("Portal URLs Generator Helper", () => {
     expect(apiUrl).toContain("api.sacms.cloud/intanjaya/content/berita")
   })
 
-  it("should point the app portal at developer.sacms.cloud, not the apex", () => {
-    expect(getPortalBaseUrl("app")).toMatch(/^https?:\/\/developer\.sacms\.cloud$/)
-    expect(getPortalUrl("app", "intanjaya")).toMatch(/developer\.sacms\.cloud\/dashboard\/intanjaya$/)
+  it("should point the app portal at the apex domain", () => {
+    expect(getPortalBaseUrl("app")).toMatch(/^https?:\/\/sacms\.cloud$/)
+    expect(getPortalUrl("app", "intanjaya")).toMatch(/^https?:\/\/sacms\.cloud\/dashboard\/intanjaya$/)
   })
 })

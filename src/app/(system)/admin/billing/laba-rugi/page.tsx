@@ -16,7 +16,6 @@ import {
 import Link from "next/link"
 import { formatRupiah } from "@/lib/utils"
 import { useToast } from "@/hooks/use-toast"
-import { NocodeFinanceSection } from "@/components/admin/nocode-finance-section"
 
 export default function LabaRugiPage() {
   const { data: session, status } = useSession()
@@ -230,8 +229,6 @@ export default function LabaRugiPage() {
           </p>
         </Card>
       </div>
-
-      <NocodeFinanceSection sacmsMonthlyRevenue={s.mrr} sacmsMonthlyGrossProfit={s.monthlyGrossProfit} />
     </div>
   )
 }

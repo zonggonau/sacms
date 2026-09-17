@@ -83,7 +83,7 @@ export async function getBaseUrl(): Promise<string> {
     return `https://${process.env.VERCEL_URL}`.replace(/\/$/, "")
   }
   if (process.env.NODE_ENV === "production") {
-    return "https://developer.sacms.cloud"
+    return "https://sacms.cloud"
   }
   return process.env.NEXTAUTH_URL?.replace(/\/$/, "") || "http://localhost:3000"
 }

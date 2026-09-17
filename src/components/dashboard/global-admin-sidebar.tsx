@@ -27,7 +27,6 @@ import {
   Webhook,
   Server,
   Headphones,
-  Sparkles,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -55,7 +54,6 @@ const adminNavSections: NavSection[] = [
       { title: "Support & Chat CS", href: "/admin/support", icon: Headphones },
       { title: "Tenants / Workspace", href: "/admin/tenants", icon: Building2 },
       { title: "Billing & Revenue", href: "/admin/billing", icon: CreditCard },
-      { title: "SaCMS nocode", href: "/admin/nocode", icon: Sparkles },
     ],
   },
   {

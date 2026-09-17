@@ -41,13 +41,13 @@ GitHub Container Registry (GHCR)
 
 ## 🚀 Deploy Configuration (Configured by /setup-deploy)
 - **Production Host:** `164.68.116.79` (VPS Ubuntu 24.04 LTS)
-- **Live URL:** https://developer.sacms.cloud (CMS: https://cms.sacms.cloud — apex sacms.cloud milik SaCMS nocode di Vercel)
+- **Live URL:** https://sacms.cloud (CMS: https://cms.sacms.cloud)
 - **App Working Directory:** `/opt/sacms`
 - **Reverse Proxy & SSL:** Caddy (`/opt/sacms/Caddyfile`)
 - **Docker Compose:** `/opt/sacms/docker-compose.yml`
 - **Deploy Workflow:** `.github/workflows/ci.yml`
 - **Deploy Triggers:** Automatic on push to `master`, `develop`, `aisacms`
-- **Health Check Endpoint:** `https://developer.sacms.cloud/api/health`
+- **Health Check Endpoint:** `https://sacms.cloud/api/health`
 - **Total Pipeline Execution Time:** **~90 seconds (1.5 menit)**
 
 ### Custom Deploy Hooks

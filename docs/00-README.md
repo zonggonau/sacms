@@ -34,7 +34,7 @@ Selamat datang di direktori dokumentasi resmi **SaCMS (v1.2.1.0)** — SaaS Head
 13. 📄 **[13-White_Label_and_Custom_Domain.md](./13-White_Label_and_Custom_Domain.md)**: Panduan White-Label branding dan Custom Domain routing — konfigurasi DNS, cara kerja proxy middleware, dan plan limits.
 14. 📄 **[14-Content_Workflow_and_Approval.md](./14-Content_Workflow_and_Approval.md)**: Sumber kebenaran status konten, transisi, role, review berurutan, scheduling, validasi, webhook, dan cache invalidation.
 15. 📄 **[15-Implementation_Traceability.md](./15-Implementation_Traceability.md)**: Matriks fitur lengkap yang sudah aktif, batasannya, sumber implementasi kode, dan prosedur sinkronisasi docs-kode.
-16. 📄 **[16-Pemisahan-Platform-dan-Penghapusan-AI-Builder.md](./16-Pemisahan-Platform-dan-Penghapusan-AI-Builder.md)**: Rencana pemisahan peran dengan `sacms-for-user-nocode` — inventaris penghapusan AI Website Builder, rute non-AI yang harus dipindahkan bukan dihapus, endpoint provisioning M2M, dan kesiapan database untuk konsumen dari Vercel. *(Rencana, menunggu persetujuan)*
+16. 📄 **[archive/16-Pemisahan-Platform-dan-Penghapusan-AI-Builder.md](./archive/16-Pemisahan-Platform-dan-Penghapusan-AI-Builder.md)**: Rencana pemisahan produk dengan `sacms-for-user-nocode` — **dibatalkan 17 September 2026** setelah produk nocode dihapus; SaCMS kembali ke model tunggal (register → plan → workspace → AI Website Builder → Vercel). Diarsipkan sebagai riwayat keputusan.
 
 ---
 

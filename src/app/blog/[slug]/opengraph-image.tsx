@@ -158,7 +158,7 @@ export default async function Image({
             <span>✍️ {author}</span>
             <span>📅 {date}</span>
           </div>
-          <span style={{ color: "#f97316" }}>developer.sacms.cloud/blog</span>
+          <span style={{ color: "#f97316" }}>sacms.cloud/blog</span>
         </div>
       </div>
     ),
