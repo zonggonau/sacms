@@ -497,21 +497,36 @@ export async function fetchContent(collection: string) {
   // pointing at our own API route forever.
   const handleOpenPreviewInNewTab = async () => {
     if (!v0ChatId || isClaudeBuild) return
-    const newTab = window.open("", "_blank", "noopener,noreferrer")
+    // Open the tab synchronously, inside the click handler, so the browser's
+    // popup blocker allows it — then navigate it once the real URL is known.
+    // `noopener`/`noreferrer` can't be used here: browsers return `null` from
+    // window.open() the moment either is set, which leaves nothing to
+    // navigate and is exactly why the tab stayed on a blank about:blank page.
+    const newTab = window.open("", "_blank")
+    if (!newTab) {
+      toast({
+        variant: "destructive",
+        title: "Tab Diblokir Browser",
+        description: "Izinkan pop-up untuk domain ini agar preview bisa dibuka di tab baru.",
+      })
+      return
+    }
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${v0ChatId}/preview-url`)
       const data = await res.json().catch(() => null)
       if (data?.url) {
-        if (newTab) newTab.location.href = data.url
-        else window.open(data.url, "_blank", "noopener,noreferrer")
+        newTab.opener = null
+        newTab.location.href = data.url
         return
       }
     } catch {
       // fall through to the last-known preview URL below
     }
-    if (newTab) {
-      if (previewUrl) newTab.location.href = previewUrl
-      else newTab.close()
+    if (previewUrl) {
+      newTab.opener = null
+      newTab.location.href = previewUrl
+    } else {
+      newTab.close()
     }
   }
 
