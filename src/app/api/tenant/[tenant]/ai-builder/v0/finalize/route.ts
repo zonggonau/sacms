@@ -6,6 +6,33 @@ import { getV0Preview } from "@/lib/v0-client"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { chatBelongsToTenant } from "@/lib/ai/chat-access"
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
+/**
+ * `useChat`'s `onFinish` fires as soon as the *text* stream ends — v0 keeps
+ * writing the actual source files to the chat's sandbox for a few seconds
+ * after that (the same lag the preview URL/iframe already have to poll
+ * around, see `preview/[chatId]/route.ts`). Calling `getFiles` exactly once
+ * right at onFinish routinely came back empty, silently leaving the Code
+ * tab on its placeholder `DEMO_FILES` with no sign anything was wrong.
+ * Poll a few times before giving up.
+ */
+async function getV0FilesWithRetry(chatId: string, attempts = 8, delayMs = 1500): Promise<{ name: string; content: string }[]> {
+  for (let i = 0; i < attempts; i++) {
+    try {
+      const filesRes = await v0.chats.getFiles({ chatId })
+      const rawFiles = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
+      if (Array.isArray(rawFiles) && rawFiles.length > 0) {
+        return rawFiles.map((f: any) => ({ name: f.path ?? f.name ?? "app/page.tsx", content: f.content ?? "" }))
+      }
+    } catch (err: any) {
+      console.warn(`[v0/finalize] getFiles attempt ${i + 1}/${attempts} failed:`, err?.message)
+    }
+    if (i < attempts - 1) await sleep(delayMs)
+  }
+  return []
+}
+
 /**
  * Called once a v0 stream finishes (`useChat`'s `onFinish`) for either a new
  * chat or a follow-up. The stream itself only carries message content — this
@@ -26,16 +53,7 @@ export const POST = withStaffAuth(
 
     const tenant = access.tenant
 
-    let files: { name: string; content: string }[] = []
-    try {
-      const filesRes = await v0.chats.getFiles({ chatId })
-      const rawFiles = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
-      if (Array.isArray(rawFiles)) {
-        files = rawFiles.map((f: any) => ({ name: f.path ?? f.name ?? "app/page.tsx", content: f.content ?? "" }))
-      }
-    } catch (err: any) {
-      console.warn("[v0/finalize] getFiles failed:", err?.message)
-    }
+    const files = await getV0FilesWithRetry(chatId)
 
     let previewUrl = ""
     let vercelProjectId = ""
@@ -97,6 +115,10 @@ export const POST = withStaffAuth(
       vercelProjectId,
       files,
       filesGenerated: files.length,
+      // v0 hadn't finished writing files even after retrying — the client
+      // should say so honestly instead of silently keeping stale/demo files
+      // in the Code tab with no indication anything's still in progress.
+      stillGenerating: files.length === 0,
     })
   },
   { minRole: "admin" },

@@ -325,6 +325,30 @@ export async function fetchContent(collection: string) {
     [tenantSlug],
   )
 
+  // Safety net for when even /v0/finalize's own retries (see finalize/route.ts)
+  // weren't enough — keeps quietly re-checking in the background so the Code
+  // tab fills in on its own instead of staying stuck on stale/demo files
+  // until the user happens to trigger another generate/iterate.
+  const pollV0FilesInBackground = (chatId: string, attempt = 1, maxAttempts = 5) => {
+    setTimeout(async () => {
+      try {
+        const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${chatId}/files`)
+        const data = await res.json().catch(() => null)
+        if (Array.isArray(data?.files) && data.files.length > 0) {
+          setGeneratedFiles(data.files)
+          setConsoleLogs((prev) => [
+            ...prev,
+            { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: "[Build] Berkas proyek selesai disinkronkan ke tab Code." },
+          ])
+          return
+        }
+      } catch {
+        // keep retrying below
+      }
+      if (attempt < maxAttempts) pollV0FilesInBackground(chatId, attempt + 1, maxAttempts)
+    }, 4000)
+  }
+
   const finalizeV0Build = async (chatId: string, prompt: string) => {
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/finalize`, {
@@ -343,11 +367,24 @@ export async function fetchContent(collection: string) {
         setActiveVersionNumber(nextVerNum)
         return [...prev, { version: nextVerNum, prompt, timestamp: new Date().toLocaleTimeString(), previewUrl: data.previewUrl || previewUrl }]
       })
-      setConsoleLogs((prev) => [
-        ...prev,
-        { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` },
-      ])
-      toast({ title: "Website Berhasil Dibangun!", description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS." })
+
+      if (data.stillGenerating) {
+        // v0 is still writing files after retrying inside /v0/finalize —
+        // say so honestly instead of implying the Code tab is up to date,
+        // then keep checking quietly in the background.
+        setConsoleLogs((prev) => [
+          ...prev,
+          { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "warn", text: `[Build] Preview siap, tapi berkas proyek masih ditulis AI — tab Code akan terisi otomatis begitu selesai.` },
+        ])
+        toast({ title: "Preview Siap — Berkas Masih Disusun", description: "Website sudah bisa dilihat di tab Preview. Tab Code akan terisi otomatis begitu AI selesai menulis berkasnya." })
+        pollV0FilesInBackground(chatId)
+      } else {
+        setConsoleLogs((prev) => [
+          ...prev,
+          { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` },
+        ])
+        toast({ title: "Website Berhasil Dibangun!", description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS." })
+      }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Gagal Menyelesaikan Build", description: err.message })
     } finally {
