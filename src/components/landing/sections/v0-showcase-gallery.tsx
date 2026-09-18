@@ -87,6 +87,58 @@ export const SHOWCASE_PROJECTS: ShowcaseProject[] = [
   },
 ]
 
+/**
+ * A "sandbox card" preview — a browser-chrome frame with a fake `.vercel.app`
+ * address bar wrapped around a tiny CSS wireframe of a homepage (nav, hero,
+ * content grid), in the project's accent color. These are prompt templates,
+ * not real generated sites, so there's no live deployment to embed as an
+ * iframe or screenshot — this is a purely decorative mockup, styled after
+ * v0.app's own template gallery, not a claim that the URL shown is real or
+ * clickable.
+ */
+function BrowserMockupPreview({ item }: { item: ShowcaseProject }) {
+  return (
+    <div className="relative h-40 overflow-hidden border-b border-border/50 shrink-0">
+      <div className="h-7 flex items-center gap-1.5 px-3 bg-muted/70 border-b border-border/40">
+        <span className="h-2 w-2 rounded-full bg-red-400/70" />
+        <span className="h-2 w-2 rounded-full bg-amber-400/70" />
+        <span className="h-2 w-2 rounded-full bg-emerald-400/70" />
+        <div className="ml-2 flex-1 h-4 rounded-full bg-background/80 border border-border/40 flex items-center px-2 min-w-0">
+          <Globe className="h-2 w-2 text-muted-foreground/60 shrink-0 mr-1" />
+          <span className="text-[8px] text-muted-foreground/70 font-mono truncate">{item.id}.vercel.app</span>
+        </div>
+      </div>
+
+      <div className={`h-[calc(100%-1.75rem)] bg-gradient-to-b ${item.accentColor} p-3 flex flex-col gap-2`}>
+        <div className="flex items-center justify-between shrink-0">
+          <div className="flex items-center gap-1.5">
+            <span className="h-4 w-4 rounded-md bg-card/90 shadow-xs flex items-center justify-center text-[8px] leading-none">
+              {item.icon}
+            </span>
+            <div className="h-1.5 w-9 rounded-full bg-card/60" />
+          </div>
+          <div className="flex gap-1">
+            <div className="h-1.5 w-4 rounded-full bg-card/40" />
+            <div className="h-1.5 w-4 rounded-full bg-card/40" />
+            <div className="h-1.5 w-4 rounded-full bg-card/40" />
+          </div>
+        </div>
+
+        <div className="space-y-1 shrink-0">
+          <div className="h-2 w-2/3 rounded-full bg-card/90" />
+          <div className="h-1.5 w-1/2 rounded-full bg-card/50" />
+        </div>
+
+        <div className="grid grid-cols-3 gap-1.5 flex-1 min-h-0">
+          <div className="rounded-md bg-card/70 border border-border/30" />
+          <div className="rounded-md bg-card/70 border border-border/30" />
+          <div className="rounded-md bg-card/70 border border-border/30" />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function V0ShowcaseGallery() {
   const handleUsePrompt = (promptText: string) => {
     // Find composer textarea and populate
@@ -125,23 +177,23 @@ export function V0ShowcaseGallery() {
               key={item.id}
               className="rounded-3xl border border-border/80 bg-card/90 shadow-xs hover:shadow-lg transition-all duration-300 overflow-hidden flex flex-col justify-between group hover:border-primary/40"
             >
-              <div className={`h-24 bg-gradient-to-b ${item.accentColor} p-5 flex items-start justify-between border-b border-border/50`}>
+              <BrowserMockupPreview item={item} />
+
+              <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
                 <div className="flex items-center gap-2">
-                  <span className="text-2xl p-2 rounded-2xl bg-card/80 shadow-xs border border-border/70 backdrop-blur-sm">
+                  <span className="text-lg p-1.5 rounded-xl bg-muted/70 border border-border/60 shrink-0">
                     {item.icon}
                   </span>
-                  <div>
-                    <span className="text-[11px] font-black uppercase tracking-wider text-muted-foreground">
+                  <div className="min-w-0">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-muted-foreground block truncate">
                       {item.category}
                     </span>
-                    <h3 className="text-sm font-bold text-foreground leading-tight">
+                    <h3 className="text-sm font-bold text-foreground leading-tight truncate">
                       {item.title}
                     </h3>
                   </div>
                 </div>
-              </div>
 
-              <CardContent className="p-5 space-y-4 flex-1 flex flex-col justify-between">
                 <p className="text-xs text-muted-foreground leading-relaxed">
                   {item.description}
                 </p>
