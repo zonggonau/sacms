@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +8,8 @@ import {
   Loader2, Plus, Building2, Search, Settings, 
   MoreVertical, Trash2, AlertTriangle, Clock,
   ArrowRight, Zap, CheckCircle2, ExternalLink,
-  Crown, LayoutGrid, List, Layers, ShieldCheck, Globe, Copy, Check, Lock
+  Crown, LayoutGrid, List, Layers, ShieldCheck, Globe, Copy, Check, Lock,
+  Sparkles
 } from "lucide-react"
 import {
   Dialog,
@@ -39,10 +40,11 @@ import { Input } from "@/components/ui/input"
 import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { deleteTenantAction } from "@/actions/tenant"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import Link from "next/link"
-import { WorkspaceCreationDialog } from "./workspace-creation-dialog"
+import { WorkspaceCreationDialog, ReadyVpsOption } from "./workspace-creation-dialog"
 import { EnterpriseLicenseBanner } from "./enterprise-license-banner"
+import { DashboardModeSwitcher } from "./dashboard-mode-switcher"
 
 interface Tenant {
   id: string
@@ -65,6 +67,7 @@ interface WorkspaceManagerProps {
   dbTemplates: any[]
   workspacePlans: any[]
   addonPlans: any[]
+  readyVpsList?: ReadyVpsOption[]
   isSuperAdmin?: boolean
 }
 
@@ -74,13 +77,24 @@ export function WorkspaceManager({
   dbTemplates,
   workspacePlans,
   addonPlans,
+  readyVpsList = [],
   isSuperAdmin
 }: WorkspaceManagerProps) {
   const router = useRouter()
+  const searchParams = useSearchParams()
   const [searchQuery, setSearchQuery] = useState("")
   const [viewMode, setViewMode] = useState<"grid" | "table">("grid")
   const [isCreateOpen, setIsCreateOpen] = useState(false)
   const [creationTemplateId, setCreationTemplateId] = useState("custom")
+
+  const initialVpsId = searchParams?.get("vpsId") || undefined
+
+  // Auto-open create dialog if action=new-workspace or vpsId is present in URL
+  useEffect(() => {
+    if (searchParams?.get("action") === "new-workspace" || searchParams?.get("vpsId")) {
+      setIsCreateOpen(true)
+    }
+  }, [searchParams])
 
   // Delete State
   const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null)
@@ -146,6 +160,8 @@ export function WorkspaceManager({
         </div>
 
         <div className="flex flex-wrap items-center gap-2.5">
+          <DashboardModeSwitcher currentMode="developer" />
+
           {isSuperAdmin && (
             <Button variant="outline" size="sm" asChild className="h-9 px-3 text-xs font-bold rounded-xl border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/10">
               <Link href="/admin">
@@ -177,6 +193,38 @@ export function WorkspaceManager({
             }}
           >
             <Plus className="mr-1.5 h-4 w-4" /> Workspace Baru
+          </Button>
+        </div>
+      </div>
+
+      {/* AI Website Builder v0-style Quick Banner */}
+      <div className="relative overflow-hidden rounded-3xl border border-primary/30 bg-gradient-to-r from-primary/15 via-primary/5 to-card p-5 md:p-6 shadow-xs flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+        <div className="space-y-1.5 max-w-2xl">
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-primary/20 text-primary border border-primary/30">
+              <Sparkles className="h-3 w-3 mr-1" />
+              SaCMS AI Studio v2
+            </span>
+            <span className="text-[11px] font-bold text-muted-foreground">Next.js 16 + PostgreSQL 17</span>
+          </div>
+          <h2 className="text-lg md:text-xl font-black tracking-tight text-foreground">
+            Bangun &amp; Kembangkan Website Otomatis dengan AI
+          </h2>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Generate skema CMS, mock content terstruktur, dan frontend web modern lengkap hanya dari satu kalimat prompt.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0">
+          <Button
+            asChild
+            className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs gap-1.5 cursor-pointer"
+          >
+            <Link href="/aibuilder">
+              <Sparkles className="h-3.5 w-3.5" />
+              Buka AI Website Builder
+              <ArrowRight className="h-3.5 w-3.5 ml-1" />
+            </Link>
           </Button>
         </div>
       </div>
@@ -606,6 +654,8 @@ export function WorkspaceManager({
         dbTemplates={dbTemplates}
         workspacePlans={workspacePlans}
         addonPlans={addonPlans}
+        readyVpsList={readyVpsList}
+        initialVpsId={initialVpsId}
         initialTemplateId={creationTemplateId}
       />
 

@@ -1,29 +1,31 @@
 "use client"
 
 import { useState, useMemo, useEffect } from "react"
-import { 
-  Loader2, 
-  Building2, 
-  Sparkles, 
-  Layers, 
-  Users, 
-  HardDrive, 
-  Plus, 
-  Globe, 
-  Check, 
-  Zap, 
+import {
+  Loader2,
+  Building2,
+  Sparkles,
+  Layers,
+  Users,
+  HardDrive,
+  Plus,
+  Check,
+  Zap,
   Database,
   Server,
-  ShieldCheck
+  ShieldCheck,
+  CheckCircle2,
+  ArrowRight,
+  type LucideIcon
 } from "lucide-react"
 import {
   Dialog,
   DialogContent,
   DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog"
+import { Card, CardHeader, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
@@ -33,6 +35,7 @@ import { toast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
 import { createTenantAction } from "@/actions/tenant"
 import { useRouter } from "next/navigation"
+import Link from "next/link"
 
 export interface WorkspacePlan {
   id: string
@@ -59,6 +62,16 @@ export interface AddonPlan {
   icon?: string
 }
 
+export interface ReadyVpsOption {
+  id: string
+  planSlug: string
+  planName: string
+  serverName: string
+  serverIp?: string | null
+  databaseUrl?: string | null
+  status: string
+}
+
 interface WorkspaceCreationDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -66,6 +79,63 @@ interface WorkspaceCreationDialogProps {
   addonPlans?: AddonPlan[]
   dbTemplates?: any[]
   initialTemplateId?: string
+  readyVpsList?: ReadyVpsOption[]
+  initialVpsId?: string
+}
+
+/** Visual accent per tier — purely cosmetic, keyed off plan_slug/id. */
+const TIER_ACCENT: Record<string, { icon: LucideIcon; ribbon?: string }> = {
+  free: { icon: Layers },
+  standar: { icon: Layers },
+  pro: { icon: Zap, ribbon: "Paling Populer" },
+  business: { icon: ShieldCheck },
+}
+
+function getTierAccent(planSlug: string) {
+  return TIER_ACCENT[planSlug] || { icon: Sparkles }
+}
+
+/** The three guaranteed numeric limit rows shown on every plan card. */
+function planLimitRows(plan: WorkspacePlan): { icon: LucideIcon; label: string }[] {
+  const rows: { icon: LucideIcon; label: string }[] = []
+  if (plan.max_content_entries !== undefined) {
+    rows.push({ icon: Database, label: `${plan.max_content_entries.toLocaleString("id-ID")} Entri Konten` })
+  }
+  if (plan.max_storage !== undefined) {
+    const size = plan.max_storage >= 1024 ? `${plan.max_storage / 1024} GB` : `${plan.max_storage} MB`
+    rows.push({ icon: HardDrive, label: `${size} Media Storage` })
+  }
+  if (plan.max_team_members !== undefined) {
+    rows.push({
+      icon: Users,
+      label: plan.max_team_members > 50 ? "Tim Unlimited" : `${plan.max_team_members} Anggota Tim`,
+    })
+  }
+  return rows
+}
+
+function SectionHeader({
+  step,
+  title,
+  description,
+}: {
+  step: number
+  title: string
+  description?: string
+}) {
+  return (
+    <div className="flex items-start gap-2.5 pb-3 mb-1 border-b border-border/50">
+      <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0 mt-0.5">
+        {step}
+      </div>
+      <div className="min-w-0">
+        <h3 className="text-sm font-bold text-foreground">{title}</h3>
+        {description && (
+          <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">{description}</p>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function WorkspaceCreationDialog({
@@ -73,13 +143,107 @@ export function WorkspaceCreationDialog({
   onOpenChange,
   workspacePlans = [],
   addonPlans = [],
+  readyVpsList = [],
+  initialVpsId,
 }: WorkspaceCreationDialogProps) {
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
-  const [domainHost, setDomainHost] = useState(".sacms.cloud")
-  const [activeCategory, setActiveCategory] = useState<"cloud" | "vps" | "vds" | "storage">("cloud")
+  const [creationMode, setCreationMode] = useState<"cloud" | "vps">(
+    initialVpsId ? "vps" : "cloud"
+  )
+  const [selectedVpsId, setSelectedVpsId] = useState<string>(
+    initialVpsId || (readyVpsList[0]?.id || "")
+  )
 
-  const defaultPlanSlug = workspacePlans[0]?.plan_slug || workspacePlans[0]?.id || "free"
+  // Filter rencana paket standar: HANYA Standar, Pro, dan Business
+  const standardPlans = useMemo(() => {
+    const cleanPlans = workspacePlans.filter(p => {
+      const s = `${p.plan_slug || ""} ${p.id || ""} ${p.name || ""}`.toLowerCase()
+      return !s.includes("vps") && !s.includes("vds") && !s.includes("storage")
+    })
+
+    let standar = cleanPlans.find(p => p.plan_slug === "free" || p.plan_slug === "standar" || p.id === "free")
+    let pro = cleanPlans.find(p => p.plan_slug === "pro")
+    let business = cleanPlans.find(p => p.plan_slug === "business")
+
+    if (!standar) {
+      standar = {
+        id: "free",
+        plan_slug: "free",
+        name: "Standar",
+        desc: "Paket dasar terjangkau untuk memulai proyek CMS profesional Anda.",
+        priceAmount: 250000,
+        yearlyPrice: 1500000,
+        max_content_types: 999999,
+        max_content_entries: 500,
+        max_team_members: 1,
+        max_storage: 100,
+        features: [
+          "Unlimited Content Schemas",
+          "500 Entri Konten",
+          "1 Anggota Tim",
+          "100 MB Cloudflare R2 Storage",
+          "1.000 API Calls / bulan"
+        ]
+      }
+    } else {
+      standar = { ...standar, name: "Standar" }
+    }
+
+    if (!pro) {
+      pro = {
+        id: "pro",
+        plan_slug: "pro",
+        name: "Pro",
+        desc: "Paket lengkap all-inclusive untuk bisnis, media, dan startup modern.",
+        priceAmount: 500000,
+        yearlyPrice: 3000000,
+        max_content_types: 999999,
+        max_content_entries: 10000,
+        max_team_members: 10,
+        max_storage: 5120,
+        features: [
+          "10.000 Entri Konten",
+          "10 Anggota Tim & RBAC",
+          "5 GB Cloud Storage Media",
+          "100.000 API Requests / bulan",
+          "Gratis 1 Custom Domain (.com/.id)",
+          "SSL HTTPS Otomatis"
+        ]
+      }
+    } else {
+      pro = { ...pro, name: "Pro" }
+    }
+
+    if (!business) {
+      business = {
+        id: "business",
+        plan_slug: "business",
+        name: "Business",
+        desc: "Platform CMS andalan untuk korporasi, portal media nasional, dan traffic tinggi.",
+        priceAmount: 830000,
+        yearlyPrice: 5000000,
+        max_content_types: 999999,
+        max_content_entries: 50000,
+        max_team_members: 25,
+        max_storage: 10240,
+        features: [
+          "50.000 Entri Konten",
+          "25 Anggota Tim",
+          "10 GB Cloud Storage Media",
+          "1.000.000 API Requests / bulan",
+          "Custom SMTP & Extended Audit Log",
+          "24/7 Prioritas Support & SLA 99.9%"
+        ]
+      }
+    } else {
+      business = { ...business, name: "Business" }
+    }
+
+    return [standar, pro, business]
+  }, [workspacePlans])
+
+  const defaultPlanSlug = standardPlans[0]?.plan_slug || standardPlans[0]?.id || "free"
 
   const [newWorkspace, setNewWorkspace] = useState({
     name: "",
@@ -88,87 +252,28 @@ export function WorkspaceCreationDialog({
     selectedAddons: [] as string[]
   })
 
-  // Detect dynamic host on client
+  // Auto-switch mode if initialVpsId arrives
   useEffect(() => {
-    if (typeof window !== "undefined") {
-      const host = window.location.host
-      if (host.includes("localhost")) {
-        setDomainHost(`.${host}`)
-      } else {
-        const parts = host.split(".")
-        if (parts.length >= 2) {
-          setDomainHost(`.${parts.slice(-2).join(".")}`)
-        } else {
-          setDomainHost(`.${host}`)
-        }
-      }
+    if (initialVpsId) {
+      setCreationMode("vps")
+      setSelectedVpsId(initialVpsId)
     }
-  }, [])
+  }, [initialVpsId])
 
-  // Categorize workspace plans into 4 clean categories.
-  const planKind = (p: WorkspacePlan): "storage" | "vds" | "vps" | "cloud" => {
-    const s = `${p.plan_slug || ""} ${p.id || ""} ${p.name || ""}`.toLowerCase()
-    if (s.includes("storage")) return "storage"
-    if (s.includes("vds")) return "vds"
-    if (s.includes("vps")) return "vps"
-    return "cloud"
-  }
-
-  const categorizedPlans = useMemo(() => {
-    const storage = workspacePlans.filter(p => planKind(p) === "storage")
-    const vds = workspacePlans.filter(p => planKind(p) === "vds")
-    const vps = workspacePlans.filter(p => planKind(p) === "vps")
-    const cloud = workspacePlans.filter(p => planKind(p) === "cloud")
-
-    return {
-      cloud: cloud.length > 0 ? cloud : (vps.length === 0 && vds.length === 0 && storage.length === 0 ? workspacePlans : cloud),
-      vps,
-      vds,
-      storage,
-    }
-  }, [workspacePlans])
-
-  const displayedPlans = useMemo(() => {
-    const plans = categorizedPlans[activeCategory] || []
-    if (plans.length === 0 && workspacePlans.length > 0) {
-      return workspacePlans
-    }
-    return plans
-  }, [categorizedPlans, activeCategory, workspacePlans])
-
-  // Sync default plan when workspacePlans arrive
+  // Sync selected VPS default
   useEffect(() => {
-    if (workspacePlans.length > 0 && !workspacePlans.some(p => (p.plan_slug || p.id) === newWorkspace.plan)) {
-      setNewWorkspace(prev => ({
-        ...prev,
-        plan: workspacePlans[0].plan_slug || workspacePlans[0].id
-      }))
+    if (readyVpsList.length > 0 && !selectedVpsId) {
+      setSelectedVpsId(readyVpsList[0].id)
     }
-  }, [workspacePlans, newWorkspace.plan])
+  }, [readyVpsList, selectedVpsId])
 
-  // Automatically switch tab when plan belongs to that category
-  useEffect(() => {
-    const currentPlan = (newWorkspace.plan || "").toLowerCase()
-    if (currentPlan.includes("storage")) {
-      setActiveCategory("storage")
-    } else if (currentPlan.includes("vds")) {
-      setActiveCategory("vds")
-    } else if (currentPlan.includes("vps")) {
-      setActiveCategory("vps")
-    } else {
-      setActiveCategory("cloud")
-    }
-  }, [newWorkspace.plan])
+  const selectedVpsObj = useMemo(() => {
+    return readyVpsList.find(v => v.id === selectedVpsId) || readyVpsList[0] || null
+  }, [readyVpsList, selectedVpsId])
 
-  // Live slug preview generator
-  const slugPreview = useMemo(() => {
-    const raw = newWorkspace.name.trim().toLowerCase()
-    if (!raw) return "workspace-anda"
-    return raw
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .substring(0, 30) || "workspace"
-  }, [newWorkspace.name])
+  const selectedPlanObj = useMemo(() => {
+    return standardPlans.find(p => (p.plan_slug || p.id) === newWorkspace.plan) || standardPlans[0]
+  }, [standardPlans, newWorkspace.plan])
 
   const handleCreateTenant = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -177,12 +282,18 @@ export function WorkspaceCreationDialog({
       return
     }
 
+    if (creationMode === "vps" && !selectedVpsId) {
+      toast({ variant: "destructive", title: "Validasi Gagal", description: "Pilih salah satu server VPS siap pakai Anda." })
+      return
+    }
+
     setIsSubmitting(true)
     try {
       const res = await createTenantAction({
         name: newWorkspace.name.trim(),
         description: newWorkspace.description.trim(),
-        plan: newWorkspace.plan,
+        plan: creationMode === "vps" && selectedVpsObj ? selectedVpsObj.planSlug : newWorkspace.plan,
+        selectedVpsId: creationMode === "vps" ? selectedVpsId : undefined,
         addons: newWorkspace.selectedAddons
       })
 
@@ -205,25 +316,24 @@ export function WorkspaceCreationDialog({
       const exists = prev.selectedAddons.includes(addonId)
       return {
         ...prev,
-        selectedAddons: exists 
+        selectedAddons: exists
           ? prev.selectedAddons.filter(id => id !== addonId)
           : [...prev.selectedAddons, addonId]
       }
     })
   }
 
-  const selectedPlanObj = useMemo(() => {
-    return workspacePlans.find(p => (p.plan_slug || p.id) === newWorkspace.plan) || workspacePlans[0]
-  }, [workspacePlans, newWorkspace.plan])
-
   const calculateTotalPrice = () => {
+    if (creationMode === "vps") {
+      return 0 // Already paid on VPS order!
+    }
     if (!selectedPlanObj) return 0
-    
+
     let basePrice = Number(selectedPlanObj.priceAmount) || 0
-    let yearlyPrice = selectedPlanObj.yearlyPrice !== undefined && selectedPlanObj.yearlyPrice > 0 
-      ? Number(selectedPlanObj.yearlyPrice) 
+    let yearlyPrice = selectedPlanObj.yearlyPrice !== undefined && selectedPlanObj.yearlyPrice > 0
+      ? Number(selectedPlanObj.yearlyPrice)
       : basePrice * 10
-    
+
     let addonPrice = newWorkspace.selectedAddons.reduce((sum, addonId) => {
       const addon = addonPlans.find(a => a.id === addonId)
       const aPrice = Number(addon?.priceAmount) || 0
@@ -235,335 +345,394 @@ export function WorkspaceCreationDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl p-0 overflow-hidden max-h-[92vh] flex flex-col rounded-3xl border-border/80 bg-card shadow-2xl">
+      <DialogContent className="sm:max-w-5xl p-0 overflow-hidden max-h-[92vh] flex flex-col rounded-3xl border-border/80 bg-card shadow-2xl gap-0">
         <form onSubmit={handleCreateTenant} className="flex flex-col h-full max-h-[92vh] overflow-hidden">
-          
+
           {/* Header */}
-          <DialogHeader className="p-6 pb-5 border-b border-border/60 bg-muted/20 shrink-0">
-            <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs shrink-0">
-                  <Building2 className="h-5 w-5" />
+          <DialogHeader className="p-6 border-b border-border/60 bg-gradient-to-r from-primary/[0.06] via-transparent to-transparent shrink-0 text-left">
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 text-primary flex items-center justify-center shadow-xs shrink-0">
+                <Building2 className="h-6 w-6" />
+              </div>
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <DialogTitle className="text-xl font-black text-foreground tracking-tight">
+                    Inisialisasi Workspace Baru
+                  </DialogTitle>
+                  <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full border-primary/20 bg-primary/5 text-primary">
+                    Multi-Tenant CMS
+                  </Badge>
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <DialogTitle className="text-lg sm:text-xl font-black text-foreground tracking-tight">
-                      Inisialisasi Workspace Baru
-                    </DialogTitle>
-                    <Badge variant="outline" className="text-[10px] font-bold px-2 py-0.5 rounded-full border-primary/20 bg-primary/5 text-primary">
-                      Multi-Tenant CMS
-                    </Badge>
-                  </div>
-                  <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                    Buat ruang kerja headless CMS terisolasi lengkap dengan REST API, GraphQL, dan media storage.
-                  </DialogDescription>
-                </div>
+                <DialogDescription className="text-sm text-muted-foreground mt-1">
+                  Buat ruang kerja headless CMS terisolasi lengkap dengan REST API, GraphQL, dan media storage.
+                </DialogDescription>
               </div>
             </div>
           </DialogHeader>
-          
-          {/* Form Body (Scrollable) */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            
-            {/* Bagian 1: Identitas Workspace */}
-            <div className="space-y-4 rounded-2xl border border-border/70 bg-background/50 p-4 sm:p-5">
-              <div className="flex items-center gap-2 pb-1 border-b border-border/50">
-                <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">1</div>
-                <h3 className="text-xs font-bold text-foreground">Identitas & Akses Workspace</h3>
-              </div>
 
-              <div className="grid gap-4 sm:grid-cols-2">
+          {/* Form Body (Scrollable) */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-muted/10">
+
+            {/* Bagian 1: Identitas Workspace */}
+            <Card className="rounded-2xl border-border/70 shadow-xs py-5 gap-4">
+              <CardContent className="px-5 space-y-4">
+                <SectionHeader step={1} title="Identitas & Akses Workspace" />
+
                 <div className="space-y-1.5">
                   <Label htmlFor="ws-name" className="text-xs font-semibold text-foreground flex items-center gap-1">
                     Nama Workspace <span className="text-destructive">*</span>
                   </Label>
-                  <Input 
+                  <Input
                     id="ws-name"
-                    placeholder="Contoh: Portal Informasi Papua, Toko Online, dll." 
+                    placeholder="Contoh: Portal Informasi Papua, Toko Online, dll."
                     value={newWorkspace.name}
                     onChange={e => setNewWorkspace(prev => ({ ...prev, name: e.target.value }))}
-                    className="text-xs h-9.5 rounded-xl border-border/80 bg-background"
+                    className="text-sm rounded-xl border-border/80 bg-background"
                     required
                     autoFocus
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <Label className="text-xs font-semibold text-foreground">
-                    Live Preview Subdomain URL
+                  <Label htmlFor="ws-desc" className="text-xs font-semibold text-foreground">
+                    Deskripsi Workspace <span className="text-muted-foreground font-normal">(Opsional)</span>
                   </Label>
-                  <div className="h-9.5 rounded-xl border border-border/80 bg-muted/40 px-3 flex items-center gap-2 text-xs font-mono text-muted-foreground overflow-hidden">
-                    <Globe className="h-3.5 w-3.5 text-primary shrink-0" />
-                    <span className="truncate text-foreground font-semibold">{slugPreview}</span>
-                    <span className="text-muted-foreground">{domainHost}</span>
-                    <Badge variant="secondary" className="ml-auto text-[9px] px-1.5 py-0 h-4 shrink-0 font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      HTTPS
-                    </Badge>
+                  <Textarea
+                    id="ws-desc"
+                    placeholder="Deskripsikan tujuan atau ruang lingkup proyek konten workspace ini..."
+                    value={newWorkspace.description}
+                    onChange={e => setNewWorkspace(prev => ({ ...prev, description: e.target.value }))}
+                    className="text-sm resize-none rounded-xl border-border/80 bg-background"
+                    rows={2}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Bagian 2: Mode Infrastruktur (Paket Cloud Standar vs Gunakan VPS Saya) */}
+            <Card className="rounded-2xl border-border/70 shadow-xs py-5 gap-4">
+              <CardContent className="px-5 space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 pb-3 mb-1 border-b border-border/50">
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-6 h-6 rounded-lg bg-primary/10 text-primary flex items-center justify-center text-xs font-black shrink-0 mt-0.5">2</div>
+                    <div>
+                      <h3 className="text-sm font-bold text-foreground">Pilih Paket atau Server VPS</h3>
+                      <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                        Pilih 3 paket Cloud bawaan (Standar, Pro, Business) atau gunakan server VPS Anda yang telah disiapkan IT Support.
+                      </p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="space-y-1.5">
-                <Label htmlFor="ws-desc" className="text-xs font-semibold text-foreground">
-                  Deskripsi Workspace <span className="text-muted-foreground font-normal text-[11px]">(Opsional)</span>
-                </Label>
-                <Textarea 
-                  id="ws-desc"
-                  placeholder="Deskripsikan tujuan atau ruang lingkup proyek konten workspace ini..." 
-                  value={newWorkspace.description}
-                  onChange={e => setNewWorkspace(prev => ({ ...prev, description: e.target.value }))}
-                  className="text-xs resize-none rounded-xl border-border/80 bg-background"
-                  rows={2}
-                />
-              </div>
-            </div>
+                  {/* Mode Selector */}
+                  <div className="flex items-center p-1 bg-muted/60 rounded-xl border border-border/70 w-fit gap-1 shadow-xs shrink-0">
+                    <button
+                      type="button"
+                      onClick={() => setCreationMode("cloud")}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer",
+                        creationMode === "cloud"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Sparkles className="h-3.5 w-3.5" />
+                      <span>Paket Cloud</span>
+                    </button>
 
-            {/* Bagian 2: Pilihan Paket Kapasitas (Tahunan) */}
-            <div className="space-y-4 rounded-2xl border border-border/70 bg-background/50 p-4 sm:p-5">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">2</div>
-                  <div>
-                    <h3 className="text-xs font-bold text-foreground">Pilih Paket Kapasitas Workspace</h3>
-                    <p className="text-[11px] text-muted-foreground">Pilih paket Cloud Ekonomis, Cloud VPS Standar, Gov &amp; Enterprise VDS, atau VPS Storage sesuai skala proyek Anda.</p>
-                  </div>
-                </div>
-
-                <Badge variant="secondary" className="text-[10px] font-bold px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 self-start sm:self-auto">
-                  Langganan Tahunan
-                </Badge>
-              </div>
-
-              {/* 3 Categories Tabs */}
-              <div className="flex flex-wrap items-center p-1 bg-muted/60 rounded-xl border border-border/70 w-fit max-w-full gap-1 shadow-xs">
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("cloud")}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5",
-                    activeCategory === "cloud"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Sparkles className="h-3.5 w-3.5" />
-                  <span>Cloud Ekonomis ({categorizedPlans.cloud.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("vps")}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5",
-                    activeCategory === "vps"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <Server className="h-3.5 w-3.5" />
-                  <span>Cloud VPS Standar ({categorizedPlans.vps.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("vds")}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5",
-                    activeCategory === "vds"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <ShieldCheck className="h-3.5 w-3.5" />
-                  <span>Gov & Enterprise VDS ({categorizedPlans.vds.length})</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setActiveCategory("storage")}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5",
-                    activeCategory === "storage"
-                      ? "bg-primary text-primary-foreground shadow-xs"
-                      : "text-muted-foreground hover:text-foreground"
-                  )}
-                >
-                  <HardDrive className="h-3.5 w-3.5" />
-                  <span>VPS Storage ({categorizedPlans.storage.length})</span>
-                </button>
-              </div>
-              
-              {/* Plans Grid (3 Columns) */}
-              {displayedPlans.length === 0 ? (
-                <div className="py-8 text-center text-xs text-muted-foreground border border-dashed border-border/70 rounded-xl bg-muted/10">
-                  Tidak ada paket pada kategori ini.
-                </div>
-              ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3.5 pt-1">
-                  {displayedPlans.map((plan) => {
-                    const planSlug = plan.plan_slug || plan.id
-                    const isSelected = newWorkspace.plan === planSlug
-                    const price = Number(plan.priceAmount) || 0
-                    const displayPrice = plan.yearlyPrice !== undefined && plan.yearlyPrice > 0 
-                      ? Number(plan.yearlyPrice) 
-                      : price * 10
-
-                    return (
-                      <div 
-                        key={plan.id}
-                        onClick={() => setNewWorkspace(prev => ({ ...prev, plan: planSlug }))}
-                        className={cn(
-                          "cursor-pointer p-4 rounded-2xl border transition-all duration-200 flex flex-col justify-between relative bg-card hover:shadow-xs",
-                          isSelected 
-                            ? "border-primary bg-primary/[0.04] ring-2 ring-primary shadow-sm" 
-                            : "border-border/80 hover:border-primary/50 hover:bg-muted/20"
-                        )}
-                      >
-                        {/* Selected Checkmark */}
-                        {isSelected && (
-                          <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
-                            <Check className="h-3 w-3" />
-                          </div>
-                        )}
-
-                        <div>
-                          <div className="pr-6">
-                            <h4 className="font-bold text-xs text-foreground uppercase tracking-tight">{plan.name}</h4>
-                            {plan.desc && (
-                              <p className="text-[11px] text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
-                                {plan.desc}
-                              </p>
-                            )}
-                          </div>
-
-                          {/* Price */}
-                          <div className="my-3 py-1.5 border-y border-border/50">
-                            <div className="flex items-baseline gap-1">
-                              <span className="text-base font-black text-foreground">
-                                {displayPrice === 0 ? "Gratis" : `Rp ${displayPrice.toLocaleString('id-ID')}`}
-                              </span>
-                              {displayPrice > 0 && (
-                                <span className="text-[10px] text-muted-foreground font-semibold">
-                                  /thn
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Dynamic Limits Checklist */}
-                          <div className="space-y-1.5 text-[11px]">
-                            {plan.max_content_types !== undefined && (
-                              <div className="flex items-center gap-1.5 text-foreground/90 font-medium">
-                                <Layers className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{plan.max_content_types < 9999 ? `${plan.max_content_types} Tipe Konten` : "Skema Unlimited"}</span>
-                              </div>
-                            )}
-
-                            {plan.max_content_entries !== undefined && (
-                              <div className="flex items-center gap-1.5 text-foreground/90 font-medium">
-                                <Database className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{plan.max_content_entries.toLocaleString('id-ID')} Entri Konten</span>
-                              </div>
-                            )}
-
-                            {plan.max_storage !== undefined && (
-                              <div className="flex items-center gap-1.5 text-foreground/90 font-medium">
-                                <HardDrive className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{plan.max_storage >= 1024 ? `${plan.max_storage / 1024} GB` : `${plan.max_storage} MB`} Media</span>
-                              </div>
-                            )}
-
-                            {plan.max_team_members !== undefined && (
-                              <div className="flex items-center gap-1.5 text-foreground/90 font-medium">
-                                <Users className="h-3.5 w-3.5 text-primary shrink-0" />
-                                <span>{plan.max_team_members > 50 ? "Tim Unlimited" : `${plan.max_team_members} Anggota`}</span>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-
-                        {/* Features List */}
-                        {plan.features && plan.features.length > 0 && (
-                          <div className="mt-3 pt-2 border-t border-border/40 flex flex-wrap gap-1">
-                            {plan.features.slice(0, 3).map((feat, idx) => (
-                              <span key={idx} className="text-[9px] px-1.5 py-0.5 rounded-md bg-muted/60 text-muted-foreground font-medium border border-border/50 truncate max-w-full">
-                                {feat}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              )}
-            </div>
-
-            {/* Bagian 3: Add-on Ekstra (Opsional) */}
-            {addonPlans.length > 0 && (
-              <div className="space-y-3 rounded-2xl border border-border/70 bg-background/50 p-4 sm:p-5">
-                <div className="flex items-center gap-2 pb-1 border-b border-border/50">
-                  <div className="w-6 h-6 rounded-lg bg-primary/10 flex items-center justify-center text-primary text-xs font-bold">3</div>
-                  <div>
-                    <h3 className="text-xs font-bold text-foreground">Add-on & Fitur Ekstra (Opsional)</h3>
-                    <p className="text-[11px] text-muted-foreground">Tingkatkan performa workspace dengan fitur tambahan (tahunan).</p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 pt-1">
-                  {addonPlans.map(addon => {
-                    const isChecked = newWorkspace.selectedAddons.includes(addon.id)
-                    const price = Number(addon.priceAmount) || 0
-                    const displayPrice = price * 12
-
-                    return (
-                      <div
-                        key={addon.id}
-                        onClick={() => toggleAddon(addon.id)}
-                        className={cn(
-                          "cursor-pointer p-3 rounded-xl border transition-all flex items-start justify-between gap-2 bg-card",
-                          isChecked 
-                            ? "border-primary bg-primary/5 ring-1.5 ring-primary" 
-                            : "border-border/80 hover:border-primary/50"
-                        )}
-                      >
-                        <div className="min-w-0">
-                          <div className="flex items-center gap-1.5">
-                            <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                            <h5 className="font-bold text-xs text-foreground truncate">{addon.name}</h5>
-                          </div>
-                          {addon.desc && (
-                            <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{addon.desc}</p>
-                          )}
-                          <p className="text-[11px] font-bold text-primary mt-1">
-                            {displayPrice === 0 ? "Gratis" : `+Rp ${displayPrice.toLocaleString('id-ID')}/thn`}
-                          </p>
-                        </div>
-                        <div className={cn(
-                          "w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5",
-                          isChecked ? "bg-primary border-primary text-primary-foreground" : "border-border"
+                    <button
+                      type="button"
+                      onClick={() => setCreationMode("vps")}
+                      className={cn(
+                        "rounded-lg px-3 py-1.5 font-bold text-xs transition-all flex items-center gap-1.5 cursor-pointer",
+                        creationMode === "vps"
+                          ? "bg-primary text-primary-foreground shadow-xs"
+                          : "text-muted-foreground hover:text-foreground"
+                      )}
+                    >
+                      <Server className="h-3.5 w-3.5" />
+                      <span>Gunakan VPS Saya</span>
+                      {readyVpsList.length > 0 && (
+                        <span className={cn(
+                          "text-[9px] px-1.5 py-0.5 rounded-full font-black leading-none",
+                          creationMode === "vps" ? "bg-primary-foreground/20 text-primary-foreground" : "bg-emerald-500/20 text-emerald-600 dark:text-emerald-400"
                         )}>
-                          {isChecked && <Check className="h-2.5 w-2.5" />}
-                        </div>
-                      </div>
-                    )
-                  })}
+                          {readyVpsList.length} Siap
+                        </span>
+                      )}
+                    </button>
+                  </div>
                 </div>
-              </div>
+
+                {/* MODE A: 3 CLOUD PLANS (STANDAR, PRO, BUSINESS) */}
+                {creationMode === "cloud" && (
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-1">
+                    {standardPlans.map((plan) => {
+                      const planSlug = plan.plan_slug || plan.id
+                      const isSelected = newWorkspace.plan === planSlug
+                      const price = Number(plan.priceAmount) || 0
+                      const displayPrice = plan.yearlyPrice !== undefined && plan.yearlyPrice > 0
+                        ? Number(plan.yearlyPrice)
+                        : price * 10
+                      const accent = getTierAccent(planSlug)
+                      const AccentIcon = accent.icon
+                      const limitRows = planLimitRows(plan)
+                      const extraFeatures = (plan.features || []).slice(0, 4)
+
+                      return (
+                        <Card
+                          key={plan.id}
+                          onClick={() => setNewWorkspace(prev => ({ ...prev, plan: planSlug }))}
+                          className={cn(
+                            "cursor-pointer rounded-2xl border py-0 overflow-hidden transition-all duration-200 flex flex-col bg-card hover:shadow-sm relative",
+                            isSelected
+                              ? "border-primary ring-2 ring-primary shadow-sm"
+                              : "border-border/80 hover:border-primary/50"
+                          )}
+                        >
+                          {accent.ribbon && (
+                            <div className="bg-primary text-primary-foreground text-[10px] font-black uppercase py-1 text-center tracking-wider">
+                              {accent.ribbon}
+                            </div>
+                          )}
+
+                          <CardHeader className="p-4 pb-0 gap-0">
+                            <div className="flex items-start justify-between gap-2">
+                              <div className="min-w-0">
+                                <h4 className="font-black text-sm text-foreground tracking-tight">{plan.name}</h4>
+                                {plan.desc && (
+                                  <p className="text-xs text-muted-foreground line-clamp-2 mt-0.5 leading-snug">
+                                    {plan.desc}
+                                  </p>
+                                )}
+                              </div>
+                              <div className={cn(
+                                "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
+                                isSelected ? "bg-primary/10 border-primary/20 text-primary" : "bg-muted/60 border-border/70 text-muted-foreground"
+                              )}>
+                                <AccentIcon className="h-4 w-4" />
+                              </div>
+                            </div>
+
+                            {isSelected && (
+                              <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-xs">
+                                <Check className="h-3 w-3" />
+                              </div>
+                            )}
+
+                            {/* Price */}
+                            <div className="mt-3 pt-3 border-t border-border/50">
+                              <div className="flex items-baseline gap-1">
+                                <span className="text-2xl font-black text-foreground">
+                                  {displayPrice === 0 ? "Gratis" : `Rp ${displayPrice.toLocaleString('id-ID')}`}
+                                </span>
+                                {displayPrice > 0 && (
+                                  <span className="text-xs text-muted-foreground font-semibold">/thn</span>
+                                )}
+                              </div>
+                            </div>
+                          </CardHeader>
+
+                          <CardContent className="p-4 pt-3 space-y-1.5 flex-1">
+                            {limitRows.map((row) => {
+                              const RowIcon = row.icon
+                              return (
+                                <div key={row.label} className="flex items-center gap-2 text-xs text-foreground/90 font-medium">
+                                  <RowIcon className="h-3.5 w-3.5 text-primary shrink-0" />
+                                  <span>{row.label}</span>
+                                </div>
+                              )
+                            })}
+
+                            {extraFeatures.length > 0 && (
+                              <div className="space-y-1.5 pt-2 mt-1 border-t border-border/40">
+                                {extraFeatures.map((feat, idx) => (
+                                  <div key={idx} className="flex items-start gap-2 text-xs text-muted-foreground">
+                                    <Check className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />
+                                    <span className="leading-snug">{feat}</span>
+                                  </div>
+                                ))}
+                                {(plan.features?.length || 0) > extraFeatures.length && (
+                                  <p className="text-[11px] text-muted-foreground/80 font-medium pl-5">
+                                    +{(plan.features!.length - extraFeatures.length)} fitur lainnya
+                                  </p>
+                                )}
+                              </div>
+                            )}
+                          </CardContent>
+                        </Card>
+                      )
+                    })}
+                  </div>
+                )}
+
+                {/* MODE B: GUNAKAN VPS SAYA YANG SUDAH DIBAYARKAN */}
+                {creationMode === "vps" && (
+                  <div className="pt-1">
+                    {readyVpsList.length === 0 ? (
+                      <Card className="rounded-2xl border-dashed border-border/80 bg-muted/20 shadow-none py-8">
+                        <CardContent className="px-6 text-center space-y-3">
+                          <div className="w-11 h-11 rounded-2xl bg-amber-500/10 text-amber-600 flex items-center justify-center mx-auto">
+                            <Server className="h-5 w-5" />
+                          </div>
+                          <div className="max-w-md mx-auto space-y-1">
+                            <h4 className="text-sm font-bold text-foreground">Tidak Ada Server VPS Siap Pakai</h4>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                              Anda belum memiliki server VPS yang berstatus <strong>&quot;Siap Digunakan&quot;</strong>.
+                              Silakan pesan server VPS di menu <strong>Cloud Server</strong>, dan tim IT Support kami akan segera menyiapkannya untuk Anda.
+                            </p>
+                          </div>
+                          <Button asChild size="sm" variant="outline" className="h-9 text-xs font-bold rounded-xl border-primary/30 text-primary hover:bg-primary/10">
+                            <Link href="/dashboard/services">
+                              <span>Buka Menu Cloud Server</span>
+                              <ArrowRight className="h-3.5 w-3.5 ml-1.5" />
+                            </Link>
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    ) : (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        {readyVpsList.map((vps) => {
+                          const isSelected = selectedVpsId === vps.id
+                          return (
+                            <Card
+                              key={vps.id}
+                              onClick={() => setSelectedVpsId(vps.id)}
+                              className={cn(
+                                "cursor-pointer rounded-2xl border py-0 transition-all duration-200 relative bg-card flex flex-col",
+                                isSelected
+                                  ? "border-emerald-500 ring-2 ring-emerald-500 shadow-sm"
+                                  : "border-border/80 hover:border-emerald-500/50"
+                              )}
+                            >
+                              {isSelected && (
+                                <div className="absolute top-3 right-3 w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
+                                  <Check className="h-3 w-3" />
+                                </div>
+                              )}
+
+                              <CardHeader className="p-4 pb-0 gap-0">
+                                <div className="flex items-start justify-between gap-2">
+                                  <div className="min-w-0">
+                                    <Badge variant="secondary" className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 mb-1.5">
+                                      PostgreSQL 17 Dedicated
+                                    </Badge>
+                                    <h4 className="font-black text-sm text-foreground tracking-tight truncate">{vps.serverName}</h4>
+                                    <p className="text-xs text-muted-foreground mt-0.5">{vps.planName}</p>
+                                  </div>
+                                  <div className={cn(
+                                    "w-9 h-9 rounded-xl flex items-center justify-center shrink-0 border",
+                                    isSelected ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600" : "bg-muted/60 border-border/70 text-muted-foreground"
+                                  )}>
+                                    <Server className="h-4 w-4" />
+                                  </div>
+                                </div>
+                              </CardHeader>
+
+                              <CardContent className="p-4 pt-3 space-y-2">
+                                <div className="pt-2 border-t border-border/50 text-xs space-y-1.5">
+                                  <div className="flex justify-between text-muted-foreground">
+                                    <span>IP Server</span>
+                                    <span className="font-mono font-bold text-foreground">{vps.serverIp || "Dialokasikan"}</span>
+                                  </div>
+                                  <div className="flex justify-between text-muted-foreground">
+                                    <span>Database</span>
+                                    <span className="text-emerald-600 dark:text-emerald-400 font-bold">Terhubung &amp; Terisolasi</span>
+                                  </div>
+                                </div>
+
+                                <div className="pt-2 mt-1 border-t border-border/40 flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400 font-bold">
+                                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />
+                                  <span>Siap digunakan untuk workspace baru</span>
+                                </div>
+                              </CardContent>
+                            </Card>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            {/* Bagian 3: Add-on Ekstra (Hanya jika Mode Cloud) */}
+            {creationMode === "cloud" && addonPlans.length > 0 && (
+              <Card className="rounded-2xl border-border/70 shadow-xs py-5 gap-4">
+                <CardContent className="px-5 space-y-4">
+                  <SectionHeader
+                    step={3}
+                    title="Add-on & Fitur Ekstra (Opsional)"
+                    description="Tingkatkan performa workspace dengan fitur tambahan (tahunan)."
+                  />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {addonPlans.map(addon => {
+                      const isChecked = newWorkspace.selectedAddons.includes(addon.id)
+                      const price = Number(addon.priceAmount) || 0
+                      const displayPrice = price * 12
+
+                      return (
+                        <div
+                          key={addon.id}
+                          onClick={() => toggleAddon(addon.id)}
+                          className={cn(
+                            "cursor-pointer p-3.5 rounded-xl border transition-all flex items-start gap-2.5 bg-card",
+                            isChecked
+                              ? "border-primary bg-primary/5 ring-1 ring-primary"
+                              : "border-border/80 hover:border-primary/50"
+                          )}
+                        >
+                          <div className="w-9 h-9 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                            <Sparkles className="h-4 w-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <h5 className="font-bold text-xs text-foreground truncate">{addon.name}</h5>
+                            {addon.desc && (
+                              <p className="text-[11px] text-muted-foreground line-clamp-1 mt-0.5">{addon.desc}</p>
+                            )}
+                            <p className="text-xs font-bold text-primary mt-1">
+                              {displayPrice === 0 ? "Gratis" : `+Rp ${displayPrice.toLocaleString('id-ID')}/thn`}
+                            </p>
+                          </div>
+                          <div className={cn(
+                            "w-4 h-4 rounded-md border flex items-center justify-center shrink-0 mt-0.5",
+                            isChecked ? "bg-primary border-primary text-primary-foreground" : "border-border"
+                          )}>
+                            {isChecked && <Check className="h-2.5 w-2.5" />}
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
             )}
           </div>
-          
+
           {/* Total & Summary Sticky Bottom Bar */}
           <div className="p-4 sm:px-6 bg-muted/30 border-t border-border/80 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shrink-0">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0 font-bold text-xs">
-                <Zap className="h-4 w-4" />
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="w-10 h-10 rounded-2xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+                {creationMode === "vps" ? <Server className="h-5 w-5 text-emerald-600" /> : <Zap className="h-5 w-5" />}
               </div>
-              <div>
-                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider">Total Estimasi Tagihan</p>
-                <div className="flex items-baseline gap-2">
-                  <h3 className="text-base sm:text-lg font-black text-foreground">
-                    {calculateTotalPrice() === 0 ? "Rp 0 (Gratis Selamanya)" : `Rp ${calculateTotalPrice().toLocaleString('id-ID')}`}
+              <div className="min-w-0">
+                <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                  {creationMode === "vps" ? "Status Infrastruktur Dedicated" : "Total Estimasi Tagihan"}
+                </p>
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <h3 className="text-lg font-black text-foreground truncate">
+                    {creationMode === "vps" ? (
+                      selectedVpsObj ? (
+                        <span className="text-emerald-600 dark:text-emerald-400">Server VPS &quot;{selectedVpsObj.serverName}&quot;</span>
+                      ) : (
+                        "Pilih Server VPS Anda"
+                      )
+                    ) : (
+                      calculateTotalPrice() === 0 ? "Rp 0 (Gratis Selamanya)" : `Rp ${calculateTotalPrice().toLocaleString('id-ID')}`
+                    )}
                   </h3>
-                  {selectedPlanObj && (
-                    <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-md border-border/80">
+                  {creationMode === "cloud" && selectedPlanObj && (
+                    <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-md border-border/80 shrink-0">
                       Paket {selectedPlanObj.name} &bull; Tahunan
                     </Badge>
                   )}
@@ -572,21 +741,26 @@ export function WorkspaceCreationDialog({
             </div>
 
             {/* Actions */}
-            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-              <Button 
-                type="button" 
-                variant="outline" 
-                size="sm" 
-                onClick={() => onOpenChange(false)} 
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end shrink-0">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => onOpenChange(false)}
                 className="text-xs font-bold h-9 rounded-xl border-border/80"
               >
                 Batal
               </Button>
-              <Button 
-                type="submit" 
-                disabled={isSubmitting || !newWorkspace.name.trim()}
+              <Button
+                type="submit"
+                disabled={isSubmitting || !newWorkspace.name.trim() || (creationMode === "vps" && !selectedVpsId)}
                 size="sm"
-                className="text-xs font-bold gap-1.5 h-9 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer px-4"
+                className={cn(
+                  "text-xs font-bold gap-1.5 h-9 rounded-xl shadow-xs cursor-pointer px-4",
+                  creationMode === "vps"
+                    ? "bg-emerald-600 hover:bg-emerald-500 text-white"
+                    : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                )}
               >
                 {isSubmitting ? (
                   <>
@@ -596,7 +770,7 @@ export function WorkspaceCreationDialog({
                 ) : (
                   <>
                     <Plus className="h-3.5 w-3.5" />
-                    Buat & Buka Workspace
+                    {creationMode === "vps" ? "Buat & Hubungkan ke VPS" : "Buat & Buka Workspace"}
                   </>
                 )}
               </Button>

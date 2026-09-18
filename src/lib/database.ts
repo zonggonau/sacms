@@ -35,6 +35,7 @@ export type {
   Component,
   Media,
   ContentStatus,
+  UserVpsService,
 } from '../../prisma/generated-client'
 
 interface TenantClientEntry {
@@ -52,18 +53,19 @@ const globalForPrisma = globalThis as unknown as {
 if (globalForPrisma.prisma) {
   try {
     if (
-      !(globalThis as any).__prisma_reset_v11 ||
+      !(globalThis as any).__prisma_reset_v12 ||
       !(globalForPrisma.prisma as any).site ||
       !(globalForPrisma.prisma as any).siteFile ||
       !(globalForPrisma.prisma as any).permission ||
-      !(globalForPrisma.prisma as any).rolePermission
+      !(globalForPrisma.prisma as any).rolePermission ||
+      !(globalForPrisma.prisma as any).userVpsService
     ) {
-      console.log('[Prisma] Forcing client refresh for query engine recovery & RBAC...')
+      console.log('[Prisma] Forcing client refresh for query engine recovery & userVpsService...')
       globalForPrisma.prisma = undefined
       if (globalForPrisma.tenantClients) {
         globalForPrisma.tenantClients.clear()
       }
-      ;(globalThis as any).__prisma_reset_v11 = true
+      ;(globalThis as any).__prisma_reset_v12 = true
     }
   } catch (e) {
     globalForPrisma.prisma = undefined

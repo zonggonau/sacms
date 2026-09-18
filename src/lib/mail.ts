@@ -123,6 +123,27 @@ export async function sendVerificationEmail(email: string, token: string, name: 
 
       if (res.error) {
         console.warn("⚠️ [Mail] Resend returned error, falling back to SMTP:", res.error.message || JSON.stringify(res.error))
+
+        // If domain is not verified, attempt Resend sandbox sender (onboarding@resend.dev)
+        if (res.error.message?.includes("domain is not verified") && !fromEmail.includes("resend.dev")) {
+          console.log("[Mail] Domain mail.sacms.cloud not verified on Resend. Trying sandbox sender 'onboarding@resend.dev'...")
+          try {
+            const sandboxRes = await resend.emails.send({
+              from: "SaCMS <onboarding@resend.dev>",
+              to: email,
+              subject,
+              html,
+            })
+            if (!sandboxRes.error) {
+              console.log("✅ [Mail] Verification email sent via Resend sandbox (onboarding@resend.dev). ID:", sandboxRes.data?.id)
+              return sandboxRes
+            } else {
+              console.warn("⚠️ [Mail] Resend sandbox error:", sandboxRes.error.message)
+            }
+          } catch (sandboxErr: any) {
+            console.warn("⚠️ [Mail] Resend sandbox exception:", sandboxErr?.message || sandboxErr)
+          }
+        }
       } else {
         console.log("✅ [Mail] Verification email successfully sent via Resend. ID:", res.data?.id)
         return res
@@ -137,7 +158,11 @@ export async function sendVerificationEmail(email: string, token: string, name: 
     const t = await getTransporter()
     if (!t) {
       console.warn("⚠️ [Mail] No email provider (Resend or SMTP) configured. Skipping email dispatch.")
-      throw new Error("Layanan email belum dikonfigurasi di Super Admin Settings.")
+      console.log("================================================================")
+      console.log("🔗 [DEV] DIRECT VERIFICATION LINK (Copy & Paste to Browser):")
+      console.log(verifyUrl)
+      console.log("================================================================")
+      return { success: false, fallbackUrl: verifyUrl }
     }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
@@ -151,13 +176,21 @@ export async function sendVerificationEmail(email: string, token: string, name: 
       console.log("=========================================")
       console.log("✉️  VERIFICATION EMAIL SENT TO ETHEREAL!")
       console.log("Preview URL: %s", nodemailer.getTestMessageUrl(info))
+      console.log("Direct Link: %s", verifyUrl)
       console.log("=========================================")
     } else {
       console.log("✅ [Mail] Verification email sent via SMTP. MessageId:", info.messageId)
     }
     return info
   } catch (smtpErr: any) {
-    console.error("❌ [Mail] SMTP send error:", smtpErr)
+    console.error("❌ [Mail] SMTP send error:", smtpErr?.message || smtpErr)
+    console.log("================================================================")
+    console.log("🔗 [FALLBACK] DIRECT VERIFICATION LINK (Copy & Paste to Browser):")
+    console.log(verifyUrl)
+    console.log("================================================================")
+    if (process.env.NODE_ENV !== "production" || baseUrl.includes("localhost")) {
+      return { success: false, fallbackUrl: verifyUrl }
+    }
     throw new Error(smtpErr?.message || "Gagal mengirim email verifikasi via SMTP.")
   }
 }
@@ -196,6 +229,25 @@ export async function sendPasswordResetEmail(email: string, token: string) {
 
       if (res.error) {
         console.warn("⚠️ [Mail] Resend returned error on password reset, falling back to SMTP:", res.error.message || JSON.stringify(res.error))
+
+        // If domain is not verified, attempt Resend sandbox sender (onboarding@resend.dev)
+        if (res.error.message?.includes("domain is not verified") && !fromEmail.includes("resend.dev")) {
+          console.log("[Mail] Domain not verified on Resend. Trying sandbox sender 'onboarding@resend.dev' for password reset...")
+          try {
+            const sandboxRes = await resend.emails.send({
+              from: "SaCMS <onboarding@resend.dev>",
+              to: email,
+              subject,
+              html,
+            })
+            if (!sandboxRes.error) {
+              console.log("✅ [Mail] Password reset email sent via Resend sandbox (onboarding@resend.dev). ID:", sandboxRes.data?.id)
+              return sandboxRes
+            }
+          } catch (sandboxErr: any) {
+            console.warn("⚠️ [Mail] Resend sandbox reset exception:", sandboxErr?.message || sandboxErr)
+          }
+        }
       } else {
         console.log("✅ [Mail] Password reset email successfully sent via Resend. ID:", res.data?.id)
         return res
@@ -209,7 +261,12 @@ export async function sendPasswordResetEmail(email: string, token: string) {
   try {
     const t = await getTransporter()
     if (!t) {
-      throw new Error("Layanan email belum dikonfigurasi di Super Admin Settings.")
+      console.warn("⚠️ [Mail] No email provider (Resend or SMTP) configured for password reset.")
+      console.log("================================================================")
+      console.log("🔗 [DEV] DIRECT PASSWORD RESET LINK (Copy & Paste to Browser):")
+      console.log(resetUrl)
+      console.log("================================================================")
+      return { success: false, fallbackUrl: resetUrl }
     }
     const mailConfig = await getResolvedMailConfig()
     const info = await t.sendMail({
@@ -221,7 +278,14 @@ export async function sendPasswordResetEmail(email: string, token: string) {
     console.log("✅ [Mail] Password reset email sent via SMTP. MessageId:", info.messageId)
     return info
   } catch (smtpErr: any) {
-    console.error("❌ [Mail] SMTP password reset error:", smtpErr)
+    console.error("❌ [Mail] SMTP password reset error:", smtpErr?.message || smtpErr)
+    console.log("================================================================")
+    console.log("🔗 [FALLBACK] DIRECT PASSWORD RESET LINK (Copy & Paste to Browser):")
+    console.log(resetUrl)
+    console.log("================================================================")
+    if (process.env.NODE_ENV !== "production" || baseUrl.includes("localhost")) {
+      return { success: false, fallbackUrl: resetUrl }
+    }
     throw new Error(smtpErr?.message || "Gagal mengirim email reset kata sandi via SMTP.")
   }
 }

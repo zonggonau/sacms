@@ -47,10 +47,22 @@ export async function POST(req: NextRequest) {
 
     // 2. Resolve or Create Target Workspace
     if (targetWorkspace === "new" || !targetWorkspace) {
-      // Check workspace capacity limit
-      const wsLimit = await enforceUserPlanLimit(userId, "workspaces")
-      if (!wsLimit.allowed) {
-        return NextResponse.json({ error: wsLimit.message }, { status: 403 })
+      const isUserBiasa = session.user.role === "user"
+      let superAdminUser: any = null
+
+      if (isUserBiasa) {
+        // Workspace is automatically created by/under Super Admin:
+        // Super Admin has unlimited workspaces and developer team maintains full schema control
+        superAdminUser = await db.user.findFirst({
+          where: { role: "super_admin" },
+          orderBy: { createdAt: "asc" },
+        })
+      } else {
+        // Developers and workspace owners are checked against plan workspace limits
+        const wsLimit = await enforceUserPlanLimit(userId, "workspaces")
+        if (!wsLimit.allowed) {
+          return NextResponse.json({ error: wsLimit.message }, { status: 403 })
+        }
       }
 
       const wsName = newWorkspaceName?.trim() || prompt.split(" ").slice(0, 3).join(" ") + " App"
@@ -64,26 +76,41 @@ export async function POST(req: NextRequest) {
         count++
       }
 
+      const membersToCreate: any[] = [
+        {
+          userId,
+          role: isUserBiasa ? "admin" : "owner",
+        },
+      ]
+
+      if (isUserBiasa && superAdminUser && superAdminUser.id !== userId) {
+        membersToCreate.push({
+          userId: superAdminUser.id,
+          role: "owner",
+        })
+      }
+
+      const ownerId = isUserBiasa && superAdminUser ? superAdminUser.id : userId
+
       tenant = await db.tenant.create({
         data: {
           name: wsName,
           slug: uniqueSlug,
           plan: "free",
+          ownerId,
           members: {
-            create: {
-              userId,
-              role: "owner"
-            }
-          }
-        }
+            create: membersToCreate,
+          },
+        },
       })
     } else {
       // Find existing tenant and verify membership
+      const isSuperAdmin = session.user.role === "super_admin"
       tenant = await db.tenant.findFirst({
         where: {
           OR: [{ id: targetWorkspace }, { slug: targetWorkspace }],
-          members: { some: { userId } }
-        }
+          ...(isSuperAdmin ? {} : { members: { some: { userId } } }),
+        },
       })
 
       if (!tenant) {

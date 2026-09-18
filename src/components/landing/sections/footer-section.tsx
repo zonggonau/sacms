@@ -31,16 +31,16 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
                 Produk
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
-                <Link href="/#fitur" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/fitur" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Fitur
                 </Link>
-                <Link href="/#pricing" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/harga" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Harga
                 </Link>
-                <Link href="/#addons" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/harga#addons" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Ekstra & Booster
                 </Link>
-                <Link href="/#sektor" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/fitur#sektor" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Solusi Sektoral
                 </Link>
               </div>
@@ -51,13 +51,13 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
                 Perusahaan
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
-                <Link href="/#about" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/tentang" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Tentang
                 </Link>
-                <Link href="/#testimonials" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/tentang#testimonials" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Testimoni
                 </Link>
-                <Link href="/#faq" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/harga#faq" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Pertanyaan Umum
                 </Link>
               </div>
@@ -68,8 +68,11 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
                 Sumber Daya
               </p>
               <div className="space-y-3 text-xs sm:text-sm">
+                <Link href="/blog" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                  Blog & Artikel
+                </Link>
                 <Link href="/docs" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
-                  Docs
+                  Dokumentasi API
                 </Link>
                 <Link href="/login" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Masuk

@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
-import { Loader2, Crown, Eye, EyeOff, CheckCircle2, Mail, RefreshCw } from "lucide-react"
+import { Loader2, Crown, Eye, EyeOff, CheckCircle2, Mail, RefreshCw, Code2, Sparkles } from "lucide-react"
 import { Logo } from "@/components/ui/logo"
 import { useToast } from "@/hooks/use-toast"
 import { registerUser, resendVerificationAction } from "@/actions/auth"
@@ -37,6 +37,7 @@ export default function RegisterPage() {
     password: "",
     confirmPassword: "",
     agreeTerms: false,
+    isDeveloper: false,
   })
 
   const getPasswordStrength = (p: string) => {
@@ -58,10 +59,12 @@ export default function RegisterPage() {
       const user = session.user as any
       if (redirectTo) {
         router.push(redirectTo)
+      } else if (user?.role === "user") {
+        router.push("/aibuilder")
       } else {
         const userTenants = user?.tenants || []
         const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
-        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || user?.role === "developer" || hasAdminTenant
         
         if (isSuperAdminOwnerOrAdmin) {
           router.push("/dashboard")
@@ -141,6 +144,7 @@ export default function RegisterPage() {
         email: formData.email,
         password: formData.password,
         plan: plan,
+        isDeveloper: formData.isDeveloper,
       })
 
       if (response.error) {
@@ -152,7 +156,8 @@ export default function RegisterPage() {
           title: "Pendaftaran Berhasil",
           description: response.message || "Akun Anda berhasil dibuat. Silakan masuk.",
         })
-        const loginUrl = `/login?email=${encodeURIComponent(formData.email)}${redirectTo ? '&redirect_to=' + encodeURIComponent(redirectTo) : '&redirect_to=/dashboard'}`
+        const defaultTarget = formData.isDeveloper ? '/dashboard' : '/aibuilder'
+        const loginUrl = `/login?email=${encodeURIComponent(formData.email)}${redirectTo ? '&redirect_to=' + encodeURIComponent(redirectTo) : '&redirect_to=' + encodeURIComponent(defaultTarget)}`
         router.push(loginUrl)
       } else {
         setIsSuccess(true)
@@ -340,6 +345,29 @@ export default function RegisterPage() {
                   >
                     {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </button>
+                </div>
+              </div>
+
+              {/* Developer Mode Checkbox */}
+              <div className="p-3.5 rounded-2xl bg-card/60 border border-border/70 hover:border-primary/40 transition-colors mt-2">
+                <div className="flex items-start space-x-3">
+                  <Checkbox 
+                    id="isDeveloper" 
+                    checked={formData.isDeveloper} 
+                    onCheckedChange={(checked) => setFormData({ ...formData, isDeveloper: Boolean(checked) })} 
+                    className="mt-0.5 border-border/70 rounded-md data-[state=checked]:bg-primary data-[state=checked]:border-primary w-4 h-4" 
+                  />
+                  <div className="space-y-1 select-none">
+                    <Label htmlFor="isDeveloper" className="text-xs font-bold text-foreground cursor-pointer flex items-center gap-1.5">
+                      <Code2 className="w-3.5 h-3.5 text-primary" />
+                      <span>Daftar sebagai Developer</span>
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      {formData.isDeveloper
+                        ? "Akun Developer: Akses penuh Dashboard Headless CMS, API Keys, Webhooks, Schema Builder & GraphQL."
+                        : "Akun Biasa (AI Creator): Akses instan AI Website Builder untuk generate website otomatis via AI prompt."}
+                    </p>
+                  </div>
                 </div>
               </div>
 

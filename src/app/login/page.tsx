@@ -32,7 +32,7 @@ export default function LoginPage() {
   const [brand, setBrand] = useState<TenantBrand | null>(null)
 
   const initialEmail = searchParams.get("email") || ""
-  const redirectTo = searchParams.get("redirect_to") || ""
+  const redirectTo = searchParams.get("redirect_to") || searchParams.get("callbackUrl") || ""
   const workspaceSlug = searchParams.get("ws") || ""
 
   // Load tenant white-label branding when the login link carries ?ws=<slug>
@@ -82,10 +82,12 @@ export default function LoginPage() {
       const user = session.user as any
       if (redirectTo) {
         router.push(redirectTo)
+      } else if (user?.role === "user") {
+        router.push("/aibuilder")
       } else {
         const userTenants = user?.tenants || []
         const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
-        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || user?.role === "developer" || hasAdminTenant
         
         if (isSuperAdminOwnerOrAdmin) {
           router.push("/dashboard")
@@ -204,10 +206,12 @@ export default function LoginPage() {
 
       if (redirectTo) {
         destination = redirectTo
+      } else if (user?.role === "user") {
+        destination = "/aibuilder"
       } else {
         const userTenants = user?.tenants || []
         const hasAdminTenant = userTenants.some((t: any) => t.role === "admin" || t.role === "owner")
-        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || hasAdminTenant
+        const isSuperAdminOwnerOrAdmin = user?.role === "super_admin" || user?.role === "owner" || user?.role === "admin" || user?.role === "developer" || hasAdminTenant
         
         if (isSuperAdminOwnerOrAdmin) {
           destination = "/dashboard"

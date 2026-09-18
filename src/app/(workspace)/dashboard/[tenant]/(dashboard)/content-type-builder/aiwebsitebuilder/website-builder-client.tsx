@@ -26,6 +26,8 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import type { DomainBlueprint } from "@/lib/ai/domain-knowledge-types"
 import { SandpackPreview } from "@/components/ai-builder/sandpack-preview"
+import { useChat } from "@ai-sdk/react"
+import { V0Transport, type V0UIMessage } from "@v0-sdk/react"
 
 interface WebsiteBuilderClientProps {
   tenantId: string
@@ -280,16 +282,131 @@ export async function fetchContent(collection: string) {
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
 
-  // Chat message stream
-  const [messages, setMessages] = useState<Array<{ role: 'user' | 'ai', content: string; files?: any[] }>>([
-    { 
-      role: 'ai', 
-      content: initialProject?.v0ChatId 
-        ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!" 
+  // Chat message stream — Claude builds only. v0 builds use `chat.messages`
+  // from the real v0 SDK's useChat below instead (see `displayMessages`).
+  const [legacyMessages, setLegacyMessages] = useState<Array<{ role: 'user' | 'ai', content: string; files?: any[] }>>([
+    {
+      role: 'ai',
+      content: initialProject?.v0ChatId
+        ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
         : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."
     }
   ])
   const [iterationPrompt, setIterationPrompt] = useState("")
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // v0 SDK — real streaming chat (@v0-sdk/react + @ai-sdk/react), the same
+  // mechanism v0.app itself uses. Claude-model builds stay on the REST
+  // `legacyMessages`/`handleGenerateWebsite` path above — there is no v0 SDK
+  // equivalent for Claude, so this transport/hook pair only drives v0 models.
+  // ────────────────────────────────────────────────────────────────────────────
+  const isClaudeSelected = selectedModel.startsWith("claude-")
+
+  const v0Transport = useMemo(
+    () =>
+      new V0Transport({
+        chatId: !isClaudeBuild && v0ChatId ? v0ChatId : undefined,
+        urls: {
+          create: `/api/tenant/${tenantSlug}/ai-builder/v0/chats/stream`,
+          send: (id) => `/api/tenant/${tenantSlug}/ai-builder/v0/chats/${id}/messages/stream`,
+          resume: (id) => `/api/tenant/${tenantSlug}/ai-builder/v0/chats/${id}/resume`,
+        },
+        onChatCreated: (chatId) => {
+          setV0ChatId(chatId)
+          setProjectStatus("draft")
+          fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/register`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ chatId }),
+          }).catch(() => {})
+        },
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }),
+    [tenantSlug],
+  )
+
+  const finalizeV0Build = async (chatId: string, prompt: string) => {
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/finalize`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      })
+      const data = await res.json().catch(() => null)
+      if (!res.ok || !data) throw new Error(data?.error || "Gagal menyelesaikan build")
+
+      if (data.previewUrl) setPreviewUrl(data.previewUrl)
+      if (Array.isArray(data.files) && data.files.length > 0) setGeneratedFiles(data.files)
+
+      setVersionHistory((prev) => {
+        const nextVerNum = prev.length + 1
+        setActiveVersionNumber(nextVerNum)
+        return [...prev, { version: nextVerNum, prompt, timestamp: new Date().toLocaleTimeString(), previewUrl: data.previewUrl || previewUrl }]
+      })
+      setConsoleLogs((prev) => [
+        ...prev,
+        { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` },
+      ])
+      toast({ title: "Website Berhasil Dibangun!", description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Menyelesaikan Build", description: err.message })
+    } finally {
+      setLoading(false)
+      setLoadingStep("")
+      refreshCredits()
+      router.refresh()
+    }
+  }
+
+  const v0Chat = useChat<V0UIMessage>({
+    transport: v0Transport,
+    onFinish: ({ message, messages, isAbort, isError }) => {
+      const chatId = v0Transport.chatId
+      if (!chatId || isAbort || isError) {
+        setLoading(false)
+        setLoadingStep("")
+        return
+      }
+      const lastUser = [...messages].reverse().find((m) => m.role === "user" && m.id !== message.id)
+      const promptText = lastUser?.parts.filter((p) => p.type === "text").map((p: any) => p.text).join("") || mainPrompt
+      finalizeV0Build(chatId, promptText)
+    },
+    onError: (error) => {
+      setLoading(false)
+      setLoadingStep("")
+      toast({ variant: "destructive", title: "Gagal Membangun Website", description: error.message || "AI Engine gagal merespons." })
+    },
+  })
+
+  // Loading indicator for the v0 path — mirrors the old handler's setLoading(true)/false.
+  useEffect(() => {
+    if (isClaudeSelected) return
+    if (v0Chat.status === "submitted" || v0Chat.status === "streaming") {
+      setLoading(true)
+      setLoadingStep(
+        v0ChatId ? "Menerapkan perubahan desain pada antarmuka Next.js..." : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP...",
+      )
+    }
+  }, [v0Chat.status, isClaudeSelected, v0ChatId])
+
+  const handleSendV0 = (text: string) => {
+    v0Chat.sendMessage(
+      { text },
+      { body: { modelConfiguration: { modelId: selectedModel, imageGenerations: false } } },
+    )
+  }
+
+  // Unified view of the conversation for rendering — Claude's plain
+  // {role, content} log, or the real v0 SDK message parts flattened to text.
+  const displayMessages: Array<{ role: "user" | "ai"; content: string }> = isClaudeSelected
+    ? legacyMessages
+    : v0Chat.messages.map((m) => ({
+        role: m.role === "user" ? "user" : "ai",
+        content: m.parts
+          .filter((p) => p.type === "text" || p.type === "reasoning")
+          .map((p: any) => p.text || "")
+          .join(""),
+      }))
 
   // Deploy to Vercel state
   const [isDeploying, setIsDeploying] = useState(false)
@@ -331,6 +448,18 @@ export async function fetchContent(collection: string) {
   useEffect(() => {
     fetchHostingStatus()
   }, [tenantSlug])
+
+  useEffect(() => {
+    if (!mainPrompt && typeof window !== "undefined") {
+      try {
+        const pending = sessionStorage.getItem("sacms_pending_prompt")
+        if (pending) {
+          setMainPrompt(pending)
+          sessionStorage.removeItem("sacms_pending_prompt")
+        }
+      } catch {}
+    }
+  }, [mainPrompt])
 
   // Custom Domain state
   const [customDomainInput, setCustomDomainInput] = useState("")
@@ -385,6 +514,14 @@ export async function fetchContent(collection: string) {
         description: `Dibutuhkan ${requiredCredits} Credits untuk model ${currentModelConfig.name}. Silakan top up di halaman Billing.`,
       })
       router.push(`/dashboard/${tenantSlug}/subscriptions`)
+      return
+    }
+
+    // v0 models stream through the real v0 SDK (useChat + V0Transport) —
+    // see handleSendV0 above. Only Claude builds still use this REST path,
+    // since there's no v0-style streaming SDK for Claude to migrate to.
+    if (!isClaudeSelected) {
+      handleSendV0(prompt)
       return
     }
 
@@ -461,7 +598,7 @@ export async function fetchContent(collection: string) {
           : { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` }
       ])
 
-      setMessages([
+      setLegacyMessages([
         { role: 'user', content: prompt },
         usedLocalFallback
           ? {
@@ -549,7 +686,13 @@ export async function fetchContent(collection: string) {
     }
 
     setIterationPrompt("")
-    setMessages(prev => [...prev, { role: 'user', content: msg }])
+
+    if (!isClaudeSelected) {
+      handleSendV0(msg)
+      return
+    }
+
+    setLegacyMessages(prev => [...prev, { role: 'user', content: msg }])
     setLoading(true)
     setLoadingStep("Menerapkan perubahan desain pada antarmuka Next.js...")
 
@@ -567,7 +710,7 @@ export async function fetchContent(collection: string) {
       }
 
       if (res.ok && data) {
-        setMessages(prev => [...prev, { role: 'ai', content: `✨ Desain website telah diperbarui untuk: "${msg}". Preview dan file kode telah disinkronkan.` }])
+        setLegacyMessages(prev => [...prev, { role: 'ai', content: `✨ Desain website telah diperbarui untuk: "${msg}". Preview dan file kode telah disinkronkan.` }])
         if (data.previewUrl) setPreviewUrl(data.previewUrl)
         if (data.files && Array.isArray(data.files) && data.files.length > 0) {
           setGeneratedFiles(data.files)
@@ -595,7 +738,7 @@ export async function fetchContent(collection: string) {
         throw new Error(data?.error || "Gagal menerapkan iterasi")
       }
     } catch (err: any) {
-      setMessages(prev => [...prev, { role: 'ai', content: `Gagal menerapkan perubahan: ${err.message}` }])
+      setLegacyMessages(prev => [...prev, { role: 'ai', content: `Gagal menerapkan perubahan: ${err.message}` }])
     } finally {
       setLoading(false)
       setLoadingStep("")
@@ -814,7 +957,7 @@ export async function fetchContent(collection: string) {
       if (res.ok) {
         setV0ChatId(null)
         setPreviewUrl("")
-        setMessages([])
+        setLegacyMessages([])
         setMainPrompt("")
         setProjectStatus("draft")
         setIsDeleteDialogOpen(false)
@@ -1184,7 +1327,14 @@ export async function fetchContent(collection: string) {
               {/* Commentary Log — plain left-aligned paragraphs, not chat bubbles */}
               <ScrollArea className="flex-1">
                 <div className="px-3.5 py-3 space-y-3.5">
-                  {messages.map((msg, i) => (
+                  {!isClaudeSelected && displayMessages.length === 0 && (
+                    <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                      {v0ChatId
+                        ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
+                        : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."}
+                    </p>
+                  )}
+                  {displayMessages.map((msg, i) => (
                     <div key={i} className="space-y-1">
                       {msg.role === 'user' ? (
                         <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wide">Anda</div>

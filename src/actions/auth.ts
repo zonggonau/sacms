@@ -110,13 +110,15 @@ export async function registerUser(formData: any) {
 
     // Create user:
     // - If no Super Admin exists: this user is Super Admin (auto-verified).
-    // - If Super Admin exists: all subsequent users are 'owner' with their unique ownerSlug.
+    // - If Super Admin exists: assign 'developer' if requested, otherwise 'user' (AI Website Creator).
+    const userRole = isFirstUser ? "super_admin" : formData.isDeveloper ? "developer" : "user"
+
     const user = await db.user.create({
       data: {
         name,
         email: email.toLowerCase(),
         password: hashedPassword,
-        role: isFirstUser ? "super_admin" : "owner",
+        role: userRole,
         ownerSlug: isFirstUser ? "admin" : ownerSlug,
         plan: isFirstUser ? "enterprise" : "free",
         emailVerified: isFirstUser ? new Date() : null,

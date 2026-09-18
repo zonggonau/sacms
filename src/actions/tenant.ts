@@ -18,6 +18,7 @@ const createTenantSchema = z.object({
   aiPrompt: z.string().max(2000).optional(),
   websiteType: z.string().optional(),
   addons: z.array(z.string()).optional(),
+  selectedVpsId: z.string().optional(),
 })
 
 async function generateUniqueSlug(): Promise<string> {
@@ -47,10 +48,26 @@ export async function createTenantAction(data: any) {
       return { error: "Invalid data provided." }
     }
 
-    const { name, description, plan = "free", aiPrompt, websiteType, addons = [] } = validation.data
+    const { name, description, plan = "free", aiPrompt, websiteType, addons = [], selectedVpsId } = validation.data
+
+    // Jika membuat dengan VPS yang sudah dibayar, verifikasi kepemilikan VPS
+    let vpsInstance: any = null
+    if (selectedVpsId) {
+      vpsInstance = await db.userVpsService.findFirst({
+        where: {
+          id: selectedVpsId,
+          userId: session.user.id,
+          status: "ready",
+        },
+      })
+      if (!vpsInstance) {
+        return { error: "Layanan VPS yang dipilih tidak ditemukan atau belum siap digunakan." }
+      }
+    }
 
     const userPlan = await getUserPlanConfig(session.user.id)
-    const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, plan)
+    const effectivePlan = vpsInstance ? vpsInstance.planSlug : plan
+    const planBinding = validateWorkspacePlanBinding(workspaceEnforcement.planSlug, effectivePlan)
     if (!planBinding.allowed) {
       return { error: planBinding.message }
     }
@@ -63,10 +80,21 @@ export async function createTenantAction(data: any) {
           name,
           slug,
           description,
-          plan,
+          plan: effectivePlan,
           status: "provisioning",
+          databaseUrl: vpsInstance?.databaseUrl || null,
         }
       })
+
+      if (vpsInstance) {
+        await tx.userVpsService.update({
+          where: { id: vpsInstance.id },
+          data: {
+            tenantId: newTenant.id,
+            status: "in_use",
+          },
+        })
+      }
 
       await tx.tenantMember.create({
         data: {

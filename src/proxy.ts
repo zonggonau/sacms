@@ -28,6 +28,8 @@ function isSkippablePath(pathname: string): boolean {
   )
 }
 
+let inMemoryFirstUserDone = false
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
@@ -80,9 +82,9 @@ export async function proxy(request: NextRequest) {
 
   // ==================== FIRST USER REDIRECT ====================
   // If no super-admin exists yet, send /login and / to /register.
-  // Once one exists it can never revert, so a permanent Redis flag lets us skip
+  // Once one exists it can never revert, so an in-memory and Redis flag lets us skip
   // the self-fetch on every landing-page hit thereafter.
-  if ((pathname === "/login" || pathname === "/")) {
+  if ((pathname === "/login" || pathname === "/") && !inMemoryFirstUserDone) {
     let firstUserResolved = false
     let isFirstUser = false
 
@@ -92,6 +94,7 @@ export async function proxy(request: NextRequest) {
         if (done) {
           firstUserResolved = true
           isFirstUser = false
+          inMemoryFirstUserDone = true
         }
       } catch {
         // fall through to the self-fetch
@@ -105,8 +108,11 @@ export async function proxy(request: NextRequest) {
         if (res.ok) {
           const data = await res.json()
           isFirstUser = !!data.isFirstUser
-          if (!isFirstUser && redis) {
-            redis.set("system:first-user-done", "1").catch(() => {})
+          if (!isFirstUser) {
+            inMemoryFirstUserDone = true
+            if (redis) {
+              redis.set("system:first-user-done", "1").catch(() => {})
+            }
           }
         }
       } catch {
