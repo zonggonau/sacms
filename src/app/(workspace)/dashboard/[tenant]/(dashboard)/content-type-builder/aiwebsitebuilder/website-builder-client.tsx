@@ -488,6 +488,33 @@ export async function fetchContent(collection: string) {
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isFullscreen])
 
+  // "Buka di tab baru" — leaves the SaCMS-proxied iframe entirely, so unlike
+  // the embedded preview it gets no benefit from routing through our own
+  // /ai-builder/preview/[chatId] proxy. That proxy path is also the *cached*
+  // `previewUrl` Setting for any project generated before a live v0 sandbox
+  // existed for it (or before this account had one refreshed) — resolving
+  // the real hosted URL fresh here means an old project doesn't stay stuck
+  // pointing at our own API route forever.
+  const handleOpenPreviewInNewTab = async () => {
+    if (!v0ChatId || isClaudeBuild) return
+    const newTab = window.open("", "_blank", "noopener,noreferrer")
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${v0ChatId}/preview-url`)
+      const data = await res.json().catch(() => null)
+      if (data?.url) {
+        if (newTab) newTab.location.href = data.url
+        else window.open(data.url, "_blank", "noopener,noreferrer")
+        return
+      }
+    } catch {
+      // fall through to the last-known preview URL below
+    }
+    if (newTab) {
+      if (previewUrl) newTab.location.href = previewUrl
+      else newTab.close()
+    }
+  }
+
   // Copy code helper
   const handleCopyCurrentCode = () => {
     const activeFile = generatedFiles[selectedFileIndex]
@@ -1525,10 +1552,14 @@ export async function fetchContent(collection: string) {
 
                     <div className="flex items-center gap-0.5 shrink-0">
                       {!isClaudeBuild && previewUrl && (
-                        <Button variant="ghost" size="icon" asChild className="h-7 w-7 rounded-full text-muted-foreground">
-                          <a href={previewUrl} target="_blank" rel="noopener noreferrer" title="Buka di tab baru">
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </a>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={handleOpenPreviewInNewTab}
+                          className="h-7 w-7 rounded-full text-muted-foreground"
+                          title="Buka di tab baru"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" />
                         </Button>
                       )}
                       <Button
