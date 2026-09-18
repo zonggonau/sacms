@@ -3,6 +3,7 @@ import { v0 } from "v0"
 import { db } from "@/lib/database"
 import { deployToVercel } from "@/lib/vercel-client"
 import { getV0Preview } from "@/lib/v0-client"
+import { resolveFrontendEnv, renderDotEnv, pushEnvToVercelProject } from "@/lib/infrastructure/frontend-env"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 import { chatBelongsToTenant } from "@/lib/ai/chat-access"
 
@@ -55,17 +56,41 @@ export const POST = withStaffAuth(
 
     const files = await getV0FilesWithRetry(chatId)
 
+    // Same env set `/v0/chats/stream` told v0 to put in ".env.local" and
+    // instructed the generated code to read via process.env — persisted
+    // there so it survives across the create → (background) finalize
+    // boundary. Older chats generated before this existed won't have it
+    // saved; resolve it fresh rather than leaving the deploy unconfigured.
+    let envVars: Record<string, string> = {}
+    try {
+      const saved = await db.setting.findUnique({ where: { key: `${tenant.id}_v0EnvVars` } })
+      envVars = saved?.value ? JSON.parse(saved.value) : await resolveFrontendEnv(tenant.id, tenant.slug, `${req.nextUrl.origin}`)
+    } catch (err: any) {
+      console.warn("[v0/finalize] Could not resolve env vars:", err?.message)
+    }
+
+    if (Object.keys(envVars).length > 0 && files.length > 0) {
+      const envFile = { name: ".env.local", content: renderDotEnv(envVars) }
+      const idx = files.findIndex((f) => f.name === ".env.local" || f.name.endsWith("/.env.local"))
+      if (idx >= 0) files[idx] = envFile
+      else files.push(envFile)
+    }
+
     let previewUrl = ""
     let vercelProjectId = ""
 
     if (deployToVercelAfter && files.length > 0) {
       try {
         const projectName = `sacms-${tenant.slug}-frontend`
-        const deployment = await deployToVercel(projectName, files)
+        const deployment = await deployToVercel(projectName, files, envVars)
         previewUrl = deployment.url || ""
         vercelProjectId = deployment.projectId || ""
         if (vercelProjectId) {
           await db.setting.upsert({ where: { key: `${tenant.id}_vercelProjectId` }, update: { value: vercelProjectId }, create: { tenantId: tenant.id, key: `${tenant.id}_vercelProjectId`, value: vercelProjectId } })
+          // Persist onto the Vercel project itself too, not just this one
+          // deployment, so a redeploy triggered from Vercel's own dashboard
+          // still has the SaCMS connection vars.
+          await pushEnvToVercelProject(vercelProjectId, envVars).catch((e) => console.warn("[v0/finalize] pushEnvToVercelProject failed:", e?.message))
         }
       } catch (deployError: any) {
         console.error("[v0/finalize] Vercel deploy failed:", deployError?.message)
@@ -98,7 +123,8 @@ export const POST = withStaffAuth(
         })
       }
       for (const vf of files) {
-        const filePath = vf.name.startsWith("app/") || vf.name.startsWith("components/") || vf.name.startsWith("lib/") ? vf.name : `app/${vf.name}`
+        const isRootFile = vf.name.startsWith("app/") || vf.name.startsWith("components/") || vf.name.startsWith("lib/") || vf.name.startsWith(".env")
+        const filePath = isRootFile ? vf.name : `app/${vf.name}`
         await db.siteFile.upsert({
           where: { siteId_path: { siteId: site.id, path: filePath } },
           create: { siteId: site.id, path: filePath, content: vf.content },
