@@ -1233,8 +1233,8 @@ export async function fetchContent(collection: string) {
       ) : v0ChatId ? (
         /* ── v0.dev Dual-Pane Interactive Studio ── */
         <div className={`flex flex-col flex-1 border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs transition-all ${
-          isFullscreen 
-            ? "fixed inset-0 z-50 w-screen h-screen rounded-none border-0 p-3 bg-background" 
+          isFullscreen
+            ? "fixed inset-0 z-50 w-screen h-screen rounded-none border-0 p-3 bg-background"
             : "min-h-[750px]"
         }`}>
           {/* Studio Top Bar — v0.app style: project switcher left, Preview/Code tabs center, Publish right */}
@@ -1392,10 +1392,10 @@ export async function fetchContent(collection: string) {
           </div>
           
           {/* Main Studio Body (Split Left & Right) */}
-          <div className="flex flex-1 overflow-hidden">
-            
+          <div className="flex flex-1 min-h-0 overflow-hidden">
+
             {/* ── LEFT PANE: v0.app-style understated commentary log + composer ── */}
-            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col bg-card shrink-0">
+            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col min-h-0 bg-card shrink-0">
 
               {/* Agentic Reasoning — collapsed pill row, matches the small "step" rows in v0.app's log */}
               <div className="border-b border-border/60 px-3 py-2">
