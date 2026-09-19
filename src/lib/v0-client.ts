@@ -1,6 +1,45 @@
 import { v0 } from "v0"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
 
+/**
+ * v0 rejects preview requests proxied through a hostname it doesn't
+ * recognize — the exact symptom is v0's OWN "Unauthorized chat" page
+ * showing up inside our preview iframe, not an error from our proxy route,
+ * because `fetchPreview()` reached v0 fine and got a real (rejecting)
+ * response back. This is unrelated to the per-chat `x-v0-preview-token` —
+ * it's a team-wide allowlist (`v0.settings.setPreviewHosts`) of hostnames
+ * trusted to embed ANY preview at all. See:
+ * https://v0.app/docs/api/v2/guides/accessing-previews
+ *
+ * Registered once per process (not per request — it's a team-wide setting,
+ * and calling it on every preview load would just be a wasted API call);
+ * merges into whatever is already configured rather than overwriting it, in
+ * case a host was added by hand in the v0 dashboard.
+ */
+let previewHostsEnsured = false
+export async function ensureV0PreviewHostsTrusted(): Promise<void> {
+  if (previewHostsEnsured) return
+  if (!process.env.V0_API_KEY?.trim()) return
+
+  const required = [
+    "sacms.cloud",
+    "*.sacms.cloud",
+    "localhost",
+  ]
+
+  try {
+    const current = await v0.settings.getPreviewHosts()
+    const existingHosts = (current as any)?.data?.hosts || (current as any)?.hosts || []
+    const missing = required.filter((h) => !existingHosts.includes(h))
+    if (missing.length > 0) {
+      await v0.settings.setPreviewHosts({ hosts: [...existingHosts, ...missing] })
+    }
+    previewHostsEnsured = true
+  } catch (err: any) {
+    console.warn("[v0-client] Could not verify/set trusted preview hosts:", err?.message)
+  }
+}
+
 export interface V0File {
   name: string
   content: string

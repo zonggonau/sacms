@@ -2,6 +2,7 @@ import { db } from "@/lib/database"
 import { v0, fetchPreview } from "v0"
 import { withStaffAuth } from "@/lib/api/route-helpers"
 import { chatBelongsToTenant } from "@/lib/ai/chat-access"
+import { ensureV0PreviewHostsTrusted } from "@/lib/v0-client"
 
 export const GET = withStaffAuth(async (request, context, { access }) => {
     const resolvedParams = await context.params
@@ -67,6 +68,8 @@ export const GET = withStaffAuth(async (request, context, { access }) => {
     if (!(await chatBelongsToTenant(chatId, access.tenantId))) {
       return new Response("Not found", { status: 404 })
     }
+
+    await ensureV0PreviewHostsTrusted()
 
     // Try fetching from v0
     let result: any = null
