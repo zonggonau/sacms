@@ -1,7 +1,4 @@
 import type { Metadata } from "next"
-import { LandingHeader } from "@/components/landing/header"
-import { FooterSection } from "@/components/landing/sections/footer-section"
-import { WhatsAppButton } from "@/components/landing/whatsapp-button"
 import { PricingGrid } from "@/components/landing/sections/pricing-grid"
 import { AddonsSection } from "@/components/landing/sections/addons-section"
 import { FaqSection } from "@/components/landing/sections/faq-section"
@@ -52,21 +49,10 @@ export default async function HargaPage() {
     addons = [],
     faq = [],
     cta = null,
-    footer = null,
-    whatsapp = null,
   } = data
 
-  const wa = whatsapp || {
-    phone: "6282199220551",
-    message: "Halo! Saya ingin bertanya mengenai paket dan harga SaCMS.",
-    label: "Chat dengan Kami",
-    is_active: true,
-  }
-
   return (
-    <div className="flex flex-col min-h-screen bg-card text-foreground">
-      <LandingHeader brandName={footer?.brand_name} />
-
+    <>
       <main className="flex-1 pt-24 pb-16">
         {/* Hero Section */}
         <section className="py-14 sm:py-20 text-center relative overflow-hidden">
@@ -127,14 +113,6 @@ export default async function HargaPage() {
         {/* CTA Banner */}
         <CtaBanner cta={cta} />
       </main>
-
-      <FooterSection footer={footer} />
-      <WhatsAppButton
-        phone={wa.phone}
-        message={wa.message}
-        label={wa.label}
-        isActive={wa.is_active}
-      />
-    </div>
+    </>
   )
 }

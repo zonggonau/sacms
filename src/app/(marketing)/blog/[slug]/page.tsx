@@ -1,8 +1,6 @@
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import type { Metadata } from "next"
-import { LandingHeader } from "@/components/landing/header"
-import { FooterSection } from "@/components/landing/sections/footer-section"
 import { getLandingData } from "@/lib/public-api"
 import { type BlogPost } from "@/components/blog/blog-explorer"
 import { 
@@ -148,7 +146,7 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
   const relatedPosts = blogs.filter((b) => b !== post).slice(0, 3)
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <>
       {/* Schema.org Structured Data */}
       <script
         type="application/ld+json"
@@ -158,8 +156,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd) }}
       />
-
-      <LandingHeader brandName={data.footer?.brand_name} />
 
       <main className="flex-1 pt-28 sm:pt-32 pb-24 relative overflow-hidden">
         {/* Abstract Background Glows */}
@@ -302,8 +298,6 @@ export default async function BlogDetailPage({ params }: BlogDetailPageProps) {
           )}
         </article>
       </main>
-
-      <FooterSection footer={data.footer} />
-    </div>
+    </>
   )
 }

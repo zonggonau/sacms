@@ -1,6 +1,4 @@
 import type { Metadata } from "next"
-import { LandingHeader } from "@/components/landing/header"
-import { FooterSection } from "@/components/landing/sections/footer-section"
 import { getLandingData } from "@/lib/public-api"
 import { BlogExplorer, type BlogPost } from "@/components/blog/blog-explorer"
 import { Sparkles } from "lucide-react"
@@ -91,13 +89,11 @@ export default async function BlogPage() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-background text-foreground selection:bg-primary/30">
+    <>
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: JSON.stringify(blogCollectionJsonLd) }}
       />
-
-      <LandingHeader brandName={data.footer?.brand_name} />
 
       <main className="flex-1 pt-28 sm:pt-32 pb-20 relative overflow-hidden">
         {/* Abstract Background Glows */}
@@ -126,8 +122,6 @@ export default async function BlogPage() {
           <BlogExplorer initialPosts={blogs} />
         </div>
       </main>
-
-      <FooterSection footer={data.footer} />
-    </div>
+    </>
   )
 }

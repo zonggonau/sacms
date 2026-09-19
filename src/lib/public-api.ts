@@ -1,8 +1,9 @@
+import { cache } from "react"
 import { DEFAULT_LANDING_PAGE_DATA } from "@/lib/default-landing-page"
 import { getGlobalWorkspaceId } from "@/lib/settings"
 import { db } from "@/lib/database"
 
-export async function getLandingData() {
+export const getLandingData = cache(async function getLandingData() {
   try {
     const globalWorkspaceId = await getGlobalWorkspaceId()
     
@@ -148,7 +149,7 @@ export async function getLandingData() {
     }
     return getDefaultData()
   }
-}
+})
 
 
 function getDefaultData() {

@@ -1,7 +1,5 @@
 import type { Metadata } from "next"
-import { LandingHeader } from "@/components/landing/header"
 import { ModernLanding } from "@/components/landing/modern-landing"
-import { WhatsAppButton } from "@/components/landing/whatsapp-button"
 import { getLandingData } from "@/lib/public-api"
 import { getSiteUrl, SEO_CONFIG, generatePlatformJsonLd, generateFaqJsonLd } from "@/lib/seo"
 
@@ -54,18 +52,12 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default async function HomePage() {
   const data = await getLandingData()
-  const wa = data.whatsapp || {
-    phone: "6282199220551",
-    message: "Halo! Saya tertarik dengan SaCMS.",
-    label: "Chat dengan Kami",
-    is_active: true,
-  }
 
   const platformJsonLd = generatePlatformJsonLd()
   const faqJsonLd = generateFaqJsonLd(data.faq || [])
 
   return (
-    <div className="flex flex-col min-h-screen">
+    <>
       {/* Schema.org Structured Data */}
       <script
         type="application/ld+json"
@@ -78,16 +70,9 @@ export default async function HomePage() {
         />
       )}
 
-      <LandingHeader brandName={data.footer?.brand_name} />
       <main className="flex-1">
         <ModernLanding data={data} />
       </main>
-      <WhatsAppButton
-        phone={wa.phone}
-        message={wa.message}
-        label={wa.label}
-        isActive={wa.is_active}
-      />
-    </div>
+    </>
   )
 }

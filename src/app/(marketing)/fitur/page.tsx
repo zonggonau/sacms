@@ -1,7 +1,4 @@
 import type { Metadata } from "next"
-import { LandingHeader } from "@/components/landing/header"
-import { FooterSection } from "@/components/landing/sections/footer-section"
-import { WhatsAppButton } from "@/components/landing/whatsapp-button"
 import { FeaturesBento } from "@/components/landing/sections/features-bento"
 import { SectorsSection } from "@/components/landing/sections/sectors-section"
 import { WorkflowSection } from "@/components/landing/sections/workflow-section"
@@ -53,21 +50,10 @@ export default async function FiturPage() {
     sectors = [],
     workflow = [],
     cta = null,
-    footer = null,
-    whatsapp = null,
   } = data
 
-  const wa = whatsapp || {
-    phone: "6282199220551",
-    message: "Halo! Saya ingin konsultasi mengenai fitur SaCMS.",
-    label: "Chat dengan Kami",
-    is_active: true,
-  }
-
   return (
-    <div className="flex flex-col min-h-screen bg-card text-foreground">
-      <LandingHeader brandName={footer?.brand_name} />
-
+    <>
       <main className="flex-1 pt-24 pb-16">
         {/* Page Hero Header */}
         <section className="py-14 sm:py-20 text-center relative overflow-hidden">
@@ -119,14 +105,6 @@ export default async function FiturPage() {
         {/* CTA Banner */}
         <CtaBanner cta={cta} />
       </main>
-
-      <FooterSection footer={footer} />
-      <WhatsAppButton
-        phone={wa.phone}
-        message={wa.message}
-        label={wa.label}
-        isActive={wa.is_active}
-      />
-    </div>
+    </>
   )
 }
