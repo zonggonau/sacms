@@ -13,7 +13,16 @@ SaCMS separates two working areas:
 
 Platform super administrators also have `/admin` pages for global schemas, tenants, users, billing, monitoring, settings, and audit logs.
 
-## 2. Sign in and account recovery
+## 2. Registration, sign in, and account recovery
+
+### 2.0 Registration and account types
+
+New accounts are created at `/register`. A checkbox on the form (`formData.isDeveloper`) decides which of two self-registration account types the user gets:
+
+- **Creator account (`role: "user"`, checkbox left unchecked, the default):** a workspace is auto-provisioned and owned by the user themselves; after login the account lands straight at `/aibuilder`, the AI Website Builder, and can generate a website by describing it in a prompt — no Content Type/schema knowledge required.
+- **Developer account (`role: "developer"`, checkbox checked):** after login the account lands at `/dashboard` and manages workspaces, content, schema, and API access directly, as this manual's remaining sections describe.
+
+The very first account ever registered on a deployment instead becomes `role: "super_admin"` automatically (auto-verified, no activation email), and is the platform owner described in section 1.
 
 ### 2.1 Credentials
 

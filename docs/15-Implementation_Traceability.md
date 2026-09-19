@@ -48,6 +48,8 @@ Dokumen ini adalah acuan integritas implementasi SaCMS untuk memastikan seluruh 
 | **Model Context Protocol (MCP)** | Implemented | `/api/mcp/[[...transport]]`, `actions/mcp-tokens.ts` | Protokol SSE/HTTP untuk asisten coding AI (Cursor, Windsurf, Claude Code) |
 | **AI Schema Engine & Blueprints** | Implemented | `src/lib/ai/schema-engine.ts`, `domain-knowledge.ts` | Blueprint industri instan (Hotel, E-Commerce, News, Agency) |
 | **Next.js 16 Starter Exporter** | Implemented | `/api/tenant/[tenant]/ai-builder/export-starter` | Menghasilkan bundel ZIP Next.js 16 + TailwindCSS v4 + SaCMS SDK |
+| **AI Website Builder** | Implemented | `/aibuilder`, `aibuilder-shell.tsx`, `website-builder-client.tsx`, `ai-builder/v0/*` | Fitur inti permanen (bukan dihapus/dipisah); model v0 pakai v0 streaming SDK (`useChat` + `V0Transport`), model Claude pakai REST sinkron (`generate-frontend`, `iterate`); env frontend nyata via `resolveFrontendEnv()` |
+| **Self-Registration Roles** | Implemented | `src/actions/auth.ts`, `formData.isDeveloper` | `role: "user"` (default) auto-provisioned workspace → `/aibuilder`; `role: "developer"` → `/dashboard`; user pertama → `super_admin` |
 | **Enterprise Licensing (RSA)** | Implemented | `src/lib/license.ts`, `/admin/enterprise/licenses` | Verifikasi offline via RSA Public Key & online database license caching |
 | **API Token Hashing** | Implemented | `src/actions/api-keys.ts`, `ApiToken` | Plaintext token dikembalikan sekali; database hanya menyimpan SHA-256 |
 | **Rate Limiting (Edge)** | Implemented | `src/lib/rate-limit.ts`, `proxy.ts` | Pipeline Upstash Redis (`cf:rl:*`) dengan in-memory fallback |

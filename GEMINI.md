@@ -32,8 +32,8 @@ src/
             page.tsx                     ← Workspace Hub & Overview Dashboard
             content-types/               ← Content Types management
             content-type-builder/        ← Visual Schema Drag & Drop Builder
-            domains/                     ← Custom Domains & Vercel DNS Diagnostics
-            infrastructure/              ← dijadwalkan dihapus (docs/16 §5.13)
+            domains/                     ← Custom Domains & Vercel DNS Diagnostics (redirects into infrastructure?tab=domains)
+            infrastructure/              ← Hosting/Domains/Environment/Database & Storage panel — Vercel deploy status, frontend env vars, shared PostgreSQL + MinIO storage, BYODB/BYOS managed-service upsell (permanent feature; not scheduled for removal)
             subscriptions/               ← Billing, Plans & Add-on Credits
             users/                       ← Team Members & RBAC Roles
             system/audit/                ← System Audit Logging

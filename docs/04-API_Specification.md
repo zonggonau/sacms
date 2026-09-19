@@ -171,9 +171,26 @@ Memungkinkan AI Coding Assistant (seperti Cursor, Windsurf, Claude Code) mengeks
 |---|---|---|
 | `POST` | `/api/tenant/[tenant]/ai-builder/plan-schema` | Merencanakan arsitektur Content Type dari deskripsi domain bisnis |
 | `POST` | `/api/tenant/[tenant]/ai-builder/export-starter` | Mengunduh starter project Next.js 16 + TailwindCSS v4 dalam format ZIP |
-| `POST` | `/api/tenant/[tenant]/ai-builder/generate-frontend` | Membuat halaman frontend dinamis berbasis konten SaCMS |
+| `POST` | `/api/tenant/[tenant]/ai-builder/generate-frontend` | Generate frontend awal (model Claude — sinkron, REST biasa, tanpa streaming) |
+| `POST` | `/api/tenant/[tenant]/ai-builder/iterate` | Iterasi/edit frontend yang sudah ada (model Claude — sinkron, REST biasa) |
 | `POST` | `/api/tenant/[tenant]/ai-builder/export-schema` | Mengekspor skema dalam format JSON blueprint portabel |
 | `POST` | `/api/tenant/[tenant]/ai-builder/import-schema` | Mengimpor blueprint skema dari file JSON |
+
+### 6.1 AI Website Builder — v0 Streaming SDK (model v0)
+
+Untuk model v0 (id berawalan bukan `claude-`), AI Website Builder di `/aibuilder` memakai v0 streaming SDK asli (`useChat` dari `@ai-sdk/react` + `V0Transport` dari `@v0-sdk/react`) lewat rute proxy berikut, bukan lagi poll manual ke v0 API:
+
+| Method | Path | Deskripsi |
+|---|---|---|
+| `POST` | `/api/tenant/[tenant]/ai-builder/v0/chats/stream` | Pesan pertama; membuka chat v0 baru dan streaming respons |
+| `POST` | `/api/tenant/[tenant]/ai-builder/v0/chats/[chatId]/messages/stream` | Pesan lanjutan (follow-up) pada chat v0 yang sudah ada, streaming |
+| `POST` | `/api/tenant/[tenant]/ai-builder/v0/chats/[chatId]/resume` | Menyambung kembali stream yang terputus |
+| `POST` | `/api/tenant/[tenant]/ai-builder/v0/register` | Menyimpan `chatId` di tengah stream (sebelum stream selesai) |
+| `POST` | `/api/tenant/[tenant]/ai-builder/v0/finalize` | Pasca-stream: ambil file dari v0 (dengan retry), sinkronkan ke `Site`/`SiteFile`, deploy ke Vercel |
+| `GET` | `/api/tenant/[tenant]/ai-builder/v0/chats/[chatId]/files` | Cek ulang file secara manual |
+| `GET` | `/api/tenant/[tenant]/ai-builder/v0/chats/[chatId]/preview-url` | Ambil URL hosted preview terbaru (untuk "buka di tab baru") |
+
+Situs yang dihasilkan menerima `.env.local` nyata (`NEXT_PUBLIC_SACMS_API_URL`, `NEXT_PUBLIC_SACMS_TENANT`, `SACMS_API_KEY` — via `resolveFrontendEnv()` di `src/lib/infrastructure/frontend-env.ts`, set env yang sama dipakai tombol Deploy di panel Hosting) dan variabel yang sama didorong ke Vercel lewat `deployToVercel(..., envVars)` / `pushEnvToVercelProject()`.
 
 ---
 

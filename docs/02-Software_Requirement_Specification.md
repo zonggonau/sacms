@@ -122,7 +122,9 @@ flowchart LR
 
 | Actor | Identifier | Scope | Tanggung Jawab |
 |---|---|---|---|
-| Platform Administrator | `super_admin` | Platform | Manage global schemas, tenants, users, billing, monitoring |
+| Platform Administrator | `super_admin` | Platform | Manage global schemas, tenants, users, billing, monitoring (first registered user becomes `super_admin` automatically) |
+| Self-Registered Creator | `user` (`User.role`) | Platform (account type) | Default self-registration type (`formData.isDeveloper` unchecked). Auto-provisioned workspace owned by the user themselves; lands at `/aibuilder` after login to generate a website via AI with no CMS/schema knowledge needed |
+| Self-Registered Developer | `developer` (`User.role`) | Platform (account type) | Self-registration type when `formData.isDeveloper` is checked. Lands at `/dashboard` and manages workspaces/content/schema/API directly |
 | Workspace Owner | `owner` | Tenant | Full workspace control & billing ownership |
 | Workspace Admin | `admin` | Tenant | Manage schema, content, members, integrations, settings |
 | Content Editor | `editor` | Tenant | Create/edit content, permitted workflow transitions |
@@ -523,7 +525,10 @@ docs/
 
 ### 5.6 User Journey Canonical
 
-1. **Onboarding:** Register → verify email → sign in → create workspace → choose plan → configure locale → create schema → create API token → create content
+1. **Onboarding (two self-registration paths, chosen via the `formData.isDeveloper` checkbox at `/register`):**
+   - **Creator (`role: "user"`, default/unchecked):** Register → verify email → sign in → auto-provisioned workspace (owned by the user themselves) → lands at `/aibuilder` → describe the desired site to the AI Website Builder → generate & deploy, no CMS/schema knowledge required.
+   - **Developer (`role: "developer"`, checkbox checked):** Register → verify email → sign in → lands at `/dashboard` → create/choose workspace → choose plan → configure locale → create schema → create API token → create content.
+   - The very first account ever registered becomes `role: "super_admin"` automatically (auto-verified, no email step).
 2. **Content Delivery:** Model schema → create draft → complete data → optional sequential review → approve → publish/schedule → consume via REST/GraphQL → webhook notification
 3. **Developer Integration:** Create API token → choose REST/GraphQL/SDK → request tenant-bound → field selection/filter/population → observe rate-limit/cache headers → rotate token
 4. **Custom Domain:** Upgrade plan → save domain → DNS TXT + CNAME → trigger verification → Redis mapping → call custom host paths

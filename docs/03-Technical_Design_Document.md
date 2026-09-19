@@ -120,6 +120,8 @@ src/app/
 │   ├── page.tsx                             ← Modern landing page & feature showcases
 │   ├── blog/page.tsx                        ← Blog & announcements
 │   └── docs/page.tsx                        ← Interactive API & Developer Documentation
+├── aibuilder/page.tsx                       ← AI Website Builder ("v0 Studio"-style full-screen shell); default
+│                                                landing page for self-registered `role: "user"` accounts
 ├── (system)/admin/                          ← Super Admin Control Panel
 │   ├── layout.tsx                           ← Super admin authentication guard
 │   ├── tenants/page.tsx                     ← Tenant lifecycle, quotas, overrides
@@ -148,7 +150,11 @@ src/app/
     ├── public/[tenant]/graphql/             ← Public GraphQL endpoint
     ├── public/[tenant]/single/              ← Public Single Types endpoint
     ├── mcp/[[...transport]]/                ← MCP Server transport endpoint
-    ├── tenant/[tenant]/ai-builder/          ← AI Schema planner & starter zip exporter
+    ├── tenant/[tenant]/ai-builder/          ← AI Schema planner, starter zip exporter, and AI Website Builder
+    │                                            backend: `v0/chats/stream`, `v0/chats/[chatId]/messages/stream`,
+    │                                            `v0/chats/[chatId]/resume`, `v0/register`, `v0/finalize` (v0 models,
+    │                                            real v0 streaming SDK via `useChat` + `V0Transport`); `generate-frontend`
+    │                                            and `iterate` (Claude models, synchronous REST, no streaming SDK)
     ├── cron/publish/                        ← Scheduled auto-publish cron
     └── webhooks/midtrans/                   ← Payment callback handler
 ```
