@@ -65,31 +65,34 @@ export default async function AiBuilderModePage({ searchParams }: PageProps) {
       Math.random().toString(36).substring(2, 6)
     
     const isUserBiasa = session.user.role === "user"
-    let ownerId = session.user.id
-    let superAdminUser: any = null
-
-    if (isUserBiasa) {
-      superAdminUser = await db.user.findFirst({
-        where: { role: "super_admin" },
-        orderBy: { createdAt: "asc" },
-      })
-      if (superAdminUser) {
-        ownerId = superAdminUser.id
-      }
-    }
+    // The registering user is always the real owner of their own workspace —
+    // "user biasa" included. This used to hand ownership to a super_admin
+    // service account instead (a leftover of the since-cancelled plan to
+    // treat regular users like the separate nocode product's synthetic,
+    // account-less users); that's not this app's model — every /aibuilder
+    // user logs in with a real SaCMS account and should own what they build.
+    const ownerId = session.user.id
 
     const membersToCreate: any[] = [
       {
         userId: session.user.id,
-        role: isUserBiasa ? "admin" : "owner",
+        role: "owner",
       },
     ]
 
-    if (isUserBiasa && superAdminUser && superAdminUser.id !== session.user.id) {
-      membersToCreate.push({
-        userId: superAdminUser.id,
-        role: "owner",
+    // Still give platform support visibility into a fresh "user biasa"
+    // workspace, just not ownership of it.
+    if (isUserBiasa) {
+      const superAdminUser = await db.user.findFirst({
+        where: { role: "super_admin" },
+        orderBy: { createdAt: "asc" },
       })
+      if (superAdminUser && superAdminUser.id !== session.user.id) {
+        membersToCreate.push({
+          userId: superAdminUser.id,
+          role: "admin",
+        })
+      }
     }
 
     const newTenant = await db.tenant.create({

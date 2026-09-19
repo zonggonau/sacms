@@ -12,10 +12,19 @@ export const GET = withAdminAuth(
     const limit = parseInt(searchParams.get("limit") || "24")
     const search = searchParams.get("search")
 
+    // Must list every real account holder, "user biasa" (role "user", who
+    // land in /aibuilder) included — not just literal tenant-owners.
+    // Workspaces auto-created before the /aibuilder provisioning fix gave
+    // the registering "user biasa" only an "admin" TenantMember row (a
+    // super_admin service account held "owner" instead), so restricting
+    // this to `role: "owner"` silently hid every one of them. `admin` is
+    // included below for that reason, not to widen this into a general
+    // team-member directory — someone merely invited as "author"/
+    // "contributor" into someone else's workspace still won't match.
     const ownerFilter = {
       OR: [
-        { role: { in: ["super_admin", "owner", "admin"] } },
-        { tenants: { some: { role: "owner" } } },
+        { role: { in: ["super_admin", "owner", "admin", "developer", "user"] } },
+        { tenants: { some: { role: { in: ["owner", "admin"] } } } },
         { tenants: { none: {} } },
       ],
     }
