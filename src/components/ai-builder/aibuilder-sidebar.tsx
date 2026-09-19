@@ -160,7 +160,7 @@ export function AiBuilderSidebar({
   return (
     <aside className="w-64 sm:w-72 border-r border-border/70 bg-card/95 backdrop-blur-xl flex flex-col justify-between py-4 px-3.5 select-none shrink-0 transition-all duration-300 z-30 h-full overflow-hidden shadow-xs">
       {/* Top Header & New Project Button */}
-      <div className="space-y-4 overflow-hidden flex flex-col flex-1">
+      <div className="space-y-4 overflow-hidden flex flex-col flex-1 min-h-0">
         <div className="flex items-center justify-between px-1">
           <Link href="/" className="flex items-center gap-2 font-black text-sm text-foreground group">
             <Logo className="h-6 w-auto" />
