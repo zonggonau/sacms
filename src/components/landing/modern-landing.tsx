@@ -1,8 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { V0HeroComposer } from "./sections/v0-hero-composer"
-import { V0ShowcaseGallery } from "./sections/v0-showcase-gallery"
+import { HeroSection } from "./sections/hero-section"
 import { TestimonialsSection } from "./sections/testimonials-section"
 import { BlogPreviewSection } from "./sections/blog-preview-section"
 import { CtaBanner } from "./sections/cta-banner"
@@ -38,15 +37,10 @@ export function ModernLanding({ data }: { data: LandingData }) {
 
   return (
     <div className="bg-card text-foreground selection:bg-primary/30">
-      {/* 1. v0-Style AI Prompt Composer Hero */}
-      <V0HeroComposer data={hero} />
+      {/* 1. Hero */}
+      <HeroSection data={hero} />
 
-      {/* 2. Visual Component & Template Showcase */}
-      <FadeIn delay={100}>
-        <V0ShowcaseGallery />
-      </FadeIn>
-
-      {/* 3. Streamlined Feature Highlights with Link to /fitur */}
+      {/* 2. Streamlined Feature Highlights with Link to /fitur */}
       <section className="py-20 sm:py-28 relative bg-background border-t border-border/50 overflow-hidden">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-[900px] h-[400px] bg-gradient-to-tr from-primary/15 via-blue-500/10 to-transparent blur-3xl rounded-full pointer-events-none opacity-50" />
 
@@ -128,7 +122,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 4. Streamlined Pricing Spotlight with Link to /harga */}
+      {/* 3. Streamlined Pricing Spotlight with Link to /harga */}
       <section className="py-20 sm:py-28 relative bg-card/40 border-t border-border/50 overflow-hidden">
         <div className="container px-4 sm:px-6 max-w-6xl mx-auto relative z-10">
           <div className="p-8 sm:p-12 rounded-3xl bg-gradient-to-br from-card via-card/80 to-primary/5 border border-border/70 shadow-xl flex flex-col md:flex-row items-center justify-between gap-8">
@@ -166,19 +160,19 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 5. Testimonials (Social Proof) */}
+      {/* 4. Testimonials (Social Proof) */}
       <FadeIn delay={100}>
         <TestimonialsSection testimonials={testimonials} />
       </FadeIn>
 
-      {/* 6. Blog Preview Spotlight with Link to /blog */}
+      {/* 5. Blog Preview Spotlight with Link to /blog */}
       {blogs.length > 0 && (
         <FadeIn delay={100}>
           <BlogPreviewSection blogs={blogs} />
         </FadeIn>
       )}
 
-      {/* 7. About & Documentation Spotlight Banner */}
+      {/* 6. About & Documentation Spotlight Banner */}
       <section className="py-16 relative bg-background border-t border-border/50">
         <div className="container px-4 sm:px-6 max-w-6xl mx-auto">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
@@ -225,12 +219,12 @@ export function ModernLanding({ data }: { data: LandingData }) {
         </div>
       </section>
 
-      {/* 8. Call To Action Banner */}
+      {/* 7. Call To Action Banner */}
       <FadeIn delay={100}>
         <CtaBanner cta={cta} />
       </FadeIn>
 
-      {/* 9. Global Footer */}
+      {/* 8. Global Footer */}
       <FooterSection footer={footer} />
     </div>
   )

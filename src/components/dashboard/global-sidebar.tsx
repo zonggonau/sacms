@@ -16,7 +16,6 @@ import {
   Moon,
   Sun,
   Shield,
-  Sparkles,
   BookOpen,
   Server,
 } from "lucide-react"
@@ -51,7 +50,6 @@ export function GlobalSidebar({ isEnterpriseMode, session, brandName }: GlobalSi
 
   const navItems: NavItem[] = [
     { title: "Workspaces", href: "/dashboard", icon: LayoutDashboard },
-    { title: "AI Website Builder", href: "/dashboard/ai-builder", icon: Sparkles },
     { title: "Cloud Server", href: "/dashboard/services", icon: Server },
     { title: "Billing & Account", href: "/dashboard/billing", icon: CreditCard },
     { title: "API & Dokumentasi", href: "/docs", icon: BookOpen },
