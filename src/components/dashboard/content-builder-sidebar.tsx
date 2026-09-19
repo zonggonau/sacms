@@ -24,10 +24,10 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
   const pathname = usePathname()
 
   const navItems = [
-    { title: "AI Website Builder", href: `/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`, icon: Bot, badge: "AI" },
-    { title: "Collection Types", href: `/dashboard/${tenantId}/content-type-builder/content-types`, icon: DatabaseIcon },
-    { title: "Single Types", href: `/dashboard/${tenantId}/content-type-builder/single-types`, icon: FileText },
-    { title: "Components", href: `/dashboard/${tenantId}/content-type-builder/components`, icon: Puzzle },
+    { title: "AI Website Builder", href: `/dashboard/${tenantId}/developer/aibuilder`, icon: Bot, badge: "AI" },
+    { title: "Collection Types", href: `/dashboard/${tenantId}/developer/conten-type`, icon: DatabaseIcon },
+    { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-type`, icon: FileText },
+    { title: "Components", href: `/dashboard/${tenantId}/developer/component`, icon: Puzzle },
   ]
 
   return (

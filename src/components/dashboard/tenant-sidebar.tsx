@@ -40,6 +40,7 @@ import {
   UserCheck,
   ShieldCheck,
   Rocket,
+  Bot,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect, useMemo } from "react"
@@ -53,7 +54,7 @@ const s = {
   groupSettings: "SETTINGS",
   overview: "Overview",
   cmsStudio: "CMS Content Studio",
-  contentTypeBuilder: "Content-Type Builder",
+  contentTypeBuilder: "AI Website Builder",
   mediaLibrary: "Media Library",
   support: "Support & Help Desk",
   teamMembers: "Team Members",
@@ -222,8 +223,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: s.cmsStudio, href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         ...(isAdmin ? [{
           title: s.contentTypeBuilder,
-          href: isExpired ? "/content-type-builder" : "/content-type-builder/content-types",
-          icon: DatabaseIcon,
+          href: "/developer/aibuilder",
+          icon: Bot,
+          badge: "AI",
           matchPrefix: true
         }] : []),
         ...(isEditor || userRole === "author" ? [{ title: s.mediaLibrary, href: "/media", icon: ImageIcon }] : []),

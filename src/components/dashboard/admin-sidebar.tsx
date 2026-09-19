@@ -94,9 +94,9 @@ export function AdminSidebar({ tenantSlug, tenants = [] }: AdminSidebarProps) {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="p-6">
-        <Link href="/admin" className="flex items-center gap-2">
-          <Logo iconSize="md" showText={true} />
+      <div className="border-b border-border px-4 py-3.5 flex items-center justify-between">
+        <Link href="/admin" className="flex items-center gap-2 min-w-0">
+          <Logo iconSize="sm" showText={true} />
         </Link>
       </div>
 

@@ -179,11 +179,11 @@ export function GlobalAdminSidebar() {
   const renderSidebarContent = () => (
     <div className="flex h-full flex-col bg-card border-r border-border">
       {/* Header */}
-      <div className="border-b border-border px-4 py-3.5 flex items-center justify-between">
-        <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-          <Logo iconSize="sm" showText={true} showDetail={true} />
+      <div className="border-b border-border px-3.5 py-3 flex items-center justify-between gap-2 shrink-0">
+        <Link href="/admin" className="flex items-center gap-2 min-w-0">
+          <Logo iconSize="sm" showText={true} showDetail={true} customDetail="Smart CMS" />
         </Link>
-        <Button variant="ghost" size="sm" asChild className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg border border-border/50">
+        <Button variant="outline" size="sm" asChild className="h-7 px-2 text-[10px] font-bold text-muted-foreground hover:text-foreground rounded-lg border-border/70 shrink-0 shadow-none">
           <Link href="/dashboard" title="Kembali ke Workspace Hub">
             <LayoutDashboard className="h-3 w-3 mr-1 text-primary" />
             Workspace

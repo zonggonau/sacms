@@ -25,7 +25,8 @@ import {
   Plus,
   Settings,
   Sparkles,
-  Sliders
+  Sliders,
+  Bot
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect } from "react"
@@ -211,18 +212,18 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
         </div>
       </ScrollArea>
 
-      {/* Direct Quick Jump to Content-Type Builder */}
+      {/* Direct Quick Jump to AI Website Builder */}
       {canGoBack && (
         <div className="px-3 pt-2 pb-1 border-t border-border/80 bg-muted/20">
-          <Link href={`/dashboard/${tenantId}/content-type-builder/content-types`}>
+          <Link href={`/dashboard/${tenantId}/developer/aibuilder`}>
             <div className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/30 group shadow-xs">
-              <Database className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:rotate-12 transition-transform" />
+              <Bot className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:scale-110 transition-transform" />
               <div className="min-w-0 flex-1">
                 <div className="flex items-center justify-between">
-                  <span className="font-bold">Content-Type Builder</span>
+                  <span className="font-bold">AI Website Builder</span>
                   <ArrowRight className="h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform text-indigo-600 dark:text-indigo-400" />
                 </div>
-                <p className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">Edit skema & arsitektur model</p>
+                <p className="text-[10px] text-muted-foreground font-normal truncate mt-0.5">Build website &amp; kelola skema</p>
               </div>
             </div>
           </Link>

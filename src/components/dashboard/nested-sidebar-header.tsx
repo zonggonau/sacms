@@ -24,24 +24,24 @@ export function NestedSidebarHeader({
   const actualLogoHref = logoHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
 
   return (
-    <div className="border-b border-border px-4 py-4 bg-card flex items-center justify-between gap-2 shrink-0">
+    <div className="border-b border-border px-3.5 py-3 bg-card flex items-center justify-between gap-2 shrink-0">
       <div className="flex items-center gap-2 min-w-0">
         {showBackBtn && (
           <Link 
             href={actualBackHref} 
             title={backTooltip}
-            className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-xl border border-border/60 flex items-center justify-center shrink-0"
+            className="text-muted-foreground hover:text-foreground hover:bg-muted p-1.5 transition-all rounded-lg border border-border/60 flex items-center justify-center shrink-0"
           >
             <ArrowLeft className="h-3.5 w-3.5" />
           </Link>
         )}
-        <Link href={actualLogoHref} className="flex items-center gap-2.5 min-w-0">
-          <Logo iconSize="sm" showText={true} showDetail={true} />
+        <Link href={actualLogoHref} className="flex items-center gap-2 min-w-0">
+          <Logo iconSize="sm" showText={true} showDetail={true} customDetail="Smart CMS" />
         </Link>
       </div>
 
       {portalBadge && (
-        <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border-primary/20 bg-primary/5 text-primary shrink-0">
+        <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-full border-primary/20 bg-primary/5 text-primary shrink-0 whitespace-nowrap">
           {portalBadge}
         </Badge>
       )}

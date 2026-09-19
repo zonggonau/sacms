@@ -3,7 +3,7 @@ import { cn } from "@/lib/utils"
 
 export const BRAND_CONFIG = {
   name: "SaCMS",
-  detail: "Smart Content Management System",
+  detail: "Smart CMS",
   slogan: "Build smarter. Manage easier. Scale faster.",
 }
 
