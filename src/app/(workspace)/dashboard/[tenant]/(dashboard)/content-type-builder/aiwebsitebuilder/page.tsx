@@ -45,6 +45,27 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
   const stCount = await tenantDb.singleType.count({ where: { tenantId: tenant.id } })
   const hasSchema = ctCount > 0 || stCount > 0
 
+  // Lightweight existing-schema summary (names + field counts) for the Schema step.
+  const [existingContentTypes, existingSingleTypes] = hasSchema
+    ? await Promise.all([
+        tenantDb.contentType.findMany({
+          where: { tenantId: tenant.id },
+          select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
+          orderBy: { updatedAt: "desc" },
+        }),
+        tenantDb.singleType.findMany({
+          where: { tenantId: tenant.id },
+          select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
+          orderBy: { updatedAt: "desc" },
+        }),
+      ])
+    : [[], []]
+
+  const existingSchemaSummary = {
+    contentTypes: existingContentTypes.map((ct) => ({ name: ct.name, slug: ct.slug, fieldCount: ct._count.schemaFields })),
+    singleTypes: existingSingleTypes.map((st) => ({ name: st.name, slug: st.slug, fieldCount: st._count.schemaFields })),
+  }
+
   // Hydrate the Code tab from the last-generated site's actual files, instead
   // of always falling back to the hardcoded demo files on every page load.
   let initialFiles: { name: string; content: string }[] | null = null
@@ -79,6 +100,7 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
         tenantSlug={tenantSlug}
         hasUpgradedPlan={hasUpgradedPlan}
         hasSchema={hasSchema}
+        existingSchemaSummary={existingSchemaSummary}
         initialAiCredits={initialAiCredits}
         initialProject={v0ChatId ? {
           v0ChatId,

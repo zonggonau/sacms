@@ -19,13 +19,14 @@ import {
   Copy, Activity, BarChart2, Maximize2, Minimize2, Code2, Folder, FileCode,
   ChevronDown, ChevronUp, ChevronRight, History, Play, RotateCw,
   CreditCard, Calendar, Flame, HardDrive, Server,
-  Plus, Star, ArrowUp, PanelLeft, MoreHorizontal
+  Plus, Star, ArrowUp, PanelLeft, MoreHorizontal, X
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import type { DomainBlueprint } from "@/lib/ai/domain-knowledge-types"
 import { SandpackPreview } from "@/components/ai-builder/sandpack-preview"
+import { SchemaStep } from "./schema-step"
 import { useChat } from "@ai-sdk/react"
 import { V0Transport, type V0UIMessage } from "@v0-sdk/react"
 
@@ -34,6 +35,10 @@ interface WebsiteBuilderClientProps {
   tenantSlug: string
   hasUpgradedPlan: boolean
   hasSchema?: boolean
+  existingSchemaSummary?: {
+    contentTypes: { name: string; slug: string; fieldCount: number }[]
+    singleTypes: { name: string; slug: string; fieldCount: number }[]
+  }
   initialAiCredits?: {
     remaining: number
     total: number
@@ -141,7 +146,7 @@ export const QUICK_ITERATION_SUGGESTIONS = [
 ]
 
 export function WebsiteBuilderClient({
-  tenantId, tenantSlug, hasUpgradedPlan, initialAiCredits, initialProject
+  tenantId, tenantSlug, hasUpgradedPlan, hasSchema, existingSchemaSummary, initialAiCredits, initialProject
 }: WebsiteBuilderClientProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -179,7 +184,18 @@ export function WebsiteBuilderClient({
   // Prompt Input state
   const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  
+
+  // Schema-first gate — the Schema step must be completed/confirmed before
+  // the Generate studio below is reachable.
+  const [schemaReady, setSchemaReady] = useState(!!hasSchema)
+  const [showMcpHint, setShowMcpHint] = useState(true)
+  const handleSchemaReady = (frontendPromptSeed?: string) => {
+    setSchemaReady(true)
+    if (frontendPromptSeed && !mainPrompt.trim()) {
+      setMainPrompt(frontendPromptSeed)
+    }
+  }
+
   // Project & Draft State
   const [v0ChatId, setV0ChatId] = useState(initialProject?.v0ChatId || null)
   const [previewUrl, setPreviewUrl] = useState(initialProject?.previewUrl || "")
@@ -1187,7 +1203,14 @@ export async function fetchContent(collection: string) {
       )}
 
       {/* ── MAIN STUDIO AREA ── */}
-      {loading && !v0ChatId ? (
+      {!schemaReady ? (
+        <SchemaStep
+          tenantSlug={tenantSlug}
+          hasSchema={!!hasSchema}
+          existingSchemaSummary={existingSchemaSummary ?? { contentTypes: [], singleTypes: [] }}
+          onSchemaReady={handleSchemaReady}
+        />
+      ) : loading && !v0ChatId ? (
         /* ── Loading Animation Stage ── */
         <div className="border border-border/80 rounded-2xl p-12 flex flex-col items-center justify-center flex-1 gap-6 text-center bg-card shadow-xs">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse border border-primary/20">
@@ -1766,6 +1789,37 @@ export async function fetchContent(collection: string) {
             : "min-h-[520px] py-10"
         }`}>
           <div className="w-full max-w-2xl mx-auto px-4 space-y-5">
+            {showMcpHint && (
+              <div className="relative rounded-2xl border border-border/70 bg-muted/30 p-4 text-left">
+                <button
+                  type="button"
+                  onClick={() => setShowMcpHint(false)}
+                  className="absolute top-2.5 right-2.5 text-muted-foreground hover:text-foreground cursor-pointer"
+                  aria-label="Tutup"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+                <div className="flex items-start gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center text-primary shrink-0">
+                    <Terminal className="h-4 w-4" />
+                  </div>
+                  <div className="space-y-1.5 pr-5">
+                    <p className="text-xs font-bold text-foreground">Ingin pakai AI Agent Anda sendiri?</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">
+                      Schema CMS tenant ini sudah bisa dibaca lewat MCP oleh AI agent eksternal (Claude Code, Cursor, dll.) untuk membangun frontend dengan tool pilihan Anda.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
+                      className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
+                    >
+                      Ambil token koneksi MCP <ArrowRight className="h-3 w-3" />
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight text-center">
               Website apa yang ingin Anda buat?
             </h2>
