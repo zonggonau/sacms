@@ -601,7 +601,7 @@ export function DocsClient() {
               REST API
             </a>
             <Link
-              href="/login"
+              href="/auth/login"
               className="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 shadow-sm transition-all hover:scale-102"
             >
               Dashboard

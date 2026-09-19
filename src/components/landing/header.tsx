@@ -40,7 +40,7 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
 
   const isUserBiasa = session?.user?.role === "user"
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
-  const dashboardUrl = isUserBiasa ? "/aibuilder" : (defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard")
+  const dashboardUrl = isUserBiasa ? "/aibuilder" : (defaultTenantSlug ? `/developer/${defaultTenantSlug}` : "/dashboard")
   const actionLabel = isUserBiasa ? "Buka AI Builder" : "Buka Dashboard"
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "User"
   const userInitial = userName.charAt(0).toUpperCase()
@@ -102,12 +102,12 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
               </>
             ) : (
               <>
-                <Link href="/login">
+                <Link href="/auth/login">
                   <Button variant="ghost" size="sm" className="rounded-full text-foreground hover:text-primary hover:bg-primary/10 font-bold px-4 text-xs h-8">
                     Masuk
                   </Button>
                 </Link>
-                <Link href="/register">
+                <Link href="/auth/register">
                   <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-5 shadow-sm hover:scale-[1.02] transition-all text-xs h-8">
                     Mulai Gratis
                   </Button>
@@ -172,12 +172,12 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5 pt-4 pb-2 mt-1 border-t border-border/50">
-                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" className="w-full rounded-2xl border-border/60 font-bold h-11 text-xs">
                       Masuk
                     </Button>
                   </Link>
-                  <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-sm text-xs">
                       Mulai Gratis
                     </Button>

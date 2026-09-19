@@ -16,7 +16,7 @@ export function DashboardLayout({ children, tenantSlug }: DashboardLayoutProps) 
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [status, router])
 

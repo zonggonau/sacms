@@ -201,7 +201,7 @@ export async function createComponentAction(tenantSlug: string, data: any) {
       include: { schemaFields: true },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/components`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/components`)
     return { component }
   } catch (error) {
     console.error("Error creating component:", error)
@@ -280,8 +280,8 @@ export async function updateComponentAction(tenantSlug: string, id: string, data
       })
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/components`)
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/components/${updatedComponent.slug}/edit`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/components`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/components/${updatedComponent.slug}/edit`)
     
     // Format response to match UI expectations
     const formattedFields = parseSchemaFieldOptions(updatedComponent.schemaFields)
@@ -355,7 +355,7 @@ export async function deleteComponentAction(tenantSlug: string, id: string) {
 
     await tenantDb.component.delete({ where: { id } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/components`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/components`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting component:", error)

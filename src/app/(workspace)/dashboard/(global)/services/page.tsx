@@ -143,7 +143,7 @@ import { getGlobalWorkspaceId } from "@/lib/settings"
 export default async function ServicesPage() {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect("/login")
+    redirect("/auth/login")
   }
 
   const isSuperAdmin = session.user.role === "super_admin"

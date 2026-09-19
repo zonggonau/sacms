@@ -116,7 +116,7 @@ export function MediaLibraryView({
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [status, router])
 
@@ -509,7 +509,7 @@ export function MediaLibraryView({
               </div>
             </div>
             <Button size="sm" variant="outline" className="border-destructive/30 hover:bg-destructive/10 text-destructive text-xs h-8 rounded-xl shrink-0 font-bold" asChild>
-              <Link href={`/dashboard/${tenantSlug}/subscriptions`}>Upgrade Paket</Link>
+              <Link href={`/developer/${tenantSlug}/subscriptions`}>Upgrade Paket</Link>
             </Button>
           </div>
         )}

@@ -198,8 +198,8 @@ export async function applyTemplateAction(tenantIdOrSlug: string, templateId: st
     })
 
     // Revalidate the CTB paths
-    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/aiwebsitebuilder`)
-    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/content-types`)
+    revalidatePath(`/developer/${tenant.slug}/content-type-builder/aiwebsitebuilder`)
+    revalidatePath(`/developer/${tenant.slug}/content-type-builder/content-types`)
 
     return { success: true }
   } catch (error: any) {
@@ -284,7 +284,7 @@ export async function checkWorkspaceAccessAction(targetTenantId?: string) {
   try {
     const session = await getServerSession(authOptions)
     if (!session?.user) {
-      return { allowed: false, redirectUrl: "/login" }
+      return { allowed: false, redirectUrl: "/auth/login" }
     }
 
     const { getTenantAccess } = await import("@/lib/tenant-access")
@@ -300,7 +300,7 @@ export async function checkWorkspaceAccessAction(targetTenantId?: string) {
       return { allowed: false, error: "Access denied. You do not have permission for this workspace." }
     }
 
-    return { allowed: true, redirectUrl: `/dashboard/${access.tenantId}` }
+    return { allowed: true, redirectUrl: `/developer/${access.tenantId}` }
   } catch (error) {
     console.error("Error checking workspace access:", error)
     return { allowed: false, error: "Failed to check workspace access." }

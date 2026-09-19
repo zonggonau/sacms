@@ -14,17 +14,17 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
   const pathname = usePathname()
 
   const navItems = [
-    { title: "Kunci API", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
-    { title: "Webhooks", href: `/dashboard/${tenantId}/developer/webhooks`, icon: Webhook },
-    { title: "REST API", href: `/dashboard/${tenantId}/developer/api`, icon: Play },
-    { title: "GraphQL Explorer", href: `/dashboard/${tenantId}/developer/graphql`, icon: Play },
-    { title: "SDK & Dokumentasi", href: `/dashboard/${tenantId}/developer/sdk`, icon: BookOpen },
-    { title: "Server MCP", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug },
+    { title: "Kunci API", href: `/developer/${tenantId}/tools/api-keys`, icon: Key },
+    { title: "Webhooks", href: `/developer/${tenantId}/tools/webhooks`, icon: Webhook },
+    { title: "REST API", href: `/developer/${tenantId}/tools/api`, icon: Play },
+    { title: "GraphQL Explorer", href: `/developer/${tenantId}/tools/graphql`, icon: Play },
+    { title: "SDK & Dokumentasi", href: `/developer/${tenantId}/tools/sdk`, icon: BookOpen },
+    { title: "Server MCP", href: `/developer/${tenantId}/tools/mcp`, icon: Plug },
   ]
 
   return (
     <div className="w-64 border-r border-border/80 bg-card shrink-0 hidden md:block h-full">
-      <NestedSidebarHeader tenantId={tenantId} logoHref={`/dashboard/${tenantId}/developer`} portalBadge="Pengembang" />
+      <NestedSidebarHeader tenantId={tenantId} logoHref={`/developer/${tenantId}/tools`} portalBadge="Pengembang" />
       <nav className="p-3 space-y-1">
         {navItems.map((item) => {
           const active = pathname === item.href || pathname?.startsWith(`${item.href}/`)

@@ -20,7 +20,7 @@ Platform super administrators also have `/admin` pages for global schemas, tenan
 New accounts are created at `/register`. A checkbox on the form (`formData.isDeveloper`) decides which of two self-registration account types the user gets:
 
 - **Creator account (`role: "user"`, checkbox left unchecked, the default):** a workspace is auto-provisioned and owned by the user themselves; after login the account lands straight at `/aibuilder`, the AI Website Builder, and can generate a website by describing it in a prompt — no Content Type/schema knowledge required.
-- **Developer account (`role: "developer"`, checkbox checked):** after login the account lands at `/dashboard` and manages workspaces, content, schema, and API access directly, as this manual's remaining sections describe.
+- **Developer account (`role: "developer"`, checkbox checked):** after login the account lands at `/dashboard` (the cross-workspace hub) or straight at `/developer/{tenant}` if they own exactly one workspace, and manages workspaces, content, schema, and API access directly — content editing lives at `/cms/{tenant}`, everything else at `/developer/{tenant}` — as this manual's remaining sections describe.
 
 The very first account ever registered on a deployment instead becomes `role: "super_admin"` automatically (auto-verified, no activation email), and is the platform owner described in section 1.
 

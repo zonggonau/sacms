@@ -129,22 +129,28 @@ src/app/
 │   ├── billing/page.tsx                     ← Global revenue, invoices, transaction metrics
 │   ├── monitoring/page.tsx                  ← System health, response times, active connections
 │   └── enterprise/licenses/page.tsx         ← RSA Enterprise license generator & tracking
-├── (workspace)/dashboard/[tenant]/          ← Tenant Workspace Dashboard
-│   ├── (cms)/cms/                           ← Content Management System UI
+├── auth/{login,register,forgot-password,reset-password}/  ← Platform auth pages (old top-level
+│                                                                /login etc. permanently redirect here)
+├── (workspace)/
+│   ├── dashboard/                           ← Cross-workspace hub for super admin & staff only
+│   │                                            (no [tenant] segment) — workspace picker, global
+│   │                                            billing, AI-builder redirect
+│   ├── cms/[tenant]/                        ← Content Management System UI
 │   │   ├── content/[slug]/page.tsx          ← Collection entry manager, bulk actions, FTS
 │   │   ├── single-types/[slug]/page.tsx     ← Single type dynamic editor & locale tabs
-│   │   └── components/page.tsx              ← Reusable schema components with impact analysis
-│   ├── (dashboard)/                         ← Workspace management
-│   │   ├── content-type-builder/            ← Visual drag-and-drop schema designer
-│   │   ├── media/page.tsx                   ← Media library (Cloudflare R2)
-│   │   ├── settings/page.tsx                ← Workspace settings, white-label, locales
-│   │   └── subscriptions/page.tsx           ← Plan upgrades & Midtrans checkout
-│   └── developer/                           ← Developer Hub & AI Protocol
-│       ├── api/page.tsx                     ← Interactive REST API playground
-│       ├── api-keys/page.tsx                ← SHA-256 API token generator
-│       ├── graphql/page.tsx                 ← Embedded GraphiQL Explorer
-│       ├── mcp/page.tsx                     ← Model Context Protocol token management
-│       └── sdk/page.tsx                     ← TypeScript SDK guide & zip export
+│   │   └── media/, profile/, graphql/
+│   └── developer/[tenant]/                  ← Tenant workspace management (was /dashboard/[tenant])
+│       ├── content-type-builder/            ← Visual drag-and-drop schema designer (incl. Components)
+│       ├── media/page.tsx                   ← Media library (Cloudflare R2)
+│       ├── settings/page.tsx                ← Workspace settings, white-label, locales
+│       ├── subscriptions/page.tsx           ← Plan upgrades & Midtrans checkout
+│       └── tools/                           ← Developer Hub & AI Protocol (was `.../developer/*`,
+│           │                                    renamed to avoid colliding with the /developer group)
+│           ├── api/page.tsx                 ← Interactive REST API playground
+│           ├── api-keys/page.tsx            ← SHA-256 API token generator
+│           ├── graphql/page.tsx             ← Embedded GraphiQL Explorer
+│           ├── mcp/page.tsx                 ← Model Context Protocol token management
+│           └── sdk/page.tsx                 ← TypeScript SDK guide & zip export
 └── api/                                     ← REST, GraphQL, MCP, and Cron API Route Handlers
     ├── public/[tenant]/content/             ← Public REST endpoints
     ├── public/[tenant]/graphql/             ← Public GraphQL endpoint

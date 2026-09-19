@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation"
 import { AiBuilderSidebar, type AiProjectItem } from "./aibuilder-sidebar"
 import { AibuilderProjectsView } from "./aibuilder-projects-view"
 import { V0TopNavbar, type WorkspaceOption } from "./v0-top-navbar"
-import { WebsiteBuilderClient } from "@/app/(workspace)/dashboard/[tenant]/(dashboard)/content-type-builder/aiwebsitebuilder/website-builder-client"
+import { WebsiteBuilderClient } from "@/app/(workspace)/developer/[tenant]/(developer)/content-type-builder/aiwebsitebuilder/website-builder-client"
 
 interface AiBuilderShellProps {
   workspaces: WorkspaceOption[]

@@ -527,7 +527,7 @@ docs/
 
 1. **Onboarding (two self-registration paths, chosen via the `formData.isDeveloper` checkbox at `/register`):**
    - **Creator (`role: "user"`, default/unchecked):** Register → verify email → sign in → auto-provisioned workspace (owned by the user themselves) → lands at `/aibuilder` → describe the desired site to the AI Website Builder → generate & deploy, no CMS/schema knowledge required.
-   - **Developer (`role: "developer"`, checkbox checked):** Register → verify email → sign in → lands at `/dashboard` → create/choose workspace → choose plan → configure locale → create schema → create API token → create content.
+   - **Developer (`role: "developer"`, checkbox checked):** Register → verify email → sign in → lands at `/dashboard` (cross-workspace hub) or straight at `/developer/{tenant}` if they own exactly one workspace → create/choose workspace → choose plan → configure locale → create schema → create API token → create content.
    - The very first account ever registered becomes `role: "super_admin"` automatically (auto-verified, no email step).
 2. **Content Delivery:** Model schema → create draft → complete data → optional sequential review → approve → publish/schedule → consume via REST/GraphQL → webhook notification
 3. **Developer Integration:** Create API token → choose REST/GraphQL/SDK → request tenant-bound → field selection/filter/population → observe rate-limit/cache headers → rotate token

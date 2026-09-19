@@ -17,7 +17,7 @@ export default async function GlobalDashboardLayout({
 }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect("/login")
+    redirect("/auth/login")
   }
   
   // Fetch brand name from footer content entry

@@ -23,7 +23,7 @@ interface PageProps {
 export default async function AiBuilderModePage({ searchParams }: PageProps) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect("/login?redirect_to=/aibuilder")
+    redirect("/auth/login?redirect_to=/aibuilder")
   }
 
   const { workspace: requestedWorkspace, prompt: initialPromptParam } = await searchParams

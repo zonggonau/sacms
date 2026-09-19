@@ -1947,7 +1947,7 @@ export default async function NewsPage() {
           return {
             content: [{
               type: "text" as const,
-              text: `❌ Payment Required: Fitur deploy Vercel memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /dashboard/${auth.tenantSlug}/subscriptions`
+              text: `❌ Payment Required: Fitur deploy Vercel memerlukan workspace berstatus PAID. Silakan selesaikan pembayaran di dashboard: /developer/${auth.tenantSlug}/subscriptions`
             }],
             isError: true,
           }
@@ -2683,7 +2683,7 @@ async function handleMcpRequest(req: Request): Promise<Response> {
         error: auth.paymentError,
         code: "PAYMENT_REQUIRED",
         plan: auth.plan,
-        upgradeUrl: `/dashboard/${auth.tenantSlug}/subscriptions`
+        upgradeUrl: `/developer/${auth.tenantSlug}/subscriptions`
       }, { status: 402 })
     }
 

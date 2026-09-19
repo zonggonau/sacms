@@ -356,7 +356,7 @@ export function WorkspaceManager({
             {filteredTenants.map((tenant) => {
               const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
               const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
-              const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
+              const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/developer/${tenant.id}` : `/cms/${tenant.id}`)
               const isProvisioning = tenant.status === 'provisioning'
               const isSuspended = tenant.status === 'suspended'
 
@@ -422,22 +422,22 @@ export function WorkspaceManager({
                           {isOwnerOrAdmin ? (
                             <>
                               <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}`}>
+                                <Link href={`/developer/${tenant.id}`}>
                                   <Layers className="mr-2 h-3.5 w-3.5" /> Ringkasan Workspace
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}/cms`}>
+                                <Link href={`/cms/${tenant.id}`}>
                                   <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}/settings`}>
+                                <Link href={`/developer/${tenant.id}/settings`}>
                                   <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
                                 </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                <Link href={`/dashboard/${tenant.id}/subscriptions`}>
+                                <Link href={`/developer/${tenant.id}/subscriptions`}>
                                   <Zap className="mr-2 h-3.5 w-3.5" /> Langganan & Paket
                                 </Link>
                               </DropdownMenuItem>
@@ -451,7 +451,7 @@ export function WorkspaceManager({
                             </>
                           ) : (
                             <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                              <Link href={`/dashboard/${tenant.id}/cms`}>
+                              <Link href={`/cms/${tenant.id}`}>
                                 <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
                               </Link>
                             </DropdownMenuItem>
@@ -503,7 +503,7 @@ export function WorkspaceManager({
                             : "bg-primary text-primary-foreground hover:bg-primary/90"
                       )}
                     >
-                      <Link href={isTenantExpired ? `/dashboard/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
+                      <Link href={isTenantExpired ? `/developer/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
                         {isTenantExpired ? "Pilih Paket Langganan" : isOwnerOrAdmin ? "Buka Workspace" : "Buka CMS Studio"}
                         <ArrowRight className="ml-1.5 h-3.5 w-3.5 group-hover:translate-x-0.5 transition-transform" />
                       </Link>
@@ -530,7 +530,7 @@ export function WorkspaceManager({
                 {filteredTenants.map((tenant) => {
                   const isOwnerOrAdmin = ['owner', 'admin'].includes(tenant.role) || isSuperAdmin
                   const isTenantExpired = Boolean(tenant.isExpired || (tenant.daysRemaining !== null && tenant.daysRemaining <= 0 && tenant.status !== "active"))
-                  const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/dashboard/${tenant.id}` : `/dashboard/${tenant.id}/cms`)
+                  const targetUrl = tenant.status === 'provisioning' ? '#' : (isOwnerOrAdmin ? `/developer/${tenant.id}` : `/cms/${tenant.id}`)
                   const isProvisioning = tenant.status === 'provisioning'
                   const isSuspended = tenant.status === 'suspended'
 
@@ -595,7 +595,7 @@ export function WorkspaceManager({
                               isTenantExpired && "bg-amber-500 hover:bg-amber-600 text-white dark:text-black shadow-xs"
                             )}
                           >
-                            <Link href={isTenantExpired ? `/dashboard/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
+                            <Link href={isTenantExpired ? `/developer/${tenant.id}/subscriptions` : targetUrl} onClick={(e) => isProvisioning && e.preventDefault()}>
                               {isTenantExpired ? "Langganan" : "Buka"} <ArrowRight className="ml-1.5 h-3 w-3" />
                             </Link>
                           </Button>
@@ -610,12 +610,12 @@ export function WorkspaceManager({
                               {isOwnerOrAdmin ? (
                                 <>
                                   <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                    <Link href={`/dashboard/${tenant.id}/settings`}>
+                                    <Link href={`/developer/${tenant.id}/settings`}>
                                       <Settings className="mr-2 h-3.5 w-3.5" /> Pengaturan
                                     </Link>
                                   </DropdownMenuItem>
                                   <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                    <Link href={`/dashboard/${tenant.id}/subscriptions`}>
+                                    <Link href={`/developer/${tenant.id}/subscriptions`}>
                                       <Zap className="mr-2 h-3.5 w-3.5" /> Langganan
                                     </Link>
                                   </DropdownMenuItem>
@@ -629,7 +629,7 @@ export function WorkspaceManager({
                                 </>
                               ) : (
                                 <DropdownMenuItem asChild className="text-xs cursor-pointer rounded-lg">
-                                  <Link href={`/dashboard/${tenant.id}/cms`}>
+                                  <Link href={`/cms/${tenant.id}`}>
                                     <ExternalLink className="mr-2 h-3.5 w-3.5" /> CMS Content Studio
                                   </Link>
                                 </DropdownMenuItem>

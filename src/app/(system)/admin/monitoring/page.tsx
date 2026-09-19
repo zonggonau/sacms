@@ -114,7 +114,7 @@ export default function AdminMonitoringPage() {
   }, [page, debouncedSearch, statusFilter, methodFilter])
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
+    if (status === "unauthenticated") router.push("/auth/login")
   }, [status, router])
 
   useEffect(() => {

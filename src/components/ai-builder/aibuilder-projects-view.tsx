@@ -294,7 +294,7 @@ export function AibuilderProjectsView({
                     title="Buka CMS Studio"
                     className="h-9 w-9 rounded-xl border-border/80 hover:border-primary/40 hover:bg-muted"
                   >
-                    <Link href={`/dashboard/${p.slug}/cms`}>
+                    <Link href={`/cms/${p.slug}`}>
                       <Database className="w-3.5 h-3.5" />
                     </Link>
                   </Button>

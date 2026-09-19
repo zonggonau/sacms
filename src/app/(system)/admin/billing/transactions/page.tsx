@@ -86,7 +86,7 @@ export default function AdminTransactionsPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
+    if (status === "unauthenticated") router.push("/auth/login")
   }, [status, router])
 
   useEffect(() => {

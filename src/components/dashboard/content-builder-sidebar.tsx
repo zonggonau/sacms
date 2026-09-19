@@ -24,10 +24,10 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
   const pathname = usePathname()
 
   const navItems = [
-    { title: "AI Website Builder", href: `/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`, icon: Bot, badge: "AI" },
-    { title: "Collection Types", href: `/dashboard/${tenantId}/content-type-builder/content-types`, icon: DatabaseIcon },
-    { title: "Single Types", href: `/dashboard/${tenantId}/content-type-builder/single-types`, icon: FileText },
-    { title: "Components", href: `/dashboard/${tenantId}/content-type-builder/components`, icon: Puzzle },
+    { title: "AI Website Builder", href: `/developer/${tenantId}/content-type-builder/aiwebsitebuilder`, icon: Bot, badge: "AI" },
+    { title: "Collection Types", href: `/developer/${tenantId}/content-type-builder/content-types`, icon: DatabaseIcon },
+    { title: "Single Types", href: `/developer/${tenantId}/content-type-builder/single-types`, icon: FileText },
+    { title: "Components", href: `/developer/${tenantId}/content-type-builder/components`, icon: Puzzle },
   ]
 
   return (
@@ -36,7 +36,7 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
         <NestedSidebarHeader 
           tenantId={tenantId} 
           backTooltip="Back to Workspace Dashboard"
-          logoHref={`/dashboard/${tenantId}/content-type-builder/content-types`} 
+          logoHref={`/developer/${tenantId}/content-type-builder/content-types`} 
           portalBadge="Schema Builder" 
         />
         <div className="p-3 space-y-1">
@@ -78,7 +78,7 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
         <p className="px-1 text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">
           Quick Navigation
         </p>
-        <Link href={`/dashboard/${tenantId}/cms`}>
+        <Link href={`/cms/${tenantId}`}>
           <div className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 border border-emerald-500/30 group shadow-xs">
             <Sparkles className="h-4 w-4 text-emerald-600 dark:text-emerald-400 shrink-0 group-hover:rotate-12 transition-transform" />
             <div className="min-w-0 flex-1">

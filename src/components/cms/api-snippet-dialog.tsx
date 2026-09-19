@@ -229,7 +229,7 @@ curl -X GET "${apiUrl}?page=1&limit=10" \\
 
           <div className="flex items-center justify-between pt-3 border-t border-border/60">
             <Button variant="ghost" size="sm" asChild className="h-8 text-xs font-bold text-muted-foreground hover:text-foreground">
-              <Link href={`/dashboard/${tenantSlug}/developer/api`}>
+              <Link href={`/developer/${tenantSlug}/tools/api`}>
                 <BookOpen className="w-3.5 h-3.5 mr-1.5" /> Buka Dokumentasi Lengkap
               </Link>
             </Button>

@@ -102,7 +102,7 @@ export function V0TopNavbar({
         </Badge>
 
         <Button asChild size="sm" variant="ghost" className="h-8 px-2.5 text-xs font-bold rounded-xl hover:bg-muted text-muted-foreground hover:text-foreground hidden sm:inline-flex gap-1">
-          <Link href={`/dashboard/${activeTenant.slug}/cms`}>
+          <Link href={`/cms/${activeTenant.slug}`}>
             <Layers className="h-3.5 w-3.5" />
             <span>CMS Studio</span>
             <ArrowUpRight className="h-3 w-3" />

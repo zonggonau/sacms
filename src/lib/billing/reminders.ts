@@ -59,7 +59,7 @@ export async function runBillingReminders(now: Date = new Date()) {
       await db.storageAddon.update({ where: { id: addon.id }, data: markBoth })
       if (renewed.has(addon.id)) continue
       const tenant = tenantById.get(addon.tenantId)
-      const link = `${baseUrl}/dashboard/${tenant?.slug ?? addon.tenantId}/subscriptions?tab=addons`
+      const link = `${baseUrl}/developer/${tenant?.slug ?? addon.tenantId}/subscriptions?tab=addons`
       await notify(
         addon.tenantId,
         `Extra storage workspace ${tenant?.name ?? ""} berakhir ${label}`,
@@ -77,7 +77,7 @@ export async function runBillingReminders(now: Date = new Date()) {
       const markBoth = field === "reminder1dSentAt" ? { reminder1dSentAt: now, reminder7dSentAt: service.reminder7dSentAt ?? now } : { reminder7dSentAt: now }
       await db.managedInfraService.update({ where: { id: service.id }, data: markBoth })
       const tenant = tenantById.get(service.tenantId)
-      const link = `${baseUrl}/dashboard/${tenant?.slug ?? service.tenantId}/subscriptions?tab=addons`
+      const link = `${baseUrl}/developer/${tenant?.slug ?? service.tenantId}/subscriptions?tab=addons`
       await notify(
         service.tenantId,
         `Layanan database & storage sendiri workspace ${tenant?.name ?? ""} berakhir ${label}`,

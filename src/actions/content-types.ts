@@ -228,8 +228,8 @@ export async function createContentTypeAction(tenantSlug: string, data: any) {
       },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/cms`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/cms/${tenantSlug}`)
     return { contentType }
   } catch (error) {
     console.error("Error creating content type:", error)
@@ -306,10 +306,10 @@ export async function updateContentTypeAction(tenantSlug: string, id: string, da
 
     const formattedFields = parseSchemaFieldOptions(updatedContentType.schemaFields)
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types/edit/${updatedContentType.slug}`)
-    revalidatePath(`/dashboard/${tenantSlug}/cms/content/${updatedContentType.slug}`)
-    revalidatePath(`/dashboard/${tenantSlug}/cms`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/content-types/edit/${updatedContentType.slug}`)
+    revalidatePath(`/cms/${tenantSlug}/content/${updatedContentType.slug}`)
+    revalidatePath(`/cms/${tenantSlug}`)
     
     return { contentType: { ...updatedContentType, schemaFields: formattedFields } }
   } catch (error) {
@@ -370,8 +370,8 @@ export async function deleteContentTypeAction(tenantSlug: string, id: string) {
 
     await tenantDb.contentType.delete({ where: { id } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/content-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/cms`)
+    revalidatePath(`/developer/${tenantSlug}/content-type-builder/content-types`)
+    revalidatePath(`/cms/${tenantSlug}`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting content type:", error)

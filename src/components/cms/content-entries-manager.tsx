@@ -101,7 +101,7 @@ export function ContentEntriesManager({
   customPermissions?: string[] | null,
 }) {
   const router = useRouter()
-  const navBasePath = basePath || `/dashboard/${tenantSlug}/cms`
+  const navBasePath = basePath || `/cms/${tenantSlug}`
   
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [selectedIds, setSelectedIds] = useState<string[]>([])

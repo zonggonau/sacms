@@ -247,7 +247,7 @@ function AdminUsersContent() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/auth/login")
     } else if (status === "authenticated" && !isAdmin) {
       router.push("/dashboard")
     }

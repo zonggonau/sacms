@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     const token = searchParams.get("token")?.trim()
 
     if (!token) {
-      return redirectTo("/login?error=MissingToken")
+      return redirectTo("/auth/login?error=MissingToken")
     }
 
     // 1. Find the verification token in database
@@ -23,14 +23,14 @@ export async function GET(req: NextRequest) {
     })
 
     if (!verificationToken) {
-      return redirectTo("/login?error=InvalidToken")
+      return redirectTo("/auth/login?error=InvalidToken")
     }
 
     // 2. Check token expiration
     if (new Date() > verificationToken.expires) {
       // Token expired, delete it
       await db.verificationToken.deleteMany({ where: { token } }).catch(() => {})
-      return redirectTo("/login?error=TokenExpired")
+      return redirectTo("/auth/login?error=TokenExpired")
     }
 
     // 3. Find target user
@@ -39,7 +39,7 @@ export async function GET(req: NextRequest) {
     })
 
     if (!user) {
-      return redirectTo("/login?error=UserNotFound")
+      return redirectTo("/auth/login?error=UserNotFound")
     }
 
     // 4. Update user's emailVerified field
@@ -57,9 +57,9 @@ export async function GET(req: NextRequest) {
 
     // 6. Redirect to login with success message
     const emailParam = encodeURIComponent(user.email)
-    return redirectTo(`/login?verified=true&email=${emailParam}`)
+    return redirectTo(`/auth/login?verified=true&email=${emailParam}`)
   } catch (error) {
     console.error("Verification Error:", error)
-    return redirectTo("/login?error=InternalError")
+    return redirectTo("/auth/login?error=InternalError")
   }
 }

@@ -14,7 +14,7 @@ export default async function OwnerLayout({
 }) {
   const session = await getServerSession(authOptions)
   if (!session?.user) {
-    redirect("/login")
+    redirect("/auth/login")
   }
 
   const { ownerId } = await params

@@ -113,11 +113,11 @@ export function V0HeroComposer({ data }: V0HeroComposerProps = {}) {
         router.push(targetUrl)
       } else {
         // Not logged in: go to login, then redirect to aibuilder
-        const loginUrl = `/login?redirect_to=${encodeURIComponent(targetUrl)}`
+        const loginUrl = `/auth/login?redirect_to=${encodeURIComponent(targetUrl)}`
         router.push(loginUrl)
       }
     } catch {
-      router.push("/login?redirect_to=/aibuilder")
+      router.push("/auth/login?redirect_to=/aibuilder")
     }
   }
 

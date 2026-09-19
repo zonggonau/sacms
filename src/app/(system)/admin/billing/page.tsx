@@ -27,7 +27,7 @@ export default function AdminBillingOverviewPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [status, router])
 

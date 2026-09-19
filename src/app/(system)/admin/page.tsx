@@ -75,7 +75,7 @@ export default function GlobalAdminDashboard() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/login")
+      router.push("/auth/login")
     }
   }, [status, router])
 
@@ -402,7 +402,7 @@ export default function GlobalAdminDashboard() {
                             {tenant.plan}
                           </Badge>
                           <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" asChild>
-                            <Link href={`/dashboard/${tenant.slug}`}>
+                            <Link href={`/developer/${tenant.slug}`}>
                               <ArrowUpRight className="h-3.5 w-3.5" />
                             </Link>
                           </Button>
@@ -443,7 +443,7 @@ export default function GlobalAdminDashboard() {
                           </div>
                         </div>
                         <Button variant="outline" size="icon" className="h-7 w-7 rounded-lg" asChild>
-                          <Link href={`/dashboard/${tenant.slug}`}>
+                          <Link href={`/developer/${tenant.slug}`}>
                             <ArrowUpRight className="h-3.5 w-3.5" />
                           </Link>
                         </Button>

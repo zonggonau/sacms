@@ -101,7 +101,7 @@ export async function createMcpTokenAction(
       },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+    revalidatePath(`/developer/${tenantSlug}/tools/mcp`)
 
     return {
       success: true,
@@ -146,7 +146,7 @@ export async function deleteMcpTokenAction(tenantSlug: string, tokenId: string) 
       where: { id: tokenId },
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/developer/mcp`)
+    revalidatePath(`/developer/${tenantSlug}/tools/mcp`)
 
     return { success: true }
   } catch (error) {

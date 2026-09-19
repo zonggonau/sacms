@@ -163,7 +163,7 @@ export function RelationField({ value, onChange, tenantSlug }: RelationFieldProp
                   if (newSingleTypeName.trim()) {
                     const slug = newSingleTypeSlug || newSingleTypeName.toLowerCase().replace(/\s+/g, "-")
                     window.open(
-                      `/dashboard/${tenantSlug}/single-types/new?name=${encodeURIComponent(newSingleTypeName)}&slug=${slug}`,
+                      `/developer/${tenantSlug}/single-types/new?name=${encodeURIComponent(newSingleTypeName)}&slug=${slug}`,
                       "_blank"
                     )
                   }

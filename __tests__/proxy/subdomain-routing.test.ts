@@ -52,7 +52,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/delvia/cms/content/articles")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/cms/delvia/content/articles")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("cms")
   })
 
@@ -64,11 +64,11 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/delvia/cms")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/cms/delvia")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("cms")
   })
 
-  it("should rewrite admin.sacms.cloud/tenant/settings to admin dashboard settings", async () => {
+  it("should rewrite admin.sacms.cloud/tenant/settings to developer settings", async () => {
     const req = new NextRequest("http://admin.sacms.cloud/delvia/settings", {
       headers: {
         host: "admin.sacms.cloud",
@@ -76,11 +76,11 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/delvia/settings")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/developer/delvia/settings")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
 
-  it("should rewrite unauthenticated admin.sacms.cloud/ directly to /login", async () => {
+  it("should rewrite unauthenticated admin.sacms.cloud/ directly to /auth/login", async () => {
     const req = new NextRequest("http://admin.sacms.cloud/", {
       headers: {
         host: "admin.sacms.cloud",
@@ -88,7 +88,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/login")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/auth/login")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
 
@@ -105,7 +105,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Subdomain-Portal")).toBe("admin")
   })
 
-  it("should rewrite unauthenticated owner subdomain to /login", async () => {
+  it("should rewrite unauthenticated owner subdomain to /auth/login", async () => {
     const req = new NextRequest("http://u8f9c1d2e3b4a5f6.sacms.cloud/", {
       headers: {
         host: "u8f9c1d2e3b4a5f6.sacms.cloud",
@@ -113,7 +113,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/login")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/auth/login")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("owner")
   })
 
@@ -131,7 +131,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Owner-Slug")).toBe("u8f9c1d2e3b4a5f6")
   })
 
-  it("should rewrite direct workspace subdomain klinik.sacms.cloud to /dashboard/klinik/cms", async () => {
+  it("should rewrite direct workspace subdomain klinik.sacms.cloud to /cms/klinik", async () => {
     const req = new NextRequest("http://klinik.sacms.cloud/", {
       headers: {
         host: "klinik.sacms.cloud",
@@ -139,12 +139,12 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/klinik/cms")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/cms/klinik")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
     expect(res.headers.get("X-Tenant-Slug")).toBe("klinik")
   })
 
-  it("should rewrite direct workspace subdomain admin route klinik.sacms.cloud/admin to /dashboard/klinik", async () => {
+  it("should rewrite direct workspace subdomain admin route klinik.sacms.cloud/admin to /developer/klinik", async () => {
     const req = new NextRequest("http://klinik.sacms.cloud/admin", {
       headers: {
         host: "klinik.sacms.cloud",
@@ -152,7 +152,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/klinik")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/developer/klinik")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("workspace")
   })
 
@@ -184,7 +184,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     expect(res.headers.get("X-Tenant-Slug")).toBeNull()
   })
 
-  it("should pass developer.sacms.cloud/dashboard/tenant through unchanged", async () => {
+  it("should permanently redirect the legacy developer.sacms.cloud/dashboard/tenant bookmark to /developer/tenant", async () => {
     const req = new NextRequest("http://developer.sacms.cloud/dashboard/delvia", {
       headers: {
         host: "developer.sacms.cloud",
@@ -193,8 +193,20 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toBeNull()
-    expect(res.headers.get("X-Tenant-Slug")).toBeNull()
+    expect(res.status).toBe(308)
+    expect(res.headers.get("location")).toContain("/developer/delvia")
+  })
+
+  it("keeps /dashboard itself (the global cross-workspace hub) from being caught by the legacy redirect", async () => {
+    const req = new NextRequest("http://developer.sacms.cloud/dashboard", {
+      headers: {
+        host: "developer.sacms.cloud",
+        cookie: "next-auth.session-token=valid-token-mock",
+      },
+    })
+
+    const res = await proxy(req)
+    expect(res.status).not.toBe(308)
   })
 
   it("should keep cms.sacms.cloud routing to the CMS dashboard", async () => {
@@ -205,7 +217,7 @@ describe("Multi-Subdomain Edge Routing (proxy.ts)", () => {
     })
 
     const res = await proxy(req)
-    expect(res.headers.get("x-middleware-rewrite")).toContain("/dashboard/delvia/cms/media")
+    expect(res.headers.get("x-middleware-rewrite")).toContain("/cms/delvia/media")
     expect(res.headers.get("X-Subdomain-Portal")).toBe("cms")
   })
 })
@@ -224,6 +236,6 @@ describe("Portal URLs Generator Helper", () => {
 
   it("should point the app portal at the apex domain", () => {
     expect(getPortalBaseUrl("app")).toMatch(/^https?:\/\/sacms\.cloud$/)
-    expect(getPortalUrl("app", "intanjaya")).toMatch(/^https?:\/\/sacms\.cloud\/dashboard\/intanjaya$/)
+    expect(getPortalUrl("app", "intanjaya")).toMatch(/^https?:\/\/sacms\.cloud\/developer\/intanjaya$/)
   })
 })

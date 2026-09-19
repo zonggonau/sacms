@@ -25,7 +25,7 @@ export default function LabaRugiPage() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/login")
+    if (status === "unauthenticated") router.push("/auth/login")
   }, [status, router])
 
   const fetchReports = async () => {

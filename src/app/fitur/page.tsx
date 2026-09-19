@@ -89,7 +89,7 @@ export default async function FiturPage() {
 
             <div className="pt-3 flex flex-wrap items-center justify-center gap-3">
               <Button asChild className="h-10 px-6 rounded-full font-bold text-xs bg-primary hover:bg-primary/90 text-primary-foreground shadow-sm gap-1.5">
-                <Link href="/register">
+                <Link href="/auth/register">
                   <span>Mulai Coba Gratis</span>
                   <ArrowRight className="h-3.5 w-3.5" />
                 </Link>

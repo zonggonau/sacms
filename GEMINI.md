@@ -25,10 +25,18 @@
 ```
 src/
   app/
+    auth/
+      login/, register/, forgot-password/, reset-password/   ← Platform auth pages (old top-level
+                                                                  /login etc. now permanently redirect here)
+    aibuilder/                          ← AI Website Builder ("v0 Studio" full-screen shell) — default
+                                            landing page for self-registered `role: "user"` accounts
     (workspace)/
-      dashboard/
+      dashboard/                        ← Cross-workspace hub for super admin & staff only (no [tenant]
+                                            segment) — workspace picker/global billing/AI-builder redirect.
+                                            Tenant-scoped management moved out to /developer and /cms below.
+      developer/
         [tenant]/
-          (dashboard)/
+          (developer)/
             page.tsx                     ← Workspace Hub & Overview Dashboard
             content-types/               ← Content Types management
             content-type-builder/        ← Visual Schema Drag & Drop Builder
@@ -38,15 +46,19 @@ src/
             users/                       ← Team Members & RBAC Roles
             system/audit/                ← System Audit Logging
             settings/                    ← Workspace Settings (General, Branding, SMTP, Security, Danger Zone)
+            tools/                       ← Developer Tools (was `.../developer/*`, renamed to avoid
+                                            colliding with the /developer group itself)
+              page.tsx                     ← Developer Overview & API Tokens
+              api-keys/                    ← API Key Management & Rate Limit Config
+              webhooks/                    ← Webhook CRUD & Real-time Logs
+              mcp/                         ← Model Context Protocol AI Integration
+              docs/                        ← Interactive Swagger API Docs
+              graphql/                     ← GraphQL Playground
+      cms/
+        [tenant]/
           (cms)/
-            cms/content/[contentType]/   ← Content Manager table & rich entry editors
-          developer/
-            page.tsx                     ← Developer Overview & API Tokens
-            api-keys/                    ← API Key Management & Rate Limit Config
-            webhooks/                    ← Webhook CRUD & Real-time Logs
-            mcp/                         ← Model Context Protocol AI Integration
-            docs/                        ← Interactive Swagger API Docs
-            graphql/                     ← GraphQL Playground
+            content/[contentType]/       ← Content Manager table & rich entry editors
+            media/, single-types/, profile/, graphql/
     api/
       public/[tenant]/content/[type]/    ← Public REST API (Filtering, Search, Populate, i18n)
       public/[tenant]/graphql/           ← Public Dynamic GraphQL API

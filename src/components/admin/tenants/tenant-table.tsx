@@ -133,7 +133,7 @@ export function TenantTable({ tenants, loading, onEdit, onDelete, onOverride, on
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end" className="w-52 rounded-xl border-border bg-card">
-                    <DropdownMenuItem onClick={() => window.open(`/dashboard/${tenant.slug}`, "_blank")} className="cursor-pointer text-xs rounded-lg">
+                    <DropdownMenuItem onClick={() => window.open(`/developer/${tenant.slug}`, "_blank")} className="cursor-pointer text-xs rounded-lg">
                       <Shield className="h-3.5 w-3.5 mr-2 text-primary" /> Buka Dashboard
                     </DropdownMenuItem>
                     
