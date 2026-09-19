@@ -39,6 +39,8 @@ interface WebsiteBuilderClientProps {
     contentTypes: { name: string; slug: string; fieldCount: number }[]
     singleTypes: { name: string; slug: string; fieldCount: number }[]
   }
+  /** The schema-planning prompt, persisted even before a v0 project exists — seeds the Generate step's textarea. */
+  initialFrontendPromptSeed?: string | null
   initialAiCredits?: {
     remaining: number
     total: number
@@ -146,7 +148,7 @@ export const QUICK_ITERATION_SUGGESTIONS = [
 ]
 
 export function WebsiteBuilderClient({
-  tenantId, tenantSlug, hasUpgradedPlan, hasSchema, existingSchemaSummary, initialAiCredits, initialProject
+  tenantId, tenantSlug, hasUpgradedPlan, hasSchema, existingSchemaSummary, initialFrontendPromptSeed, initialAiCredits, initialProject
 }: WebsiteBuilderClientProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -181,8 +183,10 @@ export function WebsiteBuilderClient({
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState<string>("")
   
-  // Prompt Input state
-  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
+  // Prompt Input state — prefer the v0 project's own saved prompt; otherwise
+  // fall back to the schema-planning prompt (persisted even before a project
+  // exists) so the Generate step never starts blank after a page reload.
+  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || initialFrontendPromptSeed || "")
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
 
   // Schema-first gate — the Schema step must be completed/confirmed before

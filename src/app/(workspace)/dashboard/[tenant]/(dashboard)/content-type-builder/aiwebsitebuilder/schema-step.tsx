@@ -130,6 +130,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             singleTypes: plan.singleTypes,
             components: plan.components,
           },
+          frontendPrompt: plan.frontendPrompt,
         }),
       })
       const data = await res.json()

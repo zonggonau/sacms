@@ -101,6 +101,7 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
         hasUpgradedPlan={hasUpgradedPlan}
         hasSchema={hasSchema}
         existingSchemaSummary={existingSchemaSummary}
+        initialFrontendPromptSeed={frontendPrompt}
         initialAiCredits={initialAiCredits}
         initialProject={v0ChatId ? {
           v0ChatId,

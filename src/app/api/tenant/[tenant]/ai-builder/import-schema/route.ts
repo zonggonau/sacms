@@ -1,10 +1,10 @@
 import { NextResponse } from "next/server"
-import { getTenantDb } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 export const POST = withStaffAuth(
   async (req, _context, { access }) => {
-    const { schema } = await req.json()
+    const { schema, frontendPrompt } = await req.json()
     if (!schema || typeof schema !== "object") {
       return apiError("validation", { message: "Invalid schema provided" })
     }
@@ -108,6 +108,18 @@ export const POST = withStaffAuth(
           importedCount++
         }
       }
+    }
+
+    // Persist the schema-planning prompt so the Generate step's textarea can
+    // seed itself from it later — same Setting key the v0 chat route writes
+    // once a real generation starts, so whichever happens first "wins" and
+    // the other just reuses the same value.
+    if (typeof frontendPrompt === "string" && frontendPrompt.trim()) {
+      await db.setting.upsert({
+        where: { key: `${tenant.id}_v0FrontendPrompt` },
+        update: { value: frontendPrompt },
+        create: { tenantId: tenant.id, key: `${tenant.id}_v0FrontendPrompt`, value: frontendPrompt },
+      })
     }
 
     return NextResponse.json({ success: true, imported: importedCount })
