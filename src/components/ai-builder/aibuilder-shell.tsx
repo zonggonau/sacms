@@ -100,7 +100,7 @@ export function AiBuilderShell({
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-background text-foreground">
+    <div className="aibuilder-theme flex h-screen w-screen overflow-hidden bg-background text-foreground font-sans">
       {/* Sidebar (AI Builder & Projects Navigation) */}
       <AiBuilderSidebar
         activeView={activeView}

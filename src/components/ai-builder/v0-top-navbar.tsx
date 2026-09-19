@@ -57,6 +57,9 @@ export function V0TopNavbar({
         <Link href="/dashboard" className="flex items-center gap-2 font-black text-sm text-foreground">
           <Logo className="h-6 w-auto" />
         </Link>
+        <span className="hidden sm:inline-flex items-center h-5 px-2 rounded-full text-[10px] font-bold uppercase tracking-wider bg-primary/10 text-primary border border-primary/20">
+          Studio
+        </span>
 
         <div className="h-4 w-px bg-border/80 hidden sm:block" />
 
