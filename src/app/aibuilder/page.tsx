@@ -26,6 +26,18 @@ export default async function AiBuilderModePage({ searchParams }: PageProps) {
     redirect("/auth/login?redirect_to=/aibuilder")
   }
 
+  // The session's JWT is never re-checked against the DB after login — if
+  // this user's row was deleted (or a local dev DB got reset while a
+  // browser still held an old signed cookie), session.user.id stops
+  // pointing at a real row. Every query below that uses it as a foreign
+  // key — most importantly Tenant.ownerId when auto-provisioning a
+  // workspace further down — would otherwise crash with a raw
+  // `tenants_ownerId_fkey` violation instead of asking for a fresh sign-in.
+  const currentUserExists = await db.user.findUnique({ where: { id: session.user.id }, select: { id: true } })
+  if (!currentUserExists) {
+    redirect(`/api/auth/force-relogin?redirect_to=${encodeURIComponent("/aibuilder")}`)
+  }
+
   const { workspace: requestedWorkspace, prompt: initialPromptParam } = await searchParams
   const isSuperAdmin = session.user.role === "super_admin"
 
