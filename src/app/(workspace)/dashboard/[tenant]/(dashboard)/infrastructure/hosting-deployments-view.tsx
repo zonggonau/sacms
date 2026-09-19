@@ -52,7 +52,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog"
 import { BuyDomainDialog } from "@/components/domains/buy-domain-dialog"
-import { parseDomainInfo, getExpectedDnsRecords, ExpectedDnsRecord, DnsDiagnosticsResult } from "@/lib/domain-parser"
+import { parseDomainInfo, getExpectedDnsRecords, ExpectedDnsRecord, DnsDiagnosticsResult, PUBLIC_GATEWAY_IP, PUBLIC_CNAME_TARGET } from "@/lib/domain-parser"
 
 // ─── Shared types ────────────────────────────────────────────────────────────
 
@@ -490,7 +490,11 @@ export function HostingDeploymentsView({
   return (
     <div className="space-y-6">
 
-          {/* Section toolbar */}
+      <div className="space-y-6">
+        {/* ── SECTION: HOSTING ─────────────────────────────────────── */}
+        <div hidden={visibleSection !== "hosting"} className="space-y-8">
+
+          {/* Hosting Section Toolbar */}
           <div className="flex flex-wrap items-center gap-2.5 justify-between">
             <div className="flex items-center gap-2">
               {vercelDeployment ? (
@@ -508,12 +512,37 @@ export function HostingDeploymentsView({
               <Button
                 variant="outline"
                 size="sm"
+                onClick={async () => {
+                  setRefreshing(true)
+                  await fetchDeploymentData()
+                  if (vercelDeployment?.url) await runHealthPing()
+                  setRefreshing(false)
+                  toast.success("Status deployment diperbarui")
+                }}
+                disabled={refreshing}
+                className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
+                Refresh
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => runHealthPing()}
                 disabled={isPinging || !vercelDeployment}
                 className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
               >
                 <Activity className={`h-3.5 w-3.5 mr-1.5 text-emerald-500 ${isPinging ? "animate-spin" : ""}`} />
                 {isPinging ? "Memeriksa..." : "Ping Health Check"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsLinkDialogOpen(true)}
+                className="rounded-xl h-9 px-3.5 text-xs font-bold border-border/80 cursor-pointer"
+              >
+                <Link2 className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                Hubungkan URL Manual
               </Button>
               <Button
                 asChild
@@ -526,38 +555,6 @@ export function HostingDeploymentsView({
               </Button>
             </div>
           </div>
-
-          <div className="space-y-6">
-            {/* ── SECTION: HOSTING ─────────────────────────────────────── */}
-            <div hidden={visibleSection !== "hosting"} className="space-y-8">
-
-              <div className="flex flex-wrap items-center gap-2.5 justify-end -mt-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={async () => {
-                    setRefreshing(true)
-                    await fetchDeploymentData()
-                    if (vercelDeployment?.url) await runHealthPing()
-                    setRefreshing(false)
-                    toast.success("Status deployment diperbarui")
-                  }}
-                  disabled={refreshing}
-                  className="rounded-xl h-9 px-3.5 text-xs font-semibold border-border/80 cursor-pointer"
-                >
-                  <RefreshCw className={`h-3.5 w-3.5 mr-1.5 ${refreshing ? "animate-spin" : ""}`} />
-                  Refresh
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setIsLinkDialogOpen(true)}
-                  className="rounded-xl h-9 px-3.5 text-xs font-bold border-border/80 cursor-pointer"
-                >
-                  <Link2 className="h-3.5 w-3.5 mr-1.5 text-primary" />
-                  Hubungkan URL Manual
-                </Button>
-              </div>
 
               {/* MAIN VERCEL PRODUCTION DEPLOYMENT CARD */}
               {vercelDeployment ? (
@@ -849,7 +846,7 @@ export function HostingDeploymentsView({
                     <h3 className="font-bold text-sm text-foreground">Domain Kustom & Edge Proxy SaCMS</h3>
                   </div>
                   <p className="text-xs text-muted-foreground leading-relaxed">
-                    Jika ingin mengarahkan domain utama ke SaCMS Edge Gateway (<code className="font-mono text-primary">161.97.100.1</code> & <code className="font-mono text-primary">cname.sacms.cloud</code>), kelola secara terpusat di tab Domains.
+                    Jika ingin mengarahkan domain utama ke SaCMS Edge Gateway (<code className="font-mono text-primary">{PUBLIC_GATEWAY_IP}</code> & <code className="font-mono text-primary">{PUBLIC_CNAME_TARGET}</code>), kelola secara terpusat di tab Domains.
                   </p>
                   <Button
                     variant="outline"

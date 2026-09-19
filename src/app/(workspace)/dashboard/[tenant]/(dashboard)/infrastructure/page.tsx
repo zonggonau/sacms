@@ -93,6 +93,35 @@ function InfrastructureShell() {
     })
   }, [tab])
 
+  // Live telemetry summary for overview cards
+  const [telemetry, setTelemetry] = useState({
+    hostingStatus: "Live di Vercel",
+    domainsCount: 1,
+    databaseType: "PostgreSQL 17",
+    envCount: 0,
+  })
+
+  useEffect(() => {
+    if (!tenantSlug) return
+    Promise.all([
+      fetch(`/api/tenant/${tenantSlug}/settings`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/tenant/${tenantSlug}/environment`).then((r) => (r.ok ? r.json() : null)),
+      fetch(`/api/tenant/${tenantSlug}/infrastructure`).then((r) => (r.ok ? r.json() : null)),
+    ])
+      .then(([settingsData, envData, infraData]) => {
+        const s = settingsData?.settings
+        const hasDb = Boolean(s?.databaseUrl)
+        const envKeys = envData?.variables ? Object.keys(envData.variables).length : 0
+        setTelemetry({
+          hostingStatus: infraData?.deployment?.url ? "Live di Vercel" : "Siap Dideploy",
+          domainsCount: infraData?.domains?.length || 1,
+          databaseType: hasDb ? "Dedicated VPS / BYODB" : "Shared PostgreSQL 17",
+          envCount: envKeys,
+        })
+      })
+      .catch(() => {})
+  }, [tenantSlug])
+
   const hostingSection = useMemo<"hosting" | "domains">(() => (tab === "domains" ? "domains" : "hosting"), [tab])
 
   const currentNav = useMemo(() => NAV_ITEMS.find((n) => n.key === tab) || NAV_ITEMS[0], [tab])
@@ -246,30 +275,43 @@ function InfrastructureShell() {
                 </p>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {OVERVIEW_CARDS.map((c) => (
-                  <Card
-                    key={c.key}
-                    onClick={() => setTab(c.key)}
-                    className="rounded-2xl border border-border/80 shadow-xs cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group bg-card"
-                  >
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
-                          <c.icon className="h-5 w-5" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
-                            {c.title}
+                {OVERVIEW_CARDS.map((c) => {
+                  const badgeText =
+                    c.key === "hosting" ? telemetry.hostingStatus :
+                    c.key === "domains" ? `${telemetry.domainsCount} Domain Terhubung` :
+                    c.key === "database" ? telemetry.databaseType :
+                    `${telemetry.envCount} Variabel Build`
+
+                  return (
+                    <Card
+                      key={c.key}
+                      onClick={() => setTab(c.key)}
+                      className="rounded-2xl border border-border/80 shadow-xs cursor-pointer hover:border-primary/50 hover:shadow-md transition-all group bg-card"
+                    >
+                      <CardContent className="p-5">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0 transition-transform group-hover:scale-105">
+                            <c.icon className="h-5 w-5" />
                           </div>
-                          <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                            {c.desc}
-                          </p>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <div className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
+                                {c.title}
+                              </div>
+                              <Badge variant="outline" className="text-[10px] font-semibold rounded-full border-border/80 text-muted-foreground group-hover:border-primary/30 group-hover:text-primary transition-colors">
+                                {badgeText}
+                              </Badge>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                              {c.desc}
+                            </p>
+                          </div>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
                         </div>
-                        <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all shrink-0" />
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  )
+                })}
               </div>
             </div>
           )}

@@ -13,7 +13,7 @@ import {
   ArrowUpRight, AlertCircle, Zap, ShieldCheck,
   History, ExternalLink, FileText, BarChart3,
   HardDrive, Users, Database, Package, Shield, Bot, Save, Cloud, Sparkles,
-  Server, Layers, Download
+  Layers, Download
 } from "lucide-react"
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
@@ -55,7 +55,6 @@ export default function TenantSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
-  const [planCategory, setPlanCategory] = useState<'all' | 'cloud' | 'vps' | 'vds' | 'storage'>('all')
   const [activeSection, setActiveSection] = useState<'plans' | 'addons'>(
     searchParams?.get('tab') === 'addons' ? 'addons' : 'plans'
   )
@@ -300,7 +299,18 @@ export default function TenantSubscriptionsPage() {
   const currentPlanSlug = subscription?.plan || 'free'
   const currentPlan = plans.find(p => p.id === currentPlanSlug) || plans.find(p => p.id === 'free')
 
-  const mainPlans = plans.filter(p => p.type === "workspace")
+  // Hanya paket workspace standar, pro, dan bisnis (VPS dikelola oleh owner di dashboard server)
+  const WORKSPACE_TIERS = ['free', 'pro', 'business']
+  const mainPlans = plans
+    .filter(p => {
+      if (p.type !== "workspace") return false
+      const id = (p.id || '').toLowerCase()
+      return WORKSPACE_TIERS.includes(id)
+    })
+    .sort((a, b) => {
+      const order: Record<string, number> = { free: 1, pro: 2, business: 3 }
+      return (order[a.id] || 99) - (order[b.id] || 99)
+    })
   const addonPlans = plans.filter(p => p.type === "addons" && p.listed !== false)
 
   return (
@@ -519,119 +529,24 @@ export default function TenantSubscriptionsPage() {
               {/* Header Title & Description on Top */}
               <div className="space-y-1">
                 <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">Paket Langganan Workspace</h2>
-                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket Cloud, VPS, atau VDS terisolasi penuh.</p>
+                <p className="text-xs sm:text-sm text-muted-foreground">Pilih paket langganan workspace Anda: Standar, Pro, atau Bisnis.</p>
               </div>
 
-              {/* Category Switcher Tabs Below */}
-              {(() => {
-                const cloudCount = mainPlans.filter((p) => {
-                  const slug = (p.id || p.name || '').toLowerCase()
-                  return !slug.includes('vps') && !slug.includes('vds') && !slug.includes('storage')
-                }).length
-                const vpsCount = mainPlans.filter((p) => {
-                  const slug = (p.id || p.name || '').toLowerCase()
-                  return slug.includes('vps') && !slug.includes('storage') && !slug.includes('vds')
-                }).length
-                const storageCount = mainPlans.filter((p) => {
-                  const slug = (p.id || p.name || '').toLowerCase()
-                  return slug.includes('storage')
-                }).length
-                const vdsCount = mainPlans.filter((p) => {
-                  const slug = (p.id || p.name || '').toLowerCase()
-                  return slug.includes('vds')
-                }).length
-
-                return (
-                  <div className="flex flex-wrap items-center p-1.5 bg-muted/40 rounded-2xl border border-border/80 w-fit max-w-full gap-1 shadow-xs">
-                    <Button 
-                      variant="ghost"
-                      size="sm" 
-                      className={cn(
-                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'all' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setPlanCategory('all')}
-                    >
-                      <Layers className="h-3.5 w-3.5" /> Semua ({mainPlans.length})
-                    </Button>
-                    <Button 
-                      variant="ghost"
-                      size="sm" 
-                      className={cn(
-                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'cloud' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setPlanCategory('cloud')}
-                    >
-                      <Sparkles className="h-3.5 w-3.5 text-blue-400" /> Cloud SaaS ({cloudCount})
-                    </Button>
-                    <Button 
-                      variant="ghost"
-                      size="sm" 
-                      className={cn(
-                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'vps' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setPlanCategory('vps')}
-                    >
-                      <Server className="h-3.5 w-3.5 text-purple-400" /> Cloud VPS ({vpsCount})
-                    </Button>
-                    <Button 
-                      variant="ghost"
-                      size="sm" 
-                      className={cn(
-                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'storage' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setPlanCategory('storage')}
-                    >
-                      <Database className="h-3.5 w-3.5 text-emerald-500" /> VPS Storage ({storageCount})
-                    </Button>
-                    <Button 
-                      variant="ghost"
-                      size="sm" 
-                      className={cn(
-                        "rounded-xl px-3.5 font-bold h-8 text-xs border-none transition-all gap-1.5", 
-                        planCategory === 'vds' ? "bg-primary text-primary-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
-                      )}
-                      onClick={() => setPlanCategory('vds')}
-                    >
-                      <ShieldCheck className="h-3.5 w-3.5 text-amber-500" /> Cloud VDS ({vdsCount})
-                    </Button>
-                  </div>
-                )
-              })()}
-
-              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-                {mainPlans
-                  .filter((plan) => {
-                    const slug = (plan.id || plan.name || '').toLowerCase()
-                    const isVds = slug.includes('vds')
-                    const isStorage = slug.includes('storage')
-                    const isVps = slug.includes('vps') && !isVds && !isStorage
-                    const isCloud = !isVps && !isVds && !isStorage
-
-                    if (planCategory === 'cloud') return isCloud
-                    if (planCategory === 'vps') return isVps
-                    if (planCategory === 'storage') return isStorage
-                    if (planCategory === 'vds') return isVds
-                    return true
-                  })
-                  .map((plan) => {
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {mainPlans.map((plan) => {
                   const isCurrent = plan.id === currentPlanSlug
                   const displayPrice = plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10
-                  const isStoragePlan = plan.id.toLowerCase().includes('storage')
-                  const isVdsPlan = plan.id.toLowerCase().includes('vds')
-                  const isVpsPlan = plan.id.toLowerCase().includes('vps') && !isStoragePlan
+                  const isBusinessPlan = plan.id.toLowerCase().includes('business') || plan.id.toLowerCase().includes('bisnis') || plan.id.toLowerCase().includes('enterprise')
+                  const isProPlan = plan.id.toLowerCase().includes('pro')
 
                   return (
                     <Card key={plan.id} className={cn(
                       "border rounded-2xl bg-card shadow-xs relative flex flex-col transition-all duration-200 hover:shadow-md",
                       isCurrent
                         ? "border-primary ring-2 ring-primary/20 bg-primary/[0.02]"
-                        : isVdsPlan
-                        ? "border-amber-500/40 hover:border-amber-500 bg-gradient-to-b from-card to-amber-500/[0.02]"
-                        : isVpsPlan
+                        : isBusinessPlan
+                        ? "border-purple-500/40 hover:border-purple-500 bg-gradient-to-b from-card to-purple-500/[0.02]"
+                        : isProPlan
                         ? "border-primary/40 hover:border-primary bg-gradient-to-b from-card to-primary/[0.02]"
                         : plan.popular
                         ? "border-primary/50 hover:border-primary"
@@ -642,21 +557,13 @@ export default function TenantSubscriptionsPage() {
                         <div className="absolute top-3.5 right-3.5 bg-primary text-primary-foreground text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 shadow-xs">
                           <Check className="h-3 w-3 stroke-[3]" /> Aktif
                         </div>
-                      ) : isVdsPlan ? (
-                        <div className="absolute top-3.5 right-3.5 bg-amber-500/10 text-amber-600 border border-amber-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Zap className="h-3 w-3" /> 100% Dedicated CPU
+                      ) : isBusinessPlan ? (
+                        <div className="absolute top-3.5 right-3.5 bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                          <ShieldCheck className="h-3 w-3" /> Paket Bisnis
                         </div>
-                      ) : isStoragePlan ? (
-                        <div className="absolute top-3.5 right-3.5 bg-emerald-500/10 text-emerald-600 border border-emerald-500/30 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Database className="h-3 w-3" /> Dedicated MinIO Storage
-                        </div>
-                      ) : isVpsPlan ? (
+                      ) : isProPlan || plan.popular ? (
                         <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Server className="h-3 w-3" /> Dedicated Business VPS
-                        </div>
-                      ) : plan.popular ? (
-                        <div className="absolute top-3.5 right-3.5 bg-primary/10 text-primary border border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                          <Sparkles className="h-3 w-3" /> Populer
+                          <Sparkles className="h-3 w-3" /> Paling Populer
                         </div>
                       ) : null}
 
@@ -697,7 +604,7 @@ export default function TenantSubscriptionsPage() {
                         <div className="pt-2">
                           <Button 
                             className={cn(
-                              "w-full h-9 font-bold rounded-xl text-xs transition-all shadow-xs",
+                              "w-full h-9 font-bold rounded-xl text-xs transition-all shadow-xs cursor-pointer",
                               isCurrent 
                                 ? "bg-primary/10 text-primary cursor-default border border-primary/30 hover:bg-primary/10" 
                                 : "bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -1001,7 +908,7 @@ const MANAGED_INFRA_STATUS: Record<string, string> = {
   cancelled: "Dibatalkan",
 }
 
-/** Paid monthly services of this workspace, each with a renew button. */
+/** Paid monthly services (storage addons & managed BYODB) of this workspace */
 function ActiveServices({ tenantSlug }: { tenantSlug: string }) {
   const router = useRouter()
   const [services, setServices] = useState<BillingServices | null>(null)
@@ -1014,14 +921,19 @@ function ActiveServices({ tenantSlug }: { tenantSlug: string }) {
       .catch(() => {})
   }, [tenantSlug])
 
-  if (!services || (services.storageAddons.length === 0 && !services.managedInfra)) return null
+  const hasStorageAddons = services?.storageAddons && services.storageAddons.length > 0
+  const hasManagedInfra = Boolean(services?.managedInfra)
+
+  if (!hasStorageAddons && !hasManagedInfra) return null
   const date = (value: string) => new Date(value).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric" })
 
   return (
     <Card className="border border-border/80 bg-card/60 shadow-xs rounded-2xl">
       <CardContent className="p-4 space-y-3">
         <p className="text-sm font-bold text-foreground">Layanan aktif workspace</p>
-        {services.storageAddons.map((addon) => (
+
+        {/* Storage Addons */}
+        {services?.storageAddons.map((addon) => (
           <div key={addon.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <div>
               <p className="font-semibold text-foreground">Extra Storage {Math.round(addon.bytes / 1024 ** 3)} GB</p>
@@ -1036,7 +948,9 @@ function ActiveServices({ tenantSlug }: { tenantSlug: string }) {
             )}
           </div>
         ))}
-        {services.managedInfra && (
+
+        {/* Managed BYODB Infra */}
+        {services?.managedInfra && (
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
             <div>
               <p className="font-semibold text-foreground">Database & Storage Sendiri — {MANAGED_INFRA_STATUS[services.managedInfra.status] ?? services.managedInfra.status}</p>
