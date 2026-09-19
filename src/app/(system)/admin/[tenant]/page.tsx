@@ -14,9 +14,9 @@ export default function AdminTenantRedirectPage() {
   useEffect(() => {
     if (status === "authenticated") {
       // Redirect to tenant configuration page
-      router.replace(`/developer/${tenantSlug}`)
+      router.replace(`/dashboard/${tenantSlug}`)
     } else if (status === "unauthenticated") {
-      router.replace("/auth/login")
+      router.replace("/login")
     }
   }, [status, router, tenantSlug])
 

@@ -31,7 +31,7 @@ export default async function OwnerDashboardPage({
   params: Promise<{ ownerId: string }>
 }) {
   const session = await getServerSession(authOptions)
-  if (!session?.user) redirect("/auth/login")
+  if (!session?.user) redirect("/login")
 
   const { ownerId } = await params
 
@@ -246,7 +246,7 @@ export default async function OwnerDashboardPage({
                   {/* Card Actions Footer */}
                   <div className="p-4 pt-0 flex items-center justify-between gap-2 border-t border-border/40 mt-2">
                     <Link
-                      href={`/developer/${ws.slug}`}
+                      href={`/dashboard/${ws.slug}`}
                       className="text-xs font-bold text-muted-foreground hover:text-foreground flex items-center gap-1 py-1.5 px-2.5 rounded-lg hover:bg-muted"
                     >
                       <Settings className="h-3.5 w-3.5" />
@@ -254,7 +254,7 @@ export default async function OwnerDashboardPage({
                     </Link>
 
                     <Link
-                      href={`/cms/${ws.slug}`}
+                      href={`/dashboard/${ws.slug}/cms`}
                       className="text-xs font-bold text-primary hover:text-primary/90 flex items-center gap-1 py-1.5 px-3 rounded-xl bg-primary/10 hover:bg-primary/20 transition-colors"
                     >
                       Buka CMS Studio

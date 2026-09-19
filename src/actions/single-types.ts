@@ -203,8 +203,8 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
       include: { schemaFields: true }
     })
 
-    revalidatePath(`/developer/${tenantSlug}/content-type-builder/single-types`)
-    revalidatePath(`/cms/${tenantSlug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { singleType }
   } catch (error) {
     console.error("Error creating single type:", error)
@@ -285,10 +285,10 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     const formattedFields = parseSchemaFieldOptions(updatedSingleType.schemaFields)
 
-    revalidatePath(`/developer/${tenantSlug}/content-type-builder/single-types`)
-    revalidatePath(`/developer/${tenantSlug}/content-type-builder/single-types/${updatedSingleType.slug}/edit`)
-    revalidatePath(`/cms/${tenantSlug}/single-types/${updatedSingleType.slug}`)
-    revalidatePath(`/cms/${tenantSlug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types/${updatedSingleType.slug}/edit`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${updatedSingleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return { singleType: { ...updatedSingleType, schemaFields: formattedFields } }
   } catch (error) {
@@ -346,8 +346,8 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
 
     await tenantDb.singleType.delete({ where: { id } })
 
-    revalidatePath(`/developer/${tenantSlug}/content-type-builder/single-types`)
-    revalidatePath(`/cms/${tenantSlug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting single type:", error)
@@ -419,9 +419,9 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
       })
     }
 
-    revalidatePath(`/developer/${tenantSlug}/content-type-builder/single-types`)
-    revalidatePath(`/cms/${tenantSlug}/single-types/${singleType.slug}`)
-    revalidatePath(`/cms/${tenantSlug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
+    revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
     return {
       singleType: {

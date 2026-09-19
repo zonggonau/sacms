@@ -10,7 +10,7 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
   const { data: session, status } = useSession()
 
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
-  const dashboardUrl = defaultTenantSlug ? `/developer/${defaultTenantSlug}` : "/dashboard"
+  const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
   const title = cta?.title || "Build smarter. Manage easier. Scale faster."
@@ -47,7 +47,7 @@ export function CtaBanner({ cta }: { cta: CtaData | null }) {
                   </Button>
                 </Link>
               ) : (
-                <Link href="/auth/register">
+                <Link href="/register">
                   <Button size="lg" className="w-full sm:w-auto h-11 px-8 bg-white text-primary hover:bg-white/90 rounded-full font-bold text-sm shadow-xl shadow-black/10 transition-all hover:scale-105">
                     {buttonPrimary}
                   </Button>

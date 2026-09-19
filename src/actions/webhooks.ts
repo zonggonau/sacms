@@ -84,7 +84,7 @@ export async function createWebhookAction(tenantSlug: string, data: z.infer<type
       },
     })
 
-    revalidatePath(`/developer/${tenantSlug}/tools/webhooks`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
     return { webhook }
   } catch (error) {
     console.error("Error creating webhook:", error)
@@ -144,7 +144,7 @@ export async function updateWebhookAction(tenantSlug: string, webhookId: string,
       data: updateData,
     })
 
-    revalidatePath(`/developer/${tenantSlug}/tools/webhooks`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
     return { webhook: updated }
   } catch (error) {
     console.error("Error updating webhook:", error)
@@ -187,7 +187,7 @@ export async function deleteWebhookAction(tenantSlug: string, webhookId: string)
       where: { id: webhookId },
     })
 
-    revalidatePath(`/developer/${tenantSlug}/tools/webhooks`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/webhooks`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting webhook:", error)

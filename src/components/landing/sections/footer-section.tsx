@@ -74,10 +74,10 @@ export function FooterSection({ footer }: { footer: FooterData | null }) {
                 <Link href="/docs" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Dokumentasi API
                 </Link>
-                <Link href="/auth/login" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/login" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Masuk
                 </Link>
-                <Link href="/auth/register" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
+                <Link href="/register" className="block text-muted-foreground hover:text-primary transition-colors font-medium">
                   Mulai Gratis
                 </Link>
               </div>

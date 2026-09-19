@@ -28,7 +28,7 @@ function CheckoutContent() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login")
+      router.push("/login")
     } else if (status === "authenticated" && planId) {
       getAccountPricingAction(planId)
         .then(plan => {

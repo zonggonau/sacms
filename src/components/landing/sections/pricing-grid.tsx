@@ -264,7 +264,7 @@ export function PricingGrid({
                   </div>
 
                   {/* CTA Button */}
-                  <Link href={`/auth/register?plan=${slug}`} className="mt-auto block">
+                  <Link href={`/register?plan=${slug}`} className="mt-auto block">
                     <Button
                       className={`w-full h-11 rounded-2xl font-bold text-xs transition-all duration-300 shadow-sm ${
                         isPopular || isVds || isStorage || isVps

@@ -42,7 +42,7 @@ export function TenantPageLayout({
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login")
+      router.push("/login")
     }
   }, [status, router])
 

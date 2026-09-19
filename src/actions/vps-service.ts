@@ -464,7 +464,7 @@ export async function assignVpsToWorkspaceAction(data: {
 
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/services")
-    revalidatePath(`/developer/${tenant.slug || tenant.id}`)
+    revalidatePath(`/dashboard/${tenant.slug || tenant.id}`)
 
     return {
       success: true,
@@ -532,7 +532,7 @@ export async function disconnectVpsFromWorkspaceAction(data: { serviceId: string
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/services")
     if (tenantId) {
-      revalidatePath(`/developer/${tenantId}`)
+      revalidatePath(`/dashboard/${tenantId}`)
     }
 
     return { success: true, message: "Koneksi VPS dengan workspace berhasil diputus. Database workspace kembali ke Shared Pool." }
@@ -657,7 +657,7 @@ export async function assignContaboToWorkspaceAction(data: {
 
     revalidatePath("/dashboard")
     revalidatePath("/dashboard/services")
-    revalidatePath(`/developer/${tenant.slug || tenant.id}`)
+    revalidatePath(`/dashboard/${tenant.slug || tenant.id}`)
 
     return {
       success: true,

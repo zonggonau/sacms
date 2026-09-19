@@ -84,7 +84,7 @@ export async function proxy(request: NextRequest) {
   // If no super-admin exists yet, send /login and / to /register.
   // Once one exists it can never revert, so an in-memory and Redis flag lets us skip
   // the self-fetch on every landing-page hit thereafter.
-  if ((pathname === "/auth/login" || pathname === "/") && !inMemoryFirstUserDone) {
+  if ((pathname === "/login" || pathname === "/") && !inMemoryFirstUserDone) {
     let firstUserResolved = false
     let isFirstUser = false
 
@@ -121,7 +121,7 @@ export async function proxy(request: NextRequest) {
     }
 
     if (isFirstUser) {
-      return NextResponse.redirect(new URL("/auth/register", request.url))
+      return NextResponse.redirect(new URL("/register", request.url))
     }
   }
 
@@ -358,7 +358,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/robots") ||
       pathname.startsWith("/sitemap") ||
       pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/auth/")
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
     ) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
@@ -368,22 +369,22 @@ export async function proxy(request: NextRequest) {
     // Root CMS access -> workspace selector (if authenticated) or login (if unauthenticated)
     if (pathname === "/" || pathname === "") {
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/auth/login"
+      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/login"
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "cms")
       return response
     }
 
-    // Passthrough if already a real route (global hub, or already-rewritten cms/developer path)
-    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/cms/") || pathname.startsWith("/developer/") || pathname.startsWith("/api/")) {
+    // Passthrough if already dashboard path
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "cms")
       return response
     }
 
-    // Map cms.sacms.cloud/tenant/content/... -> /cms/tenant/content/...
+    // Map cms.sacms.cloud/tenant/content/... -> /dashboard/tenant/cms/content/...
     const cmsMatch = pathname.match(/^\/([^/]+)(.*)$/)
     if (cmsMatch) {
       const tenant = cmsMatch[1]
@@ -391,16 +392,16 @@ export async function proxy(request: NextRequest) {
       const rewriteUrl = request.nextUrl.clone()
 
       if (rest.startsWith("/cms")) {
-        rewriteUrl.pathname = `/cms/${tenant}${rest.replace(/^\/cms/, "")}`
+        rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
       } else if (rest.startsWith("/content")) {
-        rewriteUrl.pathname = `/cms/${tenant}${rest}`
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms${rest}`
       } else if (rest.startsWith("/single-types") || rest.startsWith("/media") || rest.startsWith("/graphql")) {
-        rewriteUrl.pathname = `/cms/${tenant}${rest}`
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms${rest}`
       } else if (rest === "" || rest === "/") {
-        rewriteUrl.pathname = `/cms/${tenant}`
+        rewriteUrl.pathname = `/dashboard/${tenant}/cms`
       } else {
-        // Fallback to developer route group (management/settings pages)
-        rewriteUrl.pathname = `/developer/${tenant}${rest}`
+        // Fallback to dashboard route group
+        rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
       }
 
       const response = NextResponse.rewrite(rewriteUrl)
@@ -419,7 +420,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/robots") ||
       pathname.startsWith("/sitemap") ||
       pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/auth/")
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
     ) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
@@ -437,28 +439,28 @@ export async function proxy(request: NextRequest) {
     // Root admin access -> workspace hub (if authenticated) or login (if unauthenticated)
     if (pathname === "/" || pathname === "") {
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/auth/login"
+      rewriteUrl.pathname = hasAuthCookie ? "/dashboard" : "/login"
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "admin")
       return response
     }
 
-    // Already a real route (global hub, or already-rewritten developer path)
-    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/developer/") || pathname.startsWith("/api/")) {
+    // Already dashboard or API path
+    if (pathname === "/dashboard" || pathname.startsWith("/dashboard/") || pathname.startsWith("/api/")) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "admin")
       return response
     }
 
-    // Map admin.sacms.cloud/tenant/... -> /developer/tenant/... (management/settings pages)
+    // Map admin.sacms.cloud/tenant/... -> /dashboard/tenant/...
     const adminMatch = pathname.match(/^\/([^/]+)(.*)$/)
     if (adminMatch) {
       const tenant = adminMatch[1]
       const rest = adminMatch[2] || ""
       const rewriteUrl = request.nextUrl.clone()
-      rewriteUrl.pathname = `/developer/${tenant}${rest}`
+      rewriteUrl.pathname = `/dashboard/${tenant}${rest}`
       const response = NextResponse.rewrite(rewriteUrl)
       applySecurityHeaders(response, pathname)
       response.headers.set("X-Subdomain-Portal", "admin")
@@ -475,7 +477,8 @@ export async function proxy(request: NextRequest) {
       pathname.startsWith("/robots") ||
       pathname.startsWith("/sitemap") ||
       pathname.startsWith("/api/auth") ||
-      pathname.startsWith("/auth/")
+      pathname.startsWith("/login") ||
+      pathname.startsWith("/register")
     ) {
       const response = NextResponse.next()
       applySecurityHeaders(response, pathname)
@@ -487,7 +490,7 @@ export async function proxy(request: NextRequest) {
     if (isOwnerFormat) {
       const rewriteUrl = request.nextUrl.clone()
       if (!hasAuthCookie) {
-        rewriteUrl.pathname = "/auth/login"
+        rewriteUrl.pathname = "/login"
       } else {
         rewriteUrl.pathname = `/owner/${dynamicSubdomain}${pathname === "/" ? "" : pathname}`
       }
@@ -503,15 +506,15 @@ export async function proxy(request: NextRequest) {
 
     if (pathname === "/" || pathname === "") {
       // Default entry: CMS Studio for this workspace
-      rewriteUrl.pathname = `/cms/${dynamicSubdomain}`
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms`
     } else if (pathname.startsWith("/admin")) {
       // /admin -> Workspace Settings & Schemas
-      rewriteUrl.pathname = `/developer/${dynamicSubdomain}${pathname.replace(/^\/admin/, "")}`
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname.replace(/^\/admin/, "")}`
     } else if (pathname.startsWith("/content")) {
-      // /content/posts -> /cms/[slug]/content/posts
-      rewriteUrl.pathname = `/cms/${dynamicSubdomain}${pathname}`
+      // /content/posts -> /dashboard/[slug]/cms/content/posts
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
     } else if (pathname.startsWith("/media") || pathname.startsWith("/single-types")) {
-      rewriteUrl.pathname = `/cms/${dynamicSubdomain}${pathname}`
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
     } else if (pathname.startsWith("/api/public/") || pathname.startsWith("/api/tenant/")) {
       rewriteUrl.pathname = pathname
     } else if (pathname.startsWith("/api/")) {
@@ -519,12 +522,12 @@ export async function proxy(request: NextRequest) {
     } else if (pathname === "/graphql") {
       rewriteUrl.pathname = `/api/public/${dynamicSubdomain}/graphql`
     } else if (pathname.startsWith("/cms")) {
-      rewriteUrl.pathname = `/cms/${dynamicSubdomain}${pathname.replace(/^\/cms/, "")}`
-    } else if (pathname.startsWith("/developer") || pathname.startsWith("/dashboard")) {
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname}`
+    } else if (pathname.startsWith("/dashboard")) {
       rewriteUrl.pathname = pathname
     } else {
       // Default: CMS route group
-      rewriteUrl.pathname = `/cms/${dynamicSubdomain}${pathname}`
+      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms${pathname}`
     }
 
     const response = NextResponse.rewrite(rewriteUrl)
@@ -539,14 +542,15 @@ export async function proxy(request: NextRequest) {
   }
 
   // ==================== LEGACY URL REDIRECTS ====================
-  // Bookmarks/links from before the /developer + /cms + /auth route split.
-  // `/dashboard` itself and its known global sub-pages (the cross-workspace
-  // hub, billing, payment, etc.) keep their current meaning untouched.
+  // The /developer + /cms + /auth route split was live only briefly before
+  // being reverted back to /dashboard — this catches anyone who bookmarked
+  // a link during that window and sends them to the current path instead
+  // of a 404.
   const LEGACY_AUTH_PAGES: Record<string, string> = {
-    "/login": "/auth/login",
-    "/register": "/auth/register",
-    "/forgot-password": "/auth/forgot-password",
-    "/reset-password": "/auth/reset-password",
+    "/auth/login": "/login",
+    "/auth/register": "/register",
+    "/auth/forgot-password": "/forgot-password",
+    "/auth/reset-password": "/reset-password",
   }
   for (const [oldPath, newPath] of Object.entries(LEGACY_AUTH_PAGES)) {
     if (pathname === oldPath || pathname.startsWith(`${oldPath}/`)) {
@@ -556,21 +560,21 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  const DASHBOARD_GLOBAL_SUBPATHS = new Set(["billing", "payment", "payment-result", "ai-builder", "layanan", "services"])
-  const legacyDashboardMatch = pathname.match(/^\/dashboard\/([^/]+)((?:\/.*)?)$/)
-  if (legacyDashboardMatch && !DASHBOARD_GLOBAL_SUBPATHS.has(legacyDashboardMatch[1])) {
-    const legacyTenant = legacyDashboardMatch[1]
-    const legacyRest = legacyDashboardMatch[2] || ""
-    let newPath: string
-    if (legacyRest.startsWith("/cms")) {
-      newPath = `/cms/${legacyTenant}${legacyRest.replace(/^\/cms/, "")}`
-    } else if (legacyRest.startsWith("/developer")) {
-      newPath = `/developer/${legacyTenant}/tools${legacyRest.replace(/^\/developer/, "")}`
-    } else {
-      newPath = `/developer/${legacyTenant}${legacyRest}`
-    }
+  const legacyDeveloperMatch = pathname.match(/^\/developer\/([^/]+)((?:\/.*)?)$/)
+  if (legacyDeveloperMatch) {
+    const [, legacyTenant, legacyRest = ""] = legacyDeveloperMatch
     const redirectUrl = request.nextUrl.clone()
-    redirectUrl.pathname = newPath
+    redirectUrl.pathname = legacyRest.startsWith("/tools")
+      ? `/dashboard/${legacyTenant}/developer${legacyRest.replace(/^\/tools/, "")}`
+      : `/dashboard/${legacyTenant}${legacyRest}`
+    return NextResponse.redirect(redirectUrl, 308)
+  }
+
+  const legacyCmsMatch = pathname.match(/^\/cms\/([^/]+)((?:\/.*)?)$/)
+  if (legacyCmsMatch) {
+    const [, legacyTenant, legacyRest = ""] = legacyCmsMatch
+    const redirectUrl = request.nextUrl.clone()
+    redirectUrl.pathname = `/dashboard/${legacyTenant}/cms${legacyRest}`
     return NextResponse.redirect(redirectUrl, 308)
   }
 
@@ -636,7 +640,7 @@ export async function proxy(request: NextRequest) {
         const rewriteUrl = request.nextUrl.clone()
         switch (domainTarget) {
           case "workspace":
-            rewriteUrl.pathname = `/developer/${tenantSlug}`
+            rewriteUrl.pathname = `/dashboard/${tenantSlug}`
             break
           case "site":
             rewriteUrl.pathname = `/site/${tenantSlug}`
@@ -646,7 +650,7 @@ export async function proxy(request: NextRequest) {
             break
           case "cms":
           default:
-            rewriteUrl.pathname = `/cms/${tenantSlug}`
+            rewriteUrl.pathname = `/dashboard/${tenantSlug}/cms`
             break
         }
         const response = NextResponse.rewrite(rewriteUrl)
@@ -659,8 +663,8 @@ export async function proxy(request: NextRequest) {
       // ---- For all other paths under a custom domain, rewrite transparently ----
       const rewriteUrl = request.nextUrl.clone()
       if (pathname.startsWith("/cms")) {
-        rewriteUrl.pathname = `/cms/${tenantSlug}${pathname.replace(/^\/cms/, "")}`
-      } else if (pathname.startsWith("/developer") || pathname.startsWith("/dashboard")) {
+        rewriteUrl.pathname = `/dashboard/${tenantSlug}${pathname}`
+      } else if (pathname.startsWith("/dashboard")) {
         rewriteUrl.pathname = pathname
       } else {
         const response = NextResponse.next()

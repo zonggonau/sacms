@@ -157,7 +157,7 @@ export function ModernLanding({ data }: { data: LandingData }) {
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-11 px-6 rounded-full font-bold text-xs border-border/80 hover:bg-muted">
-                <Link href="/auth/register">
+                <Link href="/register">
                   <span>Daftar Gratis</span>
                 </Link>
               </Button>

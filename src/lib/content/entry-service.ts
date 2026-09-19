@@ -233,8 +233,8 @@ export async function invalidateContentCaches(tenantSlug: string, contentTypeSlu
 /** Dashboard paths a mutation should revalidate. Callers pass these to `revalidatePath`. */
 export function contentRevalidatePaths(tenantSlug: string, contentTypeSlug: string): string[] {
   return [
-    `/developer/${tenantSlug}/content-types/${contentTypeSlug}`,
-    `/developer/${tenantSlug}/single-types/${contentTypeSlug}`,
+    `/dashboard/${tenantSlug}/content-types/${contentTypeSlug}`,
+    `/dashboard/${tenantSlug}/single-types/${contentTypeSlug}`,
   ]
 }
 

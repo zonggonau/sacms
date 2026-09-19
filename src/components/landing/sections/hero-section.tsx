@@ -22,7 +22,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
   const { data: session, status } = useSession()
 
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
-  const dashboardUrl = defaultTenantSlug ? `/developer/${defaultTenantSlug}` : "/dashboard"
+  const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
   const isAuthenticated = status === "authenticated" && session?.user
 
   const badgeText = data?.badge_text || ""
@@ -66,7 +66,7 @@ export function HeroSection({ data }: { data: HeroData | null }) {
               </Button>
             </Link>
           ) : (
-            <Link href={data?.cta_href || "/auth/register"}>
+            <Link href={data?.cta_href || "/register"}>
               <Button size="lg" className="h-11 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-full font-bold text-sm shadow-lg shadow-primary/25 transition-all hover:scale-105 hover:shadow-primary/40">
                 {ctaPrimary}
               </Button>

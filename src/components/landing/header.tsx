@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { Menu, X, LayoutDashboard, Sparkles } from "lucide-react"
+import { Menu, X, LayoutDashboard } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
@@ -38,10 +38,9 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
     return () => window.removeEventListener("scroll", handleScroll)
   }, [])
 
-  const isUserBiasa = session?.user?.role === "user"
   const defaultTenantSlug = session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id
-  const dashboardUrl = isUserBiasa ? "/aibuilder" : (defaultTenantSlug ? `/developer/${defaultTenantSlug}` : "/dashboard")
-  const actionLabel = isUserBiasa ? "Buka AI Builder" : "Buka Dashboard"
+  const dashboardUrl = defaultTenantSlug ? `/dashboard/${defaultTenantSlug}` : "/dashboard"
+  const actionLabel = "Buka Dashboard"
   const userName = session?.user?.name || session?.user?.email?.split("@")[0] || "User"
   const userInitial = userName.charAt(0).toUpperCase()
 
@@ -95,19 +94,19 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                 </Link>
                 <Link href={dashboardUrl}>
                   <Button className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-5 shadow-sm hover:scale-[1.02] transition-all gap-1.5 text-xs h-8">
-                    {isUserBiasa ? <Sparkles className="w-3.5 h-3.5" /> : <LayoutDashboard className="w-3.5 h-3.5" />}
+                    <LayoutDashboard className="w-3.5 h-3.5" />
                     {actionLabel}
                   </Button>
                 </Link>
               </>
             ) : (
               <>
-                <Link href="/auth/login">
+                <Link href="/login">
                   <Button variant="ghost" size="sm" className="rounded-full text-foreground hover:text-primary hover:bg-primary/10 font-bold px-4 text-xs h-8">
                     Masuk
                   </Button>
                 </Link>
-                <Link href="/auth/register">
+                <Link href="/register">
                   <Button size="sm" className="rounded-full bg-primary hover:bg-primary/90 text-primary-foreground font-bold px-5 shadow-sm hover:scale-[1.02] transition-all text-xs h-8">
                     Mulai Gratis
                   </Button>
@@ -165,19 +164,19 @@ export function LandingHeader({ brandName }: { brandName?: string }) {
                   </div>
                   <Link href={dashboardUrl} onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-sm gap-2 text-xs">
-                      {isUserBiasa ? <Sparkles className="w-4 h-4" /> : <LayoutDashboard className="w-4 h-4" />}
+                      <LayoutDashboard className="w-4 h-4" />
                       {actionLabel}
                     </Button>
                   </Link>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2.5 pt-4 pb-2 mt-1 border-t border-border/50">
-                  <Link href="/auth/login" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/login" onClick={() => setMobileMenuOpen(false)}>
                     <Button variant="outline" className="w-full rounded-2xl border-border/60 font-bold h-11 text-xs">
                       Masuk
                     </Button>
                   </Link>
-                  <Link href="/auth/register" onClick={() => setMobileMenuOpen(false)}>
+                  <Link href="/register" onClick={() => setMobileMenuOpen(false)}>
                     <Button className="w-full rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold h-11 shadow-sm text-xs">
                       Mulai Gratis
                     </Button>

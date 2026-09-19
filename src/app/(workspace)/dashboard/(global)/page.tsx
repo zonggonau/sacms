@@ -10,12 +10,7 @@ import { cleanPrice } from "@/lib/plan-pricing"
 
 export default async function WorkspaceSelectionPage() {
   const session = await getServerSession(authOptions)
-  if (!session?.user) redirect("/auth/login")
-
-  // Regular users (User Biasa / AI Creator) are routed to AI Website Builder
-  if (session.user.role === "user") {
-    redirect("/aibuilder")
-  }
+  if (!session?.user) redirect("/login")
 
   const isSuperAdmin = session.user.role === "super_admin"
 
@@ -63,7 +58,7 @@ export default async function WorkspaceSelectionPage() {
   // If non-admin / non-owner team member belongs to a single workspace, forward directly to its CMS studio
   const isOwnerOrAdmin = session.user.role === "admin" || session.user.role === "super_admin" || session.user.role === "owner" || tenants.some(t => t.members[0]?.role === "owner" || t.members[0]?.role === "admin")
   if (!isOwnerOrAdmin && tenants.length === 1) {
-    redirect(`/cms/${tenants[0].slug || tenants[0].id}`)
+    redirect(`/dashboard/${tenants[0].slug || tenants[0].id}/cms`)
   }
 
   const formattedTenants = await Promise.all(tenants.map(async (t) => {

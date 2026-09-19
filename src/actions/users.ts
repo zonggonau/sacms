@@ -157,7 +157,7 @@ export async function createMemberAction(tenantSlug: string, data: z.infer<typeo
       })
     }
 
-    revalidatePath(`/developer/${tenantSlug}/users`)
+    revalidatePath(`/dashboard/${tenantSlug}/users`)
 
     return { member }
   } catch (error) {
@@ -239,7 +239,7 @@ export async function updateMemberAction(tenantSlug: string, memberId: string, d
       }
     }
 
-    revalidatePath(`/developer/${tenantSlug}/users`)
+    revalidatePath(`/dashboard/${tenantSlug}/users`)
     return { success: true }
   } catch (error) {
     console.error("Error updating member:", error)
@@ -276,7 +276,7 @@ export async function deleteMemberAction(tenantSlug: string, memberId: string) {
       await tenantDb.tenantMember.delete({ where: { id: memberId } })
     }
 
-    revalidatePath(`/developer/${tenantSlug}/users`)
+    revalidatePath(`/dashboard/${tenantSlug}/users`)
     return { success: true }
   } catch (error) {
     console.error("Error deleting member:", error)

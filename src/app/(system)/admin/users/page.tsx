@@ -71,11 +71,11 @@ interface User {
 }
 
 /**
- * Platform role → the badge label/color shown in the directory. "user" and
- * "developer" are the two self-registration types (see `formData.isDeveloper`
- * in the register form): "user" lands in /aibuilder, "developer" in
- * /dashboard. "owner" is a platform-staff-provisioned account (created from
- * this admin page); "admin"/"super_admin" are platform staff.
+ * Platform role → the badge label/color shown in the directory. "user" is
+ * the self-registration type; "developer" is kept only for accounts created
+ * before that account-type distinction was removed. "owner" is a
+ * platform-staff-provisioned account (created from this admin page);
+ * "admin"/"super_admin" are platform staff.
  */
 function getRoleBadge(role: string): { label: string; className: string } {
   switch (role) {
@@ -86,7 +86,7 @@ function getRoleBadge(role: string): { label: string; className: string } {
     case "developer":
       return { label: "DEVELOPER", className: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20" }
     case "user":
-      return { label: "USER BIASA", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" }
+      return { label: "USER", className: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20" }
     default:
       return { label: "ACCOUNT OWNER", className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20" }
   }
@@ -247,7 +247,7 @@ function AdminUsersContent() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login")
+      router.push("/login")
     } else if (status === "authenticated" && !isAdmin) {
       router.push("/dashboard")
     }

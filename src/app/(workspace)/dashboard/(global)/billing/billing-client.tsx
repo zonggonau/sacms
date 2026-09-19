@@ -142,7 +142,7 @@ export default function BillingClient({
     } else if (tx.orderId.startsWith("SUB-")) {
       const tenantSlug = tx.subscription?.tenant?.slug || "workspace"
       const plan = tx.subscription?.plan || "pro"
-      router.push(`/developer/${tenantSlug}/subscriptions/checkout?plan=${plan}&interval=year`)
+      router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan}&interval=year`)
     } else if (tx.rawResponse?.type === "ai_credits") {
       const packId = tx.rawResponse?.addonId || "ai-starter-50"
       router.push(`/dashboard/billing/checkout?addon=${packId}&type=addon`)

@@ -10,7 +10,7 @@ export default async function BillingPage() {
   const session = await getServerSession(authOptions)
   
   if (!session) {
-    redirect("/auth/login")
+    redirect("/login")
   }
 
   const { isEnterpriseTenant } = await import("@/lib/license")

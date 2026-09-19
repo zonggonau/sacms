@@ -72,7 +72,7 @@ export const POST = withStaffAuth(async (request, context, { access, session }) 
       senderName: "Tim IT Support SaCMS",
       senderRole: "admin",
       messagePreview: parsed.data.message,
-      viewUrl: `${baseUrl}/developer/${ticket.tenant?.slug}/support?ticketId=${ticket.id}`,
+      viewUrl: `${baseUrl}/dashboard/${ticket.tenant?.slug}/support?ticketId=${ticket.id}`,
     }).catch(() => {})
   } else if (!isSuperAdmin) {
     try {

@@ -50,7 +50,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
   const [mobileOpen, setMobileOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
 
-  const href = (path: string) => `/cms/${tenantId}${path}`
+  const href = (path: string) => `/dashboard/${tenantId}/cms${path}`
   const canGoBack = userRole === "owner" || userRole === "admin" || userRole === "super_admin"
 
   useEffect(() => {
@@ -101,7 +101,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Koleksi Konten</p>
               {canGoBack && (
                 <Link 
-                  href={`/developer/${tenantId}/content-type-builder/content-types/new`}
+                  href={`/dashboard/${tenantId}/content-type-builder/content-types/new`}
                   title="Tambah Skema Koleksi Baru"
                   className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
                 >
@@ -132,7 +132,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                     </Link>
                     {canGoBack && (
                       <Link
-                        href={`/developer/${tenantId}/content-type-builder/content-types/edit/${ct.slug}`}
+                        href={`/dashboard/${tenantId}/content-type-builder/content-types/edit/${ct.slug}`}
                         title={`Edit Skema ${ct.name}`}
                         className={cn(
                           "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
@@ -157,7 +157,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Halaman Statis</p>
               {canGoBack && (
                 <Link 
-                  href={`/developer/${tenantId}/content-type-builder/single-types/new`}
+                  href={`/dashboard/${tenantId}/content-type-builder/single-types/new`}
                   title="Tambah Single Type Baru"
                   className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
                 >
@@ -195,7 +195,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                   </Link>
                   {canGoBack && (
                     <Link
-                      href={`/developer/${tenantId}/content-type-builder/single-types/${st.slug}/edit`}
+                      href={`/dashboard/${tenantId}/content-type-builder/single-types/${st.slug}/edit`}
                       title={`Edit Skema ${st.name}`}
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-muted"
                       onClick={(e) => e.stopPropagation()}
@@ -214,7 +214,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
       {/* Direct Quick Jump to Content-Type Builder */}
       {canGoBack && (
         <div className="px-3 pt-2 pb-1 border-t border-border/80 bg-muted/20">
-          <Link href={`/developer/${tenantId}/content-type-builder/content-types`}>
+          <Link href={`/dashboard/${tenantId}/content-type-builder/content-types`}>
             <div className="flex items-center gap-2.5 rounded-xl p-2.5 text-xs font-bold transition-all bg-indigo-500/10 text-indigo-700 dark:text-indigo-300 hover:bg-indigo-500/20 border border-indigo-500/30 group shadow-xs">
               <Database className="h-4 w-4 text-indigo-600 dark:text-indigo-400 shrink-0 group-hover:rotate-12 transition-transform" />
               <div className="min-w-0 flex-1">

@@ -300,7 +300,7 @@ export function WorkspaceCreationDialog({
       if (res.success) {
         toast({ title: "Workspace Berhasil Dibuat!", description: "Mengalihkan ke dashboard workspace baru Anda..." })
         onOpenChange(false)
-        router.push(`/developer/${res.tenantId}`)
+        router.push(`/dashboard/${res.tenantId}`)
       } else {
         toast({ variant: "destructive", title: "Pembuatan Gagal", description: res.error || "Gagal membuat workspace" })
       }

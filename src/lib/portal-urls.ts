@@ -62,6 +62,6 @@ export function getPortalUrl(portal: PortalType, tenantSlug?: string, subPath?: 
       return `${base}/${tenantSlug}${path}`
     case "app":
     default:
-      return `${base}/developer/${tenantSlug}${path}`
+      return `${base}/dashboard/${tenantSlug}${path}`
   }
 }

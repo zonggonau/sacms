@@ -273,7 +273,7 @@ export function SupportWidget({ tenantSlug, tenantName }: SupportWidgetProps) {
 
             <div className="flex items-center gap-1">
               <Link
-                href={`/developer/${tenantSlug}/support`}
+                href={`/dashboard/${tenantSlug}/support`}
                 title="Buka Halaman Penuh"
                 className="p-1.5 hover:bg-primary-foreground/20 rounded-lg text-primary-foreground transition-colors"
               >

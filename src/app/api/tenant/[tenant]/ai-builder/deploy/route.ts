@@ -123,7 +123,7 @@ export const POST = withStaffAuth(
     if ((action === "deploy" || action === "domain") && !isPaid) {
       return apiError("plan_limit", {
         message: "Deploy ke hosting produksi memerlukan paket berbayar. Upgrade paket Anda untuk melanjutkan.",
-        details: { redirectTo: `/developer/${tenantSlug}/subscriptions`, plan: tenant.plan },
+        details: { redirectTo: `/dashboard/${tenantSlug}/subscriptions`, plan: tenant.plan },
       })
     }
 

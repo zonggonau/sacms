@@ -26,7 +26,7 @@ export default function TenantEconomicsPage() {
   const [search, setSearch] = useState("")
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/login")
+    if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
   const fetchReports = async () => {

@@ -9,10 +9,13 @@ interface PageProps {
 
 export default async function GlobalAiBuilderRedirectPage({ searchParams }: PageProps) {
   const { workspace, prompt } = await searchParams
-  const params = new URLSearchParams()
-  if (workspace) params.set("workspace", workspace)
-  if (prompt) params.set("prompt", prompt)
 
-  const queryStr = params.toString() ? `?${params.toString()}` : ""
-  redirect(`/aibuilder${queryStr}`)
+  if (workspace) {
+    const params = new URLSearchParams()
+    if (prompt) params.set("prompt", prompt)
+    const queryStr = params.toString() ? `?${params.toString()}` : ""
+    redirect(`/dashboard/${workspace}/content-type-builder/aiwebsitebuilder${queryStr}`)
+  }
+
+  redirect("/dashboard")
 }

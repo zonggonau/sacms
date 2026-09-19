@@ -683,7 +683,7 @@ export function ServicesView({
                         <TableCell className="py-3 text-right">
                           {existingMapped?.tenant ? (
                             <Button asChild size="sm" variant="ghost" className="h-7.5 text-xs font-bold text-primary">
-                              <Link href={`/developer/${existingMapped.tenant.slug || existingMapped.tenant.id}`}>
+                              <Link href={`/dashboard/${existingMapped.tenant.slug || existingMapped.tenant.id}`}>
                                 Buka <ArrowRight className="h-3 w-3 ml-1" />
                               </Link>
                             </Button>
@@ -832,7 +832,7 @@ export function ServicesView({
                               <span className="truncate">Terhubung ke: {existingMapped.tenant.name}</span>
                             </div>
                             <Button asChild size="sm" variant="ghost" className="h-7 text-xs font-bold text-primary">
-                              <Link href={`/developer/${existingMapped.tenant.slug || existingMapped.tenant.id}`}>
+                              <Link href={`/dashboard/${existingMapped.tenant.slug || existingMapped.tenant.id}`}>
                                 Buka <ArrowRight className="h-3 w-3 ml-1" />
                               </Link>
                             </Button>
@@ -982,12 +982,12 @@ export function ServicesView({
                             {isInUse && vps.tenant && (
                               <>
                                 <Button asChild size="sm" variant="default" className="h-7.5 text-xs font-bold rounded-lg bg-primary text-primary-foreground">
-                                  <Link href={`/cms/${vps.tenant.slug || vps.tenant.id}`}>
+                                  <Link href={`/dashboard/${vps.tenant.slug || vps.tenant.id}/cms`}>
                                     Studio
                                   </Link>
                                 </Button>
                                 <Button asChild size="sm" variant="outline" className="h-7.5 text-xs font-bold rounded-lg border-border">
-                                  <Link href={`/developer/${vps.tenant.slug || vps.tenant.id}`}>
+                                  <Link href={`/dashboard/${vps.tenant.slug || vps.tenant.id}`}>
                                     Workspace
                                   </Link>
                                 </Button>
@@ -1161,13 +1161,13 @@ export function ServicesView({
                         {isInUse && vps.tenant && (
                           <div className="flex items-center gap-2">
                             <Button asChild size="sm" className="flex-1 h-8.5 text-xs font-bold rounded-xl bg-primary text-primary-foreground">
-                              <Link href={`/cms/${vps.tenant.slug || vps.tenant.id}`}>
+                              <Link href={`/dashboard/${vps.tenant.slug || vps.tenant.id}/cms`}>
                                 <ExternalLink className="h-3.5 w-3.5 mr-1" />
                                 Buka CMS Studio
                               </Link>
                             </Button>
                             <Button asChild variant="outline" size="sm" className="h-8.5 text-xs font-bold rounded-xl border-border/80">
-                              <Link href={`/developer/${vps.tenant.slug || vps.tenant.id}`}>
+                              <Link href={`/dashboard/${vps.tenant.slug || vps.tenant.id}`}>
                                 Buka Workspace
                               </Link>
                             </Button>

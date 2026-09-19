@@ -110,8 +110,8 @@ export async function registerUser(formData: any) {
 
     // Create user:
     // - If no Super Admin exists: this user is Super Admin (auto-verified).
-    // - If Super Admin exists: assign 'developer' if requested, otherwise 'user' (AI Website Creator).
-    const userRole = isFirstUser ? "super_admin" : formData.isDeveloper ? "developer" : "user"
+    // - If Super Admin exists: regular 'user'.
+    const userRole = isFirstUser ? "super_admin" : "user"
 
     const user = await db.user.create({
       data: {

@@ -106,18 +106,18 @@ export function V0HeroComposer({ data }: V0HeroComposerProps = {}) {
         localStorage.setItem("sacms_pending_prompt", cleanPrompt)
       }
 
-      const targetUrl = `/aibuilder?prompt=${encodeURIComponent(cleanPrompt)}`
+      const targetUrl = `/dashboard/ai-builder?prompt=${encodeURIComponent(cleanPrompt)}`
 
       if (status === "authenticated" && session?.user) {
         // Logged in: direct jump to AI Website Builder in dashboard
         router.push(targetUrl)
       } else {
         // Not logged in: go to login, then redirect to aibuilder
-        const loginUrl = `/auth/login?redirect_to=${encodeURIComponent(targetUrl)}`
+        const loginUrl = `/login?redirect_to=${encodeURIComponent(targetUrl)}`
         router.push(loginUrl)
       }
     } catch {
-      router.push("/auth/login?redirect_to=/aibuilder")
+      router.push("/login?redirect_to=/dashboard/ai-builder")
     }
   }
 

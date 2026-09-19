@@ -10,5 +10,5 @@ import { redirect } from "next/navigation"
  */
 export default async function RBACRedirectPage({ params }: { params: Promise<{ tenant: string }> }) {
   const { tenant } = await params
-  redirect(`/developer/${tenant}/users-permissions/roles`)
+  redirect(`/dashboard/${tenant}/users-permissions/roles`)
 }

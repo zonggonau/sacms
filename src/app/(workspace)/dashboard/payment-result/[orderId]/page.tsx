@@ -17,7 +17,7 @@ export default function GlobalPaymentResultPage() {
 
   useEffect(() => {
     if (status === "unauthenticated") {
-      router.push("/auth/login")
+      router.push("/login")
       return
     }
 
@@ -33,7 +33,7 @@ export default function GlobalPaymentResultPage() {
           await update()
 
           if (data.subscription?.tenant?.slug) {
-            router.push(`/developer/${data.subscription.tenant.slug}/subscriptions/payment/${orderId}`)
+            router.push(`/dashboard/${data.subscription.tenant.slug}/subscriptions/payment/${orderId}`)
           } else if (orderId.startsWith("ACC-")) {
             // Account-level payment success
             router.push(`/dashboard/billing`)
@@ -46,7 +46,7 @@ export default function GlobalPaymentResultPage() {
               const tRes = await fetch(`/api/admin/tenants/${tenantId}`)
               if (tRes.ok) {
                 const tData = await tRes.json()
-                router.push(`/developer/${tData.slug}/subscriptions/payment/${orderId}`)
+                router.push(`/dashboard/${tData.slug}/subscriptions/payment/${orderId}`)
                 return
               }
             }

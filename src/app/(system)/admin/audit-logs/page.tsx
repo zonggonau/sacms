@@ -83,7 +83,7 @@ export default function AdminAuditLogsPage() {
   }
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/login")
+    if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
   useEffect(() => {

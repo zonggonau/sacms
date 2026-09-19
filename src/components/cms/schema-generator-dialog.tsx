@@ -118,7 +118,7 @@ export function SchemaGeneratorDialog({
       "single-type": "single-types",
       "component": "components"
     }
-    const basePath = tenantSlug ? `/developer/${tenantSlug}` : `/admin`
+    const basePath = tenantSlug ? `/dashboard/${tenantSlug}` : `/admin`
     
     if (type === "system") {
       router.push(`/admin/schema-builder/${generatedData.id}`)

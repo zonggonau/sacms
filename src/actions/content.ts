@@ -624,7 +624,7 @@ export async function assignReviewersAction(tenantSlug: string, entryId: string,
     }
 
     await assignReviewers(entry.id, normalizedReviewers, session.user.id, tenantDb)
-    revalidatePath(`/developer/${tenantSlug}/content`)
+    revalidatePath(`/dashboard/${tenantSlug}/content`)
     return { success: true }
   } catch (error: any) {
     console.error("Error assigning reviewers:", error)
@@ -677,7 +677,7 @@ export async function submitReviewAction(tenantSlug: string, entryId: string, de
       })
     }
 
-    revalidatePath(`/developer/${tenantSlug}/content`)
+    revalidatePath(`/dashboard/${tenantSlug}/content`)
     return { success: true, ...result }
   } catch (error: any) {
     console.error("Error submitting review:", error)

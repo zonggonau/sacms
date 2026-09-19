@@ -27,7 +27,7 @@ export default function MarginKeuntunganPage() {
   const [categoryFilter, setCategoryFilter] = useState("all")
 
   useEffect(() => {
-    if (status === "unauthenticated") router.push("/auth/login")
+    if (status === "unauthenticated") router.push("/login")
   }, [status, router])
 
   const fetchReports = async () => {

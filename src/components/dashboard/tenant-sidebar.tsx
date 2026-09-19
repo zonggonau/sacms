@@ -162,9 +162,9 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       )
 
   const href = (path: string) => {
-    if (path === "/cms-redirect") return `/cms/${tenantId}`
-    if (path === "/developer") return `/developer/${tenantId}/tools`
-    return `/developer/${tenantId}${path}`
+    if (path === "/cms-redirect") return `/dashboard/${tenantId}/cms`
+    if (path === "/developer") return `/dashboard/${tenantId}/developer`
+    return `/dashboard/${tenantId}${path}`
   }
 
   const isActive = (item: { href?: string, matchPrefix?: boolean }) => {

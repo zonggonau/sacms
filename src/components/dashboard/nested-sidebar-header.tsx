@@ -20,8 +20,8 @@ export function NestedSidebarHeader({
   showBackBtn = true,
   portalBadge
 }: NestedSidebarHeaderProps) {
-  const actualBackHref = backHref || (tenantId ? `/developer/${tenantId}` : "/dashboard")
-  const actualLogoHref = logoHref || (tenantId ? `/developer/${tenantId}` : "/dashboard")
+  const actualBackHref = backHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
+  const actualLogoHref = logoHref || (tenantId ? `/dashboard/${tenantId}` : "/dashboard")
 
   return (
     <div className="border-b border-border px-4 py-4 bg-card flex items-center justify-between gap-2 shrink-0">

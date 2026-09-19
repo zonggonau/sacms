@@ -109,7 +109,7 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
       },
     })
     
-    revalidatePath(`/developer/${tenantSlug}/tools/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
 
     const { token: _storedHash, ...safeApiToken } = apiToken
 
@@ -151,7 +151,7 @@ export async function deleteApiTokenAction(tenantSlug: string, tokenId: string) 
       where: { id: tokenId },
     })
 
-    revalidatePath(`/developer/${tenantSlug}/tools/api-keys`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
 
     return { success: true }
   } catch (error) {
