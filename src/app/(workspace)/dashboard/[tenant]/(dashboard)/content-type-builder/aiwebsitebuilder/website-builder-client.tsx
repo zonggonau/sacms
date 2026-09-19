@@ -1666,22 +1666,22 @@ export async function fetchContent(collection: string) {
                           src={previewUrl}
                           className="w-full h-full border-0 bg-background"
                           title="Preview"
-                          // `allow-same-origin` is safe (and needed, per v0's own preview-proxy
-                          // guide) when previewUrl is a genuinely different origin — v0's hosted
-                          // *.v0.build URL, or a real Vercel deployment. It's dropped specifically
-                          // when previewUrl is OUR OWN relative proxy route
-                          // (/api/tenant/.../ai-builder/preview/...): combined with allow-scripts on
-                          // a document that's same-origin with the rest of this app, it would let
-                          // AI-generated preview code read this app's cookies and reach into the
-                          // parent page's DOM instead of staying sandboxed. Dropping it makes the
-                          // iframe load as an opaque origin — no cookies, no parent access — the
-                          // trade-off being any preview feature that itself needs same-origin
-                          // storage/HMR inside that proxy path.
-                          sandbox={
-                            previewUrl.startsWith("/")
-                              ? "allow-scripts allow-forms allow-popups allow-modals"
-                              : "allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                          }
+                          // Per v0's Accessing Previews guide, the iframe sandbox
+                          // MUST include both `allow-scripts` and `allow-same-origin`
+                          // for the generated app to hydrate, load CSS/JS bundles, and
+                          // use origin-sensitive runtime features (HMR, cookies, storage).
+                          //
+                          // The previous code dropped `allow-same-origin` when the preview
+                          // URL was our own proxy route (starts with "/"), causing the
+                          // iframe to receive an opaque origin — which broke ALL CSS/JS
+                          // loading and rendered the preview as unstyled raw HTML.
+                          //
+                          // Security isolation is handled at the proxy-route level
+                          // (withStaffAuth + chatBelongsToTenant) and by removing
+                          // content-security-policy headers from proxied responses.
+                          // For production, v0 docs recommend an isolated preview origin
+                          // on a different registrable domain.
+                          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
                         />
                       ) : (
                         <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-muted/20">

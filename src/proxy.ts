@@ -18,6 +18,9 @@ const APP_HOST = (process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000")
  * before touching Redis or doing any other work.
  */
 function isSkippablePath(pathname: string): boolean {
+  // Never skip API routes, even if they end in static extensions (.css, .js)
+  if (pathname.startsWith("/api/")) return false
+
   return (
     pathname.startsWith("/_next/") ||
     pathname === "/favicon.ico" ||
@@ -32,6 +35,23 @@ let inMemoryFirstUserDone = false
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
+
+  // ==================== V0 PREVIEW IFRAME INTERCEPT ====================
+  // Per official v0 SDK documentation ("Accessing Previews - Step 4: Route root-relative requests"):
+  // The catch-all preview route cannot intercept root-relative URLs (e.g. /_next/static/...)
+  // by itself. The browser resolves them against the host origin. We inspect the Referer
+  // header and redirect them (HTTP 307) through the catch-all proxy route.
+  // This MUST run before isSkippablePath so that /_next/ and static asset requests from the
+  // preview iframe are redirected to the v0 proxy instead of hitting the host's 404 handler.
+  const referer = request.headers.get("referer") || ""
+  const v0ProxyMatch = referer.match(/\/api\/tenant\/([^\/]+)\/ai-builder\/preview\/([^\/?#]+)/)
+  if (v0ProxyMatch && !pathname.startsWith("/api/tenant/")) {
+    const tenantSlug = v0ProxyMatch[1]
+    const chatId = v0ProxyMatch[2]
+    const proxyUrl = request.nextUrl.clone()
+    proxyUrl.pathname = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}${pathname}`
+    return NextResponse.redirect(proxyUrl, 307)
+  }
 
   // Fast path: static assets and Next internals need none of the logic below.
   if (isSkippablePath(pathname)) {
@@ -125,20 +145,6 @@ export async function proxy(request: NextRequest) {
     }
   }
 
-  // ==================== V0 PREVIEW IFRAME INTERCEPT ====================
-  // If the request originates from the V0 preview iframe (via Referer) and is not already a proxy route,
-  // rewrite it so that API calls from the V0 frontend (e.g. /chat/api/...) go through our proxy.
-  const referer = request.headers.get("referer") || ""
-  const v0ProxyMatch = referer.match(/\/api\/tenant\/([^\/]+)\/ai-builder\/preview\/([^\/?#]+)/)
-  if (v0ProxyMatch && !pathname.startsWith("/api/tenant/") && !pathname.startsWith("/_next/")) {
-    const tenantSlug = v0ProxyMatch[1]
-    const chatId = v0ProxyMatch[2]
-    const rewriteUrl = request.nextUrl.clone()
-    rewriteUrl.pathname = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}${pathname}`
-    
-    // We rewrite the request to the proxy route
-    return NextResponse.rewrite(rewriteUrl)
-  }
 
   // ==================== RATE LIMITING ====================
   // Apply rate limiting to all API routes with appropriate configs
