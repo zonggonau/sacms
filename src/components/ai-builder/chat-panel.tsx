@@ -77,10 +77,10 @@ export function ChatPanel({
   const messagesEndRef = useRef<HTMLDivElement>(null)
   const selectedModel = models.find(m => m.id === selectedModelId) || models[0]
 
-  // Auto-scroll to latest message
+  // Auto-scroll to latest message when count or loading changes
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [messages, isLoading, loadingStep])
+  }, [messages.length, isLoading])
 
   return (
     <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col min-h-0 h-full bg-card shrink-0 overflow-hidden">

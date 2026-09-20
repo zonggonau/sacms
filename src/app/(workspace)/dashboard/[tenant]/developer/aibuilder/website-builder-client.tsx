@@ -101,70 +101,14 @@ export const QUICK_ITERATION_SUGGESTIONS = [
   { label: "💳 Tambah Checkout WhatsApp", prompt: "Tambahkan tombol checkout instan yang otomatis mengarahkan pesanan ke WhatsApp admin." },
 ]
 
-export function WebsiteBuilderClient({
-  tenantId, tenantSlug, hasUpgradedPlan, initialAiCredits, initialProject
-}: WebsiteBuilderClientProps) {
-  const { toast } = useToast()
-  const router = useRouter()
-  
-  // Kept as live state (not a pure derived constant) so it can be refreshed
-  // after a generate/iterate call without a full page reload — otherwise the
-  // "Saldo AI" badge stays at its page-load value even after credits are spent.
-  const [creditsRemaining, setCreditsRemaining] = useState(initialAiCredits?.remaining ?? 0)
-  const [isUnlimited, setIsUnlimited] = useState(initialAiCredits?.isUnlimited ?? false)
+// ────────────────────────────────────────────────────────────────────────────
+// Static Constants & Pure Helpers (defined outside component for reference stability)
+// ────────────────────────────────────────────────────────────────────────────
 
-  const refreshCredits = async () => {
-    try {
-      const res = await fetch("/api/ai/account-credits")
-      if (!res.ok) return
-      const data = await res.json()
-      if (typeof data.creditsRemaining === "number") setCreditsRemaining(data.creditsRemaining)
-      if (typeof data.isUnlimited === "boolean") setIsUnlimited(data.isUnlimited)
-    } catch {
-      // Non-critical — the badge just keeps its last known value.
-    }
-  }
-
-  // Selected AI Model — now uses the multi-provider registry instead of v0-only models
-  const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "gpt-4o")
-  const currentModelConfig = AI_MODEL_REGISTRY.find(m => m.id === selectedModel) || AI_MODEL_REGISTRY[0]
-
-
-  // Loading state & step
-  const [loading, setLoading] = useState(false)
-  const [loadingStep, setLoadingStep] = useState<string>("")
-  
-  // Prompt Input state
-  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-  const [showMcpHint, setShowMcpHint] = useState(true)
-
-  // Project & Draft State
-  const [v0ChatId, setV0ChatId] = useState(initialProject?.v0ChatId || null)
-  const [previewUrl, setPreviewUrl] = useState(initialProject?.previewUrl || "")
-  // Claude builds have no hosted sandbox/preview URL — they're rendered
-  // in-browser via Sandpack using the generated files directly (mock data,
-  // not a live server — see components/ai-builder/sandpack-preview.tsx).
-  const isClaudeBuild = typeof v0ChatId === "string" && v0ChatId.startsWith("sacms_claude_")
-  const [projectStatus, setProjectStatus] = useState<"draft" | "project">(initialProject?.status || "draft")
-  const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
-  // Bumped to force a real iframe remount on Refresh — a URL hash change alone
-  // doesn't reliably reload iframe content across browsers.
-  const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0)
-  
-  // v0.dev Clone Studio Multi-Tab View ("preview" | "code" | "console")
-  const [activeViewerTab, setActiveViewerTab] = useState<"preview" | "code" | "console">("preview")
-  const [isReasoningOpen, setIsReasoningOpen] = useState(true)
-  const [selectedFileIndex, setSelectedFileIndex] = useState(0)
-  const [copiedCode, setCopiedCode] = useState(false)
-  
-  // Generated Multi-File Code Tree — hydrated from the last-generated site's
-  // real SiteFile rows when available (see page.tsx), so the Code tab
-  // survives a page reload instead of always resetting to the demo files.
-  const DEMO_FILES: Array<{ name: string; content: string }> = [
-    {
-      name: "app/page.tsx",
-      content: `"use client"
+const DEMO_FILES: Array<{ name: string; content: string }> = [
+  {
+    name: "app/page.tsx",
+    content: `"use client"
 
 import React, { useState } from "react"
 import { Globe, ArrowRight, Star, ShieldCheck, Zap, Sparkles, Search, ChevronRight } from "lucide-react"
@@ -184,11 +128,11 @@ export default function HomePage() {
       </main>
     </div>
   )
-}`
-    },
-    {
-      name: "components/Navbar.tsx",
-      content: `export function Navbar() {
+}`,
+  },
+  {
+    name: "components/Navbar.tsx",
+    content: `export function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-800 bg-slate-950/80 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
@@ -196,20 +140,107 @@ export default function HomePage() {
       </div>
     </header>
   )
-}`
-    },
-    {
-      name: "lib/sacms.ts",
-      content: `export const SACMS_API_URL = process.env.NEXT_PUBLIC_SACMS_API || "/api/public"
+}`,
+  },
+  {
+    name: "lib/sacms.ts",
+    content: `export const SACMS_API_URL = process.env.NEXT_PUBLIC_SACMS_API || "/api/public"
 
 export async function fetchContent(collection: string) {
   const res = await fetch(\`\${SACMS_API_URL}/content/\${collection}\`, {
     next: { revalidate: 60 }
   })
   return res.json()
-}`
+}`,
+  },
+]
+
+function parseFilesFromText(rawText: string): Array<{ name: string; content: string }> {
+  let text = rawText.trim()
+  if (text.startsWith("```json")) text = text.replace(/^```json/, "").replace(/```\s*$/, "").trim()
+  else if (text.startsWith("```")) text = text.replace(/^```/, "").replace(/```\s*$/, "").trim()
+
+  const jsonStart = text.indexOf("{")
+  const jsonEnd = text.lastIndexOf("}")
+  if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.substring(jsonStart, jsonEnd + 1)
+
+  try {
+    const parsed = JSON.parse(text)
+    const rawFiles = Array.isArray(parsed?.files) ? parsed.files : []
+    return rawFiles
+      .filter((f: any) => f && typeof f.name === "string" && typeof f.content === "string")
+      .map((f: any) => ({ name: f.name, content: f.content }))
+  } catch {
+    return []
+  }
+}
+
+function extractMessageText(msg: any): string {
+  if (!msg) return ""
+  if (typeof msg.content === "string") return msg.content
+  if (Array.isArray(msg.parts)) {
+    return msg.parts
+      .filter((p: any) => p && (p.type === "text" || !p.type) && typeof p.text === "string")
+      .map((p: any) => p.text)
+      .join("")
+  }
+  return ""
+}
+
+export function WebsiteBuilderClient({
+  tenantId,
+  tenantSlug,
+  hasUpgradedPlan,
+  initialAiCredits,
+  initialProject,
+}: WebsiteBuilderClientProps) {
+  const { toast } = useToast()
+  const router = useRouter()
+
+  // Kept as live state so it can be refreshed after a generate/iterate call
+  const [creditsRemaining, setCreditsRemaining] = useState(initialAiCredits?.remaining ?? 0)
+  const [isUnlimited, setIsUnlimited] = useState(initialAiCredits?.isUnlimited ?? false)
+
+  const refreshCredits = async () => {
+    try {
+      const res = await fetch("/api/ai/account-credits")
+      if (!res.ok) return
+      const data = await res.json()
+      if (typeof data.creditsRemaining === "number") setCreditsRemaining(data.creditsRemaining)
+      if (typeof data.isUnlimited === "boolean") setIsUnlimited(data.isUnlimited)
+    } catch {
+      // Non-critical
     }
-  ]
+  }
+
+  // Selected AI Model
+  const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "gpt-4o")
+  const currentModelConfig = AI_MODEL_REGISTRY.find((m) => m.id === selectedModel) || AI_MODEL_REGISTRY[0]
+
+  // Loading state & step
+  const [loading, setLoading] = useState(false)
+  const [loadingStep, setLoadingStep] = useState<string>("")
+
+  // Prompt Input state
+  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
+  const [showMcpHint, setShowMcpHint] = useState(true)
+
+  // Project & Draft State
+  const [v0ChatId, setV0ChatId] = useState(initialProject?.v0ChatId || null)
+  const [previewUrl, setPreviewUrl] = useState(initialProject?.previewUrl || "")
+  const isClaudeBuild = typeof v0ChatId === "string" && v0ChatId.startsWith("sacms_claude_")
+  const [projectStatus, setProjectStatus] = useState<"draft" | "project">(initialProject?.status || "draft")
+  const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
+  const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0)
+
+  // v0.dev Clone Studio Multi-Tab View
+  const [activeViewerTab, setActiveViewerTab] = useState<"preview" | "code" | "console">("preview")
+  const [isReasoningOpen, setIsReasoningOpen] = useState(true)
+  const [selectedFileIndex, setSelectedFileIndex] = useState(0)
+  const [copiedCode, setCopiedCode] = useState(false)
+
+  // Generated Multi-File Code Tree
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ name: string; content: string }>>(
     initialProject?.files && initialProject.files.length > 0 ? initialProject.files : DEMO_FILES
   )
@@ -226,7 +257,7 @@ export async function fetchContent(collection: string) {
       prompt: initialProject?.frontendPrompt || "Initial website generation",
       timestamp: "Sekarang",
       previewUrl: initialProject?.previewUrl || "",
-    }
+    },
   ])
   const [activeVersionNumber, setActiveVersionNumber] = useState<number>(1)
 
@@ -242,54 +273,15 @@ export async function fetchContent(collection: string) {
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [iterationPrompt, setIterationPrompt] = useState("")
 
-  // Helper to parse generated Next.js files from stream response
-  const parseFilesFromText = (rawText: string): Array<{ name: string; content: string }> => {
-    let text = rawText.trim()
-    if (text.startsWith("```json")) text = text.replace(/^```json/, "").replace(/```\s*$/, "").trim()
-    else if (text.startsWith("```")) text = text.replace(/^```/, "").replace(/```\s*$/, "").trim()
-
-    const jsonStart = text.indexOf("{")
-    const jsonEnd = text.lastIndexOf("}")
-    if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.substring(jsonStart, jsonEnd + 1)
-
-    try {
-      const parsed = JSON.parse(text)
-      const rawFiles = Array.isArray(parsed?.files) ? parsed.files : []
-      return rawFiles
-        .filter((f: any) => f && typeof f.name === "string" && typeof f.content === "string")
-        .map((f: any) => ({ name: f.name, content: f.content }))
-    } catch {
-      return []
-    }
-  }
-
-  // Helper to extract text from AI SDK UIMessage or legacy message
-  const extractMessageText = (msg: any): string => {
-    if (!msg) return ""
-    if (typeof msg.content === "string") return msg.content
-    if (Array.isArray(msg.parts)) {
-      return msg.parts
-        .filter((p: any) => p && (p.type === "text" || !p.type) && typeof p.text === "string")
-        .map((p: any) => p.text)
-        .join("")
-    }
-    return ""
-  }
-
   // ────────────────────────────────────────────────────────────────────────────
-  // Unified AI SDK useChat Hook (Multi-Provider: OpenAI, Anthropic, Google)
+  // Stable AI SDK useChat Hook
   // ────────────────────────────────────────────────────────────────────────────
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: `/api/tenant/${tenantSlug}/ai-builder/chat`,
-        body: {
-          modelId: selectedModel,
-          isIteration: generatedFiles.length > 0 && generatedFiles !== DEMO_FILES,
-          previousFiles: generatedFiles,
-        },
       }),
-    [tenantSlug, selectedModel, generatedFiles]
+    [tenantSlug]
   )
 
   const {
@@ -299,6 +291,7 @@ export async function fetchContent(collection: string) {
     setMessages: setAiMessages,
   } = useChat({
     transport,
+    throttle: 50,
     onFinish: (event: any) => {
       setLoading(false)
       setLoadingStep("")
@@ -321,19 +314,20 @@ export async function fetchContent(collection: string) {
           description: "Pratinjau lokal siap diuji dengan data contoh.",
         })
       }
-      const nextVerNum = versionHistory.length + 1
-      setActiveVersionNumber(nextVerNum)
-      setVersionHistory((prev) => [
-        ...prev,
-        {
-          version: nextVerNum,
-          prompt: mainPrompt || iterationPrompt || "Website update",
-          timestamp: new Date().toLocaleTimeString(),
-          previewUrl: previewUrl,
-        },
-      ])
+      setActiveVersionNumber((prevVer) => {
+        const nextVer = prevVer + 1
+        setVersionHistory((prevHist) => [
+          ...prevHist,
+          {
+            version: nextVer,
+            prompt: mainPrompt || iterationPrompt || "Website update",
+            timestamp: new Date().toLocaleTimeString(),
+            previewUrl: previewUrl,
+          },
+        ])
+        return nextVer
+      })
       refreshCredits()
-      router.refresh()
     },
     onError: (err: any) => {
       setLoading(false)
@@ -346,56 +340,55 @@ export async function fetchContent(collection: string) {
     },
   })
 
+  // Pure derived loading states — avoids nested setState circular effects
   const isAiChatLoading = aiChatStatus === "streaming" || aiChatStatus === "submitted"
+  const isLoading = loading || isAiChatLoading
+  const currentLoadingStep =
+    loadingStep ||
+    (isAiChatLoading
+      ? v0ChatId
+        ? "Menerapkan perubahan desain pada antarmuka Next.js..."
+        : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP..."
+      : "")
 
-  // Synchronize loading states
-  useEffect(() => {
-    if (isAiChatLoading) {
-      setLoading(true)
-      setLoadingStep(
-        v0ChatId
-          ? "Menerapkan perubahan desain pada antarmuka Next.js..."
-          : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP..."
-      )
+  // Stable memoized display messages
+  const displayMessages: Array<{ role: "user" | "assistant"; content: string }> = useMemo(() => {
+    if (aiMessages.length === 0) {
+      return [
+        {
+          role: "assistant" as const,
+          content: initialProject?.v0ChatId
+            ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
+            : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router.",
+        },
+      ]
     }
-  }, [isAiChatLoading, v0ChatId])
-
-  // Map messages to user/assistant format for UI
-  const displayMessages: Array<{ role: "user" | "assistant"; content: string }> =
-    aiMessages.length === 0
-      ? [
-          {
-            role: "assistant",
-            content: initialProject?.v0ChatId
-              ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
-              : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router.",
-          },
-        ]
-      : aiMessages
-          .filter((m) => m.role === "user" || m.role === "assistant")
-          .map((m) => {
-            const content = extractMessageText(m)
-            if (m.role === "assistant" && content.includes('"files"')) {
-              const files = parseFilesFromText(content)
-              if (files.length > 0) {
-                return {
-                  role: "assistant" as const,
-                  content: `✅ **Website Next.js 16 Berhasil Dibuat (${files.length} Berkas)**\n\nKomponen frontend telah dikompilasi dan terhubung ke skema SaCMS. Buka tab **Preview** untuk melihat tampilan interaktif atau tab **Code** untuk meninjau struktur berkas.`,
-                }
-              }
-            }
+    return aiMessages
+      .filter((m) => m.role === "user" || m.role === "assistant")
+      .map((m) => {
+        const content = extractMessageText(m)
+        if (m.role === "assistant" && content.includes('"files"')) {
+          const files = parseFilesFromText(content)
+          if (files.length > 0) {
             return {
-              role: m.role === "user" ? ("user" as const) : ("assistant" as const),
-              content,
+              role: "assistant" as const,
+              content: `✅ **Website Next.js 16 Berhasil Dibuat (${files.length} Berkas)**\n\nKomponen frontend telah dikompilasi dan terhubung ke skema SaCMS. Buka tab **Preview** untuk melihat tampilan interaktif atau tab **Code** untuk meninjau struktur berkas.`,
             }
-          })
+          }
+        }
+        return {
+          role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+          content,
+        }
+      })
+  }, [aiMessages, initialProject?.v0ChatId])
 
   const chatMessagesEndRef = useRef<HTMLDivElement>(null)
 
-  // Auto-scroll chat history to latest message when messages or loading state change
+  // Auto-scroll chat history to latest message when message count or loading state changes
   useEffect(() => {
     chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [displayMessages, loading, loadingStep])
+  }, [displayMessages.length, isLoading])
 
   // Deploy to Vercel state
   const [isDeploying, setIsDeploying] = useState(false)
@@ -527,9 +520,18 @@ export async function fetchContent(collection: string) {
     }
     setProjectStatus("draft")
 
-    sendMessage({
-      text: prompt,
-    })
+    sendMessage(
+      {
+        text: prompt,
+      },
+      {
+        body: {
+          modelId: selectedModel,
+          isIteration: false,
+          previousFiles: [],
+        },
+      }
+    )
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -552,9 +554,18 @@ export async function fetchContent(collection: string) {
     setLoading(true)
     setLoadingStep("Menerapkan perubahan desain pada antarmuka Next.js...")
 
-    sendMessage({
-      text: msg,
-    })
+    sendMessage(
+      {
+        text: msg,
+      },
+      {
+        body: {
+          modelId: selectedModel,
+          isIteration: true,
+          previousFiles: generatedFiles,
+        },
+      }
+    )
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -920,7 +931,7 @@ export async function fetchContent(collection: string) {
       )}
 
       {/* ── MAIN STUDIO AREA ── */}
-      {loading && !v0ChatId ? (
+      {isLoading && !v0ChatId ? (
         /* ── Loading Animation Stage ── */
         <div className="border border-border/80 rounded-2xl p-12 flex flex-col items-center justify-center flex-1 gap-6 text-center bg-card shadow-xs">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse border border-primary/20">
@@ -928,7 +939,7 @@ export async function fetchContent(collection: string) {
           </div>
           <div className="max-w-md space-y-2">
             <h2 className="text-lg font-black text-foreground">
-              {loadingStep || "Sedang memproses instruksi Anda..."}
+              {currentLoadingStep || "Sedang memproses instruksi Anda..."}
             </h2>
             <p className="text-muted-foreground text-xs leading-relaxed">
               AI sedang menginspeksi skema database SaCMS via MCP, membuat tipe konten baru, dan mengompilasi antarmuka Next.js App Router.
@@ -1104,8 +1115,8 @@ export async function fetchContent(collection: string) {
             <ChatPanel
               tenantSlug={tenantSlug}
               messages={displayMessages}
-              isLoading={loading}
-              loadingStep={loadingStep}
+              isLoading={isLoading}
+              loadingStep={currentLoadingStep}
               iterationPrompt={iterationPrompt}
               onIterationPromptChange={setIterationPrompt}
               onIterate={handleIterate}
@@ -1230,11 +1241,11 @@ export async function fetchContent(collection: string) {
                   <Button
                     size="icon"
                     onClick={() => handleGenerateWebsite()}
-                    disabled={loading || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
+                    disabled={isLoading || !mainPrompt.trim() || (!isUnlimited && creditsRemaining < currentModelConfig.credits)}
                     className="h-8 w-8 rounded-full bg-foreground text-background hover:bg-foreground/90 shadow-none disabled:opacity-40"
                     title={`Bangun Website via SaCMS MCP (-${currentModelConfig.credits} Credits)`}
                   >
-                    {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
+                    {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ArrowUp className="h-3.5 w-3.5" />}
                   </Button>
                 </div>
               </div>
