@@ -2,7 +2,7 @@
 
 import { useSession } from "next-auth/react"
 import { useRouter } from "next/navigation"
-import { DashboardSidebar } from "./sidebar"
+import { TenantSidebar } from "./tenant-sidebar"
 import { ReactNode, useEffect } from "react"
 
 interface DashboardLayoutProps {
@@ -36,15 +36,14 @@ export function DashboardLayout({ children, tenantSlug }: DashboardLayoutProps) 
     )
   }
 
-  const isSuperAdmin = session?.user?.role === "super_admin"
   const tenants = session?.user?.tenants || []
 
   return (
     <div className="flex h-screen overflow-hidden">
-      <DashboardSidebar
-        isSuperAdmin={isSuperAdmin}
+      <TenantSidebar
         tenantSlug={tenantSlug}
         tenants={tenants}
+        session={session}
       />
       <main className="flex-1 overflow-auto md:ml-0">
         {children}

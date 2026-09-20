@@ -4,8 +4,7 @@ import { authOptions } from "@/lib/auth"
 import { db, getTenantDb } from "@/lib/database"
 import { getTenantAccess } from "@/lib/tenant-access"
 import { WebsiteBuilderClient } from "./website-builder-client"
-import { v0 } from "v0"
-import { toV0UIMessages } from "@v0-sdk/react"
+
 
 export default async function WebsiteBuilderPage({ params }: { params: Promise<{ tenant: string }> }) {
   const session = await getServerSession(authOptions)
@@ -38,79 +37,10 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
     previewUrl = `/api/tenant/${tenantSlug}/ai-builder/preview/${v0ChatId}`
   }
 
-  // Fetch existing chat messages so the full conversation history is restored
-  let initialV0Messages: any[] = []
-  if (v0ChatId && !v0ChatId.startsWith("sacms_claude_") && !v0ChatId.startsWith("sacms_gen_")) {
-    try {
-      const msgsRes = await v0.messages.list({ chatId: v0ChatId, limit: 50 })
-      if (msgsRes?.data?.messages && Array.isArray(msgsRes.data.messages)) {
-        initialV0Messages = toV0UIMessages(msgsRes.data.messages)
-      }
-    } catch (e: any) {
-      console.warn("[WebsiteBuilderPage] Could not fetch v0 chat messages:", e?.message)
-    }
-  }
+  const initialMessages: any[] = []
 
   // Determine if the user has an upgraded plan to access advanced AI models
   const hasUpgradedPlan = tenant.plan === "pro" || tenant.plan === "ai_max" || tenant.plan === "custom" || tenant.plan === "enterprise"
-
-  // Check if tenant has any published schemas with fallback
-  let ctCount = 0
-  let stCount = 0
-  let hasSchema = false
-  let existingContentTypes: any[] = []
-  let existingSingleTypes: any[] = []
-
-  try {
-    const tenantDb = await getTenantDb(tenant.id)
-    ctCount = await tenantDb.contentType.count({ where: { tenantId: tenant.id } }).catch(() => 0)
-    stCount = await tenantDb.singleType.count({ where: { tenantId: tenant.id } }).catch(() => 0)
-    hasSchema = ctCount > 0 || stCount > 0
-
-    // Lightweight existing-schema summary (names + field counts) for the Schema step.
-    const [cts, sts] = hasSchema
-      ? await Promise.all([
-          tenantDb.contentType.findMany({
-            where: { tenantId: tenant.id },
-            select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
-            orderBy: { updatedAt: "desc" },
-          }).catch(() => []),
-          tenantDb.singleType.findMany({
-            where: { tenantId: tenant.id },
-            select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
-            orderBy: { updatedAt: "desc" },
-          }).catch(() => []),
-        ])
-      : [[], []]
-    existingContentTypes = cts
-    existingSingleTypes = sts
-  } catch (err) {
-    console.warn("[AI Builder] Failed to load schema from tenantDb, falling back to master db:", err)
-    ctCount = await db.contentType.count({ where: { tenantId: tenant.id } }).catch(() => 0)
-    stCount = await db.singleType.count({ where: { tenantId: tenant.id } }).catch(() => 0)
-    hasSchema = ctCount > 0 || stCount > 0
-    if (hasSchema) {
-      const [cts, sts] = await Promise.all([
-        db.contentType.findMany({
-          where: { tenantId: tenant.id },
-          select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
-          orderBy: { updatedAt: "desc" },
-        }).catch(() => []),
-        db.singleType.findMany({
-          where: { tenantId: tenant.id },
-          select: { name: true, slug: true, _count: { select: { schemaFields: true } } },
-          orderBy: { updatedAt: "desc" },
-        }).catch(() => []),
-      ])
-      existingContentTypes = cts
-      existingSingleTypes = sts
-    }
-  }
-
-  const existingSchemaSummary = {
-    contentTypes: existingContentTypes.map((ct: any) => ({ name: ct.name, slug: ct.slug, fieldCount: ct._count?.schemaFields ?? 0 })),
-    singleTypes: existingSingleTypes.map((st: any) => ({ name: st.name, slug: st.slug, fieldCount: st._count?.schemaFields ?? 0 })),
-  }
 
   // Hydrate the Code tab from the last-generated site's actual files, instead
   // of always falling back to the hardcoded demo files on every page load.
@@ -145,9 +75,6 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
         tenantId={tenant.id}
         tenantSlug={tenantSlug}
         hasUpgradedPlan={hasUpgradedPlan}
-        hasSchema={hasSchema}
-        existingSchemaSummary={existingSchemaSummary}
-        initialFrontendPromptSeed={frontendPrompt}
         initialAiCredits={initialAiCredits}
         initialProject={v0ChatId ? {
           v0ChatId,
@@ -156,7 +83,7 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
           status: projectStatus,
           model: savedModel,
           files: initialFiles,
-          messages: initialV0Messages,
+          messages: initialMessages,
         } : null}
       />
     </div>

@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server"
 import { db, getTenantDb } from "@/lib/database"
-import { createV0Chat, getV0Preview } from "@/lib/v0-client"
-import { createClaudeChat } from "@/lib/claude-builder-client"
+import { generateWebsite } from "@/lib/ai/website-agent"
 import { deployToVercel } from "@/lib/vercel-client"
 import { randomBytes, createHash } from "crypto"
 import { McpClientBridge } from "@/lib/mcp/mcp-client-bridge"
@@ -151,16 +150,17 @@ CRITICAL ARCHITECTURE & UI REQUIREMENTS:
 
 Initialize all components with rich fallback sample data so the live sandbox preview renders instantly with zero blank states.`
 
-    // 6. Generate frontend with AI Engine (v0.dev, or Claude via SaCMS's own
-    // generation pipeline — see lib/claude-builder-client.ts). Both resolve
-    // to the same { chatId, files, previewUrl, generating?, ...Error? }
-    // shape so everything below (deploy, Site sync, settings) is identical.
-    const usingClaude = isClaudeModel(model)
-    const genResult = usingClaude
-      ? await createClaudeChat(superPrompt, model, tenant.id, session.user.id)
-      : await createV0Chat(superPrompt, model)
+    // 6. Generate frontend with Unified AI SDK Agent
+    const genResult = await generateWebsite({
+      tenantId: tenant.id,
+      tenantSlug: tenant.slug,
+      userId: session.user.id,
+      prompt,
+      modelId: model,
+      plannedSchema,
+    })
     if (!genResult?.chatId) throw new Error("Failed to generate frontend with AI Engine")
-    const engineError = usingClaude ? (genResult as any).claudeError : (genResult as any).v0Error
+    const engineError = genResult.error
 
     // Deduct user credits after successful chat creation
     await deductUserAiCredits(session.user.id, creditCost, "generate_frontend", tenant.id, model)
@@ -197,10 +197,7 @@ Initialize all components with rich fallback sample data so the live sandbox pre
     }
 
     if (!previewUrl) {
-      // Claude builds: no hosted preview exists — the builder UI renders
-      // `files` directly in an in-browser Sandpack sandbox instead of
-      // hitting a proxy route. v0 builds: proxy v0's own hosted preview.
-      previewUrl = usingClaude ? "" : `/api/tenant/${tenant.slug}/ai-builder/preview/${genResult.chatId}`
+      previewUrl = genResult.previewUrl || ""
       if (previewUrl) {
         await db.setting.upsert({ where: { key: `${tenant.id}_v0PreviewUrl` }, update: { value: previewUrl }, create: { tenantId: tenant.id, key: `${tenant.id}_v0PreviewUrl`, value: previewUrl } })
       }
@@ -245,18 +242,8 @@ Initialize all components with rich fallback sample data so the live sandbox pre
       vercelProjectId,
       filesGenerated: genResult.files?.length || 0,
       files: genResult.files || [],
-      // True when v0 accepted the chat but hasn't streamed files back yet —
-      // the client should show a "sedang membangun" state and poll, not an
-      // empty/broken one. Claude builds never hit this — generation is
-      // synchronous, so files (if any) are always present by the time this
-      // responds.
       generating: (genResult as any).generating === true,
-      // Set when the cloud engine itself failed/errored (e.g. the v0.app
-      // account is out of credits, or Claude's API call failed) and
-      // generation produced no usable files — the client should surface
-      // this honestly rather than implying a real AI build succeeded.
       v0Error: engineError,
-      usingClaude,
     })
   },
   { minRole: "admin" },

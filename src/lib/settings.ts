@@ -27,15 +27,22 @@ export interface PlatformSettings {
   autoGenerateThumbnails: string
 
   // Dynamic AI Engine & Providers
-  platformAiProvider: "deepseek" | "openai" | "gemini" | "anthropic"
+  aiGatewayApiKey: string
+  aiGatewayBaseUrl: string
+  platformAiProvider: "deepseek" | "openai" | "gemini" | "anthropic" | "groq" | "mistral" | "xai" | "openrouter"
   platformAiApiKey: string
   deepseekApiKey: string
   openaiApiKey: string
   geminiApiKey: string
   anthropicApiKey: string
+  groqApiKey: string
+  mistralApiKey: string
+  xaiApiKey: string
+  openrouterApiKey: string
   v0ApiKey: string
   vercelAccessToken: string
   defaultAiModel: string
+  aiSdkDefaultModel: string
   freePlanAiMonthlyWords: string
 
   // Dynamic Email / SMTP
@@ -91,15 +98,22 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   autoGenerateThumbnails: "true",
 
   // AI Defaults
+  aiGatewayApiKey: "",
+  aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v1",
   platformAiProvider: "deepseek",
   platformAiApiKey: "",
   deepseekApiKey: "",
   openaiApiKey: "",
   geminiApiKey: "",
   anthropicApiKey: "",
+  groqApiKey: "",
+  mistralApiKey: "",
+  xaiApiKey: "",
+  openrouterApiKey: "",
   v0ApiKey: "",
   vercelAccessToken: "",
   defaultAiModel: "deepseek-chat",
+  aiSdkDefaultModel: "gemini-2.5-flash",
   freePlanAiMonthlyWords: "10000",
 
   // Email Defaults
@@ -144,12 +158,18 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
  * wins over the env var.
  */
 const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
+  aiGatewayApiKey: "AI_GATEWAY_API_KEY",
+  aiGatewayBaseUrl: "AI_GATEWAY_BASE_URL",
   vercelAccessToken: "VERCEL_ACCESS_TOKEN",
   v0ApiKey: "V0_API_KEY",
   deepseekApiKey: "DEEPSEEK_API_KEY",
   openaiApiKey: "OPENAI_API_KEY",
   geminiApiKey: "GEMINI_API_KEY",
   anthropicApiKey: "ANTHROPIC_API_KEY",
+  groqApiKey: "GROQ_API_KEY",
+  mistralApiKey: "MISTRAL_API_KEY",
+  xaiApiKey: "XAI_API_KEY",
+  openrouterApiKey: "OPENROUTER_API_KEY",
   resendApiKey: "RESEND_API_KEY",
   resendFrom: "RESEND_FROM",
   smtpHost: "SMTP_HOST",
@@ -173,6 +193,14 @@ function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
     if (!out[field] && process.env[envVar]) {
       ;(out[field] as string) = process.env[envVar] as string
     }
+  }
+  // Also check VERCEL_AI_API_KEY fallback for aiGatewayApiKey
+  if (!out.aiGatewayApiKey && process.env.VERCEL_AI_API_KEY) {
+    out.aiGatewayApiKey = process.env.VERCEL_AI_API_KEY
+  }
+  // Also check GOOGLE_GENERATIVE_AI_API_KEY fallback for geminiApiKey
+  if (!out.geminiApiKey && process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
+    out.geminiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
   }
   return out
 }

@@ -10,6 +10,20 @@ export const POST = withAdminAuth(async (request) => {
       return NextResponse.json({ success: false, message: "API Key tidak boleh kosong." }, { status: 400 })
     }
 
+    if (provider === "gateway" || provider === "vercel_gateway") {
+      const baseUrl = body.baseUrl || "https://ai-gateway.vercel.sh/v1"
+      const res = await fetch(`${baseUrl.replace(/\/$/, "")}/models`, {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi Vercel AI Gateway berhasil diverifikasi! Seluruh 26 model AI siap diakses." })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `Gateway error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
     if (provider === "deepseek") {
       const res = await fetch("https://api.deepseek.com/models", {
         headers: { Authorization: `Bearer ${apiKey}` },
@@ -68,6 +82,58 @@ export const POST = withAdminAuth(async (request) => {
       } else {
         const err = await res.json().catch(() => ({}))
         return NextResponse.json({ success: false, message: `Anthropic error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
+    if (provider === "groq") {
+      const res = await fetch("https://api.groq.com/openai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi Groq LPU API berhasil diverifikasi!" })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `Groq error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
+    if (provider === "mistral") {
+      const res = await fetch("https://api.mistral.ai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi Mistral AI API berhasil diverifikasi!" })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `Mistral error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
+    if (provider === "openrouter") {
+      const res = await fetch("https://openrouter.ai/api/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi OpenRouter API berhasil diverifikasi!" })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `OpenRouter error: ${err.error?.message || res.statusText}` }, { status: 400 })
+      }
+    }
+
+    if (provider === "xai") {
+      const res = await fetch("https://api.x.ai/v1/models", {
+        headers: { Authorization: `Bearer ${apiKey}` },
+        signal: AbortSignal.timeout(8000)
+      })
+      if (res.ok) {
+        return NextResponse.json({ success: true, message: "Koneksi xAI (Grok) API berhasil diverifikasi!" })
+      } else {
+        const err = await res.json().catch(() => ({}))
+        return NextResponse.json({ success: false, message: `xAI error: ${err.error?.message || res.statusText}` }, { status: 400 })
       }
     }
 

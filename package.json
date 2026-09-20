@@ -22,6 +22,7 @@
     "qa": "bun scripts/qa-runner.ts"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.58",
     "@ai-sdk/google": "^4.0.29",
     "@ai-sdk/openai": "^4.0.25",
     "@ai-sdk/react": "^4.0.47",

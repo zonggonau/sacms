@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useMemo, useRef } from "react"
+import { useState, useEffect, useRef, useMemo } from "react"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { Input } from "@/components/ui/input"
@@ -26,21 +26,19 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 import type { DomainBlueprint } from "@/lib/ai/domain-knowledge-types"
 import { SandpackPreview } from "@/components/ai-builder/sandpack-preview"
-import { SchemaStep } from "./schema-step"
+import { ModelPicker } from "@/components/ai-builder/model-picker"
+import { CodeViewer } from "@/components/ai-builder/code-viewer"
+import { ConsoleViewer, type ConsoleLogEntry } from "@/components/ai-builder/console-viewer"
+import { ChatPanel } from "@/components/ai-builder/chat-panel"
+import { PreviewPanel } from "@/components/ai-builder/preview-panel"
 import { useChat } from "@ai-sdk/react"
-import { V0Transport, toV0UIMessages, type V0UIMessage } from "@v0-sdk/react"
+import { DefaultChatTransport } from "ai"
+import { AI_MODEL_REGISTRY, type AiModelConfig } from "@/lib/ai/model-registry"
 
 interface WebsiteBuilderClientProps {
   tenantId: string
   tenantSlug: string
   hasUpgradedPlan: boolean
-  hasSchema?: boolean
-  existingSchemaSummary?: {
-    contentTypes: { name: string; slug: string; fieldCount: number }[]
-    singleTypes: { name: string; slug: string; fieldCount: number }[]
-  }
-  /** The schema-planning prompt, persisted even before a v0 project exists — seeds the Generate step's textarea. */
-  initialFrontendPromptSeed?: string | null
   initialAiCredits?: {
     remaining: number
     total: number
@@ -54,57 +52,12 @@ interface WebsiteBuilderClientProps {
     model?: string
     /** The last-generated site's real files, if any were persisted to SiteFile. */
     files?: { name: string; content: string }[] | null
-    messages?: V0UIMessage[] | any[] | null
+    messages?: any[] | null
   } | null
 }
 
-export interface AiModelOption {
-  id: string
-  name: string
-  badge: string
-  description: string
-  credits: number
-  isPopular?: boolean
-}
-
-export const AI_MODELS: AiModelOption[] = [
-  {
-    id: "v0-mini",
-    name: "SaCMS AI Mini",
-    badge: "Fast & Light",
-    description: "Cepat & hemat credit untuk landing page sederhana.",
-    credits: 15,
-  },
-  {
-    id: "v0-pro",
-    name: "SaCMS AI Pro",
-    badge: "Recommended",
-    description: "Standar produksi full-stack Next.js dengan data fetching dinamis.",
-    credits: 25,
-    isPopular: true,
-  },
-  {
-    id: "v0-max",
-    name: "SaCMS AI Max",
-    badge: "High Reasoning",
-    description: "Untuk arsitektur database multi-relasi dan halaman interaktif.",
-    credits: 35,
-  },
-  {
-    id: "v0-max-fast",
-    name: "SaCMS AI Max Fast",
-    badge: "Ultra Fast",
-    description: "Performa penalaran tinggi dengan kecepatan generasi kilat.",
-    credits: 40,
-  },
-  {
-    id: "claude-pro",
-    name: "SaCMS AI Claude",
-    badge: "Anthropic Claude",
-    description: "Ditenagai Claude — kode dihasilkan langsung oleh SaCMS, pratinjau lokal instan (data contoh).",
-    credits: 25,
-  },
-]
+// Model list is now imported from @/lib/ai/model-registry (AI_MODEL_REGISTRY)
+// All models use the same unified AI SDK pipeline — no more v0/Claude split.
 
 export const QUICK_PROMPT_INSPIRATIONS = [
   {
@@ -149,7 +102,7 @@ export const QUICK_ITERATION_SUGGESTIONS = [
 ]
 
 export function WebsiteBuilderClient({
-  tenantId, tenantSlug, hasUpgradedPlan, hasSchema, existingSchemaSummary, initialFrontendPromptSeed, initialAiCredits, initialProject
+  tenantId, tenantSlug, hasUpgradedPlan, initialAiCredits, initialProject
 }: WebsiteBuilderClientProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -172,34 +125,19 @@ export function WebsiteBuilderClient({
     }
   }
 
-  // Selected AI Model
-  const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "v0-pro")
-  const currentModelConfig = AI_MODELS.find(m => m.id === selectedModel) || AI_MODELS[1]
-  // v0.app-style model picker dropdown (used by both the empty-state composer
-  // and the active-state follow-up composer) — purely a presentation toggle,
-  // the underlying selectedModel state and AI_MODELS list are unchanged.
-  const [isModelPickerOpen, setIsModelPickerOpen] = useState(false)
+  // Selected AI Model — now uses the multi-provider registry instead of v0-only models
+  const [selectedModel, setSelectedModel] = useState<string>(initialProject?.model || "gpt-4o")
+  const currentModelConfig = AI_MODEL_REGISTRY.find(m => m.id === selectedModel) || AI_MODEL_REGISTRY[0]
+
 
   // Loading state & step
   const [loading, setLoading] = useState(false)
   const [loadingStep, setLoadingStep] = useState<string>("")
   
-  // Prompt Input state — prefer the v0 project's own saved prompt; otherwise
-  // fall back to the schema-planning prompt (persisted even before a project
-  // exists) so the Generate step never starts blank after a page reload.
-  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || initialFrontendPromptSeed || "")
+  // Prompt Input state
+  const [mainPrompt, setMainPrompt] = useState(initialProject?.frontendPrompt || "")
   const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
-
-  // Schema-first gate — the Schema step must be completed/confirmed before
-  // the Generate studio below is reachable.
-  const [schemaReady, setSchemaReady] = useState(!!hasSchema)
   const [showMcpHint, setShowMcpHint] = useState(true)
-  const handleSchemaReady = (frontendPromptSeed?: string) => {
-    setSchemaReady(true)
-    if (frontendPromptSeed && !mainPrompt.trim()) {
-      setMainPrompt(frontendPromptSeed)
-    }
-  }
 
   // Project & Draft State
   const [v0ChatId, setV0ChatId] = useState(initialProject?.v0ChatId || null)
@@ -302,221 +240,155 @@ export async function fetchContent(collection: string) {
 
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false)
-
-  // Chat message stream — Claude builds only. v0 builds use `chat.messages`
-  // from the real v0 SDK's useChat below instead (see `displayMessages`).
-  const [legacyMessages, setLegacyMessages] = useState<Array<{ role: 'user' | 'ai', content: string; files?: any[] }>>([
-    {
-      role: 'ai',
-      content: initialProject?.v0ChatId
-        ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
-        : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."
-    }
-  ])
   const [iterationPrompt, setIterationPrompt] = useState("")
 
-  // ────────────────────────────────────────────────────────────────────────────
-  // v0 SDK — real streaming chat (@v0-sdk/react + @ai-sdk/react), the same
-  // mechanism v0.app itself uses. Claude-model builds stay on the REST
-  // `legacyMessages`/`handleGenerateWebsite` path above — there is no v0 SDK
-  // equivalent for Claude, so this transport/hook pair only drives v0 models.
-  // ────────────────────────────────────────────────────────────────────────────
-  const isClaudeSelected = selectedModel.startsWith("claude-")
+  // Helper to parse generated Next.js files from stream response
+  const parseFilesFromText = (rawText: string): Array<{ name: string; content: string }> => {
+    let text = rawText.trim()
+    if (text.startsWith("```json")) text = text.replace(/^```json/, "").replace(/```\s*$/, "").trim()
+    else if (text.startsWith("```")) text = text.replace(/^```/, "").replace(/```\s*$/, "").trim()
 
-  const v0Transport = useMemo(
-    () =>
-      new V0Transport({
-        chatId: !isClaudeBuild && v0ChatId ? v0ChatId : undefined,
-        urls: {
-          create: `/api/tenant/${tenantSlug}/ai-builder/v0/chats/stream`,
-          send: (id) => `/api/tenant/${tenantSlug}/ai-builder/v0/chats/${id}/messages/stream`,
-          resume: (id) => `/api/tenant/${tenantSlug}/ai-builder/v0/chats/${id}/resume`,
-        },
-        onChatCreated: (chatId) => {
-          setV0ChatId(chatId)
-          setProjectStatus("draft")
-          fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/register`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ chatId }),
-          }).catch(() => {})
-        },
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-      }),
-    [tenantSlug],
-  )
+    const jsonStart = text.indexOf("{")
+    const jsonEnd = text.lastIndexOf("}")
+    if (jsonStart >= 0 && jsonEnd > jsonStart) text = text.substring(jsonStart, jsonEnd + 1)
 
-  // Safety net for when even /v0/finalize's own retries (see finalize/route.ts)
-  // weren't enough — keeps quietly re-checking in the background so the Code
-  // tab fills in on its own instead of staying stuck on stale/demo files
-  // until the user happens to trigger another generate/iterate.
-  const pollV0FilesInBackground = (chatId: string, attempt = 1, maxAttempts = 5) => {
-    setTimeout(async () => {
-      try {
-        const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${chatId}/files`)
-        const data = await res.json().catch(() => null)
-        if (Array.isArray(data?.files) && data.files.length > 0) {
-          setGeneratedFiles(data.files)
-          setConsoleLogs((prev) => [
-            ...prev,
-            { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: "[Build] Berkas proyek selesai disinkronkan ke tab Code." },
-          ])
-          return
-        }
-      } catch {
-        // keep retrying below
-      }
-      if (attempt < maxAttempts) pollV0FilesInBackground(chatId, attempt + 1, maxAttempts)
-    }, 4000)
-  }
-
-  const finalizeV0Build = async (chatId: string, prompt: string) => {
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/finalize`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId }),
-      })
-      const data = await res.json().catch(() => null)
-      if (!res.ok || !data) throw new Error(data?.error || "Gagal menyelesaikan build")
-
-      if (data.previewUrl) setPreviewUrl(data.previewUrl)
-      if (Array.isArray(data.files) && data.files.length > 0) setGeneratedFiles(data.files)
-
-      setVersionHistory((prev) => {
-        const nextVerNum = prev.length + 1
-        setActiveVersionNumber(nextVerNum)
-        return [...prev, { version: nextVerNum, prompt, timestamp: new Date().toLocaleTimeString(), previewUrl: data.previewUrl || previewUrl }]
-      })
-
-      if (data.stillGenerating) {
-        // v0 is still writing files after retrying inside /v0/finalize —
-        // say so honestly instead of implying the Code tab is up to date,
-        // then keep checking quietly in the background.
-        setConsoleLogs((prev) => [
-          ...prev,
-          { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "warn", text: `[Build] Preview siap, tapi berkas proyek masih ditulis AI — tab Code akan terisi otomatis begitu selesai.` },
-        ])
-        toast({ title: "Preview Siap — Berkas Masih Disusun", description: "Website sudah bisa dilihat di tab Preview. Tab Code akan terisi otomatis begitu AI selesai menulis berkasnya." })
-        pollV0FilesInBackground(chatId)
-      } else {
-        setConsoleLogs((prev) => [
-          ...prev,
-          { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` },
-        ])
-        toast({ title: "Website Berhasil Dibangun!", description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS." })
-      }
-    } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal Menyelesaikan Build", description: err.message })
-    } finally {
-      setLoading(false)
-      setLoadingStep("")
-      refreshCredits()
-      router.refresh()
+      const parsed = JSON.parse(text)
+      const rawFiles = Array.isArray(parsed?.files) ? parsed.files : []
+      return rawFiles
+        .filter((f: any) => f && typeof f.name === "string" && typeof f.content === "string")
+        .map((f: any) => ({ name: f.name, content: f.content }))
+    } catch {
+      return []
     }
   }
 
-  const v0Chat = useChat<V0UIMessage>({
-    messages: (initialProject?.messages as any) || undefined,
-    transport: v0Transport,
-    onFinish: ({ message, messages, isAbort, isError }) => {
-      const chatId = v0Transport.chatId
-      if (!chatId || isAbort || isError) {
-        setLoading(false)
-        setLoadingStep("")
-        return
-      }
-      const lastUser = [...messages].reverse().find((m) => m.role === "user" && m.id !== message.id)
-      const promptText = lastUser?.parts.filter((p) => p.type === "text").map((p: any) => p.text).join("") || mainPrompt
-      finalizeV0Build(chatId, promptText)
-    },
-    onError: (error) => {
+  // Helper to extract text from AI SDK UIMessage or legacy message
+  const extractMessageText = (msg: any): string => {
+    if (!msg) return ""
+    if (typeof msg.content === "string") return msg.content
+    if (Array.isArray(msg.parts)) {
+      return msg.parts
+        .filter((p: any) => p.type === "text" && typeof p.text === "string")
+        .map((p: any) => p.text)
+        .join("")
+    }
+    return ""
+  }
+
+  // ────────────────────────────────────────────────────────────────────────────
+  // Unified AI SDK useChat Hook (Multi-Provider: OpenAI, Anthropic, Google)
+  // ────────────────────────────────────────────────────────────────────────────
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: `/api/tenant/${tenantSlug}/ai-builder/chat`,
+        body: {
+          modelId: selectedModel,
+          isIteration: generatedFiles.length > 0 && generatedFiles !== DEMO_FILES,
+          previousFiles: generatedFiles,
+        },
+      }),
+    [tenantSlug, selectedModel, generatedFiles]
+  )
+
+  const {
+    messages: aiMessages,
+    sendMessage,
+    status: aiChatStatus,
+    setMessages: setAiMessages,
+  } = useChat({
+    transport,
+    onFinish: (event: any) => {
       setLoading(false)
       setLoadingStep("")
-      toast({ variant: "destructive", title: "Gagal Membangun Website", description: error.message || "AI Engine gagal merespons." })
+      const msg = event?.message ?? event
+      const text = extractMessageText(msg)
+      const files = parseFilesFromText(text)
+      if (files.length > 0) {
+        setGeneratedFiles(files)
+        setConsoleLogs((prev) => [
+          ...prev,
+          {
+            id: Date.now().toString(),
+            time: new Date().toLocaleTimeString(),
+            type: "success",
+            text: `[Build] Generated Next.js 16 App Router application (${files.length} files).`,
+          },
+        ])
+        toast({
+          title: "Website Berhasil Dibangun!",
+          description: "Pratinjau lokal siap diuji dengan data contoh.",
+        })
+      }
+      const nextVerNum = versionHistory.length + 1
+      setActiveVersionNumber(nextVerNum)
+      setVersionHistory((prev) => [
+        ...prev,
+        {
+          version: nextVerNum,
+          prompt: mainPrompt || iterationPrompt || "Website update",
+          timestamp: new Date().toLocaleTimeString(),
+          previewUrl: previewUrl,
+        },
+      ])
+      refreshCredits()
+      router.refresh()
+    },
+    onError: (err: any) => {
+      setLoading(false)
+      setLoadingStep("")
+      toast({
+        variant: "destructive",
+        title: "Gagal Membangun Website",
+        description: err?.message || "AI Engine gagal merespons.",
+      })
     },
   })
 
-  // If initial messages were not preloaded or empty, fetch existing chat history from API
-  useEffect(() => {
-    if (!v0ChatId || isClaudeBuild || v0Chat.messages.length > 0) return
-    fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${v0ChatId}/messages`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (Array.isArray(data?.messages) && data.messages.length > 0) {
-          v0Chat.setMessages(toV0UIMessages(data.messages))
-        }
-      })
-      .catch((err) => {
-        console.warn("[v0Chat] Could not load client messages:", err?.message)
-      })
-  }, [v0ChatId, isClaudeBuild, tenantSlug, v0Chat])
+  const isAiChatLoading = aiChatStatus === "streaming" || aiChatStatus === "submitted"
 
-  // Loading indicator for the v0 path — mirrors the old handler's setLoading(true)/false.
+  // Synchronize loading states
   useEffect(() => {
-    if (isClaudeSelected) return
-    if (v0Chat.status === "submitted" || v0Chat.status === "streaming") {
+    if (isAiChatLoading) {
       setLoading(true)
       setLoadingStep(
-        v0ChatId ? "Menerapkan perubahan desain pada antarmuka Next.js..." : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP...",
+        v0ChatId
+          ? "Menerapkan perubahan desain pada antarmuka Next.js..."
+          : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP..."
       )
     }
-  }, [v0Chat.status, isClaudeSelected, v0ChatId])
+  }, [isAiChatLoading, v0ChatId])
 
-  const handleSendV0 = (text: string) => {
-    v0Chat.sendMessage(
-      { text },
-      { body: { modelConfiguration: { modelId: selectedModel, imageGenerations: false } } },
-    )
-  }
-
-  // Unified view of the conversation for rendering — Claude's plain
-  // {role, content} log, or the real v0 SDK message parts flattened to text.
-  const displayMessages: Array<{ role: "user" | "ai"; content: string }> = isClaudeSelected
-    ? legacyMessages
-    : v0Chat.messages.map((m) => {
-        let content = ""
-        if (m.role === "user") {
-          content = m.parts
-            .filter((p) => p.type === "text")
-            .map((p: any) => p.text || "")
-            .join("")
-
-          // If it's the initial user prompt wrapped with SaCMS MCP system instructions,
-          // extract just the actual user prompt cleanly:
-          if (content.startsWith("User Request: ")) {
-            const match = content.match(/^User Request:\s*(.*?)(?:\n\nSaCMS HEADLESS CMS|\n\nEXISTING|\n\nCRITICAL|$)/s)
-            if (match && match[1]) {
-              content = match[1].trim()
+  // Map messages to user/assistant format for UI
+  const displayMessages: Array<{ role: "user" | "assistant"; content: string }> =
+    aiMessages.length === 0
+      ? [
+          {
+            role: "assistant",
+            content: initialProject?.v0ChatId
+              ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
+              : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router.",
+          },
+        ]
+      : aiMessages
+          .filter((m) => m.role === "user" || m.role === "assistant")
+          .map((m) => {
+            const content = extractMessageText(m)
+            if (m.role === "assistant" && content.includes('"files"')) {
+              const files = parseFilesFromText(content)
+              if (files.length > 0) {
+                return {
+                  role: "assistant" as const,
+                  content: `✅ **Website Next.js 16 Berhasil Dibuat (${files.length} Berkas)**\n\nKomponen frontend telah dikompilasi dan terhubung ke skema SaCMS. Buka tab **Preview** untuk melihat tampilan interaktif atau tab **Code** untuk meninjau struktur berkas.`,
+                }
+              }
             }
-          }
-          const liveSchemaMatch = content.match(/^(.*?)(?:\n\nSaCMS LIVE SCHEMA|\n\nEXISTING|\n\nCRITICAL|$)/s)
-          if (liveSchemaMatch && liveSchemaMatch[1]) {
-            content = liveSchemaMatch[1].trim()
-          }
-        } else {
-          // Assistant message: prioritize clean final text response
-          const textParts = m.parts
-            .filter((p) => p.type === "text")
-            .map((p: any) => p.text || "")
-            .join("")
-          
-          if (textParts.trim()) {
-            content = textParts.trim()
-          } else {
-            // Fallback to reasoning / thinking if text is not yet generated
-            content = m.parts
-              .filter((p) => p.type === "reasoning" || p.type === "thinking")
-              .map((p: any) => p.text || "")
-              .join("")
-          }
-        }
-
-        return {
-          role: m.role === "user" ? "user" : "ai",
-          content,
-        }
-      }).filter((m) => m.content.trim().length > 0)
+            return {
+              role: m.role === "user" ? ("user" as const) : ("assistant" as const),
+              content,
+            }
+          })
 
   const chatMessagesEndRef = useRef<HTMLDivElement>(null)
 
@@ -612,38 +484,9 @@ export async function fetchContent(collection: string) {
   // existed for it (or before this account had one refreshed) — resolving
   // the real hosted URL fresh here means an old project doesn't stay stuck
   // pointing at our own API route forever.
-  const handleOpenPreviewInNewTab = async () => {
-    if (!v0ChatId || isClaudeBuild) return
-    // Open the tab synchronously, inside the click handler, so the browser's
-    // popup blocker allows it — then navigate it once the real URL is known.
-    // `noopener`/`noreferrer` can't be used here: browsers return `null` from
-    // window.open() the moment either is set, which leaves nothing to
-    // navigate and is exactly why the tab stayed on a blank about:blank page.
-    const newTab = window.open("", "_blank")
-    if (!newTab) {
-      toast({
-        variant: "destructive",
-        title: "Tab Diblokir Browser",
-        description: "Izinkan pop-up untuk domain ini agar preview bisa dibuka di tab baru.",
-      })
-      return
-    }
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${v0ChatId}/preview-url`)
-      const data = await res.json().catch(() => null)
-      if (data?.url) {
-        newTab.opener = null
-        newTab.location.href = data.url
-        return
-      }
-    } catch {
-      // fall through to the last-known preview URL below
-    }
+  const handleOpenPreviewInNewTab = () => {
     if (previewUrl) {
-      newTab.opener = null
-      newTab.location.href = previewUrl
-    } else {
-      newTab.close()
+      window.open(previewUrl, "_blank")
     }
   }
 
@@ -659,7 +502,7 @@ export async function fetchContent(collection: string) {
   }
 
   // ────────────────────────────────────────────────────────────────────────────
-  // Unified Generate Website Handler (Direct AI MCP Execution)
+  // Unified Generate Website Handler (Direct AI SDK Agent Execution)
   // ────────────────────────────────────────────────────────────────────────────
   const handleGenerateWebsite = async (promptToUse?: string) => {
     const prompt = (promptToUse || mainPrompt).trim()
@@ -676,156 +519,17 @@ export async function fetchContent(collection: string) {
       return
     }
 
-    // v0 models stream through the real v0 SDK (useChat + V0Transport) —
-    // see handleSendV0 above. Only Claude builds still use this REST path,
-    // since there's no v0-style streaming SDK for Claude to migrate to.
-    if (!isClaudeSelected) {
-      handleSendV0(prompt)
-      return
-    }
-
     setLoading(true)
     setLoadingStep("Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP...")
 
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/generate-frontend`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          model: selectedModel,
-          apiBaseUrl: typeof window !== "undefined" ? window.location.origin : "http://localhost:3000",
-        })
-      })
-
-      const contentType = res.headers.get("content-type") || ""
-      let data: any = null
-      if (contentType.includes("application/json")) {
-        data = await res.json()
-      } else {
-        const text = await res.text()
-        if (!res.ok) {
-          throw new Error(`Permintaan ke server gagal (${res.status}). Silakan coba beberapa saat lagi.`)
-        }
-      }
-
-      if (!res.ok) {
-        throw new Error(data?.error || "Gagal membangun website")
-      }
-
-      if (!data?.v0ChatId) {
-        throw new Error("Server tidak mengembalikan Chat ID yang valid.")
-      }
-
-      setV0ChatId(data.v0ChatId)
-      setPreviewUrl(data.previewUrl)
-      setProjectStatus("draft")
-
-      const isStillGenerating = data.generating === true
-      // A sacms_gen_* chatId means the real v0 API call failed/errored and
-      // this is the local fallback — v0Error carries the real reason (e.g.
-      // "You are out of credits") when v0 itself reported one.
-      const usedLocalFallback = typeof data.v0ChatId === "string" && data.v0ChatId.startsWith("sacms_gen_")
-      const usedClaude = typeof data.v0ChatId === "string" && data.v0ChatId.startsWith("sacms_claude_")
-      const claudeFailed = usedClaude && (!data.files || data.files.length === 0)
-      const hasFiles = data.files && Array.isArray(data.files) && data.files.length > 0
-      if (hasFiles) {
-        setGeneratedFiles(data.files)
-      }
-
-      // Add to version history
-      const newVer = {
-        version: 1,
-        prompt: prompt,
-        timestamp: new Date().toLocaleTimeString(),
-        previewUrl: data.previewUrl,
-      }
-      setVersionHistory([newVer])
-      setActiveVersionNumber(1)
-
-      // Add console logs
-      setConsoleLogs(prev => [
-        ...prev,
-        usedLocalFallback
-          ? { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "warn", text: `[Build] AI Engine gagal terhubung ke v0: ${data.v0Error || "alasan tidak diketahui"}. Menampilkan template contoh lokal.` }
-          : claudeFailed
-          ? { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "warn", text: `[Build] Claude gagal men-generate kode: ${data.v0Error || "alasan tidak diketahui"}.` }
-          : isStillGenerating
-          ? { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "info", text: `[Build] AI Engine masih menyusun kode untuk "${prompt.substring(0, 30)}..." — buka tab Preview untuk memantau progres.` }
-          : usedClaude
-          ? { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Claude generated Next.js App Router application for ${prompt.substring(0, 30)}... — rendered in Sandpack.` }
-          : { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Build] Generated Next.js 16 App Router application for ${prompt.substring(0, 30)}...` }
-      ])
-
-      setLegacyMessages([
-        { role: 'user', content: prompt },
-        usedLocalFallback
-          ? {
-              role: 'ai',
-              content: `⚠️ **AI Engine Tidak Dapat Membangun Website**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio:** Gagal terhubung ke layanan AI Engine${data.v0Error ? ` — *${data.v0Error}*` : ""}. Tab **Preview** menampilkan template contoh lokal, bukan hasil generate AI sesungguhnya.\n\nSilakan hubungi administrator platform untuk memeriksa konfigurasi/kuota AI Engine, lalu coba generate ulang.`
-            }
-          : claudeFailed
-          ? {
-              role: 'ai',
-              content: `⚠️ **Claude Gagal Membangun Frontend**\n\n1. **SaCMS MCP Engine:** Skema database Content Types berhasil dibuat.\n2. **SaCMS AI Claude:** Gagal men-generate kode frontend${data.v0Error ? ` — *${data.v0Error}*` : ""}. Periksa konfigurasi Anthropic API Key di Pengaturan Platform, lalu coba generate ulang.`
-            }
-          : isStillGenerating
-          ? {
-              role: 'ai',
-              content: `⏳ **Skema Database Selesai — Website Sedang Dibangun AI**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio (${currentModelConfig.name}):** Kode frontend sedang di-generate. Untuk build yang kompleks ini bisa memakan waktu 1-2 menit.\n\nBuka tab **Preview** untuk memantau progres secara live — halaman akan otomatis refresh begitu selesai.`
-            }
-          : usedClaude
-          ? {
-              role: 'ai',
-              content: `✅ **Website & Skema Database Berhasil Dibangun (Claude)!**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Claude:** Kode frontend Next.js App Router telah selesai di-generate oleh Claude.\n\n⚠️ Tab **Preview** menampilkan pratinjau lokal (Sandpack) dengan data contoh — belum terhubung ke Content API secara live dan belum di-deploy. Gunakan tab **Code** untuk melihat kode lengkap, atau **Deploy** untuk mempublikasikannya secara live.`
-            }
-          : {
-              role: 'ai',
-              content: `✅ **Website & Skema Database Berhasil Dibangun!**\n\n1. **SaCMS MCP Engine:** Skema database Content Types dan mock entri data otomatis dibuat di database PostgreSQL.\n2. **SaCMS AI Studio (${currentModelConfig.name}):** Kode frontend Next.js App Router telah selesai di-generate dan terhubung ke SaCMS Content API.\n\nAnda dapat melihat Live Interactive Preview di tab **Preview**, melihat & menyalin kode di tab **Code**, atau memantau proses di tab **Console**.`
-            }
-      ])
-
-      toast(
-        usedLocalFallback
-          ? {
-              variant: "destructive",
-              title: "AI Engine Gagal Terhubung",
-              description: data.v0Error || "Layanan AI Engine tidak dapat diakses. Menampilkan template contoh lokal.",
-            }
-          : claudeFailed
-          ? {
-              variant: "destructive",
-              title: "Claude Gagal Membangun Frontend",
-              description: data.v0Error || "Periksa konfigurasi Anthropic API Key di Pengaturan Platform.",
-            }
-          : isStillGenerating
-          ? {
-              title: "AI Sedang Membangun Website...",
-              description: "Skema database sudah siap. Kode frontend masih di-generate — pantau progresnya di tab Preview.",
-            }
-          : usedClaude
-          ? {
-              title: "Website Berhasil Dibangun (Claude)!",
-              description: "Pratinjau lokal (data contoh) siap di tab Preview. Deploy untuk terhubung live ke database SaCMS.",
-            }
-          : {
-              title: "Website Berhasil Dibangun!",
-              description: "Tampilan live Next.js siap digunakan dan terhubung penuh ke database SaCMS.",
-            }
-      )
-      router.refresh()
-      refreshCredits()
-    } catch (err: any) {
-      console.error(err)
-      toast({
-        title: "Gagal Membangun Website",
-        description: err.message,
-        variant: "destructive"
-      })
-    } finally {
-      setLoading(false)
-      setLoadingStep("")
+    if (!v0ChatId) {
+      setV0ChatId(`sacms_ai_${Date.now()}`)
     }
+    setProjectStatus("draft")
+
+    sendMessage({
+      text: prompt,
+    })
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -833,75 +537,24 @@ export async function fetchContent(collection: string) {
   // ────────────────────────────────────────────────────────────────────────────
   const handleIterate = async (customPrompt?: string) => {
     const msg = (customPrompt || iterationPrompt).trim()
-    if (!msg || !v0ChatId) return
+    if (!msg) return
 
-    if (!isUnlimited && creditsRemaining < 5) {
+    if (!isUnlimited && creditsRemaining < currentModelConfig.iterationCredits) {
       toast({
         variant: "destructive",
         title: "AI Credit Habis",
-        description: "Saldo credit AI tidak mencukupi untuk iterasi desain (5 Credits).",
+        description: `Saldo credit AI tidak mencukupi untuk iterasi desain (${currentModelConfig.iterationCredits} Credits).`,
       })
       return
     }
 
     setIterationPrompt("")
-
-    if (!isClaudeSelected) {
-      handleSendV0(msg)
-      return
-    }
-
-    setLegacyMessages(prev => [...prev, { role: 'user', content: msg }])
     setLoading(true)
     setLoadingStep("Menerapkan perubahan desain pada antarmuka Next.js...")
 
-    try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/iterate`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ chatId: v0ChatId, prompt: msg })
-      })
-
-      const contentType = res.headers.get("content-type") || ""
-      let data: any = null
-      if (contentType.includes("application/json")) {
-        data = await res.json()
-      }
-
-      if (res.ok && data) {
-        setLegacyMessages(prev => [...prev, { role: 'ai', content: `✨ Desain website telah diperbarui untuk: "${msg}". Preview dan file kode telah disinkronkan.` }])
-        if (data.previewUrl) setPreviewUrl(data.previewUrl)
-        if (data.files && Array.isArray(data.files) && data.files.length > 0) {
-          setGeneratedFiles(data.files)
-        }
-
-        // Add version
-        const nextVerNum = versionHistory.length + 1
-        setVersionHistory(prev => [
-          ...prev,
-          {
-            version: nextVerNum,
-            prompt: msg,
-            timestamp: new Date().toLocaleTimeString(),
-            previewUrl: data.previewUrl || previewUrl,
-          }
-        ])
-        setActiveVersionNumber(nextVerNum)
-
-        setConsoleLogs(prev => [
-          ...prev,
-          { id: Date.now().toString(), time: new Date().toLocaleTimeString(), type: "success", text: `[Fast Refresh] Recompiled v${nextVerNum} for: ${msg.substring(0, 30)}...` }
-        ])
-        refreshCredits()
-      } else {
-        throw new Error(data?.error || "Gagal menerapkan iterasi")
-      }
-    } catch (err: any) {
-      setLegacyMessages(prev => [...prev, { role: 'ai', content: `Gagal menerapkan perubahan: ${err.message}` }])
-    } finally {
-      setLoading(false)
-      setLoadingStep("")
-    }
+    sendMessage({
+      text: msg,
+    })
   }
 
   // ────────────────────────────────────────────────────────────────────────────
@@ -1116,7 +769,7 @@ export async function fetchContent(collection: string) {
       if (res.ok) {
         setV0ChatId(null)
         setPreviewUrl("")
-        setLegacyMessages([])
+        setAiMessages([])
         setMainPrompt("")
         setProjectStatus("draft")
         setIsDeleteDialogOpen(false)
@@ -1267,14 +920,7 @@ export async function fetchContent(collection: string) {
       )}
 
       {/* ── MAIN STUDIO AREA ── */}
-      {!schemaReady ? (
-        <SchemaStep
-          tenantSlug={tenantSlug}
-          hasSchema={!!hasSchema}
-          existingSchemaSummary={existingSchemaSummary ?? { contentTypes: [], singleTypes: [] }}
-          onSchemaReady={handleSchemaReady}
-        />
-      ) : loading && !v0ChatId ? (
+      {loading && !v0ChatId ? (
         /* ── Loading Animation Stage ── */
         <div className="border border-border/80 rounded-2xl p-12 flex flex-col items-center justify-center flex-1 gap-6 text-center bg-card shadow-xs">
           <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center animate-pulse border border-primary/20">
@@ -1454,399 +1100,48 @@ export async function fetchContent(collection: string) {
           {/* Main Studio Body (Split Left & Right) */}
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
-            {/* ── LEFT PANE: v0.app-style understated commentary log + composer ── */}
-            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col min-h-0 h-full bg-card shrink-0 overflow-hidden">
+            {/* ── LEFT PANE: Modular ChatPanel (History, Reasoning, Suggestions, Follow-up) ── */}
+            <ChatPanel
+              tenantSlug={tenantSlug}
+              messages={displayMessages}
+              isLoading={loading}
+              loadingStep={loadingStep}
+              iterationPrompt={iterationPrompt}
+              onIterationPromptChange={setIterationPrompt}
+              onIterate={handleIterate}
+              creditsRemaining={creditsRemaining}
+              isUnlimited={isUnlimited}
+              models={AI_MODEL_REGISTRY}
+              selectedModelId={selectedModel}
+              onSelectModel={setSelectedModel}
+              hasUpgradedPlan={hasUpgradedPlan}
+              versionHistory={versionHistory}
+              activeVersionNumber={activeVersionNumber}
+              onSelectVersion={(ver) => {
+                setActiveVersionNumber(ver)
+                const found = versionHistory.find((v) => v.version === ver)
+                if (found?.previewUrl) setPreviewUrl(found.previewUrl)
+              }}
+              isReasoningOpen={isReasoningOpen}
+              onToggleReasoning={() => setIsReasoningOpen(!isReasoningOpen)}
+              quickSuggestions={QUICK_ITERATION_SUGGESTIONS}
+            />
 
-              {/* Agentic Reasoning — collapsed pill row, matches the small "step" rows in v0.app's log */}
-              <div className="border-b border-border/60 px-3 py-2 shrink-0">
-                <button
-                  onClick={() => setIsReasoningOpen(!isReasoningOpen)}
-                  className="flex items-center gap-1.5 w-full text-left text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
-                >
-                  <Cpu className="h-3 w-3 shrink-0" />
-                  <span className="flex-1">Agentic Reasoning Pipeline</span>
-                  {isReasoningOpen ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-                </button>
-
-                {isReasoningOpen && (
-                  <div className="mt-2 space-y-1.5 pl-4.5 text-[11px] text-muted-foreground">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                      <span>Analisis Kebutuhan Prompt & Scope</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                      <span>Query Skema Database via MCP Server</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                      <span>Scaffold Next.js 16 App Router & Tailwind</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                      <span>Live Sandbox Verification</span>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Commentary Log / Chat History — scrollable while keeping composer fixed */}
-              <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-3 space-y-3.5 overscroll-contain">
-                {!isClaudeSelected && displayMessages.length === 0 && (
-                  <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                    {v0ChatId
-                      ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
-                      : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."}
-                  </p>
-                )}
-                {displayMessages.map((msg, i) => (
-                  <div key={i} className="space-y-1">
-                    {msg.role === 'user' ? (
-                      <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wide">Anda</div>
-                    ) : (
-                      <div className="text-[11px] font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
-                        <Sparkles className="h-3 w-3" />
-                        SaCMS AI
-                      </div>
-                    )}
-                    <div className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap break-words">
-                      {msg.content}
-                    </div>
-                  </div>
-                ))}
-                {loading && (
-                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground py-1">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-primary" />
-                    <span>{loadingStep || "Menyesuaikan kode frontend..."}</span>
-                  </div>
-                )}
-
-                {/* Version history — small step rows, v0.app style */}
-                {versionHistory.length > 0 && (
-                  <div className="space-y-1 pt-1">
-                    {versionHistory.map((ver) => (
-                      <button
-                        key={ver.version}
-                        onClick={() => {
-                          setActiveVersionNumber(ver.version)
-                          if (ver.previewUrl) setPreviewUrl(ver.previewUrl)
-                        }}
-                        className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer ${
-                          activeVersionNumber === ver.version
-                            ? "bg-muted text-foreground font-medium"
-                            : "text-muted-foreground hover:bg-muted/60"
-                        }`}
-                      >
-                        <History className="h-3 w-3 shrink-0" />
-                        <span className="truncate flex-1">v{ver.version} — {ver.prompt.substring(0, 40)}{ver.prompt.length > 40 ? "…" : ""}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-
-                {/* Out of Credit card — v0.app style */}
-                {!isUnlimited && creditsRemaining <= 0 && (
-                  <div className="rounded-xl border border-border bg-muted/40 p-3.5 space-y-2.5">
-                    <div className="space-y-1">
-                      <h4 className="text-[13px] font-bold text-foreground">Out of Credit</h4>
-                      <p className="text-[11px] text-muted-foreground leading-relaxed">
-                        Saldo AI Anda habis. Tambahkan credit untuk melanjutkan.
-                      </p>
-                    </div>
-                    <Button
-                      size="sm"
-                      onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
-                      className="w-full h-8 text-xs font-semibold rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                    >
-                      Buy Credit
-                    </Button>
-                  </div>
-                )}
-
-                <div ref={chatMessagesEndRef} className="h-px" />
-              </div>
-
-              {/* Quick Iteration Chips — fixed above composer */}
-              <div className="p-2 border-t border-border/60 shrink-0 overflow-x-auto bg-card">
-                <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
-                  {QUICK_ITERATION_SUGGESTIONS.map((item, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => handleIterate(item.prompt)}
-                      disabled={loading || (creditsRemaining < 5 && !isUnlimited)}
-                      className="px-2.5 py-1 rounded-full bg-muted/60 border border-border/60 text-muted-foreground hover:text-foreground hover:border-primary/40 text-[10px] font-medium transition-all cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
-                    >
-                      {item.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Follow-up Composer — fixed at bottom */}
-              <div className="p-3 border-t border-border/60 shrink-0 space-y-1.5 bg-card">
-                <div className="rounded-xl border border-border/80 overflow-hidden bg-background">
-                  <Textarea
-                    placeholder={creditsRemaining <= 0 && !isUnlimited ? "Saldo AI habis. Silakan top up..." : "Ask a follow-up…"}
-                    value={iterationPrompt}
-                    onChange={e => setIterationPrompt(e.target.value)}
-                    onKeyDown={e => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        handleIterate()
-                      }
-                    }}
-                    disabled={loading || (creditsRemaining <= 0 && !isUnlimited)}
-                    className="min-h-[52px] max-h-[140px] resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent px-3 pt-2.5 pb-1 text-xs"
-                  />
-                  <div className="flex items-center justify-between px-2 pb-1.5">
-                    <div className="flex items-center gap-1">
-                      <Button variant="ghost" size="icon" disabled className="h-7 w-7 rounded-full text-muted-foreground">
-                        <Plus className="h-3.5 w-3.5" />
-                      </Button>
-                      <span className="flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-semibold text-muted-foreground bg-muted/60">
-                        <Cpu className="h-3 w-3" />
-                        {currentModelConfig.name}
-                        <ChevronDown className="h-2.5 w-2.5" />
-                      </span>
-                    </div>
-                    <Button
-                      size="icon"
-                      className="h-7 w-7 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                      onClick={() => handleIterate()}
-                      disabled={loading || !iterationPrompt.trim() || (creditsRemaining <= 0 && !isUnlimited)}
-                    >
-                      <ArrowUp className="h-3.5 w-3.5" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground px-1">
-                  {!isUnlimited && creditsRemaining <= 0 ? (
-                    <span>
-                      You are out of credits.{" "}
-                      <button
-                        type="button"
-                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
-                        className="text-primary font-semibold hover:underline cursor-pointer"
-                      >
-                        Buy credits
-                      </button>
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-1 font-medium">
-                      <Zap className="h-3 w-3 text-amber-500 fill-amber-500" />
-                      Biaya iterasi: 5 Credits
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-            
             {/* ── RIGHT PANE: Multi-Tab Viewer (Preview | Code | Console) ── */}
             <div className="flex-1 bg-muted/10 flex flex-col overflow-hidden">
-              
               {activeViewerTab === "preview" && (
-                /* ── TAB 1: Live Interactive Preview — v0.app browser-chrome toolbar ── */
-                <div className="flex-1 flex flex-col overflow-hidden bg-muted/20">
-
-                  {/* Sub-toolbar: version selector + address bar + actions */}
-                  <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card shrink-0">
-                    <span className="hidden md:flex items-center gap-1 text-xs font-medium text-muted-foreground shrink-0">
-                      Latest <ChevronDown className="h-3 w-3" />
-                    </span>
-
-                    <div className="flex items-center bg-muted rounded-md p-0.5 shrink-0">
-                      <Button
-                        variant={deviceMode === "desktop" ? "secondary" : "ghost"}
-                        size="icon"
-                        onClick={() => setDeviceMode("desktop")}
-                        className="h-6 w-6 rounded"
-                        title="Desktop (100%)"
-                      >
-                        <Monitor className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant={deviceMode === "tablet" ? "secondary" : "ghost"}
-                        size="icon"
-                        onClick={() => setDeviceMode("tablet")}
-                        className="h-6 w-6 rounded"
-                        title="Tablet (768px)"
-                      >
-                        <Tablet className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant={deviceMode === "mobile" ? "secondary" : "ghost"}
-                        size="icon"
-                        onClick={() => setDeviceMode("mobile")}
-                        className="h-6 w-6 rounded"
-                        title="Mobile (375px)"
-                      >
-                        <Smartphone className="h-3 w-3" />
-                      </Button>
-                    </div>
-
-                    {/* Browser-chrome pill address bar */}
-                    <div className="flex-1 flex items-center gap-2 bg-muted rounded-full px-3 py-1.5 text-[11px] font-mono text-muted-foreground min-w-0">
-                      <ChevronDown className="h-3 w-3 rotate-90 shrink-0 opacity-50" />
-                      <ChevronDown className="h-3 w-3 -rotate-90 shrink-0 opacity-50" />
-                      <span className="truncate flex-1">
-                        {isClaudeBuild ? "Sandpack — pratinjau lokal (data contoh, belum live)" : (previewUrl || "https://sandbox.sacms.cloud")}
-                      </span>
-                    </div>
-
-                    <div className="flex items-center gap-0.5 shrink-0">
-                      {!isClaudeBuild && previewUrl && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          onClick={handleOpenPreviewInNewTab}
-                          className="h-7 w-7 rounded-full text-muted-foreground"
-                          title="Buka di tab baru"
-                        >
-                          <ExternalLink className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => setPreviewRefreshNonce(n => n + 1)}
-                        className="h-7 w-7 rounded-full text-muted-foreground"
-                        title="Refresh"
-                      >
-                        <RefreshCw className="h-3.5 w-3.5" />
-                      </Button>
-                    </div>
-                  </div>
-
-                  {/* Frame Container */}
-                  <div className="flex-1 p-3 flex items-center justify-center overflow-hidden">
-                    <div className={`h-full rounded-xl overflow-hidden border border-border/80 shadow-xs bg-background flex flex-col transition-all duration-300 ${
-                      deviceMode === "desktop" ? "w-full" : deviceMode === "tablet" ? "w-[768px] max-w-full" : "w-[375px] max-w-full"
-                    }`}>
-                      {isClaudeBuild && generatedFiles.length > 0 ? (
-                        <SandpackPreview key={previewRefreshNonce} files={generatedFiles} />
-                      ) : previewUrl ? (
-                        <iframe
-                          key={previewRefreshNonce}
-                          src={previewUrl}
-                          className="w-full h-full border-0 bg-background"
-                          title="Preview"
-                          // Per v0's Accessing Previews guide, the iframe sandbox
-                          // MUST include both `allow-scripts` and `allow-same-origin`
-                          // for the generated app to hydrate, load CSS/JS bundles, and
-                          // use origin-sensitive runtime features (HMR, cookies, storage).
-                          //
-                          // The previous code dropped `allow-same-origin` when the preview
-                          // URL was our own proxy route (starts with "/"), causing the
-                          // iframe to receive an opaque origin — which broke ALL CSS/JS
-                          // loading and rendered the preview as unstyled raw HTML.
-                          //
-                          // Security isolation is handled at the proxy-route level
-                          // (withStaffAuth + chatBelongsToTenant) and by removing
-                          // content-security-policy headers from proxied responses.
-                          // For production, v0 docs recommend an isolated preview origin
-                          // on a different registrable domain.
-                          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-modals"
-                        />
-                      ) : (
-                        <div className="h-full flex flex-col items-center justify-center gap-3 text-muted-foreground bg-muted/20">
-                          <Monitor className="h-6 w-6 text-muted-foreground" />
-                          <p className="text-xs">Preview website sedang disiapkan...</p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+                <PreviewPanel
+                  previewUrl={previewUrl}
+                  generatedFiles={generatedFiles}
+                  isSandpackPreview={true}
+                />
               )}
-
               {activeViewerTab === "code" && (
-                /* ── TAB 2: Multi-File Code Editor & Explorer ── */
-                <div className="flex flex-1 overflow-hidden">
-                  
-                  {/* File Tree Explorer (Left) */}
-                  <div className="w-56 border-r border-border/60 bg-background/50 p-3 space-y-3 shrink-0 flex flex-col justify-between">
-                    <div className="space-y-2">
-                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
-                        <Folder className="h-3.5 w-3.5 text-primary" />
-                        Berkas Proyek
-                      </span>
-                      
-                      <div className="space-y-1">
-                        {generatedFiles.map((file, idx) => (
-                          <button
-                            key={idx}
-                            onClick={() => setSelectedFileIndex(idx)}
-                            className={`flex items-center gap-2 w-full text-left px-2.5 py-1.5 rounded-lg text-xs font-mono transition-all ${
-                              selectedFileIndex === idx
-                                ? "bg-primary/10 text-primary font-bold border border-primary/20"
-                                : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
-                            }`}
-                          >
-                            <FileCode className="h-3.5 w-3.5 shrink-0" />
-                            <span className="truncate">{file.name}</span>
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleCopyCurrentCode}
-                      className="w-full h-8 text-xs font-bold gap-1.5 rounded-xl border-border/80"
-                    >
-                      {copiedCode ? <Check className="h-3.5 w-3.5 text-emerald-500" /> : <Copy className="h-3.5 w-3.5" />}
-                      <span>{copiedCode ? "Tersalin!" : "Salin Kode"}</span>
-                    </Button>
-                  </div>
-
-                  {/* Code Viewer Panel (Right) */}
-                  <div className="flex-1 flex flex-col bg-slate-950 text-slate-100 overflow-hidden font-mono text-xs">
-                    <div className="h-9 border-b border-slate-800 bg-slate-900/60 px-4 flex items-center justify-between shrink-0">
-                      <span className="text-slate-400 text-xs font-bold">
-                        {generatedFiles[selectedFileIndex]?.name || "app/page.tsx"}
-                      </span>
-                      <span className="text-[10px] text-slate-500">TypeScript / React 19 / Next.js 16</span>
-                    </div>
-
-                    <ScrollArea className="flex-1 p-4">
-                      <pre className="leading-relaxed whitespace-pre-wrap selection:bg-blue-600 selection:text-white">
-                        {generatedFiles[selectedFileIndex]?.content}
-                      </pre>
-                    </ScrollArea>
-                  </div>
-
-                </div>
+                <CodeViewer files={generatedFiles} />
               )}
-
               {activeViewerTab === "console" && (
-                /* ── TAB 3: Terminal & Compilation Stream ── */
-                <div className="flex-1 bg-slate-950 text-slate-200 p-4 flex flex-col font-mono text-xs overflow-hidden">
-                  <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <Terminal className="h-4 w-4 text-emerald-400" />
-                      <span className="font-bold text-white">Next.js Fast Compiler Stream</span>
-                    </div>
-                    <Badge variant="outline" className="border-emerald-500/30 text-emerald-400 text-[10px]">
-                      Live Edge Proxy
-                    </Badge>
-                  </div>
-
-                  <ScrollArea className="flex-1 pt-3">
-                    <div className="space-y-2">
-                      {consoleLogs.map((log) => (
-                        <div key={log.id} className="flex items-start gap-3">
-                          <span className="text-slate-500 shrink-0">[{log.time}]</span>
-                          <span className={log.type === "success" ? "text-emerald-400 font-semibold" : log.type === "warn" ? "text-amber-400" : "text-slate-300"}>
-                            {log.text}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </ScrollArea>
-                </div>
+                <ConsoleViewer logs={consoleLogs} />
               )}
-
             </div>
           </div>
         </div>
@@ -1921,55 +1216,14 @@ export async function fetchContent(collection: string) {
                     <Plus className="h-4 w-4" />
                   </Button>
 
-                  {/* Model selector pill */}
-                  <button
-                    type="button"
-                    onClick={() => setIsModelPickerOpen(v => !v)}
-                    className="flex items-center gap-1.5 h-8 pl-2.5 pr-2 rounded-full border border-border/80 bg-background hover:bg-muted text-xs font-medium text-foreground transition-colors cursor-pointer"
-                  >
-                    <Cpu className="h-3.5 w-3.5 text-primary" />
-                    <span>{currentModelConfig.name}</span>
-                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
-                  </button>
-
-                  {/* Model picker dropdown */}
-                  {isModelPickerOpen && (
-                    <>
-                      <div className="fixed inset-0 z-40" onClick={() => setIsModelPickerOpen(false)} />
-                      <div className="absolute bottom-10 left-0 z-50 w-72 rounded-xl bg-card border border-border shadow-xl p-1.5">
-                        <div className="px-1 pb-1">
-                          <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground px-1.5">
-                            Pilih Model AI Engine
-                          </span>
-                        </div>
-                        {AI_MODELS.map((m) => {
-                          const isSelected = selectedModel === m.id
-                          return (
-                            <button
-                              key={m.id}
-                              type="button"
-                              onClick={() => { setSelectedModel(m.id); setIsModelPickerOpen(false) }}
-                              className={cn(
-                                "flex items-center justify-between w-full gap-2 px-2.5 py-2 rounded-lg text-left text-xs transition-colors cursor-pointer",
-                                isSelected ? "bg-primary/10 text-primary font-bold" : "text-foreground hover:bg-muted"
-                              )}
-                            >
-                              <span className="flex items-center gap-2 min-w-0">
-                                <span className="w-5 h-5 rounded-md bg-muted flex items-center justify-center shrink-0">
-                                  <Bot className="h-3 w-3 text-primary" />
-                                </span>
-                                <span className="truncate">
-                                  <span className="font-semibold">{m.name}</span>
-                                  <span className="text-muted-foreground font-normal ml-1.5">· {m.credits} Credits</span>
-                                </span>
-                              </span>
-                              {isSelected && <Check className="h-3.5 w-3.5 shrink-0" />}
-                            </button>
-                          )
-                        })}
-                      </div>
-                    </>
-                  )}
+                  {/* Multi-Provider Model Picker */}
+                  <ModelPicker
+                    models={AI_MODEL_REGISTRY}
+                    selectedModelId={selectedModel}
+                    onSelectModel={setSelectedModel}
+                    hasUpgradedPlan={hasUpgradedPlan}
+                    compact={false}
+                  />
                 </div>
 
                 <div className="flex items-center gap-2">

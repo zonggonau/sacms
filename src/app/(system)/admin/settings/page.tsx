@@ -21,8 +21,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { 
   Loader2, Save, Server, RefreshCw, Copy, Database, Check,
   Shield, Sparkles, Image as ImageIcon,
-  AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive
+  AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive,
+  Cpu, Zap, Globe, Layers, Key, CheckCircle2
 } from "lucide-react"
+import { AI_MODEL_REGISTRY } from "@/lib/ai/model-registry"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
@@ -38,10 +40,12 @@ export default function AdminSettingsPage() {
   const [saving, setSaving] = useState(false)
   const [purgingCache, setPurgingCache] = useState(false)
   const [testAiLoading, setTestAiLoading] = useState(false)
+  const [testingProvider, setTestingProvider] = useState<string | null>(null)
   const [testEmailLoading, setTestEmailLoading] = useState(false)
   const [testEmailRecipient, setTestEmailRecipient] = useState("")
   const [copied, setCopied] = useState(false)
   const [showMasks, setShowMasks] = useState<Record<string, boolean>>({})
+  const [showDirectKeys, setShowDirectKeys] = useState(false)
 
   const toggleMask = (field: string) => {
     setShowMasks(prev => ({ ...prev, [field]: !prev[field] }))
@@ -86,16 +90,23 @@ export default function AdminSettingsPage() {
     ipBlacklist: "",
     webhookMaxRetries: "3",
 
-    // Tab 3: AI Engine & Providers
-    platformAiProvider: "deepseek",
+    // Tab 3: AI Engine & Providers (Vercel AI Gateway & SDK Core)
+    aiGatewayApiKey: "",
+    aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v1",
+    platformAiProvider: "google",
     platformAiApiKey: "",
     deepseekApiKey: "",
     openaiApiKey: "",
     geminiApiKey: "",
     anthropicApiKey: "",
+    groqApiKey: "",
+    mistralApiKey: "",
+    xaiApiKey: "",
+    openrouterApiKey: "",
     v0ApiKey: "",
     vercelAccessToken: "",
-    defaultAiModel: "deepseek-chat",
+    defaultAiModel: "gemini-2.5-flash",
+    aiSdkDefaultModel: "gemini-2.5-flash",
     freePlanAiMonthlyWords: "10000",
 
     // Tab 4: Email & SMTP Delivery
@@ -211,20 +222,26 @@ export default function AdminSettingsPage() {
   }
 
   const handleTestAi = async (targetProvider?: string, keyToTest?: string) => {
-    const provider = targetProvider || settings.platformAiProvider || "deepseek"
+    const provider = targetProvider || (settings.aiGatewayApiKey ? "gateway" : settings.platformAiProvider) || "gateway"
     const apiKey = keyToTest || (
+      provider === "gateway" || provider === "vercel_gateway" ? settings.aiGatewayApiKey :
       provider === "deepseek" ? (settings.deepseekApiKey || settings.platformAiApiKey) :
       provider === "openai" ? settings.openaiApiKey :
       provider === "gemini" ? settings.geminiApiKey :
-      provider === "anthropic" ? settings.anthropicApiKey : settings.platformAiApiKey
+      provider === "anthropic" ? settings.anthropicApiKey :
+      provider === "groq" ? settings.groqApiKey :
+      provider === "mistral" ? settings.mistralApiKey :
+      provider === "xai" ? settings.xaiApiKey :
+      provider === "openrouter" ? settings.openrouterApiKey : (settings.aiGatewayApiKey || settings.platformAiApiKey)
     )
 
     if (!apiKey) {
-      toast({ variant: "destructive", title: "API Key Kosong", description: `Silakan masukkan API Key untuk ${provider} sebelum melakukan tes koneksi.` })
+      toast({ variant: "destructive", title: "API Key Kosong", description: `Silakan masukkan API Key untuk ${provider === "gateway" ? "Vercel AI Gateway" : provider} sebelum melakukan tes koneksi.` })
       return
     }
 
     setTestAiLoading(true)
+    setTestingProvider(provider)
     try {
       const res = await fetch("/api/admin/settings/test-ai", {
         method: "POST",
@@ -232,19 +249,21 @@ export default function AdminSettingsPage() {
         body: JSON.stringify({
           provider,
           apiKey,
-          model: settings.defaultAiModel
+          model: settings.defaultAiModel,
+          baseUrl: settings.aiGatewayBaseUrl,
         })
       })
       const data = await res.json()
       if (res.ok && data.success) {
-        toast({ title: "Koneksi AI Berhasil!", description: data.message })
+        toast({ title: `Koneksi ${provider === "gateway" ? "Vercel AI Gateway" : provider.toUpperCase()} Berhasil!`, description: data.message })
       } else {
-        toast({ variant: "destructive", title: "Uji Koneksi AI Gagal", description: data.message || "Gagal menghubungi AI provider." })
+        toast({ variant: "destructive", title: `Uji Koneksi ${provider === "gateway" ? "Vercel AI Gateway" : provider.toUpperCase()} Gagal`, description: data.message || "Gagal menghubungi AI provider." })
       }
     } catch (e: any) {
       toast({ variant: "destructive", title: "Terjadi Kesalahan", description: e.message || "Kesalahan jaringan" })
     } finally {
       setTestAiLoading(false)
+      setTestingProvider(null)
     }
   }
 
@@ -385,153 +404,285 @@ export default function AdminSettingsPage() {
               </TabsTrigger>
             </TabsList>
 
-            {/* TAB 1: MESIN AI & PROVIDERS */}
+            {/* TAB 1: MESIN AI & PROVIDERS (VERCEL AI SDK) */}
             <TabsContent value="ai_engine" className="space-y-6">
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                
-                {/* AI Configuration */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                        <Bot className="h-4 w-4 text-primary" />
-                        Provider AI Utama & Kuota
-                      </CardTitle>
-                      <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-bold">
-                        Dynamic Engine
+              {/* Vercel AI SDK Banner Header */}
+              <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-primary/5 p-5 shadow-xs">
+                <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <Badge className="bg-primary text-primary-foreground font-extrabold text-[10px] px-2.5 py-0.5 shadow-xs">
+                        Vercel AI SDK Core
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] border-primary/30 text-primary font-bold">
+                        Vercel AI Gateway (1 API Key)
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px] border-emerald-500/30 text-emerald-600 bg-emerald-500/10 font-bold">
+                        26 Model • 8 Provider AI
                       </Badge>
                     </div>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Provider AI untuk generator konten dan site builder.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Provider AI Aktif</Label>
-                      <Select 
-                        value={settings.platformAiProvider}
-                        onValueChange={v => setSettings(prev => ({ ...prev, platformAiProvider: v as any }))}
-                      >
-                        <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
-                        <SelectContent className="rounded-xl border-border bg-card">
-                          <SelectItem value="deepseek" className="text-xs rounded-lg">DeepSeek AI (Rekomendasi V3 / Reasoner)</SelectItem>
-                          <SelectItem value="openai" className="text-xs rounded-lg">OpenAI (GPT-4o, GPT-4o-mini)</SelectItem>
-                          <SelectItem value="gemini" className="text-xs rounded-lg">Google Gemini (Gemini 1.5 Pro/Flash)</SelectItem>
-                          <SelectItem value="anthropic" className="text-xs rounded-lg">Anthropic Claude (Claude 3.5 Sonnet/Haiku)</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <h3 className="text-base font-extrabold tracking-tight text-foreground flex items-center gap-2">
+                      <Cpu className="h-5 w-5 text-primary" />
+                      Mesin AI Builder & Vercel AI Gateway
+                    </h3>
+                    <p className="text-xs text-muted-foreground max-w-3xl leading-relaxed">
+                      Cukup gunakan <strong>1 API Key Vercel AI Gateway</strong> untuk mengaktifkan seluruh 26 model AI secara instan (Google Gemini, Anthropic Claude, OpenAI, DeepSeek, Groq, Mistral, xAI, dan OpenRouter).
+                    </p>
+                  </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model Default</Label>
-                      <Input 
-                        value={settings.defaultAiModel}
-                        onChange={e => setSettings(prev => ({ ...prev, defaultAiModel: e.target.value }))}
-                        placeholder="deepseek-chat, gpt-4o-mini, dll."
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
-                      />
-                    </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button 
+                      variant="default" 
+                      size="sm" 
+                      onClick={() => handleTestAi('gateway', settings.aiGatewayApiKey)}
+                      disabled={testAiLoading}
+                      className="rounded-xl text-xs font-bold shadow-xs h-9 px-4"
+                    >
+                      {testAiLoading && testingProvider === 'gateway' ? (
+                        <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                      ) : (
+                        <Zap className="h-3.5 w-3.5 mr-1.5 text-amber-400 fill-amber-400" />
+                      )}
+                      Uji Koneksi Vercel AI Gateway
+                    </Button>
+                  </div>
+                </div>
+              </div>
 
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Kata Bulanan Plan Free</Label>
-                      <Input 
-                        type="number"
-                        value={settings.freePlanAiMonthlyWords}
-                        onChange={e => setSettings(prev => ({ ...prev, freePlanAiMonthlyWords: e.target.value }))}
-                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
-                      />
-                    </div>
+              {/* 2 Main Cards: Gateway Setup + Default Model Preferences */}
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+                
+                {/* CARD 1: VERCEL AI GATEWAY (7 cols) */}
+                <div className="lg:col-span-7">
+                  <Card className="rounded-2xl border-2 border-primary/30 shadow-md bg-card relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-32 h-32 bg-primary/10 rounded-full blur-2xl pointer-events-none" />
+                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center text-primary">
+                            <Zap className="h-4 w-4" />
+                          </div>
+                          <div>
+                            <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                              Vercel AI Gateway (Kunci Terpadu)
+                            </CardTitle>
+                            <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                              1 Kunci API untuk mengakses semua 26 model tanpa registrasi berulang.
+                            </CardDescription>
+                          </div>
+                        </div>
+                        <Badge className="bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 font-bold text-[10px]">
+                          Rekomendasi Utama
+                        </Badge>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      {/* Gateway API Key */}
+                      <div className="space-y-1.5">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground flex items-center gap-1.5">
+                            <Key className="h-3.5 w-3.5 text-primary" />
+                            Vercel AI Gateway API Key
+                            <span className="text-[9px] text-muted-foreground font-mono font-normal">(AI_GATEWAY_API_KEY)</span>
+                          </Label>
+                          <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('gateway', 'aiGatewayApiKey')}>
+                            {showMasks.gateway ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                            {showMasks.gateway ? "Sembunyikan" : "Tampilkan"}
+                          </Button>
+                        </div>
+                        <div className="flex gap-2">
+                          <Input 
+                            type={showMasks.gateway ? "text" : "password"}
+                            value={settings.aiGatewayApiKey}
+                            onChange={e => setSettings(prev => ({ ...prev, aiGatewayApiKey: e.target.value }))}
+                            placeholder="vck_•••••••••••••••• atau kunci AI Gateway Anda"
+                            className="h-10 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                          />
+                          <Button 
+                            variant="secondary" 
+                            size="sm" 
+                            className="h-10 text-xs rounded-xl px-4 font-semibold shrink-0"
+                            onClick={() => handleTestAi('gateway', settings.aiGatewayApiKey)}
+                            disabled={testAiLoading}
+                          >
+                            {testingProvider === 'gateway' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : "Tes Koneksi"}
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground">
+                          Otomatis merutekan permintaan ke Google Gemini, Claude, OpenAI, DeepSeek, Groq, Mistral, xAI, dan OpenRouter.
+                        </p>
+                      </div>
 
-                    <div className="pt-2">
-                      <Button 
-                        variant="outline" 
-                        size="sm" 
-                        onClick={() => handleTestAi()}
-                        disabled={testAiLoading}
-                        className="w-full text-xs font-bold rounded-xl border-border/80 h-9"
-                      >
-                        {testAiLoading ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />}
-                        Uji Koneksi Provider AI Aktif
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                      {/* Gateway Base URL */}
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Gateway Base URL (OpenAI-Compatible Endpoint)
+                        </Label>
+                        <Input 
+                          type="text"
+                          value={settings.aiGatewayBaseUrl}
+                          onChange={e => setSettings(prev => ({ ...prev, aiGatewayBaseUrl: e.target.value }))}
+                          placeholder="https://ai-gateway.vercel.sh/v1"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                        <p className="text-[10px] text-muted-foreground">
+                          Default: <code>https://ai-gateway.vercel.sh/v1</code>. Anda juga bisa mengarahkan ke proxy gateway khusus atau Portkey/LiteLLM.
+                        </p>
+                      </div>
 
-                {/* API Keys Management */}
-                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
-                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
-                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
-                      <Sparkles className="h-4 w-4 text-primary" />
-                      Koleksi Kunci API AI (Real-Time Fallback)
-                    </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Berlaku langsung tanpa restart. Kosong akan fallback ke <code>.env</code>.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="p-5 space-y-4">
+                      {/* Info highlight box */}
+                      <div className="p-3.5 rounded-xl bg-primary/5 border border-primary/15 text-xs text-foreground space-y-2">
+                        <div className="font-semibold flex items-center gap-1.5 text-primary">
+                          <CheckCircle2 className="h-4 w-4" />
+                          Keuntungan Menggunakan Vercel AI Gateway:
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-primary font-bold">✓</span> 1 Tagihan & 1 Kunci API Terpusat
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-primary font-bold">✓</span> Otomatis Fallback & Retry
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-primary font-bold">✓</span> Monitoring Latensi Global
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-primary font-bold">✓</span> Zero Server Restart
+                          </div>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* CARD 2: MODEL DEFAULT & QUOTA (5 cols) */}
+                <div className="lg:col-span-5 space-y-6">
+                  <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                    <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                          <Bot className="h-4 w-4 text-primary" />
+                          Preferensi Model & Kuota
+                        </CardTitle>
+                        <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 font-bold">
+                          Config AI Builder
+                        </Badge>
+                      </div>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Konfigurasi default saat pengguna membuat website via AI Builder.
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent className="p-5 space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Provider AI Utama</Label>
+                        <Select 
+                          value={settings.platformAiProvider}
+                          onValueChange={v => setSettings(prev => ({ ...prev, platformAiProvider: v as any }))}
+                        >
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-xl border-border bg-card">
+                            <SelectItem value="google" className="text-xs rounded-lg">🔵 Google Gemini (Gemini 2.5 Flash / Pro)</SelectItem>
+                            <SelectItem value="anthropic" className="text-xs rounded-lg">🟤 Anthropic Claude (Claude 3.7 / 3.5 Sonnet)</SelectItem>
+                            <SelectItem value="openai" className="text-xs rounded-lg">🟢 OpenAI (GPT-4o / o3-mini / o1)</SelectItem>
+                            <SelectItem value="deepseek" className="text-xs rounded-lg">🟣 DeepSeek AI (DeepSeek V3 / R1 Reasoner)</SelectItem>
+                            <SelectItem value="groq" className="text-xs rounded-lg">⚡ Groq LPU (Llama 3.3 70B • 300+ t/s)</SelectItem>
+                            <SelectItem value="mistral" className="text-xs rounded-lg">🟠 Mistral AI (Codestral 2501 / Large 2)</SelectItem>
+                            <SelectItem value="xai" className="text-xs rounded-lg">⬛ xAI Grok (Grok 2 / Vision)</SelectItem>
+                            <SelectItem value="openrouter" className="text-xs rounded-lg">🌐 OpenRouter (Dynamic Auto Router)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model Default AI Builder</Label>
+                        <Select
+                          value={settings.defaultAiModel}
+                          onValueChange={v => setSettings(prev => ({ ...prev, defaultAiModel: v, aiSdkDefaultModel: v }))}
+                        >
+                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"><SelectValue /></SelectTrigger>
+                          <SelectContent className="rounded-xl border-border bg-card max-h-[300px]">
+                            {AI_MODEL_REGISTRY.map((m) => (
+                              <SelectItem key={m.id} value={m.id} className="text-xs rounded-lg">
+                                <span className="mr-1.5">{m.providerIcon}</span>
+                                <span className="font-semibold">{m.name}</span>
+                                <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">({m.id})</span>
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[10px] text-muted-foreground">
+                          Model pilihan awal saat user membuka AI Studio. User tetap bebas memilih model lain di jendela modal picker.
+                        </p>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Batas Kata / Kredit Bulanan Plan Free</Label>
+                        <Input 
+                          type="number"
+                          value={settings.freePlanAiMonthlyWords}
+                          onChange={e => setSettings(prev => ({ ...prev, freePlanAiMonthlyWords: e.target.value }))}
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+
+                      <div className="pt-2">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => handleTestAi(settings.platformAiProvider)}
+                          disabled={testAiLoading}
+                          className="w-full text-xs font-bold rounded-xl border-border/80 h-9"
+                        >
+                          {testAiLoading && !testingProvider ? (
+                            <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" />
+                          ) : (
+                            <Sparkles className="h-3.5 w-3.5 mr-1.5 text-primary" />
+                          )}
+                          Uji Koneksi Provider AI Default ({settings.platformAiProvider})
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+              </div>
+
+              {/* COLLAPSIBLE ACCORDION: Direct Provider Keys (Optional Fallback) */}
+              <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                <CardHeader className="p-5 pb-4 border-b border-border/60 bg-muted/15">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <div>
+                      <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                        <Key className="h-4 w-4 text-muted-foreground" />
+                        Kunci API Provider Langsung (Opsional / Fallback)
+                      </CardTitle>
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Gunakan kunci API per-provider jika Anda tidak menggunakan Vercel AI Gateway atau ingin fallback server lokal.
+                      </CardDescription>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDirectKeys(!showDirectKeys)}
+                      className="rounded-xl text-xs font-semibold h-8 border-border/80"
+                    >
+                      {showDirectKeys ? "Sembunyikan Kunci Provider" : "Tampilkan 8 Kunci Provider Langsung"}
+                    </Button>
+                  </div>
+                </CardHeader>
+
+                {showDirectKeys && (
+                  <CardContent className="p-5 space-y-4 divide-y divide-border/40 animate-in fade-in-50 duration-200">
                     
-                    {/* DeepSeek */}
-                    <div className="space-y-1.5">
+                    {/* 1. Google Gemini */}
+                    <div className="space-y-1.5 pt-2 first:pt-0">
                       <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">DeepSeek API Key</Label>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('deepseek', 'deepseekApiKey')}>
-                          {showMasks.deepseek ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {showMasks.deepseek ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input 
-                          type={showMasks.deepseek ? "text" : "password"}
-                          value={settings.deepseekApiKey || settings.platformAiApiKey}
-                          onChange={e => setSettings(prev => ({ ...prev, deepseekApiKey: e.target.value, platformAiApiKey: e.target.value }))}
-                          placeholder="sk-cf74••••••••••••••••"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
-                        />
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          className="h-9 text-xs rounded-xl"
-                          onClick={() => handleTestAi('deepseek', settings.deepseekApiKey || settings.platformAiApiKey)}
-                          disabled={testAiLoading}
-                        >
-                          Tes
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* OpenAI */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">OpenAI API Key</Label>
-                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('openai', 'openaiApiKey')}>
-                          {showMasks.openai ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
-                          {showMasks.openai ? "Sembunyikan" : "Tampilkan"}
-                        </Button>
-                      </div>
-                      <div className="flex gap-2">
-                        <Input 
-                          type={showMasks.openai ? "text" : "password"}
-                          value={settings.openaiApiKey}
-                          onChange={e => setSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
-                          placeholder="sk-proj-••••••••••••••••"
-                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
-                        />
-                        <Button 
-                          variant="secondary" 
-                          size="sm" 
-                          className="h-9 text-xs rounded-xl"
-                          onClick={() => handleTestAi('openai', settings.openaiApiKey)}
-                          disabled={testAiLoading}
-                        >
-                          Tes
-                        </Button>
-                      </div>
-                    </div>
-
-                    {/* Google Gemini */}
-                    <div className="space-y-1.5">
-                      <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Google Gemini API Key</Label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🔵</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Google Gemini API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(GOOGLE_GENERATIVE_AI_API_KEY)</span>
+                        </div>
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('gemini', 'geminiApiKey')}>
                           {showMasks.gemini ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
                           {showMasks.gemini ? "Sembunyikan" : "Tampilkan"}
@@ -548,19 +699,24 @@ export default function AdminSettingsPage() {
                         <Button 
                           variant="secondary" 
                           size="sm" 
-                          className="h-9 text-xs rounded-xl"
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
                           onClick={() => handleTestAi('gemini', settings.geminiApiKey)}
                           disabled={testAiLoading}
                         >
-                          Tes
+                          {testingProvider === 'gemini' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
                         </Button>
                       </div>
+                      <p className="text-[10px] text-muted-foreground">Model: Gemini 2.5 Flash, 2.5 Pro, 2.0 Flash, 1.5 Pro</p>
                     </div>
 
-                    {/* Anthropic Claude */}
-                    <div className="space-y-1.5">
+                    {/* 2. Anthropic Claude */}
+                    <div className="space-y-1.5 pt-3">
                       <div className="flex items-center justify-between">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Anthropic Claude API Key</Label>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🟤</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Anthropic Claude API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(ANTHROPIC_API_KEY)</span>
+                        </div>
                         <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('anthropic', 'anthropicApiKey')}>
                           {showMasks.anthropic ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
                           {showMasks.anthropic ? "Sembunyikan" : "Tampilkan"}
@@ -577,26 +733,234 @@ export default function AdminSettingsPage() {
                         <Button 
                           variant="secondary" 
                           size="sm" 
-                          className="h-9 text-xs rounded-xl"
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
                           onClick={() => handleTestAi('anthropic', settings.anthropicApiKey)}
                           disabled={testAiLoading}
                         >
-                          Tes
+                          {testingProvider === 'anthropic' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
                         </Button>
                       </div>
+                      <p className="text-[10px] text-muted-foreground">Model: Claude 3.7 Sonnet, 3.5 Sonnet, 3.5 Haiku, Claude 3 Opus</p>
                     </div>
 
-                    {/* V0 & Vercel */}
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/60">
+                    {/* 3. OpenAI */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🟢</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">OpenAI API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(OPENAI_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('openai', 'openaiApiKey')}>
+                          {showMasks.openai ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.openai ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.openai ? "text" : "password"}
+                          value={settings.openaiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, openaiApiKey: e.target.value }))}
+                          placeholder="sk-proj-••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('openai', settings.openaiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'openai' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: GPT-4o, GPT-4o Mini, o3-mini, o1, GPT-4 Turbo</p>
+                    </div>
+
+                    {/* 4. DeepSeek */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🟣</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">DeepSeek API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(DEEPSEEK_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('deepseek', 'deepseekApiKey')}>
+                          {showMasks.deepseek ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.deepseek ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.deepseek ? "text" : "password"}
+                          value={settings.deepseekApiKey || settings.platformAiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, deepseekApiKey: e.target.value, platformAiApiKey: e.target.value }))}
+                          placeholder="sk-cf74••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('deepseek', settings.deepseekApiKey || settings.platformAiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'deepseek' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: DeepSeek V3 (Chat), DeepSeek R1 (Reasoner)</p>
+                    </div>
+
+                    {/* 5. Groq LPU */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">⚡</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Groq LPU API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(GROQ_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('groq', 'groqApiKey')}>
+                          {showMasks.groq ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.groq ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.groq ? "text" : "password"}
+                          value={settings.groqApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, groqApiKey: e.target.value }))}
+                          placeholder="gsk_••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('groq', settings.groqApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'groq' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: Llama 3.3 70B Versatile, Llama 3.1 8B Instant, Mixtral 8x7B (300+ t/s)</p>
+                    </div>
+
+                    {/* 6. Mistral AI */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🟠</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Mistral AI API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(MISTRAL_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('mistral', 'mistralApiKey')}>
+                          {showMasks.mistral ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.mistral ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.mistral ? "text" : "password"}
+                          value={settings.mistralApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, mistralApiKey: e.target.value }))}
+                          placeholder="sk_••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('mistral', settings.mistralApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'mistral' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: Codestral 2501 (Code Specialist), Mistral Large 2</p>
+                    </div>
+
+                    {/* 7. xAI Grok */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">⬛</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">xAI (Grok) API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(XAI_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('xai', 'xaiApiKey')}>
+                          {showMasks.xai ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.xai ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.xai ? "text" : "password"}
+                          value={settings.xaiApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, xaiApiKey: e.target.value }))}
+                          placeholder="xai-••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('xai', settings.xaiApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'xai' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: Grok 2, Grok 2 Vision</p>
+                    </div>
+
+                    {/* 8. OpenRouter */}
+                    <div className="space-y-1.5 pt-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-xs">🌐</span>
+                          <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">OpenRouter API Key</Label>
+                          <span className="text-[9px] text-muted-foreground font-mono">(OPENROUTER_API_KEY)</span>
+                        </div>
+                        <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('openrouter', 'openrouterApiKey')}>
+                          {showMasks.openrouter ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
+                          {showMasks.openrouter ? "Sembunyikan" : "Tampilkan"}
+                        </Button>
+                      </div>
+                      <div className="flex gap-2">
+                        <Input 
+                          type={showMasks.openrouter ? "text" : "password"}
+                          value={settings.openrouterApiKey}
+                          onChange={e => setSettings(prev => ({ ...prev, openrouterApiKey: e.target.value }))}
+                          placeholder="sk-or-v1-••••••••••••••••"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono flex-1"
+                        />
+                        <Button 
+                          variant="secondary" 
+                          size="sm" 
+                          className="h-9 text-xs rounded-xl px-3 font-semibold"
+                          onClick={() => handleTestAi('openrouter', settings.openrouterApiKey)}
+                          disabled={testAiLoading}
+                        >
+                          {testingProvider === 'openrouter' ? <Loader2 className="h-3 w-3 animate-spin" /> : "Tes"}
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">Model: OpenRouter Auto Best, Qwen 2.5 72B, Llama & 300+ Model Lainnya</p>
+                    </div>
+
+                    {/* 9. v0 & Vercel Preview Token */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-3">
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">v0 by Vercel API Key</Label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">🚀</span>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">v0 by Vercel API Key</Label>
+                          </div>
                           <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('v0', 'v0ApiKey')}>
                             {showMasks.v0 ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
                             {showMasks.v0 ? "Sembunyikan" : "Tampilkan"}
                           </Button>
                         </div>
-                        <Input
+                        <Input 
                           type={showMasks.v0 ? "text" : "password"}
                           value={settings.v0ApiKey}
                           onChange={e => setSettings(prev => ({ ...prev, v0ApiKey: e.target.value }))}
@@ -606,13 +970,16 @@ export default function AdminSettingsPage() {
                       </div>
                       <div className="space-y-1.5">
                         <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Vercel Access Token</Label>
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-xs">▲</span>
+                            <Label className="text-[10px] font-bold uppercase tracking-wider text-foreground">Vercel Access Token</Label>
+                          </div>
                           <Button variant="ghost" size="sm" className="h-6 px-2 text-[10px]" onClick={() => revealSecret('vercel', 'vercelAccessToken')}>
                             {showMasks.vercel ? <EyeOff className="h-3 w-3 mr-1" /> : <Eye className="h-3 w-3 mr-1" />}
                             {showMasks.vercel ? "Sembunyikan" : "Tampilkan"}
                           </Button>
                         </div>
-                        <Input
+                        <Input 
                           type={showMasks.vercel ? "text" : "password"}
                           value={settings.vercelAccessToken}
                           onChange={e => setSettings(prev => ({ ...prev, vercelAccessToken: e.target.value }))}
@@ -623,9 +990,8 @@ export default function AdminSettingsPage() {
                     </div>
 
                   </CardContent>
-                </Card>
-
-              </div>
+                )}
+              </Card>
             </TabsContent>
 
             {/* TAB 2: EMAIL & SMTP DELIVERY */}
