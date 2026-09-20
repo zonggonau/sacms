@@ -269,7 +269,7 @@ export async function fetchContent(collection: string) {
     if (typeof msg.content === "string") return msg.content
     if (Array.isArray(msg.parts)) {
       return msg.parts
-        .filter((p: any) => p.type === "text" && typeof p.text === "string")
+        .filter((p: any) => p && (p.type === "text" || !p.type) && typeof p.text === "string")
         .map((p: any) => p.text)
         .join("")
     }

@@ -26,6 +26,49 @@ async function getAnthropicModule() {
   }
 }
 
+// Canonical model slug mapping for Vercel AI Gateway
+const GATEWAY_MODEL_MAP: Record<string, string> = {
+  // 🔵 Google Gemini
+  "gemini-2.5-flash": "google/gemini-2.5-flash",
+  "gemini-2.5-pro": "google/gemini-2.5-pro",
+  "gemini-2.0-flash": "google/gemini-2.0-flash",
+  "gemini-1.5-pro": "google/gemini-2.5-pro",
+
+  // 🟤 Anthropic Claude
+  "claude-3-7-sonnet": "anthropic/claude-sonnet-4",
+  "claude-3-5-sonnet": "anthropic/claude-sonnet-4",
+  "claude-3-5-haiku": "anthropic/claude-3-haiku",
+  "claude-3-opus": "anthropic/claude-opus-4",
+
+  // 🟢 OpenAI
+  "gpt-4o": "openai/gpt-4o",
+  "gpt-4o-mini": "openai/gpt-4o-mini",
+  "o3-mini": "openai/o3-mini",
+  "o1": "openai/o1",
+  "gpt-4-turbo": "openai/gpt-4-turbo",
+
+  // 🟣 DeepSeek
+  "deepseek-chat": "deepseek/deepseek-v3.1",
+  "deepseek-reasoner": "deepseek/deepseek-r1",
+
+  // ⚡ Groq / Meta Llama
+  "llama-3.3-70b": "meta/llama-3.3-70b",
+  "llama-3.1-8b": "meta/llama-3.1-8b",
+  "mixtral-8x7b": "meta/llama-3.3-70b",
+
+  // 🟠 Mistral AI
+  "codestral": "mistral/codestral",
+  "mistral-large": "mistral/mistral-large-3",
+
+  // ⬛ xAI (Grok)
+  "grok-2": "spacexai/grok-4.1-fast-non-reasoning",
+  "grok-2-vision": "spacexai/grok-4.1-fast-non-reasoning",
+
+  // 🌐 OpenRouter / Alibaba
+  "openrouter-auto": "openai/gpt-4o-mini",
+  "qwen-2.5-72b": "alibaba/qwen-3-32b",
+}
+
 /**
  * Resolve a model config id into an AI SDK LanguageModel instance.
  * Dynamically resolves API keys from Super Admin database settings first,
@@ -56,9 +99,10 @@ export async function resolveModel(modelId: string): Promise<LanguageModel> {
       apiKey: gatewayKey,
     })
     const gatewayModelId =
-      config.provider === "openai"
-        ? config.providerModelId
-        : `${config.provider}/${config.providerModelId}`
+      GATEWAY_MODEL_MAP[modelId] ||
+      (config.provider === "openai"
+        ? (config.providerModelId.startsWith("openai/") ? config.providerModelId : `openai/${config.providerModelId}`)
+        : `${config.provider}/${config.providerModelId}`)
     return gateway(gatewayModelId) as LanguageModel
   }
 
