@@ -102,7 +102,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Koleksi Konten</p>
               {canGoBack && (
                 <Link 
-                  href={`/dashboard/${tenantId}/content-type-builder/content-types/new`}
+                  href={`/dashboard/${tenantId}/developer/conten-type/new`}
                   title="Tambah Skema Koleksi Baru"
                   className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
                 >
@@ -133,7 +133,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                     </Link>
                     {canGoBack && (
                       <Link
-                        href={`/dashboard/${tenantId}/content-type-builder/content-types/edit/${ct.slug}`}
+                        href={`/dashboard/${tenantId}/developer/conten-type/edit/${ct.slug}`}
                         title={`Edit Skema ${ct.name}`}
                         className={cn(
                           "absolute right-2 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100",
@@ -158,7 +158,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
               <p className="text-[10px] font-black tracking-widest text-muted-foreground/60 uppercase">Halaman Statis</p>
               {canGoBack && (
                 <Link 
-                  href={`/dashboard/${tenantId}/content-type-builder/single-types/new`}
+                  href={`/dashboard/${tenantId}/developer/single-type/new`}
                   title="Tambah Single Type Baru"
                   className="text-muted-foreground hover:text-primary transition-colors p-0.5 rounded"
                 >
@@ -196,7 +196,7 @@ export function CMSSidebar({ tenantId, contentTypes = [], singleTypes = [], user
                   </Link>
                   {canGoBack && (
                     <Link
-                      href={`/dashboard/${tenantId}/content-type-builder/single-types/${st.slug}/edit`}
+                      href={`/dashboard/${tenantId}/developer/single-type/${st.slug}/edit`}
                       title={`Edit Skema ${st.name}`}
                       className="absolute right-1.5 top-1/2 -translate-y-1/2 p-1 rounded-md transition-all opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-primary hover:bg-muted"
                       onClick={(e) => e.stopPropagation()}

@@ -14,7 +14,7 @@ export default async function GlobalAiBuilderRedirectPage({ searchParams }: Page
     const params = new URLSearchParams()
     if (prompt) params.set("prompt", prompt)
     const queryStr = params.toString() ? `?${params.toString()}` : ""
-    redirect(`/dashboard/${workspace}/content-type-builder/aiwebsitebuilder${queryStr}`)
+    redirect(`/dashboard/${workspace}/developer/aibuilder${queryStr}`)
   }
 
   redirect("/dashboard")

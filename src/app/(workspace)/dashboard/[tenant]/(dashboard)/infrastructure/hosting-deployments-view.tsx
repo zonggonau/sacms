@@ -548,7 +548,7 @@ export function HostingDeploymentsView({
                 asChild
                 className="rounded-xl h-9 px-4 text-xs font-bold bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs cursor-pointer"
               >
-                <Link href={`/dashboard/${tenantSlug}/content-type-builder/aiwebsitebuilder`}>
+                <Link href={`/dashboard/${tenantSlug}/developer/aibuilder`}>
                   <Bot className="h-3.5 w-3.5 mr-1.5" />
                   AI Website Builder
                 </Link>
@@ -714,7 +714,7 @@ export function HostingDeploymentsView({
                         asChild
                         className="rounded-xl h-9 px-4 text-xs font-bold bg-primary text-primary-foreground shadow-xs"
                       >
-                        <Link href={`/dashboard/${tenantSlug}/content-type-builder/aiwebsitebuilder`}>
+                        <Link href={`/dashboard/${tenantSlug}/developer/aibuilder`}>
                           <Bot className="h-3.5 w-3.5 mr-1.5" />
                           Deploy via AI Builder
                         </Link>

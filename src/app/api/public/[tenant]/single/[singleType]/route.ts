@@ -27,9 +27,26 @@ async function resolvePublicToken(request: NextRequest, tenantSlug: string): Pro
     rawToken = xApiKey.trim()
   }
 
-  // The `?token=` query param is deliberately NOT accepted — it leaks into
-  // access logs, Referer headers, and CDN caches.
   if (!rawToken) {
+    if (request.method === "GET") {
+      const tenant = await db.tenant.findFirst({
+        where: { OR: [{ id: tenantSlug }, { slug: tenantSlug }] },
+        select: { id: true, slug: true },
+      })
+      if (!tenant) {
+        return { error: "Tenant not found", status: 404 }
+      }
+      return {
+        auth: {
+          tenantId: tenant.id,
+          tenantSlug: tenant.slug,
+          apiTokenType: "public-read",
+          apiTokenId: "public_anon",
+          isApiKey: false,
+          hasWriteAccess: false,
+        }
+      }
+    }
     return { error: "Missing or invalid authorization header (Expected: Authorization: Bearer <TOKEN>)", status: 401 }
   }
 

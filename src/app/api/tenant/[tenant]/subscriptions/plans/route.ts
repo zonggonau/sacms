@@ -435,9 +435,58 @@ export async function GET(
       ]
     }
 
-    const plans = [...workspacePlans, ...addonPlans]
+    const { AI_CREDIT_PACKS } = await import("@/lib/constants/tenant-limits")
+    let aiCreditPacks = AI_CREDIT_PACKS
+    try {
+      const aiPricingContentType = await db.contentType.findFirst({
+        where: { slug: "sacms-ai-pricing", tenantId: null }
+      })
+      if (aiPricingContentType) {
+        const aiEntries = await db.contentEntry.findMany({
+          where: { contentTypeId: aiPricingContentType.id, status: "PUBLISHED" },
+          orderBy: { createdAt: "asc" }
+        })
+        if (aiEntries.length > 0) {
+          aiCreditPacks = aiEntries.map(t => {
+            const d = (typeof t.data === 'string' ? JSON.parse(t.data) : t.data) as any
+            return {
+              id: d.pack_slug || t.id,
+              name: d.name || "AI Credits",
+              credits: Number(d.credits) || 0,
+              price_usd: Number(d.price_usd) || 0,
+              price_idr: Number(d.price) || 0,
+              badge: d.badge || undefined,
+              description: d.description || "",
+              features: Array.isArray(d.features) ? d.features : []
+            }
+          }).sort((a, b) => a.price_idr - b.price_idr)
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to fetch custom AI pricing from db, using defaults:", e)
+    }
 
-    return NextResponse.json({ plans })
+    const aiCreditPlans = aiCreditPacks.map(pack => ({
+      id: pack.id,
+      name: pack.name,
+      type: "ai_plan",
+      price: pack.price_idr,
+      yearlyPrice: pack.price_idr,
+      price_usd: pack.price_usd,
+      credits: pack.credits,
+      badge: pack.badge,
+      description: pack.description,
+      features: pack.features,
+      popular: pack.id === "ai_pack_pro",
+      buttonText: `Top Up ${pack.name.split(" ")[0]}`,
+      isTopup: true,
+      quotaType: "ai_credits",
+      amountUnits: pack.credits
+    }))
+
+    const plans = [...workspacePlans, ...addonPlans, ...aiCreditPlans]
+
+    return NextResponse.json({ plans, aiCreditPacks: aiCreditPlans })
   } catch (error) {
     console.error("Error fetching pricing plans:", error)
     return NextResponse.json({ error: "Internal server error" }, { status: 500 })

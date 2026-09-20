@@ -120,7 +120,7 @@ export default async function CMSDashboardPage({
           </Button>
 
           <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all">
-            <Link href={`/dashboard/${tenantSlug}/content-type-builder/content-types`}>
+            <Link href={`/dashboard/${tenantSlug}/developer/conten-type`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               Kelola Skema
             </Link>

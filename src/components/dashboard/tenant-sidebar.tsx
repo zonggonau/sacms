@@ -54,7 +54,8 @@ const s = {
   groupSettings: "SETTINGS",
   overview: "Overview",
   cmsStudio: "CMS Content Studio",
-  contentTypeBuilder: "AI Website Builder",
+  contentTypeBuilder: "Content-Type Builder",
+  aiWebsiteBuilder: "AI Website Builder",
   mediaLibrary: "Media Library",
   support: "Support & Help Desk",
   teamMembers: "Team Members",
@@ -221,13 +222,15 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       label: s.groupContent,
       items: [
         { title: s.cmsStudio, href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        ...(isAdmin ? [{
-          title: s.contentTypeBuilder,
-          href: "/developer/aibuilder",
-          icon: Bot,
-          badge: "AI",
-          matchPrefix: true
-        }] : []),
+        ...(isAdmin ? [
+          {
+            title: s.aiWebsiteBuilder,
+            href: "/developer/aibuilder",
+            icon: Bot,
+            badge: "AI",
+            matchPrefix: true
+          },
+        ] : []),
         ...(isEditor || userRole === "author" ? [{ title: s.mediaLibrary, href: "/media", icon: ImageIcon }] : []),
       ],
     },
@@ -267,7 +270,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             matchPrefix: true,
             badge: effectiveHasDedicatedInfra ? "VPS" : "VERCEL"
           },
-          { title: s.developer, href: "/developer", icon: Code, matchPrefix: true },
+          { title: s.developer, href: "/developer/api-keys", icon: Code, matchPrefix: true },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
       ],

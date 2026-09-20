@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
 export default function AiWebsiteBuilderLoading() {
   return (
-    <div className="flex h-[calc(100vh-theme(spacing.16))] flex-col p-4 md:p-6 lg:p-8 space-y-6 w-full animate-in fade-in duration-300">
+    <div className="flex h-screen max-h-screen flex-col p-3 md:p-4 space-y-4 w-full max-w-full overflow-hidden animate-in fade-in duration-300">
       {/* Header Feed */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/60">
         <div className="space-y-1.5">

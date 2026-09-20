@@ -154,7 +154,7 @@ export default function TenantDashboardClient({
 
         <div className="flex flex-wrap items-center gap-2.5">
           <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-            <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
+            <Link href={`/dashboard/${tenantId}/developer/aibuilder`}>
               <Sparkles className="h-3.5 w-3.5 mr-1.5" />
               AI Website Studio
             </Link>
@@ -228,7 +228,7 @@ export default function TenantDashboardClient({
                 asChild
                 className="rounded-xl h-8 px-3 text-xs text-muted-foreground hover:text-foreground"
               >
-                <Link href={`/dashboard/${tenantId}/deployments`}>
+                <Link href={`/dashboard/${tenantId}/infrastructure?tab=hosting`}>
                   Detail Hosting
                   <ArrowRight className="h-3 w-3 ml-1" />
                 </Link>
@@ -258,7 +258,7 @@ export default function TenantDashboardClient({
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <Button asChild size="sm" className="rounded-xl h-8 px-3.5 text-xs font-bold bg-primary text-primary-foreground shadow-xs">
-                <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
+                <Link href={`/dashboard/${tenantId}/developer/aibuilder`}>
                   <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                   Bangun & Deploy Sekarang
                 </Link>
@@ -292,7 +292,7 @@ export default function TenantDashboardClient({
 
           <div className="flex flex-wrap items-center gap-2.5 shrink-0">
             <Button asChild className="h-9 px-4 text-xs font-bold rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground shadow-xs transition-all cursor-pointer">
-              <Link href={`/dashboard/${tenantId}/content-type-builder/aiwebsitebuilder`}>
+              <Link href={`/dashboard/${tenantId}/developer/aibuilder`}>
                 <Sparkles className="h-3.5 w-3.5 mr-1.5" />
                 Buka AI Studio
               </Link>
@@ -491,7 +491,7 @@ export default function TenantDashboardClient({
               </div>
 
               <Link 
-                href={schemaView === "collections" ? `/dashboard/${tenantId}/content-type-builder/content-types` : `/dashboard/${tenantId}/content-type-builder/single-types`} 
+                href={schemaView === "collections" ? `/dashboard/${tenantId}/developer/conten-type` : `/dashboard/${tenantId}/developer/single-type`} 
                 className="text-xs font-semibold text-primary hover:underline"
               >
                 Kelola Semua &rarr;
@@ -501,12 +501,20 @@ export default function TenantDashboardClient({
             {schemaView === "collections" ? (
               contentTypes.length === 0 ? (
                 <Card className="border-dashed border-border/80 rounded-2xl bg-card/60">
-                  <CardContent className="py-12 text-center space-y-2">
+                  <CardContent className="py-12 text-center space-y-3">
                     <PenTool className="h-8 w-8 mx-auto text-muted-foreground/30" />
                     <p className="text-xs font-bold text-foreground">Belum ada tipe koleksi yang dibuat</p>
                     <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                       Buat skema tipe konten pertama Anda di Content Studio atau gunakan AI Schema Builder.
                     </p>
+                    <div>
+                      <Button asChild size="sm" variant="outline" className="rounded-xl h-8 px-3 text-xs font-semibold">
+                        <Link href={`/dashboard/${tenantId}/developer/conten-type/new`}>
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Buat Koleksi Baru
+                        </Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ) : (
@@ -536,12 +544,20 @@ export default function TenantDashboardClient({
             ) : (
               singleTypes.length === 0 ? (
                 <Card className="border-dashed border-border/80 rounded-2xl bg-card/60">
-                  <CardContent className="py-12 text-center space-y-2">
+                  <CardContent className="py-12 text-center space-y-3">
                     <FileText className="h-8 w-8 mx-auto text-muted-foreground/30" />
                     <p className="text-xs font-bold text-foreground">Belum ada single type</p>
                     <p className="text-[11px] text-muted-foreground max-w-xs mx-auto">
                       Buat skema Single Type untuk profil perusahaan, beranda, atau konfigurasi umum.
                     </p>
+                    <div>
+                      <Button asChild size="sm" variant="outline" className="rounded-xl h-8 px-3 text-xs font-semibold">
+                        <Link href={`/dashboard/${tenantId}/developer/single-type/new`}>
+                          <Plus className="h-3.5 w-3.5 mr-1" />
+                          Buat Single Type Baru
+                        </Link>
+                      </Button>
+                    </div>
                   </CardContent>
                 </Card>
               ) : (

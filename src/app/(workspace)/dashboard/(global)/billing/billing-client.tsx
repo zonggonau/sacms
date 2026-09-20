@@ -8,9 +8,10 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
+import Link from "next/link"
 import { 
   Loader2, Zap, CreditCard, CheckCircle2, ShieldCheck, Crown, Receipt, Clock, RefreshCw, Database, Download, Cloud, Save, Sparkles,
-  Eye, EyeOff, Search, XCircle, Calendar, ArrowUpRight, FileText, Check, Copy
+  Eye, EyeOff, Search, XCircle, Calendar, ArrowUpRight, FileText, Check, Copy, Building2
 } from "lucide-react"
 import { getTransactionHistoryAction, checkTransactionStatusAction } from "@/actions/billing"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -144,8 +145,8 @@ export default function BillingClient({
       const plan = tx.subscription?.plan || "pro"
       router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${plan}&interval=year`)
     } else if (tx.rawResponse?.type === "ai_credits") {
-      const packId = tx.rawResponse?.addonId || "ai-starter-50"
-      router.push(`/dashboard/billing/checkout?addon=${packId}&type=addon`)
+      const tenantSlug = tx.subscription?.tenant?.slug || session?.user?.tenants?.[0]?.slug || session?.user?.tenants?.[0]?.id || "workspace"
+      router.push(`/dashboard/${tenantSlug}/subscriptions?tab=ai-plans`)
     } else {
       toast({
         variant: "destructive",
@@ -230,10 +231,6 @@ export default function BillingClient({
     }
   }
 
-  const handleBuyAiCredits = (packId: string) => {
-    router.push(`/dashboard/billing/checkout?plan=${packId}&type=ai_credits`)
-  }
-
   const handleSaveInfra = async () => {
     setSavingInfra(true)
     try {
@@ -267,11 +264,14 @@ export default function BillingClient({
     <div className="space-y-6 max-w-7xl mx-auto">
       <div>
         <h2 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">Billing & Quota Akun</h2>
-        <p className="text-xs text-muted-foreground mt-1">Kelola kapasitas workspace dan kuota AI Frontend builder.</p>
+        <p className="text-xs text-muted-foreground mt-1">Kelola kapasitas total akun dan langganan workspace.</p>
       </div>
 
       <Tabs defaultValue="plans" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px] p-1 bg-muted/40 border border-border/80 rounded-2xl h-auto gap-1">
+        <TabsList className={cn(
+          "grid w-full p-1 bg-muted/40 border border-border/80 rounded-2xl h-auto gap-1",
+          isEnterpriseMode ? "grid-cols-2 max-w-[400px]" : "grid-cols-2 max-w-[400px]"
+        )}>
           <TabsTrigger value="plans" className="rounded-xl font-bold text-xs py-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs text-muted-foreground hover:text-foreground">
             Subscription Plans
           </TabsTrigger>
@@ -328,7 +328,7 @@ export default function BillingClient({
                 <div className="flex items-center justify-between">
                   <div>
                     <CardTitle className="text-sm font-bold">Saldo AI Frontend Credits</CardTitle>
-                    <CardDescription className="text-xs">Kuota pembuatan schema, UI builder & iterasi frontend</CardDescription>
+                    <CardDescription className="text-xs">Dikelola melalui Workspace Subscriptions</CardDescription>
                   </div>
                   <div className="w-8 h-8 rounded-xl bg-amber-500/10 flex items-center justify-center text-amber-500">
                     <Zap className="h-4 w-4 fill-amber-500" />
@@ -336,11 +336,20 @@ export default function BillingClient({
                 </div>
               </CardHeader>
               <CardContent className="p-5 pt-1">
-                <div className="flex items-baseline gap-1.5 mt-1">
-                  <h3 className="text-2xl lg:text-3xl font-black text-foreground">{aiUsage ? aiUsage.remaining.toLocaleString() : "50"}</h3>
-                  <span className="text-xs text-muted-foreground font-semibold">
-                    / {aiUsage?.isUnlimited ? 'Unlimited' : (aiUsage ? `${aiUsage.total.toLocaleString()} Credits` : '50 Credits')}
-                  </span>
+                <div className="flex items-baseline justify-between gap-1.5 mt-1">
+                  <div className="flex items-baseline gap-1.5">
+                    <h3 className="text-2xl lg:text-3xl font-black text-foreground">{aiUsage ? aiUsage.remaining.toLocaleString() : "50"}</h3>
+                    <span className="text-xs text-muted-foreground font-semibold">
+                      / {aiUsage?.isUnlimited ? 'Unlimited' : (aiUsage ? `${aiUsage.total.toLocaleString()} Credits` : '50 Credits')}
+                    </span>
+                  </div>
+                  {session?.user?.tenants?.[0] && (
+                    <Button asChild size="sm" variant="ghost" className="h-7 text-[11px] font-bold text-amber-600 dark:text-amber-400 hover:text-amber-500 px-2 rounded-lg border border-amber-500/30 bg-amber-500/10 hover:bg-amber-500/20">
+                      <Link href={`/dashboard/${session.user.tenants[0].slug || session.user.tenants[0].id}/subscriptions?tab=ai-plans`}>
+                        Beli di Workspace &rarr;
+                      </Link>
+                    </Button>
+                  )}
                 </div>
                 <div className="mt-3 w-full bg-muted h-2 rounded-full overflow-hidden">
                   {aiUsage && !aiUsage.isUnlimited ? (
@@ -451,92 +460,6 @@ export default function BillingClient({
               </div>
             </section>
           )}
-
-          {/* ── 2. AI PLAN CREDIT PACKS (DIBAWAH AKUN PLAN) ── */}
-          <section className="space-y-3 pt-2 border-t border-border/80">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-amber-500" />
-                  <h3 className="text-base font-bold tracking-tight text-foreground">AI Plan (Frontend Builder Credits)</h3>
-                </div>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Credit AI sekali pakai, tidak pernah kedaluwarsa, untuk semua workspace.
-                </p>
-              </div>
-              <div className="flex items-center gap-2 text-xs bg-amber-500/10 border border-amber-500/20 px-3 py-1.5 rounded-full text-amber-600 dark:text-amber-400 shrink-0 font-medium">
-                <Zap className="h-3.5 w-3.5 fill-amber-500" />
-                <span>Saldo Anda: <strong>{aiUsage ? aiUsage.remaining.toLocaleString() : "50"} Credits</strong></span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {aiCreditPacks.map((pack) => {
-                return (
-                  <Card 
-                    key={pack.id} 
-                    className={cn(
-                      "flex flex-col relative rounded-2xl transition-all duration-200 border bg-card shadow-xs hover:shadow-md", 
-                      pack.badge 
-                        ? "border-amber-500/40 ring-1 ring-amber-500/20" 
-                        : "border-border hover:border-amber-500/40"
-                    )}
-                  >
-                    {pack.badge && (
-                      <div className="absolute top-3.5 right-3.5 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
-                        {pack.badge}
-                      </div>
-                    )}
-                    <CardHeader className="p-4 pb-2 space-y-2">
-                      <div className="flex items-center gap-1.5 text-amber-500">
-                        <Zap className="h-3.5 w-3.5 fill-amber-500" />
-                        <span className="text-xs font-bold uppercase tracking-wider">{pack.name}</span>
-                      </div>
-                      <div>
-                        <div className="flex items-baseline gap-1">
-                          <span className="text-2xl font-black text-foreground">Rp {pack.price_idr.toLocaleString('id-ID')}</span>
-                        </div>
-                        <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
-                          ${pack.price_usd} USD • Sekali Beli
-                        </p>
-                      </div>
-                      <div className="pt-1">
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px] font-bold rounded-lg px-2 py-0.5">
-                          +{pack.credits.toLocaleString()} AI Credits
-                        </Badge>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="p-4 pt-1 flex flex-col justify-between flex-1 space-y-4">
-                      <div className="space-y-1.5 pt-2 border-t border-border/60">
-                        {pack.features?.map((f: string, i: number) => (
-                          <div key={i} className="flex items-start text-xs text-foreground/80 leading-snug">
-                            <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" /> 
-                            <span>{f}</span>
-                          </div>
-                        ))}
-                      </div>
-                      <Button 
-                        onClick={() => handleBuyAiCredits(pack.id)}
-                        className="w-full h-9 font-bold rounded-xl text-xs bg-amber-500 hover:bg-amber-600 text-black shadow-xs transition-all"
-                      >
-                        <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                        Top Up {pack.name.split(" ")[0]}
-                      </Button>
-                    </CardContent>
-                  </Card>
-                )
-              })}
-            </div>
-
-            <div className="p-3.5 bg-muted/40 border border-border/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs text-muted-foreground">
-              <div>
-                <strong className="text-foreground">Biaya AI:</strong> 25 Cr / Full Next.js Frontend Gen • 5 Cr / Chat Iterasi • 5 Cr / Schema Auto-Gen
-              </div>
-              <div className="text-muted-foreground text-[11px]">
-                *Credit tidak memiliki masa kedaluwarsa dan dapat digunakan kapan saja.
-              </div>
-            </div>
-          </section>
 
           {/* ── 3. ENTERPRISE LICENSE ── */}
           <div className="mt-6">

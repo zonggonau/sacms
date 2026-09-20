@@ -29,11 +29,68 @@ export const POST = withStaffAuth(
     const creditCheck = await enforceUserAiCredits(session.user.id, 5)
     if (!creditCheck.allowed) return apiError("rate_limited", { message: creditCheck.message })
 
+    let messageToSend = message
+    const isApiOrDataQuery = /api|live|real|data|schema|skema|database|konten|koleksi|endpoint|hubungkan|tampil/i.test(message)
+
+    if (isApiOrDataQuery) {
+      try {
+        const { McpClientBridge } = await import("@/lib/mcp/mcp-client-bridge")
+        const { getTenantDb } = await import("@/lib/database")
+        const bridge = new McpClientBridge(access.tenant.id, access.tenant.slug, session.user.id)
+        const activeSchema = await bridge.getFullSchema()
+        const tenantDb = await getTenantDb(access.tenant.id)
+
+        const sampleCollections: Record<string, any[]> = {}
+        for (const ct of activeSchema.contentTypes || []) {
+          const entries = await tenantDb.contentEntry.findMany({
+            where: { tenantId: access.tenant.id, contentType: { slug: ct.slug } },
+            take: 10,
+            orderBy: { createdAt: "desc" },
+          })
+          sampleCollections[ct.slug] = entries.map((e) => ({ id: e.id, ...(e.data as any) }))
+        }
+
+        const sampleSingleTypes: Record<string, any> = {}
+        for (const st of activeSchema.singleTypes || []) {
+          const assignment = await tenantDb.tenantSingleTypeAssignment.findFirst({
+            where: { tenantId: access.tenant.id, singleType: { slug: st.slug } },
+          })
+          if (assignment?.data) {
+            sampleSingleTypes[st.slug] = assignment.data
+          }
+        }
+
+        const apiBaseUrl = (
+          process.env.NEXT_PUBLIC_APP_URL ||
+          process.env.NEXTAUTH_URL ||
+          "http://localhost:3000"
+        ).replace(/\/$/, "")
+
+        messageToSend = `${message}
+
+SaCMS LIVE SCHEMA & REAL DATA CONTEXT:
+API Base URL: ${apiBaseUrl}/api/public/${access.tenant.slug}
+Available Endpoints:
+${(activeSchema.contentTypes || []).map((ct: any) => `- Collection "${ct.name}": GET /api/public/${access.tenant.slug}/content/${ct.slug}`).join("\n")}
+${(activeSchema.singleTypes || []).map((st: any) => `- Single Type "${st.name}": GET /api/public/${access.tenant.slug}/single/${st.slug}`).join("\n")}
+
+REAL DATA FROM DATABASE:
+${JSON.stringify({ collections: sampleCollections, singleTypes: sampleSingleTypes }, null, 2)}
+
+CRITICAL LIVE DATA INSTRUCTIONS:
+1. In "lib/sacms.ts", always include the REAL DATA FROM DATABASE above as rich default fallback data if cmsFetch fails (e.g. during preview sandbox when localhost is not reachable from Vercel cloud). NEVER return null, empty arrays [], or empty strings '' on failure.
+2. In the Next.js page and components, render all fields directly (hero_title, hero_subtitle, cover_image, price, etc.) so that all sections are populated with full, vivid content immediately.
+3. For image URLs, use the real cover_image from the data above.`
+      } catch (err: any) {
+        console.warn("[v0/messages/stream] Failed to enrich message with schema context:", err?.message)
+      }
+    }
+
     let stream: Awaited<ReturnType<typeof v0.messages.sendStream>>
     try {
       stream = await v0.messages.sendStream({
         chatId,
-        message,
+        message: messageToSend,
         modelConfiguration: { modelId: modelId as any, imageGenerations: false },
       })
     } catch (err: any) {

@@ -28,7 +28,7 @@ import type { DomainBlueprint } from "@/lib/ai/domain-knowledge-types"
 import { SandpackPreview } from "@/components/ai-builder/sandpack-preview"
 import { SchemaStep } from "./schema-step"
 import { useChat } from "@ai-sdk/react"
-import { V0Transport, type V0UIMessage } from "@v0-sdk/react"
+import { V0Transport, toV0UIMessages, type V0UIMessage } from "@v0-sdk/react"
 
 interface WebsiteBuilderClientProps {
   tenantId: string
@@ -54,6 +54,7 @@ interface WebsiteBuilderClientProps {
     model?: string
     /** The last-generated site's real files, if any were persisted to SiteFile. */
     files?: { name: string; content: string }[] | null
+    messages?: V0UIMessage[] | any[] | null
   } | null
 }
 
@@ -416,6 +417,7 @@ export async function fetchContent(collection: string) {
   }
 
   const v0Chat = useChat<V0UIMessage>({
+    messages: (initialProject?.messages as any) || undefined,
     transport: v0Transport,
     onFinish: ({ message, messages, isAbort, isError }) => {
       const chatId = v0Transport.chatId
@@ -434,6 +436,21 @@ export async function fetchContent(collection: string) {
       toast({ variant: "destructive", title: "Gagal Membangun Website", description: error.message || "AI Engine gagal merespons." })
     },
   })
+
+  // If initial messages were not preloaded or empty, fetch existing chat history from API
+  useEffect(() => {
+    if (!v0ChatId || isClaudeBuild || v0Chat.messages.length > 0) return
+    fetch(`/api/tenant/${tenantSlug}/ai-builder/v0/chats/${v0ChatId}/messages`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (Array.isArray(data?.messages) && data.messages.length > 0) {
+          v0Chat.setMessages(toV0UIMessages(data.messages))
+        }
+      })
+      .catch((err) => {
+        console.warn("[v0Chat] Could not load client messages:", err?.message)
+      })
+  }, [v0ChatId, isClaudeBuild, tenantSlug, v0Chat])
 
   // Loading indicator for the v0 path — mirrors the old handler's setLoading(true)/false.
   useEffect(() => {
@@ -457,13 +474,52 @@ export async function fetchContent(collection: string) {
   // {role, content} log, or the real v0 SDK message parts flattened to text.
   const displayMessages: Array<{ role: "user" | "ai"; content: string }> = isClaudeSelected
     ? legacyMessages
-    : v0Chat.messages.map((m) => ({
-        role: m.role === "user" ? "user" : "ai",
-        content: m.parts
-          .filter((p) => p.type === "text" || p.type === "reasoning")
-          .map((p: any) => p.text || "")
-          .join(""),
-      }))
+    : v0Chat.messages.map((m) => {
+        let content = ""
+        if (m.role === "user") {
+          content = m.parts
+            .filter((p) => p.type === "text")
+            .map((p: any) => p.text || "")
+            .join("")
+
+          // If it's the initial user prompt wrapped with SaCMS MCP system instructions,
+          // extract just the actual user prompt cleanly:
+          if (content.startsWith("User Request: ")) {
+            const match = content.match(/^User Request:\s*(.*?)(?:\n\nSaCMS HEADLESS CMS|\n\nEXISTING|\n\nCRITICAL|$)/s)
+            if (match && match[1]) {
+              content = match[1].trim()
+            }
+          }
+        } else {
+          // Assistant message: prioritize clean final text response
+          const textParts = m.parts
+            .filter((p) => p.type === "text")
+            .map((p: any) => p.text || "")
+            .join("")
+          
+          if (textParts.trim()) {
+            content = textParts.trim()
+          } else {
+            // Fallback to reasoning / thinking if text is not yet generated
+            content = m.parts
+              .filter((p) => p.type === "reasoning" || p.type === "thinking")
+              .map((p: any) => p.text || "")
+              .join("")
+          }
+        }
+
+        return {
+          role: m.role === "user" ? "user" : "ai",
+          content,
+        }
+      }).filter((m) => m.content.trim().length > 0)
+
+  const chatMessagesEndRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll chat history to latest message when messages or loading state change
+  useEffect(() => {
+    chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+  }, [displayMessages, loading, loadingStep])
 
   // Deploy to Vercel state
   const [isDeploying, setIsDeploying] = useState(false)
@@ -1153,10 +1209,10 @@ export async function fetchContent(collection: string) {
   }
 
   return (
-    <div className="flex flex-col h-full gap-6 w-full max-w-7xl mx-auto">
+    <div className="flex flex-col h-full min-h-0 gap-4 w-full max-w-7xl mx-auto">
       
       {/* ── Page Header ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 pb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0 pb-1">
         <div>
           <div className="flex items-center gap-2.5">
             <div className="w-8 h-8 rounded-xl bg-primary/10 flex items-center justify-center text-primary border border-primary/20">
@@ -1232,10 +1288,10 @@ export async function fetchContent(collection: string) {
         </div>
       ) : v0ChatId ? (
         /* ── v0.dev Dual-Pane Interactive Studio ── */
-        <div className={`flex flex-col flex-1 border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs transition-all ${
+        <div className={`flex flex-col flex-1 min-h-0 border border-border/80 rounded-2xl overflow-hidden bg-background shadow-xs transition-all ${
           isFullscreen
             ? "fixed inset-0 z-50 w-screen h-screen rounded-none border-0 p-3 bg-background"
-            : "min-h-[750px]"
+            : "h-full min-h-[500px]"
         }`}>
           {/* Studio Top Bar — v0.app style: project switcher left, Preview/Code tabs center, Publish right */}
           <div className="h-12 border-b border-border/60 flex items-center justify-between px-3 bg-card shrink-0">
@@ -1395,10 +1451,10 @@ export async function fetchContent(collection: string) {
           <div className="flex flex-1 min-h-0 overflow-hidden">
 
             {/* ── LEFT PANE: v0.app-style understated commentary log + composer ── */}
-            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col min-h-0 bg-card shrink-0">
+            <div className="w-80 lg:w-[340px] border-r border-border/60 flex flex-col min-h-0 h-full bg-card shrink-0 overflow-hidden">
 
               {/* Agentic Reasoning — collapsed pill row, matches the small "step" rows in v0.app's log */}
-              <div className="border-b border-border/60 px-3 py-2">
+              <div className="border-b border-border/60 px-3 py-2 shrink-0">
                 <button
                   onClick={() => setIsReasoningOpen(!isReasoningOpen)}
                   className="flex items-center gap-1.5 w-full text-left text-[11px] text-muted-foreground hover:text-foreground transition-colors cursor-pointer"
@@ -1430,79 +1486,84 @@ export async function fetchContent(collection: string) {
                 )}
               </div>
 
-              {/* Commentary Log — plain left-aligned paragraphs, not chat bubbles */}
-              <ScrollArea className="flex-1">
-                <div className="px-3.5 py-3 space-y-3.5">
-                  {!isClaudeSelected && displayMessages.length === 0 && (
-                    <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                      {v0ChatId
-                        ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
-                        : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."}
-                    </p>
-                  )}
-                  {displayMessages.map((msg, i) => (
-                    <div key={i} className="space-y-1">
-                      {msg.role === 'user' ? (
-                        <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wide">Anda</div>
-                      ) : null}
-                      <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
-                        {msg.content}
+              {/* Commentary Log / Chat History — scrollable while keeping composer fixed */}
+              <div className="flex-1 min-h-0 overflow-y-auto px-3.5 py-3 space-y-3.5 overscroll-contain">
+                {!isClaudeSelected && displayMessages.length === 0 && (
+                  <p className="text-[13px] leading-relaxed text-foreground/80 whitespace-pre-wrap">
+                    {v0ChatId
+                      ? "Selamat datang kembali di SaCMS AI Studio. Website Anda siap diuji pada Live Sandbox di sebelah kanan. Tuliskan revisi atau instruksi tambahan kapan saja!"
+                      : "Halo! Saya adalah SaCMS AI Assistant. Ketik kebutuhan website Anda di bawah, dan saya akan otomatis merancang skema database, mock content, serta mengompilasi frontend Next.js App Router."}
+                  </p>
+                )}
+                {displayMessages.map((msg, i) => (
+                  <div key={i} className="space-y-1">
+                    {msg.role === 'user' ? (
+                      <div className="text-[11px] font-semibold text-foreground/70 uppercase tracking-wide">Anda</div>
+                    ) : (
+                      <div className="text-[11px] font-semibold text-primary uppercase tracking-wide flex items-center gap-1.5">
+                        <Sparkles className="h-3 w-3" />
+                        SaCMS AI
+                      </div>
+                    )}
+                    <div className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap break-words">
+                      {msg.content}
+                    </div>
+                  </div>
+                ))}
+                {loading && (
+                  <div className="flex items-center gap-2 text-[13px] text-muted-foreground py-1">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0 text-primary" />
+                    <span>{loadingStep || "Menyesuaikan kode frontend..."}</span>
+                  </div>
+                )}
+
+                {/* Version history — small step rows, v0.app style */}
+                {versionHistory.length > 0 && (
+                  <div className="space-y-1 pt-1">
+                    {versionHistory.map((ver) => (
+                      <button
+                        key={ver.version}
+                        onClick={() => {
+                          setActiveVersionNumber(ver.version)
+                          if (ver.previewUrl) setPreviewUrl(ver.previewUrl)
+                        }}
+                        className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer ${
+                          activeVersionNumber === ver.version
+                            ? "bg-muted text-foreground font-medium"
+                            : "text-muted-foreground hover:bg-muted/60"
+                        }`}
+                      >
+                        <History className="h-3 w-3 shrink-0" />
+                        <span className="truncate flex-1">v{ver.version} — {ver.prompt.substring(0, 40)}{ver.prompt.length > 40 ? "…" : ""}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                {/* Out of Credit card — v0.app style */}
+                {!isUnlimited && creditsRemaining <= 0 && (
+                  <div className="rounded-xl border border-border bg-muted/40 p-3.5 space-y-2.5">
+                    <div className="space-y-1">
+                      <h4 className="text-[13px] font-bold text-foreground">Out of Credit</h4>
+                      <p className="text-[11px] text-muted-foreground leading-relaxed">
+                        Saldo AI Anda habis. Tambahkan credit untuk melanjutkan.
                       </p>
                     </div>
-                  ))}
-                  {loading && (
-                    <div className="flex items-center gap-2 text-[13px] text-muted-foreground">
-                      <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                      <span>{loadingStep || "Menyesuaikan kode frontend..."}</span>
-                    </div>
-                  )}
+                    <Button
+                      size="sm"
+                      onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
+                      className="w-full h-8 text-xs font-semibold rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
+                    >
+                      Buy Credit
+                    </Button>
+                  </div>
+                )}
 
-                  {/* Version history — small step rows, v0.app style */}
-                  {versionHistory.length > 0 && (
-                    <div className="space-y-1 pt-1">
-                      {versionHistory.map((ver) => (
-                        <button
-                          key={ver.version}
-                          onClick={() => {
-                            setActiveVersionNumber(ver.version)
-                            if (ver.previewUrl) setPreviewUrl(ver.previewUrl)
-                          }}
-                          className={`flex items-center gap-2 w-full text-left px-2 py-1.5 rounded-lg text-[11px] transition-all cursor-pointer ${
-                            activeVersionNumber === ver.version
-                              ? "bg-muted text-foreground font-medium"
-                              : "text-muted-foreground hover:bg-muted/60"
-                          }`}
-                        >
-                          <History className="h-3 w-3 shrink-0" />
-                          <span className="truncate flex-1">v{ver.version} — {ver.prompt.substring(0, 40)}{ver.prompt.length > 40 ? "…" : ""}</span>
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                <div ref={chatMessagesEndRef} className="h-px" />
+              </div>
 
-                  {/* Out of Credit card — v0.app style */}
-                  {!isUnlimited && creditsRemaining <= 0 && (
-                    <div className="rounded-xl border border-border bg-muted/40 p-3.5 space-y-2.5">
-                      <div className="space-y-1">
-                        <h4 className="text-[13px] font-bold text-foreground">Out of Credit</h4>
-                        <p className="text-[11px] text-muted-foreground leading-relaxed">
-                          Saldo AI Anda habis. Tambahkan credit untuk melanjutkan.
-                        </p>
-                      </div>
-                      <Button
-                        size="sm"
-                        onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)}
-                        className="w-full h-8 text-xs font-semibold rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
-                      >
-                        Buy Credit
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </ScrollArea>
-
-              {/* Quick Iteration Chips */}
-              <div className="p-2 border-t border-border/60 overflow-x-auto">
+              {/* Quick Iteration Chips — fixed above composer */}
+              <div className="p-2 border-t border-border/60 shrink-0 overflow-x-auto bg-card">
                 <div className="flex items-center gap-1.5 text-[11px] whitespace-nowrap">
                   {QUICK_ITERATION_SUGGESTIONS.map((item, idx) => (
                     <button
@@ -1517,9 +1578,9 @@ export async function fetchContent(collection: string) {
                 </div>
               </div>
 
-              {/* Follow-up Composer — v0.app style rounded bordered box */}
-              <div className="p-3 border-t border-border/60 shrink-0 space-y-1.5">
-                <div className="rounded-xl border border-border/80 overflow-hidden">
+              {/* Follow-up Composer — fixed at bottom */}
+              <div className="p-3 border-t border-border/60 shrink-0 space-y-1.5 bg-card">
+                <div className="rounded-xl border border-border/80 overflow-hidden bg-background">
                   <Textarea
                     placeholder={creditsRemaining <= 0 && !isUnlimited ? "Saldo AI habis. Silakan top up..." : "Ask a follow-up…"}
                     value={iterationPrompt}
@@ -1531,7 +1592,7 @@ export async function fetchContent(collection: string) {
                       }
                     }}
                     disabled={loading || (creditsRemaining <= 0 && !isUnlimited)}
-                    className="min-h-[52px] max-h-[200px] resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent px-3 pt-2.5 pb-1 text-xs"
+                    className="min-h-[52px] max-h-[140px] resize-none border-0 focus-visible:ring-0 shadow-none bg-transparent px-3 pt-2.5 pb-1 text-xs"
                   />
                   <div className="flex items-center justify-between px-2 pb-1.5">
                     <div className="flex items-center gap-1">
@@ -1546,7 +1607,7 @@ export async function fetchContent(collection: string) {
                     </div>
                     <Button
                       size="icon"
-                      className="h-7 w-7 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90"
+                      className="h-7 w-7 shrink-0 rounded-full bg-foreground text-background hover:bg-foreground/90 cursor-pointer"
                       onClick={() => handleIterate()}
                       disabled={loading || !iterationPrompt.trim() || (creditsRemaining <= 0 && !isUnlimited)}
                     >

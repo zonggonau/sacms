@@ -6,5 +6,5 @@ export default async function ContentTypesRedirectPage({
   params: Promise<{ tenant: string }>
 }) {
   const resolvedParams = await params
-  redirect(`/dashboard/${resolvedParams.tenant}/content-type-builder/content-types`)
+  redirect(`/dashboard/${resolvedParams.tenant}/developer/aibuilder`)
 }

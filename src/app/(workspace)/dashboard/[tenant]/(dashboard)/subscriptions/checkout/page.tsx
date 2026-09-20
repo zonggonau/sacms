@@ -46,6 +46,7 @@ export default function CheckoutPage() {
   const [loading, setLoading] = useState(false)
   const [initializing, setInitializing] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
+  const [loadingPlan, setLoadingPlan] = useState(true)
   const [snapToken, setSnapToken] = useState<string | null>(null)
   const [liveTenants, setLiveTenants] = useState<any[]>([])
   const [globalTenantId, setGlobalTenantId] = useState<string | null>(null)
@@ -96,7 +97,11 @@ export default function CheckoutPage() {
 
   useEffect(() => {
     async function fetchData() {
-      if (!tenantSlug || !planId) return
+      if (!tenantSlug || !planId) {
+        setLoadingPlan(false)
+        return
+      }
+      setLoadingPlan(true)
       try {
         const [plansRes, prorateRes, usageRes, globalId] = await Promise.all([
           fetch(`/api/tenant/${tenantSlug}/subscriptions/plans`),
@@ -153,6 +158,8 @@ export default function CheckoutPage() {
         setGlobalTenantId(globalId)
       } catch (error) {
         console.error("Failed to fetch checkout data", error)
+      } finally {
+        setLoadingPlan(false)
       }
     }
     fetchData()
@@ -210,6 +217,8 @@ export default function CheckoutPage() {
       return
     }
     
+    const isAiPack = plan.id?.startsWith("ai_pack_") || plan.type === "ai_plan"
+
     setLoading(true)
     try {
       const res = await fetch("/api/billing/checkout", {
@@ -217,9 +226,9 @@ export default function CheckoutPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           planId: plan.id,
-          tenantId: isAccount ? null : (currentTenant?.id || tenantSlug),
+          tenantId: (isAccount || isAiPack) ? null : (currentTenant?.id || tenantSlug),
           interval: interval,
-          type: isAccount ? "account" : "workspace",
+          type: isAiPack ? "ai_credits" : (isAccount ? "account" : "workspace"),
           ...(renewsAddonId ? { renewsAddonId } : {}),
         }),
       })
@@ -239,13 +248,16 @@ export default function CheckoutPage() {
             snap.pay(data.token, {
               onSuccess: (result: any) => {
                 setLoading(false)
-                toast({ title: "Pembayaran Berhasil!", description: "Paket workspace Anda telah diperbarui." })
-                router.push(`/dashboard/${tenantSlug}/subscriptions`)
+                toast({ 
+                  title: "Pembayaran Berhasil!", 
+                  description: isAiPack ? "Top-up AI Credits berhasil ditambahkan ke akun Anda!" : "Paket workspace Anda telah diperbarui." 
+                })
+                router.push(`/dashboard/${tenantSlug}/subscriptions${isAiPack ? '?tab=ai-plans' : ''}`)
               },
               onPending: (result: any) => {
                 setLoading(false)
                 toast({ title: "Menunggu Pembayaran", description: "Silakan selesaikan pembayaran Anda." })
-                router.push(`/dashboard/${tenantSlug}/subscriptions`)
+                router.push(`/dashboard/${tenantSlug}/subscriptions${isAiPack ? '?tab=ai-plans' : ''}`)
               },
               onError: (error: any) => {
                 setLoading(false)
@@ -292,7 +304,7 @@ export default function CheckoutPage() {
   }
 
   // ─── SHIMMER FEED LOADING STATE ───
-  if (initializing || loadingTenants) {
+  if (initializing || loadingTenants || loadingPlan) {
     return (
       <div className="flex flex-1 flex-col w-full">
         <div className="flex-1 bg-background text-foreground flex flex-col w-full">
@@ -356,7 +368,10 @@ export default function CheckoutPage() {
     )
   }
 
-  const basePrice = interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10) : plan.price
+  const isAiPack = plan.id?.startsWith("ai_pack_") || plan.type === "ai_plan"
+  const basePrice = isAiPack || plan.isTopup 
+    ? plan.price 
+    : interval === 'year' ? (plan.yearlyPrice !== undefined ? plan.yearlyPrice : plan.price * 10) : plan.price
   const credit = proration?.credit || 0
   const subtotal = Math.max(0, basePrice - credit)
   const tax = Math.round(subtotal * 0.11)
@@ -374,43 +389,53 @@ export default function CheckoutPage() {
               <Button 
                 variant="outline" 
                 size="icon" 
-                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions`)} 
+                onClick={() => router.push(`/dashboard/${tenantSlug}/subscriptions${isAiPack ? '?tab=ai-plans' : ''}`)} 
                 className="rounded-xl h-9 w-9 border-border/80"
               >
                 <ArrowLeft className="h-4 w-4" />
               </Button>
               <div>
-                <h1 className="text-2xl font-black tracking-tight text-foreground">Checkout Langganan</h1>
-                <p className="text-xs text-muted-foreground mt-0.5">Tinjau rincian paket dan selesaikan pembayaran.</p>
+                <h1 className="text-2xl font-black tracking-tight text-foreground">
+                  {isAiPack ? "Top Up AI Credits" : "Checkout Langganan"}
+                </h1>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {isAiPack ? "Tinjau paket AI Credits dan selesaikan pembayaran." : "Tinjau rincian paket dan selesaikan pembayaran."}
+                </p>
               </div>
             </div>
 
             {/* Interval Toggle Switcher */}
-            <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60">
-              <button
-                onClick={() => setInterval('month')}
-                className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  interval === 'month'
-                    ? "bg-background text-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                Bulanan
-              </button>
-              <button
-                onClick={() => setInterval('year')}
-                className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
-                  interval === 'year'
-                    ? "bg-primary text-primary-foreground shadow-xs"
-                    : "text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                <span>Tahunan</span>
-                <span className="text-[9px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-extrabold uppercase">
-                  Hemat 17%
-                </span>
-              </button>
-            </div>
+            {!isAiPack && !plan.isTopup ? (
+              <div className="flex items-center bg-muted/60 p-1 rounded-xl border border-border/60">
+                <button
+                  onClick={() => setInterval('month')}
+                  className={`px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                    interval === 'month'
+                      ? "bg-background text-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  Bulanan
+                </button>
+                <button
+                  onClick={() => setInterval('year')}
+                  className={`flex items-center gap-1.5 px-3 py-1 text-xs font-bold rounded-lg transition-all ${
+                    interval === 'year'
+                      ? "bg-primary text-primary-foreground shadow-xs"
+                      : "text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <span>Tahunan</span>
+                  <span className="text-[9px] bg-emerald-500 text-white px-1.5 py-0.2 rounded-full font-extrabold uppercase">
+                    Hemat 17%
+                  </span>
+                </button>
+              </div>
+            ) : (
+              <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-xs font-bold px-3 py-1 rounded-xl">
+                Sistem Top-Up (Sekali Beli • Saldo Tidak Hangus)
+              </Badge>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -440,14 +465,36 @@ export default function CheckoutPage() {
                 return null
               })()}
 
+              {/* Explainer Box for AI Pack: Sekali Beli & Top-Up jika habis */}
+              {isAiPack && (
+                <div className="p-4 bg-amber-500/10 border border-amber-500/30 rounded-2xl flex items-start gap-3 text-xs text-foreground">
+                  <div className="w-7 h-7 rounded-lg bg-amber-500/20 border border-amber-500/30 flex items-center justify-center shrink-0 text-amber-600 dark:text-amber-400 mt-0.5">
+                    <Zap className="h-4 w-4 fill-amber-500" />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="font-bold text-foreground">Ketentuan Saldo AI Credits (Sistem Top-Up):</p>
+                    <ul className="list-disc list-inside space-y-1 text-[11px] text-muted-foreground leading-relaxed">
+                      <li><strong className="text-foreground">Sekali Bayar:</strong> Bukan langganan bulanan/tahunan otomatis. Anda tidak akan dikenakan tagihan berulang.</li>
+                      <li><strong className="text-foreground">Saldo Tidak Hangus:</strong> Kredit tersimpan di akun Anda dan tidak akan hangus di akhir bulan (tanpa tanggal kedaluwarsa).</li>
+                      <li><strong className="text-foreground">Top-up Saat Habis:</strong> Setiap generate/revisi website memotong saldo kredit. Jika saldo kredit habis, Anda cukup melakukan top-up kembali sesuai kebutuhan.</li>
+                    </ul>
+                  </div>
+                </div>
+              )}
+
               <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
                 <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-row items-center justify-between">
                   <CardTitle className="text-sm font-bold text-foreground flex items-center gap-2">
                     <Zap className="h-4 w-4 text-primary" />
                     Rincian Pesanan
                   </CardTitle>
-                  <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full bg-primary/10 text-primary border-primary/20">
-                    Billing {interval === 'year' ? 'Tahunan' : 'Bulanan'}
+                  <Badge variant="outline" className={cn(
+                    "text-[10px] font-bold uppercase rounded-full",
+                    isAiPack 
+                      ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30"
+                      : "bg-primary/10 text-primary border-primary/20"
+                  )}>
+                    {isAiPack ? "Top-up AI Credits" : `Billing ${interval === 'year' ? 'Tahunan' : 'Bulanan'}`}
                   </Badge>
                 </CardHeader>
 
@@ -459,13 +506,21 @@ export default function CheckoutPage() {
                       </div>
                       <div>
                         <p className="font-bold text-base text-foreground">{plan.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{interval === 'year' ? 'Periode Tagihan Tahunan (12 Bulan)' : 'Periode Tagihan Bulanan'}</p>
+                        <p className="text-[11px] text-muted-foreground">
+                          {isAiPack 
+                            ? `Top-up Saldo ${plan.credits ? plan.credits.toLocaleString() + ' ' : ''}AI Credits • Sekali Bayar (Top-up Jika Habis)`
+                            : (interval === 'year' ? 'Periode Tagihan Tahunan (12 Bulan)' : 'Periode Tagihan Bulanan')
+                          }
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xl font-black text-foreground">{formatPrice(basePrice)}</p>
-                      {interval === 'year' && (
+                      {!isAiPack && interval === 'year' && (
                         <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Termasuk 2 Bulan Gratis</p>
+                      )}
+                      {isAiPack && (
+                        <p className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">Kredit Tidak Hangus • Top-up Jika Habis</p>
                       )}
                     </div>
                   </div>
@@ -506,7 +561,7 @@ export default function CheckoutPage() {
 
                   <div className="space-y-2.5 text-xs">
                     <div className="flex justify-between font-medium text-muted-foreground">
-                      <span>Harga Paket ({interval === 'year' ? '12 Bulan' : '1 Bulan'})</span>
+                      <span>{isAiPack ? 'Harga Paket Top Up' : `Harga Paket (${interval === 'year' ? '12 Bulan' : '1 Bulan'})`}</span>
                       <span className="text-foreground font-bold">{formatPrice(basePrice)}</span>
                     </div>
                     

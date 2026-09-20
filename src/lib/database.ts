@@ -110,19 +110,67 @@ const TENANT_CONNECTION_LIMIT = (() => {
   return Number.isFinite(raw) && raw > 0 ? Math.floor(raw) : 3
 })()
 
-/** Add/override `connection_limit` on a Postgres URL without clobbering other params. */
+/**
+ * Track hosts that failed to connect, so subsequent requests don't block
+ * on long connection timeouts and immediately fallback to shared master DB.
+ */
+const unreachableHosts = new Map<string, number>()
+
+function isHostKnownUnreachable(rawDbUrl: string): boolean {
+  try {
+    const u = new URL(rawDbUrl)
+    const expiry = unreachableHosts.get(u.host)
+    if (expiry && Date.now() < expiry) {
+      return true
+    }
+  } catch {}
+  return false
+}
+
+function markHostUnreachable(rawDbUrl: string, ttlMs = 60_000): void {
+  try {
+    const u = new URL(rawDbUrl)
+    unreachableHosts.set(u.host, Date.now() + ttlMs)
+  } catch {}
+}
+
+function isConnectionError(error: any): boolean {
+  if (!error) return false
+  const msg = String(error.message || '')
+  const name = String(error.name || '')
+  const code = String(error.code || '')
+  return (
+    name === 'PrismaClientInitializationError' ||
+    code === 'P1001' || // Can't reach database server
+    code === 'P1002' || // The database server timed out
+    code === 'P1003' || // Database does not exist
+    msg.includes("Can't reach database server") ||
+    msg.includes('ETIMEDOUT') ||
+    msg.includes('ECONNREFUSED') ||
+    msg.includes('ENOTFOUND')
+  )
+}
+
+/** Add/override `connection_limit` and `connect_timeout` on a Postgres URL without clobbering other params. */
 function withConnectionLimit(dbUrl: string, limit: number): string {
   try {
     const u = new URL(dbUrl)
     if (!u.searchParams.has('connection_limit')) {
       u.searchParams.set('connection_limit', String(limit))
     }
+    if (!u.searchParams.has('connect_timeout')) {
+      u.searchParams.set('connect_timeout', '3')
+    }
     return u.toString()
   } catch {
     // Not a parseable URL (shouldn't happen) — fall back to naive append.
-    return dbUrl.includes('connection_limit')
+    let res = dbUrl.includes('connection_limit')
       ? dbUrl
       : `${dbUrl}${dbUrl.includes('?') ? '&' : '?'}connection_limit=${limit}`
+    if (!res.includes('connect_timeout')) {
+      res = `${res}${res.includes('?') ? '&' : '?'}connect_timeout=3`
+    }
+    return res
   }
 }
 
@@ -136,6 +184,94 @@ function evictLruTenantClients(): void {
     entry.client.$disconnect().catch(() => {})
     tenantClients.delete(url)
   }
+}
+
+/**
+ * Wraps dedicated PrismaClient in a Proxy that catches connection failures
+ * and automatically falls back to the shared master database (db).
+ */
+function createResilientTenantClient(rawDbUrl: string, slug: string, client: PrismaClient): PrismaClient {
+  return new Proxy(client, {
+    get(target, prop, receiver) {
+      const origProp = Reflect.get(target, prop, receiver)
+
+      // Direct functions on client ($queryRaw, $executeRaw, etc.)
+      if (typeof origProp === 'function') {
+        return (...args: any[]) => {
+          try {
+            const result = origProp.apply(target, args)
+            if (result && typeof result.then === 'function') {
+              return result.catch((err: any) => {
+                if (isConnectionError(err)) {
+                  markHostUnreachable(rawDbUrl)
+                  console.warn(`[Database] Dedicated DB connection failed for tenant ${slug}. Falling back to master DB: ${err.message}`)
+                  const fallbackFn = (db as any)[prop]
+                  if (typeof fallbackFn === 'function') {
+                    return fallbackFn.apply(db, args)
+                  }
+                }
+                throw err
+              })
+            }
+            return result
+          } catch (err: any) {
+            if (isConnectionError(err)) {
+              markHostUnreachable(rawDbUrl)
+              console.warn(`[Database] Dedicated DB connection failed for tenant ${slug}. Falling back to master DB: ${err.message}`)
+              const fallbackFn = (db as any)[prop]
+              if (typeof fallbackFn === 'function') {
+                return fallbackFn.apply(db, args)
+              }
+            }
+            throw err
+          }
+        }
+      }
+
+      // Model delegates (contentType, contentEntry, etc.)
+      if (origProp && typeof origProp === 'object') {
+        return new Proxy(origProp, {
+          get(modelTarget, modelProp, modelReceiver) {
+            const origModelProp = Reflect.get(modelTarget, modelProp, modelReceiver)
+            if (typeof origModelProp === 'function') {
+              return (...args: any[]) => {
+                try {
+                  const result = origModelProp.apply(modelTarget, args)
+                  if (result && typeof result.then === 'function') {
+                    return result.catch((err: any) => {
+                      if (isConnectionError(err)) {
+                        markHostUnreachable(rawDbUrl)
+                        console.warn(`[Database] Dedicated DB error on ${String(prop)}.${String(modelProp)} for tenant ${slug}. Falling back to master DB: ${err.message}`)
+                        const fallbackModel = (db as any)[prop]
+                        if (fallbackModel && typeof fallbackModel[modelProp] === 'function') {
+                          return fallbackModel[modelProp](...args)
+                        }
+                      }
+                      throw err
+                    })
+                  }
+                  return result
+                } catch (err: any) {
+                  if (isConnectionError(err)) {
+                    markHostUnreachable(rawDbUrl)
+                    console.warn(`[Database] Dedicated DB error on ${String(prop)}.${String(modelProp)} for tenant ${slug}. Falling back to master DB: ${err.message}`)
+                    const fallbackModel = (db as any)[prop]
+                    if (fallbackModel && typeof fallbackModel[modelProp] === 'function') {
+                      return fallbackModel[modelProp](...args)
+                    }
+                  }
+                  throw err
+                }
+              }
+            }
+            return origModelProp
+          }
+        })
+      }
+
+      return origProp
+    }
+  })
 }
 
 /**
@@ -156,10 +292,11 @@ function acquireTenantClient(rawDbUrl: string, slug: string, forceFresh: boolean
   evictLruTenantClients()
 
   console.log(`[Database] Initializing dedicated DB client for tenant: ${slug}`)
-  const client = new PrismaClient({
+  const rawClient = new PrismaClient({
     datasources: { db: { url: dbUrl } },
     log: process.env.NODE_ENV === 'development' ? ['error', 'warn'] : ['error'],
   })
+  const client = createResilientTenantClient(rawDbUrl, slug, rawClient)
   tenantClients.set(dbUrl, { client, lastAccess: Date.now() })
   return client
 }
@@ -193,6 +330,11 @@ export async function getTenantDb(tenantIdOrSlug: string, forceFresh = false): P
     return db
   }
 
+  if (isHostKnownUnreachable(tenant.databaseUrl)) {
+    console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
+    return db
+  }
+
   try {
     return acquireTenantClient(tenant.databaseUrl, tenant.slug, forceFresh)
   } catch (error) {
@@ -212,6 +354,11 @@ export async function getTenantDbById(tenantId: string | null | undefined, force
   })
 
   if (!tenant || !tenant.databaseUrl) {
+    return db
+  }
+
+  if (isHostKnownUnreachable(tenant.databaseUrl)) {
+    console.warn(`[Database] Dedicated DB for tenant ${tenant.slug} is known to be unreachable, using shared master DB.`)
     return db
   }
 

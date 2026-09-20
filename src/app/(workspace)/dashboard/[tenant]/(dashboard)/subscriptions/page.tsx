@@ -18,7 +18,7 @@ import {
 import { Progress } from "@/components/ui/progress"
 import { useToast } from "@/hooks/use-toast"
 import { cn } from "@/lib/utils"
-import { checkEnterpriseModeAction } from "@/actions/billing"
+import { checkEnterpriseModeAction, getAiCreditStatusAction, getAiCreditPacksAction } from "@/actions/billing"
 import { getGlobalWorkspaceIdAction } from "@/actions/tenant"
 import { generateInvoicePDF } from "@/lib/pdf-generator"
 
@@ -47,6 +47,12 @@ export default function TenantSubscriptionsPage() {
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
 
+  const tabParam = searchParams?.get('tab')
+  const initialSection: 'plans' | 'ai_plans' | 'addons' = 
+    (tabParam === 'ai-plans' || tabParam === 'ai_plans' || tabParam === 'ai')
+      ? 'ai_plans'
+      : (tabParam === 'addons' ? 'addons' : 'plans')
+
   const [subscription, setSubscription] = useState<Subscription>({ id: '', plan: 'free', status: 'active', currentPeriodEnd: null })
   const [activeAddons, setActiveAddons] = useState<string[]>([])
   const [invoices, setInvoices] = useState<Invoice[]>([])
@@ -55,9 +61,9 @@ export default function TenantSubscriptionsPage() {
   const [loading, setLoading] = useState(true)
   const [loadingTenants, setLoadingTenants] = useState(true)
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>('year')
-  const [activeSection, setActiveSection] = useState<'plans' | 'addons'>(
-    searchParams?.get('tab') === 'addons' ? 'addons' : 'plans'
-  )
+  const [activeSection, setActiveSection] = useState<'plans' | 'ai_plans' | 'addons'>(initialSection)
+  const [aiUsage, setAiUsage] = useState<{ used: number; total: number; remaining: number; isUnlimited: boolean } | null>(null)
+  const [aiCreditPacks, setAiCreditPacks] = useState<any[]>([])
   const [cancellingSubscription, setCancellingSubscription] = useState(false)
   const [showCancelConfirm, setShowCancelConfirm] = useState(false)
   const [isEnterpriseMode, setIsEnterpriseMode] = useState(false)
@@ -164,11 +170,23 @@ export default function TenantSubscriptionsPage() {
       
       const globalId = await getGlobalWorkspaceIdAction()
       setGlobalTenantId(globalId)
+
+      // Fetch AI credit status & packages
+      const [aiStatus, aiPacks] = await Promise.all([
+        getAiCreditStatusAction(),
+        getAiCreditPacksAction()
+      ])
+      if (aiStatus) setAiUsage(aiStatus)
+      if (aiPacks && aiPacks.length > 0) setAiCreditPacks(aiPacks)
     } catch (err) {
       console.error("Billing fetch error:", err)
     } finally {
       setLoading(false)
     }
+  }
+
+  const handleBuyAiCredits = (packId: string) => {
+    router.push(`/dashboard/${tenantSlug}/subscriptions/checkout?plan=${packId}`)
   }
 
   const handleCancelSubscription = async () => {
@@ -498,9 +516,14 @@ export default function TenantSubscriptionsPage() {
             <div className="flex items-center gap-1 border-b border-border/60">
               <button
                 type="button"
-                onClick={() => setActiveSection('plans')}
+                onClick={() => {
+                  setActiveSection('plans')
+                  const url = new URL(window.location.href)
+                  url.searchParams.delete('tab')
+                  window.history.replaceState({}, '', url.toString())
+                }}
                 className={cn(
-                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px",
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
                   activeSection === 'plans'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
@@ -510,15 +533,40 @@ export default function TenantSubscriptionsPage() {
               </button>
               <button
                 type="button"
-                onClick={() => setActiveSection('addons')}
+                onClick={() => {
+                  setActiveSection('ai_plans')
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('tab', 'ai-plans')
+                  window.history.replaceState({}, '', url.toString())
+                }}
                 className={cn(
-                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px",
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
+                  activeSection === 'ai_plans'
+                    ? "border-amber-500 text-foreground font-extrabold"
+                    : "border-transparent text-muted-foreground hover:text-foreground"
+                )}
+              >
+                <Sparkles className="h-3.5 w-3.5 text-amber-500" /> AI Plan Builder ({aiCreditPacks.length || 4})
+                <span className="text-[9px] px-1.5 py-0.2 rounded-full font-bold bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+                  AI
+                </span>
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setActiveSection('addons')
+                  const url = new URL(window.location.href)
+                  url.searchParams.set('tab', 'addons')
+                  window.history.replaceState({}, '', url.toString())
+                }}
+                className={cn(
+                  "px-4 py-2.5 text-xs font-bold tracking-tight border-b-2 transition-all flex items-center gap-1.5 -mb-px cursor-pointer",
                   activeSection === 'addons'
                     ? "border-primary text-foreground"
                     : "border-transparent text-muted-foreground hover:text-foreground"
                 )}
               >
-                <Sparkles className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
+                <Package className="h-3.5 w-3.5" /> Add-on & Ekstra Kuota ({addonPlans.length})
               </button>
             </div>
           )}
@@ -622,6 +670,117 @@ export default function TenantSubscriptionsPage() {
                     </Card>
                   )
                 })}
+              </div>
+            </div>
+          )}
+
+          {/* AI Plan Builder Section */}
+          {!isEnterpriseMode && activeSection === 'ai_plans' && (
+            <div className="space-y-6">
+              {/* Header Title, Description, and AI Credit Balance */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-5 bg-gradient-to-r from-amber-500/10 via-card to-card border border-amber-500/25 rounded-2xl shadow-xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <div className="w-8 h-8 rounded-xl bg-amber-500/20 border border-amber-500/30 flex items-center justify-center text-amber-500">
+                      <Sparkles className="h-4 w-4" />
+                    </div>
+                    <h2 className="text-xl lg:text-2xl font-black tracking-tight text-foreground">
+                      AI Plan Builder (Frontend Credits)
+                    </h2>
+                  </div>
+                  <p className="text-xs text-muted-foreground max-w-2xl">
+                    Paket saldo credit AI untuk AI Website Builder, iterasi schema CMS via prompt, live sandbox coding, dan deployment otomatis ke Vercel. Sistem sekali beli (top-up) tanpa tagihan bulanan berulang. Saldo tidak pernah hangus, dan cukup lakukan top-up kembali jika credit habis.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-3 bg-card p-2.5 px-4 rounded-xl border border-amber-500/30 shadow-xs shrink-0">
+                  <Zap className="h-5 w-5 text-amber-500 fill-amber-500" />
+                  <div className="flex flex-col">
+                    <span className="text-[10px] font-bold uppercase text-muted-foreground leading-none mb-1">
+                      Saldo AI Credits Anda
+                    </span>
+                    <span className="text-base font-black tracking-tight text-foreground">
+                      {aiUsage ? aiUsage.remaining.toLocaleString('id-ID') : "0"} <span className="text-xs font-semibold text-muted-foreground">Credits</span>
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* AI Credit Packs Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                {(aiCreditPacks.length > 0 ? aiCreditPacks : [
+                  { id: "ai_pack_starter", name: "Starter Credits", credits: 300, price_idr: 149000, price_usd: 9, description: "Top-up 300 AI credits untuk Next.js frontend builds.", features: ["300 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
+                  { id: "ai_pack_pro", name: "Pro Credits", credits: 1500, price_idr: 449000, price_usd: 29, badge: "Most Popular", description: "Top-up 1.500 AI credits dengan antrean prioritas.", features: ["1.500 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
+                  { id: "ai_pack_business", name: "Business Credits", credits: 5000, price_idr: 1199000, price_usd: 79, description: "Top-up 5.000 AI credits untuk tim produksi.", features: ["5.000 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
+                  { id: "ai_pack_agency", name: "Agency Credits", credits: 15000, price_idr: 2299000, price_usd: 149, badge: "Best Value", description: "Top-up 15.000 AI credits untuk agensi dengan volume tinggi.", features: ["15.000 AI Credits", "Sistem Saldo Sekali Beli", "Kredit Tidak Pernah Hangus", "Top-Up Kapan Saja Saat Habis"] },
+                ]).map((pack) => {
+                  return (
+                    <Card 
+                      key={pack.id} 
+                      className={cn(
+                        "flex flex-col relative rounded-2xl transition-all duration-200 border bg-card shadow-xs hover:shadow-md", 
+                        pack.badge 
+                          ? "border-amber-500/40 ring-1 ring-amber-500/20" 
+                          : "border-border hover:border-amber-500/40"
+                      )}
+                    >
+                      {pack.badge && (
+                        <div className="absolute top-3.5 right-3.5 bg-amber-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-xs">
+                          {pack.badge}
+                        </div>
+                      )}
+                      <CardHeader className="p-4 pb-2 space-y-2">
+                        <div className="flex items-center gap-1.5 text-amber-500">
+                          <Zap className="h-3.5 w-3.5 fill-amber-500" />
+                          <span className="text-xs font-bold uppercase tracking-wider">{pack.name}</span>
+                        </div>
+                        <div>
+                          <div className="flex items-baseline gap-1">
+                            <span className="text-2xl font-black text-foreground">Rp {pack.price_idr.toLocaleString('id-ID')}</span>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground font-medium mt-0.5">
+                            ${pack.price_usd} USD &bull; Sekali Beli (Top-up Jika Habis)
+                          </p>
+                        </div>
+                        <div className="pt-1">
+                          <Badge variant="outline" className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/30 text-[11px] font-bold rounded-lg px-2 py-0.5">
+                            +{pack.credits.toLocaleString()} AI Credits
+                          </Badge>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-1 flex flex-col justify-between flex-1 space-y-4">
+                        <div className="space-y-1.5 pt-2 border-t border-border/60">
+                          {pack.features?.map((f: string, i: number) => (
+                            <div key={i} className="flex items-start text-xs text-foreground/80 leading-snug">
+                              <Check className="mr-2 h-3.5 w-3.5 text-amber-500 shrink-0 mt-0.5" strokeWidth={2.5} /> 
+                              <span>{f}</span>
+                            </div>
+                          ))}
+                        </div>
+                        <Button 
+                          onClick={() => handleBuyAiCredits(pack.id)}
+                          className="w-full h-9 font-bold rounded-xl text-xs bg-amber-500 hover:bg-amber-600 text-black shadow-xs transition-all cursor-pointer"
+                        >
+                          <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                          Top Up {pack.name.split(" ")[0]}
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )
+                })}
+              </div>
+
+              {/* Cost Guide & Info Banner */}
+              <div className="p-4 bg-muted/40 border border-border/80 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Bot className="h-4 w-4 text-primary shrink-0" />
+                  <div>
+                    <strong className="text-foreground">Konsumsi AI:</strong> 25 Cr / Full Next.js Website Gen &bull; 5 Cr / Chat Iterasi AI &bull; 5 Cr / Auto-Gen Schema
+                  </div>
+                </div>
+                <div className="text-muted-foreground text-[11px]">
+                  *Sistem saldo sekali beli (bukan tagihan bulanan otomatis). Kredit dapat digunakan kapan saja dan tidak akan hangus di akhir bulan. Cukup lakukan top-up kembali saat kuota kredit habis.
+                </div>
               </div>
             </div>
           )}
