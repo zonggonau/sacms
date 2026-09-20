@@ -5,7 +5,6 @@ import { HeroSection } from "./sections/hero-section"
 import { TestimonialsSection } from "./sections/testimonials-section"
 import { BlogPreviewSection } from "./sections/blog-preview-section"
 import { CtaBanner } from "./sections/cta-banner"
-import { FooterSection } from "./sections/footer-section"
 import { FadeIn } from "@/components/ui/fade-in"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -31,7 +30,6 @@ export function ModernLanding({ data }: { data: LandingData }) {
     pricingWorkspaces = [],
     testimonials = [],
     cta = null,
-    footer = null,
     blogs = [],
   } = data
 
@@ -223,9 +221,6 @@ export function ModernLanding({ data }: { data: LandingData }) {
       <FadeIn delay={100}>
         <CtaBanner cta={cta} />
       </FadeIn>
-
-      {/* 8. Global Footer */}
-      <FooterSection footer={footer} />
     </div>
   )
 }
