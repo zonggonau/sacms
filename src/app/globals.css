@@ -158,3 +158,34 @@
     padding-right: 4rem;
   }
 }
+
+/* Sandpack Full-Height Preview Rules */
+.sp-custom-full-height,
+.sp-custom-full-height .sp-wrapper,
+.sp-custom-full-height .sp-layout,
+.sp-custom-full-height .sp-stack,
+.sp-custom-full-height .sp-preview,
+.sp-custom-full-height .sp-preview-container,
+.sp-custom-full-height .sp-preview-iframe {
+  height: 100% !important;
+  max-height: 100% !important;
+  min-height: 100% !important;
+  width: 100% !important;
+  display: flex !important;
+  flex-direction: column !important;
+  flex: 1 1 0% !important;
+}
+
+.sp-custom-full-height .sp-layout {
+  border: none !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.sp-custom-full-height .sp-preview {
+  background: transparent !important;
+}
+
+.sp-custom-full-height .sp-preview-iframe {
+  border: none !important;
+}

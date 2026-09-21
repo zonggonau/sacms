@@ -80,11 +80,40 @@ module.exports = {
   }, [files])
 
   return (
-    <div className="h-full w-full overflow-hidden">
+    <div className="h-full w-full overflow-hidden flex flex-col sp-custom-full-height">
+      <style>{`
+        .sp-custom-full-height,
+        .sp-custom-full-height .sp-wrapper,
+        .sp-custom-full-height .sp-layout,
+        .sp-custom-full-height .sp-stack,
+        .sp-custom-full-height .sp-preview,
+        .sp-custom-full-height .sp-preview-container,
+        .sp-custom-full-height .sp-preview-iframe {
+          height: 100% !important;
+          max-height: 100% !important;
+          min-height: 100% !important;
+          width: 100% !important;
+          display: flex !important;
+          flex-direction: column !important;
+          flex: 1 1 0% !important;
+        }
+        .sp-custom-full-height .sp-layout {
+          border: none !important;
+          border-radius: 0 !important;
+          background: transparent !important;
+        }
+        .sp-custom-full-height .sp-preview {
+          background: transparent !important;
+        }
+        .sp-custom-full-height .sp-preview-iframe {
+          border: none !important;
+        }
+      `}</style>
       <SandpackProvider
         template="react-ts"
         theme={theme === "dark" ? "dark" : "light"}
         files={sandpackFiles}
+        className="h-full w-full flex flex-col flex-1"
         customSetup={{
           dependencies: {
             "lucide-react": "latest",
@@ -94,12 +123,12 @@ module.exports = {
           externalResources: ["https://cdn.tailwindcss.com"],
         }}
       >
-        <SandpackLayout style={{ height: "100%" }}>
+        <SandpackLayout style={{ height: "100%", width: "100%", border: "none" }}>
           <SandpackPreviewPane
             showNavigator={false}
             showOpenInCodeSandbox={false}
             showRefreshButton
-            style={{ height: "100%" }}
+            style={{ height: "100%", width: "100%" }}
           />
         </SandpackLayout>
       </SandpackProvider>

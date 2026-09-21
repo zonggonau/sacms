@@ -25,7 +25,7 @@ export function PreviewPanel({ previewUrl, generatedFiles, isSandpackPreview }: 
   const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0)
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden bg-muted/20">
+    <div className="flex-1 flex flex-col overflow-hidden bg-muted/20 min-h-0">
 
       {/* Sub-toolbar */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card shrink-0">
@@ -100,7 +100,7 @@ export function PreviewPanel({ previewUrl, generatedFiles, isSandpackPreview }: 
       </div>
 
       {/* Frame Container */}
-      <div className="flex-1 p-3 flex items-center justify-center overflow-hidden">
+      <div className="flex-1 p-2 md:p-3 flex items-center justify-center overflow-hidden min-h-0 w-full">
         <div className={`h-full rounded-xl overflow-hidden border border-border/80 shadow-xs bg-background flex flex-col transition-all duration-300 ${
           deviceMode === "desktop" ? "w-full" : deviceMode === "tablet" ? "w-[768px] max-w-full" : "w-[375px] max-w-full"
         }`}>
