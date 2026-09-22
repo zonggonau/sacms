@@ -385,13 +385,16 @@ export async function listVercelProjects(): Promise<{ id: string; name: string; 
   const token = await getVercelToken()
   if (!token) return []
 
-  const res = await fetch(`${VERCEL_API_BASE}/v9/projects?limit=20${getTeamQuery().replace("?", "&")}`, {
+  const res = await fetch(`${VERCEL_API_BASE}/v10/projects?limit=20${getTeamQuery().replace("?", "&")}`, {
     headers: await getVercelHeaders()
   })
 
   if (!res.ok) return []
   const data = await res.json()
-  return (data.projects || []).map((p: any) => ({
+  // The v10 response is documented as either a bare array or a
+  // `{ projects, pagination }` object depending on request shape.
+  const projects = Array.isArray(data) ? data : (data.projects || [])
+  return projects.map((p: any) => ({
     id: p.id,
     name: p.name,
     url: p.alias?.[0]?.domain ? `https://${p.alias[0].domain}` : ""
@@ -429,14 +432,14 @@ export async function listVercelProjectsDetailed(): Promise<VercelProjectSummary
     const headers = await getVercelHeaders()
     const teamParam = getTeamQuery().replace("?", "&")
     const out: VercelProjectSummary[] = []
-    let until: string | undefined
+    let from: string | undefined
     let guard = 0
 
     while (guard < 20) {
       guard += 1
-      const pageParam = until ? `&until=${until}` : ""
+      const pageParam = from ? `&from=${from}` : ""
       const res = await fetch(
-        `${VERCEL_API_BASE}/v9/projects?limit=100${teamParam}${pageParam}`,
+        `${VERCEL_API_BASE}/v10/projects?limit=100${teamParam}${pageParam}`,
         { headers },
       )
       if (!res.ok) {
@@ -444,7 +447,10 @@ export async function listVercelProjectsDetailed(): Promise<VercelProjectSummary
         break
       }
       const data = await res.json()
-      for (const p of data.projects || []) {
+      // The v10 response is documented as either a bare array or a
+      // `{ projects, pagination }` object depending on request shape.
+      const projectsPage = Array.isArray(data) ? data : (data.projects || [])
+      for (const p of projectsPage) {
         const latest = p.latestDeployments?.[0] || p.targets?.production || null
         out.push({
           id: p.id,
@@ -465,9 +471,9 @@ export async function listVercelProjectsDetailed(): Promise<VercelProjectSummary
             : null,
         })
       }
-      const next = data.pagination?.next
+      const next = Array.isArray(data) ? null : data.pagination?.next
       if (!next) break
-      until = String(next)
+      from = String(next)
     }
 
     return out
