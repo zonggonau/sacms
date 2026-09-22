@@ -235,7 +235,10 @@ jobs:
                 exit 1
               }
             done
-            docker compose run --rm app bun x prisma db push --skip-generate --accept-data-loss
+            # No --accept-data-loss: a destructive schema diff must be handled via a
+            # reviewed idempotent SQL file in db/manual-migrations/ first (see README
+            # there), not silently applied by an unattended deploy pipeline.
+            docker compose run --rm app bun x prisma db push --skip-generate
             docker compose run --rm app bun run seed:permissions || true
 
             echo "==> [6/7] Starting all services (Zero-downtime rolling update)..."
@@ -259,8 +262,10 @@ jobs:
             done
 
             if [ "$HEALTHY" -ne 1 ]; then
-              echo "⚠️ Warning: Healthcheck did not return healthy within 60s. Recent app logs:"
+              echo "❌ Healthcheck did not return healthy within 60s. Recent app logs:"
               docker compose logs --tail=30 app
+              echo "❌ Deploy considered FAILED — the bad containers are still running on the server and need manual attention (rollback or fix), but this workflow run will be marked failed rather than reporting success."
+              exit 1
             fi
 
             echo "==> Cleaning up unused images..."

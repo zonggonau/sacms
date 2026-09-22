@@ -199,7 +199,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             </Button>
             <Button
               variant="outline"
-              onClick={() => router.push(`/dashboard/${tenantSlug}/developer/conten-type`)}
+              onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types`)}
               className="h-10 px-6 rounded-full font-bold text-xs w-full sm:w-auto"
             >
               Kelola Schema
@@ -336,7 +336,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
         <div className="text-center pt-1">
           <button
             type="button"
-            onClick={() => router.push(`/dashboard/${tenantSlug}/developer/conten-type/new`)}
+            onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
             className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
           >
             atau buat manual <ExternalLink className="h-3 w-3" />
