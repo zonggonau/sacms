@@ -33,6 +33,7 @@ interface ModelPickerProps {
   hasUpgradedPlan?: boolean
   /** Whether the picker shows in a compact inline mode (inside composer) */
   compact?: boolean
+  disabled?: boolean
 }
 
 interface ProviderMeta {
@@ -66,6 +67,7 @@ export function ModelPicker({
   onSelectModel,
   hasUpgradedPlan = false,
   compact = false,
+  disabled = false,
 }: ModelPickerProps) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
@@ -128,9 +130,11 @@ export function ModelPicker({
       <DialogTrigger asChild>
         <button
           type="button"
+          disabled={disabled}
           className={cn(
             "flex items-center gap-1.5 rounded-full border border-border/80 bg-background hover:bg-muted text-xs font-medium text-foreground transition-all cursor-pointer shadow-2xs hover:border-primary/40",
-            compact ? "h-7 pl-2 pr-1.5 text-[10px]" : "h-8 pl-2.5 pr-2"
+            compact ? "h-7 pl-2 pr-1.5 text-[10px]" : "h-8 pl-2.5 pr-2",
+            disabled && "opacity-50 pointer-events-none cursor-not-allowed"
           )}
           title={`Model AI Aktif: ${selectedModel?.name} (${selectedModel?.credits} Credits)`}
         >

@@ -5,6 +5,19 @@ services:
       - "127.0.0.1:3000:3000"
     env_file:
       - .env
+    environment:
+      # src/lib/redis.ts only ever speaks the Upstash REST protocol (by
+      # design, for edge-runtime compatibility) — it never connects to the
+      # `redis` service's redis:// port directly. Without this, that
+      # container ran fully wired up (healthcheck, depends_on) but nothing
+      # in the app ever talked to it, so anything gated on getRedis() being
+      # non-null (e.g. custom-domain routing in proxy.ts) silently behaved
+      # as if Redis were unconfigured. `srh` below is a tiny REST shim in
+      # front of the same `redis` container, so the existing Upstash client
+      # code needs no changes. If .env already sets real Upstash Cloud
+      # credentials, those win here — this is only the fallback.
+      UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-http://srh:80}
+      UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-sacms-local-srh-token}
     volumes:
       - ./scripts/healthcheck.js:/app/scripts/healthcheck.js:ro
       # Persist locally-stored media (used whenever R2/S3 isn't configured,
@@ -24,6 +37,8 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      srh:
+        condition: service_started
     restart: unless-stopped
 
   postgres:
@@ -54,6 +69,21 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
+
+  # Upstash-REST-protocol shim in front of the `redis` container above, so
+  # @upstash/redis (what src/lib/redis.ts actually uses) works against this
+  # self-hosted Redis without any application code change. See the `app`
+  # service's UPSTASH_REDIS_REST_URL/TOKEN comment for why this exists.
+  srh:
+    image: hiett/serverless-redis-http:latest
+    environment:
+      SRH_MODE: env
+      SRH_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-sacms-local-srh-token}
+      SRH_CONNECTION_STRING: redis://redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
 
   caddy:

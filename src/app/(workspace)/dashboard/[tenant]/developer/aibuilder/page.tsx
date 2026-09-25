@@ -37,27 +37,82 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
     previewUrl = `/api/tenant/${tenantSlug}/ai-builder/preview/${v0ChatId}`
   }
 
-  const initialMessages: any[] = []
-
-  // Determine if the user has an upgraded plan to access advanced AI models
-  const hasUpgradedPlan = tenant.plan === "pro" || tenant.plan === "ai_max" || tenant.plan === "custom" || tenant.plan === "enterprise"
-
-  // Hydrate the Code tab from the last-generated site's actual files, instead
-  // of always falling back to the hardcoded demo files on every page load.
+  // Hydrate files and full chat history from the last-generated site in database
+  let initialMessages: any[] = []
   let initialFiles: { name: string; content: string }[] | null = null
+
   if (v0ChatId) {
     try {
       const site = await db.site.findFirst({
         where: { tenantId: tenant.id },
         orderBy: { updatedAt: "desc" },
-        include: { files: { orderBy: { path: "asc" } } },
+        include: {
+          files: { orderBy: { path: "asc" } },
+          conversations: {
+            include: {
+              messages: { orderBy: { createdAt: "asc" } },
+            },
+            orderBy: { updatedAt: "desc" },
+            take: 1,
+          },
+        },
       })
-      if (site && site.files.length > 0) {
-        initialFiles = site.files.map((f) => ({ name: f.path, content: f.content }))
+      if (site) {
+        if (site.files.length > 0) {
+          initialFiles = site.files.map((f) => ({ name: f.path, content: f.content }))
+        }
+        const activeConv = site.conversations[0]
+        if (activeConv && activeConv.messages.length > 0) {
+          initialMessages = activeConv.messages.map((m) => {
+            const files = Array.isArray(m.toolCalls) ? (m.toolCalls as any[]) : []
+            return {
+              id: m.id,
+              role: m.role as "user" | "assistant",
+              content: m.content,
+              createdAt: m.createdAt,
+              parts: [
+                ...(m.thought ? [{ type: "reasoning", text: m.thought }] : []),
+                { type: "text", text: m.content },
+              ],
+              artifact:
+                files.length > 0
+                  ? {
+                      title: "Proyek Next.js 16 App Router",
+                      files: files.map((f: any) => ({ name: f.name, description: f.description })),
+                    }
+                  : undefined,
+            }
+          })
+        }
       }
     } catch {
       // Non-critical — the client falls back to its built-in demo files.
     }
+  }
+
+  // Fallback: If no siteMessages were stored yet but frontendPrompt exists, hydrate it nicely
+  if (initialMessages.length === 0 && frontendPrompt) {
+    initialMessages = [
+      {
+        id: "msg-initial-user",
+        role: "user",
+        content: frontendPrompt,
+        createdAt: new Date(),
+      },
+      {
+        id: "msg-initial-assistant",
+        role: "assistant",
+        content: "Website Next.js 16 App Router telah berhasil dibuat berdasarkan prompt Anda dan terhubung ke SaCMS Headless CMS.",
+        createdAt: new Date(),
+        artifact:
+          initialFiles && initialFiles.length > 0
+            ? {
+                title: "Proyek Next.js 16 App Router",
+                files: initialFiles.map((f) => ({ name: f.name })),
+              }
+            : undefined,
+      },
+    ]
   }
 
   // Check user AI credit balance
@@ -66,8 +121,16 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
   const initialAiCredits = {
     remaining: creditStatus.remaining,
     total: creditStatus.max,
-    isUnlimited: creditStatus.max >= 900000
+    isUnlimited: creditStatus.max >= 900000,
   }
+
+  const currentUser = {
+    name: session.user.name || "Anda",
+    email: session.user.email || "",
+    image: session.user.image || null,
+  }
+
+  const hasUpgradedPlan = tenant.plan !== "FREE" || session.user.role === "admin"
 
   return (
     <div className="flex h-screen max-h-screen flex-col p-3 md:p-4 overflow-hidden w-full max-w-full">
@@ -76,15 +139,20 @@ export default async function WebsiteBuilderPage({ params }: { params: Promise<{
         tenantSlug={tenantSlug}
         hasUpgradedPlan={hasUpgradedPlan}
         initialAiCredits={initialAiCredits}
-        initialProject={v0ChatId ? {
-          v0ChatId,
-          previewUrl,
-          frontendPrompt,
-          status: projectStatus,
-          model: savedModel,
-          files: initialFiles,
-          messages: initialMessages,
-        } : null}
+        currentUser={currentUser}
+        initialProject={
+          v0ChatId
+            ? {
+                v0ChatId,
+                previewUrl,
+                frontendPrompt,
+                status: projectStatus,
+                model: savedModel,
+                files: initialFiles,
+                messages: initialMessages,
+              }
+            : null
+        }
       />
     </div>
   )

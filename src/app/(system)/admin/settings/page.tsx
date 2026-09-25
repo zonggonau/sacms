@@ -92,7 +92,7 @@ export default function AdminSettingsPage() {
 
     // Tab 3: AI Engine & Providers (Vercel AI Gateway & SDK Core)
     aiGatewayApiKey: "",
-    aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v1",
+    aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
     platformAiProvider: "google",
     platformAiApiKey: "",
     deepseekApiKey: "",

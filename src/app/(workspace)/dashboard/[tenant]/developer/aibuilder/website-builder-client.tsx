@@ -29,11 +29,21 @@ import { SandpackPreview } from "@/components/ai-builder/sandpack-preview"
 import { ModelPicker } from "@/components/ai-builder/model-picker"
 import { CodeViewer } from "@/components/ai-builder/code-viewer"
 import { ConsoleViewer, type ConsoleLogEntry } from "@/components/ai-builder/console-viewer"
-import { ChatPanel } from "@/components/ai-builder/chat-panel"
+import {
+  ChatPanel,
+  type ChatMessage,
+  type ChatArtifact,
+  type AgentPhaseState,
+  type ApplicationPlanSummary,
+} from "@/components/ai-builder/chat-panel"
+import type { AgentPhaseId, AgentPhaseStatus } from "@/lib/ai/agent-types"
 import { PreviewPanel } from "@/components/ai-builder/preview-panel"
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 import { AI_MODEL_REGISTRY, type AiModelConfig } from "@/lib/ai/model-registry"
+import { extractFilesFromMessage, extractFilesFromRawText, mergeProjectFiles } from "@/lib/ai/file-extractor"
+import { FrameworkPicker } from "@/components/ai-builder/framework-picker"
+import { type FrameworkId, getFrameworkConfig, detectOrRecommendFramework } from "@/lib/ai/framework-registry"
 
 interface WebsiteBuilderClientProps {
   tenantId: string
@@ -44,12 +54,18 @@ interface WebsiteBuilderClientProps {
     total: number
     isUnlimited: boolean
   }
+  currentUser?: {
+    name: string
+    email?: string
+    image?: string | null
+  }
   initialProject: {
     v0ChatId: string | null
     previewUrl: string | null
     frontendPrompt: string | null
     status?: "draft" | "project"
     model?: string
+    framework?: FrameworkId
     /** The last-generated site's real files, if any were persisted to SiteFile. */
     files?: { name: string; content: string }[] | null
     messages?: any[] | null
@@ -187,12 +203,160 @@ function extractMessageText(msg: any): string {
   return ""
 }
 
+function extractAgentPhasesFromMessages(messages: any[]): AgentPhaseState[] {
+  const basePhases: AgentPhaseState[] = [
+    { phaseId: "planning", status: "pending", message: "Menganalisis prompt & merancang Application Plan" },
+    { phaseId: "schema_provisioning", status: "pending", message: "Membuat Content Types & Single Types di database" },
+    { phaseId: "data_seeding", status: "pending", message: "Menginjeksi data contoh berbahasa Indonesia" },
+    { phaseId: "coding", status: "pending", message: "Menyusun komponen & routing frontend" },
+    { phaseId: "qa_validation", status: "pending", message: "Memverifikasi integritas kode & pratinjau" },
+  ]
+
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")
+  if (!lastAssistantMsg) return basePhases
+
+  const phaseMap = new Map<AgentPhaseId, { status: AgentPhaseStatus; message: string; details?: string; itemsProcessed?: number }>()
+
+  const processToolCall = (toolName: string, args: any) => {
+    if (
+      (toolName === "reportAgentPhase" || toolName === "report_agent_phase") &&
+      (args?.phaseId || args?.phase)
+    ) {
+      const pId = (args.phaseId || args.phase) as AgentPhaseId
+      phaseMap.set(pId, {
+        status: args.status || "completed",
+        message: args.message || "",
+        details: args.details,
+        itemsProcessed: args.itemsProcessed,
+      })
+    }
+  }
+
+  if (Array.isArray(lastAssistantMsg.parts)) {
+    for (const part of lastAssistantMsg.parts) {
+      if (!part) continue
+      let toolName = ""
+      if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+        toolName = part.type.slice(5)
+      } else if (part.toolName) {
+        toolName = part.toolName
+      } else if (part.name) {
+        toolName = part.name
+      }
+      const inv = part.toolInvocation || part
+      const tName = inv.toolName || inv.name || toolName
+      const tArgs = part.input || part.args || inv.args || inv.input || part.output
+      processToolCall(tName, tArgs)
+    }
+  }
+
+  if (Array.isArray(lastAssistantMsg.toolInvocations)) {
+    for (const inv of lastAssistantMsg.toolInvocations) {
+      if (!inv) continue
+      processToolCall(inv.toolName || inv.name, inv.args || inv.input)
+    }
+  }
+
+  if (Array.isArray(lastAssistantMsg.toolCalls)) {
+    for (const tc of lastAssistantMsg.toolCalls) {
+      if (!tc) continue
+      let args = tc.args || tc.input || tc.function?.arguments
+      if (typeof args === "string") {
+        try { args = JSON.parse(args) } catch {}
+      }
+      processToolCall(tc.toolName || tc.function?.name || tc.name, args)
+    }
+  }
+
+  if (phaseMap.size === 0) return basePhases
+
+  return basePhases.map((bp) => {
+    const recorded = phaseMap.get(bp.phaseId)
+    if (recorded) {
+      return {
+        ...bp,
+        status: recorded.status,
+        message: recorded.message || bp.message,
+        details: recorded.details,
+        itemsProcessed: recorded.itemsProcessed,
+      }
+    }
+    return bp
+  })
+}
+
+function extractApplicationPlanFromMessages(messages: any[], selectedFramework: string): ApplicationPlanSummary | null {
+  const lastAssistantMsg = [...messages].reverse().find((m) => m.role === "assistant")
+  if (!lastAssistantMsg) return null
+
+  const processPlan = (toolName: string, args: any): ApplicationPlanSummary | null => {
+    if (
+      (toolName === "submitApplicationPlan" || toolName === "submit_application_plan") &&
+      (args?.projectName || args?.appType || args?.domain || args?.summary)
+    ) {
+      return {
+        projectName: args.projectName || "Website Proyek",
+        summary: args.summary || "",
+        domain: args.domain || "",
+        framework: args.framework || selectedFramework,
+        contentTypeCount: Array.isArray(args.contentTypes) ? args.contentTypes.length : 0,
+        singleTypeCount: Array.isArray(args.singleTypes) ? args.singleTypes.length : 0,
+        pageCount: Array.isArray(args.pages) ? args.pages.length : 0,
+        designNotes: args.designNotes || "",
+      }
+    }
+    return null
+  }
+
+  if (Array.isArray(lastAssistantMsg.parts)) {
+    for (const part of lastAssistantMsg.parts) {
+      if (!part) continue
+      let toolName = ""
+      if (typeof part.type === "string" && part.type.startsWith("tool-")) {
+        toolName = part.type.slice(5)
+      } else if (part.toolName) {
+        toolName = part.toolName
+      } else if (part.name) {
+        toolName = part.name
+      }
+      const inv = part.toolInvocation || part
+      const tName = inv.toolName || inv.name || toolName
+      const tArgs = part.input || part.args || inv.args || inv.input || part.output
+      const plan = processPlan(tName, tArgs)
+      if (plan) return plan
+    }
+  }
+
+  if (Array.isArray(lastAssistantMsg.toolInvocations)) {
+    for (const inv of lastAssistantMsg.toolInvocations) {
+      if (!inv) continue
+      const plan = processPlan(inv.toolName || inv.name, inv.args || inv.input)
+      if (plan) return plan
+    }
+  }
+
+  if (Array.isArray(lastAssistantMsg.toolCalls)) {
+    for (const tc of lastAssistantMsg.toolCalls) {
+      if (!tc) continue
+      let args = tc.args || tc.input || tc.function?.arguments
+      if (typeof args === "string") {
+        try { args = JSON.parse(args) } catch {}
+      }
+      const plan = processPlan(tc.toolName || tc.function?.name || tc.name, args)
+      if (plan) return plan
+    }
+  }
+
+  return null
+}
+
 export function WebsiteBuilderClient({
   tenantId,
   tenantSlug,
   hasUpgradedPlan,
   initialAiCredits,
   initialProject,
+  currentUser,
 }: WebsiteBuilderClientProps) {
   const { toast } = useToast()
   const router = useRouter()
@@ -231,6 +395,7 @@ export function WebsiteBuilderClient({
   const [previewUrl, setPreviewUrl] = useState(initialProject?.previewUrl || "")
   const isClaudeBuild = typeof v0ChatId === "string" && v0ChatId.startsWith("sacms_claude_")
   const [projectStatus, setProjectStatus] = useState<"draft" | "project">(initialProject?.status || "draft")
+  const [selectedFramework, setSelectedFramework] = useState<FrameworkId>(initialProject?.framework || "nextjs")
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
   const [previewRefreshNonce, setPreviewRefreshNonce] = useState(0)
 
@@ -240,10 +405,43 @@ export function WebsiteBuilderClient({
   const [selectedFileIndex, setSelectedFileIndex] = useState(0)
   const [copiedCode, setCopiedCode] = useState(false)
 
-  // Generated Multi-File Code Tree
   const [generatedFiles, setGeneratedFiles] = useState<Array<{ name: string; content: string }>>(
     initialProject?.files && initialProject.files.length > 0 ? initialProject.files : DEMO_FILES
   )
+
+  // Sync generatedFiles whenever initialProject.files is updated
+  useEffect(() => {
+    if (initialProject?.files && initialProject.files.length > 0) {
+      setGeneratedFiles(initialProject.files)
+    }
+  }, [initialProject?.files])
+
+  // If generatedFiles is at placeholder DEMO_FILES, auto-hydrate from database site-files API
+  useEffect(() => {
+    const isPlaceholder =
+      generatedFiles.length === 3 &&
+      generatedFiles.some((f) => f.content.includes("SaCMS Digital Experience"))
+
+    if (isPlaceholder && tenantSlug) {
+      fetch(`/api/tenant/${tenantSlug}/ai-builder/site-files`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (Array.isArray(data?.files) && data.files.length > 0) {
+            setGeneratedFiles(data.files)
+            setConsoleLogs((prev) => [
+              ...prev,
+              {
+                id: Date.now().toString(),
+                time: new Date().toLocaleTimeString(),
+                type: "success",
+                text: `[Database] Berkas proyek aktif (${data.files.length} berkas) berhasil dimuat ke pratinjau.`,
+              },
+            ])
+          }
+        })
+        .catch(() => null)
+    }
+  }, [tenantSlug, generatedFiles])
 
   // Version History Trail
   const [versionHistory, setVersionHistory] = useState<Array<{
@@ -273,6 +471,10 @@ export function WebsiteBuilderClient({
   const [isFullscreen, setIsFullscreen] = useState(false)
   const [iterationPrompt, setIterationPrompt] = useState("")
 
+  // Iteration tracking and file diff snapshot
+  const isIterationRef = useRef(false)
+  const [previousFilesSnapshot, setPreviousFilesSnapshot] = useState<Array<{ name: string; content: string }>>([])
+
   // ────────────────────────────────────────────────────────────────────────────
   // Stable AI SDK useChat Hook
   // ────────────────────────────────────────────────────────────────────────────
@@ -287,31 +489,47 @@ export function WebsiteBuilderClient({
   const {
     messages: aiMessages,
     sendMessage,
+    stop,
     status: aiChatStatus,
     setMessages: setAiMessages,
   } = useChat({
     transport,
     throttle: 50,
+    messages:
+      initialProject?.messages && initialProject.messages.length > 0
+        ? initialProject.messages
+        : undefined,
     onFinish: (event: any) => {
       setLoading(false)
       setLoadingStep("")
       const msg = event?.message ?? event
-      const text = extractMessageText(msg)
-      const files = parseFilesFromText(text)
-      if (files.length > 0) {
-        setGeneratedFiles(files)
+      let newFiles = extractFilesFromMessage(msg)
+      if (newFiles.length === 0 && Array.isArray(event?.messages)) {
+        newFiles = extractFilesFromMessage(event.messages)
+      }
+      if (newFiles.length === 0 && Array.isArray(aiMessages)) {
+        newFiles = extractFilesFromMessage(aiMessages)
+      }
+
+      const finalFiles =
+        isIterationRef.current && generatedFiles.length > 0
+          ? mergeProjectFiles(generatedFiles, newFiles)
+          : newFiles
+
+      if (finalFiles.length > 0) {
+        setGeneratedFiles(finalFiles)
         setConsoleLogs((prev) => [
           ...prev,
           {
             id: Date.now().toString(),
             time: new Date().toLocaleTimeString(),
             type: "success",
-            text: `[Build] Generated Next.js 16 App Router application (${files.length} files).`,
+            text: `[Build] ${isIterationRef.current ? "Revisi" : "Generasi"} Next.js 16 App Router sukses (${finalFiles.length} berkas).`,
           },
         ])
         toast({
-          title: "Website Berhasil Dibangun!",
-          description: "Pratinjau lokal siap diuji dengan data contoh.",
+          title: isIterationRef.current ? "Revisi Berhasil Diterapkan!" : "Website Berhasil Dibangun!",
+          description: "Pratinjau lokal diperbarui secara otomatis.",
         })
       }
       setActiveVersionNumber((prevVer) => {
@@ -320,7 +538,7 @@ export function WebsiteBuilderClient({
           ...prevHist,
           {
             version: nextVer,
-            prompt: mainPrompt || iterationPrompt || "Website update",
+            prompt: mainPrompt || iterationPrompt || "Pembaruan website",
             timestamp: new Date().toLocaleTimeString(),
             previewUrl: previewUrl,
           },
@@ -332,28 +550,76 @@ export function WebsiteBuilderClient({
     onError: (err: any) => {
       setLoading(false)
       setLoadingStep("")
+      console.error("[AI_BUILDER_CLIENT_ERROR]", err)
+      let desc = err?.message || "AI Engine gagal merespons."
+      if (desc === "An error occurred." || !desc) {
+        desc = "Terjadi kendala saat menghubungkan ke AI Engine atau memproses instruksi. Silakan periksa koneksi atau ulangi prompt Anda."
+      }
+      setConsoleLogs((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          time: new Date().toLocaleTimeString(),
+          type: "warn",
+          text: `[Error] ${desc}`,
+        },
+      ])
       toast({
         variant: "destructive",
         title: "Gagal Membangun Website",
-        description: err?.message || "AI Engine gagal merespons.",
+        description: desc,
       })
     },
   })
 
+  // Abort / Stop Generation handler
+  const handleStopGeneration = () => {
+    stop()
+    setLoading(false)
+    setLoadingStep("")
+    toast({
+      title: "Generasi Dibatalkan",
+      description: "Proses pembuatan kode website telah dihentikan.",
+    })
+  }
+
   // Pure derived loading states — avoids nested setState circular effects
   const isAiChatLoading = aiChatStatus === "streaming" || aiChatStatus === "submitted"
   const isLoading = loading || isAiChatLoading
+
+  // Extract real-time Agent Phases and Application Plan from tool calls
+  const agentPhases = useMemo(() => {
+    return extractAgentPhasesFromMessages(aiMessages)
+  }, [aiMessages])
+
+  const applicationPlan = useMemo(() => {
+    return extractApplicationPlanFromMessages(aiMessages, selectedFramework)
+  }, [aiMessages, selectedFramework])
+
+  const activeRunningPhase = agentPhases.find((p) => p.status === "running")
   const currentLoadingStep =
     loadingStep ||
+    activeRunningPhase?.message ||
     (isAiChatLoading
       ? v0ChatId
-        ? "Menerapkan perubahan desain pada antarmuka Next.js..."
+        ? "Menerapkan perubahan desain pada antarmuka frontend..."
         : "Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP..."
       : "")
 
-  // Stable memoized display messages
-  const displayMessages: Array<{ role: "user" | "assistant"; content: string }> = useMemo(() => {
-    if (aiMessages.length === 0) {
+  // Extract real-time live reasoning thought stream from AI SDK
+  const liveReasoningText = useMemo(() => {
+    const lastAssistantMsg = [...aiMessages].reverse().find((m) => m.role === "assistant")
+    if (!lastAssistantMsg || !Array.isArray(lastAssistantMsg.parts)) return ""
+    return lastAssistantMsg.parts
+      .filter((p: any) => p && p.type === "reasoning" && typeof p.text === "string")
+      .map((p: any) => p.text)
+      .join("\n\n")
+  }, [aiMessages])
+
+  // Stable memoized display messages with Artifact Cards
+  const displayMessages: ChatMessage[] = useMemo(() => {
+    const rawList = aiMessages.length > 0 ? aiMessages : (initialProject?.messages || [])
+    if (rawList.length === 0) {
       return [
         {
           role: "assistant" as const,
@@ -363,32 +629,51 @@ export function WebsiteBuilderClient({
         },
       ]
     }
-    return aiMessages
-      .filter((m) => m.role === "user" || m.role === "assistant")
-      .map((m) => {
-        const content = extractMessageText(m)
-        if (m.role === "assistant" && content.includes('"files"')) {
-          const files = parseFilesFromText(content)
-          if (files.length > 0) {
-            return {
-              role: "assistant" as const,
-              content: `✅ **Website Next.js 16 Berhasil Dibuat (${files.length} Berkas)**\n\nKomponen frontend telah dikompilasi dan terhubung ke skema SaCMS. Buka tab **Preview** untuk melihat tampilan interaktif atau tab **Code** untuk meninjau struktur berkas.`,
-            }
+    return rawList
+      .filter((m: any) => m.role === "user" || m.role === "assistant")
+      .map((m: any) => {
+        let content = extractMessageText(m)
+        const extracted = extractFilesFromMessage(m)
+        let artifact: ChatArtifact | undefined = m.artifact
+
+        if (m.role === "assistant" && extracted.length > 0) {
+          artifact = {
+            title: `Proyek ${getFrameworkConfig(selectedFramework).name}`,
+            files: extracted.map((f) => ({ name: f.name, description: f.description })),
+            framework: selectedFramework,
           }
         }
+
+        if (
+          m.role === "assistant" &&
+          (!content || !content.trim() || content.trim().startsWith("{") || content.includes('"files":'))
+        ) {
+          content = `Komponen frontend ${getFrameworkConfig(selectedFramework).name} telah berhasil disusun dan diterapkan ke pratinjau langsung.`
+        }
+
+        let reasoning: string | undefined = m.reasoning
+        if (!reasoning && Array.isArray(m.parts)) {
+          const rPart = m.parts.find((p: any) => p && p.type === "reasoning" && typeof p.text === "string")
+          if (rPart) reasoning = rPart.text
+        }
+
         return {
+          id: m.id,
           role: m.role === "user" ? ("user" as const) : ("assistant" as const),
           content,
+          reasoning,
+          createdAt: m.createdAt ? new Date(m.createdAt) : undefined,
+          artifact,
         }
       })
-  }, [aiMessages, initialProject?.v0ChatId])
+  }, [aiMessages, initialProject?.messages, initialProject?.v0ChatId])
 
   const chatMessagesEndRef = useRef<HTMLDivElement>(null)
 
   // Auto-scroll chat history to latest message when message count or loading state changes
   useEffect(() => {
     chatMessagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-  }, [displayMessages.length, isLoading])
+  }, [displayMessages.length, isLoading, liveReasoningText])
 
   // Deploy to Vercel state
   const [isDeploying, setIsDeploying] = useState(false)
@@ -470,16 +755,23 @@ export function WebsiteBuilderClient({
     return () => window.removeEventListener("keydown", handleKeyDown)
   }, [isFullscreen])
 
-  // "Buka di tab baru" — leaves the SaCMS-proxied iframe entirely, so unlike
-  // the embedded preview it gets no benefit from routing through our own
-  // /ai-builder/preview/[chatId] proxy. That proxy path is also the *cached*
-  // `previewUrl` Setting for any project generated before a live v0 sandbox
-  // existed for it (or before this account had one refreshed) — resolving
-  // the real hosted URL fresh here means an old project doesn't stay stuck
-  // pointing at our own API route forever.
+  // "Buka di tab baru" — opens either the production deployment or our dedicated
+  // full-screen standalone preview page, ensuring live changes in session are shown.
   const handleOpenPreviewInNewTab = () => {
-    if (previewUrl) {
+    try {
+      if (typeof window !== "undefined" && generatedFiles.length > 0) {
+        sessionStorage.setItem("sacms_preview_files", JSON.stringify(generatedFiles))
+      }
+    } catch {}
+    if (
+      previewUrl &&
+      previewUrl.startsWith("http") &&
+      !previewUrl.includes("localhost") &&
+      !previewUrl.includes("previewTidakTersedia")
+    ) {
       window.open(previewUrl, "_blank")
+    } else {
+      window.open(`/dashboard/${tenantSlug}/developer/aibuilder/preview`, "_blank")
     }
   }
 
@@ -512,6 +804,8 @@ export function WebsiteBuilderClient({
       return
     }
 
+    isIterationRef.current = false
+    setPreviousFilesSnapshot([])
     setLoading(true)
     setLoadingStep("Menganalisa prompt & membangun skema CMS dinamis via SaCMS MCP...")
 
@@ -520,6 +814,14 @@ export function WebsiteBuilderClient({
     }
     setProjectStatus("draft")
 
+    // Check if user's prompt strongly suggests a specific framework
+    const fwRec = detectOrRecommendFramework(prompt)
+    let effectiveFw = selectedFramework
+    if (selectedFramework === "nextjs" && fwRec.confidence === "high") {
+      effectiveFw = fwRec.recommendedId
+      setSelectedFramework(fwRec.recommendedId)
+    }
+
     sendMessage(
       {
         text: prompt,
@@ -527,6 +829,7 @@ export function WebsiteBuilderClient({
       {
         body: {
           modelId: selectedModel,
+          framework: effectiveFw,
           isIteration: false,
           previousFiles: [],
         },
@@ -550,6 +853,8 @@ export function WebsiteBuilderClient({
       return
     }
 
+    isIterationRef.current = true
+    setPreviousFilesSnapshot([...generatedFiles])
     setIterationPrompt("")
     setLoading(true)
     setLoadingStep("Menerapkan perubahan desain pada antarmuka Next.js...")
@@ -561,6 +866,7 @@ export function WebsiteBuilderClient({
       {
         body: {
           modelId: selectedModel,
+          framework: selectedFramework,
           isIteration: true,
           previousFiles: generatedFiles,
         },
@@ -764,6 +1070,12 @@ export function WebsiteBuilderClient({
   // Delete Draft / Project Handler
   // ────────────────────────────────────────────────────────────────────────────
   const handleDeleteProject = async () => {
+    // Stop any in-flight generation first — otherwise its onFinish can run
+    // after the delete completes and silently recreate the Site/files we
+    // just removed (syncFilesToDb recreates a missing Site on write).
+    if (isAiChatLoading) {
+      stop()
+    }
     setIsDeleting(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/delete`, {
@@ -979,6 +1291,14 @@ export function WebsiteBuilderClient({
               >
                 {projectStatus === "project" ? "PRODUCTION" : "DRAFT"}
               </Badge>
+
+              {/* Framework Picker in Top Header */}
+              <FrameworkPicker
+                selectedFrameworkId={selectedFramework}
+                onSelectFramework={setSelectedFramework}
+                compact
+                disabled={isLoading}
+              />
             </div>
 
             {/* Center Tab Switcher: Preview | Code | Console */}
@@ -1074,6 +1394,17 @@ export function WebsiteBuilderClient({
                 </Button>
               )}
 
+              {/* Buka Pratinjau di Tab Baru (Full Screen) */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleOpenPreviewInNewTab}
+                className="h-8 w-8 rounded-full text-muted-foreground hover:bg-muted hover:text-foreground cursor-pointer"
+                title="Buka pratinjau website di tab baru (Full Screen)"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+              </Button>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -1114,12 +1445,19 @@ export function WebsiteBuilderClient({
             {/* ── LEFT PANE: Modular ChatPanel (History, Reasoning, Suggestions, Follow-up) ── */}
             <ChatPanel
               tenantSlug={tenantSlug}
+              currentUser={currentUser}
+              selectedFrameworkId={selectedFramework}
+              onSelectFramework={setSelectedFramework}
+              agentPhases={agentPhases}
+              applicationPlan={applicationPlan}
               messages={displayMessages}
               isLoading={isLoading}
               loadingStep={currentLoadingStep}
               iterationPrompt={iterationPrompt}
               onIterationPromptChange={setIterationPrompt}
               onIterate={handleIterate}
+              onStop={handleStopGeneration}
+              reasoningText={liveReasoningText}
               creditsRemaining={creditsRemaining}
               isUnlimited={isUnlimited}
               models={AI_MODEL_REGISTRY}
@@ -1136,6 +1474,10 @@ export function WebsiteBuilderClient({
               isReasoningOpen={isReasoningOpen}
               onToggleReasoning={() => setIsReasoningOpen(!isReasoningOpen)}
               quickSuggestions={QUICK_ITERATION_SUGGESTIONS}
+              onSelectTab={(tab, fileIdx) => {
+                setActiveViewerTab(tab)
+                if (typeof fileIdx === "number") setSelectedFileIndex(fileIdx)
+              }}
             />
 
             {/* ── RIGHT PANE: Multi-Tab Viewer (Preview | Code | Console) ── */}
@@ -1145,10 +1487,17 @@ export function WebsiteBuilderClient({
                   previewUrl={previewUrl}
                   generatedFiles={generatedFiles}
                   isSandpackPreview={true}
+                  tenantSlug={tenantSlug}
+                  onOpenNewTab={handleOpenPreviewInNewTab}
                 />
               )}
               {activeViewerTab === "code" && (
-                <CodeViewer files={generatedFiles} />
+                <CodeViewer
+                  files={generatedFiles}
+                  previousFiles={previousFilesSnapshot}
+                  selectedIndex={selectedFileIndex}
+                  onSelectIndex={setSelectedFileIndex}
+                />
               )}
               {activeViewerTab === "console" && (
                 <ConsoleViewer logs={consoleLogs} />

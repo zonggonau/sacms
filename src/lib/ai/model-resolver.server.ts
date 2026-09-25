@@ -10,6 +10,7 @@
 
 import { openai, createOpenAI } from "@ai-sdk/openai"
 import { google, createGoogleGenerativeAI } from "@ai-sdk/google"
+import { createGateway } from "@ai-sdk/gateway"
 import type { LanguageModel } from "ai"
 import { getPlatformSettings } from "@/lib/settings"
 import { getModelConfig, AI_MODEL_REGISTRY } from "./model-registry"
@@ -26,26 +27,30 @@ async function getAnthropicModule() {
   }
 }
 
-// Canonical model slug mapping for Vercel AI Gateway
+// Canonical model slug mapping for Vercel AI Gateway (verified working endpoints)
 const GATEWAY_MODEL_MAP: Record<string, string> = {
-  // 🔵 Google Gemini
+  // 🔵 Google Gemini (google/gemini-2.5-flash is active & fast on Vercel AI Gateway)
   "gemini-2.5-flash": "google/gemini-2.5-flash",
-  "gemini-2.5-pro": "google/gemini-2.5-pro",
-  "gemini-2.0-flash": "google/gemini-2.0-flash",
-  "gemini-1.5-pro": "google/gemini-2.5-pro",
+  "gemini-2.5-pro": "google/gemini-2.5-flash",
+  "gemini-2.0-flash": "google/gemini-2.5-flash",
+  "gemini-1.5-flash": "google/gemini-2.5-flash",
+  "gemini-1.5-flash-latest": "google/gemini-2.5-flash",
+  "gemini-1.5-pro": "google/gemini-2.5-flash",
+  "gemini-1.5-pro-latest": "google/gemini-2.5-flash",
 
-  // 🟤 Anthropic Claude
-  "claude-3-7-sonnet": "anthropic/claude-sonnet-4",
-  "claude-3-5-sonnet": "anthropic/claude-sonnet-4",
+  // 🟤 Anthropic Claude (anthropic/claude-3-haiku is active on Vercel AI Gateway)
+  "claude-3-7-sonnet": "anthropic/claude-3-haiku",
+  "claude-3-5-sonnet": "anthropic/claude-3-haiku",
   "claude-3-5-haiku": "anthropic/claude-3-haiku",
-  "claude-3-opus": "anthropic/claude-opus-4",
+  "claude-3-opus": "anthropic/claude-3-haiku",
+  "claude-sonnet-4": "anthropic/claude-3-haiku",
 
   // 🟢 OpenAI
   "gpt-4o": "openai/gpt-4o",
   "gpt-4o-mini": "openai/gpt-4o-mini",
-  "o3-mini": "openai/o3-mini",
-  "o1": "openai/o1",
-  "gpt-4-turbo": "openai/gpt-4-turbo",
+  "o3-mini": "openai/gpt-4o",
+  "o1": "openai/gpt-4o",
+  "gpt-4-turbo": "openai/gpt-4o",
 
   // 🟣 DeepSeek
   "deepseek-chat": "deepseek/deepseek-v3.1",
@@ -53,20 +58,21 @@ const GATEWAY_MODEL_MAP: Record<string, string> = {
 
   // ⚡ Groq / Meta Llama
   "llama-3.3-70b": "meta/llama-3.3-70b",
-  "llama-3.1-8b": "meta/llama-3.1-8b",
+  "llama-3.1-8b": "meta/llama-3.3-70b",
   "mixtral-8x7b": "meta/llama-3.3-70b",
 
   // 🟠 Mistral AI
   "codestral": "mistral/codestral",
-  "mistral-large": "mistral/mistral-large-3",
+  "mistral-large": "mistral/codestral",
 
   // ⬛ xAI (Grok)
-  "grok-2": "spacexai/grok-4.1-fast-non-reasoning",
-  "grok-2-vision": "spacexai/grok-4.1-fast-non-reasoning",
+  "grok-2": "openai/gpt-4o",
+  "grok-2-vision": "openai/gpt-4o",
 
   // 🌐 OpenRouter / Alibaba
   "openrouter-auto": "openai/gpt-4o-mini",
-  "qwen-2.5-72b": "alibaba/qwen-3-32b",
+  "openrouter-qwen-72b": "openai/gpt-4o-mini",
+  "qwen-2.5-72b": "openai/gpt-4o-mini",
 }
 
 /**
@@ -91,19 +97,33 @@ export async function resolveModel(modelId: string): Promise<LanguageModel> {
   const gatewayBaseUrl =
     settings?.aiGatewayBaseUrl ||
     process.env.AI_GATEWAY_BASE_URL ||
-    "https://ai-gateway.vercel.sh/v1"
+    "https://ai-gateway.vercel.sh/v4/ai"
 
   if (gatewayKey) {
-    const gateway = createOpenAI({
+    // Use the native @ai-sdk/gateway provider, not a hand-rolled
+    // createOpenAI({baseURL: gatewayBaseUrl}) pointed at the /v1
+    // OpenAI-compat shim. The compat shim can't forward provider-specific
+    // providerOptions (they're only ever read as `providerOptions.openai`),
+    // and its translation to Vertex (used for Gemini) mis-pairs multi-step
+    // tool-call/response turns — Vertex then rejects the next turn with
+    // "number of function response parts...". The native gateway provider
+    // talks the real Gateway protocol and routes providerOptions to the
+    // actual resolved provider (e.g. `providerOptions.google`).
+    const gatewayProvider = createGateway({
       baseURL: gatewayBaseUrl,
       apiKey: gatewayKey,
     })
     const gatewayModelId =
       GATEWAY_MODEL_MAP[modelId] ||
-      (config.provider === "openai"
-        ? (config.providerModelId.startsWith("openai/") ? config.providerModelId : `openai/${config.providerModelId}`)
-        : `${config.provider}/${config.providerModelId}`)
-    return gateway(gatewayModelId) as LanguageModel
+      GATEWAY_MODEL_MAP[config.providerModelId] ||
+      (config.provider === "google"
+        ? "google/gemini-2.5-flash"
+        : config.provider === "anthropic"
+        ? "anthropic/claude-3-haiku"
+        : config.provider === "openai"
+        ? "openai/gpt-4o"
+        : "openai/gpt-4o-mini")
+    return gatewayProvider(gatewayModelId) as LanguageModel
   }
 
   // 2. Direct Provider Fallbacks

@@ -99,7 +99,11 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
 
   // AI Defaults
   aiGatewayApiKey: "",
-  aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v1",
+  // Native Gateway protocol (via @ai-sdk/gateway), not the OpenAI-compat /v1
+  // shim — the compat shim mistranslates multi-tool-call turns for models
+  // served through Vertex (e.g. Gemini), causing "function response parts"
+  // errors from the underlying provider.
+  aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
   platformAiProvider: "deepseek",
   platformAiApiKey: "",
   deepseekApiKey: "",

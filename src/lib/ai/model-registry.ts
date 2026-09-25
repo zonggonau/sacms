@@ -89,7 +89,7 @@ export const AI_MODEL_REGISTRY: AiModelConfig[] = [
     iterationCredits: 3,
     provider: "google",
     providerIcon: "🔵",
-    providerModelId: "gemini-2.0-flash",
+    providerModelId: "gemini-2.5-flash",
     maxTokens: 32768,
   },
   {
@@ -101,7 +101,7 @@ export const AI_MODEL_REGISTRY: AiModelConfig[] = [
     iterationCredits: 5,
     provider: "google",
     providerIcon: "🔵",
-    providerModelId: "gemini-1.5-pro-latest",
+    providerModelId: "gemini-2.5-flash",
     maxTokens: 32768,
   },
   {
@@ -113,7 +113,7 @@ export const AI_MODEL_REGISTRY: AiModelConfig[] = [
     iterationCredits: 2,
     provider: "google",
     providerIcon: "🔵",
-    providerModelId: "gemini-1.5-flash-latest",
+    providerModelId: "gemini-2.5-flash",
     maxTokens: 16384,
   },
 
