@@ -1919,6 +1919,108 @@ export default async function NewsPage() {
       }
     )
 
+    // ── get_or_create_api_key ────────────────────────────────────────────────
+    server.registerTool(
+      "get_or_create_api_key",
+      {
+        title: "Get or Create Workspace API Key",
+        description: "Get this workspace's primary REST/GraphQL API key (used as `Authorization: Bearer <key>` by frontends built against this workspace), creating it once if it doesn't exist yet. Safe to call repeatedly — an existing key is always reused, never duplicated. The plaintext secret is only returned the first time it is created; calling this again later returns metadata only (id, name, permissions), since the secret cannot be recovered after creation.",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const { findPrimaryApiToken, getOrCreatePrimaryApiToken } = await import("@/lib/api-token-registry")
+
+        const existing = await findPrimaryApiToken(auth.tenantId)
+        if (existing) {
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                status: "existing",
+                id: existing.id,
+                name: existing.name,
+                permissions: existing.permissions,
+                createdAt: existing.createdAt,
+                note: "This key already existed. Its secret was shown only once at creation and cannot be recovered here — ask the workspace owner, or revoke it from Developer & API → API Keys and call this tool again to mint a fresh one.",
+              }, null, 2)
+            }]
+          }
+        }
+
+        const { apiToken, plainToken } = await getOrCreatePrimaryApiToken(auth.tenantId, null)
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              status: "created",
+              id: apiToken.id,
+              name: apiToken.name,
+              permissions: apiToken.permissions,
+              apiKey: plainToken,
+              warning: "Store this key now (e.g. as SACMS_API_KEY) — it will never be shown again.",
+            }, null, 2)
+          }]
+        }
+      }
+    )
+
+    // ── update_api_key_permissions ───────────────────────────────────────────
+    server.registerTool(
+      "update_api_key_permissions",
+      {
+        title: "Update Workspace API Key Permissions",
+        description: "Adjust the read/write/delete permissions on the workspace's primary REST/GraphQL API key (see get_or_create_api_key). Replaces the full permission set. You can only grant permissions your own MCP token already has.",
+        inputSchema: {
+          permissions: z.array(z.enum(["read", "write", "delete"])).min(1).describe('Full replacement set of permissions for the key, e.g. ["read","write"]'),
+        },
+      },
+      async ({ permissions }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const isPrivileged = !!auth.isSuperAdmin || auth.permissions.includes("full_access")
+        if (!isPrivileged) {
+          const missing = permissions.filter((p) => !auth.permissions.includes(p))
+          if (missing.length > 0) {
+            return {
+              content: [{
+                type: "text" as const,
+                text: `❌ Forbidden: your own MCP token doesn't have [${missing.join(", ")}], so it can't grant ${missing.length > 1 ? "those permissions" : "that permission"} to another key.`
+              }],
+              isError: true,
+            }
+          }
+        }
+
+        const { findPrimaryApiToken, updateApiTokenPermissions } = await import("@/lib/api-token-registry")
+
+        const existing = await findPrimaryApiToken(auth.tenantId)
+        if (!existing) {
+          return {
+            content: [{ type: "text" as const, text: "❌ No API key exists yet for this workspace. Call get_or_create_api_key first." }],
+            isError: true,
+          }
+        }
+
+        const result = await updateApiTokenPermissions(auth.tenantId, existing.id, permissions)
+        if ("error" in result) {
+          return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        }
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({ status: "updated", id: result.apiToken.id, permissions: result.apiToken.permissions }, null, 2)
+          }]
+        }
+      }
+    )
+
     // =========================================================================
     // 8. HOSTING & CLOUD DEPLOYMENT TOOLS (VERCEL)
     // =========================================================================

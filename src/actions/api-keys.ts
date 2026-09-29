@@ -8,6 +8,7 @@ import { getTenantAccess } from "@/lib/tenant-access"
 import { revalidatePath } from "next/cache"
 import { z } from "zod/v4"
 import { createHash } from "crypto"
+import { findPrimaryApiToken, updateApiTokenPermissions } from "@/lib/api-token-registry"
 
 function generateToken(): string {
   return `cf_${randomBytes(32).toString("hex")}`
@@ -83,6 +84,14 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
       return { error: "Only tenant admins and owners can create API tokens" }
     }
 
+    // Only one primary (non-MCP) API key is allowed per tenant — create once,
+    // then adjust its permissions with updateApiTokenPermissionsAction instead
+    // of minting another one.
+    const existing = await findPrimaryApiToken(access.tenantId)
+    if (existing) {
+      return { error: "Workspace ini sudah memiliki API Key aktif. Edit izin key yang ada, atau hapus dulu sebelum membuat yang baru." }
+    }
+
     const parsed = createApiTokenSchema.safeParse(data)
     if (!parsed.success) {
       return { error: parsed.error.issues[0]?.message ?? "Validation failed" }
@@ -122,6 +131,35 @@ export async function createApiTokenAction(tenantSlug: string, data: z.infer<typ
     }
   } catch (error) {
     console.error("Error creating API token:", error)
+    return { error: "Internal server error" }
+  }
+}
+
+export async function updateApiTokenPermissionsAction(tenantSlug: string, tokenId: string, permissions: string[]) {
+  try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user) return { error: "Unauthorized" }
+
+    const access = await getTenantAccess(session, tenantSlug)
+    if (!access) return { error: "Forbidden or Tenant not found" }
+
+    if (access.role !== "admin" && access.role !== "owner") {
+      return { error: "Only tenant admins and owners can edit API token permissions" }
+    }
+
+    const result = await updateApiTokenPermissions(access.tenantId, tokenId, permissions)
+    if ("error" in result) return { error: result.error }
+
+    revalidatePath(`/dashboard/${tenantSlug}/developer/api-keys`)
+
+    return {
+      token: {
+        ...result.apiToken,
+        permissions: Array.isArray(result.apiToken.permissions) ? result.apiToken.permissions : [],
+      },
+    }
+  } catch (error) {
+    console.error("Error updating API token permissions:", error)
     return { error: "Internal server error" }
   }
 }

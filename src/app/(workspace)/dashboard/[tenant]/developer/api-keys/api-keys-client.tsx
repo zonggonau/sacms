@@ -35,14 +35,14 @@ import {
   TableRow,
 } from "@/components/ui/table"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { 
+import {
   Plus, Key, Copy, Trash2, Loader2, ShieldCheck,
   Save, Globe, Shield, Terminal, Settings2, Sliders, CheckCircle,
-  ExternalLink, Lock, Code2, AlertTriangle
+  ExternalLink, Lock, Code2, AlertTriangle, Pencil
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { createApiTokenAction, deleteApiTokenAction } from "@/actions/api-keys"
+import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction } from "@/actions/api-keys"
 
 interface ApiToken {
   id: string
@@ -101,6 +101,13 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
   const [createdPlainToken, setCreatedPlainToken] = useState<string | null>(null)
   const [showTokenDialog, setShowTokenDialog] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+
+  // Edit-permissions dialog — a tenant may only ever have one API key, so
+  // instead of deleting + recreating to change its scope, permissions can be
+  // adjusted in place at any time.
+  const [editingToken, setEditingToken] = useState<ApiToken | null>(null)
+  const [editPermissions, setEditPermissions] = useState<string[]>([])
+  const [showEditDialog, setShowEditDialog] = useState(false)
 
   const handleCopy = async (text: string, label: string = "Teks", id?: string) => {
     if (!text) return
@@ -235,6 +242,43 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
     })
   }
 
+  const handleOpenEditPermissions = (token: ApiToken) => {
+    setEditingToken(token)
+    setEditPermissions(Array.isArray(token.permissions) ? token.permissions : [])
+    setShowEditDialog(true)
+  }
+
+  const handleSavePermissions = () => {
+    if (!editingToken || editPermissions.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Validasi Gagal",
+        description: "Pilih minimal satu izin hak akses",
+      })
+      return
+    }
+
+    startTransition(async () => {
+      const res = await updateApiTokenPermissionsAction(tenantSlug, editingToken.id, editPermissions)
+
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Terjadi Kesalahan",
+          description: res.error,
+        })
+      } else {
+        setTokensList(prev => prev.map(t => (t.id === editingToken.id ? { ...t, permissions: (res.token?.permissions as string[] | undefined) || editPermissions } : t)))
+        setShowEditDialog(false)
+        setEditingToken(null)
+        toast({
+          title: "Berhasil",
+          description: "Izin API Key berhasil diperbarui",
+        })
+      }
+    })
+  }
+
   const handleRevokeLegacyKey = async (id: string) => {
     if (
       !(await confirm({
@@ -303,11 +347,13 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
               </Button>
 
               <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-                <DialogTrigger asChild>
-                  <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
-                    <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat API Key Baru
-                  </Button>
-                </DialogTrigger>
+                {tokensList.length === 0 && (
+                  <DialogTrigger asChild>
+                    <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Buat API Key Baru
+                    </Button>
+                  </DialogTrigger>
+                )}
                 <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
                   <DialogHeader>
                     <DialogTitle className="text-base font-bold text-foreground">Buat API Key Baru</DialogTitle>
@@ -489,6 +535,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                     </CardTitle>
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
                       Gunakan pada header <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code>.
+                      Setiap workspace hanya boleh punya satu API Key aktif — dibuat sekali, izinnya bisa diubah kapan saja lewat tombol Edit.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -546,16 +593,28 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                               {formatDate(apiKey.lastUsedAt)}
                             </TableCell>
                             <TableCell className="text-right pr-6 py-3">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDeleteToken(apiKey.id)}
-                                className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
-                                disabled={isPending}
-                                title="Hapus Kunci API"
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
+                              <div className="flex items-center justify-end gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleOpenEditPermissions(apiKey)}
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  disabled={isPending}
+                                  title="Edit Izin Hak Akses"
+                                >
+                                  <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteToken(apiKey.id)}
+                                  className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
+                                  disabled={isPending}
+                                  title="Hapus Kunci API"
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -681,6 +740,63 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
             </TabsContent>
 
           </Tabs>
+
+          {/* Edit Permissions Dialog */}
+          <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
+            <DialogContent className="sm:max-w-md rounded-2xl border-border/80 bg-card">
+              <DialogHeader>
+                <DialogTitle className="text-base font-bold text-foreground">Edit Izin Hak Akses</DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  Ubah izin untuk <strong>{editingToken?.name}</strong> tanpa perlu hapus dan buat ulang.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="space-y-2">
+                  <Label className="text-xs font-semibold text-foreground">Izin Hak Akses</Label>
+                  <div className="grid grid-cols-3 gap-2">
+                    {[
+                      { id: "read", label: "Read (Baca)", desc: "GET" },
+                      { id: "write", label: "Write (Tulis)", desc: "POST / PUT" },
+                      { id: "delete", label: "Delete (Hapus)", desc: "DELETE" }
+                    ].map((perm) => (
+                      <div
+                        key={perm.id}
+                        className="flex items-center gap-2 p-2.5 rounded-xl border border-border/80 bg-muted/20 hover:bg-muted/40 cursor-pointer"
+                        onClick={() => {
+                          if (editPermissions.includes(perm.id)) {
+                            if (editPermissions.length > 1) {
+                              setEditPermissions(editPermissions.filter(p => p !== perm.id))
+                            }
+                          } else {
+                            setEditPermissions([...editPermissions, perm.id])
+                          }
+                        }}
+                      >
+                        <Checkbox
+                          id={`edit-${perm.id}`}
+                          checked={editPermissions.includes(perm.id)}
+                          className="pointer-events-none"
+                        />
+                        <div className="text-xs">
+                          <p className="font-bold text-foreground">{perm.label}</p>
+                          <p className="text-[10px] text-muted-foreground">{perm.desc}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-2 sm:gap-0 pt-2">
+                <Button variant="outline" onClick={() => setShowEditDialog(false)} disabled={isPending} className="rounded-xl text-xs font-bold h-9">
+                  Batal
+                </Button>
+                <Button onClick={handleSavePermissions} disabled={isPending} className="rounded-xl text-xs font-bold h-9 bg-primary text-primary-foreground">
+                  {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : null}
+                  {isPending ? "Menyimpan..." : "Simpan Perubahan"}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
 
           {/* Token Created Success Dialog */}
           <Dialog open={showTokenDialog} onOpenChange={setShowTokenDialog}>
