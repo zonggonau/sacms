@@ -1,12 +1,12 @@
-import nodemailer from "nodemailer"
+import nodemailer, { type Transporter } from "nodemailer"
 import { Resend } from "resend"
 import { getResolvedMailConfig, getPlatformSettings } from "./settings"
 
 // Cached transporter per config signature
-let cachedTransporter: nodemailer.Transporter | null = null
+let cachedTransporter: Transporter | null = null
 let cachedSignature = ""
 
-async function getTransporter(): Promise<nodemailer.Transporter | null> {
+async function getTransporter(): Promise<Transporter | null> {
   const config = await getResolvedMailConfig()
   const sig = `${config.smtpHost}:${config.smtpPort}:${config.smtpUser}:${config.smtpPass}:${config.smtpSecure}`
 
