@@ -24,7 +24,6 @@ import {
   AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive,
   Cpu, Zap, Globe, Layers, Key, CheckCircle2
 } from "lucide-react"
-import { AI_MODEL_REGISTRY } from "@/lib/ai/model-registry"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { AdminPageSkeleton } from "@/components/admin/admin-page-skeleton"
@@ -565,11 +564,11 @@ export default function AdminSettingsPage() {
                           Preferensi Model & Kuota
                         </CardTitle>
                         <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 font-bold">
-                          Config AI Builder
+                          Config AI Schema Generator
                         </Badge>
                       </div>
                       <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                        Konfigurasi default saat pengguna membuat website via AI Builder.
+                        Konfigurasi default AI saat pengguna merencanakan skema CMS via AI Schema Generator.
                       </CardDescription>
                     </CardHeader>
                     <CardContent className="p-5 space-y-4">
@@ -594,24 +593,15 @@ export default function AdminSettingsPage() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model Default AI Builder</Label>
-                        <Select
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Model Default AI Schema Generator</Label>
+                        <Input
                           value={settings.defaultAiModel}
-                          onValueChange={v => setSettings(prev => ({ ...prev, defaultAiModel: v, aiSdkDefaultModel: v }))}
-                        >
-                          <SelectTrigger className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"><SelectValue /></SelectTrigger>
-                          <SelectContent className="rounded-xl border-border bg-card max-h-[300px]">
-                            {AI_MODEL_REGISTRY.map((m) => (
-                              <SelectItem key={m.id} value={m.id} className="text-xs rounded-lg">
-                                <span className="mr-1.5">{m.providerIcon}</span>
-                                <span className="font-semibold">{m.name}</span>
-                                <span className="text-[10px] text-muted-foreground ml-1.5 font-mono">({m.id})</span>
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
+                          onChange={e => setSettings(prev => ({ ...prev, defaultAiModel: e.target.value, aiSdkDefaultModel: e.target.value }))}
+                          placeholder="mis. deepseek-chat, gpt-4o-mini, claude-3-5-haiku-20241022"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
                         <p className="text-[10px] text-muted-foreground">
-                          Model pilihan awal saat user membuka AI Studio. User tetap bebas memilih model lain di jendela modal picker.
+                          Model id yang dipakai generator skema AI (lihat Provider AI Utama di atas) saat merencanakan Content Type dari prompt.
                         </p>
                       </div>
 

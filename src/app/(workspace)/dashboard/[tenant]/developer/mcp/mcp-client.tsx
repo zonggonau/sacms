@@ -102,12 +102,40 @@ function generateConfig(platform: string, mcpUrl: string, token: string = "YOUR_
         }
       }, null, 2)
 
+    case "claude":
+      return JSON.stringify({
+        mcpServers: {
+          sacms: {
+            url: mcpUrl,
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      }, null, 2)
+
     default:
       return mcpUrl
   }
 }
 
-// ─── Platform definitions (hanya Antigravity & VS Code yang didukung) ───────
+// URL dengan token disematkan sebagai query string — dipakai platform yang
+// hanya punya kolom "Server URL" polos tanpa opsi header kustom (mis. form
+// "Add custom connector" Claude.ai). Server MCP kita menerima token lewat
+// `?token=` sebagai fallback dari header Authorization (lihat
+// api/mcp/[[...transport]]/route.ts, resolveToken()).
+function urlWithToken(mcpUrl: string, token: string): string {
+  if (!mcpUrl) return mcpUrl
+  const sep = mcpUrl.includes("?") ? "&" : "?"
+  return `${mcpUrl}${sep}token=${encodeURIComponent(token)}`
+}
+
+// ─── Platform definitions ────────────────────────────────────────────────────
+// "json": platform punya file config lokal yang menerima custom header —
+//   token dikirim via `Authorization: Bearer`, paling aman.
+// "url-token": platform berbasis UI web/connector yang cuma minta URL server
+//   (tanpa kolom header) — token disematkan di URL lewat `?token=`, atau
+//   dipilih lewat opsi "Token/API Key" bawaan platform kalau tersedia.
 
 interface PlatformInfo {
   id: string
@@ -115,18 +143,57 @@ interface PlatformInfo {
   icon: string
   badge: string
   badgeColor: string
-  configPath: string
+  configType: "json" | "url-token"
+  configPath?: string
   steps: string[]
   notes?: string[]
+  /** Shown as a small disclaimer when support is partial/unverified/third-party. */
+  caveat?: string
 }
 
 const PLATFORMS: PlatformInfo[] = [
+  {
+    id: "claude",
+    name: "Claude (Desktop / Web / Code)",
+    icon: "🟠",
+    badge: "Native MCP",
+    badgeColor: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20",
+    configType: "json",
+    configPath: "claude_desktop_config.json",
+    steps: [
+      "Claude Desktop / Claude Code: buka pengaturan MCP, tempelkan konfigurasi JSON di bawah (lokasi file berbeda per OS — lihat menu Claude > Settings > Developer > Edit Config).",
+      "Claude.ai (web): buka Settings > Connectors > Add custom connector. Kolomnya cuma minta 'Server URL' tanpa opsi header kustom — pakai tombol 'Salin URL + Token' di bawah, bukan URL polos.",
+      "Setelah tersambung, tool SaCMS akan muncul otomatis saat Claude memutuskan perlu mengakses data/skema CMS Anda.",
+    ],
+    notes: [
+      "Claude.ai web mendukung OAuth di 'Advanced settings', tapi untuk token sederhana seperti punya kita, cara tercepat adalah menyisipkan token langsung di URL server.",
+    ],
+  },
+  {
+    id: "chatgpt",
+    name: "ChatGPT",
+    icon: "🟢",
+    badge: "Native MCP (Beta)",
+    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    configType: "url-token",
+    steps: [
+      "Buka ChatGPT > Settings > Apps & Connectors > Advanced settings, aktifkan 'Developer mode'.",
+      "Kembali ke Apps & Connectors, klik 'Create', isi Nama (mis. 'SaCMS') dan tempelkan Server URL di bawah.",
+      "Pada opsi Authentication, pilih 'Token' (bukan OAuth), lalu tempelkan token otorisasi Anda.",
+      "Simpan — tool SaCMS akan tersedia saat Anda mengaktifkan connector ini di chat.",
+    ],
+    notes: [
+      "ChatGPT WAJIB HTTPS — server MCP di localhost tidak akan bisa dipakai, gunakan domain produksi Anda.",
+      "Jangan tempel token di dalam URL untuk ChatGPT — gunakan kolom Token terpisah, ChatGPT menandai API key di URL sebagai berisiko.",
+    ],
+  },
   {
     id: "antigravity",
     name: "Antigravity (AGY)",
     icon: "⚡",
     badge: "DeepMind Agent",
     badgeColor: "bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20",
+    configType: "json",
     configPath: ".agents/mcp_config.json",
     steps: [
       "Buka atau buat file .agents/mcp_config.json di root workspace project Anda.",
@@ -142,6 +209,7 @@ const PLATFORMS: PlatformInfo[] = [
     icon: "🐙",
     badge: "GitHub Copilot",
     badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    configType: "json",
     configPath: ".vscode/mcp.json",
     steps: [
       "Buat file .vscode/mcp.json di root project Anda.",
@@ -149,7 +217,49 @@ const PLATFORMS: PlatformInfo[] = [
       "Buka GitHub Copilot Chat dan beralih ke mode Agent.",
       "Tool MCP SaCMS akan otomatis terdaftar dan siap dipanggil."
     ]
-  }
+  },
+  {
+    id: "gemini",
+    name: "Gemini / Google AI Studio",
+    icon: "🔷",
+    badge: "Dukungan Bervariasi",
+    badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    configType: "url-token",
+    steps: [
+      "Vertex AI (Google Cloud): gunakan Server URL di bawah sebagai MCP tool source pada konfigurasi agent Anda — dukungan MCP-nya paling matang di sini.",
+      "Google AI Studio / Gemini app: cari menu Tools/Extensions/Connectors di UI — jika tersedia, tempelkan Server URL (dengan token di bawah) di sana.",
+    ],
+    notes: [
+      "Dukungan MCP Google berbeda-beda antar produk dan sering diperbarui — kalau opsi 'Connector'/'MCP' belum muncul di akun Anda, coba lagi beberapa saat atau cek dokumentasi resmi Google terbaru.",
+    ],
+    caveat: "Dukungan MCP untuk konsumen (Gemini app) masih belum merata di semua wilayah/akun per rilis terbaru.",
+  },
+  {
+    id: "grok",
+    name: "Grok (xAI)",
+    icon: "⬛",
+    badge: "Butuh Bridge",
+    badgeColor: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+    configType: "url-token",
+    steps: [
+      "Grok belum punya dukungan MCP native yang terkonfirmasi resmi.",
+      "Gunakan ekstensi jembatan komunitas (mis. MCP-SuperAssistant) yang menghubungkan MCP ke Grok lewat browser.",
+      "Alternatif paling stabil: gunakan SaCMS REST API biasa (lihat menu REST API) — berjalan di semua agent tanpa bergantung dukungan MCP.",
+    ],
+    caveat: "Belum ada dukungan MCP resmi dari xAI — opsi di atas bergantung pihak ketiga dan bisa berubah sewaktu-waktu.",
+  },
+  {
+    id: "generic",
+    name: "MCP Client Lainnya",
+    icon: "🔌",
+    badge: "Universal",
+    badgeColor: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+    configType: "url-token",
+    steps: [
+      "Client apa pun yang mendukung MCP over Streamable HTTP bisa memakai Server URL di bawah.",
+      "Kirim token lewat header 'Authorization: Bearer <token>', atau lewat query string '?token=<token>' kalau client Anda cuma punya kolom URL polos.",
+    ],
+  },
 ]
 
 // ─── Live Catalog Tools List ─────────────────────────────────────────────────
@@ -249,7 +359,7 @@ export function MCPDashboardClient({
   const [generatedPlainToken, setGeneratedPlainToken] = useState<string | null>(null)
   const [selectedTokenValue, setSelectedTokenValue] = useState<string>("")
   const [copiedToken, setCopiedToken] = useState(false)
-  const [activePlatform, setActivePlatform] = useState("antigravity")
+  const [activePlatform, setActivePlatform] = useState("claude")
 
   // Auto-select a default credential — but only one whose value is real and
   // reusable. ApiToken.token is never sent to the client at all (it's a
@@ -284,7 +394,7 @@ export function MCPDashboardClient({
 
   const handleDownloadConfigFile = (platformId: string) => {
     const snippet = generateConfig(platformId, mcpUrl, effectiveToken, tenantSlug)
-    const filename = platformId === "vscode" ? "mcp.json" : "mcp_config.json"
+    const filename = platformId === "vscode" ? "mcp.json" : platformId === "claude" ? "claude_desktop_config.json" : "mcp_config.json"
 
     const blob = new Blob([snippet], { type: "application/json" })
     const url = URL.createObjectURL(blob)
@@ -406,7 +516,7 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Hubungkan AI Editor ke SaCMS untuk manipulasi skema dan data real-time.
+                  Hubungkan AI agent apa pun — bukan cuma editor kode — ke SaCMS untuk manipulasi skema dan data real-time.
                 </p>
               </div>
             </div>
@@ -418,6 +528,31 @@ export function MCPDashboardClient({
               <Plus className="mr-1.5 h-3.5 w-3.5" /> Generate Token MCP Baru
             </Button>
           </div>
+
+          {/* What is MCP — explanation for anyone landing here without prior context */}
+          <Card className="rounded-2xl border-border/80 shadow-xs bg-card p-5 space-y-3">
+            <div className="flex items-start gap-3">
+              <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                <Info className="h-4 w-4" />
+              </div>
+              <div className="space-y-2">
+                <h2 className="text-sm font-bold text-foreground">Apa itu MCP, dan kenapa ini penting?</h2>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  <strong className="text-foreground">Model Context Protocol (MCP)</strong> adalah standar terbuka yang membiarkan AI agent (Claude, ChatGPT, editor kode, dll.) membaca dan mengubah data workspace Anda secara langsung — bukan cuma "menebak" dari teks yang Anda ketik. Begitu tersambung, agent bisa memanggil fungsi nyata seperti "buat Content Type baru" atau "ambil 10 artikel terakhir" langsung ke database SaCMS Anda, real-time.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Halaman ini tadinya cuma menunjukkan cara setup untuk editor kode (Antigravity, VS Code). Sekarang mencakup <strong className="text-foreground">agent chat umum juga</strong> — Claude, ChatGPT, Gemini, dan lainnya — karena dukungan MCP di platform-platform ini sudah berkembang pesat sepanjang 2025–2026.
+                </p>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  Platform Anda belum/tidak mendukung MCP? Semua kemampuan yang sama tetap bisa diakses lewat{" "}
+                  <Link href={`/dashboard/${tenantSlug}/developer/api`} className="text-primary hover:underline font-semibold">
+                    SaCMS REST API
+                  </Link>{" "}
+                  biasa — berjalan di agent atau kode apa pun tanpa bergantung dukungan MCP sama sekali.
+                </p>
+              </div>
+            </div>
+          </Card>
 
           {/* Payment & Hosting Plan Status Card */}
           {!isPaid ? (
@@ -472,7 +607,7 @@ export function MCPDashboardClient({
             </div>
           )}
 
-          {/* Pure IDE MCP Endpoints Bar */}
+          {/* MCP Server Endpoint Bar */}
           <div className="grid grid-cols-1 gap-4">
 
             {/* Server URL Card (MCP HTTP / SSE) */}
@@ -484,7 +619,7 @@ export function MCPDashboardClient({
                     <p className="text-xs font-bold text-foreground">MCP Server (HTTP / SSE)</p>
                   </div>
                   <Badge variant="outline" className="text-[9px] font-bold uppercase rounded-md bg-primary/10 text-primary border-primary/20">
-                    Antigravity / VS Code
+                    Semua Platform MCP
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
@@ -605,12 +740,12 @@ export function MCPDashboardClient({
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <div>
-                <h2 className="text-base font-bold tracking-tight text-foreground">Pilih Ekosistem AI & Platform Editor</h2>
-                <p className="text-xs text-muted-foreground">Panduan setup dan file konfigurasi per platform.</p>
+                <h2 className="text-base font-bold tracking-tight text-foreground">Pilih AI Agent atau Editor</h2>
+                <p className="text-xs text-muted-foreground">Bukan cuma untuk IDE — pilih platform AI agent Anda, ikuti langkah setupnya.</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
               {PLATFORMS.map((p) => {
                 const isActive = activePlatform === p.id
                 return (
@@ -634,7 +769,7 @@ export function MCPDashboardClient({
               })}
             </div>
 
-            {/* Platform Detail & JSON Configuration Card */}
+            {/* Platform Detail & Configuration Card */}
             <Card className="rounded-2xl border-border/80 shadow-xs bg-card overflow-hidden">
               <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2.5">
@@ -646,34 +781,65 @@ export function MCPDashboardClient({
                         {currentPlatformInfo.badge}
                       </Badge>
                     </CardTitle>
-                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
-                      Lokasi Konfigurasi: <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px] text-foreground font-bold">{currentPlatformInfo.configPath}</code>
-                    </CardDescription>
+                    {currentPlatformInfo.configPath && (
+                      <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                        Lokasi Konfigurasi: <code className="font-mono bg-muted px-1.5 py-0.5 rounded text-[10px] text-foreground font-bold">{currentPlatformInfo.configPath}</code>
+                      </CardDescription>
+                    )}
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => handleDownloadConfigFile(currentPlatformInfo.id)}
-                    className="border-border/80 text-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
-                  >
-                    <Download className="h-3.5 w-3.5 mr-1.5" />
-                    Unduh File (.json)
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => handleCopy(generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug), `Konfigurasi ${currentPlatformInfo.name}`)}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
-                  >
-                    <Copy className="h-3.5 w-3.5 mr-1.5" />
-                    Salin Konfigurasi
-                  </Button>
-                </div>
+                {currentPlatformInfo.configType === "json" ? (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleDownloadConfigFile(currentPlatformInfo.id)}
+                      className="border-border/80 text-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                    >
+                      <Download className="h-3.5 w-3.5 mr-1.5" />
+                      Unduh File (.json)
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCopy(generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug), `Konfigurasi ${currentPlatformInfo.name}`)}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Salin Konfigurasi
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleCopy(mcpUrl, "Server URL")}
+                      className="border-border/80 text-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Salin URL
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() => handleCopy(urlWithToken(mcpUrl, effectiveToken), "Server URL + Token")}
+                      className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
+                    >
+                      <Copy className="h-3.5 w-3.5 mr-1.5" />
+                      Salin URL + Token
+                    </Button>
+                  </div>
+                )}
               </CardHeader>
 
               <CardContent className="p-5 space-y-5">
+                {currentPlatformInfo.caveat && (
+                  <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl flex items-start gap-2 text-xs text-amber-700 dark:text-amber-400">
+                    <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                    <span>{currentPlatformInfo.caveat}</span>
+                  </div>
+                )}
+
                 {/* Steps List */}
                 <div className="space-y-2">
                   <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Langkah-Langkah Integrasi:</p>
@@ -686,16 +852,45 @@ export function MCPDashboardClient({
                   </ol>
                 </div>
 
-                {/* JSON Code Snippet */}
-                <div className="space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <Label className="text-xs font-bold text-foreground">File Konfigurasi ({currentPlatformInfo.configPath})</Label>
-                    <span className="text-[10px] text-muted-foreground font-mono">Token otomatis terinjeksi</span>
+                {currentPlatformInfo.configType === "json" ? (
+                  /* JSON Code Snippet */
+                  <div className="space-y-1.5">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs font-bold text-foreground">File Konfigurasi ({currentPlatformInfo.configPath})</Label>
+                      <span className="text-[10px] text-muted-foreground font-mono">Token otomatis terinjeksi</span>
+                    </div>
+                    <pre className="p-4 bg-muted/40 rounded-xl border border-border/80 font-mono text-xs text-foreground overflow-x-auto">
+                      {generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug)}
+                    </pre>
                   </div>
-                  <pre className="p-4 bg-muted/40 rounded-xl border border-border/80 font-mono text-xs text-foreground overflow-x-auto">
-                    {generateConfig(currentPlatformInfo.id, mcpUrl, effectiveToken, tenantSlug)}
-                  </pre>
-                </div>
+                ) : (
+                  /* Plain URL + Token fields for web-UI-based connectors */
+                  <div className="space-y-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-foreground">Server URL</Label>
+                      <pre className="p-3 bg-muted/40 rounded-xl border border-border/80 font-mono text-xs text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+                        {mcpUrl}
+                      </pre>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-xs font-bold text-foreground">Server URL + Token (kalau kolom auth terpisah tidak tersedia)</Label>
+                      <pre className="p-3 bg-muted/40 rounded-xl border border-border/80 font-mono text-xs text-foreground overflow-x-auto whitespace-pre-wrap break-all">
+                        {urlWithToken(mcpUrl, effectiveToken)}
+                      </pre>
+                    </div>
+                  </div>
+                )}
+
+                {currentPlatformInfo.notes && currentPlatformInfo.notes.length > 0 && (
+                  <div className="space-y-1.5 pt-1 border-t border-border/60">
+                    {currentPlatformInfo.notes.map((note, idx) => (
+                      <p key={idx} className="text-[11px] text-muted-foreground flex items-start gap-1.5">
+                        <Info className="h-3 w-3 shrink-0 mt-0.5" />
+                        <span>{note}</span>
+                      </p>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -1031,7 +1226,7 @@ export function MCPDashboardClient({
               <DialogHeader>
                 <DialogTitle className="text-base font-bold text-foreground">Generate Token MCP Baru</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
-                  Buat token otorisasi khusus untuk menghubungkan Antigravity atau VS Code.
+                  Buat token otorisasi khusus untuk menghubungkan AI agent atau editor Anda ke SaCMS.
                 </DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-2">

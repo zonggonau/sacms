@@ -55,7 +55,7 @@ const s = {
   overview: "Overview",
   cmsStudio: "CMS Content Studio",
   contentTypeBuilder: "Content-Type Builder",
-  aiWebsiteBuilder: "AI Website Builder",
+  aiWebsiteBuilder: "AI Schema Generator",
   mediaLibrary: "Media Library",
   support: "Support & Help Desk",
   teamMembers: "Team Members",
@@ -225,7 +225,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         ...(isAdmin ? [
           {
             title: s.aiWebsiteBuilder,
-            href: "/developer/aibuilder",
+            href: "/developer/aischema",
             icon: Bot,
             badge: "AI",
             matchPrefix: true

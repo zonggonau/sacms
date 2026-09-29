@@ -6,5 +6,5 @@ export default async function DeveloperRootPage({
   params: Promise<{ tenant: string }>
 }) {
   const { tenant } = await params
-  redirect(`/dashboard/${tenant}/developer/aibuilder`)
+  redirect(`/dashboard/${tenant}/developer/aischema`)
 }

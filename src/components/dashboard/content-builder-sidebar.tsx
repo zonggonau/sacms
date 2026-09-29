@@ -24,7 +24,7 @@ export function ContentBuilderSidebar({ tenantId }: ContentBuilderSidebarProps) 
   const pathname = usePathname()
 
   const navItems = [
-    { title: "AI Website Builder", href: `/dashboard/${tenantId}/developer/aibuilder`, icon: Bot, badge: "AI" },
+    { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/aischema`, icon: Bot, badge: "AI" },
     { title: "Collection Types", href: `/dashboard/${tenantId}/developer/conten-type`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-type`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/component`, icon: Puzzle },
