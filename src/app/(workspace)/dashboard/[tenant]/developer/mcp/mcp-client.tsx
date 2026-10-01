@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect, useTransition } from "react"
+import { useState, useEffect, useRef, useTransition } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
@@ -114,6 +114,18 @@ function generateConfig(platform: string, mcpUrl: string, token: string = "YOUR_
         }
       }, null, 2)
 
+    case "codex":
+      // Codex reads MCP servers from config.toml, not JSON — fields per
+      // OpenAI's official config reference (developers.openai.com/codex/
+      // config-reference): `url` for a streamable-HTTP MCP server, plus
+      // `http_headers` for static headers sent on every request (the
+      // alternative `bearer_token_env_var` instead points at an env var,
+      // which doesn't fit a one-file download with the token pre-filled).
+      return `[mcp_servers.sacms]
+url = "${mcpUrl}"
+http_headers = { Authorization = "Bearer ${token}" }
+`
+
     default:
       return mcpUrl
   }
@@ -143,7 +155,7 @@ interface PlatformInfo {
   icon: string
   badge: string
   badgeColor: string
-  configType: "json" | "url-token"
+  configType: "json" | "toml" | "url-token"
   configPath?: string
   steps: string[]
   notes?: string[]
@@ -185,6 +197,25 @@ const PLATFORMS: PlatformInfo[] = [
     notes: [
       "ChatGPT WAJIB HTTPS — server MCP di localhost tidak akan bisa dipakai, gunakan domain produksi Anda.",
       "Jangan tempel token di dalam URL untuk ChatGPT — gunakan kolom Token terpisah, ChatGPT menandai API key di URL sebagai berisiko.",
+    ],
+  },
+  {
+    id: "codex",
+    name: "ChatGPT Codex",
+    icon: "🧭",
+    badge: "Native MCP (TOML)",
+    badgeColor: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20",
+    configType: "toml",
+    configPath: "~/.codex/config.toml",
+    steps: [
+      "Unduh file konfigurasi (.toml) atau salin isinya dari kotak di bawah — token Anda sudah otomatis disematkan.",
+      "Tempelkan ke ~/.codex/config.toml (buat file ini kalau belum ada). Mau khusus untuk project ini saja? Taruh di .codex/config.toml pada root project, lalu tandai project sebagai 'trusted' di Codex agar config-nya dimuat.",
+      "Jalankan Codex (CLI: `codex`, atau ekstensi Codex di VS Code/IDE lain) — server MCP 'sacms' otomatis terdaftar, tool-nya langsung bisa dipanggil agent.",
+      "Contoh prompt: 'Gunakan MCP sacms untuk ambil get_full_schema, lalu buatkan halaman Next.js App Router yang menampilkan data Content Type \"artikel\".'",
+    ],
+    notes: [
+      "Format konfigurasi Codex adalah TOML, bukan JSON — kalau sudah ada server MCP lain di config.toml Anda, tempelkan blok [mcp_servers.sacms] ini di bawahnya, jangan menimpa seluruh file.",
+      "Codex CLI juga punya perintah `codex mcp add` untuk server stdio (command lokal) — untuk server HTTP seperti milik kita, cara paling langsung tetap edit config.toml seperti di atas.",
     ],
   },
   {
@@ -375,6 +406,50 @@ export function MCPDashboardClient({
     }
   }, [tokens, apiKeys, selectedTokenValue])
 
+  // Auto-provision an MCP token the first time a tenant lands here with
+  // nothing usable yet — otherwise this field falls back to the literal
+  // placeholder "YOUR_MCP_TOKEN" until someone remembers to click "Generate
+  // Token MCP Baru". `autoProvisionedRef` guards against firing twice (React
+  // Strict Mode double-invokes effects in dev) and against re-firing after
+  // the user later deletes their only token — that's an explicit choice to
+  // not auto-regenerate behind their back, not an oversight.
+  const autoProvisionedRef = useRef(false)
+  useEffect(() => {
+    if (autoProvisionedRef.current) return
+    if (!isPaid) return
+    if (tokens.length > 0) return
+    if (apiKeys.some((k) => !k.keyIsMasked)) return
+    autoProvisionedRef.current = true
+
+    startTransition(async () => {
+      const res = await createMcpTokenAction(tenantSlug, {
+        name: "Default MCP Token",
+        description: `MCP Server Access for ${tenantSlug}`,
+      })
+      if (res.error || !res.plainToken) return
+
+      setGeneratedPlainToken(res.plainToken)
+      setSelectedTokenValue(res.plainToken)
+      if (res.token) {
+        setTokens(prev => [{
+          id: res.token.id,
+          name: res.token.name,
+          type: "mcp",
+          description: res.token.description,
+          createdAt: new Date().toISOString(),
+        }, ...prev])
+      }
+      toast({
+        title: "Token MCP Otomatis Dibuat",
+        description: "Workspace ini belum punya token — satu token MCP dibuat otomatis dan siap dipakai di bawah.",
+      })
+    })
+    // Only the mount-time values matter — tokens/apiKeys/isPaid don't change
+    // except via actions this effect itself triggers, and autoProvisionedRef
+    // already prevents any re-run from doing anything.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   const handleCopy = async (text: string, label: string) => {
     if (!text) return
     try {
@@ -394,9 +469,12 @@ export function MCPDashboardClient({
 
   const handleDownloadConfigFile = (platformId: string) => {
     const snippet = generateConfig(platformId, mcpUrl, effectiveToken, tenantSlug)
-    const filename = platformId === "vscode" ? "mcp.json" : platformId === "claude" ? "claude_desktop_config.json" : "mcp_config.json"
+    const isToml = platformId === "codex"
+    const filename = isToml
+      ? "config.toml"
+      : platformId === "vscode" ? "mcp.json" : platformId === "claude" ? "claude_desktop_config.json" : "mcp_config.json"
 
-    const blob = new Blob([snippet], { type: "application/json" })
+    const blob = new Blob([snippet], { type: isToml ? "application/toml" : "application/json" })
     const url = URL.createObjectURL(blob)
     const a = document.createElement("a")
     a.href = url
@@ -745,7 +823,7 @@ export function MCPDashboardClient({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2.5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2.5">
               {PLATFORMS.map((p) => {
                 const isActive = activePlatform === p.id
                 return (
@@ -789,7 +867,7 @@ export function MCPDashboardClient({
                   </div>
                 </div>
 
-                {currentPlatformInfo.configType === "json" ? (
+                {currentPlatformInfo.configType !== "url-token" ? (
                   <div className="flex items-center gap-2 shrink-0">
                     <Button
                       size="sm"
@@ -798,7 +876,7 @@ export function MCPDashboardClient({
                       className="border-border/80 text-foreground font-bold text-xs h-8 rounded-xl shadow-xs"
                     >
                       <Download className="h-3.5 w-3.5 mr-1.5" />
-                      Unduh File (.json)
+                      Unduh File (.{currentPlatformInfo.configType === "toml" ? "toml" : "json"})
                     </Button>
                     <Button
                       size="sm"
@@ -852,8 +930,8 @@ export function MCPDashboardClient({
                   </ol>
                 </div>
 
-                {currentPlatformInfo.configType === "json" ? (
-                  /* JSON Code Snippet */
+                {currentPlatformInfo.configType !== "url-token" ? (
+                  /* JSON/TOML Code Snippet */
                   <div className="space-y-1.5">
                     <div className="flex items-center justify-between">
                       <Label className="text-xs font-bold text-foreground">File Konfigurasi ({currentPlatformInfo.configPath})</Label>
