@@ -189,6 +189,8 @@ interface SchemaDiagramProps {
   tenantSlug: string
   /** Bump this to force a re-fetch (e.g. after a schema is imported). */
   refreshKey?: number
+  /** Container height (any CSS value). Defaults to a fixed inline preview size. */
+  height?: string
 }
 
 function SchemaDiagramInner({ tenantSlug, refreshKey }: SchemaDiagramProps) {
@@ -272,9 +274,9 @@ function SchemaDiagramInner({ tenantSlug, refreshKey }: SchemaDiagramProps) {
   )
 }
 
-export function SchemaDiagram(props: SchemaDiagramProps) {
+export function SchemaDiagram({ height = "480px", ...props }: SchemaDiagramProps) {
   return (
-    <div className="w-full h-[480px] rounded-2xl border border-border/80 bg-muted/10 overflow-hidden">
+    <div className="w-full rounded-2xl border border-border/80 bg-muted/10 overflow-hidden" style={{ height }}>
       <ReactFlowProvider>
         <SchemaDiagramInner {...props} />
       </ReactFlowProvider>

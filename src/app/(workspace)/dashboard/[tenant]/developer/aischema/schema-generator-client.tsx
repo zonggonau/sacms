@@ -4,7 +4,8 @@ import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import { Sparkles, Download, Terminal, ArrowRight, X } from "lucide-react"
+import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
+import { Sparkles, Download, Terminal, ArrowRight, X, Maximize2 } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
 
@@ -21,6 +22,7 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
   const router = useRouter()
   const [diagramRefreshKey, setDiagramRefreshKey] = useState(0)
   const [showIdeHint, setShowIdeHint] = useState(true)
+  const [showFullscreenDiagram, setShowFullscreenDiagram] = useState(false)
 
   return (
     <div className="flex flex-col h-full min-h-0 gap-4 w-full max-w-full">
@@ -94,9 +96,32 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
 
       {/* ── ER Diagram ── */}
       <div className="shrink-0 space-y-2 pb-2">
-        <h2 className="text-sm font-bold text-foreground px-1">Diagram Schema</h2>
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setShowFullscreenDiagram(true)}
+            className="h-7 rounded-lg text-[11px] font-bold gap-1.5"
+          >
+            <Maximize2 className="h-3 w-3" /> Preview Full Screen
+          </Button>
+        </div>
         <SchemaDiagram tenantSlug={tenantSlug} refreshKey={diagramRefreshKey} />
       </div>
+
+      {/* ── Fullscreen Diagram Preview Modal ── */}
+      <Dialog open={showFullscreenDiagram} onOpenChange={setShowFullscreenDiagram}>
+        <DialogContent className="max-w-none w-screen h-screen sm:max-w-none top-0 left-0 translate-x-0 translate-y-0 rounded-none p-0 gap-0 flex flex-col">
+          <DialogTitle className="sr-only">Diagram Schema — Preview Full Screen</DialogTitle>
+          <div className="flex items-center justify-between px-5 py-3 border-b border-border/60 shrink-0">
+            <h2 className="text-sm font-bold text-foreground">Diagram Schema</h2>
+          </div>
+          <div className="flex-1 min-h-0 p-4">
+            <SchemaDiagram tenantSlug={tenantSlug} refreshKey={diagramRefreshKey} height="100%" />
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
