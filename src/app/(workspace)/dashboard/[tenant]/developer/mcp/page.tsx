@@ -14,25 +14,19 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
   if (!access) redirect("/dashboard")
 
   const tenantSummary = access.tenant
-  // Matches the masking rule already used by /api/tenant/[tenant]/api-keys:
-  // only the workspace owner (or a super admin) ever sees the legacy
-  // ApiKey's full plaintext value.
-  const canSeeFullApiKey = access.role === "owner" || session.user.role === "super_admin"
 
-  // Fetch existing tokens, keys, and subscription for this tenant
-  const [tenant, tokens, apiKeys, subscription] = await Promise.all([
+  // Fetch existing tokens and subscription for this tenant. Only type "mcp"
+  // rows are MCP credentials — the REST/GraphQL API key (any other type, or
+  // the legacy ApiKey) is a separate system managed at /developer/api-keys
+  // and no longer authenticates against the MCP server at all.
+  const [tenant, tokens, subscription] = await Promise.all([
     db.tenant.findUnique({
       where: { id: tenantSummary.id },
       select: { id: true, name: true, slug: true, plan: true, status: true, hostingStatus: true },
     }),
     db.apiToken.findMany({
-      where: { tenantId: tenantSummary.id },
+      where: { tenantId: tenantSummary.id, type: "mcp" },
       select: { id: true, name: true, description: true, type: true, createdAt: true, lastUsedAt: true },
-      orderBy: { createdAt: "desc" },
-    }),
-    db.apiKey.findMany({
-      where: { tenantId: tenantSummary.id },
-      select: { id: true, name: true, key: true, createdAt: true, lastUsed: true },
       orderBy: { createdAt: "desc" },
     }),
     db.subscription.findFirst({
@@ -67,18 +61,6 @@ export default async function MCPPage({ params }: { params: Promise<{ tenant: st
         description: t.description,
         createdAt: t.createdAt.toISOString(),
         lastUsedAt: t.lastUsedAt ? t.lastUsedAt.toISOString() : null,
-      }))}
-      existingApiKeys={apiKeys.map(k => ({
-        id: k.id,
-        name: k.name || "API Key",
-        // Masked for anyone but the owner/super admin — matches
-        // /api/tenant/[tenant]/api-keys's existing rule. A masked value is
-        // never usable as a real credential, so it's excluded from
-        // selectedTokenValue auto-select in the client.
-        key: canSeeFullApiKey ? k.key : `${k.key.slice(0, 10)}…${k.key.slice(-4)}`,
-        keyIsMasked: !canSeeFullApiKey,
-        createdAt: k.createdAt.toISOString(),
-        lastUsed: k.lastUsed ? k.lastUsed.toISOString() : null,
       }))}
     />
   )

@@ -24,7 +24,7 @@ export function sanitizePermissions(input: unknown): ApiKeyPermission[] {
   return Array.from(set)
 }
 
-function generateApiKeyToken(): string {
+export function generateApiKeyToken(): string {
   return `cf_${randomBytes(32).toString("hex")}`
 }
 
@@ -80,4 +80,29 @@ export async function updateApiTokenPermissions(
   })
 
   return { apiToken }
+}
+
+/**
+ * Rotates the secret of the tenant's primary API key in place — same row,
+ * same id/name/permissions, new `token` value. This is the only way to
+ * change the key's value: a tenant may have at most one, so "I want a
+ * different key" means regenerate, never create a second row.
+ */
+export async function regenerateApiToken(
+  tenantId: string,
+  tokenId: string
+): Promise<{ error: string } | { apiToken: Awaited<ReturnType<typeof db.apiToken.update>>; plainToken: string }> {
+  const token = await db.apiToken.findFirst({ where: { id: tokenId, tenantId } })
+  if (!token) return { error: "API key not found" }
+  if (token.type === "mcp") return { error: "MCP tokens are regenerated from the MCP page, not here" }
+
+  const plainToken = generateApiKeyToken()
+  const hashedToken = createHash("sha256").update(plainToken).digest("hex")
+
+  const apiToken = await db.apiToken.update({
+    where: { id: tokenId },
+    data: { token: hashedToken },
+  })
+
+  return { apiToken, plainToken }
 }

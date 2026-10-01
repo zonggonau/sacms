@@ -23,25 +23,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 import Link from "next/link"
 import { 
   Copy, Check, Plug, Bot, Globe, ExternalLink,
   Code2, Key, Server, Sparkles, Database, Layers, Webhook,
   Plus, Trash2, ShieldCheck, Loader2, Info, CheckCircle2,
   Cpu, Search, Image, GitBranch, FileCode2, Wand2, Lightbulb,
-  Lock, AlertTriangle, ArrowUpRight, HardDrive, Download, FileCode, BookOpen
+  Lock, AlertTriangle, ArrowUpRight, HardDrive, Download, FileCode, BookOpen, RefreshCw
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { cn } from "@/lib/utils"
-import { createMcpTokenAction, deleteMcpTokenAction } from "@/actions/mcp-tokens"
+import { createMcpTokenAction, deleteMcpTokenAction, regenerateMcpTokenAction } from "@/actions/mcp-tokens"
 
 interface MCPTokenItem {
   id: string
@@ -53,16 +46,6 @@ interface MCPTokenItem {
   lastUsedAt?: string | null
 }
 
-interface ApiKeyItem {
-  id: string
-  name: string
-  key: string
-  /** true when `key` above is a masked preview, not the real usable value. */
-  keyIsMasked?: boolean
-  createdAt: string
-  lastUsed?: string | null
-}
-
 interface MCPDashboardClientProps {
   tenantSlug: string
   tenantId: string
@@ -70,7 +53,6 @@ interface MCPDashboardClientProps {
   isPaid?: boolean
   subscriptionStatus?: string
   existingTokens: MCPTokenItem[]
-  existingApiKeys?: ApiKeyItem[]
 }
 
 // ─── Config generators per platform ──────────────────────────────────────────
@@ -369,7 +351,6 @@ export function MCPDashboardClient({
   isPaid = false,
   subscriptionStatus = "inactive",
   existingTokens,
-  existingApiKeys = [],
 }: MCPDashboardClientProps) {
   const { toast } = useToast()
   const { confirm, dialog: confirmDialog } = useConfirm()
@@ -382,29 +363,17 @@ export function MCPDashboardClient({
     setMcpUrl(`${origin}/api/mcp`)
   }, [])
 
-  // Token management state
+  // Token management state — a tenant has at most one MCP token (separate
+  // from, and never interchangeable with, the REST/GraphQL API key managed
+  // at /developer/api-keys; see api/mcp/[[...transport]]/route.ts's
+  // resolveToken(), which only accepts type "mcp" rows).
   const [tokens, setTokens] = useState<MCPTokenItem[]>(existingTokens)
-  const [apiKeys] = useState<ApiKeyItem[]>(existingApiKeys)
   const [newTokenName, setNewTokenName] = useState("")
   const [showGenerateModal, setShowGenerateModal] = useState(false)
   const [generatedPlainToken, setGeneratedPlainToken] = useState<string | null>(null)
   const [selectedTokenValue, setSelectedTokenValue] = useState<string>("")
   const [copiedToken, setCopiedToken] = useState(false)
   const [activePlatform, setActivePlatform] = useState("claude")
-
-  // Auto-select a default credential — but only one whose value is real and
-  // reusable. ApiToken.token is never sent to the client at all (it's a
-  // SHA-256 hash server-side; see page.tsx), so `tokens[].token` is always
-  // absent here and can never be auto-selected. A masked ApiKey preview
-  // isn't usable either — skip it the same way.
-  useEffect(() => {
-    if (!selectedTokenValue) {
-      const usableKey = apiKeys.find((k) => !k.keyIsMasked)
-      if (usableKey) {
-        setSelectedTokenValue(usableKey.key)
-      }
-    }
-  }, [tokens, apiKeys, selectedTokenValue])
 
   // Auto-provision an MCP token the first time a tenant lands here with
   // nothing usable yet — otherwise this field falls back to the literal
@@ -418,7 +387,6 @@ export function MCPDashboardClient({
     if (autoProvisionedRef.current) return
     if (!isPaid) return
     if (tokens.length > 0) return
-    if (apiKeys.some((k) => !k.keyIsMasked)) return
     autoProvisionedRef.current = true
 
     startTransition(async () => {
@@ -541,6 +509,41 @@ export function MCPDashboardClient({
     })
   }
 
+  const handleRegenerateToken = async () => {
+    const existing = tokens[0]
+    if (!existing) return
+
+    if (
+      !(await confirm({
+        title: "Generate ulang token MCP ini?",
+        description: "Token lama langsung berhenti berfungsi — AI agent/editor yang masih memakainya akan kehilangan akses sampai Anda pasang token baru.",
+        confirmLabel: "Generate Ulang",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    startTransition(async () => {
+      const res = await regenerateMcpTokenAction(tenantSlug, existing.id)
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Gagal Generate Ulang",
+          description: res.error,
+        })
+      } else {
+        setGeneratedPlainToken(res.plainToken || null)
+        if (res.plainToken) {
+          setSelectedTokenValue(res.plainToken)
+        }
+        toast({
+          title: "Token MCP Berhasil Di-generate Ulang",
+          description: "Salin token baru Anda sekarang untuk dipasang di AI Client Anda.",
+        })
+      }
+    })
+  }
+
   const handleDeleteToken = async (tokenId: string) => {
     if (
       !(await confirm({
@@ -599,12 +602,24 @@ export function MCPDashboardClient({
               </div>
             </div>
 
-            <Button
-              onClick={() => setShowGenerateModal(true)}
-              className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0"
-            >
-              <Plus className="mr-1.5 h-3.5 w-3.5" /> Generate Token MCP Baru
-            </Button>
+            {tokens.length > 0 ? (
+              <Button
+                onClick={handleRegenerateToken}
+                disabled={isPending}
+                variant="outline"
+                className="font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0 border-border/80"
+              >
+                {isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                Generate Ulang Token MCP
+              </Button>
+            ) : (
+              <Button
+                onClick={() => setShowGenerateModal(true)}
+                className="bg-primary hover:bg-primary/90 text-primary-foreground font-bold rounded-xl h-9 px-4 text-xs shadow-xs shrink-0"
+              >
+                <Plus className="mr-1.5 h-3.5 w-3.5" /> Generate Token MCP Baru
+              </Button>
+            )}
           </div>
 
           {/* What is MCP — explanation for anyone landing here without prior context */}
@@ -751,31 +766,6 @@ export function MCPDashboardClient({
                   className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
                 />
               </div>
-
-              {(tokens.length > 0 || apiKeys.length > 0) && (
-                <Select value={selectedTokenValue} onValueChange={setSelectedTokenValue}>
-                  <SelectTrigger className="h-9 w-36 rounded-xl text-xs bg-background border-border/80 shrink-0 font-medium">
-                    <SelectValue placeholder="Pilih Kunci" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border bg-card">
-                    {/* Existing MCP tokens have no usable value here — the real
-                        token is only ever known once, right after creation
-                        (generatedPlainToken). Listed as disabled so the admin
-                        can see the token exists without being able to select
-                        a value that would silently copy nothing usable. */}
-                    {tokens.map((t) => (
-                      <SelectItem key={t.id} value={t.id} disabled className="text-xs font-mono opacity-60">
-                        Token: {t.name} (buat ulang untuk menyalin)
-                      </SelectItem>
-                    ))}
-                    {apiKeys.map((k) => (
-                      <SelectItem key={k.id} value={k.key} disabled={k.keyIsMasked} className="text-xs font-mono">
-                        API Key: {k.name}{k.keyIsMasked ? " (disamarkan)" : ""}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              )}
 
               <Button
                 variant="secondary"

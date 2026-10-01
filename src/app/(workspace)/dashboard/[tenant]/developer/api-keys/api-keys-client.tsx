@@ -38,11 +38,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Plus, Key, Copy, Trash2, Loader2, ShieldCheck,
   Save, Globe, Shield, Terminal, Settings2, Sliders, CheckCircle,
-  ExternalLink, Lock, Code2, AlertTriangle, Pencil
+  ExternalLink, Lock, Code2, AlertTriangle, Pencil, RefreshCw
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
-import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction } from "@/actions/api-keys"
+import { createApiTokenAction, deleteApiTokenAction, updateApiTokenPermissionsAction, regenerateApiTokenAction } from "@/actions/api-keys"
 
 interface ApiToken {
   id: string
@@ -237,6 +237,39 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
         toast({
           title: "Berhasil",
           description: "API key berhasil dihapus",
+        })
+      }
+    })
+  }
+
+  const handleRegenerateToken = async (token: ApiToken) => {
+    if (
+      !(await confirm({
+        title: "Generate ulang API key ini?",
+        description: `Key lama untuk "${token.name}" langsung berhenti berfungsi — aplikasi yang masih memakainya akan kehilangan akses sampai Anda pasang key baru.`,
+        confirmLabel: "Generate Ulang",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    startTransition(async () => {
+      const res = await regenerateApiTokenAction(tenantSlug, token.id)
+      if (res.error) {
+        toast({
+          variant: "destructive",
+          title: "Terjadi Kesalahan",
+          description: res.error,
+        })
+      } else {
+        setCreatedPlainToken(res.plainToken || null)
+        if (res.token) {
+          setTokensList(prev => prev.map(t => (t.id === token.id ? { ...t, ...(res.token as any) } : t)))
+        }
+        setShowTokenDialog(true)
+        toast({
+          title: "Berhasil",
+          description: "API Key berhasil di-generate ulang",
         })
       }
     })
@@ -536,6 +569,10 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                     <CardDescription className="text-xs text-muted-foreground mt-0.5">
                       Gunakan pada header <code className="font-mono bg-muted px-1 py-0.5 rounded text-[10px]">Authorization: Bearer &lt;KEY&gt;</code>.
                       Setiap workspace hanya boleh punya satu API Key aktif — dibuat sekali, izinnya bisa diubah kapan saja lewat tombol Edit.
+                      {" "}Ini <strong>terpisah</strong> dari token MCP (dipakai AI agent seperti Claude/ChatGPT/Codex) — kelola token MCP di{" "}
+                      <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">
+                        Developer &gt; MCP
+                      </a>.
                     </CardDescription>
                   </div>
                 </CardHeader>
@@ -546,6 +583,12 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                       <p className="font-bold text-xs text-foreground">Belum ada API Key</p>
                       <p className="text-[11px] text-muted-foreground mt-0.5">
                         Klik <strong>Buat API Key Baru</strong> untuk membuat token.
+                      </p>
+                      <p className="text-[11px] text-muted-foreground mt-2">
+                        Sudah generate token di halaman <strong>MCP</strong> tapi tidak muncul di sini? Memang terpisah — token MCP untuk AI agent dikelola di{" "}
+                        <a href={`/dashboard/${tenantSlug}/developer/mcp`} className="text-primary hover:underline font-semibold">
+                          Developer &gt; MCP
+                        </a>, bukan di halaman ini.
                       </p>
                     </div>
                   ) : (
@@ -603,6 +646,16 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                                   title="Edit Izin Hak Akses"
                                 >
                                   <Pencil className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleRegenerateToken(apiKey)}
+                                  className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                                  disabled={isPending}
+                                  title="Generate Ulang API Key"
+                                >
+                                  <RefreshCw className="h-3.5 w-3.5" />
                                 </Button>
                                 <Button
                                   variant="ghost"
@@ -805,7 +858,7 @@ export function ApiKeysClient({ initialTokens, legacyApiKeys = [], tenantSlug, i
                 <div className="w-10 h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center mb-1">
                   <ShieldCheck className="h-5 w-5" />
                 </div>
-                <DialogTitle className="text-base font-bold text-foreground">API Key Berhasil Dibuat</DialogTitle>
+                <DialogTitle className="text-base font-bold text-foreground">API Key Anda Siap Dipakai</DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground">
                   Salin kunci ini sekarang — hanya ditampilkan sekali.
                 </DialogDescription>

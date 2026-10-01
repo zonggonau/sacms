@@ -48,49 +48,35 @@ async function resolveToken(rawToken: string): Promise<AuthContext | null> {
   let tenantData: { id: string; slug: string; name: string; plan: string; status: string; hostingStatus: string | null } | null = null
   let permissions: string[] = ["read", "write", "delete"]
 
-  // Look up by hashed token first, then plain token
+  // Look up by hashed token first, then plain token. MCP is a separate
+  // credential system from REST/GraphQL (see public-api-actor.ts) — only
+  // type "mcp" ApiToken rows authenticate here, and the legacy ApiKey
+  // (REST-only) is not accepted at all.
   const token = await db.apiToken.findFirst({
     where: {
       OR: [
         { token: hashed },
         { token: clean },
-      ]
+      ],
+      type: "mcp",
     },
-    select: { 
+    select: {
       id: true,
-      tenantId: true, 
+      tenantId: true,
       permissions: true,
-      tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } } 
+      tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } }
     },
   })
 
   if (token?.tenant) {
     db.apiToken.updateMany({
-      where: { OR: [{ token: hashed }, { token: clean }] },
+      where: { OR: [{ token: hashed }, { token: clean }], type: "mcp" },
       data: { lastUsedAt: new Date() }
     }).catch(() => {})
 
     tenantData = token.tenant
     if (Array.isArray(token.permissions)) {
       permissions = token.permissions as string[]
-    }
-  } else {
-    // Fallback to ApiKey (plain key)
-    const apiKey = await db.apiKey.findUnique({
-      where: { key: clean },
-      include: { tenant: { select: { id: true, slug: true, name: true, plan: true, status: true, hostingStatus: true } } },
-    })
-
-    if (apiKey?.tenant) {
-      db.apiKey.update({
-        where: { id: apiKey.id },
-        data: { lastUsed: new Date() },
-      }).catch(() => {})
-
-      tenantData = apiKey.tenant
-      if (Array.isArray(apiKey.permissions)) {
-        permissions = apiKey.permissions as string[]
-      }
     }
   }
 
@@ -2016,6 +2002,48 @@ export default async function NewsPage() {
           content: [{
             type: "text" as const,
             text: JSON.stringify({ status: "updated", id: result.apiToken.id, permissions: result.apiToken.permissions }, null, 2)
+          }]
+        }
+      }
+    )
+
+    // ── regenerate_api_key ───────────────────────────────────────────────────
+    server.registerTool(
+      "regenerate_api_key",
+      {
+        title: "Regenerate Workspace API Key Secret",
+        description: "Rotate the workspace's primary REST/GraphQL API key — same key (id, name, permissions), brand new secret. The old secret stops working immediately. A workspace only ever has one such key; this is the only way to change its value (see get_or_create_api_key).",
+        inputSchema: {},
+      },
+      async () => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        const { findPrimaryApiToken, regenerateApiToken } = await import("@/lib/api-token-registry")
+
+        const existing = await findPrimaryApiToken(auth.tenantId)
+        if (!existing) {
+          return {
+            content: [{ type: "text" as const, text: "❌ No API key exists yet for this workspace. Call get_or_create_api_key first." }],
+            isError: true,
+          }
+        }
+
+        const result = await regenerateApiToken(auth.tenantId, existing.id)
+        if ("error" in result) {
+          return { content: [{ type: "text" as const, text: `❌ ${result.error}` }], isError: true }
+        }
+
+        return {
+          content: [{
+            type: "text" as const,
+            text: JSON.stringify({
+              status: "regenerated",
+              id: result.apiToken.id,
+              apiKey: result.plainToken,
+              warning: "Store this key now — it will never be shown again, and the previous secret no longer works.",
+            }, null, 2)
           }]
         }
       }

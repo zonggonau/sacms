@@ -151,7 +151,10 @@ export async function resolvePublicApiActor(
 
   const hashedToken = createHash("sha256").update(token).digest("hex")
   const apiToken = await db.apiToken.findFirst({
-    where: { OR: [{ token: hashedToken }, { token }] },
+    // MCP tokens are a separate credential system (see api/mcp/[[...transport]]/
+    // route.ts) — excluded here so an MCP token never doubles as REST/GraphQL
+    // access, and vice versa.
+    where: { OR: [{ token: hashedToken }, { token }], type: { not: "mcp" } },
     select: { id: true, tenantId: true, type: true, expiresAt: true },
   })
   if (apiToken) {
