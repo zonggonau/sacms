@@ -57,34 +57,16 @@ export function AIAssistantDialog({
     if (!prompt) return
     setLoading(true)
     try {
-      const isGlobal = tenantSlug === "global"
-      const url = isGlobal ? `/api/admin/ai/generate` : `/api/tenant/${tenantSlug}/ai/generate`
-      const res = await fetch(url, {
+      const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt,
-          contentType: contentTypeSlug,
-          fieldName,
-          tone,
-        }),
+        body: JSON.stringify({ action: "generate", prompt, tone, fieldSlug: fieldName })
       })
-      const data = await res.json()
-      if (res.ok && data.content) {
-        setResult(data.content)
+      const assistData = await assistRes.json()
+      if (assistData.result) {
+        setResult(assistData.result)
       } else {
-        // Fallback to content-assist
-        const assistRes = await fetch(`/api/tenant/${tenantSlug}/ai/content-assist`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ action: "generate", prompt, tone, fieldSlug: fieldName })
-        })
-        const assistData = await assistRes.json()
-        if (assistData.result) {
-          setResult(assistData.result)
-        } else {
-          throw new Error(data.error || "Gagal membuat konten")
-        }
+        throw new Error(assistData.error || "Gagal membuat konten")
       }
     } catch (err: any) {
       toast({ variant: "destructive", title: "Terjadi Kesalahan AI", description: err.message || "Gagal membuat konten" })

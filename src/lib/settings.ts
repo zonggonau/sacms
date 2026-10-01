@@ -26,22 +26,11 @@ export interface PlatformSettings {
   autoWebpConvert: string
   autoGenerateThumbnails: string
 
-  // Dynamic AI Engine & Providers
+  // Dynamic AI Engine (Vercel AI Gateway — one subscription, all models)
   aiGatewayApiKey: string
   aiGatewayBaseUrl: string
-  platformAiProvider: "deepseek" | "openai" | "gemini" | "anthropic" | "groq" | "mistral" | "xai" | "openrouter"
-  platformAiApiKey: string
-  deepseekApiKey: string
-  openaiApiKey: string
-  geminiApiKey: string
-  anthropicApiKey: string
-  groqApiKey: string
-  mistralApiKey: string
-  xaiApiKey: string
-  openrouterApiKey: string
   v0ApiKey: string
   vercelAccessToken: string
-  defaultAiModel: string
   aiSdkDefaultModel: string
   freePlanAiMonthlyWords: string
 
@@ -104,20 +93,11 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
   // served through Vertex (e.g. Gemini), causing "function response parts"
   // errors from the underlying provider.
   aiGatewayBaseUrl: "https://ai-gateway.vercel.sh/v4/ai",
-  platformAiProvider: "deepseek",
-  platformAiApiKey: "",
-  deepseekApiKey: "",
-  openaiApiKey: "",
-  geminiApiKey: "",
-  anthropicApiKey: "",
-  groqApiKey: "",
-  mistralApiKey: "",
-  xaiApiKey: "",
-  openrouterApiKey: "",
   v0ApiKey: "",
   vercelAccessToken: "",
-  defaultAiModel: "deepseek-chat",
-  aiSdkDefaultModel: "gemini-2.5-flash",
+  // Gateway model id, "provider/model" form — this one key drives both
+  // content generation and schema generation.
+  aiSdkDefaultModel: "google/gemini-2.5-flash",
   freePlanAiMonthlyWords: "10000",
 
   // Email Defaults
@@ -166,14 +146,6 @@ const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
   aiGatewayBaseUrl: "AI_GATEWAY_BASE_URL",
   vercelAccessToken: "VERCEL_ACCESS_TOKEN",
   v0ApiKey: "V0_API_KEY",
-  deepseekApiKey: "DEEPSEEK_API_KEY",
-  openaiApiKey: "OPENAI_API_KEY",
-  geminiApiKey: "GEMINI_API_KEY",
-  anthropicApiKey: "ANTHROPIC_API_KEY",
-  groqApiKey: "GROQ_API_KEY",
-  mistralApiKey: "MISTRAL_API_KEY",
-  xaiApiKey: "XAI_API_KEY",
-  openrouterApiKey: "OPENROUTER_API_KEY",
   resendApiKey: "RESEND_API_KEY",
   resendFrom: "RESEND_FROM",
   smtpHost: "SMTP_HOST",
@@ -201,10 +173,6 @@ function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
   // Also check VERCEL_AI_API_KEY fallback for aiGatewayApiKey
   if (!out.aiGatewayApiKey && process.env.VERCEL_AI_API_KEY) {
     out.aiGatewayApiKey = process.env.VERCEL_AI_API_KEY
-  }
-  // Also check GOOGLE_GENERATIVE_AI_API_KEY fallback for geminiApiKey
-  if (!out.geminiApiKey && process.env.GOOGLE_GENERATIVE_AI_API_KEY) {
-    out.geminiApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY
   }
   return out
 }
@@ -282,14 +250,11 @@ export async function getGlobalWorkspaceId(): Promise<string> {
 export async function getResolvedAiConfig() {
   const settings = await getPlatformSettings()
   return {
-    provider: settings.platformAiProvider || "deepseek",
-    deepseekApiKey: settings.deepseekApiKey || settings.platformAiApiKey || process.env.DEEPSEEK_API_KEY || "",
-    openaiApiKey: settings.openaiApiKey || (settings.platformAiProvider === "openai" ? settings.platformAiApiKey : "") || process.env.OPENAI_API_KEY || "",
-    geminiApiKey: settings.geminiApiKey || (settings.platformAiProvider === "gemini" ? settings.platformAiApiKey : "") || process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY || "",
-    anthropicApiKey: settings.anthropicApiKey || (settings.platformAiProvider === "anthropic" ? settings.platformAiApiKey : "") || process.env.ANTHROPIC_API_KEY || "",
+    aiGatewayApiKey: settings.aiGatewayApiKey || "",
+    aiGatewayBaseUrl: settings.aiGatewayBaseUrl || "",
     v0ApiKey: settings.v0ApiKey || process.env.V0_API_KEY || "",
     vercelAccessToken: settings.vercelAccessToken || process.env.VERCEL_ACCESS_TOKEN || "",
-    defaultModel: settings.defaultAiModel || "deepseek-chat",
+    defaultModel: settings.aiSdkDefaultModel || "google/gemini-2.5-flash",
   }
 }
 

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
-import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
+import { withStaffAuth, readJson } from "@/lib/api/route-helpers"
 
 const assistSchema = z.object({
   action: z.enum(["generate", "improve", "translate", "seo"]),
@@ -11,57 +11,40 @@ const assistSchema = z.object({
   fieldSlug: z.string().optional(),
 })
 
-export const POST = withStaffAuth(async (request) => {
+export const POST = withStaffAuth(async (request, _context, { access }) => {
     const parsed = await readJson(request, assistSchema)
     if (!parsed.ok) return parsed.response
 
     const { action, prompt, content = "", targetLanguage = "id", tone = "formal" } = parsed.data
-    const apiKey = process.env.OPENAI_API_KEY
 
-    // If OpenAI API Key is configured, use OpenAI
-    if (apiKey) {
-      try {
-        let systemPrompt = "You are a professional CMS Content Assistant. Output only the final refined content without conversational filler."
-        let userPrompt = ""
+    const systemPrompt = "You are a professional CMS Content Assistant. Output only the final refined content without conversational filler."
+    let userPrompt = ""
 
-        if (action === "generate") {
-          userPrompt = `Write high-quality content for a CMS field based on this prompt: "${prompt}". Tone: ${tone}.`
-        } else if (action === "improve") {
-          userPrompt = `Improve and polish the following text. Tone: ${tone}. Instructions: "${prompt || "Fix grammar, improve flow, and make it engaging"}".\n\nOriginal Text:\n${content}`
-        } else if (action === "translate") {
-          userPrompt = `Translate the following text accurately into ${targetLanguage}. Preserve markdown and formatting.\n\nOriginal Text:\n${content}`
-        } else if (action === "seo") {
-          userPrompt = `Generate SEO metadata from this content. Return a JSON object with "metaTitle" (max 60 chars) and "metaDescription" (max 160 chars).\n\nContent:\n${content}`
-        }
-
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            temperature: 0.7,
-            max_tokens: 1500,
-          }),
-        })
-
-        if (res.ok) {
-          const data = await res.json()
-          const resultText = data.choices?.[0]?.message?.content?.trim() || ""
-          return NextResponse.json({ success: true, result: resultText })
-        }
-      } catch (err) {
-        console.error("OpenAI API call failed, falling back to local processor:", err)
-      }
+    if (action === "generate") {
+      userPrompt = `Write high-quality content for a CMS field based on this prompt: "${prompt}". Tone: ${tone}.`
+    } else if (action === "improve") {
+      userPrompt = `Improve and polish the following text. Tone: ${tone}. Instructions: "${prompt || "Fix grammar, improve flow, and make it engaging"}".\n\nOriginal Text:\n${content}`
+    } else if (action === "translate") {
+      userPrompt = `Translate the following text accurately into ${targetLanguage}. Preserve markdown and formatting.\n\nOriginal Text:\n${content}`
+    } else if (action === "seo") {
+      userPrompt = `Generate SEO metadata from this content. Return a JSON object with "metaTitle" (max 60 chars) and "metaDescription" (max 160 chars).\n\nContent:\n${content}`
     }
 
-    // Smart Local Fallback when OPENAI_API_KEY is not configured
+    try {
+      const { safeGenerateContent } = await import("@/lib/ai")
+      const result = await safeGenerateContent(systemPrompt, userPrompt, {
+        responseFormat: action === "seo" ? "json_object" : "text",
+        tenantId: access.tenantId,
+        action: `content_assist_${action}`,
+      })
+
+      const resultText = action === "seo" ? result.text : result.text.trim()
+      return NextResponse.json({ success: true, result: resultText })
+    } catch (err) {
+      console.error("AI Gateway call failed, falling back to local processor:", err)
+    }
+
+    // Smart Local Fallback when the Gateway isn't configured or fails
     let result = ""
 
     if (action === "generate") {

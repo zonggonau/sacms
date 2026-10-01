@@ -1,129 +1,7 @@
-import OpenAI from "openai"
+import { createGateway } from "@ai-sdk/gateway"
+import { generateText, generateObject, type LanguageModel } from "ai"
 import { db } from "./database"
 import { getTenantPlanConfig } from "./tenant-plan"
-
-// Menggunakan DeepSeek Chat model (DeepSeek-V3) sebagai default
-const MODELS_TO_TRY = [
-  "deepseek-chat", // Main DeepSeek V3 model
-  "deepseek-reasoner" // Fallback to reasoning model if needed
-]
-
-const ANTHROPIC_DEFAULT_MODEL = "claude-3-5-haiku-20241022"
-
-type ResolvedAiClient =
-  | { kind: "openai"; client: OpenAI; defaultModel: string }
-  | { kind: "anthropic"; apiKey: string; defaultModel: string }
-
-/**
- * Resolve the configured AI backend. OpenAI, DeepSeek, and Gemini all speak
- * the OpenAI chat-completions wire format, so they share one client via
- * `baseURL` swapping. Anthropic's Messages API is a different shape
- * entirely (no drop-in OpenAI-compatible endpoint), so it's resolved to a
- * distinct "kind" and called separately in safeGenerateContent below.
- */
-async function getAiClient(): Promise<ResolvedAiClient> {
-  const { getResolvedAiConfig } = await import("./settings")
-  const config = await getResolvedAiConfig()
-
-  // 1. OpenAI jika provider openai atau key openai tersedia
-  if (config.openaiApiKey) {
-    return {
-      kind: "openai",
-      client: new OpenAI({ apiKey: config.openaiApiKey }),
-      defaultModel: config.provider === "openai" ? (config.defaultModel || "gpt-4o-mini") : "gpt-4o-mini"
-    }
-  }
-
-  // 2. DeepSeek jika key deepseek tersedia
-  const deepseekKey = config.deepseekApiKey || process.env.DEEPSEEK_API_KEY
-  if (deepseekKey) {
-    return {
-      kind: "openai",
-      client: new OpenAI({
-        baseURL: 'https://api.deepseek.com',
-        apiKey: deepseekKey
-      }),
-      defaultModel: config.defaultModel || "deepseek-chat"
-    }
-  }
-
-  // 3. Gemini OpenAI-compatible endpoint jika gemini key tersedia
-  const geminiKey = config.geminiApiKey || process.env.GEMINI_API_KEY || process.env.GOOGLE_AI_API_KEY
-  if (geminiKey) {
-    return {
-      kind: "openai",
-      client: new OpenAI({
-        baseURL: "https://generativelanguage.googleapis.com/v1beta/openai/",
-        apiKey: geminiKey,
-      }),
-      defaultModel: "gemini-1.5-flash"
-    }
-  }
-
-  // 4. Anthropic Claude jika key anthropic tersedia
-  const anthropicKey = config.anthropicApiKey || process.env.ANTHROPIC_API_KEY
-  if (anthropicKey) {
-    return {
-      kind: "anthropic",
-      apiKey: anthropicKey,
-      defaultModel: config.provider === "anthropic" ? (config.defaultModel || ANTHROPIC_DEFAULT_MODEL) : ANTHROPIC_DEFAULT_MODEL
-    }
-  }
-
-  throw new Error("Tidak ada API Key AI (OpenAI, DeepSeek, Gemini, atau Anthropic) yang terkonfigurasi di Platform Settings atau .env.")
-}
-
-interface AnthropicCompletionResult {
-  text: string
-  usage: { promptTokens: number; completionTokens: number; totalTokens: number }
-}
-
-async function callAnthropic(
-  apiKey: string,
-  model: string,
-  systemPrompt: string,
-  userPrompt: string,
-  maxTokens: number,
-  temperature: number,
-): Promise<AnthropicCompletionResult> {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "x-api-key": apiKey,
-      "anthropic-version": "2023-06-01",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify({
-      model,
-      max_tokens: maxTokens,
-      temperature,
-      ...(systemPrompt ? { system: systemPrompt } : {}),
-      messages: [{ role: "user", content: userPrompt }],
-    }),
-    signal: AbortSignal.timeout(60000),
-  })
-
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({}))
-    const error: any = new Error(err.error?.message || res.statusText || "Anthropic request failed")
-    error.status = res.status
-    throw error
-  }
-
-  const data = await res.json()
-  const text = Array.isArray(data.content)
-    ? data.content.map((block: any) => (block?.type === "text" ? block.text : "")).join("")
-    : ""
-
-  return {
-    text,
-    usage: {
-      promptTokens: data.usage?.input_tokens ?? 0,
-      completionTokens: data.usage?.output_tokens ?? 0,
-      totalTokens: (data.usage?.input_tokens ?? 0) + (data.usage?.output_tokens ?? 0),
-    },
-  }
-}
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
@@ -138,39 +16,101 @@ export interface AIConfig {
   overrideModel?: string
 }
 
-/**
- * Executes a generative AI request with automatic model fallback and basic retry logic.
- */
-export async function safeGenerateContent(
-  systemPrompt: string,
-  userPrompt: string,
-  config: AIConfig | number = {}
-): Promise<{ text: string; model: string; usage: any }> {
-  const finalConfig: AIConfig = typeof config === 'number' ? { maxTokens: config } : config
-  let lastError: any = null
+interface UsageTotals {
+  promptTokens: number
+  completionTokens: number
+  totalTokens: number
+}
 
-  // 1. Check user-level AI credits if userId is present
-  if (finalConfig.userId) {
+/**
+ * Resolve the single configured AI backend: Vercel AI Gateway. One Gateway
+ * API key (Admin Settings → Mesin AI) covers every provider/model, so unlike
+ * the old per-provider-key resolver there is no priority order to pick
+ * between — just one credential and a model id in "provider/model" form.
+ */
+export async function resolveGatewayModel(overrideModel?: string): Promise<{ model: LanguageModel; modelId: string }> {
+  const { getResolvedAiConfig } = await import("./settings")
+  const config = await getResolvedAiConfig()
+
+  if (!config.aiGatewayApiKey) {
+    throw new Error("Vercel AI Gateway belum dikonfigurasi. Masukkan API Key di Admin > Pengaturan > Mesin AI.")
+  }
+
+  const gateway = createGateway({
+    apiKey: config.aiGatewayApiKey,
+    ...(config.aiGatewayBaseUrl ? { baseURL: config.aiGatewayBaseUrl } : {}),
+  })
+  const modelId = overrideModel || config.defaultModel
+  return { model: gateway(modelId), modelId }
+}
+
+/**
+ * Maps the AI SDK's usage shape ({inputTokens, outputTokens, totalTokens})
+ * to the {promptTokens, completionTokens, totalTokens} shape the credit
+ * ledger and every existing caller already expect.
+ */
+export function toUsageTotals(usage: { inputTokens?: number; outputTokens?: number; totalTokens?: number }): UsageTotals {
+  const promptTokens = usage.inputTokens ?? 0
+  const completionTokens = usage.outputTokens ?? 0
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens: usage.totalTokens ?? (promptTokens + completionTokens),
+  }
+}
+
+/**
+ * Retry a Gateway call on rate-limit/connection errors with exponential
+ * backoff (2s, 4s, 8s, ...). Any other error (bad request, auth, etc.)
+ * fails immediately instead of burning retries on something that'll never
+ * succeed.
+ */
+export async function withAiRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Promise<T> {
+  let lastError: any = null
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    try {
+      return await fn()
+    } catch (error: any) {
+      lastError = error
+      const status = error.statusCode || error.status || (error.message?.includes("429") ? 429 : error.message?.includes("503") ? 503 : 0)
+      const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.message?.includes("fetch failed") || error.message?.includes("Connection error")
+      const retryable = status === 429 || status === 503 || status === 500 || isConnectionError
+      console.warn(`[AI] Attempt ${attempt + 1}/${maxAttempts} failed (status ${status || "n/a"}):`, error.message)
+      if (!retryable || attempt === maxAttempts - 1) break
+      const waitTime = Math.pow(2, attempt + 1) * 1000
+      console.log(`[AI] Retrying in ${waitTime}ms...`)
+      await sleep(waitTime)
+    }
+  }
+  throw lastError || new Error("AI Gateway request failed")
+}
+
+/**
+ * Checks user-level AI credits and tenant-level AI token quota before
+ * spending money on a call. Throws (status 429) if over quota.
+ */
+export async function enforceAiQuota(config: AIConfig): Promise<void> {
+  if (config.userId) {
     const { enforceUserAiCredits } = await import("./plan-enforcement")
-    const creditCheck = await enforceUserAiCredits(finalConfig.userId, finalConfig.creditsCost || 1)
+    const creditCheck = await enforceUserAiCredits(config.userId, config.creditsCost || 1)
     if (!creditCheck.allowed) {
       const error: any = new Error(creditCheck.message)
       error.status = 429
       throw error
     }
   }
-  
-  if (finalConfig.tenantId) {
+
+  if (config.tenantId) {
     const tenant = await db.tenant.findUnique({
-      where: { id: finalConfig.tenantId },
+      where: { id: config.tenantId },
       select: { aiTokensUsed: true, aiCreditsExtra: true } as any
     })
-    
+
     if (tenant) {
-      const planConfig = await getTenantPlanConfig(finalConfig.tenantId)
+      const planConfig = await getTenantPlanConfig(config.tenantId)
       let maxAiTokens = planConfig.max_ai_tokens || 0
-      
-      const override = await db.customPlanOverride.findUnique({ where: { tenantId: finalConfig.tenantId } })
+
+      const override = await db.customPlanOverride.findUnique({ where: { tenantId: config.tenantId } })
       if (override && override.maxAiTokens !== null) {
         maxAiTokens = override.maxAiTokens
       }
@@ -178,7 +118,7 @@ export async function safeGenerateContent(
       // Add one-time top-up extra tokens
       const extraTokens = Number((tenant as any).aiCreditsExtra || 0)
       maxAiTokens += extraTokens
-      
+
       const usedTokens = Number((tenant as any).aiTokensUsed || 0)
       if (maxAiTokens > 0 && usedTokens >= maxAiTokens) {
         const error: any = new Error(`AI Quota Exceeded. Used: ${usedTokens}, Limit: ${maxAiTokens}`)
@@ -187,131 +127,88 @@ export async function safeGenerateContent(
       }
     }
   }
-  
-  // Resolve the backend once — which provider is configured doesn't change
-  // mid-call, and each provider has its own sensible model names, not the
-  // DeepSeek-specific fallback list.
-  const resolved = await getAiClient()
-  const modelsToTry = finalConfig.overrideModel
-    ? [finalConfig.overrideModel]
-    : resolved.kind === "openai" && resolved.defaultModel.startsWith("deepseek")
-      ? MODELS_TO_TRY
-      : [resolved.defaultModel]
+}
 
-  for (const modelName of modelsToTry) {
-    let attempts = 0
-    const maxAttempts = 3
-
-    while (attempts < maxAttempts) {
-      try {
-        console.log(`[AI] Attempting with model: ${modelName} (Attempt ${attempts + 1}/${maxAttempts})`)
-
-        let text: string | undefined
-        let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
-
-        if (resolved.kind === "anthropic") {
-          // Claude has no dedicated JSON-mode flag like OpenAI's
-          // response_format — nudge it via the system prompt instead.
-          // ai-schema-generator.ts already strips a ```json fence if one
-          // slips through, so this is a best-effort instruction, not a hard
-          // guarantee.
-          const effectiveSystemPrompt =
-            finalConfig.responseFormat === "json_object"
-              ? `${systemPrompt}\n\nRespond with ONLY raw JSON — no markdown code fences, no commentary before or after.`
-              : systemPrompt
-          const result = await callAnthropic(
-            resolved.apiKey,
-            modelName,
-            effectiveSystemPrompt,
-            userPrompt,
-            finalConfig.maxTokens || 4000,
-            finalConfig.temperature ?? 0.7,
-          )
-          text = result.text
-          usage = result.usage
-        } else {
-          const messages: OpenAI.Chat.ChatCompletionMessageParam[] = []
-          if (systemPrompt) {
-            messages.push({ role: "system", content: systemPrompt })
-          }
-          messages.push({ role: "user", content: userPrompt })
-
-          const completion = await resolved.client.chat.completions.create({
-            model: modelName,
-            messages,
-            max_tokens: finalConfig.maxTokens || 4000,
-            temperature: finalConfig.temperature ?? 0.7,
-            response_format: finalConfig.responseFormat ? { type: finalConfig.responseFormat } : undefined,
-          })
-
-          text = completion.choices[0]?.message?.content ?? undefined
-          usage = {
-            promptTokens: completion.usage?.prompt_tokens ?? 0,
-            completionTokens: completion.usage?.completion_tokens ?? 0,
-            totalTokens: completion.usage?.total_tokens ?? 0,
-          }
+/**
+ * Deducts user credits or updates the tenant AI token ledger after a
+ * successful call. Fire-and-forget — never blocks the response.
+ */
+export async function recordAiUsage(config: AIConfig, usage: UsageTotals, modelId: string, text: string): Promise<void> {
+  if (config.userId) {
+    const { deductUserAiCredits } = await import("./plan-enforcement")
+    deductUserAiCredits(
+      config.userId,
+      config.creditsCost || 1,
+      config.action || "generate",
+      config.tenantId,
+      modelId
+    ).catch(err => console.error("[User AI Credit Deduction Error]", err))
+  } else if (config.tenantId && usage.totalTokens > 0) {
+    db.$transaction([
+      db.tenant.update({
+        where: { id: config.tenantId },
+        data: { aiTokensUsed: { increment: usage.totalTokens } }
+      }),
+      db.aiQuotaLedger.create({
+        data: {
+          tenantId: config.tenantId,
+          action: config.action || "generate",
+          tokens: usage.totalTokens,
+          words: text.split(/\s+/).length,
+          model: modelId
         }
-
-        if (text && usage) {
-          
-          // Deduct user credits if userId is set
-          if (finalConfig.userId) {
-            const { deductUserAiCredits } = await import("./plan-enforcement")
-            deductUserAiCredits(
-              finalConfig.userId,
-              finalConfig.creditsCost || 1,
-              finalConfig.action || "generate",
-              finalConfig.tenantId,
-              modelName
-            ).catch(err => console.error("[User AI Credit Deduction Error]", err))
-          } else if (finalConfig.tenantId && usage.totalTokens > 0) {
-            // Update ledger and tenant in background to avoid blocking response
-            db.$transaction([
-              db.tenant.update({
-                where: { id: finalConfig.tenantId },
-                data: { aiTokensUsed: { increment: usage.totalTokens } }
-              }),
-              db.aiQuotaLedger.create({
-                data: {
-                  tenantId: finalConfig.tenantId,
-                  action: finalConfig.action || "generate",
-                  tokens: usage.totalTokens,
-                  words: text.split(/\s+/).length,
-                  model: modelName
-                }
-              })
-            ]).catch(err => console.error("[AI Quota Ledger Error]", err))
-          }
-          
-          return { 
-            text, 
-            model: modelName,
-            usage
-          }
-        }
-      } catch (error: any) {
-        lastError = error
-        attempts++
-        
-        const status = error.status || (error.message?.includes("429") ? 429 : error.message?.includes("503") ? 503 : 500)
-        const isConnectionError = error.code === 'ENOTFOUND' || error.code === 'ETIMEDOUT' || error.code === 'ECONNRESET' || error.message?.includes("fetch failed") || error.message?.includes("Connection error")
-        console.warn(`[AI] Model ${modelName} failed (Status: ${status}):`, error.message)
-        
-        if (status === 429 || status === 503 || status === 500 || isConnectionError) {
-          // Exponential backoff: 2s, 4s, 8s...
-          const waitTime = Math.pow(2, attempts) * 1000
-          console.log(`[AI] Rate limited or connection error. Retrying in ${waitTime}ms...`)
-          await sleep(waitTime)
-          continue // Try again with same model
-        }
-        
-        // For other errors (like 400/404), break and try next model
-        break
-      }
-    }
+      })
+    ]).catch(err => console.error("[AI Quota Ledger Error]", err))
   }
+}
 
-  throw lastError || new Error("All AI models failed to respond")
+/**
+ * Executes a generative AI request through the Vercel AI Gateway, with
+ * automatic retry on transient errors and tenant/user quota enforcement.
+ */
+export async function safeGenerateContent(
+  systemPrompt: string,
+  userPrompt: string,
+  config: AIConfig | number = {}
+): Promise<{ text: string; model: string; usage: any }> {
+  const finalConfig: AIConfig = typeof config === 'number' ? { maxTokens: config } : config
+
+  await enforceAiQuota(finalConfig)
+
+  const { model, modelId } = await resolveGatewayModel(finalConfig.overrideModel)
+
+  const { text, usage } = await withAiRetry(async () => {
+    if (finalConfig.responseFormat === "json_object") {
+      // generateObject's "no-schema" output mode gives us provider-agnostic
+      // structured JSON (tool-calling or native JSON mode, whichever the
+      // model supports) instead of relying on OpenAI-only response_format
+      // and hand-stripping ```json fences from a text reply.
+      const result = await generateObject({
+        model,
+        output: "no-schema",
+        system: systemPrompt
+          ? `${systemPrompt}\n\nRespond with ONLY raw JSON — no markdown code fences, no commentary before or after.`
+          : "Respond with ONLY raw JSON — no markdown code fences, no commentary before or after.",
+        prompt: userPrompt,
+        maxOutputTokens: finalConfig.maxTokens || 4000,
+        temperature: finalConfig.temperature ?? 0.7,
+      })
+      return { text: JSON.stringify(result.object), usage: toUsageTotals(result.usage) }
+    }
+
+    const result = await generateText({
+      model,
+      system: systemPrompt || undefined,
+      prompt: userPrompt,
+      maxOutputTokens: finalConfig.maxTokens || 4000,
+      temperature: finalConfig.temperature ?? 0.7,
+    })
+    return { text: result.text, usage: toUsageTotals(result.usage) }
+  })
+
+  await recordAiUsage(finalConfig, usage, modelId, text)
+
+  return { text, model: modelId, usage }
 }
 
 export interface GenerateContentParams {
@@ -335,16 +232,16 @@ export interface GenerateContentResult {
 }
 
 /**
- * Generate content using DeepSeek with fallback
+ * Generate content via the configured Gateway model.
  */
 export async function generateContent(
   params: GenerateContentParams
 ): Promise<GenerateContentResult> {
   const { prompt, contentType, fieldName, locale = "en", tone = "professional", maxTokens, mode = "generate", tenantId } = params
   const systemPrompt = buildSystemPrompt({ contentType, fieldName, locale, tone, mode })
-  
+
   const result = await safeGenerateContent(systemPrompt, prompt, { maxTokens, tenantId, action: "generate" })
-  
+
   return {
     content: result.text,
     usage: result.usage
@@ -366,9 +263,9 @@ export async function summarizeContent(
 ): Promise<GenerateContentResult> {
   const { text, maxLength = 200, locale = "en", tenantId } = params
   const prompt = `You are a content summarizer. Summarize the given text concisely in ${maxLength} characters or less. Output in locale: ${locale}. Return only the summary, no extra commentary.`
-  
+
   const result = await safeGenerateContent("", `${prompt}\n\nText to summarize:\n${text}`, { maxTokens: Math.max(maxLength, 500), tenantId, action: "summarize" })
-  
+
   return {
     content: result.text,
     usage: result.usage
@@ -390,9 +287,9 @@ export async function translateContent(
 ): Promise<GenerateContentResult> {
   const { text, targetLocale, sourceLocale = "auto", tenantId } = params
   const prompt = `You are a professional translator. Translate the given text${sourceLocale !== "auto" ? ` from ${sourceLocale}` : ""} to ${targetLocale}. Preserve formatting (Markdown, HTML). Return only the translation, no extra commentary.`
-  
+
   const result = await safeGenerateContent("", `${prompt}\n\nText to translate:\n${text}`, { tenantId, action: "translate" })
-  
+
   return {
     content: result.text,
     usage: result.usage

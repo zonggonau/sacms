@@ -1,6 +1,6 @@
 import { db } from "./database"
 import { z } from "zod"
-import OpenAI from "openai"
+import { generateObject } from "ai"
 
 // Use all valid types from field-types.ts
 export const VALID_FIELD_TYPES = [
@@ -64,25 +64,29 @@ For Single Types, provide 1 complete initial record in 'dummyData'.
 All slugs must be snake_case or kebab-case lowercase.`
 
 async function generateWithAi(prompt: string, tenantId?: string, userId?: string): Promise<GeneratedSystemSchema> {
-  const { safeGenerateContent } = await import("./ai")
-  const result = await safeGenerateContent(SYSTEM_PROMPT, prompt, { 
-    responseFormat: "json_object", 
-    maxTokens: 8000, 
-    tenantId, 
-    userId,
-    creditsCost: 5,
-    action: "generate_schema"
-  })
-  
-  let rawText = result.text.trim()
-  if (rawText.startsWith("```json")) {
-    rawText = rawText.replace(/^```json/, "").replace(/```$/, "").trim()
-  } else if (rawText.startsWith("```")) {
-    rawText = rawText.replace(/^```/, "").replace(/```$/, "").trim()
-  }
+  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
 
-  const parsed = JSON.parse(rawText)
-  return systemSchema.parse(parsed)
+  const config = { tenantId, userId, creditsCost: 5, action: "generate_schema" }
+  await enforceAiQuota(config)
+
+  const { model, modelId } = await resolveGatewayModel()
+
+  // Pass the real zod schema straight to generateObject instead of asking
+  // for JSON in the prompt and hand-parsing it — the model's output is
+  // validated against systemSchema at generation time, provider-agnostic.
+  const result = await withAiRetry(() =>
+    generateObject({
+      model,
+      schema: systemSchema,
+      system: SYSTEM_PROMPT,
+      prompt,
+      maxOutputTokens: 8000,
+    })
+  )
+
+  await recordAiUsage(config, toUsageTotals(result.usage), modelId, JSON.stringify(result.object))
+
+  return result.object
 }
 
 /**

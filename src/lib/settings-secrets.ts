@@ -8,15 +8,6 @@ import type { PlatformSettings } from "./settings"
  */
 export const SECRET_SETTING_KEYS = [
   "aiGatewayApiKey",
-  "platformAiApiKey",
-  "deepseekApiKey",
-  "openaiApiKey",
-  "geminiApiKey",
-  "anthropicApiKey",
-  "groqApiKey",
-  "mistralApiKey",
-  "xaiApiKey",
-  "openrouterApiKey",
   "v0ApiKey",
   "vercelAccessToken",
   "resendApiKey",

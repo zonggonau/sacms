@@ -30,18 +30,16 @@ export const POST = withAdminAuth(async (request) => {
     }
 
     const { prompt, contentType, schema, tone, language } = parsed.data
-    const apiKey = process.env.OPENAI_API_KEY
 
-    if (apiKey) {
-      try {
-        const schemaDescription = schema
-          .map(
-            (f) =>
-              `- "${f.slug}" (${f.name}, type: ${f.type}${f.required ? ", required" : ""})`
-          )
-          .join("\n")
+    try {
+      const schemaDescription = schema
+        .map(
+          (f) =>
+            `- "${f.slug}" (${f.name}, type: ${f.type}${f.required ? ", required" : ""})`
+        )
+        .join("\n")
 
-        const systemPrompt = `You are an expert Headless CMS Content Creator.
+      const systemPrompt = `You are an expert Headless CMS Content Creator.
 You will receive a user draft prompt and a schema of fields for a content type named "${contentType}".
 Generate a strictly valid JSON object where keys match the exact field slugs provided.
 Follow the tone "${tone}" and output language "${language}".
@@ -50,33 +48,17 @@ Do NOT wrap the output in markdown codeblocks (no \`\`\`json). Output pure raw J
 Fields in Schema:
 ${schemaDescription}`
 
-        const res = await fetch("https://api.openai.com/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${apiKey}`,
-          },
-          body: JSON.stringify({
-            model: "gpt-4o-mini",
-            response_format: { type: "json_object" },
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: `User Prompt: ${prompt}` },
-            ],
-            temperature: 0.7,
-            max_tokens: 2500,
-          }),
-        })
+      const { safeGenerateContent } = await import("@/lib/ai")
+      const result = await safeGenerateContent(systemPrompt, `User Prompt: ${prompt}`, {
+        responseFormat: "json_object",
+        action: "admin_smart_fill",
+        maxTokens: 2500,
+      })
 
-        if (res.ok) {
-          const aiData = await res.json()
-          const rawContent = aiData.choices?.[0]?.message?.content?.trim() || "{}"
-          const parsedContent = JSON.parse(rawContent)
-          return NextResponse.json({ success: true, content: parsedContent })
-        }
-      } catch (openAiErr) {
-        console.warn("OpenAI Smart Fill admin error:", openAiErr)
-      }
+      const parsedContent = JSON.parse(result.text)
+      return NextResponse.json({ success: true, content: parsedContent })
+    } catch (err) {
+      console.warn("AI Gateway Smart Fill admin error:", err)
     }
 
     // Fallback Mock Generator
