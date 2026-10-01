@@ -7,10 +7,31 @@ import { Textarea } from "@/components/ui/textarea"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card"
 import {
-  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink,
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
+  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
+
+// Curated shortlist from the Vercel AI Gateway catalog — one subscription
+// covers all of these, this is just a reasonable spread of providers/price
+// points rather than dumping the full multi-hundred-model catalog on the user.
+export const SCHEMA_MODEL_OPTIONS = [
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Cepat & hemat — default" },
+  { value: "google/gemini-3-flash", label: "Gemini 3 Flash", hint: "Lebih baru, lebih pintar" },
+  { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", hint: "Seimbang, kualitas tinggi" },
+  { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", hint: "Paling cepat dari Claude" },
+  { value: "openai/gpt-5.4", label: "GPT-5.4", hint: "Flagship OpenAI" },
+  { value: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini", hint: "Hemat" },
+  { value: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2", hint: "Hemat, kuat untuk struktur data" },
+  { value: "zai/glm-4.6", label: "GLM-4.6", hint: "Alternatif hemat" },
+] as const
 
 export const QUICK_PROMPT_INSPIRATIONS = [
   {
@@ -123,6 +144,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
   const [step, setStep] = useState<"compose" | "review">("compose")
   const [prompt, setPrompt] = useState("")
+  const [model, setModel] = useState<string>(SCHEMA_MODEL_OPTIONS[0].value)
   const [isPlanning, setIsPlanning] = useState(false)
   const [plan, setPlan] = useState<SchemaPlan | null>(null)
   const [isImporting, setIsImporting] = useState(false)
@@ -134,7 +156,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/plan-schema`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt }),
+        body: JSON.stringify({ prompt, model }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || "Gagal merencanakan skema")
@@ -251,6 +273,22 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
               }
             }}
           />
+          <div className="flex items-center gap-1.5 px-3 pb-2.5 pt-1 border-t border-border/50">
+            <Cpu className="h-3 w-3 text-muted-foreground shrink-0" />
+            <Select value={model} onValueChange={setModel}>
+              <SelectTrigger className="h-7 w-auto gap-1.5 rounded-lg border-0 bg-transparent px-1.5 text-[11px] font-semibold shadow-none hover:bg-muted/50 focus:ring-0">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border bg-card">
+                {SCHEMA_MODEL_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value} className="text-xs rounded-lg">
+                    <span className="font-semibold">{opt.label}</span>
+                    <span className="text-muted-foreground ml-1.5">— {opt.hint}</span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         <div className="flex flex-col items-center gap-2">

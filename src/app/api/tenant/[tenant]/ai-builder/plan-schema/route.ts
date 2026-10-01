@@ -4,7 +4,7 @@ import { generateSystemSchema } from "@/lib/ai-schema-generator"
 import { withStaffAuth, apiError } from "@/lib/api/route-helpers"
 
 export const POST = withStaffAuth(async (req, _context, { access, session }) => {
-    const { prompt, templateId } = await req.json()
+    const { prompt, templateId, model } = await req.json()
     const tenant = access.tenant
 
     // 1. Check if matching pre-baked template requested
@@ -34,7 +34,7 @@ export const POST = withStaffAuth(async (req, _context, { access, session }) => 
     }
 
     // 2. Generate Schema Plan via AI (Safe Mode Planning)
-    const schema = await generateSystemSchema(prompt, tenant.id, session.user.id)
+    const schema = await generateSystemSchema(prompt, tenant.id, session.user.id, model)
 
     const totalFields = schema.contentTypes.reduce((acc, ct) => acc + (ct.fields?.length || 0), 0) +
       schema.singleTypes.reduce((acc, st) => acc + (st.fields?.length || 0), 0)

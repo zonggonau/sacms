@@ -63,13 +63,13 @@ For Single Types, provide 1 complete initial record in 'dummyData'.
 
 All slugs must be snake_case or kebab-case lowercase.`
 
-async function generateWithAi(prompt: string, tenantId?: string, userId?: string): Promise<GeneratedSystemSchema> {
+async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string): Promise<GeneratedSystemSchema> {
   const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 5, action: "generate_schema" }
   await enforceAiQuota(config)
 
-  const { model, modelId } = await resolveGatewayModel()
+  const { model, modelId } = await resolveGatewayModel(overrideModel)
 
   // Pass the real zod schema straight to generateObject instead of asking
   // for JSON in the prompt and hand-parsing it — the model's output is
@@ -380,11 +380,11 @@ export function generateHeuristicSchema(prompt: string): GeneratedSystemSchema {
     }
 }
 
-export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string): Promise<GeneratedSystemSchema> {
-  // 1. Coba AI LLM (OpenAI / DeepSeek / Gemini via getOpenAI)
+export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string): Promise<GeneratedSystemSchema> {
+  // 1. Coba AI LLM via Vercel AI Gateway
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
-    return await generateWithAi(prompt, tenantId, userId)
+    return await generateWithAi(prompt, tenantId, userId, model)
   } catch (error: any) {
     console.warn("[AI Schema] AI generation failed or not configured:", error.message)
     
