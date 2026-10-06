@@ -1,26 +1,105 @@
-import { v0 } from "v0"
+import { v0, createV0Client } from "v0"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
 
 /**
- * v0 rejects preview requests proxied through a hostname it doesn't
- * recognize — the exact symptom is v0's OWN "Unauthorized chat" page
- * showing up inside our preview iframe, not an error from our proxy route,
- * because `fetchPreview()` reached v0 fine and got a real (rejecting)
- * response back. This is unrelated to the per-chat `x-v0-preview-token` —
- * it's a team-wide allowlist (`v0.settings.setPreviewHosts`) of hostnames
- * trusted to embed ANY preview at all. See:
- * https://v0.app/docs/api/v2/guides/accessing-previews
- *
- * Registered once per process (not per request — it's a team-wide setting,
- * and calling it on every preview load would just be a wasted API call);
- * merges into whatever is already configured rather than overwriting it, in
- * case a host was added by hand in the v0 dashboard.
+ * Get v0 / Vercel team ID (defaults to sa-cms team).
+ */
+export function getV0TeamId(): string {
+  return process.env.VERCEL_TEAM_ID || "team_2CA36NX4fxhqN9RhVOykLHpl"
+}
+
+/**
+ * Get v0 team workspace slug.
+ */
+export function getV0TeamSlug(): string {
+  return "sa-cms"
+}
+
+/**
+ * Resolve v0 API key / Vercel Access Token from parameter, process.env, or platform settings.
+ */
+export async function resolveV0ApiKey(explicitKey?: string): Promise<string> {
+  if (explicitKey?.trim()) return explicitKey.trim()
+  if (process.env.V0_API_KEY?.trim()) return process.env.V0_API_KEY.trim()
+  if (process.env.VERCEL_ACCESS_TOKEN?.trim()) return process.env.VERCEL_ACCESS_TOKEN.trim()
+  try {
+    const { getResolvedAiConfig } = await import("./settings")
+    const config = await getResolvedAiConfig()
+    if (config.v0ApiKey?.trim()) return config.v0ApiKey.trim()
+    if (config.vercelAccessToken?.trim()) return config.vercelAccessToken.trim()
+  } catch {}
+  return ""
+}
+
+/**
+ * Check whether v0 SDK is configured and return status with masked key.
+ */
+export async function checkV0Configured(explicitKey?: string): Promise<{
+  configured: boolean
+  maskedKey: string
+  source: "env" | "db" | "explicit" | "none"
+}> {
+  if (explicitKey?.trim()) {
+    const key = explicitKey.trim()
+    return {
+      configured: true,
+      maskedKey: key.length > 8 ? `${key.slice(0, 4)}...${key.slice(-4)}` : "***",
+      source: "explicit",
+    }
+  }
+  const token = process.env.V0_API_KEY?.trim() || process.env.VERCEL_ACCESS_TOKEN?.trim()
+  if (token) {
+    return {
+      configured: true,
+      maskedKey: token.length > 8 ? `${token.slice(0, 4)}...${token.slice(-4)}` : "***",
+      source: "env",
+    }
+  }
+  try {
+    const { getResolvedAiConfig } = await import("./settings")
+    const config = await getResolvedAiConfig()
+    const dbKey = config.v0ApiKey?.trim() || config.vercelAccessToken?.trim()
+    if (dbKey) {
+      return {
+        configured: true,
+        maskedKey: dbKey.length > 8 ? `${dbKey.slice(0, 4)}...${dbKey.slice(-4)}` : "***",
+        source: "db",
+      }
+    }
+  } catch {}
+  return {
+    configured: false,
+    maskedKey: "",
+    source: "none",
+  }
+}
+
+/**
+ * Return an initialized v0 client instance with the resolved API key.
+ */
+export function getV0Client(apiKey?: string) {
+  const resolvedKey = apiKey?.trim() || process.env.VERCEL_ACCESS_TOKEN?.trim() || process.env.V0_API_KEY?.trim()
+  if (resolvedKey) {
+    return createV0Client({
+      auth: () => resolvedKey,
+      headers: {
+        Authorization: `Bearer ${resolvedKey}`,
+      },
+    })
+  }
+  return v0
+}
+
+/**
+ * Register trusted preview hosts for v0 embedding.
  */
 let previewHostsEnsured = false
-export async function ensureV0PreviewHostsTrusted(): Promise<void> {
+export async function ensureV0PreviewHostsTrusted(clientInstance?: any): Promise<void> {
   if (previewHostsEnsured) return
-  if (!process.env.V0_API_KEY?.trim()) return
+  const apiKey = await resolveV0ApiKey()
+  if (!apiKey) return
 
+  const client = clientInstance || getV0Client(apiKey)
   const required = [
     "sacms.cloud",
     "*.sacms.cloud",
@@ -28,11 +107,11 @@ export async function ensureV0PreviewHostsTrusted(): Promise<void> {
   ]
 
   try {
-    const current = await v0.settings.getPreviewHosts()
+    const current = await client.settings.getPreviewHosts()
     const existingHosts = (current as any)?.data?.hosts || (current as any)?.hosts || []
-    const missing = required.filter((h) => !existingHosts.includes(h))
+    const missing = required.filter((h: string) => !existingHosts.includes(h))
     if (missing.length > 0) {
-      await v0.settings.setPreviewHosts({ hosts: [...existingHosts, ...missing] })
+      await client.settings.setPreviewHosts({ hosts: [...existingHosts, ...missing] })
     }
     previewHostsEnsured = true
   } catch (err: any) {
@@ -45,7 +124,39 @@ export interface V0File {
   content: string
 }
 
-function generateFallbackFiles(prompt: string, modelName: string): V0File[] {
+export type V0ModelId = "v0-mini" | "v0-pro" | "v0-max" | "v0-max-fast"
+
+export const V0_MODELS: Array<{ id: V0ModelId; label: string; description: string }> = [
+  { id: "v0-mini", label: "SaCMS Mini", description: "Tercepat & hemat — cocok untuk perubahan kecil" },
+  { id: "v0-pro", label: "SaCMS Pro", description: "Seimbang — standar untuk website produksi" },
+  { id: "v0-max", label: "SaCMS Max", description: "Penalaran terdalam — UI kompleks multi-halaman" },
+  { id: "v0-max-fast", label: "SaCMS Max Turbo", description: "Kualitas Max dengan kecepatan tinggi" },
+]
+
+export const V0_MODEL_IDS = V0_MODELS.map((m) => m.id) as [V0ModelId, ...V0ModelId[]]
+
+export function normalizeV0Model(model?: string | null): V0ModelId {
+  return V0_MODELS.some((m) => m.id === model) ? (model as V0ModelId) : "v0-pro"
+}
+
+export interface CreateV0ChatOptions {
+  apiKey?: string
+  waitForFiles?: boolean // default true
+  maxWaitSeconds?: number // default 40
+  pollIntervalMs?: number // default 2500
+  onProgress?: (message: string) => void
+  /** System-level context sent to v0 (frameworks, environment, constraints). */
+  systemPrompt?: string
+  /** Optional chat title shown in v0. */
+  title?: string
+  /** Privacy scope: default 'team' so it shows up in https://v0.app/sa-cms */
+  privacy?: "team" | "team-edit" | "public" | "private"
+  /** Team ID on v0/Vercel (e.g. team_2CA36NX4fxhqN9RhVOykLHpl for sa-cms) */
+  teamId?: string
+  metadata?: Record<string, string>
+}
+
+export function generateFallbackFiles(prompt: string, _modelName?: string): V0File[] {
   const isEcommerce = prompt.toLowerCase().includes("toko") || prompt.toLowerCase().includes("shop") || prompt.toLowerCase().includes("store") || prompt.toLowerCase().includes("produk")
   const isHotel = prompt.toLowerCase().includes("hotel") || prompt.toLowerCase().includes("kamar") || prompt.toLowerCase().includes("resort")
   const isNews = prompt.toLowerCase().includes("berita") || prompt.toLowerCase().includes("news") || prompt.toLowerCase().includes("portal") || prompt.toLowerCase().includes("artikel")
@@ -300,70 +411,83 @@ export default function HomePage() {
   ]
 }
 
+/**
+ * Create a new chat using v0 SDK and actively poll until components/files are generated.
+ */
 export async function createV0Chat(
   prompt: string,
-  modelName: string = "v0-pro"
-): Promise<{ chatId: string; files: V0File[]; previewUrl: string; generating?: boolean; v0Error?: string }> {
-  const modelProfiles: Record<string, string> = {
-    "v0-mini": "AI Engine Profile: SaCMS AI Mini (Fast & Lightweight). Target: Single-page compact Next.js App Router layout with fast rendering and essential interactive components.",
-    "v0-pro": "AI Engine Profile: SaCMS AI Pro (Production Standard). Target: Full-scale Next.js 16 App Router application with dynamic data querying, responsive UI, and rich states.",
-    "v0-max": "AI Engine Profile: SaCMS AI Max (Deep Reasoning & High Complexity). Target: Advanced multi-view Next.js architecture with rich relational data models, modal flows, and deep filtering.",
-    "v0-max-fast": "AI Engine Profile: SaCMS AI Max Fast (High Performance Ultra Fast). Target: High-throughput Next.js architecture with instant rendering pipelines and polished UI.",
-  }
+  modelName: string = "v0-pro",
+  options?: CreateV0ChatOptions
+): Promise<{
+  chatId: string
+  files: V0File[]
+  previewUrl: string
+  generating?: boolean
+  v0Error?: string
+  usedFallback?: boolean
+}> {
+  const modelId = normalizeV0Model(modelName)
+  const finalPrompt = prompt
 
-  const modelInstruction = modelProfiles[modelName] || modelProfiles["v0-pro"]
-  const finalPrompt = `${modelInstruction}\n\n${prompt}`
-
-  // Only the *creation* call (starting the chat) gets a timeout guard — this
-  // is normally near-instant. It must NOT gate on the chat's generation
-  // finishing: v0 builds progressively in the background and commonly takes
-  // well past 20s for a full app, so racing the whole thing against 20s used
-  // to discard a perfectly healthy, still-running v0 chat and silently
-  // replace it with a fake local one — which is why the preview showed
-  // "sandbox tidak tersedia" while v0.dev's own UI still showed it building.
-  const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
-    setTimeout(() => resolve({ timeout: true }), 25000)
-  )
+  const resolvedKey = await resolveV0ApiKey(options?.apiKey)
+  const client = getV0Client(resolvedKey)
 
   let chat: any = null
   let v0ErrorMessage: string | undefined
-  try {
-    // IMPORTANT: `v0.chats.create` (POST /chats) only creates an empty chat
-    // shell — it does NOT trigger generation. Its response reports
-    // usage.tokens.total: 0 and the chat's updatedAt never advances, no
-    // matter how long you poll it. `createAsync` (POST /chats/async) is the
-    // call that actually kicks off a real background generation job. Using
-    // `create` here was the root cause of chats silently going nowhere
-    // (mistaken for "still building" and polled forever, or timed out and
-    // replaced with the disguised local fallback) — the chat existed, but
-    // nothing was ever generating inside it.
-    const v0CreatePromise = v0.chats.createAsync({ message: finalPrompt }).catch((err) => {
-      console.warn("[v0-client] Cloud v0 API call failed:", err.message)
-      return null
-    })
 
-    const raceResult = await Promise.race([v0CreatePromise, timeoutPromise])
-    if (raceResult && !("timeout" in raceResult)) {
-      chat = raceResult
-      // v0 returns 200 with an `{ error: { message } }` body for account-level
-      // failures (e.g. "You are out of credits") rather than an HTTP error —
-      // catch that here so it isn't silently swallowed as a false success.
-      const apiError = (chat as any)?.error?.message
-      if (apiError) {
-        console.warn("[v0-client] v0 API returned an error:", apiError)
-        v0ErrorMessage = apiError
-        chat = null
+  if (resolvedKey) {
+    try {
+      const teamId = options?.teamId || getV0TeamId()
+      const title = options?.title || "SaCMS Website"
+      const privacy = options?.privacy || "team"
+
+      options?.onProgress?.("v0 SDK: Menghubungi cloud API (v0.app/sa-cms)...")
+      await ensureV0PreviewHostsTrusted(client)
+
+      const timeoutPromise = new Promise<{ timeout: true }>((resolve) =>
+        setTimeout(() => resolve({ timeout: true }), 35000)
+      )
+
+      // createAsync kicks off a real background generation job on v0 under sa-cms team
+      const v0CreatePromise = client.chats.createAsync(
+        {
+          message: finalPrompt,
+          title,
+          privacy,
+          ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
+          ...(options?.metadata ? { metadata: options.metadata } : {}),
+          modelConfiguration: { modelId, imageGenerations: false },
+        },
+        {
+          query: teamId ? { teamId } : undefined,
+        }
+      ).catch((err: any) => {
+        console.warn("[v0-client] Cloud v0 API call failed:", err?.message)
+        v0ErrorMessage = err?.message
+        return null
+      })
+
+      const raceResult = await Promise.race([v0CreatePromise, timeoutPromise])
+      if (raceResult && !("timeout" in raceResult)) {
+        chat = raceResult
+        const apiError = (chat as any)?.error?.message
+        if (apiError) {
+          console.warn("[v0-client] v0 API returned an error:", apiError)
+          v0ErrorMessage = apiError
+          chat = null
+        }
+      } else {
+        console.warn("[v0-client] Cloud v0 chat creation timed out (30s)")
+        v0ErrorMessage = "Timeout saat menghubungi v0 API (30s)"
       }
-    } else {
-      console.warn("[v0-client] Cloud v0 chat creation timed out (25s), engaging local generator fallback.")
+    } catch (err: any) {
+      console.warn("[v0-client] Exception creating v0 chat:", err?.message)
+      v0ErrorMessage = err?.message
     }
-  } catch (err: any) {
-    console.warn("[v0-client] Exception creating v0 chat:", err.message)
+  } else {
+    v0ErrorMessage = "V0_API_KEY belum dikonfigurasi"
   }
 
-  // createAsync's success shape is `{ data: { chatId, messageId } }` (flat
-  // `chatId` field) — different from `create`'s `{ data: { chat: { id } } }`.
-  // Cover both so this keeps working if the SDK's response shape changes.
   const chatId: string =
     (chat as any)?.data?.chatId ||
     (chat as any)?.data?.chat?.id ||
@@ -373,47 +497,63 @@ export async function createV0Chat(
     (chat as any)?.id ||
     ""
 
-  // The chat was created successfully — v0 is a real, addressable project now,
-  // even if it hasn't finished generating files yet. Keep this chatId; do NOT
-  // fall back to a fake one just because `getFiles` is still empty. The
-  // preview route already knows how to poll a real chatId until it's ready.
   if (chatId) {
+    options?.onProgress?.(`SaCMS Engine: Sesi aktif (${chatId}). Mengompilasi kode frontend...`)
     let files: V0File[] = []
-    try {
-      const filesRes = await v0.chats.getFiles({ chatId })
-      const rawFiles = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
-      if (Array.isArray(rawFiles) && rawFiles.length > 0) {
-        files = rawFiles.map((f: any) => ({
-          name: f.path ?? f.name ?? "app/page.tsx",
-          content: f.content ?? "",
-        }))
+
+    const waitForFiles = options?.waitForFiles !== false
+    const maxWaitSeconds = options?.maxWaitSeconds || 40
+    const pollInterval = options?.pollIntervalMs || 2500
+    const startTime = Date.now()
+
+    if (waitForFiles) {
+      const teamId = options?.teamId || getV0TeamId()
+      while (Date.now() - startTime < maxWaitSeconds * 1000) {
+        try {
+          const filesRes = await client.chats.getFiles({ chatId }, { query: teamId ? { teamId } : undefined })
+          const rawFiles =
+            (filesRes as any)?.data?.files ||
+            (filesRes as any)?.files ||
+            (filesRes as any)?.data ||
+            []
+
+          if (Array.isArray(rawFiles) && rawFiles.length > 0) {
+            files = rawFiles.map((f: any) => {
+              const rawName = f.path ?? f.name ?? "app/page.tsx"
+              const name = rawName.replace(/^\//, "")
+              let content = f.content ?? ""
+              if (f.encoding === "base64" && content) {
+                try {
+                  content = Buffer.from(content, "base64").toString("utf-8")
+                } catch {}
+              }
+              return { name, content }
+            })
+            options?.onProgress?.(`SaCMS Engine: ${files.length} berkas frontend berhasil dikompilasi!`)
+            break
+          }
+        } catch {
+          // chat is still building in the background
+        }
+
+        const elapsedSec = Math.round((Date.now() - startTime) / 1000)
+        options?.onProgress?.(`SaCMS Engine: Mengompilasi komponen React & Tailwind... (${elapsedSec}s)`)
+        await new Promise((r) => setTimeout(r, pollInterval))
       }
-    } catch (fErr) {
-      console.warn("Could not fetch v0 files (chat may still be generating):", fErr)
     }
 
-    const previewUrl = await getV0Preview(chatId)
+    const previewUrl = await getV0Preview(chatId, client)
 
     return {
       chatId,
       files,
       previewUrl,
-      // No files yet doesn't mean failure — v0 streams files in as it builds.
-      // Callers should treat this as "still working", not "broken".
       generating: files.length === 0,
     }
   }
 
-  // Only reach here if the cloud v0 API call itself failed, timed out, or
-  // returned an account-level error (e.g. out of v0 credits) — a real local
-  // fallback, not a disguised one. Surface the real reason so the caller can
-  // tell the user what actually happened instead of a generic failure.
-  //
-  // In production, only fall back when V0_API_KEY actually exists (a real
-  // outage/quota/timeout) — never silently fabricate a chat when the key is
-  // simply missing; that must fail loudly so a misconfigured deploy is
-  // caught immediately instead of quietly serving fake generations forever.
-  const hasV0Credential = Boolean(process.env.V0_API_KEY?.trim())
+  // Fallback when V0_API_KEY is missing or the call failed
+  const hasV0Credential = Boolean(resolvedKey)
   if (!hasV0Credential && !isMockAllowed("v0", hasV0Credential)) {
     requireCredentialOutsideMock("v0", "V0_API_KEY")
   }
@@ -425,69 +565,188 @@ export async function createV0Chat(
     files: fallbackFiles,
     previewUrl: "",
     v0Error: v0ErrorMessage,
+    usedFallback: true,
   }
 }
 
-export async function generateV0Json(prompt: string): Promise<string> {
+export async function generateV0Json(prompt: string, apiKey?: string): Promise<string> {
+  const resolvedKey = await resolveV0ApiKey(apiKey)
+  const client = getV0Client(resolvedKey)
   try {
-    const chat = await v0.chats.create({ message: prompt })
+    const chat = await client.chats.create({ message: prompt })
     const parts = (chat as any)?.data?.parts || []
     const textPart = parts.find((p: any) => p.type === "text")
     const content = textPart ? textPart.text : ((chat as any)?.content || "")
     return content
   } catch (error: any) {
-    console.warn("[v0-client] generateV0Json fallback:", error.message)
+    console.warn("[v0-client] generateV0Json fallback:", error?.message)
     return JSON.stringify({ status: "success", message: "Generated via SaCMS Engine" })
   }
 }
 
-export async function getV0Preview(chatId: string): Promise<string> {
+export async function getV0Preview(chatId: string, clientInstance?: any): Promise<string> {
   if (chatId.startsWith("sacms_gen_")) {
     return ""
   }
+  const client = clientInstance || getV0Client()
+  const teamId = getV0TeamId()
   try {
-    const preview = await v0.chats.getPreview({ chatId })
+    const preview = await client.chats.getPreview({ chatId }, { query: teamId ? { teamId } : undefined })
     const url = (preview as any)?.data?.url ?? (preview as any)?.url ?? ""
     if (url) return url
-    return `https://v0.dev/chat/${chatId}`
+    return `https://v0.app/chat/${chatId}`
   } catch {
-    return `https://v0.dev/chat/${chatId}`
+    return `https://v0.app/chat/${chatId}`
+  }
+}
+
+function normalizeV0Files(rawFiles: any[]): V0File[] {
+  return rawFiles.map((f: any) => {
+    const rawName = f.path ?? f.name ?? "app/page.tsx"
+    const name = String(rawName).replace(/^\//, "")
+    let content = f.content ?? ""
+    if (f.encoding === "base64" && content) {
+      try {
+        content = Buffer.from(content, "base64").toString("utf-8")
+      } catch {}
+    }
+    return { name, content }
+  })
+}
+
+async function readV0Files(client: any, chatId: string, teamId?: string): Promise<V0File[]> {
+  const tId = teamId || getV0TeamId()
+  const filesRes = await client.chats.getFiles({ chatId }, { query: tId ? { teamId: tId } : undefined })
+  const raw = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
+  return Array.isArray(raw) ? normalizeV0Files(raw) : []
+}
+
+function signFiles(files: V0File[]): string {
+  return files.map((f) => `${f.name}:${f.content.length}:${f.content.slice(0, 64)}:${f.content.slice(-64)}`).sort().join("|")
+}
+
+/**
+ * Send a follow-up instruction to an existing v0 chat (true v0.app-style iteration).
+ * Polls until the file set actually changes so stale pre-iteration files are never returned.
+ * On real chats a failure is reported via `v0Error` with NO fallback template, so user code is never overwritten.
+ */
+export async function iterateV0ChatReal(
+  chatId: string,
+  message: string,
+  options?: CreateV0ChatOptions & { model?: string }
+): Promise<{ files: V0File[]; changed: boolean; v0Error?: string }> {
+  const resolvedKey = await resolveV0ApiKey(options?.apiKey)
+  if (!resolvedKey) return { files: [], changed: false, v0Error: "V0_API_KEY belum dikonfigurasi" }
+  const client = getV0Client(resolvedKey)
+  const teamId = options?.teamId || getV0TeamId()
+
+  try {
+    let before = ""
+    try {
+      before = signFiles(await readV0Files(client, chatId, teamId))
+    } catch {}
+
+    options?.onProgress?.("SaCMS Engine: Menerapkan instruksi iterasi ke sesi aktif di v0.app/sa-cms...")
+    const body: any = {
+      chatId,
+      message,
+      modelConfiguration: { modelId: normalizeV0Model(options?.model), imageGenerations: false },
+      ...(options?.systemPrompt ? { systemPrompt: options.systemPrompt } : {}),
+    }
+    if (typeof (client.messages as any).sendAsync === "function") {
+      await (client.messages as any).sendAsync(body, { query: teamId ? { teamId } : undefined })
+    } else {
+      await client.messages.send(body, { query: teamId ? { teamId } : undefined })
+    }
+
+    const startTime = Date.now()
+    const maxWaitSeconds = options?.maxWaitSeconds || 90
+    const pollInterval = options?.pollIntervalMs || 3000
+    let latest: V0File[] = []
+    while (Date.now() - startTime < maxWaitSeconds * 1000) {
+      await new Promise((r) => setTimeout(r, pollInterval))
+      try {
+        latest = await readV0Files(client, chatId, teamId)
+        if (latest.length > 0 && signFiles(latest) !== before) {
+          options?.onProgress?.(`SaCMS Engine: ${latest.length} berkas berhasil diperbarui.`)
+          return { files: latest, changed: true }
+        }
+      } catch {}
+      options?.onProgress?.(`SaCMS Engine: Menulis perubahan kode... (${Math.round((Date.now() - startTime) / 1000)}s)`)
+    }
+    return { files: latest, changed: false }
+  } catch (error: any) {
+    console.warn("[v0-client] iterateV0ChatReal failed:", error?.message)
+    return { files: [], changed: false, v0Error: error?.message || "Gagal mengirim iterasi ke v0" }
   }
 }
 
 export async function iterateV0Chat(
   chatId: string,
-  message: string
-): Promise<{ files: V0File[] }> {
+  message: string,
+  options?: CreateV0ChatOptions
+): Promise<{ files: V0File[]; v0Error?: string }> {
   if (chatId.startsWith("sacms_gen_")) {
     const files = generateFallbackFiles(message, "v0-pro")
     return { files }
   }
 
+  const resolvedKey = await resolveV0ApiKey(options?.apiKey)
+  const client = getV0Client(resolvedKey)
+
   try {
-    await v0.messages.send({ chatId, message })
-    let files: V0File[] = []
-    const filesRes = await v0.chats.getFiles({ chatId })
-    const rawFiles = (filesRes as any)?.data?.files || (filesRes as any)?.files || (filesRes as any)?.data || []
-    if (Array.isArray(rawFiles)) {
-      files = rawFiles.map((f: any) => ({
-        name: f.path ?? f.name ?? "app/page.tsx",
-        content: f.content ?? "",
-      }))
+    options?.onProgress?.("SaCMS Engine: Mengirim instruksi iterasi...")
+    if (typeof (client.messages as any).sendAsync === "function") {
+      await (client.messages as any).sendAsync({ chatId, message })
+    } else {
+      await client.messages.send({ chatId, message })
     }
+
+    let files: V0File[] = []
+    const startTime = Date.now()
+    const maxWaitSeconds = options?.maxWaitSeconds || 30
+    const pollInterval = options?.pollIntervalMs || 2500
+
+    while (Date.now() - startTime < maxWaitSeconds * 1000) {
+      try {
+        const filesRes = await client.chats.getFiles({ chatId })
+        const rawFiles =
+          (filesRes as any)?.data?.files ||
+          (filesRes as any)?.files ||
+          (filesRes as any)?.data ||
+          []
+        if (Array.isArray(rawFiles) && rawFiles.length > 0) {
+          files = rawFiles.map((f: any) => {
+            const rawName = f.path ?? f.name ?? "app/page.tsx"
+            const name = rawName.replace(/^\//, "")
+            let content = f.content ?? ""
+            if (f.encoding === "base64" && content) {
+              try {
+                content = Buffer.from(content, "base64").toString("utf-8")
+              } catch {}
+            }
+            return { name, content }
+          })
+          break
+        }
+      } catch {}
+      await new Promise((r) => setTimeout(r, pollInterval))
+    }
+
     return { files }
   } catch (error: any) {
-    console.warn("[v0-client] iterateV0Chat fallback:", error.message)
+    console.warn("[v0-client] iterateV0Chat fallback:", error?.message)
     const files = generateFallbackFiles(message, "v0-pro")
-    return { files }
+    return { files, v0Error: error?.message }
   }
 }
 
-export async function deleteV0Chat(chatId: string): Promise<boolean> {
+export async function deleteV0Chat(chatId: string, clientInstance?: any): Promise<boolean> {
   if (chatId.startsWith("sacms_gen_")) return true
+  const client = clientInstance || getV0Client()
   try {
-    if (typeof (v0.chats as any).delete === "function") {
-      await (v0.chats as any).delete({ chatId })
+    if (typeof (client.chats as any).delete === "function") {
+      await (client.chats as any).delete({ chatId })
       return true
     }
     return false
@@ -497,7 +756,7 @@ export async function deleteV0Chat(chatId: string): Promise<boolean> {
   }
 }
 
-export async function getV0ChatMessages(chatId: string): Promise<any[]> {
+export async function getV0ChatMessages(chatId: string, clientInstance?: any): Promise<any[]> {
   if (chatId.startsWith("sacms_gen_")) {
     return [
       {
@@ -508,8 +767,9 @@ export async function getV0ChatMessages(chatId: string): Promise<any[]> {
       },
     ]
   }
+  const client = clientInstance || getV0Client()
   try {
-    const res = await v0.messages.list({ chatId, limit: 50 })
+    const res = await client.messages.list({ chatId, limit: 50 })
     return (res as any)?.data?.messages || (res as any)?.messages || (res as any)?.data || []
   } catch (error) {
     console.error("Failed to get v0 messages:", error)

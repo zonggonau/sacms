@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Sparkles, Download, Terminal, ArrowRight, X, Maximize2 } from "lucide-react"
+import { Sparkles, Download, Terminal, ArrowRight, X, Maximize2, Plug, Key } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
 
@@ -41,8 +41,18 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
             </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Jelaskan website/bisnis Anda, AI merancang struktur Content Type &amp; relasinya. Frontend-nya Anda bangun sendiri di IDE, terhubung ke SaCMS lewat MCP Server atau REST API.
+            Jelaskan struktur bisnis atau aplikasi Anda, AI merancang Content Type &amp; relasi schema CMS. Kode frontend dibangun di IDE atau AI Agent (ChatGPT, Google Studio, Cursor) terhubung via MCP.
           </p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
+            className="h-8 gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold text-xs rounded-xl shadow-xs"
+          >
+            <Plug className="h-3.5 w-3.5" /> Sambungkan ke AI Agent & IDE (MCP)
+            <ArrowRight className="h-3 w-3" />
+          </Button>
         </div>
       </div>
 
@@ -62,24 +72,31 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
               <Terminal className="h-4 w-4" />
             </div>
             <div className="space-y-2">
-              <p className="text-xs font-bold text-foreground">Setelah schema jadi, bangun frontend-nya di IDE Anda sendiri</p>
+              <p className="text-xs font-bold text-foreground">Setelah schema siap, integrasikan dengan IDE favorit atau AI Agent pilihan Anda</p>
               <p className="text-[11px] text-muted-foreground leading-relaxed">
-                Schema CMS tenant ini bisa langsung dibaca lewat MCP Server oleh AI agent (Claude Code, Cursor, dll.), atau lewat SaCMS Public REST API biasa. Unduh starter kit Next.js siap pakai, atau ambil token koneksi MCP.
+                Schema CMS tenant ini bisa langsung diakses oleh AI Agent (ChatGPT, Google AI Studio, Claude Desktop, Antigravity) dan IDE (VS Code, Cursor, Windsurf) lewat <strong>Server MCP native</strong> atau <strong>Public REST API</strong>.
               </p>
               <div className="flex flex-wrap items-center gap-3">
-                <a
-                  href={`/api/tenant/${tenantSlug}/ai-builder/export-starter`}
-                  className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
-                >
-                  <Download className="h-3 w-3" /> Unduh Starter Kit Next.js
-                </a>
                 <button
                   type="button"
                   onClick={() => router.push(`/dashboard/${tenantSlug}/developer/mcp`)}
-                  className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
+                  className="text-[11px] font-bold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
                 >
-                  Ambil token koneksi MCP <ArrowRight className="h-3 w-3" />
+                  <Plug className="h-3 w-3" /> Buka Konfigurasi Server MCP <ArrowRight className="h-3 w-3" />
                 </button>
+                <button
+                  type="button"
+                  onClick={() => router.push(`/dashboard/${tenantSlug}/developer/api-keys`)}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline cursor-pointer inline-flex items-center gap-1"
+                >
+                  <Key className="h-3 w-3" /> Kunci API & REST
+                </button>
+                <a
+                  href={`/api/tenant/${tenantSlug}/ai-builder/export-starter`}
+                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline cursor-pointer inline-flex items-center gap-1"
+                >
+                  <Download className="h-3 w-3" /> Unduh Starter Kit Next.js
+                </a>
               </div>
             </div>
           </div>

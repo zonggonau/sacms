@@ -1,7 +1,7 @@
 import { Skeleton } from "@/components/ui/skeleton"
 import { Card, CardContent, CardHeader } from "@/components/ui/card"
 
-export default function AiWebsiteBuilderLoading() {
+export default function AiSchemaLoading() {
   return (
     <div className="flex h-screen max-h-screen flex-col p-3 md:p-4 space-y-4 w-full max-w-full overflow-hidden animate-in fade-in duration-300">
       {/* Header Feed */}

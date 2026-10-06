@@ -8,6 +8,7 @@ import {
   FileText,
   Puzzle,
   Bot,
+  Globe,
   Sparkles,
   Layers,
   ArrowRight,

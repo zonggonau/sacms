@@ -257,7 +257,7 @@ export const POST = withStaffAuth(
     let tokenRecord = await db.apiToken.findFirst({
       where: {
         tenantId,
-        name: `Vercel Site (${tenantSlug})`,
+        name: `SaCMS Site (${tenantSlug})`,
       }
     })
 
@@ -266,7 +266,7 @@ export const POST = withStaffAuth(
       tokenRecord = await db.apiToken.create({
         data: {
           tenantId,
-          name: `Vercel Site (${tenantSlug})`,
+          name: `SaCMS Site (${tenantSlug})`,
           token: generatedToken,
           type: "service",
           permissions: ["read", "write"],

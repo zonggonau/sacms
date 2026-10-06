@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import { 
   Key, Webhook, Play, BookOpen, Plug,
-  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight
+  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
@@ -24,12 +24,12 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
   ]
 
   const toolNavItems = [
+    { title: "Server MCP", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug, badge: "AI" },
     { title: "Kunci API", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
     { title: "Webhooks", href: `/dashboard/${tenantId}/developer/webhooks`, icon: Webhook },
     { title: "REST API", href: `/dashboard/${tenantId}/developer/api`, icon: Play },
     { title: "GraphQL Explorer", href: `/dashboard/${tenantId}/developer/graphql`, icon: Play },
     { title: "SDK & Dokumentasi", href: `/dashboard/${tenantId}/developer/sdk`, icon: BookOpen },
-    { title: "Server MCP", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug },
   ]
 
   return (
@@ -96,6 +96,14 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
                 >
                   <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", active ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
                   <span className="truncate flex-1">{item.title}</span>
+                  {"badge" in item && item.badge && (
+                    <span className={cn(
+                      "text-[9px] font-bold px-1.5 py-0.5 rounded-md",
+                      active ? "bg-primary-foreground/20 text-primary-foreground" : "bg-primary/10 text-primary border border-primary/20"
+                    )}>
+                      {item.badge}
+                    </span>
+                  )}
                 </div>
               </Link>
             )

@@ -10,7 +10,7 @@ import { db } from "@/lib/database"
 import { McpClientBridge } from "@/lib/mcp/mcp-client-bridge"
 import { computeSchemaDiff, applySchemaPlan, SchemaPlan, WebsitePlan } from "@/lib/ai/schema-engine"
 import { generateFullWebsiteProject } from "@/lib/ai/website-generator"
-import { createV0Chat, getV0Preview } from "@/lib/v0-client"
+import { createV0Chat, getV0Preview, resolveV0ApiKey, iterateV0ChatReal, normalizeV0Model } from "@/lib/v0-client"
 import { ModelRouter } from "@/lib/ai/model-router"
 
 export interface AgentStepEvent {
@@ -27,7 +27,27 @@ export interface OrchestrationResult {
   creditsUsed: number
   summary: string
   error?: string
+  usedV0Sdk?: boolean
+  v0ChatId?: string | null
+  v0PreviewUrl?: string | null
+  mode?: "create" | "iterate"
+  model?: string
+  changedFiles?: string[]
 }
+
+export interface PipelineOptions {
+  /** v0 model id: v0-mini | v0-pro | v0-max | v0-max-fast */
+  model?: string
+  /** Ignore the existing v0 chat and start a brand-new generation. */
+  forceNew?: boolean
+}
+
+const V0_SYSTEM_PROMPT = [
+  "You build websites that are rendered inside the SaCMS AI Website Builder.",
+  "Stack: Next.js App Router (React 19, TypeScript), Tailwind CSS, lucide-react icons. No other npm packages.",
+  "Content comes from the SaCMS headless API via `import { getCollection, getSingleType } from \"@/lib/sacms\"`.",
+  "Always produce responsive, accessible, visually polished UI. Keep existing structure when editing; change only what the user asks.",
+].join(" ")
 
 export class AgentOrchestrator {
   private bridge: McpClientBridge
@@ -46,8 +66,19 @@ export class AgentOrchestrator {
    */
   async runPipeline(
     prompt: string,
-    onStep?: (event: AgentStepEvent) => void
+    onStep?: (event: AgentStepEvent) => void,
+    options?: PipelineOptions
   ): Promise<OrchestrationResult> {
+    const model = normalizeV0Model(options?.model)
+
+    // 0. Existing v0 chat? -> iterate on it (v0.app-style follow-up) instead of rebuilding everything.
+    const siteState = await db.site.findUnique({ where: { id: this.siteId }, select: { settings: true } })
+    const existingSettings = ((siteState?.settings as Record<string, unknown> | null) || {}) as Record<string, unknown>
+    const existingChatId = typeof existingSettings.v0ChatId === "string" ? existingSettings.v0ChatId : null
+    if (existingChatId && !existingChatId.startsWith("sacms_gen_") && !options?.forceNew) {
+      return this.runIteration(prompt, existingChatId, existingSettings, model, onStep)
+    }
+
     // 1. Check AI Credits
     const creditCheck = await ModelRouter.checkCredits(this.tenantId, this.userId, "full_website_generation")
     if (!creditCheck.allowed) {
@@ -79,47 +110,93 @@ export class AgentOrchestrator {
       onStep?.({ step: "schema_apply", message: msg })
     })
 
-    // ── STEP 5: Generate Next.js Frontend Code Files (v0.dev API Integration) ──
+    // ── STEP 5: Generate Next.js Frontend Code Files (v0 SDK Integration) ──
     let generatedFiles: Array<{ path: string; content: string }> = []
     let v0ChatId: string | null = null
+    let v0PreviewUrl: string | null = null
+    let usedV0Sdk = false
 
-    if (process.env.V0_API_KEY) {
-      onStep?.({ step: "code_gen", message: "Menghubungi v0.dev API untuk meng-generate UI Frontend Next.js..." })
+    const v0Key = await resolveV0ApiKey()
+
+    if (v0Key) {
+      onStep?.({ step: "code_gen", message: "Menghubungi v0 SDK untuk meng-generate arsitektur frontend di v0.app/sa-cms..." })
       try {
-        const superPrompt = `User Prompt: ${prompt}
+        const siteRecord = await db.site.findUnique({ where: { id: this.siteId }, select: { name: true, slug: true, description: true } })
+        const chatTitle = `SaCMS - ${siteRecord?.name || this.tenantSlug}`
 
-Headless CMS Schema (SaCMS):
+        const superPrompt = `You are an expert Next.js 16 full-stack engineer. Build a complete, production-ready, beautiful, modern website frontend for the following project.
+
+### USER REQUIREMENTS
+${prompt}
+
+### ARCHITECTURE & DESIGN GOALS
+1. Use Next.js 16 App Router (React 19, TypeScript, Tailwind CSS, Lucide React icons).
+2. Create an engaging, modern, high-contrast, premium dark-themed or clean UI with glassmorphism touches, responsive mobile/tablet/desktop layouts, and interactive micro-interactions.
+3. Include all necessary interactive elements: Search input filters, category tabs, detail/booking/cart modals, responsive navbar, hero banner, rich data showcase cards, feature highlights, and footer.
+4. Seamless integration with the SaCMS Content API:
+   - Data can be fetched dynamically from the SaCMS Content API.
+   - You can import and use:
+     \`import { getCollection, getSingleType } from "@/lib/sacms"\`
+   - Or make direct fetch calls to:
+     \`http://localhost:3000/api/public/${this.tenantSlug}/content/{collectionSlug}\`
+
+### SaCMS DATABASE SCHEMA (Active Collections & Single Types)
 ${JSON.stringify(schemaPlan, null, 2)}
 
-SaCMS Capabilities (via MCP):
+### SaCMS CAPABILITIES (MCP)
 - Permissions: ${Array.isArray(capabilities.permissions) ? (capabilities.permissions as string[]).join(", ") : "read, write"}
 - Mode: ${capabilities.canWrite ? "Interactive Full-Stack (include forms & mutations)" : "Public Consumer (read-only presentation)"}
 
-SaCMS Content API:
-- Base URL: http://localhost:3000/api/public/${this.tenantSlug}
-- Collection Query: GET /api/public/${this.tenantSlug}/content/{collectionSlug}
-- Single Type Query: GET /api/public/${this.tenantSlug}/single/{singleTypeSlug}
+### MANDATORY FILES TO GENERATE
+1. app/page.tsx: The main landing & home page component (complete code, with imports, state, and UI).
+2. Additional components in components/ if needed.
+3. Ensure all icons are imported from 'lucide-react'.
+4. Do NOT use external API dependencies or missing packages. Ensure code is 100% syntactically valid TypeScript/JSX.`
 
-Build a production-ready Next.js 16 App Router application with Tailwind CSS and Lucide icons that fetches data dynamically from the SaCMS Content API endpoints above.`
+        const v0Res = await createV0Chat(superPrompt, model, {
+          apiKey: v0Key,
+          waitForFiles: true,
+          maxWaitSeconds: 60,
+          systemPrompt: V0_SYSTEM_PROMPT,
+          title: chatTitle,
+          privacy: "team",
+          metadata: {
+            tenantId: this.tenantId,
+            tenantSlug: this.tenantSlug,
+            siteId: this.siteId,
+          },
+          onProgress: (statusMsg) => {
+            onStep?.({ step: "code_gen", message: statusMsg })
+          },
+        })
 
-        const v0Res = await createV0Chat(superPrompt)
-        if (v0Res?.chatId) {
+        if (v0Res?.chatId && !v0Res.usedFallback) {
           v0ChatId = v0Res.chatId
+          v0PreviewUrl = v0Res.previewUrl || null
+          usedV0Sdk = true
+
           if (v0Res.files && v0Res.files.length > 0) {
-            generatedFiles = v0Res.files.map((vf) => ({
-              path: vf.name.startsWith("app/") || vf.name.startsWith("components/") || vf.name.startsWith("lib/") ? vf.name : `app/${vf.name}`,
-              content: vf.content,
-            }))
+            generatedFiles = v0Res.files.map((vf) => {
+              const normalizedPath = vf.name.startsWith("/") ? vf.name.slice(1) : vf.name
+              return {
+                path: normalizedPath,
+                content: vf.content,
+              }
+            })
           }
         }
       } catch (v0Err: any) {
-        console.warn("v0.dev API error, falling back to SaCMS engine:", v0Err.message)
+        console.warn("v0 SDK error, falling back to SaCMS engine:", v0Err?.message)
       }
     }
 
     // Fallback if V0_API_KEY is not set or v0 returned empty files
     if (generatedFiles.length === 0) {
-      onStep?.({ step: "code_gen", message: "Meng-generate kode Next.js (App Router, Tailwind, TypeScript)..." })
+      if (!v0Key) {
+        onStep?.({ step: "code_gen", message: "API Key SaCMS AI Engine belum dikonfigurasi. Menggunakan SaCMS Next.js Autonomous Generator..." })
+      } else {
+        onStep?.({ step: "code_gen", message: "SaCMS AI Engine tidak mengembalikan berkas. Menggunakan SaCMS Next.js Generator (fallback)..." })
+      }
       const siteRecord = await db.site.findUnique({ where: { id: this.siteId }, select: { name: true, slug: true, description: true } })
       generatedFiles = generateFullWebsiteProject({
         tenantId: this.tenantId,
@@ -128,6 +205,48 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
         siteSlug: siteRecord?.slug || "site",
         description: siteRecord?.description || undefined,
         plan: schemaPlan,
+      })
+    }
+
+    // Ensure lib/sacms.ts is always present in virtual workspace
+    if (!generatedFiles.some((f) => f.path === "lib/sacms.ts" || f.path === "/lib/sacms.ts")) {
+      generatedFiles.push({
+        path: "lib/sacms.ts",
+        content: `/**
+ * SaCMS Content API Client
+ * Workspace: ${this.tenantSlug}
+ */
+
+const SACMS_HOST = process.env.NEXT_PUBLIC_SACMS_URL || "http://localhost:3000";
+const TENANT_ID = "${this.tenantId}";
+
+export async function getCollection<T = any>(contentTypeSlug: string, params: Record<string, string> = {}): Promise<T[]> {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const url = \`\${SACMS_HOST}/api/public/\${TENANT_ID}/content/\${contentTypeSlug}\${query ? '?' + query : ''}\`;
+    const res = await fetch(url, { next: { revalidate: 60 } });
+    if (!res.ok) return [];
+    const json = await res.json();
+    return json.data || json.entries || [];
+  } catch (e) {
+    console.error(\`Failed to fetch collection \${contentTypeSlug}:\`, e);
+    return [];
+  }
+}
+
+export async function getSingleType<T = any>(singleTypeSlug: string): Promise<T | null> {
+  try {
+    const url = \`\${SACMS_HOST}/api/public/\${TENANT_ID}/single/\${singleTypeSlug}\`;
+    const res = await fetch(url, { next: { revalidate: 60 } });
+    if (!res.ok) return null;
+    const json = await res.json();
+    return json.data || null;
+  } catch (e) {
+    console.error(\`Failed to fetch single type \${singleTypeSlug}:\`, e);
+    return null;
+  }
+}
+`,
       })
     }
 
@@ -149,11 +268,20 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
       })
     }
 
-    // Update site status to active
+    // Update site status to active with engine and preview info
     await db.site.update({
       where: { id: this.siteId },
       data: {
         status: "published",
+        previewUrl: v0PreviewUrl || `https://v0.app/chat/${v0ChatId}`,
+        settings: {
+          ...existingSettings,
+          v0ChatId: v0ChatId || undefined,
+          engine: usedV0Sdk ? "v0-sdk" : "sacms-engine",
+          model,
+          v0ProjectUrl: v0ChatId ? `https://v0.app/chat/${v0ChatId}` : undefined,
+          v0TeamUrl: "https://v0.app/sa-cms",
+        } as any,
         updatedAt: new Date(),
       },
     })
@@ -165,7 +293,9 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
       createdContentTypes: schemaResults.createdContentTypes,
     })
 
-    const summary = `Berhasil merancang ${schemaResults.createdContentTypes.length} Content Types dan meng-generate halaman Next.js dinamis.`
+    const summary = usedV0Sdk
+      ? `Berhasil merancang ${schemaResults.createdContentTypes.length} Content Types dan meng-generate frontend Next.js 16 via SaCMS AI Engine (${generatedFiles.length} berkas).`
+      : `Berhasil merancang ${schemaResults.createdContentTypes.length} Content Types dan meng-generate halaman Next.js dinamis.`
     onStep?.({ step: "completed", message: "Website berhasil dibangun dan siap di-preview!" })
 
     return {
@@ -175,6 +305,108 @@ Build a production-ready Next.js 16 App Router application with Tailwind CSS and
       updatedFiles: generatedFiles,
       creditsUsed,
       summary,
+      usedV0Sdk,
+      v0ChatId,
+      v0PreviewUrl,
+      mode: "create",
+      model,
+    }
+  }
+
+  /**
+   * v0.app-style follow-up: send the instruction to the SAME v0 chat and sync only what v0 changed.
+   * Skips schema planning/mutation entirely (cheap: `section_edit` credits).
+   */
+  private async runIteration(
+    prompt: string,
+    chatId: string,
+    existingSettings: Record<string, unknown>,
+    model: string,
+    onStep?: (event: AgentStepEvent) => void
+  ): Promise<OrchestrationResult> {
+    const fail = (error: string): OrchestrationResult => {
+      onStep?.({ step: "error", message: error })
+      return { success: false, updatedFiles: [], creditsUsed: 0, summary: "", error, mode: "iterate", model }
+    }
+
+    const creditCheck = await ModelRouter.checkCredits(this.tenantId, this.userId, "section_edit")
+    if (!creditCheck.allowed) return fail(creditCheck.error || "Kredit tidak mencukupi")
+
+    onStep?.({ step: "analyzing", message: `Melanjutkan iterasi project di v0.app/sa-cms (${model})...` })
+    const res = await iterateV0ChatReal(chatId, prompt, {
+      model,
+      systemPrompt: V0_SYSTEM_PROMPT,
+      maxWaitSeconds: 90,
+      privacy: "team",
+      onProgress: (message) => onStep?.({ step: "code_gen", message }),
+    })
+
+    if (res.v0Error) return fail(`SaCMS Engine: ${res.v0Error}`)
+
+    if (!res.changed) {
+      onStep?.({ step: "completed", message: "AI Engine belum mengembalikan perubahan kode." })
+      return {
+        success: true,
+        updatedFiles: [],
+        creditsUsed: 0,
+        summary:
+          "AI Engine belum menghasilkan perubahan kode dalam batas waktu. Instruksi mungkin masih diproses — klik **Reload** pada preview beberapa saat lagi, atau perjelas instruksi Anda.",
+        usedV0Sdk: true,
+        v0ChatId: chatId,
+        mode: "iterate",
+        model,
+        changedFiles: [],
+      }
+    }
+
+    onStep?.({ step: "saving", message: "Menyinkronkan berkas yang berubah ke virtual workspace..." })
+    const existing = await db.siteFile.findMany({ where: { siteId: this.siteId }, select: { path: true, content: true } })
+    const existingMap = new Map(existing.map((f) => [f.path, f.content]))
+    const changedFiles: string[] = []
+    for (const vf of res.files) {
+      const path = vf.name.startsWith("/") ? vf.name.slice(1) : vf.name
+      if (existingMap.get(path) === vf.content) continue
+      changedFiles.push(path)
+      await db.siteFile.upsert({
+        where: { siteId_path: { siteId: this.siteId, path } },
+        create: { siteId: this.siteId, path, content: vf.content },
+        update: { content: vf.content },
+      })
+    }
+
+    await db.site.update({
+      where: { id: this.siteId },
+      data: {
+        status: "published",
+        previewUrl: `https://v0.app/chat/${chatId}`,
+        settings: {
+          ...existingSettings,
+          v0ChatId: chatId,
+          model,
+          v0ProjectUrl: `https://v0.app/chat/${chatId}`,
+          v0TeamUrl: "https://v0.app/sa-cms",
+          lastIteratedAt: new Date().toISOString(),
+        } as any,
+        updatedAt: new Date(),
+      },
+    })
+
+    const creditsUsed = 2
+    await ModelRouter.deductCredits(this.tenantId, this.userId, "section_edit", creditsUsed, { prompt, changedFiles })
+
+    const allFiles = await db.siteFile.findMany({ where: { siteId: this.siteId }, orderBy: { path: "asc" }, select: { path: true, content: true } })
+    onStep?.({ step: "completed", message: `Selesai — ${changedFiles.length} berkas diperbarui.` })
+
+    return {
+      success: true,
+      updatedFiles: allFiles,
+      creditsUsed,
+      summary: `Perubahan diterapkan lewat SaCMS AI Engine (${model}). ${changedFiles.length} berkas diperbarui: ${changedFiles.map((p) => `\`${p}\``).join(", ") || "-"}.`,
+      usedV0Sdk: true,
+      v0ChatId: chatId,
+      mode: "iterate",
+      model,
+      changedFiles,
     }
   }
 

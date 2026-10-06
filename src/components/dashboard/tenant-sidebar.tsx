@@ -41,6 +41,8 @@ import {
   ShieldCheck,
   Rocket,
   Bot,
+  Globe,
+  Plug,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect, useMemo } from "react"
@@ -55,7 +57,7 @@ const s = {
   overview: "Overview",
   cmsStudio: "CMS Content Studio",
   contentTypeBuilder: "Content-Type Builder",
-  aiWebsiteBuilder: "AI Schema Generator",
+  aiSchemaGenerator: "AI Schema Generator",
   mediaLibrary: "Media Library",
   support: "Support & Help Desk",
   teamMembers: "Team Members",
@@ -224,9 +226,16 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
         { title: s.cmsStudio, href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
         ...(isAdmin ? [
           {
-            title: s.aiWebsiteBuilder,
+            title: s.aiSchemaGenerator,
             href: "/developer/aischema",
             icon: Bot,
+            badge: "AI",
+            matchPrefix: true
+          },
+          {
+            title: "Server MCP (AI & IDE)",
+            href: "/developer/mcp",
+            icon: Plug,
             badge: "AI",
             matchPrefix: true
           },

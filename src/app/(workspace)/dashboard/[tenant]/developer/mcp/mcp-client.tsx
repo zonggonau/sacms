@@ -96,6 +96,18 @@ function generateConfig(platform: string, mcpUrl: string, token: string = "YOUR_
         }
       }, null, 2)
 
+    case "cursor":
+      return JSON.stringify({
+        mcpServers: {
+          sacms: {
+            url: mcpUrl,
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        }
+      }, null, 2)
+
     case "codex":
       // Codex reads MCP servers from config.toml, not JSON — fields per
       // OpenAI's official config reference (developers.openai.com/codex/
@@ -146,6 +158,23 @@ interface PlatformInfo {
 }
 
 const PLATFORMS: PlatformInfo[] = [
+  {
+    id: "cursor",
+    name: "Cursor (AI IDE)",
+    icon: "⚡",
+    badge: "AI IDE Populer",
+    badgeColor: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20",
+    configType: "json",
+    configPath: ".cursor/mcp.json",
+    steps: [
+      "Buka Cursor Settings > Features > MCP > Add New MCP Server, atau buat file .cursor/mcp.json di root project.",
+      "Tempelkan konfigurasi JSON di bawah (token Anda sudah tersemat otomatis).",
+      "Pada mode Agent (Composer / Chat), panggil Cursor untuk membaca skema CMS atau menghasilkan kode query."
+    ],
+    notes: [
+      "Cursor mendukung Streamable HTTP MCP server natively. Anda dapat meminta Cursor: 'Ambil daftar Content Type dari SaCMS lewat MCP dan buatkan halaman katalog.'"
+    ]
+  },
   {
     id: "claude",
     name: "Claude (Desktop / Web / Code)",

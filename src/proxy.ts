@@ -36,23 +36,6 @@ let inMemoryFirstUserDone = false
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // ==================== V0 PREVIEW IFRAME INTERCEPT ====================
-  // Per official v0 SDK documentation ("Accessing Previews - Step 4: Route root-relative requests"):
-  // The catch-all preview route cannot intercept root-relative URLs (e.g. /_next/static/...)
-  // by itself. The browser resolves them against the host origin. We inspect the Referer
-  // header and redirect them (HTTP 307) through the catch-all proxy route.
-  // This MUST run before isSkippablePath so that /_next/ and static asset requests from the
-  // preview iframe are redirected to the v0 proxy instead of hitting the host's 404 handler.
-  const referer = request.headers.get("referer") || ""
-  const v0ProxyMatch = referer.match(/\/api\/tenant\/([^\/]+)\/ai-builder\/preview\/([^\/?#]+)/)
-  if (v0ProxyMatch && !pathname.startsWith("/api/tenant/")) {
-    const tenantSlug = v0ProxyMatch[1]
-    const chatId = v0ProxyMatch[2]
-    const proxyUrl = request.nextUrl.clone()
-    proxyUrl.pathname = `/api/tenant/${tenantSlug}/ai-builder/preview/${chatId}${pathname}`
-    return NextResponse.redirect(proxyUrl, 307)
-  }
-
   // Fast path: static assets and Next internals need none of the logic below.
   if (isSkippablePath(pathname)) {
     const response = NextResponse.next()
