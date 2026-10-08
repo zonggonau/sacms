@@ -3,17 +3,19 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
-import { 
+import {
   Key, Webhook, Play, BookOpen, Plug,
-  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe
+  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe, LayoutTemplate
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
 interface DeveloperSidebarProps {
   tenantId: string
+  /** Only the SaCMS Global workspace sees the Schema Template nav item. */
+  isGlobal?: boolean
 }
 
-export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
+export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSidebarProps) {
   const pathname = usePathname()
 
   const builderNavItems = [
@@ -21,6 +23,9 @@ export function DeveloperSidebar({ tenantId }: DeveloperSidebarProps) {
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/conten-type`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-type`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/component`, icon: Puzzle },
+    ...(isGlobal
+      ? [{ title: "Schema Template", href: `/dashboard/${tenantId}/developer/schematemplate`, icon: LayoutTemplate, badge: "Global" }]
+      : []),
   ]
 
   const toolNavItems = [

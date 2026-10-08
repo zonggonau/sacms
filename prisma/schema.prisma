@@ -591,6 +591,28 @@ model ApiToken {
   @@map("api_tokens")
 }
 
+// Platform-wide schema template catalog, authored in the SaCMS Global
+// workspace and browsable by every tenant. No tenantId FK — this is
+// catalog data gated by role checks (access.isGlobal) in the API routes,
+// not relational tenant ownership, and must stay visible even to tenants
+// on a dedicated database (see getTenantDb() — this model is only ever
+// queried through the plain shared `db` client).
+model SchemaTemplate {
+  id          String   @id @default(cuid())
+  name        String
+  slug        String   @unique
+  category    String
+  icon        String   @default("📦")
+  description String?
+  schema      Json
+  published   Boolean  @default(false)
+  createdBy   String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("schema_templates")
+}
+
 model Webhook {
   id              String              @id @default(cuid())
   tenantId        String

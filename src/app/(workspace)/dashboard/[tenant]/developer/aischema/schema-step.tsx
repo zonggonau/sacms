@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
@@ -13,8 +13,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
+import { Label } from "@/components/ui/label"
+import { Input } from "@/components/ui/input"
 import {
-  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu,
+  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, LayoutTemplate,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
@@ -92,6 +94,21 @@ interface SchemaPlan {
   components: SchemaModel[]
 }
 
+interface SchemaTemplateItem {
+  id: string
+  name: string
+  slug: string
+  category: string
+  icon: string
+  description: string | null
+  published: boolean
+  schema: {
+    contentTypes: SchemaModel[]
+    singleTypes: SchemaModel[]
+    components: SchemaModel[]
+  }
+}
+
 interface SchemaStepProps {
   tenantSlug: string
   hasSchema: boolean
@@ -99,8 +116,15 @@ interface SchemaStepProps {
     contentTypes: Array<{ name: string; slug: string; fieldCount: number }>
     singleTypes: Array<{ name: string; slug: string; fieldCount: number }>
   }
-  /** Fires after a schema is successfully imported, so the parent can refresh the ER diagram. */
+  /** Fires after a schema is successfully imported/saved, so the parent can refresh (ER diagram or template list). */
   onSchemaReady: () => void
+  /**
+   * "import" (default): the usual tenant flow — AI plans a schema, confirming
+   * imports it as real Content Types/Single Types/Components.
+   * "template": SaCMS Global-only authoring — confirming saves the plan as a
+   * reusable SchemaTemplate catalog entry (draft, unpublished) instead.
+   */
+  mode?: "import" | "template"
 }
 
 function FieldBadge({ field }: { field: SchemaField }) {
@@ -138,9 +162,10 @@ function SchemaModelCard({ model, typeLabel }: { model: SchemaModel; typeLabel: 
   )
 }
 
-export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSchemaReady }: SchemaStepProps) {
+export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSchemaReady, mode = "import" }: SchemaStepProps) {
   const router = useRouter()
   const { toast } = useToast()
+  const isTemplateMode = mode === "template"
 
   const [step, setStep] = useState<"compose" | "review">("compose")
   const [prompt, setPrompt] = useState("")
@@ -148,6 +173,37 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
   const [isPlanning, setIsPlanning] = useState(false)
   const [plan, setPlan] = useState<SchemaPlan | null>(null)
   const [isImporting, setIsImporting] = useState(false)
+
+  // Only used in "template" mode — metadata for the SchemaTemplate row.
+  const [templateName, setTemplateName] = useState("")
+  const [templateCategory, setTemplateCategory] = useState("")
+  const [templateIcon, setTemplateIcon] = useState("📦")
+  const [templateDescription, setTemplateDescription] = useState("")
+
+  // Template gallery — only relevant for regular tenants picking a
+  // published template to import, not for Global's own authoring mode.
+  const [templates, setTemplates] = useState<SchemaTemplateItem[]>([])
+  useEffect(() => {
+    if (isTemplateMode) return
+    fetch(`/api/tenant/${tenantSlug}/schema-templates`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.templates) setTemplates(data.templates.filter((t: SchemaTemplateItem) => t.published))
+      })
+      .catch(() => {})
+  }, [tenantSlug, isTemplateMode])
+
+  const handlePickTemplate = (template: SchemaTemplateItem) => {
+    setPlan({
+      domain: template.category,
+      title: template.name,
+      summary: template.description || `Template "${template.name}" — tinjau sebelum disimpan.`,
+      contentTypes: template.schema.contentTypes || [],
+      singleTypes: template.schema.singleTypes || [],
+      components: template.schema.components || [],
+    })
+    setStep("review")
+  }
 
   const handlePlanSchema = async () => {
     if (!prompt.trim()) return
@@ -171,6 +227,48 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
 
   const handleConfirmSchema = async () => {
     if (!plan) return
+
+    if (isTemplateMode) {
+      if (!templateName.trim() || !templateCategory.trim()) {
+        toast({ variant: "destructive", title: "Lengkapi Detail Template", description: "Nama dan kategori template wajib diisi." })
+        return
+      }
+      setIsImporting(true)
+      try {
+        const res = await fetch(`/api/tenant/${tenantSlug}/schema-templates`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            name: templateName.trim(),
+            category: templateCategory.trim(),
+            icon: templateIcon.trim() || undefined,
+            description: templateDescription.trim() || undefined,
+            schema: {
+              contentTypes: plan.contentTypes,
+              singleTypes: plan.singleTypes,
+              components: plan.components,
+            },
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data?.error || "Gagal menyimpan template")
+        toast({ title: "Template Tersimpan", description: `"${templateName}" disimpan sebagai draft — publish dari daftar template agar terlihat tenant lain.` })
+        setPlan(null)
+        setPrompt("")
+        setTemplateName("")
+        setTemplateCategory("")
+        setTemplateIcon("📦")
+        setTemplateDescription("")
+        setStep("compose")
+        onSchemaReady()
+      } catch (err: any) {
+        toast({ variant: "destructive", title: "Gagal Menyimpan Template", description: err.message })
+      } finally {
+        setIsImporting(false)
+      }
+      return
+    }
+
     setIsImporting(true)
     try {
       const res = await fetch(`/api/tenant/${tenantSlug}/ai-builder/import-schema`, {
@@ -220,6 +318,54 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             <p className="text-xs text-muted-foreground">{plan.summary}</p>
           </div>
 
+          {isTemplateMode && (
+            <Card className="border-border/70">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-bold">Detail Template</CardTitle>
+                <CardDescription className="text-xs">Diisi sebelum disimpan sebagai draft — bisa diubah lagi nanti dari daftar template.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-0 space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_auto] gap-2.5">
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Template</Label>
+                    <Input
+                      value={templateName}
+                      onChange={(e) => setTemplateName(e.target.value)}
+                      placeholder="mis. Website Desa"
+                      className="h-9 text-xs rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kategori</Label>
+                    <Input
+                      value={templateCategory}
+                      onChange={(e) => setTemplateCategory(e.target.value)}
+                      placeholder="mis. Pemerintahan"
+                      className="h-9 text-xs rounded-xl"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ikon</Label>
+                    <Input
+                      value={templateIcon}
+                      onChange={(e) => setTemplateIcon(e.target.value)}
+                      className="h-9 w-16 text-center text-sm rounded-xl"
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Deskripsi (opsional)</Label>
+                  <Textarea
+                    value={templateDescription}
+                    onChange={(e) => setTemplateDescription(e.target.value)}
+                    placeholder="Ringkasan singkat untuk tenant yang menjelajahi galeri template"
+                    className="resize-none min-h-[60px] text-xs rounded-xl"
+                  />
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           <div className="space-y-3 max-h-[420px] overflow-y-auto pr-1">
             {allModels.map(({ model, typeLabel }) => (
               <SchemaModelCard key={model.slug || model.name} model={model} typeLabel={typeLabel} />
@@ -233,7 +379,9 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
               className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto"
             >
               {isImporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-              {isImporting ? "Menyimpan Skema..." : "Konfirmasi & Simpan Schema"}
+              {isImporting
+                ? (isTemplateMode ? "Menyimpan Template..." : "Menyimpan Skema...")
+                : (isTemplateMode ? "Simpan sebagai Template" : "Konfirmasi & Simpan Schema")}
             </Button>
           </div>
         </div>
@@ -246,18 +394,19 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
   return (
     <div className="flex flex-1 flex-col items-center justify-center py-10">
       <div className="w-full max-w-2xl mx-auto px-4 space-y-5">
-        {hasSchema && (
+        {!isTemplateMode && hasSchema && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5 text-center text-xs font-medium text-emerald-700 dark:text-emerald-400">
             Schema Anda sudah punya {totalExisting} struktur data — lihat diagram-nya di bawah, atau tambah lagi lewat prompt di sini.
           </div>
         )}
 
         <h2 className="text-2xl md:text-3xl font-bold text-foreground tracking-tight text-center">
-          Jelaskan jenis website/bisnis Anda
+          {isTemplateMode ? "Jelaskan jenis template yang ingin dibuat" : "Jelaskan jenis website/bisnis Anda"}
         </h2>
         <p className="text-xs text-muted-foreground text-center max-w-md mx-auto">
-          AI akan merancang struktur data (content types &amp; fields) untuk website Anda. Anda bisa meninjau
-          dan mengubahnya sebelum disimpan.
+          {isTemplateMode
+            ? "AI akan merancang struktur data untuk template ini. Anda bisa meninjau dan mengubahnya sebelum disimpan sebagai draft."
+            : "AI akan merancang struktur data (content types & fields) untuk website Anda. Anda bisa meninjau dan mengubahnya sebelum disimpan."}
         </p>
 
         <div className="rounded-2xl bg-card border border-border/80 shadow-md overflow-visible">
@@ -298,11 +447,13 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
             className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto"
           >
             {isPlanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            {isPlanning ? "Merencanakan Skema..." : "Buat Schema dengan AI (-5 Credits)"}
+            {isPlanning ? "Merencanakan Skema..." : isTemplateMode ? "Rencanakan Template dengan AI" : "Buat Schema dengan AI (-5 Credits)"}
           </Button>
-          <p className="text-[10px] text-muted-foreground">
-            Otomatis memakai template gratis jika saldo AI Credit tidak cukup.
-          </p>
+          {!isTemplateMode && (
+            <p className="text-[10px] text-muted-foreground">
+              Otomatis memakai template gratis jika saldo AI Credit tidak cukup.
+            </p>
+          )}
         </div>
 
         <div className="space-y-1.5 pt-1">
@@ -324,15 +475,43 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
           </div>
         </div>
 
-        <div className="text-center pt-1">
-          <button
-            type="button"
-            onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
-            className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
-          >
-            atau buat manual <ExternalLink className="h-3 w-3" />
-          </button>
-        </div>
+        {!isTemplateMode && templates.length > 0 && (
+          <div className="space-y-1.5 pt-1">
+            <span className="text-[11px] font-bold text-muted-foreground flex items-center justify-center gap-1">
+              <LayoutTemplate className="h-3 w-3 text-primary" /> Galeri Template
+            </span>
+            <p className="text-[10px] text-muted-foreground text-center">
+              Dibuat tim SaCMS — pakai langsung, lalu sesuaikan sendiri.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-1.5">
+              {templates.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => handlePickTemplate(t)}
+                  title={t.description || t.name}
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl text-[11px] font-medium bg-primary/5 hover:bg-primary/10 hover:text-primary hover:border-primary/30 border border-primary/20 transition-all text-foreground cursor-pointer"
+                >
+                  <span>{t.icon}</span>
+                  <span>{t.name}</span>
+                  <Badge variant="outline" className="text-[9px] font-bold px-1 py-0 ml-0.5 border-primary/20 text-primary">{t.category}</Badge>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {!isTemplateMode && (
+          <div className="text-center pt-1">
+            <button
+              type="button"
+              onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
+              className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
+            >
+              atau buat manual <ExternalLink className="h-3 w-3" />
+            </button>
+          </div>
+        )}
       </div>
     </div>
   )
