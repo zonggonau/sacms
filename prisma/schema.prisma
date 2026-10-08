@@ -202,6 +202,11 @@ model ContentType {
   updatedAt       DateTime                      @updatedAt
   tenantId        String?
   docxTemplateUrl String?
+  // Tags this row as a Global-workspace draft materialization of a
+  // SchemaTemplate being authored/edited — not a real production content
+  // type. Plain tag, no FK (cleanup is explicit in the template delete
+  // route), kept out of the normal list actions via `draftTemplateId: null`.
+  draftTemplateId String?
   entries         ContentEntry[]
   schemaFields    SchemaField[]
   tenant          Tenant?                       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
@@ -209,6 +214,7 @@ model ContentType {
 
   @@unique([tenantId, slug])
   @@index([tenantId])
+  @@index([draftTemplateId])
   @@map("content_types")
 }
 
@@ -348,11 +354,14 @@ model SingleType {
   isPublished Boolean                      @default(false)
   showInCms   Boolean                      @default(true)
   tenantId    String?
+  // See ContentType.draftTemplateId — same draft-tag convention.
+  draftTemplateId String?
   schemaFields SchemaField[]
   tenant      Tenant?                      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tenants     TenantSingleTypeAssignment[]
 
   @@unique([tenantId, slug])
+  @@index([draftTemplateId])
   @@map("single_types")
 }
 
@@ -382,11 +391,14 @@ model Component {
   createdAt   DateTime                    @default(now())
   updatedAt   DateTime                    @updatedAt
   tenantId    String?
+  // See ContentType.draftTemplateId — same draft-tag convention.
+  draftTemplateId String?
   schemaFields SchemaField[]
   tenant      Tenant?                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tenants     TenantComponentAssignment[]
 
   @@unique([tenantId, slug])
+  @@index([draftTemplateId])
   @@map("components")
 }
 

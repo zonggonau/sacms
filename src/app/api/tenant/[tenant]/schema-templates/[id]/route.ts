@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
-import { db } from "@/lib/database"
+import { db, getTenantDb } from "@/lib/database"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 
 const updateTemplateSchema = z.object({
@@ -43,6 +43,16 @@ export const DELETE = withStaffAuth(
     const { id } = await context.params
     const existing = await db.schemaTemplate.findUnique({ where: { id } })
     if (!existing) return apiError("not_found", { message: "Template tidak ditemukan" })
+
+    // Clean up any materialized draft rows (SchemaFields cascade via their
+    // own onDelete rule) before dropping the template itself.
+    const tenantDb = await getTenantDb(access.tenant.slug)
+    const where = { tenantId: access.tenant.id, draftTemplateId: id }
+    await Promise.all([
+      tenantDb.contentType.deleteMany({ where }),
+      tenantDb.singleType.deleteMany({ where }),
+      tenantDb.component.deleteMany({ where }),
+    ])
 
     await db.schemaTemplate.delete({ where: { id } })
 

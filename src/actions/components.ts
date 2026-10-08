@@ -26,6 +26,9 @@ export async function getComponentsAction(tenantSlug: string) {
 
     const components = await tenantDb.component.findMany({
       where: {
+        // See ContentType's getContentTypesAction — same draft-template
+        // tagging convention, kept out of the normal list.
+        draftTemplateId: null,
         OR: [
           { tenantId: tenantId },
           {

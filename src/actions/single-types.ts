@@ -29,9 +29,12 @@ export async function getSingleTypesAction(tenantSlug: string) {
 
     const singleTypes = await tenantDb.singleType.findMany({
       where: {
+        // See ContentType's getContentTypesAction — same draft-template
+        // tagging convention, kept out of the normal list.
+        draftTemplateId: null,
         OR: [
           { tenantId: tenantId },
-          { 
+          {
             tenantId: null,
             tenants: { some: { tenantId: tenantId, enabled: true } }
           },

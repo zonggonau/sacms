@@ -26,6 +26,11 @@ export async function getContentTypesAction(tenantSlug: string) {
 
     const availableContentTypes = await tenantDb.contentType.findMany({
       where: {
+        // Draft materializations of a Schema Template being authored are
+        // real rows (so the existing editor pages work unmodified) but
+        // shouldn't clutter this list — they're only reachable from the
+        // template's own edit page.
+        draftTemplateId: null,
         OR: [
           { tenantId: access.tenantId },
           {

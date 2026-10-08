@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
@@ -8,7 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table"
-import { Plus, Trash2, ArrowLeft, LayoutTemplate, Loader2 } from "lucide-react"
+import { Plus, Trash2, ArrowLeft, LayoutTemplate, Loader2, Pencil } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { SchemaStep } from "../aischema/schema-step"
@@ -207,16 +208,28 @@ export function SchemaTemplateClient({ tenantSlug }: { tenantSlug: string }) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right pr-6 py-3">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(t)}
-                        disabled={pendingId === t.id}
-                        className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
-                        title="Hapus Template"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Link href={`/dashboard/${tenantSlug}/developer/schematemplate/${t.id}/edit`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted"
+                            title="Edit Detail Schema"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                        </Link>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(t)}
+                          disabled={pendingId === t.id}
+                          className="h-7 w-7 rounded-lg text-destructive hover:bg-destructive/10"
+                          title="Hapus Template"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
