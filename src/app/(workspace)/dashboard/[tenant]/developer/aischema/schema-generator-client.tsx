@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Sparkles, Download, Terminal, ArrowRight, X, Maximize2, Plug, Key } from "lucide-react"
+import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
 
@@ -91,12 +91,6 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
                 >
                   <Key className="h-3 w-3" /> Kunci API & REST
                 </button>
-                <a
-                  href={`/api/tenant/${tenantSlug}/ai-builder/export-starter`}
-                  className="text-[11px] font-semibold text-muted-foreground hover:text-foreground hover:underline cursor-pointer inline-flex items-center gap-1"
-                >
-                  <Download className="h-3 w-3" /> Unduh Starter Kit Next.js
-                </a>
               </div>
             </div>
           </div>
