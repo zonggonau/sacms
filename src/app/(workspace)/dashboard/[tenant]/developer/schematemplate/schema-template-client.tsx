@@ -102,31 +102,37 @@ export function SchemaTemplateClient({ tenantSlug }: { tenantSlug: string }) {
 
   if (view === "author") {
     return (
-      <div className="flex flex-col h-full min-h-0 gap-4 w-full max-w-full">
-        <button
-          type="button"
-          onClick={() => setView("list")}
-          className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
-        >
-          <ArrowLeft className="h-3 w-3" /> Kembali ke Daftar Template
-        </button>
-        <SchemaStep
-          tenantSlug={tenantSlug}
-          hasSchema={false}
-          existingSchemaSummary={{ contentTypes: [], singleTypes: [] }}
-          mode="template"
-          onSchemaReady={() => {
-            fetchTemplates()
-            setView("list")
-          }}
-        />
+      <div className="flex flex-1 flex-col w-full">
+        <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+          <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
+            <button
+              type="button"
+              onClick={() => setView("list")}
+              className="flex items-center gap-1.5 text-[11px] font-semibold text-muted-foreground hover:text-primary transition-colors cursor-pointer shrink-0"
+            >
+              <ArrowLeft className="h-3 w-3" /> Kembali ke Daftar Template
+            </button>
+            <SchemaStep
+              tenantSlug={tenantSlug}
+              hasSchema={false}
+              existingSchemaSummary={{ contentTypes: [], singleTypes: [] }}
+              mode="template"
+              onSchemaReady={() => {
+                fetchTemplates()
+                setView("list")
+              }}
+            />
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="flex flex-col h-full min-h-0 gap-4 w-full max-w-full">
+    <div className="flex flex-1 flex-col w-full">
       {confirmDialog}
+      <div className="flex-1 bg-background text-foreground flex flex-col w-full">
+        <div className="p-4 md:p-6 lg:p-8 w-full max-w-7xl mx-auto space-y-6">
 
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
         <div>
@@ -238,6 +244,8 @@ export function SchemaTemplateClient({ tenantSlug }: { tenantSlug: string }) {
           )}
         </CardContent>
       </Card>
+        </div>
+      </div>
     </div>
   )
 }
