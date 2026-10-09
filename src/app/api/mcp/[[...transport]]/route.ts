@@ -2731,6 +2731,63 @@ export default async function NewsPage() {
         }
       }
     )
+
+    // =========================================================================
+    // 9. FREE STATIC SITE HOSTING (VUE.JS 3 + TAILWIND, NO BUILD)
+    // =========================================================================
+
+    // ── generate_static_site ─────────────────────────────────────────────────
+    server.registerTool(
+      "generate_static_site",
+      {
+        title: "Generate Website Statis Gratis (Vue.js, Tanpa Build)",
+        description: "Membuat atau memperbarui draft website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build step) untuk workspace ini. AI merancang halaman mengambil data dari schema CMS yang sudah ada, dan akan membuatkan Content Type/Single Type dasar + contoh data via MCP dulu kalau workspace belum punya skema yang relevan. Hasilnya tersimpan sebagai DRAFT saja — tidak langsung publik. Minta pemilik workspace membuka Developer > AI Instant Website (atau Infrastructure > Website Gratis) untuk preview lalu publish; tidak ada tool MCP untuk publish langsung, supaya tetap ada tinjauan manusia sebelum sesuatu jadi live.",
+        inputSchema: {
+          prompt: z.string().min(1).describe("Deskripsi website yang diinginkan, mis. 'Toko kopi UMKM dengan daftar menu dan info kontak'"),
+        },
+      },
+      async ({ prompt }) => {
+        const auth = authContext.getStore()
+        if (!auth) return UNAUTHORIZED
+        if (!hasScope(auth, "write")) return permissionDenied("write")
+
+        try {
+          const { generateStaticSite } = await import("@/lib/static-site-generator")
+          const result = await generateStaticSite(prompt, auth.tenantId, auth.tenantSlug)
+
+          const site = await db.tenantStaticSite.upsert({
+            where: { tenantId: auth.tenantId },
+            update: { draftHtml: result.html, draftJs: result.js, draftPrompt: prompt, draftAt: new Date() },
+            create: {
+              tenantId: auth.tenantId,
+              html: "",
+              js: "",
+              published: false,
+              draftHtml: result.html,
+              draftJs: result.js,
+              draftPrompt: prompt,
+              draftAt: new Date(),
+            },
+          })
+
+          return {
+            content: [{
+              type: "text" as const,
+              text: JSON.stringify({
+                status: "draft_created",
+                siteId: site.id,
+                note: "Draft tersimpan, belum publik. Minta pemilik workspace preview & publish dari dashboard (Developer > AI Instant Website, atau Infrastructure > Website Gratis).",
+              }, null, 2)
+            }]
+          }
+        } catch (err: any) {
+          return {
+            content: [{ type: "text" as const, text: `❌ Gagal membuat website: ${err.message}` }],
+            isError: true,
+          }
+        }
+      }
+    )
   },
   {
     serverInfo: { name: "sacms-mcp", version: "2.2.0" },

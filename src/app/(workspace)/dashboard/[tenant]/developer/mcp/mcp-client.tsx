@@ -603,6 +603,14 @@ export function MCPDashboardClient({
   }
 
   const currentPlatformInfo = PLATFORMS.find(p => p.id === activePlatform) || PLATFORMS[0]
+  const hasUsableTokenValue = Boolean(selectedTokenValue || generatedPlainToken)
+  // A token row can exist in the DB (tokens.length > 0) while no plaintext
+  // value is available in THIS browser session — the secret is hashed at
+  // creation and never stored retrievably, so a page refresh always clears
+  // it. That's expected (same as GitHub/AWS/Stripe), not data loss — but
+  // without this flag the field below would silently show the literal
+  // placeholder string, which reads exactly like a lost/reset token.
+  const tokenNeedsRegeneration = tokens.length > 0 && !hasUsableTokenValue
   const effectiveToken = selectedTokenValue || generatedPlainToken || "YOUR_MCP_TOKEN"
 
   return (
@@ -781,36 +789,74 @@ export function MCPDashboardClient({
                   </Badge>
                 </div>
                 <p className="text-[11px] text-muted-foreground mt-0.5">
-                  Otomatis diinjeksikan pada contoh konfigurasi di bawah.
+                  {tokenNeedsRegeneration
+                    ? "Token tersimpan di database, tapi nilai aslinya hanya ditampilkan sekali saat dibuat dan tidak bisa dibuka lagi (demi keamanan)."
+                    : "Otomatis diinjeksikan pada contoh konfigurasi di bawah."}
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
-              <div className="w-48 sm:w-64">
-                <Input
-                  value={effectiveToken}
-                  onChange={(e) => setSelectedTokenValue(e.target.value)}
-                  placeholder="Masukkan token mcp_... atau cf_..."
-                  className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
-                />
+            {tokenNeedsRegeneration ? (
+              <div className="flex items-center gap-2">
+                <div className="w-48 sm:w-64 h-9 rounded-xl bg-muted/30 border border-border/80 flex items-center gap-1.5 px-3 text-xs font-mono text-muted-foreground">
+                  <Lock className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">Nilai tidak bisa ditampilkan lagi</span>
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleRegenerateToken}
+                  disabled={isPending}
+                  className="h-9 px-3 rounded-xl text-xs font-bold shrink-0 bg-primary hover:bg-primary/90 text-primary-foreground"
+                >
+                  {isPending ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="mr-1.5 h-3.5 w-3.5" />}
+                  Generate Ulang
+                </Button>
               </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <div className="w-48 sm:w-64">
+                  <Input
+                    value={effectiveToken}
+                    onChange={(e) => setSelectedTokenValue(e.target.value)}
+                    placeholder="Masukkan token mcp_... atau cf_..."
+                    className="font-mono text-xs bg-muted/30 border-border/80 rounded-xl h-9 text-foreground"
+                  />
+                </div>
 
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => {
-                  handleCopy(effectiveToken, "Token Otorisasi")
-                  setCopiedToken(true)
-                  setTimeout(() => setCopiedToken(false), 2000)
-                }}
-                className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
-              >
-                {copiedToken ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
-                {copiedToken ? "Disalin!" : "Salin"}
-              </Button>
-            </div>
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => {
+                    handleCopy(effectiveToken, "Token Otorisasi")
+                    setCopiedToken(true)
+                    setTimeout(() => setCopiedToken(false), 2000)
+                  }}
+                  className="h-9 px-3 rounded-xl text-xs font-bold shrink-0"
+                >
+                  {copiedToken ? <Check className="h-3.5 w-3.5 text-primary" /> : <Copy className="h-3.5 w-3.5 mr-1.5" />}
+                  {copiedToken ? "Disalin!" : "Salin"}
+                </Button>
+              </div>
+            )}
           </Card>
+
+          {/* One-time-reveal explainer — only shown when a token row exists
+              but its secret was never revealed in this session (e.g. after
+              a refresh). Prevents the "token hilang" support question. */}
+          {tokenNeedsRegeneration && (
+            <div className="p-4 bg-amber-500/10 border border-amber-500/20 rounded-2xl flex items-start gap-3 text-xs">
+              <Info className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div>
+                <p className="font-bold text-foreground">Token MCP Anda aman — bukan hilang</p>
+                <p className="text-muted-foreground mt-0.5">
+                  Token tetap tersimpan di database (lihat tabel di bawah), tapi nilai aslinya di-hash saat dibuat dan
+                  SaCMS tidak pernah menyimpannya dalam bentuk yang bisa dibuka lagi — sama seperti GitHub, AWS, atau
+                  Stripe. Kalau Anda belum menyalin nilainya sebelum refresh, klik &ldquo;Generate Ulang&rdquo; untuk
+                  membuat nilai baru yang bisa dipakai (token lama otomatis berhenti berfungsi).
+                </p>
+              </div>
+            </div>
+          )}
 
           {/* Generated Token Success Callout */}
           {generatedPlainToken && (

@@ -23,8 +23,8 @@ export const GET = withStaffAuth(
             description: ct.description,
             fieldsCount: ct.fields.length,
             fields: ct.fields,
-            hasEntries: (q.total || 0) > 0,
-            totalEntries: q.total || 0,
+            hasEntries: (q.pagination?.total || 0) > 0,
+            totalEntries: q.pagination?.total || 0,
             endpoint: `${apiBase}/content/${ct.slug}`,
             relativeEndpoint: `/api/public/${access.tenant.slug}/content/${ct.slug}`,
           }
