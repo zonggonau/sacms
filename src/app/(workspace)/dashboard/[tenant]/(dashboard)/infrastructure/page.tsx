@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react"
 import { useParams, useRouter, useSearchParams } from "next/navigation"
-import { Server, Rocket, Globe, Variable, Database, ArrowRight, Cloud, ShieldCheck, Activity } from "lucide-react"
+import { Server, Rocket, Globe, Variable, Database, ArrowRight, Cloud, ShieldCheck, Activity, Zap } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,8 +10,9 @@ import { cn } from "@/lib/utils"
 import { HostingDeploymentsView } from "./hosting-deployments-view"
 import { DatabaseStorageView } from "./database-storage-view"
 import { EnvironmentView } from "./environment-view"
+import { StaticSiteView } from "./static-site-view"
 
-type TabKey = "overview" | "hosting" | "domains" | "environment" | "database"
+type TabKey = "overview" | "hosting" | "static-site" | "domains" | "environment" | "database"
 
 interface NavItem {
   key: TabKey
@@ -35,6 +36,13 @@ const NAV_ITEMS: NavItem[] = [
     icon: Rocket,
   },
   {
+    key: "static-site",
+    label: "Website Gratis",
+    description: "Static site instan, tanpa build",
+    icon: Zap,
+    badge: "Free",
+  },
+  {
     key: "domains",
     label: "Domains",
     description: "Custom domain & verifikasi DNS",
@@ -56,6 +64,7 @@ const NAV_ITEMS: NavItem[] = [
 
 const OVERVIEW_CARDS: { key: Exclude<TabKey, "overview">; title: string; desc: string; icon: typeof Server }[] = [
   { key: "hosting", title: "Hosting & Deployment", desc: "Status deployment frontend Vercel & VPS, logs, dan URL live.", icon: Rocket },
+  { key: "static-site", title: "Website Gratis (Instan)", desc: "AI buat index.html + app.js (Alpine.js), langsung live di subdomain Anda — tanpa build.", icon: Zap },
   { key: "domains", title: "Custom Domains", desc: "Kelola domain kustom, sertifikat SSL, dan diagnostik verifikasi DNS.", icon: Globe },
   { key: "environment", title: "Environment Variables", desc: "Konfigurasi variabel build aman untuk frontend Next.js.", icon: Variable },
   { key: "database", title: "Database & Storage", desc: "Akses PostgreSQL, S3/MinIO bucket, dan dedicated cluster.", icon: Database },
@@ -87,6 +96,7 @@ function InfrastructureShell() {
   useEffect(() => {
     setMounted((m) => {
       if (tab === "hosting" || tab === "domains") return m.hosting ? m : { ...m, hosting: true }
+      if (tab === "static-site") return m["static-site"] ? m : { ...m, "static-site": true }
       if (tab === "environment") return m.environment ? m : { ...m, environment: true }
       if (tab === "database") return m.database ? m : { ...m, database: true }
       return m
@@ -325,6 +335,11 @@ function InfrastructureShell() {
                 onNavigate={(t) => setTab(t as TabKey)}
               />
             )}
+          </div>
+
+          {/* Tab 3: Website Gratis (static site) */}
+          <div hidden={tab !== "static-site"}>
+            {mounted["static-site"] && <StaticSiteView tenantSlug={tenantSlug} />}
           </div>
 
           {/* Tab 4: Environment */}

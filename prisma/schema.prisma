@@ -128,6 +128,7 @@ model Tenant {
   components             Component[]
   contentEntries         ContentEntry[]
   contentTypes           ContentType[]
+  staticSite             TenantStaticSite?
   media                  Media[]
   mediaFolders           MediaFolder[]
   settings               Setting[]
@@ -623,6 +624,24 @@ model SchemaTemplate {
   updatedAt   DateTime @updatedAt
 
   @@map("schema_templates")
+}
+
+// One free/no-build static site per tenant (Alpine.js + fetch against the
+// tenant's own Public REST API) — served by src/app/site/[tenant]/route.ts,
+// routed there from src/proxy.ts when `published`. Plain DB rows, not files
+// on disk, so it survives container restarts/deploys with no extra volume.
+model TenantStaticSite {
+  id        String   @id @default(cuid())
+  tenantId  String   @unique
+  html      String   @db.Text
+  js        String   @db.Text
+  prompt    String?
+  published Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+
+  @@map("tenant_static_sites")
 }
 
 model Webhook {

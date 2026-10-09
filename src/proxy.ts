@@ -494,8 +494,20 @@ export async function proxy(request: NextRequest) {
     const rewriteUrl = request.nextUrl.clone()
 
     if (pathname === "/" || pathname === "") {
-      // Default entry: CMS Studio for this workspace
-      rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}/cms`
+      // Default entry: the tenant's published static site if they have one
+      // (cheap Redis flag check, set/cleared by api/tenant/[tenant]/static-site
+      // — never a DB call from the routing layer), otherwise the CMS Studio
+      // as before. Fails safe to the CMS Studio if Redis is unavailable.
+      let hasStaticSite = false
+      try {
+        const redis = getRedis()
+        if (redis) hasStaticSite = (await redis.get<string>(`static-site:${dynamicSubdomain}`)) === "1"
+      } catch {
+        hasStaticSite = false
+      }
+      rewriteUrl.pathname = hasStaticSite
+        ? `/site/${dynamicSubdomain}`
+        : `/dashboard/${dynamicSubdomain}/cms`
     } else if (pathname.startsWith("/admin")) {
       // /admin -> Workspace Settings & Schemas
       rewriteUrl.pathname = `/dashboard/${dynamicSubdomain}${pathname.replace(/^\/admin/, "")}`
