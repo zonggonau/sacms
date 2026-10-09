@@ -1,36 +1,28 @@
 import { NextResponse } from "next/server"
 import { z } from "zod/v4"
 import { db } from "@/lib/database"
-import { getRedis } from "@/lib/redis"
 import { withStaffAuth, apiError, readJson } from "@/lib/api/route-helpers"
 import { generateStaticSite } from "@/lib/static-site-generator"
+import { setStaticSiteFlag } from "@/lib/static-site-versions"
 
 const generateSchema = z.object({
   prompt: z.string().trim().min(1, "Prompt wajib diisi").max(4000),
   model: z.string().optional(),
 })
 
-function staticSiteFlagKey(tenantSlug: string) {
-  return `static-site:${tenantSlug}`
-}
+const toggleSchema = z.object({
+  published: z.boolean(),
+})
 
-async function setStaticSiteFlag(tenantSlug: string, published: boolean) {
-  const redis = getRedis()
-  if (!redis) return
-  try {
-    if (published) await redis.set(staticSiteFlagKey(tenantSlug), "1")
-    else await redis.del(staticSiteFlagKey(tenantSlug))
-  } catch {
-    // Redis is a fast-path cache for proxy.ts's routing check — if it's
-    // unavailable, that check just falls back to the CMS Studio default.
-  }
-}
-
+// GET: current state (live + pending draft) for the dashboard UI.
 export const GET = withStaffAuth(async (_req, _context, { access }) => {
   const site = await db.tenantStaticSite.findUnique({ where: { tenantId: access.tenantId } })
   return NextResponse.json({ site })
 })
 
+// POST: generate a new DRAFT via AI. Never touches the live/published
+// content or the Redis routing flag — a human must explicitly call
+// .../publish before this is visible to anyone.
 export const POST = withStaffAuth(
   async (req, _context, { access, session }) => {
     const parsed = await readJson(req, generateSchema)
@@ -45,17 +37,50 @@ export const POST = withStaffAuth(
 
     const site = await db.tenantStaticSite.upsert({
       where: { tenantId: access.tenantId },
-      update: { html: result.html, js: result.js, prompt: parsed.data.prompt, published: true },
-      create: { tenantId: access.tenantId, html: result.html, js: result.js, prompt: parsed.data.prompt, published: true },
+      update: { draftHtml: result.html, draftJs: result.js, draftPrompt: parsed.data.prompt, draftAt: new Date() },
+      create: {
+        tenantId: access.tenantId,
+        html: "",
+        js: "",
+        published: false,
+        draftHtml: result.html,
+        draftJs: result.js,
+        draftPrompt: parsed.data.prompt,
+        draftAt: new Date(),
+      },
     })
-
-    await setStaticSiteFlag(access.tenant.slug, true)
 
     return NextResponse.json({ site })
   },
   { minRole: "admin" },
 )
 
+// PATCH: show/hide the CURRENT live content (no draft/version involved —
+// use .../publish to replace live content with the latest draft instead).
+export const PATCH = withStaffAuth(
+  async (req, _context, { access }) => {
+    const existing = await db.tenantStaticSite.findUnique({ where: { tenantId: access.tenantId } })
+    if (!existing || !existing.html) {
+      return apiError("not_found", { message: "Belum ada website yang pernah di-publish" })
+    }
+
+    const parsed = await readJson(req, toggleSchema)
+    if (!parsed.ok) return parsed.response
+
+    const site = await db.tenantStaticSite.update({
+      where: { tenantId: access.tenantId },
+      data: { published: parsed.data.published },
+    })
+
+    await setStaticSiteFlag(access.tenant.slug, parsed.data.published)
+
+    return NextResponse.json({ site })
+  },
+  { minRole: "admin" },
+)
+
+// DELETE: unpublish (equivalent to PATCH {published: false}) — kept as the
+// existing verb the dashboard already called.
 export const DELETE = withStaffAuth(
   async (_req, _context, { access }) => {
     const site = await db.tenantStaticSite.findUnique({ where: { tenantId: access.tenantId } })

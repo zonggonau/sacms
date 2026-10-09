@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import {
@@ -12,7 +13,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Zap, Loader2, ExternalLink, Cpu, EyeOff, Sparkles } from "lucide-react"
+import { Zap, Loader2, ExternalLink, Cpu, Sparkles, Eye, UploadCloud, History, RotateCcw } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
 import { ROOT_DOMAIN } from "@/lib/portal-urls"
@@ -22,7 +23,17 @@ interface StaticSite {
   id: string
   prompt: string | null
   published: boolean
+  html: string
+  draftHtml: string | null
+  draftPrompt: string | null
+  draftAt: string | null
   updatedAt: string
+}
+
+interface SiteVersion {
+  id: string
+  prompt: string | null
+  publishedAt: string
 }
 
 interface StaticSiteViewProps {
@@ -33,30 +44,40 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   const { toast } = useToast()
   const { confirm, dialog: confirmDialog } = useConfirm()
   const [site, setSite] = useState<StaticSite | null>(null)
+  const [versions, setVersions] = useState<SiteVersion[]>([])
   const [loading, setLoading] = useState(true)
   const [prompt, setPrompt] = useState("")
   const [model, setModel] = useState<string>(SCHEMA_MODEL_OPTIONS[0].value)
   const [isGenerating, setIsGenerating] = useState(false)
-  const [isUnpublishing, setIsUnpublishing] = useState(false)
+  const [isPublishing, setIsPublishing] = useState(false)
+  const [isToggling, setIsToggling] = useState(false)
+  const [rollingBackId, setRollingBackId] = useState<string | null>(null)
 
   const siteUrl = `https://${tenantSlug}.${ROOT_DOMAIN}`
+  const hasPendingDraft = !!site?.draftAt
 
-  const fetchSite = async () => {
+  const fetchAll = async () => {
     setLoading(true)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/static-site`)
-      const data = await res.json()
-      setSite(data.site || null)
-      if (data.site?.prompt) setPrompt(data.site.prompt)
+      const [siteRes, versionsRes] = await Promise.all([
+        fetch(`/api/tenant/${tenantSlug}/static-site`),
+        fetch(`/api/tenant/${tenantSlug}/static-site/versions`),
+      ])
+      const siteData = await siteRes.json()
+      const versionsData = await versionsRes.json()
+      setSite(siteData.site || null)
+      setVersions(versionsData.versions || [])
+      if (siteData.site?.draftPrompt) setPrompt(siteData.site.draftPrompt)
+      else if (siteData.site?.prompt) setPrompt(siteData.site.prompt)
     } catch {
-      // Fine to stay empty — the compose form below still works.
+      // Compose form below still works even if this fails.
     } finally {
       setLoading(false)
     }
   }
 
   useEffect(() => {
-    fetchSite()
+    fetchAll()
   }, [tenantSlug])
 
   const handleGenerate = async () => {
@@ -69,39 +90,89 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
         body: JSON.stringify({ prompt, model }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || "Gagal membuat website")
+      if (!res.ok) throw new Error(data?.error || "Gagal membuat draft website")
       setSite(data.site)
-      toast({ title: "Website Live!", description: `Sudah bisa diakses di ${siteUrl}` })
+      toast({ title: "Draft Siap", description: "Tinjau dulu lewat Preview sebelum di-publish." })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal Membuat Website", description: err.message })
+      toast({ variant: "destructive", title: "Gagal Membuat Draft", description: err.message })
     } finally {
       setIsGenerating(false)
     }
   }
 
-  const handleUnpublish = async () => {
+  const handlePublish = async () => {
+    setIsPublishing(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/publish`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal publish website")
+      setSite(data.site)
+      fetchAll()
+      toast({ title: "Website Live!", description: `Sudah bisa diakses di ${siteUrl}` })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Publish", description: err.message })
+    } finally {
+      setIsPublishing(false)
+    }
+  }
+
+  const handleTogglePublished = async (nextPublished: boolean) => {
+    if (!nextPublished) {
+      const ok = await confirm({
+        title: "Unpublish website ini?",
+        description: "Subdomain Anda akan kembali menampilkan CMS Studio. Konten tetap tersimpan, bisa dipublish lagi kapan saja.",
+        confirmLabel: "Unpublish",
+        variant: "destructive",
+      })
+      if (!ok) return
+    }
+
+    setIsToggling(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ published: nextPublished }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal mengubah status publish")
+      setSite(data.site)
+      toast({ title: nextPublished ? "Website Dipublish" : "Website Di-unpublish" })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal", description: err.message })
+    } finally {
+      setIsToggling(false)
+    }
+  }
+
+  const handleRollback = async (version: SiteVersion) => {
     if (
       !(await confirm({
-        title: "Unpublish website ini?",
-        description: "Subdomain Anda akan kembali menampilkan CMS Studio alih-alih website ini. Draft tetap tersimpan, bisa dipublish lagi kapan saja.",
-        confirmLabel: "Unpublish",
+        title: "Rollback ke versi ini?",
+        description: "Versi yang sedang live akan disimpan ke riwayat juga, jadi Anda tetap bisa maju lagi kalau berubah pikiran.",
+        confirmLabel: "Rollback",
         variant: "destructive",
       }))
     )
       return
 
-    setIsUnpublishing(true)
+    setRollingBackId(version.id)
     try {
-      const res = await fetch(`/api/tenant/${tenantSlug}/static-site`, { method: "DELETE" })
-      if (!res.ok) throw new Error((await res.json())?.error || "Gagal unpublish")
-      setSite((prev) => (prev ? { ...prev, published: false } : prev))
-      toast({ title: "Website Di-unpublish", description: "Subdomain kembali ke CMS Studio." })
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/versions/${version.id}/rollback`, { method: "POST" })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal rollback")
+      setSite(data.site)
+      fetchAll()
+      toast({ title: "Rollback Berhasil", description: "Website kembali ke versi tersebut." })
     } catch (err: any) {
-      toast({ variant: "destructive", title: "Gagal", description: err.message })
+      toast({ variant: "destructive", title: "Gagal Rollback", description: err.message })
     } finally {
-      setIsUnpublishing(false)
+      setRollingBackId(null)
     }
   }
+
+  const formatDate = (iso: string) =>
+    new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
   return (
     <div className="space-y-6">
@@ -115,7 +186,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
           <div className="space-y-1">
             <h3 className="text-sm font-extrabold tracking-tight text-foreground">Website Gratis & Instan</h3>
             <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-              AI membuat satu halaman statis (HTML + Alpine.js, tanpa build) yang mengambil data dari API SaCMS Anda sendiri, langsung live di subdomain — cocok untuk UMKM/profil bisnis sederhana. Untuk kebutuhan lebih kompleks, tetap gunakan tab <strong>Hosting</strong> (Vercel).
+              AI membuat satu halaman statis (HTML + Alpine.js, tanpa build) yang mengambil data dari API SaCMS Anda sendiri. Setiap generate jadi <strong>draft</strong> dulu — tinjau lewat Preview sebelum Publish. Untuk kebutuhan lebih kompleks, tetap gunakan tab <strong>Hosting</strong> (Vercel).
             </p>
           </div>
         </div>
@@ -127,32 +198,55 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
         </div>
       ) : (
         <>
-          {site?.published && (
-            <Card className="rounded-2xl border-emerald-500/30 bg-emerald-500/5 shadow-xs">
+          {site?.html && (
+            <Card className="rounded-2xl border-border/80 shadow-xs">
               <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
-                    <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" /> Live
-                  </Badge>
-                  <a
-                    href={siteUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-bold text-foreground hover:text-primary inline-flex items-center gap-1"
-                  >
-                    {siteUrl} <ExternalLink className="h-3 w-3" />
-                  </a>
+                <div className="flex items-center gap-3">
+                  <Switch
+                    checked={site.published}
+                    disabled={isToggling}
+                    onCheckedChange={handleTogglePublished}
+                  />
+                  {site.published ? (
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
+                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" /> Live
+                      </Badge>
+                      <a
+                        href={siteUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-bold text-foreground hover:text-primary inline-flex items-center gap-1"
+                      >
+                        {siteUrl} <ExternalLink className="h-3 w-3" />
+                      </a>
+                    </div>
+                  ) : (
+                    <span className="text-xs font-semibold text-muted-foreground">Tidak dipublish — subdomain menampilkan CMS Studio</span>
+                  )}
                 </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleUnpublish}
-                  disabled={isUnpublishing}
-                  className="h-8 gap-1.5 font-bold text-xs rounded-xl shrink-0"
-                >
-                  {isUnpublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <EyeOff className="h-3.5 w-3.5" />}
-                  Unpublish
-                </Button>
+              </CardContent>
+            </Card>
+          )}
+
+          {hasPendingDraft && (
+            <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
+              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold">Draft Belum Dipublish</Badge>
+                  <span className="text-xs text-muted-foreground">Dibuat {site?.draftAt ? formatDate(site.draftAt) : ""}</span>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button variant="outline" size="sm" asChild className="h-8 gap-1.5 font-bold text-xs rounded-xl">
+                    <a href={`/api/tenant/${tenantSlug}/static-site/preview`} target="_blank" rel="noopener noreferrer">
+                      <Eye className="h-3.5 w-3.5" /> Preview Draft
+                    </a>
+                  </Button>
+                  <Button onClick={handlePublish} disabled={isPublishing} size="sm" className="h-8 gap-1.5 font-bold text-xs rounded-xl">
+                    {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+                    Publish Draft
+                  </Button>
+                </div>
               </CardContent>
             </Card>
           )}
@@ -160,7 +254,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
           <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
             <CardHeader className="p-5 pb-3">
               <CardTitle className="text-sm font-bold text-foreground">
-                {site ? "Perbarui Website" : "Buat Website"}
+                {site?.html ? "Generate Ulang (Draft Baru)" : "Buat Website"}
               </CardTitle>
               <CardDescription className="text-xs text-muted-foreground">
                 Jelaskan bisnis Anda — AI merancang halaman lengkap mengambil data dari schema CMS Anda sendiri.
@@ -197,10 +291,43 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                 className="h-9 gap-1.5 font-bold text-xs rounded-xl shadow-xs"
               >
                 {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                {isGenerating ? "Membuat Website..." : site ? "Perbarui & Publish" : "Buat & Publish"}
+                {isGenerating ? "Membuat Draft..." : "Generate Draft dengan AI"}
               </Button>
             </CardContent>
           </Card>
+
+          {versions.length > 0 && (
+            <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
+              <CardHeader className="p-5 pb-3">
+                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5 text-primary" /> Riwayat Versi ({versions.length})
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Versi sebelumnya yang pernah live — bisa dikembalikan kapan saja.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-5 pt-0 space-y-1.5">
+                {versions.map((v) => (
+                  <div key={v.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-muted/30">
+                    <div className="min-w-0">
+                      <p className="text-xs font-semibold text-foreground truncate">{v.prompt || "(tanpa prompt)"}</p>
+                      <p className="text-[10px] text-muted-foreground">{formatDate(v.publishedAt)}</p>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRollback(v)}
+                      disabled={rollingBackId === v.id}
+                      className="h-7 gap-1.5 font-bold text-[11px] rounded-lg shrink-0"
+                    >
+                      {rollingBackId === v.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
+                      Rollback
+                    </Button>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
         </>
       )}
     </div>

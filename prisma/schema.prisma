@@ -630,18 +630,46 @@ model SchemaTemplate {
 // tenant's own Public REST API) — served by src/app/site/[tenant]/route.ts,
 // routed there from src/proxy.ts when `published`. Plain DB rows, not files
 // on disk, so it survives container restarts/deploys with no extra volume.
+//
+// html/js/prompt are the LIVE, publicly-served version. draft* holds the
+// most recent AI generation until a human explicitly publishes it — nothing
+// here ever reaches the public route until that happens. Each publish/
+// rollback snapshots the outgoing live version into `versions` first, so
+// there's always a way back.
 model TenantStaticSite {
-  id        String   @id @default(cuid())
-  tenantId  String   @unique
-  html      String   @db.Text
-  js        String   @db.Text
-  prompt    String?
-  published Boolean  @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  id          String    @id @default(cuid())
+  tenantId    String    @unique
+  html        String    @db.Text
+  js          String    @db.Text
+  prompt      String?
+  published   Boolean   @default(false)
+  draftHtml   String?   @db.Text
+  draftJs     String?   @db.Text
+  draftPrompt String?
+  draftAt     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  versions    TenantStaticSiteVersion[]
 
   @@map("tenant_static_sites")
+}
+
+// History of previously-live versions, snapshotted on every publish/rollback
+// (capped to the most recent 10 per site — see STATIC_SITE_VERSION_LIMIT in
+// src/lib/static-site-versions.ts) so a bad AI generation or a defacement
+// can be reverted instead of only ever overwritten.
+model TenantStaticSiteVersion {
+  id          String           @id @default(cuid())
+  siteId      String
+  html        String           @db.Text
+  js          String           @db.Text
+  prompt      String?
+  publishedAt DateTime         @default(now())
+  site        TenantStaticSite @relation(fields: [siteId], references: [id], onDelete: Cascade)
+
+  @@index([siteId, publishedAt])
+  @@map("tenant_static_site_versions")
 }
 
 model Webhook {
