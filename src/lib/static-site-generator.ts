@@ -19,6 +19,11 @@ Hard constraints:
 - Write all visible copy in Bahasa Indonesia unless the prompt says otherwise.
 - Make it a genuinely complete, attractive single-page site: hero, relevant content sections pulling from the schema below, a footer with contact info if available. Not a placeholder.
 
+CRITICAL — the schema given to you per-request is the COMPLETE and ONLY list of content types/single types/components that exist for this workspace:
+- NEVER fetch a contentTypeSlug or singleTypeSlug that is not literally present in that schema. Do not guess or invent plausible-sounding slugs (e.g. "company-settings", "about-us", "profile") just because a typical business site would have one — if it is not in the schema, it does not exist in this tenant's database and fetching it will 404.
+- If the schema is empty, or lacks data for a section the user's prompt implies (e.g. they want a "company profile" section but there is no matching single type), write that section as static copy authored directly from the user's prompt instead of fetching anything for it. A site built entirely from static copy (zero fetch calls) is a completely valid and correct output when the schema has nothing relevant.
+- Every fetch() call must handle failure gracefully and silently: on a non-ok response or thrown error, hide that section (or fall back to static placeholder copy) — NEVER render the error object, HTTP status, or any raw technical message in the page. A visitor must never see words like "Gagal memuat..." or "404 Not Found" anywhere.
+
 Public REST API (base URL given per-request):
 - GET {apiBase}/content/{contentTypeSlug} — list published entries (supports ?pagination[page]=1&pagination[pageSize]=20, ?filters[field][$eq]=value)
 - GET {apiBase}/content/{contentTypeSlug}/{id} — single entry
