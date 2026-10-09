@@ -5,7 +5,8 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
 import { Textarea } from "@/components/ui/textarea"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
+import { Separator } from "@/components/ui/separator"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card"
 import {
   Select,
   SelectContent,
@@ -13,9 +14,13 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { Zap, Loader2, ExternalLink, Cpu, Sparkles, Eye, UploadCloud, History, RotateCcw } from "lucide-react"
+import {
+  Zap, Loader2, ExternalLink, Cpu, Sparkles, Eye, UploadCloud, History,
+  RotateCcw, Copy, Check, Globe, FileCode2, ShieldCheck, Lightbulb, Clock,
+} from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
+import { cn } from "@/lib/utils"
 import { ROOT_DOMAIN } from "@/lib/portal-urls"
 import { SCHEMA_MODEL_OPTIONS } from "../../developer/aischema/schema-step"
 
@@ -52,8 +57,10 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   const [isPublishing, setIsPublishing] = useState(false)
   const [isToggling, setIsToggling] = useState(false)
   const [rollingBackId, setRollingBackId] = useState<string | null>(null)
+  const [copied, setCopied] = useState(false)
 
   const siteUrl = `https://${tenantSlug}.${ROOT_DOMAIN}`
+  const hasSite = !!site?.html
   const hasPendingDraft = !!site?.draftAt
 
   const fetchAll = async () => {
@@ -79,6 +86,16 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   useEffect(() => {
     fetchAll()
   }, [tenantSlug])
+
+  const handleCopyUrl = async () => {
+    try {
+      await navigator.clipboard.writeText(siteUrl)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1800)
+    } catch {
+      // Clipboard permission denied — non-critical, link is still visible/clickable.
+    }
+  }
 
   const handleGenerate = async () => {
     if (!prompt.trim()) return
@@ -174,97 +191,125 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20 text-sm text-muted-foreground gap-2">
+        <Loader2 className="h-4 w-4 animate-spin" /> Memuat status website...
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       {confirmDialog}
 
-      <div className="relative overflow-hidden rounded-2xl border border-primary/20 bg-gradient-to-br from-primary/10 via-background to-primary/5 p-5 shadow-xs">
-        <div className="flex items-start gap-3">
-          <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-            <Zap className="h-4 w-4" />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-extrabold tracking-tight text-foreground">Website Gratis & Instan</h3>
-            <p className="text-xs text-muted-foreground leading-relaxed max-w-2xl">
-              AI membuat satu halaman statis (HTML + Alpine.js, tanpa build) yang mengambil data dari API SaCMS Anda sendiri. Setiap generate jadi <strong>draft</strong> dulu — tinjau lewat Preview sebelum Publish. Untuk kebutuhan lebih kompleks, tetap gunakan tab <strong>Hosting</strong> (Vercel).
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-16 text-xs text-muted-foreground gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Memuat status website...
-        </div>
-      ) : (
-        <>
-          {site?.html && (
-            <Card className="rounded-2xl border-border/80 shadow-xs">
-              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-center gap-3">
-                  <Switch
-                    checked={site.published}
-                    disabled={isToggling}
-                    onCheckedChange={handleTogglePublished}
-                  />
-                  {site.published ? (
-                    <div className="flex items-center gap-2">
-                      <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 text-[10px] font-bold">
-                        <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1" /> Live
-                      </Badge>
-                      <a
-                        href={siteUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs font-bold text-foreground hover:text-primary inline-flex items-center gap-1"
-                      >
-                        {siteUrl} <ExternalLink className="h-3 w-3" />
-                      </a>
-                    </div>
-                  ) : (
-                    <span className="text-xs font-semibold text-muted-foreground">Tidak dipublish — subdomain menampilkan CMS Studio</span>
+      {/* ── Status strip — deployment-style bar, only once a site has ever existed ── */}
+      {hasSite && (
+        <Card className="rounded-2xl border-border/80 shadow-xs overflow-hidden">
+          <CardContent className="p-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4">
+              <div className="flex items-center gap-3 min-w-0">
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-xl flex items-center justify-center shrink-0 border",
+                    site?.published
+                      ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-600"
+                      : "bg-muted border-border text-muted-foreground"
                   )}
+                >
+                  <Globe className="h-5 w-5" />
                 </div>
-              </CardContent>
-            </Card>
-          )}
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className={cn("relative flex h-2 w-2 rounded-full", site?.published ? "bg-emerald-500" : "bg-muted-foreground/40")}>
+                      {site?.published && <span className="absolute inset-0 rounded-full bg-emerald-500 animate-ping" />}
+                    </span>
+                    <span className="text-sm font-bold text-foreground">
+                      {site?.published ? "Live" : "Belum Dipublish"}
+                    </span>
+                    {site?.published && (
+                      <Badge variant="outline" className="text-[9px] font-bold uppercase text-muted-foreground border-border/80">
+                        Static · Alpine.js
+                      </Badge>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleCopyUrl}
+                    className="flex items-center gap-1.5 text-xs font-mono text-muted-foreground hover:text-primary transition-colors mt-0.5 truncate max-w-full cursor-pointer"
+                  >
+                    <span className="truncate">{siteUrl}</span>
+                    {copied ? <Check className="h-3 w-3 shrink-0 text-emerald-500" /> : <Copy className="h-3 w-3 shrink-0" />}
+                  </button>
+                </div>
+              </div>
 
-          {hasPendingDraft && (
-            <Card className="rounded-2xl border-amber-500/30 bg-amber-500/5 shadow-xs">
-              <CardContent className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 shrink-0 self-end sm:self-center">
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20 text-[10px] font-bold">Draft Belum Dipublish</Badge>
-                  <span className="text-xs text-muted-foreground">Dibuat {site?.draftAt ? formatDate(site.draftAt) : ""}</span>
+                  <Switch checked={site?.published ?? false} disabled={isToggling} onCheckedChange={handleTogglePublished} />
+                  <span className="text-xs font-semibold text-muted-foreground">Publish</span>
                 </div>
-                <div className="flex items-center gap-2 shrink-0">
-                  <Button variant="outline" size="sm" asChild className="h-8 gap-1.5 font-bold text-xs rounded-xl">
-                    <a href={`/api/tenant/${tenantSlug}/static-site/preview`} target="_blank" rel="noopener noreferrer">
-                      <Eye className="h-3.5 w-3.5" /> Preview Draft
-                    </a>
-                  </Button>
-                  <Button onClick={handlePublish} disabled={isPublishing} size="sm" className="h-8 gap-1.5 font-bold text-xs rounded-xl">
-                    {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
-                    Publish Draft
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                <Separator orientation="vertical" className="h-6" />
+                <Button variant="outline" size="sm" asChild className="h-8 gap-1.5 font-bold text-xs rounded-xl">
+                  <a href={siteUrl} target="_blank" rel="noopener noreferrer">
+                    Kunjungi <ExternalLink className="h-3 w-3" />
+                  </a>
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
-          <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
+      {/* ── Pending draft callout ── */}
+      {hasPendingDraft && (
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/5 p-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+              <FileCode2 className="h-4 w-4" />
+            </div>
+            <div>
+              <p className="text-xs font-bold text-foreground">Draft menunggu di-publish</p>
+              <p className="text-[11px] text-muted-foreground">Dibuat {site?.draftAt ? formatDate(site.draftAt) : ""}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <Button variant="outline" size="sm" asChild className="h-8 gap-1.5 font-bold text-xs rounded-xl">
+              <a href={`/api/tenant/${tenantSlug}/static-site/preview`} target="_blank" rel="noopener noreferrer">
+                <Eye className="h-3.5 w-3.5" /> Preview
+              </a>
+            </Button>
+            <Button onClick={handlePublish} disabled={isPublishing} size="sm" className="h-8 gap-1.5 font-bold text-xs rounded-xl shadow-xs">
+              {isPublishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UploadCloud className="h-3.5 w-3.5" />}
+              Publish Draft
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Main grid: composer (2/3) + sidebar (1/3) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <Card className="rounded-2xl border-border/80 shadow-xs bg-card h-full">
             <CardHeader className="p-5 pb-3">
-              <CardTitle className="text-sm font-bold text-foreground">
-                {site?.html ? "Generate Ulang (Draft Baru)" : "Buat Website"}
-              </CardTitle>
-              <CardDescription className="text-xs text-muted-foreground">
-                Jelaskan bisnis Anda — AI merancang halaman lengkap mengambil data dari schema CMS Anda sendiri.
-              </CardDescription>
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                  <Zap className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-sm font-bold text-foreground">
+                    {hasSite ? "Generate Ulang (Draft Baru)" : "Buat Website Pertama Anda"}
+                  </CardTitle>
+                  <CardDescription className="text-xs text-muted-foreground">
+                    Jelaskan bisnis Anda — AI merancang halaman lengkap mengambil data dari schema CMS yang sudah ada.
+                  </CardDescription>
+                </div>
+              </div>
             </CardHeader>
-            <CardContent className="p-5 pt-0 space-y-3">
-              <div className="rounded-2xl bg-muted/20 border border-border/80 overflow-visible">
+            <CardContent className="p-5 pt-2 space-y-3">
+              <div className="rounded-2xl bg-muted/20 border border-border/80 focus-within:border-primary/40 transition-colors overflow-visible">
                 <Textarea
                   placeholder="Contoh: Toko kopi UMKM dengan profil usaha, daftar menu dari Content Type produk, dan info kontak/lokasi."
-                  className="resize-none min-h-[88px] text-sm rounded-2xl border-0 shadow-none bg-transparent p-4 focus-visible:ring-0"
+                  className="resize-none min-h-[120px] text-sm rounded-2xl border-0 shadow-none bg-transparent p-4 focus-visible:ring-0"
                   value={prompt}
                   onChange={(e) => setPrompt(e.target.value)}
                 />
@@ -285,51 +330,91 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                   </Select>
                 </div>
               </div>
+            </CardContent>
+            <CardFooter className="p-5 pt-0">
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
-                className="h-9 gap-1.5 font-bold text-xs rounded-xl shadow-xs"
+                className="h-10 gap-1.5 font-bold text-xs rounded-xl shadow-xs px-5"
               >
                 {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 {isGenerating ? "Membuat Draft..." : "Generate Draft dengan AI"}
               </Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        {/* ── Sidebar ── */}
+        <div className="space-y-4">
+          <Card className="rounded-2xl border-primary/20 bg-primary/5 shadow-xs">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                <Lightbulb className="h-3.5 w-3.5 text-primary" /> Cara Kerjanya
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-4 pt-1 space-y-2.5">
+              {[
+                ["1", "Generate", "AI merancang halaman dari schema CMS Anda — jadi draft dulu."],
+                ["2", "Preview", "Tinjau hasilnya sebelum siapa pun bisa melihatnya."],
+                ["3", "Publish", "Sekali klik, langsung live di subdomain Anda."],
+              ].map(([n, title, desc]) => (
+                <div key={n} className="flex items-start gap-2.5">
+                  <div className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
+                    {n}
+                  </div>
+                  <div>
+                    <p className="text-xs font-bold text-foreground">{title}</p>
+                    <p className="text-[11px] text-muted-foreground leading-relaxed">{desc}</p>
+                  </div>
+                </div>
+              ))}
+              <Separator className="my-2" />
+              <div className="flex items-start gap-2">
+                <ShieldCheck className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Tanpa build, tanpa server tambahan — cocok untuk UMKM/profil bisnis sederhana. Untuk kebutuhan lebih kompleks, gunakan tab <strong className="text-foreground">Hosting</strong> (Vercel).
+                </p>
+              </div>
             </CardContent>
           </Card>
 
           {versions.length > 0 && (
             <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
-              <CardHeader className="p-5 pb-3">
-                <CardTitle className="text-sm font-bold text-foreground flex items-center gap-1.5">
-                  <History className="h-3.5 w-3.5 text-primary" /> Riwayat Versi ({versions.length})
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <History className="h-3.5 w-3.5 text-primary" /> Riwayat Versi
+                  <Badge variant="outline" className="text-[9px] font-bold ml-auto">{versions.length}</Badge>
                 </CardTitle>
-                <CardDescription className="text-xs text-muted-foreground">
-                  Versi sebelumnya yang pernah live — bisa dikembalikan kapan saja.
+                <CardDescription className="text-[11px] text-muted-foreground">
+                  Versi sebelumnya yang pernah live.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="p-5 pt-0 space-y-1.5">
+              <CardContent className="p-4 pt-1 space-y-1.5 max-h-80 overflow-y-auto">
                 {versions.map((v) => (
-                  <div key={v.id} className="flex items-center justify-between gap-2 px-3 py-2 rounded-xl bg-muted/30">
+                  <div key={v.id} className="flex items-center justify-between gap-2 px-2.5 py-2 rounded-xl bg-muted/30 hover:bg-muted/50 transition-colors">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold text-foreground truncate">{v.prompt || "(tanpa prompt)"}</p>
-                      <p className="text-[10px] text-muted-foreground">{formatDate(v.publishedAt)}</p>
+                      <p className="text-[11px] font-semibold text-foreground truncate">{v.prompt || "(tanpa prompt)"}</p>
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1 mt-0.5">
+                        <Clock className="h-2.5 w-2.5" /> {formatDate(v.publishedAt)}
+                      </p>
                     </div>
                     <Button
-                      variant="outline"
-                      size="sm"
+                      variant="ghost"
+                      size="icon"
                       onClick={() => handleRollback(v)}
                       disabled={rollingBackId === v.id}
-                      className="h-7 gap-1.5 font-bold text-[11px] rounded-lg shrink-0"
+                      title="Rollback ke versi ini"
+                      className="h-7 w-7 rounded-lg shrink-0 text-muted-foreground hover:text-primary hover:bg-primary/10"
                     >
-                      {rollingBackId === v.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
-                      Rollback
+                      {rollingBackId === v.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RotateCcw className="h-3.5 w-3.5" />}
                     </Button>
                   </div>
                 ))}
               </CardContent>
             </Card>
           )}
-        </>
-      )}
+        </div>
+      </div>
     </div>
   )
 }

@@ -82,6 +82,16 @@ export async function withAiRetry<T>(fn: () => Promise<T>, maxAttempts = 3): Pro
       await sleep(waitTime)
     }
   }
+
+  // The Gateway key in Admin Settings can be non-empty but still invalid/
+  // expired/revoked — resolveGatewayModel() only catches the "completely
+  // unset" case, so this surfaces as the SDK's generic English message on
+  // the actual request. Translate it into something actionable instead of
+  // showing "Unauthenticated request to AI Gateway..." straight to the user.
+  if (lastError?.message?.includes("Unauthenticated") || lastError?.message?.includes("AI_GATEWAY_API_KEY")) {
+    throw new Error("Vercel AI Gateway menolak API Key yang terpasang (tidak valid/sudah expired). Cek kembali di Admin > Pengaturan > Mesin AI, lalu klik \"Uji Koneksi Vercel AI Gateway\" untuk memastikan key-nya benar.")
+  }
+
   throw lastError || new Error("AI Gateway request failed")
 }
 
