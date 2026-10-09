@@ -61,11 +61,17 @@ For Single Types, provide 1 complete initial record in 'dummyData'.
 
 All slugs must be snake_case or kebab-case lowercase.`
 
-async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string): Promise<GeneratedSystemSchema> {
+async function generateWithAi(prompt: string, tenantId?: string, userId?: string, overrideModel?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
   const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 5, action: "generate_schema" }
-  await enforceAiQuota(config)
+  // Callers that already reserved quota for this cost as part of a larger
+  // combined check (e.g. generateStaticSite's upfront gate) pass true here
+  // so this doesn't check — and potentially pass — a balance that the
+  // outer call is also about to spend from before either deduction lands.
+  if (!skipQuotaCheck) {
+    await enforceAiQuota(config)
+  }
 
   const { model, modelId } = await resolveGatewayModel(overrideModel)
 
@@ -378,11 +384,11 @@ export function generateHeuristicSchema(prompt: string): GeneratedSystemSchema {
     }
 }
 
-export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string): Promise<GeneratedSystemSchema> {
+export async function generateSystemSchema(prompt: string, tenantId?: string, userId?: string, model?: string, skipQuotaCheck?: boolean): Promise<GeneratedSystemSchema> {
   // 1. Coba AI LLM via Vercel AI Gateway
   try {
     console.log("[AI Schema] Analyzing user prompt with LLM to generate custom dynamic schema...")
-    return await generateWithAi(prompt, tenantId, userId, model)
+    return await generateWithAi(prompt, tenantId, userId, model, skipQuotaCheck)
   } catch (error: any) {
     console.warn("[AI Schema] AI generation failed or not configured:", error.message)
     

@@ -642,6 +642,82 @@ export async function seedMissingCmsDataViaMcp(bridge: McpClientBridge) {
   return seededCount
 }
 
+// Kept only as an offline fallback for shouldProvisionSchema below, for
+// when the classifier call itself fails (Gateway down/misconfigured) — not
+// the primary detection mechanism anymore, since a fixed list can never
+// cover every business domain a user might type.
+const FALLBACK_DOMAIN_KEYWORDS = [
+  "rental", "mobil", "motor", "sewa", "kendaraan",
+  "klinik", "dokter", "medis", "rumah sakit", "dental", "gigi", "apotek",
+  "toko", "shop", "ecommerce", "e-commerce", "baju", "produk", "distro", "fashion", "katalog",
+  "hotel", "resort", "villa", "kamar", "penginapan", "homestay",
+  "cafe", "kopi", "coffee", "resto", "restoran", "kuliner", "makanan", "f&b",
+  "sekolah", "kursus", "edukasi", "akademi", "les", "universitas", "kampus",
+  "properti", "real estate", "apartemen", "perumahan", "kost",
+  "salon", "barbershop", "spa", "skincare", "kecantikan",
+  "gym", "fitness", "olahraga",
+  "laundry", "cuci",
+]
+
+/**
+ * Decides whether the workspace needs new CMS schema generated for this
+ * prompt. An empty workspace always needs it (free, no AI call). Otherwise
+ * a small classification call asks the model directly whether the existing
+ * schema can satisfy the prompt — this replaces a fixed keyword list, which
+ * could only ever recognize a handful of hardcoded business types and would
+ * silently do nothing for anything else (e.g. "pesantren", "koperasi").
+ *
+ * Treated as internal/unbilled overhead (no enforceAiQuota/recordAiUsage):
+ * it's a small, bounded routing decision, not a user-initiated generation —
+ * the actual generation calls downstream are what get metered.
+ */
+async function shouldProvisionSchema(
+  schema: { contentTypes: { slug: string; name: string }[]; singleTypes: { slug: string; name: string }[] },
+  prompt: string,
+  overrideModel?: string,
+): Promise<boolean> {
+  const hasNoSchemas = schema.contentTypes.length === 0 && schema.singleTypes.length === 0
+  if (hasNoSchemas) return true
+
+  const fallbackHeuristic = () => {
+    const p = prompt.toLowerCase()
+    const promptMentionsDomain = FALLBACK_DOMAIN_KEYWORDS.some((kw) => p.includes(kw))
+    const schemaMatchesDomain = schema.contentTypes.some((ct) =>
+      FALLBACK_DOMAIN_KEYWORDS.some((kw) => ct.slug.includes(kw) || ct.name.toLowerCase().includes(kw))
+    )
+    return promptMentionsDomain && !schemaMatchesDomain
+  }
+
+  try {
+    const { resolveGatewayModel } = await import("./ai")
+    const { generateObject } = await import("ai")
+    const { z } = await import("zod")
+    const { model } = await resolveGatewayModel(overrideModel)
+
+    const schemaSummary = [
+      ...schema.contentTypes.map((ct) => `- Content Type: ${ct.name} (${ct.slug})`),
+      ...schema.singleTypes.map((st) => `- Single Type: ${st.name} (${st.slug})`),
+    ].join("\n") || "(belum ada skema)"
+
+    const { object } = await generateObject({
+      model,
+      schema: z.object({
+        schemaIsRelevant: z.boolean().describe(
+          "true jika skema yang sudah ada cukup relevan untuk memenuhi permintaan user, false jika perlu Content Type/Single Type baru dibuat"
+        ),
+      }),
+      system: "Anda classifier internal SaCMS. Nilai singkat dan tegas apakah skema CMS yang ada relevan dengan permintaan website user.",
+      prompt: `Skema CMS yang sudah ada:\n${schemaSummary}\n\nPermintaan user: "${prompt}"`,
+      maxOutputTokens: 50,
+    })
+
+    return !object.schemaIsRelevant
+  } catch (err) {
+    console.warn("[AI Website Builder] Schema relevance classifier failed, falling back to keyword match:", err)
+    return fallbackHeuristic()
+  }
+}
+
 /**
  * Memastikan workspace memiliki skema database yang relevan via MCP.
  * Jika belum ada skema atau prompt meminta domain bisnis baru yang belum tersedia,
@@ -652,38 +728,18 @@ export async function ensureWorkspaceSchemaAndDataViaMcp(
   prompt: string,
   tenantId: string,
   userId?: string,
-  overrideModel?: string
+  overrideModel?: string,
+  opts?: { skipQuotaCheck?: boolean; knownShouldProvision?: boolean },
 ) {
   let schema = await bridge.getFullSchema()
-  const p = prompt.toLowerCase()
 
-  const hasNoSchemas = schema.contentTypes.length === 0 && schema.singleTypes.length === 0
-
-  const domainKeywords = [
-    "rental", "mobil", "motor", "sewa", "kendaraan",
-    "klinik", "dokter", "medis", "rumah sakit", "dental", "gigi", "apotek",
-    "toko", "shop", "ecommerce", "e-commerce", "baju", "produk", "distro", "fashion", "katalog",
-    "hotel", "resort", "villa", "kamar", "penginapan", "homestay",
-    "cafe", "kopi", "coffee", "resto", "restoran", "kuliner", "makanan", "f&b",
-    "sekolah", "kursus", "edukasi", "akademi", "les", "universitas", "kampus",
-    "properti", "real estate", "apartemen", "perumahan", "kost",
-    "salon", "barbershop", "spa", "skincare", "kecantikan",
-    "gym", "fitness", "olahraga",
-    "laundry", "cuci",
-  ]
-
-  const promptMentionsDomain = domainKeywords.some((kw) => p.includes(kw))
-  const schemaMatchesDomain = schema.contentTypes.some((ct) =>
-    domainKeywords.some((kw) => ct.slug.includes(kw) || ct.name.toLowerCase().includes(kw))
-  )
-
-  const shouldProvision = hasNoSchemas || (promptMentionsDomain && !schemaMatchesDomain)
+  const shouldProvision = opts?.knownShouldProvision ?? (await shouldProvisionSchema(schema, prompt, overrideModel))
 
   if (shouldProvision) {
     try {
       console.log(`[AI Website Builder] Auto-provisioning schema via MCP based on prompt: "${prompt}"...`)
       const { generateSystemSchema } = await import("./ai-schema-generator")
-      const generated = await generateSystemSchema(prompt, tenantId, userId, overrideModel)
+      const generated = await generateSystemSchema(prompt, tenantId, userId, overrideModel, opts?.skipQuotaCheck)
       const res = await bridge.applyGeneratedSchema(generated)
       console.log(`[AI Website Builder] Schema applied via MCP successfully:`, res)
       schema = await bridge.getFullSchema()
@@ -707,11 +763,24 @@ export async function generateStaticSite(
   const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
 
   const config = { tenantId, userId, creditsCost: 5, action: "generate_static_site" }
-  await enforceAiQuota(config)
 
-  // 1. Inisialisasi McpClientBridge dan pastikan database CMS memiliki skema & data terbit via MCP
+  // 1. Inisialisasi McpClientBridge dan tentukan lebih dulu apakah schema
+  // auto-provisioning akan jalan, supaya pengecekan kuota di bawah mencakup
+  // TOTAL biaya permintaan ini sekaligus. Mengecek hanya 5 kredit di sini
+  // lalu membiarkan pembuatan skema melakukan pengecekan terpisah lagi
+  // nanti memungkinkan tenant dengan saldo pas 5 kredit lolos kedua
+  // pengecekan sebelum potongan pertama tercatat — total terpotong 10
+  // kredit dari saldo yang cuma cukup untuk 5.
   const bridge = new McpClientBridge(tenantId, tenantSlug, userId)
-  const mcpSchema = await ensureWorkspaceSchemaAndDataViaMcp(bridge, prompt, tenantId, userId, overrideModel)
+  const preSchema = await bridge.getFullSchema()
+  const willProvisionSchema = await shouldProvisionSchema(preSchema, prompt, overrideModel)
+
+  await enforceAiQuota({ ...config, creditsCost: willProvisionSchema ? 10 : 5 })
+
+  const mcpSchema = await ensureWorkspaceSchemaAndDataViaMcp(bridge, prompt, tenantId, userId, overrideModel, {
+    skipQuotaCheck: true,
+    knownShouldProvision: willProvisionSchema,
+  })
 
   const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://sacms.cloud"
   const apiBase = `${apiOrigin.replace(/\/$/, "")}/api/public/${tenantSlug}`

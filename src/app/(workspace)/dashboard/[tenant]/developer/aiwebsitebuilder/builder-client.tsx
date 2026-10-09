@@ -608,6 +608,13 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               <a href={siteUrl} target="_blank" rel="noreferrer" className="text-primary hover:underline flex items-center gap-0.5">
                 <ExternalLink className="h-3 w-3" />
               </a>
+              <a
+                href={`/dashboard/${tenantSlug}/infrastructure?tab=static-site`}
+                className="text-[10px] text-muted-foreground/70 hover:text-primary hover:underline shrink-0"
+                title="Website yang sama juga bisa dikelola lewat tab Infrastructure > Website Gratis — keduanya mengedit draft yang sama"
+              >
+                (website yang sama dengan Infrastructure &gt; Website Gratis)
+              </a>
             </div>
           </div>
         </div>
@@ -882,7 +889,12 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
                 </div>
                 <div className="flex items-center justify-between text-[10px] text-muted-foreground px-1">
                   <span>Tekan <kbd className="font-mono bg-muted px-1 py-0.5 rounded">Ctrl+Enter</kbd> untuk kirim</span>
-                  <span>Vue 3 SPA • 2 Files Only</span>
+                  <span
+                    className="flex items-center gap-1"
+                    title="5 kredit untuk membuat/memperbarui website. Bisa jadi 10 kredit jika AI juga perlu membuat skema CMS baru untuk permintaan ini."
+                  >
+                    <Sparkles className="h-2.5 w-2.5" /> Biaya: 5-10 kredit
+                  </span>
                 </div>
               </div>
 

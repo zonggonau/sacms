@@ -256,7 +256,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                     </span>
                     {site?.published && (
                       <Badge variant="outline" className="text-[9px] font-bold uppercase text-muted-foreground border-border/80">
-                        Static · Alpine.js
+                        Static · Vue.js 3
                       </Badge>
                     )}
                   </div>
@@ -267,6 +267,13 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                     <span className="truncate">{siteUrl}</span>
                     {copied ? <Check className="h-3 w-3 shrink-0 text-emerald-500" /> : <Copy className="h-3 w-3 shrink-0" />}
                   </button>
+                  <a
+                    href={`/dashboard/${tenantSlug}/developer/aiwebsitebuilder`}
+                    className="text-[10px] text-muted-foreground/70 hover:text-primary hover:underline truncate block"
+                    title="Website yang sama juga bisa dikelola lewat Developer > AI Instant Website — keduanya mengedit draft yang sama"
+                  >
+                    (website yang sama dengan Developer &gt; AI Instant Website)
+                  </a>
                 </div>
               </div>
 
@@ -368,7 +375,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                 </div>
               </div>
             </CardContent>
-            <CardFooter className="p-5 pt-0">
+            <CardFooter className="p-5 pt-0 flex items-center justify-between gap-3">
               <Button
                 onClick={handleGenerate}
                 disabled={isGenerating || !prompt.trim()}
@@ -377,6 +384,12 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                 {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 {isGenerating ? "Membuat Draft..." : "Generate Draft dengan AI"}
               </Button>
+              <span
+                className="text-[10px] text-muted-foreground shrink-0"
+                title="5 kredit untuk membuat/memperbarui website. Bisa jadi 10 kredit jika AI juga perlu membuat skema CMS baru untuk permintaan ini."
+              >
+                Biaya: 5-10 kredit
+              </span>
             </CardFooter>
           </Card>
         </div>
