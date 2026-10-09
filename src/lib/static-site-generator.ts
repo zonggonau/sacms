@@ -1,10 +1,21 @@
 import { generateText } from "ai"
 import { McpClientBridge } from "./mcp/mcp-client-bridge"
+import type { GeneratedSystemSchema } from "./ai-schema-generator"
 
-const SYSTEM_PROMPT = `You are a world-class frontend engineer and UI designer specializing in building modern, production-grade Single Page Applications (SPA) with Vue.js 3 and Tailwind CSS, powered by a headless CMS Public REST API.
+// STEP 1 of the 3-step pipeline (UI -> Schema -> API connect). This prompt
+// deliberately asks for a fully self-contained SPA with AI-INVENTED MOCK
+// DATA ONLY — no CMS schema, no fetch(), no live data context. That's what
+// keeps this call small, fast, and reliable: the old single-shot flow had
+// to fit a full SPA (HTML+JS) AND the REST API wiring AND a live schema
+// dump in its prompt context within one shared token budget, which is what
+// caused truncated/incomplete output. Schema generation (step 2) and real
+// API wiring (step 3) are separate, narrower, user-triggered calls with
+// their own budgets — see generateSchemaFromMockUi/connectStaticSiteToApi.
+const UI_SYSTEM_PROMPT = `You are a world-class frontend engineer and UI designer specializing in building modern, production-grade Single Page Applications (SPA) with Vue.js 3 and Tailwind CSS.
 
 Architecture & Output Constraints:
 - Output MUST be split into exactly TWO files: \`index.html\` and \`app.js\`. Do not create or reference any other files.
+- This is a VISUAL DESIGN pass only — there is NO backend yet. ALL data must be realistic, richly detailed, hardcoded MOCK data you invent yourself directly in \`app.js\`. Do NOT write any \`fetch()\` calls, do NOT reference any API, do NOT leave any TODO/placeholder — the mock data IS the content shown to the user, make it as complete and polished as live data would be.
 - You MUST format your entire response using these exact delimiters:
 
 <<<INDEX_HTML>>>
@@ -42,21 +53,34 @@ const { createApp, ref, reactive, computed, onMounted } = Vue;
 const app = createApp({
   setup() {
     const currentView = ref('home');
-    const loading = ref(true);
+    const loading = ref(false);
     const searchQuery = ref('');
     const selectedItem = ref(null);
     const isMobileMenuOpen = ref(false);
 
-    // Initial state matching the CMS schema with rich realistic fallbacks:
-    // ...
-    // REST API fetchers:
-    // ...
+    // MOCK:rooms
+    const rooms = ref([
+      { id: 1, title: "Deluxe Ocean Suite", price: 1250000, image: "https://images.unsplash.com/photo-1582719478250-c89cae4dc85b?auto=format&fit=crop&w=800&q=80" },
+      { id: 2, title: "Executive Family Villa", price: 2450000, image: "https://images.unsplash.com/photo-1618773928121-c32242e63f39?auto=format&fit=crop&w=800&q=80" }
+    ]);
+    // /MOCK:rooms
+
+    // MOCK:profil_usaha
+    const profilUsaha = ref({
+      nama: "Nama Bisnis",
+      tagline: "Tagline singkat yang menjual",
+      deskripsi: "Deskripsi lengkap dan menarik tentang bisnis ini."
+    });
+    // /MOCK:profil_usaha
+
     return {
       currentView,
       loading,
       searchQuery,
       selectedItem,
       isMobileMenuOpen,
+      rooms,
+      profilUsaha,
       // expose all states and methods
     };
   }
@@ -71,51 +95,27 @@ CRITICAL CODING RULES TO PREVENT CRASHES & TIMEOUTS:
    - Use clean, standard simple SVGs (max 1-2 path elements, e.g. standard Lucide/Heroicon stroke paths) or standard Unicode Emojis (e.g. 🏢, 👥, 📈, 📞, 🛍️, 📰).
    - Never loop coordinate numbers!
 
-2. DEFENSIVE VUE 3 REACTIVE STATE:
-   - In \`app.js\` \`setup()\`, ALWAYS initialize EVERY variable used in templates with a COMPLETE, REALISTIC default object matching the schema fields!
-   - Example for single types (e.g., \`profilDesa\`):
+2. MOCK DATA MARKERS — MANDATORY:
+   - Every distinct data entity in \`app.js\` (an array of listing items, OR a single settings/profile object) MUST be wrapped in comment markers immediately around its \`ref()\`/\`reactive()\` declaration:
      \`\`\`javascript
-     const profilDesa = ref({
-       nama_desa: "Desa Intan Mandiri",
-       slogan: "Maju, Berdaya & Sejahtera",
-       sambutan_kades: "Selamat datang di website resmi kami...",
-       statistik_penduduk_data: {
-         total_penduduk: 3840,
-         jumlah_kk: 1120,
-         laki_laki: 1920,
-         perempuan: 1920,
-       },
-     });
+     // MOCK:<entity_slug>
+     const <varName> = ref(/* array or object */);
+     // /MOCK:<entity_slug>
      \`\`\`
-   - NEVER leave a referenced nested object as \`null\` or \`undefined\`, otherwise templates accessing nested fields like \`profilDesa.statistik_penduduk_data.total_penduduk\` will throw a runtime TypeError and crash Vue rendering!
+   - \`<entity_slug>\` is a short lowercase kebab/snake-case name describing the entity (e.g. \`rooms\`, \`produk\`, \`profil_toko\`, \`testimoni\`). It MUST be unique per entity and MUST exactly match the opening and closing marker.
+   - Use an ARRAY sample (multiple items) for things that are naturally a list/collection (products, rooms, articles, testimonials). Use a single OBJECT sample for a one-off settings/profile/config entity. This distinction matters — it decides what kind of CMS collection this becomes later.
+   - Give every array item a realistic, complete shape (3-5 fields) and 2-4 sample items. Give every object sample ALL the fields a reader would expect, fully filled in — no \`null\`/\`undefined\`/empty-string placeholders.
+   - UI-only local state (currentView, loading, searchQuery, isMobileMenuOpen, selectedItem, etc.) must NOT be wrapped in MOCK markers — only real content data.
 
-3. SAFE TEMPLATE EXPRESSIONS & HELPERS:
+3. DEFENSIVE VUE 3 REACTIVE STATE:
+   - NEVER leave a referenced nested object as \`null\` or \`undefined\`, otherwise templates accessing nested fields will throw a runtime TypeError and crash Vue rendering!
+
+4. SAFE TEMPLATE EXPRESSIONS & HELPERS:
    - In \`index.html\`, always use safe optional chaining and provide fallbacks:
-     \`{{ (profilDesa?.statistik_penduduk_data?.total_penduduk || 0).toLocaleString('id-ID') }}\`
+     \`{{ (profilUsaha?.statistik?.total || 0).toLocaleString('id-ID') }}\`
    - Or provide helper formatting methods in \`setup()\`:
      \`const formatNumber = (val) => Number(val || 0).toLocaleString('id-ID');\`
      \`const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');\`
-     and use \`{{ formatNumber(profilDesa?.statistik_penduduk_data?.total_penduduk) }}\` in HTML.
-
-4. SaCMS PUBLIC REST API CONVENTIONS:
-   - Single Type: \`GET {apiBase}/single/{singleTypeSlug}\` -> response: \`{ data: { ...fields } }\`
-   - Content Type: \`GET {apiBase}/content/{contentTypeSlug}?limit=20\` -> response: \`{ data: [ ...entries ] }\`
-   - In fetch handlers:
-     \`\`\`javascript
-     const fetchSingle = async () => {
-       try {
-         const res = await fetch('{apiBase}/single/{slug}');
-         if (res.ok) {
-           const json = await res.json();
-           if (json.data) {
-             profilDesa.value = { ...profilDesa.value, ...json.data };
-           }
-         }
-       } catch (err) {
-         // Silently keep default fallback state
-       }
-     };
-     \`\`\`
 
 5. Output ONLY the two delimited blocks (<<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>). Do not wrap the entire response in markdown or add commentary.`
 
@@ -197,264 +197,43 @@ export function extractFiles(rawText: string): { html: string; js: string } {
     html = html.replace(/^```(?:html)?\s*/i, "").replace(/```\s*$/, "").trim()
   }
 
-  // Robust fallback defaults if still empty or unparsed
-  if (!html) {
-    html = `<!DOCTYPE html>
-<html lang="id">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Portal Resmi Desa</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    body { font-family: 'Plus Jakarta Sans', sans-serif; }
-    [v-cloak] { display: none; }
-  </style>
-</head>
-<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col">
-  <div id="app" v-cloak class="flex-1 flex flex-col">
-    <!-- Navbar -->
-    <header class="bg-white/90 backdrop-blur-md border-b border-slate-200 sticky top-0 z-40 px-6 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-emerald-600 flex items-center justify-center text-white font-black text-lg shadow-sm">
-          🏛️
-        </div>
-        <div>
-          <h1 class="text-base font-black tracking-tight text-slate-900">{{ profilDesa?.nama_desa || 'Desa Intan Mandiri' }}</h1>
-          <p class="text-xs text-slate-500 font-medium">{{ profilDesa?.slogan || 'Maju, Berdaya & Sejahtera' }}</p>
-        </div>
-      </div>
-      <nav class="hidden md:flex items-center gap-1">
-        <button @click="currentView = 'beranda'" :class="currentView === 'beranda' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:text-slate-900'" class="px-3 py-1.5 rounded-lg text-xs transition-colors">Beranda</button>
-        <button @click="currentView = 'statistik'" :class="currentView === 'statistik' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:text-slate-900'" class="px-3 py-1.5 rounded-lg text-xs transition-colors">Statistik</button>
-        <button @click="currentView = 'aparatur'" :class="currentView === 'aparatur' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:text-slate-900'" class="px-3 py-1.5 rounded-lg text-xs transition-colors">Aparatur</button>
-        <button @click="currentView = 'berita'" :class="currentView === 'berita' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:text-slate-900'" class="px-3 py-1.5 rounded-lg text-xs transition-colors">Berita</button>
-        <button @click="currentView = 'umkm'" :class="currentView === 'umkm' ? 'bg-emerald-50 text-emerald-700 font-bold' : 'text-slate-600 hover:text-slate-900'" class="px-3 py-1.5 rounded-lg text-xs transition-colors">Potensi UMKM</button>
-      </nav>
-    </header>
-
-    <!-- Main Content -->
-    <main class="flex-1 max-w-6xl w-full mx-auto px-6 py-8 space-y-10">
-      <!-- Hero Banner -->
-      <section class="bg-gradient-to-br from-emerald-800 to-teal-900 rounded-3xl p-8 md:p-12 text-white shadow-xl relative overflow-hidden">
-        <div class="relative z-10 max-w-2xl space-y-4">
-          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold bg-white/20 backdrop-blur-md text-emerald-100">
-            ✨ Portal Digital Resmi Desa
-          </span>
-          <h2 class="text-3xl md:text-5xl font-black tracking-tight leading-tight">
-            {{ profilDesa?.nama_desa || 'Desa Intan Mandiri' }}
-          </h2>
-          <p class="text-emerald-100 text-sm md:text-base leading-relaxed">
-            {{ profilDesa?.sambutan_kades || 'Selamat datang di website resmi kami. Wujud transparansi informasi dan kemudahan layanan untuk seluruh warga masyarakat.' }}
-          </p>
-        </div>
-      </section>
-
-      <!-- Statistik Penduduk Cards -->
-      <section class="space-y-4">
-        <div class="flex items-center justify-between">
-          <div>
-            <h3 class="text-lg font-black text-slate-900">Demografi &amp; Statistik Penduduk</h3>
-            <p class="text-xs text-slate-500">Data kependudukan terintegrasi langsung dengan database SaCMS</p>
-          </div>
-          <span class="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full">Live Terbit</span>
-        </div>
-
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-            <p class="text-xs font-bold text-slate-500">Total Penduduk</p>
-            <p class="text-2xl font-black text-slate-900">
-              {{ formatNumber(profilDesa?.statistik_penduduk_data?.total_penduduk) }}
-            </p>
-            <span class="text-[10px] text-emerald-600 font-bold">Jiwa terdaftar</span>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-            <p class="text-xs font-bold text-slate-500">Kepala Keluarga</p>
-            <p class="text-2xl font-black text-slate-900">
-              {{ formatNumber(profilDesa?.statistik_penduduk_data?.jumlah_kk) }}
-            </p>
-            <span class="text-[10px] text-blue-600 font-bold">Kartu Keluarga (KK)</span>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-            <p class="text-xs font-bold text-slate-500">Laki-laki</p>
-            <p class="text-2xl font-black text-slate-900">
-              {{ formatNumber(profilDesa?.statistik_penduduk_data?.laki_laki) }}
-            </p>
-            <span class="text-[10px] text-slate-500 font-bold">Jiwa</span>
-          </div>
-
-          <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-xs space-y-1">
-            <p class="text-xs font-bold text-slate-500">Perempuan</p>
-            <p class="text-2xl font-black text-slate-900">
-              {{ formatNumber(profilDesa?.statistik_penduduk_data?.perempuan) }}
-            </p>
-            <span class="text-[10px] text-slate-500 font-bold">Jiwa</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- Aparatur & Berita Grid -->
-      <section class="grid md:grid-cols-2 gap-8">
-        <!-- Aparatur -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-          <h3 class="text-base font-black text-slate-900 flex items-center justify-between">
-            <span>Aparatur Pemerintahan Desa</span>
-            <span class="text-xs font-bold text-emerald-600">{{ aparaturList.length }} Pejabat</span>
-          </h3>
-          <div class="space-y-3">
-            <div v-for="ap in aparaturList" :key="ap._id" class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 border border-slate-100">
-              <div class="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-black text-sm shrink-0">
-                👤
-              </div>
-              <div class="min-w-0">
-                <p class="text-xs font-black text-slate-900 truncate">{{ ap.nama_lengkap }}</p>
-                <p class="text-[11px] text-slate-500 font-medium">{{ ap.jabatan }} • NIP: {{ ap.nip || '-' }}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Berita & Pengumuman -->
-        <div class="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-xs space-y-4">
-          <h3 class="text-base font-black text-slate-900 flex items-center justify-between">
-            <span>Berita &amp; Informasi Desa</span>
-            <span class="text-xs font-bold text-emerald-600">{{ beritaList.length }} Artikel</span>
-          </h3>
-          <div class="space-y-3">
-            <div v-for="b in beritaList" :key="b._id" class="p-3 rounded-2xl bg-slate-50 border border-slate-100 space-y-1">
-              <span class="text-[10px] font-bold text-emerald-700 uppercase bg-emerald-100/60 px-2 py-0.5 rounded-full">{{ b.kategori || 'Kabar Desa' }}</span>
-              <p class="text-xs font-black text-slate-900 line-clamp-1">{{ b.judul }}</p>
-              <p class="text-[11px] text-slate-500 line-clamp-2 leading-relaxed">{{ b.ringkasan }}</p>
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="bg-white border-t border-slate-200 mt-auto py-6 text-center text-xs text-slate-500">
-      <p>&copy; {{ new Date().getFullYear() }} {{ profilDesa?.nama_desa || 'Desa Intan Mandiri' }}. Powered by SaCMS.</p>
-    </footer>
-  </div>
-  <script src="app.js"></script>
-</body>
-</html>`
-  }
-
-  if (!js) {
-    js = `const { createApp, ref, onMounted } = Vue;
-
-const app = createApp({
-  setup() {
-    const currentView = ref('beranda');
-    const loading = ref(true);
-
-    // Initial safe state with complete structures
-    const profilDesa = ref({
-      nama_desa: "Desa Intan Mandiri",
-      slogan: "Desa Maju, Berdaya & Sejahtera",
-      sambutan_kades: "Selamat datang di website resmi kami. Portal ini wujud transparansi informasi dan kemudahan layanan untuk seluruh warga.",
-      statistik_penduduk_data: {
-        total_penduduk: 3840,
-        jumlah_kk: 1120,
-        laki_laki: 1920,
-        perempuan: 1920,
-        luas_wilayah: "14.5 km²"
-      }
-    });
-
-    const aparaturList = ref([
-      { _id: "1", nama_lengkap: "Drs. H. Mulyono Santoso", jabatan: "Kepala Desa", nip: "197805122005011002" },
-      { _id: "2", nama_lengkap: "Siti Rahmawati, S.AP", jabatan: "Sekretaris Desa", nip: "198402182010012005" }
-    ]);
-
-    const beritaList = ref([
-      { _id: "1", judul: "Penyaluran BLT Dana Desa Berjalan Tertib", kategori: "Pemerintahan", ringkasan: "Pemerintah Desa telah menyalurkan bantuan langsung tunai kepada 120 KPM penerima manfaat." },
-      { _id: "2", judul: "Pelatihan Kewirausahaan Digital Pelaku UMKM", kategori: "Pemberdayaan", ringkasan: "Sebanyak 40 pelaku UMKM lokal mengikuti bimbingan teknis pemasaran online." }
-    ]);
-
-    const umkmList = ref([
-      { _id: "1", nama_usaha: "Kopi Robusta Lereng Intan", harga_mulai: 35000, pemilik: "Pak Sugeng" }
-    ]);
-
-    // Helpers
-    const formatNumber = (val) => Number(val || 0).toLocaleString('id-ID');
-    const formatRupiah = (val) => 'Rp ' + Number(val || 0).toLocaleString('id-ID');
-
-    // Fetch live data from SaCMS REST API
-    const loadLiveData = async () => {
-      loading.value = true;
-      try {
-        // Gunakan root-relative path yang aman dan independen dari konteks iframe / origin
-        const tenantSlug = (typeof window !== 'undefined' && (window as any).__SACMS_TENANT_SLUG__) || 'd78ff319b79b5165';
-        const origin = (typeof window !== 'undefined' && window.location.origin && window.location.origin !== 'null') ? window.location.origin : '';
-        const apiBase = origin + '/api/public/' + tenantSlug;
-
-        // Fetch Single Type: Profil Desa
-        try {
-          const resProfil = await fetch(apiBase + '/single/profil-desa');
-          if (resProfil.ok) {
-            const jsonProfil = await resProfil.json();
-            if (jsonProfil.data) {
-              profilDesa.value = { ...profilDesa.value, ...jsonProfil.data };
-            }
-          }
-        } catch (e) {}
-
-        // Fetch Content: Berita
-        try {
-          const resBerita = await fetch(apiBase + '/content/berita-pengumuman?limit=10');
-          if (resBerita.ok) {
-            const jsonBerita = await resBerita.json();
-            if (jsonBerita.data && jsonBerita.data.length > 0) {
-              beritaList.value = jsonBerita.data;
-            }
-          }
-        } catch (e) {}
-
-        // Fetch Content: Aparatur
-        try {
-          const resAparatur = await fetch(apiBase + '/content/aparatur-desa?limit=10');
-          if (resAparatur.ok) {
-            const jsonAparatur = await resAparatur.json();
-            if (jsonAparatur.data && jsonAparatur.data.length > 0) {
-              aparaturList.value = jsonAparatur.data;
-            }
-          }
-        } catch (e) {}
-      } catch (err) {
-        console.warn('API fetch warning:', err);
-      } finally {
-        loading.value = false;
-      }
-    };
-
-    onMounted(() => {
-      loadLiveData();
-    });
-
-    return {
-      currentView,
-      loading,
-      profilDesa,
-      aparaturList,
-      beritaList,
-      umkmList,
-      formatNumber,
-      formatRupiah,
-      loadLiveData
-    };
-  }
-});
-
-app.mount('#app');`
+  // If even the lenient heuristics above couldn't find anything, don't
+  // silently substitute an unrelated hardcoded template — that used to
+  // happen here and masked real generation failures as fake successes.
+  // Surface it so the caller can show a clear, actionable error instead.
+  if (!html || !js) {
+    throw new Error("AI tidak mengembalikan format index.html/app.js yang valid. Coba generate ulang, atau pilih model lain.")
   }
 
   return { html, js }
+}
+
+/**
+ * Parses `// MOCK:<slug> ... // /MOCK:<slug>` comment-delimited blocks out
+ * of a Step-1-generated app.js (see UI_SYSTEM_PROMPT). Deterministic, no AI
+ * involved — used by Step 2 (derive a CMS schema matching these entities)
+ * and Step 3 (rewire these same refs to fetch real data). Entities without
+ * a matching closing marker are skipped rather than breaking the parse.
+ */
+export function extractMockEntities(js: string): { slug: string; varName: string; kind: "content" | "single"; sampleJson: string }[] {
+  const entities: { slug: string; varName: string; kind: "content" | "single"; sampleJson: string }[] = []
+  const markerRegex = /\/\/\s*MOCK:([\w-]+)([\s\S]*?)\/\/\s*\/MOCK:\1/g
+
+  let match: RegExpExecArray | null
+  while ((match = markerRegex.exec(js)) !== null) {
+    const slug = match[1]
+    const body = match[2]
+    const varMatch = body.match(/(?:const|let)\s+(\w+)\s*=\s*(?:ref|reactive)\(/)
+    if (!varMatch) continue
+
+    const trimmedAfterVar = body.slice(varMatch.index! + varMatch[0].length).trimStart()
+    const sampleJson = trimmedAfterVar.replace(/\);\s*$/, "").trim()
+    const kind: "content" | "single" = sampleJson.startsWith("[") ? "content" : "single"
+
+    entities.push({ slug, varName: varMatch[1], kind, sampleJson })
+  }
+
+  return entities
 }
 
 /**
@@ -753,6 +532,14 @@ export async function ensureWorkspaceSchemaAndDataViaMcp(
   return await bridge.getFullSchema()
 }
 
+/**
+ * STEP 1: Generate the visual design only — a self-contained Vue 3 SPA with
+ * AI-invented mock data, no CMS schema/MCP bridge touched at all. This is
+ * what every entry point (both dashboard generate buttons, and the MCP tool)
+ * calls first. Schema generation and real API wiring are separate opt-in
+ * steps the user triggers afterward — see generateSchemaFromMockUi and
+ * connectStaticSiteToApi below.
+ */
 export async function generateStaticSite(
   prompt: string,
   tenantId: string,
@@ -762,84 +549,133 @@ export async function generateStaticSite(
 ): Promise<StaticSiteResult> {
   const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
 
-  const config = { tenantId, userId, creditsCost: 5, action: "generate_static_site" }
+  const config = { tenantId, userId, creditsCost: 5, action: "generate_static_site_ui" }
+  await enforceAiQuota(config)
 
-  // 1. Inisialisasi McpClientBridge dan tentukan lebih dulu apakah schema
-  // auto-provisioning akan jalan, supaya pengecekan kuota di bawah mencakup
-  // TOTAL biaya permintaan ini sekaligus. Mengecek hanya 5 kredit di sini
-  // lalu membiarkan pembuatan skema melakukan pengecekan terpisah lagi
-  // nanti memungkinkan tenant dengan saldo pas 5 kredit lolos kedua
-  // pengecekan sebelum potongan pertama tercatat — total terpotong 10
-  // kredit dari saldo yang cuma cukup untuk 5.
-  const bridge = new McpClientBridge(tenantId, tenantSlug, userId)
-  const preSchema = await bridge.getFullSchema()
-  const willProvisionSchema = await shouldProvisionSchema(preSchema, prompt, overrideModel)
-
-  await enforceAiQuota({ ...config, creditsCost: willProvisionSchema ? 10 : 5 })
-
-  const mcpSchema = await ensureWorkspaceSchemaAndDataViaMcp(bridge, prompt, tenantId, userId, overrideModel, {
-    skipQuotaCheck: true,
-    knownShouldProvision: willProvisionSchema,
-  })
-
-  const apiOrigin = process.env.NEXT_PUBLIC_APP_URL || "https://sacms.cloud"
-  const apiBase = `${apiOrigin.replace(/\/$/, "")}/api/public/${tenantSlug}`
-
-  // 2. Ambil sample data riil untuk dimasukkan ke konteks prompt AI
-  const liveSingleTypes = await Promise.all(
-    mcpSchema.singleTypes.map(async (st) => {
-      const detail = await bridge.getSingleType(st.slug)
-      return {
-        slug: st.slug,
-        name: st.name,
-        endpoint: `${apiBase}/single/${st.slug}`,
-        fields: st.fields.map((f: any) => ({ slug: f.slug, type: f.type })),
-        data: detail.data || null,
-      }
-    })
-  )
-
-  const liveContentTypes = await Promise.all(
-    mcpSchema.contentTypes.map(async (ct) => {
-      const q = await bridge.queryContent({ contentTypeSlug: ct.slug, limit: 2 })
-      return {
-        slug: ct.slug,
-        name: ct.name,
-        endpoint: `${apiBase}/content/${ct.slug}?limit=20`,
-        fields: ct.fields.map((f: any) => ({ slug: f.slug, type: f.type })),
-        sampleEntries: q.data || [],
-      }
-    })
-  )
-
-  const userPrompt = `Workspace Public REST API Base URL: ${apiBase}
-SaCMS MCP Server Context: Connected & Synced
-
-Live Single Types (Fetch via GET {endpoint}):
-${JSON.stringify(liveSingleTypes, null, 2)}
-
-Live Content Collections (Fetch via GET {endpoint}):
-${JSON.stringify(liveContentTypes, null, 2)}
-
-User's Goal & Design Instruction:
+  const userPrompt = `User's Goal & Design Instruction:
 ${prompt}
 
-REMEMBER: In Vue 3 setup(), initialize reactive states with the exact structure of the live data above so initial rendering is immediate and immune to undefined errors. Output ONLY the two delimited blocks <<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>.`
+Output ONLY the two delimited blocks <<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>, with every data entity wrapped in // MOCK:<slug> markers as instructed.`
 
   const { model, modelId } = await resolveGatewayModel(overrideModel)
 
   const result = await withAiRetry(() =>
     generateText({
       model,
-      system: SYSTEM_PROMPT,
+      system: UI_SYSTEM_PROMPT,
       prompt: userPrompt,
-      maxOutputTokens: 12000,
+      maxOutputTokens: 14000,
     })
   )
+
+  if (result.finishReason === "length") {
+    throw new Error("Output AI terpotong karena melebihi batas panjang. Coba prompt yang lebih sederhana, atau pilih model lain.")
+  }
 
   const files = extractFiles(result.text)
 
   await recordAiUsage(config, toUsageTotals(result.usage), modelId, files.html + files.js)
 
   return files
+}
+
+/**
+ * STEP 2 (opsional, dipicu manual lewat tombol "Buatkan Skema Sesuai
+ * Tampilan Ini"): menurunkan skema CMS dari entitas mock yang sudah ada di
+ * app.js hasil Step 1 — bukan dari free-form business prompt seperti
+ * `generateSystemSchema` biasanya dipakai. Prompt turunan di bawah secara
+ * eksplisit memaksa slug & field PERSIS SAMA dengan sample mock-nya, supaya
+ * Step 3 nanti bisa mencocokkan entity<->schema lewat slug tanpa fuzzy
+ * matching, dan memaksa dummyData dari schema generation memakai nilai
+ * sample yang sebenarnya (bukan rekaan baru) — supaya `applyGeneratedSchema`
+ * yang sudah ada otomatis men-seed data yang konsisten dengan tampilan.
+ */
+export async function generateSchemaFromMockUi(
+  entities: { slug: string; varName: string; kind: "content" | "single"; sampleJson: string }[],
+  prompt: string,
+  tenantId?: string,
+  userId?: string,
+  overrideModel?: string,
+): Promise<GeneratedSystemSchema> {
+  const { generateSystemSchema } = await import("./ai-schema-generator")
+
+  const derivedPrompt = `Website ini SUDAH memiliki tampilan (UI) yang dirancang dengan data contoh (mock) berikut. Buatkan skema CMS yang mencerminkan struktur ini SECARA PERSIS.
+
+ATURAN KETAT — WAJIB DIPATUHI:
+1. Setiap entitas di bawah menjadi SATU Content Type (jika "kind" adalah "content", yaitu daftar/koleksi) atau SATU Single Type (jika "kind" adalah "single", yaitu objek tunggal).
+2. Slug Content Type/Single Type HARUS PERSIS SAMA dengan "slug" yang diberikan di bawah — JANGAN mengubah atau menerjemahkan nama slug.
+3. Field-field HARUS PERSIS mencerminkan key yang ada di sample JSON — JANGAN menambah field, JANGAN menghapus field, JANGAN mengganti nama field.
+4. JANGAN membuat Content Type/Single Type/Component TAMBAHAN di luar entitas yang disebutkan di bawah, walau secara normal Anda akan menyarankannya untuk bisnis semacam ini.
+5. Isi "dummyData" PERSIS dengan nilai dari sample JSON di bawah (untuk Content Type, buat satu dummyData entry per item array; untuk Single Type, satu dummyData object).
+
+Konteks tujuan website (hanya untuk membantu memilih tipe field yang tepat, BUKAN untuk menambah entitas baru): "${prompt}"
+
+Entitas yang harus dibuatkan skemanya:
+${entities.map((e) => `### ${e.slug} (${e.kind === "content" ? "Content Type — koleksi" : "Single Type — objek tunggal"})\n${e.sampleJson}`).join("\n\n")}`
+
+  return generateSystemSchema(derivedPrompt, tenantId, userId, overrideModel)
+}
+
+// STEP 3 of the pipeline — rewires an already-mock app.js to fetch real
+// data from the Public REST API instead of using its hardcoded // MOCK:
+// blocks, without touching index.html at all. Scoped narrowly (JS only, no
+// schema dump needed as input context) so it reliably fits a much smaller
+// token budget than the old single-shot flow ever could.
+const API_CONNECT_SYSTEM_PROMPT = `You are refactoring an existing Vue 3 app.js file to fetch real data from a REST API instead of using its hardcoded mock values.
+
+Rules:
+- You will be given the CURRENT app.js, and a manifest of which ref variables should be wired to which API endpoint.
+- For each manifest entry, keep its current mock value as the ref's initial/fallback state (do NOT delete it), then add fetch logic inside (or alongside) the existing onMounted() that overwrites it on success:
+  - Single Type endpoints return \`{ data: {...fields} }\` — on success do \`theRef.value = { ...theRef.value, ...json.data }\`.
+  - Content Type endpoints return \`{ data: [...entries] }\` — on success do \`if (json.data && json.data.length > 0) theRef.value = json.data\`.
+- Wrap every fetch in try/catch — on failure or non-ok response, silently keep the existing mock value (never throw, never clear the ref).
+- Do NOT touch any other part of the file (UI-only state, methods, computed, unrelated refs) beyond adding this fetch wiring.
+- Do NOT remove the // MOCK:<slug> ... // /MOCK:<slug> comment markers — leave them exactly where they are, around the same ref declarations.
+- Output ONLY the full, complete, updated app.js wrapped in <<<APP_JS>>>...<<<END_APP_JS>>>. No markdown fences, no commentary.`
+
+export async function connectStaticSiteToApi(
+  js: string,
+  manifest: { varName: string; endpoint: string; kind: "content" | "single" }[],
+  tenantId: string,
+  userId?: string,
+  overrideModel?: string,
+): Promise<{ js: string }> {
+  const { resolveGatewayModel, enforceAiQuota, recordAiUsage, toUsageTotals, withAiRetry } = await import("./ai")
+
+  const config = { tenantId, userId, creditsCost: 3, action: "connect_static_site_api" }
+  await enforceAiQuota(config)
+
+  const userPrompt = `Current app.js:
+\`\`\`javascript
+${js}
+\`\`\`
+
+Manifest (wire these refs to fetch real data):
+${JSON.stringify(manifest, null, 2)}`
+
+  const { model, modelId } = await resolveGatewayModel(overrideModel)
+
+  const result = await withAiRetry(() =>
+    generateText({
+      model,
+      system: API_CONNECT_SYSTEM_PROMPT,
+      prompt: userPrompt,
+      maxOutputTokens: 8000,
+    })
+  )
+
+  if (result.finishReason === "length") {
+    throw new Error("Output AI terpotong karena melebihi batas panjang. Coba lagi, atau pilih model lain.")
+  }
+
+  const jsMatch = result.text.match(/<<<APP_JS>>>([\s\S]*?)<<<END_APP_JS>>>/i)
+  const newJs = jsMatch ? jsMatch[1].trim() : result.text.trim()
+
+  if (!newJs) {
+    throw new Error("AI tidak mengembalikan app.js yang valid. Coba lagi.")
+  }
+
+  await recordAiUsage(config, toUsageTotals(result.usage), modelId, newJs)
+
+  return { js: newJs }
 }

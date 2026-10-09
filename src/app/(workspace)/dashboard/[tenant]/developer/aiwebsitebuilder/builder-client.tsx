@@ -73,6 +73,7 @@ interface StaticSite {
   draftPrompt: string | null
   draftAt: string | null
   updatedAt: string
+  stage: "mock" | "schema_applied" | "api_connected"
 }
 
 interface SiteVersion {
@@ -87,6 +88,8 @@ interface ChatMessage {
   text: string
   timestamp: string
   isDraftUpdate?: boolean
+  offerSchemaStep?: boolean
+  offerApiConnectStep?: boolean
 }
 
 const QUICK_PROMPTS = [
@@ -172,6 +175,8 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
   const [isPublishing, setIsPublishing] = useState(false)
   const [isTogglingPublish, setIsTogglingPublish] = useState(false)
   const [rollingBackId, setRollingBackId] = useState<string | null>(null)
+  const [isGeneratingSchema, setIsGeneratingSchema] = useState(false)
+  const [isConnectingApi, setIsConnectingApi] = useState(false)
 
   const chatBottomRef = useRef<HTMLDivElement>(null)
 
@@ -254,6 +259,8 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               text: "SPA Vue.js 3 telah berhasil dibangun. Anda dapat melihat pratinjau live di sisi kanan atau memeriksa index.html & app.js di tab Code.",
               timestamp: new Date(s.updatedAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
               isDraftUpdate: true,
+              offerSchemaStep: s.stage === "mock",
+              offerApiConnectStep: s.stage === "schema_applied",
             },
           ])
         }
@@ -324,15 +331,16 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
         {
           id: "bot-" + Date.now(),
           role: "assistant",
-          text: "✨ SPA Vue.js 3 berhasil diperbarui! index.html & app.js telah dikompilasi dengan reactive state dan integrasi SaCMS API.",
+          text: "✨ Tampilan SPA Vue.js 3 berhasil dibuat dengan data contoh (mock) — belum tersambung ke CMS asli. Lihat hasilnya di panel Preview.",
           timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
           isDraftUpdate: true,
+          offerSchemaStep: true,
         },
       ])
 
       toast({
         title: "Draft Berhasil Dibuat",
-        description: "Draft SPA Vue.js 3 siap diuji di panel Preview.",
+        description: "Draft SPA Vue.js 3 (data mock) siap diuji di panel Preview.",
       })
     } catch (err: any) {
       setMessages((prev) => [
@@ -347,6 +355,91 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
       toast({ variant: "destructive", title: "Generasi Gagal", description: err.message })
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  // Step 2 (opsional): buatkan skema CMS yang cocok dengan data mock di draft saat ini
+  const handleGenerateSchema = async () => {
+    setIsGeneratingSchema(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/generate-schema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: selectedModel }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || data?.error || "Gagal membuat skema")
+
+      setSite(data.site as StaticSite)
+      fetchMcpInfo()
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "bot-schema-" + Date.now(),
+          role: "assistant",
+          text: "📦 Skema CMS berhasil dibuat & diisi data yang cocok dengan tampilan. Cek di tab MCP & API. Lanjut hubungkan tampilan ke data asli ini?",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+          offerApiConnectStep: true,
+        },
+      ])
+      toast({ title: "Skema CMS Dibuat", description: "Content Type/Single Type baru sudah terisi data sesuai tampilan." })
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "bot-schema-err-" + Date.now(),
+          role: "assistant",
+          text: `⚠️ Gagal membuat skema: ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+      toast({ variant: "destructive", title: "Gagal Membuat Skema", description: err.message })
+    } finally {
+      setIsGeneratingSchema(false)
+    }
+  }
+
+  // Step 3 (opsional, setelah Step 2): sambungkan app.js ke data CMS asli, gantikan mock
+  const handleConnectApi = async () => {
+    setIsConnectingApi(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/connect-api`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model: selectedModel }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || data?.error || "Gagal menghubungkan ke API")
+
+      const updatedSite = data.site as StaticSite
+      setSite(updatedSite)
+      setEditorJs(updatedSite.draftJs || updatedSite.js || "")
+      setPreviewKey((k) => k + 1)
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "bot-api-" + Date.now(),
+          role: "assistant",
+          text: "🔌 Tampilan sudah tersambung ke data CMS asli — tidak lagi memakai data mock. Publish kalau sudah siap tampil ke publik.",
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+      toast({ title: "Terhubung ke API Asli", description: "app.js sekarang mengambil data langsung dari CMS." })
+    } catch (err: any) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          id: "bot-api-err-" + Date.now(),
+          role: "assistant",
+          text: `⚠️ Gagal menghubungkan ke API: ${err.message}`,
+          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        },
+      ])
+      toast({ variant: "destructive", title: "Gagal Menghubungkan API", description: err.message })
+    } finally {
+      setIsConnectingApi(false)
     }
   }
 
@@ -597,6 +690,22 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               <Badge variant="outline" className="text-[10px] font-bold rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30 shrink-0 hidden sm:flex items-center gap-1" title="SaCMS MCP Server Bridge Connected">
                 <Plug className="h-3 w-3" /> MCP Connected
               </Badge>
+              {site?.draftAt && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "text-[10px] font-bold rounded-full shrink-0 flex items-center gap-1",
+                    site.stage === "api_connected"
+                      ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                      : site.stage === "schema_applied"
+                      ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                      : "bg-muted text-muted-foreground border-border/80"
+                  )}
+                  title="Status tahap pipeline: Tampilan (data mock) -> Skema CMS -> API Asli"
+                >
+                  {site.stage === "api_connected" ? "API Live" : site.stage === "schema_applied" ? "Skema Terhubung" : "Data Mock"}
+                </Badge>
+              )}
               {site?.published && (
                 <Badge variant="outline" className="text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 shrink-0 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Live
@@ -820,6 +929,30 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
                         )}
                       >
                         <p className="whitespace-pre-wrap">{msg.text}</p>
+                        {msg.offerSchemaStep && site?.stage === "mock" && (
+                          <Button
+                            size="sm"
+                            onClick={handleGenerateSchema}
+                            disabled={isGeneratingSchema}
+                            className="h-7 px-2.5 rounded-lg text-[11px] font-bold w-full justify-start"
+                          >
+                            {isGeneratingSchema ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Database className="h-3 w-3 mr-1.5" />}
+                            Buatkan Skema Sesuai Tampilan Ini
+                            <span className="ml-auto opacity-70 font-normal">5 kredit</span>
+                          </Button>
+                        )}
+                        {msg.offerApiConnectStep && site?.stage === "schema_applied" && (
+                          <Button
+                            size="sm"
+                            onClick={handleConnectApi}
+                            disabled={isConnectingApi}
+                            className="h-7 px-2.5 rounded-lg text-[11px] font-bold w-full justify-start"
+                          >
+                            {isConnectingApi ? <Loader2 className="h-3 w-3 mr-1.5 animate-spin" /> : <Plug className="h-3 w-3 mr-1.5" />}
+                            Hubungkan ke API Asli
+                            <span className="ml-auto opacity-70 font-normal">3 kredit</span>
+                          </Button>
+                        )}
                         <div
                           className={cn(
                             "text-[9px] text-right font-mono opacity-60",
@@ -891,9 +1024,9 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
                   <span>Tekan <kbd className="font-mono bg-muted px-1 py-0.5 rounded">Ctrl+Enter</kbd> untuk kirim</span>
                   <span
                     className="flex items-center gap-1"
-                    title="5 kredit untuk membuat/memperbarui website. Bisa jadi 10 kredit jika AI juga perlu membuat skema CMS baru untuk permintaan ini."
+                    title="5 kredit untuk membuat/memperbarui tampilan (data mock). Buatkan Skema dan Hubungkan API adalah langkah terpisah dengan biayanya masing-masing."
                   >
-                    <Sparkles className="h-2.5 w-2.5" /> Biaya: 5-10 kredit
+                    <Sparkles className="h-2.5 w-2.5" /> Biaya: 5 kredit
                   </span>
                 </div>
               </div>

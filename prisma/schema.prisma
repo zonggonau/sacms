@@ -647,6 +647,13 @@ model TenantStaticSite {
   draftJs     String?   @db.Text
   draftPrompt String?
   draftAt     DateTime?
+  // Pipeline stage of the current DRAFT: "mock" (UI generated with AI-
+  // invented mock data, no schema touched yet), "schema_applied" (CMS
+  // schema created/matched to the mock shape), "api_connected" (app.js
+  // rewritten to fetch from the real Public REST API). Resets to "mock"
+  // whenever a new draft is generated or manually edited, since a stale
+  // stage would imply a pipeline step that no longer matches the JS.
+  stage       String    @default("mock")
   createdAt   DateTime  @default(now())
   updatedAt   DateTime  @updatedAt
   tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)

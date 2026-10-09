@@ -2741,7 +2741,7 @@ export default async function NewsPage() {
       "generate_static_site",
       {
         title: "Generate Website Statis Gratis (Vue.js, Tanpa Build)",
-        description: "Membuat atau memperbarui draft website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build step) untuk workspace ini. AI merancang halaman mengambil data dari schema CMS yang sudah ada, dan akan membuatkan Content Type/Single Type dasar + contoh data via MCP dulu kalau workspace belum punya skema yang relevan. Hasilnya tersimpan sebagai DRAFT saja — tidak langsung publik. Minta pemilik workspace membuka Developer > AI Instant Website (atau Infrastructure > Website Gratis) untuk preview lalu publish; tidak ada tool MCP untuk publish langsung, supaya tetap ada tinjauan manusia sebelum sesuatu jadi live.",
+        description: "Membuat atau memperbarui draft TAMPILAN website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build step) untuk workspace ini. Ini HANYA langkah 1 dari 3: AI merancang halaman dengan data contoh (mock) yang di-invent sendiri — TIDAK menyentuh skema CMS atau data asli sama sekali. Menghubungkan ke skema CMS dan data asli adalah langkah lanjutan opsional yang hanya tersedia lewat dashboard (Developer > AI Instant Website, atau Infrastructure > Website Gratis), bukan lewat MCP — supaya tetap ada tinjauan manusia sebelum data CMS ikut berubah. Hasilnya tersimpan sebagai DRAFT saja — tidak langsung publik; tidak ada tool MCP untuk publish langsung.",
         inputSchema: {
           prompt: z.string().min(1).describe("Deskripsi website yang diinginkan, mis. 'Toko kopi UMKM dengan daftar menu dan info kontak'"),
         },
@@ -2757,7 +2757,7 @@ export default async function NewsPage() {
 
           const site = await db.tenantStaticSite.upsert({
             where: { tenantId: auth.tenantId },
-            update: { draftHtml: result.html, draftJs: result.js, draftPrompt: prompt, draftAt: new Date() },
+            update: { draftHtml: result.html, draftJs: result.js, draftPrompt: prompt, draftAt: new Date(), stage: "mock" },
             create: {
               tenantId: auth.tenantId,
               html: "",
@@ -2767,6 +2767,7 @@ export default async function NewsPage() {
               draftJs: result.js,
               draftPrompt: prompt,
               draftAt: new Date(),
+              stage: "mock",
             },
           })
 

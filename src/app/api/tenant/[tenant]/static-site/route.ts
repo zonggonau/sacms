@@ -35,9 +35,12 @@ export const POST = withStaffAuth(
       return apiError("internal", { message: err.message || "Gagal membuat website" })
     }
 
+    // A fresh Step 1 draft always starts the pipeline over — any earlier
+    // "schema_applied"/"api_connected" stage belonged to the PREVIOUS
+    // app.js and would no longer match this new one.
     const site = await db.tenantStaticSite.upsert({
       where: { tenantId: access.tenantId },
-      update: { draftHtml: result.html, draftJs: result.js, draftPrompt: parsed.data.prompt, draftAt: new Date() },
+      update: { draftHtml: result.html, draftJs: result.js, draftPrompt: parsed.data.prompt, draftAt: new Date(), stage: "mock" },
       create: {
         tenantId: access.tenantId,
         html: "",
@@ -47,6 +50,7 @@ export const POST = withStaffAuth(
         draftJs: result.js,
         draftPrompt: parsed.data.prompt,
         draftAt: new Date(),
+        stage: "mock",
       },
     })
 
@@ -91,11 +95,15 @@ export const PUT = withStaffAuth(
     if (!parsed.ok) return parsed.response
 
     const { draftHtml, draftJs } = parsed.data
+    // A manual code edit can invalidate the // MOCK: markers or fetch
+    // wiring Step 2/3 depended on — reset to "mock" so stale stage badges
+    // don't imply a pipeline step that no longer matches the edited JS.
     const site = await db.tenantStaticSite.upsert({
       where: { tenantId: access.tenantId },
       update: {
         ...(draftHtml !== undefined ? { draftHtml, draftAt: new Date() } : {}),
         ...(draftJs !== undefined ? { draftJs, draftAt: new Date() } : {}),
+        stage: "mock",
       },
       create: {
         tenantId: access.tenantId,
@@ -105,6 +113,7 @@ export const PUT = withStaffAuth(
         draftHtml: draftHtml || "",
         draftJs: draftJs || "",
         draftAt: new Date(),
+        stage: "mock",
       },
     })
 

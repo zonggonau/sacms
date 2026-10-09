@@ -33,6 +33,7 @@ interface StaticSite {
   draftPrompt: string | null
   draftAt: string | null
   updatedAt: string
+  stage: "mock" | "schema_applied" | "api_connected"
 }
 
 interface SiteVersion {
@@ -59,6 +60,8 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   const [rollingBackId, setRollingBackId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [isDeleting, setIsDeleting] = useState(false)
+  const [isGeneratingSchema, setIsGeneratingSchema] = useState(false)
+  const [isConnectingApi, setIsConnectingApi] = useState(false)
 
   const siteUrl = `https://${tenantSlug}.${ROOT_DOMAIN}`
   const hasSite = !!site?.html
@@ -115,6 +118,46 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
       toast({ variant: "destructive", title: "Gagal Membuat Draft", description: err.message })
     } finally {
       setIsGenerating(false)
+    }
+  }
+
+  // Step 2 (opsional): buatkan skema CMS yang cocok dengan data mock di draft saat ini
+  const handleGenerateSchema = async () => {
+    setIsGeneratingSchema(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/generate-schema`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal membuat skema")
+      setSite(data.site)
+      toast({ title: "Skema CMS Dibuat", description: "Content Type/Single Type baru sudah terisi data sesuai tampilan." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Membuat Skema", description: err.message })
+    } finally {
+      setIsGeneratingSchema(false)
+    }
+  }
+
+  // Step 3 (opsional, setelah Step 2): sambungkan app.js ke data CMS asli, gantikan mock
+  const handleConnectApi = async () => {
+    setIsConnectingApi(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/connect-api`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || "Gagal menghubungkan ke API")
+      setSite(data.site)
+      toast({ title: "Terhubung ke API Asli", description: "app.js sekarang mengambil data langsung dari CMS." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Menghubungkan API", description: err.message })
+    } finally {
+      setIsConnectingApi(false)
     }
   }
 
@@ -344,7 +387,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                     {hasSite ? "Generate Ulang (Draft Baru)" : "Buat Website Pertama Anda"}
                   </CardTitle>
                   <CardDescription className="text-xs text-muted-foreground">
-                    Jelaskan bisnis Anda — AI merancang halaman lengkap mengambil data dari schema CMS yang sudah ada.
+                    Jelaskan bisnis Anda — AI merancang halaman lengkap dengan data contoh (mock) dulu. Skema CMS & koneksi data asli adalah langkah terpisah di bawah, setelah tampilannya jadi.
                   </CardDescription>
                 </div>
               </div>
@@ -384,14 +427,63 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                 {isGenerating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                 {isGenerating ? "Membuat Draft..." : "Generate Draft dengan AI"}
               </Button>
-              <span
-                className="text-[10px] text-muted-foreground shrink-0"
-                title="5 kredit untuk membuat/memperbarui website. Bisa jadi 10 kredit jika AI juga perlu membuat skema CMS baru untuk permintaan ini."
-              >
-                Biaya: 5-10 kredit
+              <span className="text-[10px] text-muted-foreground shrink-0" title="5 kredit untuk membuat/memperbarui tampilan (data mock).">
+                Biaya: 5 kredit
               </span>
             </CardFooter>
           </Card>
+
+          {hasPendingDraft && (
+            <Card className="rounded-2xl border-border/80 shadow-xs bg-card">
+              <CardHeader className="p-4 pb-2">
+                <CardTitle className="text-xs font-bold text-foreground flex items-center justify-between">
+                  <span>Langkah Lanjutan (Opsional)</span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      "text-[10px] font-bold rounded-full",
+                      site?.stage === "api_connected"
+                        ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30"
+                        : site?.stage === "schema_applied"
+                        ? "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30"
+                        : "bg-muted text-muted-foreground border-border/80"
+                    )}
+                  >
+                    {site?.stage === "api_connected" ? "API Live" : site?.stage === "schema_applied" ? "Skema Terhubung" : "Data Mock"}
+                  </Badge>
+                </CardTitle>
+                <CardDescription className="text-xs text-muted-foreground">
+                  Tampilan di atas masih data contoh. Dua langkah ini opsional, menghubungkannya ke data CMS asli secara bertahap.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-4 pt-1 space-y-2.5">
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    size="sm"
+                    onClick={handleGenerateSchema}
+                    disabled={isGeneratingSchema || site?.stage !== "mock"}
+                    className="h-9 gap-1.5 font-bold text-xs rounded-xl shadow-xs px-4"
+                  >
+                    {isGeneratingSchema ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileCode2 className="h-3.5 w-3.5" />}
+                    Buatkan Skema Sesuai Tampilan
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground shrink-0">5 kredit</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <Button
+                    size="sm"
+                    onClick={handleConnectApi}
+                    disabled={isConnectingApi || site?.stage === "mock" || site?.stage === "api_connected"}
+                    className="h-9 gap-1.5 font-bold text-xs rounded-xl shadow-xs px-4"
+                  >
+                    {isConnectingApi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+                    Hubungkan ke API Asli
+                  </Button>
+                  <span className="text-[10px] text-muted-foreground shrink-0">3 kredit</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* ── Sidebar ── */}
@@ -404,9 +496,9 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
             </CardHeader>
             <CardContent className="p-4 pt-1 space-y-2.5">
               {[
-                ["1", "Generate", "AI merancang halaman dari schema CMS Anda — jadi draft dulu."],
-                ["2", "Preview", "Tinjau hasilnya sebelum siapa pun bisa melihatnya."],
-                ["3", "Publish", "Sekali klik, langsung live di subdomain Anda."],
+                ["1", "Generate Tampilan", "AI merancang halaman dengan data contoh (mock) dulu — cepat & jarang gagal."],
+                ["2", "Skema & API (opsional)", "Baru kalau sudah cocok, buatkan skema CMS lalu sambungkan ke data asli."],
+                ["3", "Preview & Publish", "Tinjau hasilnya, lalu sekali klik langsung live di subdomain Anda."],
               ].map(([n, title, desc]) => (
                 <div key={n} className="flex items-start gap-2.5">
                   <div className="w-5 h-5 rounded-full bg-primary/15 text-primary text-[10px] font-bold flex items-center justify-center shrink-0 mt-0.5">
