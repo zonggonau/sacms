@@ -43,7 +43,20 @@ import {
   ArrowRight,
   ShieldCheck,
   ChevronDown,
+  Plug,
+  Database,
 } from "lucide-react"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog"
 import { useToast } from "@/hooks/use-toast"
 import { ROOT_DOMAIN } from "@/lib/portal-urls"
 import { SCHEMA_MODEL_OPTIONS } from "../aischema/schema-step"
@@ -104,9 +117,42 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
   const [loading, setLoading] = useState(true)
 
   // Navigation tabs
-  const [leftTab, setLeftTab] = useState<"chat" | "history">("chat")
+  const [leftTab, setLeftTab] = useState<"chat" | "history" | "mcp">("chat")
   const [rightTab, setRightTab] = useState<"preview" | "code">("preview")
   const [activeCodeFile, setActiveCodeFile] = useState<"index.html" | "app.js">("index.html")
+
+  // MCP Schema Inspection & Auto-Provision state
+  const [mcpData, setMcpData] = useState<{
+    mcpStatus: string
+    tenantSlug: string
+    apiBase: string
+    totalCollections: number
+    totalSingletons: number
+    contentTypes: Array<{
+      id: string
+      name: string
+      slug: string
+      description?: string
+      fieldsCount: number
+      totalEntries: number
+      hasEntries: boolean
+      endpoint: string
+      relativeEndpoint: string
+    }>
+    singleTypes: Array<{
+      id: string
+      name: string
+      slug: string
+      description?: string
+      fieldsCount: number
+      hasData: boolean
+      endpoint: string
+      relativeEndpoint: string
+    }>
+  } | null>(null)
+  const [isLoadingMcp, setIsLoadingMcp] = useState(false)
+  const [newSchemaPrompt, setNewSchemaPrompt] = useState("")
+  const [isProvisioningSchema, setIsProvisioningSchema] = useState(false)
 
   // Device preview modes
   const [deviceMode, setDeviceMode] = useState<"desktop" | "tablet" | "mobile">("desktop")
@@ -130,6 +176,47 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
   const chatBottomRef = useRef<HTMLDivElement>(null)
 
   const siteUrl = `https://${tenantSlug}.${ROOT_DOMAIN}`
+
+  // Fetch MCP status & live schema
+  const fetchMcpInfo = async () => {
+    setIsLoadingMcp(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/mcp-seed`)
+      if (res.ok) {
+        const data = await res.json()
+        setMcpData(data)
+      }
+    } catch (err) {
+      console.warn("Failed fetching MCP info:", err)
+    } finally {
+      setIsLoadingMcp(false)
+    }
+  }
+
+  // Provision new schema via MCP prompt
+  const handleProvisionSchema = async () => {
+    if (!newSchemaPrompt.trim()) return
+    setIsProvisioningSchema(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/mcp-seed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: newSchemaPrompt.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.message || "Gagal membangun skema via MCP")
+      toast({
+        title: "Skema & Data MCP Dibuat!",
+        description: "Content types dan data terbit baru berhasil dibangun di database.",
+      })
+      setNewSchemaPrompt("")
+      await fetchMcpInfo()
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Provisi Skema", description: err.message })
+    } finally {
+      setIsProvisioningSchema(false)
+    }
+  }
 
   // Fetch site data
   const fetchData = async () => {
@@ -180,6 +267,7 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
 
   useEffect(() => {
     fetchData()
+    fetchMcpInfo()
   }, [tenantSlug])
 
   // Scroll to bottom of chat
@@ -229,6 +317,7 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
       setEditorJs(updatedSite.draftJs || updatedSite.js || "")
       setPreviewKey((k) => k + 1)
       setRightTab("preview")
+      fetchMcpInfo()
 
       setMessages((prev) => [
         ...prev,
@@ -367,20 +456,122 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
     }
   }
 
+  // Handle Delete Website
+  const [isDeleting, setIsDeleting] = useState(false)
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
+
+  const handleDeleteSite = async () => {
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site`, {
+        method: "DELETE",
+      })
+      if (!res.ok) {
+        const data = await res.json()
+        throw new Error(data?.message || data?.error || "Gagal menghapus website")
+      }
+
+      setSite(null)
+      setVersions([])
+      setEditorHtml("")
+      setEditorJs("")
+      setMessages([])
+      setPreviewKey((k) => k + 1)
+
+      toast({
+        title: "Website Berhasil Dihapus",
+        description: "Seluruh kode draft dan website SPA telah dibersihkan secara permanen.",
+      })
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Gagal Menghapus Website",
+        description: err.message,
+      })
+    } finally {
+      setIsDeleting(false)
+      setIsDeleteDialogOpen(false)
+    }
+  }
+
+  // Handle Sync CMS Data via MCP
+  const [isSeedingMcp, setIsSeedingMcp] = useState(false)
+  const handleSyncMcp = async () => {
+    setIsSeedingMcp(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site/mcp-seed`, {
+        method: "POST",
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        throw new Error(data?.message || "Gagal sinkronisasi data MCP")
+      }
+
+      toast({
+        title: "MCP Terhubung & Sinkron",
+        description: "Skema dan sampel data terbit berhasil disinkronkan ke CMS via MCP Server.",
+      })
+      setPreviewKey((k) => k + 1)
+    } catch (err: any) {
+      toast({
+        variant: "destructive",
+        title: "Gagal Sinkronisasi MCP",
+        description: err.message,
+      })
+    } finally {
+      setIsSeedingMcp(false)
+    }
+  }
+
   // Build reactive live preview document with Vue 3 and app.js injection
   const previewSrcDoc = useMemo(() => {
     const rawHtml = site?.draftHtml || site?.html || editorHtml || ""
-    const rawJs = site?.draftJs || site?.js || editorJs || ""
+    let rawJs = site?.draftJs || site?.js || editorJs || ""
     if (!rawHtml) return ""
+
+    // Normalize any legacy code attempting to resolve origin in an iframe
+    rawJs = rawJs
+      .replace(/window\.location\.origin\s*\+\s*['"]\/api\/public/g, "'' + '/api/public")
+      .replace(/origin\s*\+\s*['"]\/api\/public/g, "'' + '/api/public")
+      .replace(/['"]null\/api\/public/g, "'/api/public")
+
+    // Injected environment helper and fetch normalizer
+    const envScript = `<script>
+      window.__SACMS_TENANT_SLUG__ = "${tenantSlug}";
+      window.__SACMS_API_BASE__ = "/api/public/${tenantSlug}";
+      (function() {
+        const _origFetch = window.fetch;
+        window.fetch = function(resource, init) {
+          if (typeof resource === 'string' && resource.includes('/api/public/')) {
+            const idx = resource.indexOf('/api/public/');
+            resource = resource.slice(idx);
+          }
+          return _origFetch.call(this, resource, init);
+        };
+      })();
+    </script>`
 
     // Inlined script tag executing app.js directly within the preview frame
     const scriptTag = `<script>\ntry {\n${rawJs}\n} catch(err) { console.error('Vue SPA Error:', err); }\n<\/script>`
 
-    if (rawHtml.includes("</body>")) {
-      return rawHtml.replace("</body>", `${scriptTag}\n</body>`)
+    let finalDoc = rawHtml
+    if (finalDoc.includes("<head>")) {
+      finalDoc = finalDoc.replace("<head>", `<head>\n<base href="/" />\n${envScript}`)
+    } else {
+      finalDoc = `<base href="/" />\n${envScript}\n${finalDoc}`
     }
-    return `${rawHtml}\n${scriptTag}`
-  }, [site?.draftHtml, site?.html, site?.draftJs, site?.js, editorHtml, editorJs])
+
+    if (finalDoc.includes('<script src="app.js"></script>')) {
+      finalDoc = finalDoc.replace('<script src="app.js"></script>', scriptTag)
+    } else if (finalDoc.includes("<script src='app.js'></script>")) {
+      finalDoc = finalDoc.replace("<script src='app.js'></script>", scriptTag)
+    } else if (finalDoc.includes("</body>")) {
+      finalDoc = finalDoc.replace("</body>", `${scriptTag}\n</body>`)
+    } else {
+      finalDoc = `${finalDoc}\n${scriptTag}`
+    }
+    return finalDoc
+  }, [site?.draftHtml, site?.html, site?.draftJs, site?.js, editorHtml, editorJs, tenantSlug])
 
   const hasDraftPending = Boolean(site?.draftAt)
   const isCodeModified =
@@ -403,6 +594,9 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               <Badge variant="outline" className="text-[10px] font-bold uppercase rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 shrink-0">
                 Vue.js 3 SPA
               </Badge>
+              <Badge variant="outline" className="text-[10px] font-bold rounded-full bg-violet-500/10 text-violet-600 dark:text-violet-400 border-violet-500/30 shrink-0 hidden sm:flex items-center gap-1" title="SaCMS MCP Server Bridge Connected">
+                <Plug className="h-3 w-3" /> MCP Connected
+              </Badge>
               {site?.published && (
                 <Badge variant="outline" className="text-[10px] font-bold rounded-full bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/30 shrink-0 flex items-center gap-1">
                   <span className="w-1.5 h-1.5 rounded-full bg-blue-500 animate-pulse" /> Live
@@ -420,6 +614,19 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
 
         {/* Global Action Buttons */}
         <div className="flex items-center gap-2 shrink-0">
+          {/* Tombol Sinkronisasi Data CMS via MCP */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleSyncMcp}
+            disabled={isSeedingMcp}
+            className="h-8 px-2.5 rounded-xl font-bold text-xs border-border/80 text-muted-foreground hover:text-foreground gap-1.5"
+            title="Sinkronkan data sampel CMS melalui MCP Server ke database workspace"
+          >
+            {isSeedingMcp ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Database className="h-3.5 w-3.5 text-violet-500" />}
+            <span className="hidden sm:inline">Sync MCP Data</span>
+          </Button>
+
           {hasDraftPending && (
             <Button
               size="sm"
@@ -442,6 +649,40 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
             >
               {isTogglingPublish ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : site.published ? "Unpublish" : "Go Live"}
             </Button>
+          )}
+
+          {/* Tombol Hapus Website (Icon Delete dengan AlertDialog) */}
+          {Boolean(site?.html || site?.draftHtml) && (
+            <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={isDeleting}
+                  className="h-8 w-8 p-0 rounded-xl font-bold text-xs text-rose-500 hover:bg-rose-500/10 hover:text-rose-600 border-rose-500/20 hover:border-rose-500/40 cursor-pointer"
+                  title="Hapus website SPA permanen"
+                >
+                  {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Hapus Website SPA Ini?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Tindakan ini akan menghapus website live, seluruh kode draft (index.html & app.js), dan seluruh riwayat versinya secara permanen. Tindakan ini tidak dapat dibatalkan.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Batal</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDeleteSite}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
+                  >
+                    Hapus Permanen
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           )}
         </div>
       </div>
@@ -476,9 +717,29 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               )}
             >
               <History className="h-3.5 w-3.5" />
-              <span>Riwayat Versi</span>
+              <span>Riwayat</span>
               {versions.length > 0 && (
                 <span className="text-[10px] bg-muted px-1.5 rounded-full font-bold">{versions.length}</span>
+              )}
+            </button>
+            <button
+              onClick={() => {
+                setLeftTab("mcp")
+                fetchMcpInfo()
+              }}
+              className={cn(
+                "flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer",
+                leftTab === "mcp"
+                  ? "bg-background text-foreground shadow-xs border border-border/60"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              )}
+            >
+              <Plug className="h-3.5 w-3.5 text-violet-500" />
+              <span>MCP & API</span>
+              {mcpData && (
+                <span className="text-[10px] bg-violet-500/10 text-violet-600 dark:text-violet-400 px-1.5 rounded-full font-bold">
+                  {(mcpData.totalCollections || 0) + (mcpData.totalSingletons || 0)}
+                </span>
               )}
             </button>
           </div>
@@ -626,7 +887,7 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               </div>
 
             </div>
-          ) : (
+          ) : leftTab === "history" ? (
             /* TAB 2: Version History */
             <div className="flex-1 overflow-y-auto p-3 space-y-2">
               {versions.length === 0 ? (
@@ -667,6 +928,174 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
                   </div>
                 ))
               )}
+            </div>
+          ) : (
+            /* TAB 3: MCP & CMS Schema Explorer */
+            <div className="flex-1 overflow-y-auto p-3 space-y-3.5 text-xs">
+              {/* Status Header */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background/80 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-1.5 font-bold text-foreground">
+                    <Plug className="h-4 w-4 text-emerald-500" />
+                    <span>SaCMS MCP Bridge</span>
+                  </div>
+                  <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/30 text-[10px] font-bold">
+                    Connected
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Terhubung in-process ke skema &amp; database CMS workspace. AI Website Builder secara otomatis membaca skema &amp; data terbit.
+                </p>
+                <div className="flex items-center justify-between pt-1 border-t border-border/50 text-[11px]">
+                  <span className="text-muted-foreground">Base Public REST:</span>
+                  <code className="font-mono text-primary font-bold">/api/public/{tenantSlug}</code>
+                </div>
+              </div>
+
+              {/* Quick Auto-Provision Form */}
+              <div className="p-3 rounded-xl border border-violet-500/20 bg-violet-500/5 space-y-2">
+                <div className="flex items-center gap-1.5 text-xs font-bold text-violet-700 dark:text-violet-300">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  <span>Bangun Skema Baru via MCP</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Ingin konsep bisnis baru? Ketik jenis bisnis Anda, AI MCP akan otomatis membuat Content Types &amp; data terbit.
+                </p>
+                <div className="space-y-1.5">
+                  <Input
+                    placeholder="Contoh: Rental Mobil Jayapura, Toko Distro, Klinik..."
+                    value={newSchemaPrompt}
+                    onChange={(e) => setNewSchemaPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleProvisionSchema()
+                    }}
+                    className="h-8 text-xs bg-background"
+                  />
+                  <Button
+                    size="sm"
+                    onClick={handleProvisionSchema}
+                    disabled={isProvisioningSchema || !newSchemaPrompt.trim()}
+                    className="w-full h-7 text-xs font-bold bg-violet-600 hover:bg-violet-700 text-white gap-1.5 cursor-pointer"
+                  >
+                    {isProvisioningSchema ? <Loader2 className="h-3 w-3 animate-spin" /> : <Database className="h-3 w-3" />}
+                    Bangun Skema &amp; Data Otomatis
+                  </Button>
+                </div>
+              </div>
+
+              {/* Collections List */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-xs font-bold text-foreground">
+                  <span className="flex items-center gap-1.5">
+                    <Database className="h-3.5 w-3.5 text-blue-500" />
+                    Koleksi Konten ({mcpData?.totalCollections ?? 0})
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={fetchMcpInfo}
+                    disabled={isLoadingMcp}
+                    className="h-6 px-1.5 text-[10px] gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className={cn("h-3 w-3", isLoadingMcp && "animate-spin")} />
+                    Refresh
+                  </Button>
+                </div>
+
+                {isLoadingMcp && !mcpData ? (
+                  <div className="py-6 text-center text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto mb-1" />
+                    <span className="text-[11px]">Memuat skema MCP...</span>
+                  </div>
+                ) : !mcpData?.contentTypes || mcpData.contentTypes.length === 0 ? (
+                  <div className="p-3 text-center border border-dashed rounded-xl text-muted-foreground text-[11px]">
+                    Belum ada Content Types. Gunakan form di atas untuk membuat otomatis via MCP.
+                  </div>
+                ) : (
+                  mcpData.contentTypes.map((ct) => (
+                    <div
+                      key={ct.id}
+                      className="p-2.5 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-foreground text-xs">{ct.name}</span>
+                        <div className="flex items-center gap-1">
+                          <Badge variant="outline" className="text-[9px] px-1.5 py-0 font-medium">
+                            {ct.fieldsCount} Fields
+                          </Badge>
+                          <Badge
+                            variant="outline"
+                            className={cn(
+                              "text-[9px] px-1.5 py-0 font-medium",
+                              ct.totalEntries > 0
+                                ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                                : "text-amber-600 border-amber-500/30"
+                            )}
+                          >
+                            {ct.totalEntries} Terbit
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/40 px-2 py-1 rounded-md">
+                        <span className="truncate">{ct.relativeEndpoint}</span>
+                        <button
+                          onClick={() => handleCopyCode(ct.endpoint, ct.slug)}
+                          className="hover:text-foreground shrink-0 ml-1 cursor-pointer"
+                          title="Salin URL endpoint"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Single Types List */}
+              <div className="space-y-2">
+                <div className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                  <FileCode className="h-3.5 w-3.5 text-amber-500" />
+                  Singleton Profil ({mcpData?.totalSingletons ?? 0})
+                </div>
+
+                {!mcpData?.singleTypes || mcpData.singleTypes.length === 0 ? (
+                  <div className="p-3 text-center border border-dashed rounded-xl text-muted-foreground text-[11px]">
+                    Belum ada Single Types.
+                  </div>
+                ) : (
+                  mcpData.singleTypes.map((st) => (
+                    <div
+                      key={st.id}
+                      className="p-2.5 rounded-xl border border-border/60 bg-card/60 hover:bg-muted/30 transition-all space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-foreground text-xs">{st.name}</span>
+                        <Badge
+                          variant="outline"
+                          className={cn(
+                            "text-[9px] px-1.5 py-0 font-medium",
+                            st.hasData
+                              ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/30"
+                              : "text-muted-foreground"
+                          )}
+                        >
+                          {st.hasData ? "Published &amp; Ready" : "Belum Ada Data"}
+                        </Badge>
+                      </div>
+                      <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono bg-muted/40 px-2 py-1 rounded-md">
+                        <span className="truncate">{st.relativeEndpoint}</span>
+                        <button
+                          onClick={() => handleCopyCode(st.endpoint, st.slug)}
+                          className="hover:text-foreground shrink-0 ml-1 cursor-pointer"
+                          title="Salin URL endpoint"
+                        >
+                          <Copy className="h-3 w-3" />
+                        </button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
             </div>
           )}
 

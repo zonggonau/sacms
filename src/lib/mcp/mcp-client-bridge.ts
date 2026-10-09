@@ -657,8 +657,8 @@ export class McpClientBridge {
       if (singleData && typeof singleData === "object" && singleTypeId) {
         await tenantDb.tenantSingleTypeAssignment.upsert({
           where: { tenantId_singleTypeId_locale: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale } },
-          create: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale, data: singleData, enabled: true },
-          update: { data: singleData },
+          create: { tenantId: this.tenantId, singleTypeId, locale: resolvedLocale, data: singleData, enabled: true, publishedAt: new Date() },
+          update: { data: singleData, publishedAt: new Date() },
         })
       }
     }
