@@ -79,6 +79,40 @@ export const PATCH = withStaffAuth(
   { minRole: "admin" },
 )
 
+// PUT: manually update draft code (index.html and app.js) from the code editor
+const updateCodeSchema = z.object({
+  draftHtml: z.string().optional(),
+  draftJs: z.string().optional(),
+})
+
+export const PUT = withStaffAuth(
+  async (req, _context, { access }) => {
+    const parsed = await readJson(req, updateCodeSchema)
+    if (!parsed.ok) return parsed.response
+
+    const { draftHtml, draftJs } = parsed.data
+    const site = await db.tenantStaticSite.upsert({
+      where: { tenantId: access.tenantId },
+      update: {
+        ...(draftHtml !== undefined ? { draftHtml, draftAt: new Date() } : {}),
+        ...(draftJs !== undefined ? { draftJs, draftAt: new Date() } : {}),
+      },
+      create: {
+        tenantId: access.tenantId,
+        html: "",
+        js: "",
+        published: false,
+        draftHtml: draftHtml || "",
+        draftJs: draftJs || "",
+        draftAt: new Date(),
+      },
+    })
+
+    return NextResponse.json({ site })
+  },
+  { minRole: "admin" },
+)
+
 // DELETE: permanently removes the site AND its version history (cascades
 // via TenantStaticSiteVersion's onDelete: Cascade) — a full reset back to
 // "never created". To just hide a live site without losing anything, use

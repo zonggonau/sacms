@@ -43,6 +43,7 @@ import {
   Bot,
   Globe,
   Plug,
+  Zap,
 } from "lucide-react"
 import { useTheme } from "next-themes"
 import { useState, useEffect, useMemo } from "react"
@@ -261,6 +262,7 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             badge: "AI",
             children: [
               { title: "AI Schema Builder", href: "/developer/aischema", icon: Bot, matchPrefix: true },
+              { title: "AI Instant Website", href: "/developer/aiwebsitebuilder", icon: Zap, matchPrefix: true },
               { title: "Content Types", href: "/developer/content-types", icon: DatabaseIcon, matchPrefix: true },
               { title: "Server MCP", href: "/developer/mcp", icon: Plug, matchPrefix: true },
               { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },

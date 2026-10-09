@@ -1,38 +1,203 @@
-import { z } from "zod"
-import { generateObject } from "ai"
+import { generateText } from "ai"
 import { getTenantDb } from "./database"
 import { serializeTenantSchema } from "./schema-template-sync"
 
-const staticSiteSchema = z.object({
-  html: z.string().describe("Complete, valid HTML5 document — <!DOCTYPE html> through </html>. Must load Alpine.js via CDN script tag in <head>. No <script> containing app logic inline here — that goes in `js`."),
-  js: z.string().describe("The app's Alpine.js logic — Alpine.data(...) component definitions and any fetch() calls against the Public REST API. This gets inlined into the page before </body>."),
-})
+const SYSTEM_PROMPT = `You are a world-class frontend engineer and UI designer specializing in building modern, production-grade Single Page Applications (SPA) with Vue.js 3 and Tailwind CSS, powered by a headless CMS Public REST API.
 
-const SYSTEM_PROMPT = `You are an expert at building fast, zero-build static websites for small businesses (UMKM) using a headless CMS's public API.
+Architecture & Output Constraints:
+- Output MUST be split into exactly TWO files: \`index.html\` and \`app.js\`. Do not create or reference any other files.
+- You MUST format your entire response using these exact delimiters:
 
-Hard constraints:
-- Output a COMPLETE HTML5 document (<!DOCTYPE html> ... </html>) in \`html\`, and the site's JS logic separately in \`js\`.
-- In <head>, load Alpine.js from CDN: <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
-- Use Alpine's x-data/x-for/x-text/x-show/x-if directives for rendering. Never use innerHTML with API data — only x-text (auto-escaped) for untrusted text content.
-- \`js\` should define page state via document.addEventListener('alpine:init', () => { Alpine.data('site', () => ({ ... })) }) and fetch data from the Public REST API inside init()/methods, storing results in reactive state.
-- No build tools, no npm packages, no frameworks besides Alpine via the CDN tag above. Plain CSS (inline <style> in <head> is fine) — no Tailwind CDN unless explicitly asked.
-- Write all visible copy in Bahasa Indonesia unless the prompt says otherwise.
-- Make it a genuinely complete, attractive single-page site: hero, relevant content sections pulling from the schema below, a footer with contact info if available. Not a placeholder.
+<<<INDEX_HTML>>>
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website Title</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen flex flex-col">
+  <div id="app" v-cloak class="flex-1 flex flex-col">
+    <!-- Navbar / Header with reactive view switcher e.g. @click="currentView = 'home'" -->
+    <!-- Hero / Featured Section -->
+    <!-- Content listings with filters and search -->
+    <!-- Detail view or modal with interactive back / close -->
+    <!-- Contact / Order / Inquiry modal or form -->
+    <!-- Footer with branding and links -->
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>
+<<<END_INDEX_HTML>>>
 
-CRITICAL — the schema given to you per-request is the COMPLETE and ONLY list of content types/single types/components that exist for this workspace:
-- NEVER fetch a contentTypeSlug or singleTypeSlug that is not literally present in that schema. Do not guess or invent plausible-sounding slugs (e.g. "company-settings", "about-us", "profile") just because a typical business site would have one — if it is not in the schema, it does not exist in this tenant's database and fetching it will 404.
-- If the schema is empty, or lacks data for a section the user's prompt implies (e.g. they want a "company profile" section but there is no matching single type), write that section as static copy authored directly from the user's prompt instead of fetching anything for it. A site built entirely from static copy (zero fetch calls) is a completely valid and correct output when the schema has nothing relevant.
-- Every fetch() call must handle failure gracefully and silently: on a non-ok response or thrown error, hide that section (or fall back to static placeholder copy) — NEVER render the error object, HTTP status, or any raw technical message in the page. A visitor must never see words like "Gagal memuat..." or "404 Not Found" anywhere.
+<<<APP_JS>>>
+const { createApp, ref, reactive, computed, onMounted } = Vue;
 
-Public REST API (base URL given per-request):
-- GET {apiBase}/content/{contentTypeSlug} — list published entries (supports ?pagination[page]=1&pagination[pageSize]=20, ?filters[field][$eq]=value)
+const app = createApp({
+  setup() {
+    const currentView = ref('home');
+    const items = ref([]);
+    const loading = ref(true);
+    const searchQuery = ref('');
+    const selectedItem = ref(null);
+    const isMobileMenuOpen = ref(false);
+
+    // REST API fetcher with realistic fallback data
+    // Return all reactive states and methods
+    return {
+      currentView,
+      items,
+      loading,
+      searchQuery,
+      selectedItem,
+      isMobileMenuOpen,
+    };
+  }
+});
+
+app.mount('#app');
+<<<END_APP_JS>>>
+
+Visual & UX Excellence:
+- Clean, modern, production-grade aesthetics (vibrant accents, dark mode compatible or sleek light palette, rounded-2xl cards, subtle shadows, micro-interactions).
+- Bahasa Indonesia copy unless the user explicitly requests another language.
+- Completely functional SPA: clicking navigation tabs switches views reactively, search bar filters items reactively, modal details open on click.
+- Provide rich fallback mock data in Vue state so that even if database entries are empty or the API returns empty list, the website immediately looks populated, beautiful, and fully working.
+
+Public REST API (base URL provided per-request):
+- GET {apiBase}/content/{contentTypeSlug}?limit=20 — list published entries
 - GET {apiBase}/content/{contentTypeSlug}/{id} — single entry
-- GET {apiBase}/single/{singleTypeSlug} — single type data
-No Authorization header needed — these are public, published-content-only endpoints.`
+- GET {apiBase}/single/{singleTypeSlug} — single type
+(No authorization headers required for public endpoints).
+
+CRITICAL: Output ONLY the two delimited blocks (<<<INDEX_HTML>>>...<<<END_INDEX_HTML>>> and <<<APP_JS>>>...<<<END_APP_JS>>>). Do not wrap the entire response in markdown or add commentary.`
 
 export interface StaticSiteResult {
   html: string
   js: string
+}
+
+export function extractFiles(rawText: string): { html: string; js: string } {
+  let html = ""
+  let js = ""
+
+  // 1. Delimiter tag match
+  const htmlMatch = rawText.match(/<<<INDEX_HTML>>>([\s\S]*?)<<<END_INDEX_HTML>>>/i)
+  if (htmlMatch) {
+    html = htmlMatch[1].trim()
+  }
+
+  const jsMatch = rawText.match(/<<<APP_JS>>>([\s\S]*?)<<<END_APP_JS>>>/i)
+  if (jsMatch) {
+    js = jsMatch[1].trim()
+  }
+
+  // 2. Fallback if tag closed prematurely or missing end tag
+  if (!html && rawText.includes("<<<INDEX_HTML>>>")) {
+    const afterHtml = rawText.split("<<<INDEX_HTML>>>")[1] || ""
+    if (afterHtml.includes("<<<APP_JS>>>")) {
+      html = afterHtml.split("<<<APP_JS>>>")[0].replace("<<<END_INDEX_HTML>>>", "").trim()
+    } else {
+      html = afterHtml.replace("<<<END_INDEX_HTML>>>", "").trim()
+    }
+  }
+
+  if (!js && rawText.includes("<<<APP_JS>>>")) {
+    const afterJs = rawText.split("<<<APP_JS>>>")[1] || ""
+    js = afterJs.replace("<<<END_APP_JS>>>", "").trim()
+  }
+
+  // 3. Fallback to markdown code blocks
+  if (!html) {
+    const mdHtmlMatch = rawText.match(/```(?:html|xml)\s*([\s\S]*?)```/i)
+    if (mdHtmlMatch) {
+      html = mdHtmlMatch[1].trim()
+    } else if (rawText.includes("<!DOCTYPE html>") || rawText.includes("<html")) {
+      const startIdx = rawText.indexOf("<!DOCTYPE html>") !== -1 ? rawText.indexOf("<!DOCTYPE html>") : rawText.indexOf("<html")
+      const endIdx = rawText.lastIndexOf("</html>")
+      if (endIdx > startIdx) {
+        html = rawText.slice(startIdx, endIdx + 7).trim()
+      }
+    }
+  }
+
+  if (!js) {
+    const mdJsMatch = rawText.match(/```(?:javascript|js|vue)\s*([\s\S]*?)```/i)
+    if (mdJsMatch) {
+      js = mdJsMatch[1].trim()
+    } else if (rawText.includes("createApp(") || rawText.includes("Vue.createApp")) {
+      const startIdx = Math.min(
+        ...[rawText.indexOf("const { createApp"), rawText.indexOf("const app = createApp"), rawText.indexOf("Vue.createApp")].filter(i => i >= 0)
+      )
+      if (startIdx >= 0) {
+        const afterStart = rawText.slice(startIdx)
+        const mountIdx = afterStart.indexOf(".mount('#app')")
+        if (mountIdx !== -1) {
+          const semiIdx = afterStart.indexOf(";", mountIdx)
+          js = afterStart.slice(0, (semiIdx !== -1 ? semiIdx + 1 : mountIdx + 15)).trim()
+        } else {
+          js = afterStart.trim()
+        }
+      }
+    }
+  }
+
+  // Clean any residual markdown fences in extracted js/html
+  if (js.startsWith("```")) {
+    js = js.replace(/^```(?:javascript|js)?\s*/i, "").replace(/```\s*$/, "").trim()
+  }
+  if (html.startsWith("```")) {
+    html = html.replace(/^```(?:html)?\s*/i, "").replace(/```\s*$/, "").trim()
+  }
+
+  // Fallback defaults if still completely empty
+  if (!html) {
+    html = `<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Website SPA</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    [v-cloak] { display: none; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-900 antialiased min-h-screen">
+  <div id="app" v-cloak class="p-8 max-w-4xl mx-auto">
+    <h1 class="text-3xl font-bold">{{ title }}</h1>
+    <p class="text-slate-600 mt-2">{{ description }}</p>
+  </div>
+  <script src="app.js"></script>
+</body>
+</html>`
+  }
+
+  if (!js) {
+    js = `const { createApp, ref } = Vue;
+
+const app = createApp({
+  setup() {
+    const title = ref("Website SaCMS");
+    const description = ref("Website SPA berhasil disiapkan dengan Vue.js 3.");
+    return { title, description };
+  }
+});
+
+app.mount('#app');`
+  }
+
+  return { html, js }
 }
 
 export async function generateStaticSite(
@@ -64,16 +229,17 @@ ${prompt}`
   const { model, modelId } = await resolveGatewayModel(overrideModel)
 
   const result = await withAiRetry(() =>
-    generateObject({
+    generateText({
       model,
-      schema: staticSiteSchema,
       system: SYSTEM_PROMPT,
       prompt: userPrompt,
       maxOutputTokens: 12000,
     })
   )
 
-  await recordAiUsage(config, toUsageTotals(result.usage), modelId, result.object.html + result.object.js)
+  const files = extractFiles(result.text)
 
-  return result.object
+  await recordAiUsage(config, toUsageTotals(result.usage), modelId, files.html + files.js)
+
+  return files
 }

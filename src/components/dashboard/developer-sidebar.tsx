@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 import {
   Key, Webhook, Play, BookOpen, Plug,
   Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe, LayoutTemplate,
-  Terminal
+  Terminal, Zap
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
@@ -21,6 +21,7 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
 
   const builderNavItems = [
     { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/aischema`, icon: Bot, badge: "AI" },
+    { title: "AI Instant Website", href: `/dashboard/${tenantId}/developer/aiwebsitebuilder`, icon: Zap, badge: "AI" },
     { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
     { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
     { title: "Components", href: `/dashboard/${tenantId}/developer/components`, icon: Puzzle },

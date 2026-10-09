@@ -1,4 +1,4 @@
-import { redirect } from "next/navigation"
+import { AiWebsiteBuilderClient } from "./builder-client"
 
 export default async function AiWebsiteBuilderPage({
   params,
@@ -6,5 +6,6 @@ export default async function AiWebsiteBuilderPage({
   params: Promise<{ tenant: string }>
 }) {
   const { tenant } = await params
-  redirect(`/dashboard/${tenant}/developer/mcp`)
+
+  return <AiWebsiteBuilderClient tenantSlug={tenant} />
 }
