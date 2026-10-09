@@ -1,7 +1,7 @@
 "use client"
 
-import { useState, useEffect, useMemo, useTransition } from "react"
-import { useParams, useRouter } from "next/navigation"
+import { useState, useEffect, useMemo, useTransition, Suspense } from "react"
+import { useParams, useRouter, useSearchParams } from "next/navigation"
 import { useSession } from "next-auth/react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -24,7 +24,8 @@ import {
   Play, Copy, Check, Send, Globe, Database, 
   Terminal, Code2, Key, Loader2, RefreshCw,
   Info, Link as LinkIcon, FileDown, Sparkles,
-  Layers, ExternalLink, CheckCircle2, AlertCircle, Clock
+  Layers, ExternalLink, CheckCircle2, AlertCircle, Clock,
+  BookOpen, FileCode
 } from "lucide-react"
 import { JsonViewer } from "@/components/ui/json-viewer"
 import { useToast } from "@/hooks/use-toast"
@@ -32,6 +33,9 @@ import { getContentTypesAction } from "@/actions/content-types"
 import { getSingleTypesAction } from "@/actions/single-types"
 import { getApiTokensAction } from "@/actions/api-keys"
 import { cn } from "@/lib/utils"
+import { GraphQLTab } from "./graphql-tab"
+import { SwaggerTab } from "./swagger-tab"
+import { SdkTab } from "./sdk-tab"
 
 interface ApiTokenOption {
   id: string
@@ -54,11 +58,41 @@ interface SingleType {
 }
 
 export default function ApiExplorerPage() {
+  return (
+    <Suspense fallback={
+      <div className="p-8 space-y-6 max-w-7xl mx-auto">
+        <Skeleton className="h-10 w-72 rounded-xl" />
+        <Skeleton className="h-44 w-full rounded-2xl" />
+      </div>
+    }>
+      <ApiExplorerContent />
+    </Suspense>
+  )
+}
+
+function ApiExplorerContent() {
   const { data: session, status } = useSession()
   const params = useParams()
   const router = useRouter()
+  const searchParams = useSearchParams()
   const tenantSlug = params?.tenant as string
   const { toast } = useToast()
+
+  const tabParam = searchParams.get("tab")
+  const [activeTab, setActiveTab] = useState(tabParam || "rest")
+
+  useEffect(() => {
+    if (tabParam && ["rest", "graphql", "swagger", "sdk"].includes(tabParam)) {
+      setActiveTab(tabParam)
+    }
+  }, [tabParam])
+
+  const handleTabChange = (val: string) => {
+    setActiveTab(val)
+    const url = new URL(window.location.href)
+    url.searchParams.set("tab", val)
+    window.history.replaceState({}, "", url.toString())
+  }
 
   const [method, setMethod] = useState("GET")
   const [endpoint, setEndpoint] = useState("")
@@ -451,18 +485,18 @@ export default function ApiExplorerPage() {
             <div>
               <div className="flex items-center gap-2.5">
                 <div className="w-8 h-8 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
-                  <Play className="h-4 w-4" />
+                  <Terminal className="h-4 w-4" />
                 </div>
                 <h1 className="text-2xl lg:text-3xl font-black tracking-tight text-foreground">
-                  REST API Explorer
+                  API Explorer & Developer Portal
                 </h1>
                 <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold rounded-full">
                   <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse mr-1.5" />
-                  Live Tester
+                  Live Hub
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground mt-1">
-                Uji endpoint REST API secara langsung dan ekspor spesifikasi OpenAPI.
+                Pusat pengujian REST & GraphQL endpoint, dokumentasi interaktif OpenAPI, dan integrasi client SDK.
               </p>
             </div>
 
@@ -489,21 +523,33 @@ export default function ApiExplorerPage() {
                 {exportingOpenApi ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <FileDown className="w-3.5 h-3.5 mr-1.5 text-primary" />}
                 OpenAPI Spec
               </Button>
-
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="h-9 rounded-xl text-xs font-bold border-border/80"
-                asChild
-              >
-                <a href={`/dashboard/${tenantSlug}/developer/sdk`}>
-                  <Code2 className="w-3.5 h-3.5 mr-1.5 text-primary" />
-                  SDK Docs
-                  <ExternalLink className="w-3 h-3 ml-1 opacity-50" />
-                </a>
-              </Button>
             </div>
           </div>
+
+          {/* Master Tabs */}
+          <Tabs value={activeTab} onValueChange={handleTabChange} className="space-y-6">
+            <div className="border-b border-border/60 pb-3">
+              <TabsList className="bg-muted/40 border border-border/70 p-1 rounded-2xl grid grid-cols-2 md:grid-cols-4 max-w-2xl h-auto gap-1">
+                <TabsTrigger value="rest" className="rounded-xl font-bold text-xs py-2 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                  <Play className="h-3.5 w-3.5" />
+                  REST Explorer
+                </TabsTrigger>
+                <TabsTrigger value="graphql" className="rounded-xl font-bold text-xs py-2 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                  <Sparkles className="h-3.5 w-3.5" />
+                  GraphQL Playground
+                </TabsTrigger>
+                <TabsTrigger value="swagger" className="rounded-xl font-bold text-xs py-2 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                  <FileCode className="h-3.5 w-3.5" />
+                  OpenAPI Docs
+                </TabsTrigger>
+                <TabsTrigger value="sdk" className="rounded-xl font-bold text-xs py-2 gap-1.5 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-xs">
+                  <BookOpen className="h-3.5 w-3.5" />
+                  Client SDKs
+                </TabsTrigger>
+              </TabsList>
+            </div>
+
+            <TabsContent value="rest" className="space-y-6">
 
           {/* Authentication Banner & Token Selector */}
           <Card className="rounded-2xl border border-border/80 shadow-xs bg-card overflow-hidden">
@@ -951,9 +997,23 @@ export default function ApiExplorerPage() {
             </div>
 
           </div>
+        </TabsContent>
 
-        </div>
-      </div>
+        <TabsContent value="graphql" className="space-y-6">
+          <GraphQLTab tenantSlug={tenantSlug} selectedToken={selectedToken} />
+        </TabsContent>
+
+        <TabsContent value="swagger" className="space-y-6">
+          <SwaggerTab tenantSlug={tenantSlug} />
+        </TabsContent>
+
+        <TabsContent value="sdk" className="space-y-6">
+          <SdkTab tenantSlug={tenantSlug} />
+        </TabsContent>
+      </Tabs>
+
     </div>
+  </div>
+</div>
   )
 }

@@ -199,7 +199,7 @@ export async function applyTemplateAction(tenantIdOrSlug: string, templateId: st
 
     // Revalidate the CTB paths
     revalidatePath(`/dashboard/${tenant.slug}/developer/aischema`)
-    revalidatePath(`/dashboard/${tenant.slug}/content-type-builder/content-types`)
+    revalidatePath(`/dashboard/${tenant.slug}/developer/content-types`)
 
     return { success: true }
   } catch (error: any) {

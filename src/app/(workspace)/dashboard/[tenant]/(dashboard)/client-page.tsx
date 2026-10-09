@@ -491,7 +491,7 @@ export default function TenantDashboardClient({
               </div>
 
               <Link 
-                href={schemaView === "collections" ? `/dashboard/${tenantId}/developer/conten-type` : `/dashboard/${tenantId}/developer/single-type`} 
+                href={schemaView === "collections" ? `/dashboard/${tenantId}/developer/content-types` : `/dashboard/${tenantId}/developer/single-types`} 
                 className="text-xs font-semibold text-primary hover:underline"
               >
                 Kelola Semua &rarr;
@@ -509,7 +509,7 @@ export default function TenantDashboardClient({
                     </p>
                     <div>
                       <Button asChild size="sm" variant="outline" className="rounded-xl h-8 px-3 text-xs font-semibold">
-                        <Link href={`/dashboard/${tenantId}/developer/conten-type/new`}>
+                        <Link href={`/dashboard/${tenantId}/developer/content-types/new`}>
                           <Plus className="h-3.5 w-3.5 mr-1" />
                           Buat Koleksi Baru
                         </Link>

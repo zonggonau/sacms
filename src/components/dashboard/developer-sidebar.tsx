@@ -5,7 +5,8 @@ import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
   Key, Webhook, Play, BookOpen, Plug,
-  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe, LayoutTemplate
+  Bot, DatabaseIcon, FileText, Puzzle, Sparkles, ArrowRight, Globe, LayoutTemplate,
+  Terminal
 } from "lucide-react"
 import { NestedSidebarHeader } from "@/components/dashboard/nested-sidebar-header"
 
@@ -20,9 +21,9 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
 
   const builderNavItems = [
     { title: "AI Schema Generator", href: `/dashboard/${tenantId}/developer/aischema`, icon: Bot, badge: "AI" },
-    { title: "Content Types", href: `/dashboard/${tenantId}/developer/conten-type`, icon: DatabaseIcon },
-    { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-type`, icon: FileText },
-    { title: "Components", href: `/dashboard/${tenantId}/developer/component`, icon: Puzzle },
+    { title: "Content Types", href: `/dashboard/${tenantId}/developer/content-types`, icon: DatabaseIcon },
+    { title: "Single Types", href: `/dashboard/${tenantId}/developer/single-types`, icon: FileText },
+    { title: "Components", href: `/dashboard/${tenantId}/developer/components`, icon: Puzzle },
     ...(isGlobal
       ? [{ title: "Schema Template", href: `/dashboard/${tenantId}/developer/schematemplate`, icon: LayoutTemplate, badge: "Global" }]
       : []),
@@ -32,9 +33,7 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
     { title: "Server MCP", href: `/dashboard/${tenantId}/developer/mcp`, icon: Plug, badge: "AI" },
     { title: "Kunci API", href: `/dashboard/${tenantId}/developer/api-keys`, icon: Key },
     { title: "Webhooks", href: `/dashboard/${tenantId}/developer/webhooks`, icon: Webhook },
-    { title: "REST API", href: `/dashboard/${tenantId}/developer/api`, icon: Play },
-    { title: "GraphQL Explorer", href: `/dashboard/${tenantId}/developer/graphql`, icon: Play },
-    { title: "SDK & Dokumentasi", href: `/dashboard/${tenantId}/developer/sdk`, icon: BookOpen },
+    { title: "API Explorer & Docs", href: `/dashboard/${tenantId}/developer/api`, icon: Terminal, badge: "REST & GQL" },
   ]
 
   return (
@@ -53,9 +52,9 @@ export function DeveloperSidebar({ tenantId, isGlobal = false }: DeveloperSideba
           </p>
           {builderNavItems.map((item) => {
             const active = pathname === item.href || pathname?.startsWith(`${item.href}/`) ||
-              (item.href.includes("conten-type") && (pathname?.includes("/content-type") || pathname?.includes("/conten-type"))) ||
-              (item.href.includes("single-type") && pathname?.includes("/single-type")) ||
-              (item.href.includes("component") && pathname?.includes("/component"))
+              (item.href.includes("content-types") && (pathname?.includes("/content-type") || pathname?.includes("/conten-type"))) ||
+              (item.href.includes("single-types") && pathname?.includes("/single-type")) ||
+              (item.href.includes("components") && pathname?.includes("/component"))
             return (
               <Link key={item.title} href={item.href}>
                 <div

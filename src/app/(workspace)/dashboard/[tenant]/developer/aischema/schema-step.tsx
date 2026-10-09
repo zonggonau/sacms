@@ -511,7 +511,7 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
           <div className="text-center pt-1">
             <button
               type="button"
-              onClick={() => router.push(`/dashboard/${tenantSlug}/content-type-builder/content-types/new`)}
+              onClick={() => router.push(`/dashboard/${tenantSlug}/developer/content-types/new`)}
               className="text-[11px] font-semibold text-primary hover:underline cursor-pointer inline-flex items-center gap-1"
             >
               atau buat manual <ExternalLink className="h-3 w-3" />

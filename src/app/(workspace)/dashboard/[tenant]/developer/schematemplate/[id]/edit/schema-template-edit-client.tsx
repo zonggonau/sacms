@@ -159,19 +159,19 @@ export function SchemaTemplateEditClient({
             title="Content Types"
             icon={DatabaseIcon}
             items={draftContentTypes}
-            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/conten-type/edit/${slug}`}
+            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/content-types/edit/${slug}`}
           />
           <DraftList
             title="Single Types"
             icon={FileText}
             items={draftSingleTypes}
-            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/single-type/${slug}/edit`}
+            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/single-types/${slug}/edit`}
           />
           <DraftList
             title="Components"
             icon={Puzzle}
             items={draftComponents}
-            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/component/${slug}/edit`}
+            hrefFor={(slug) => `/dashboard/${tenantSlug}/developer/components/${slug}/edit`}
           />
         </div>
       )}

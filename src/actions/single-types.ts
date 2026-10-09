@@ -206,7 +206,7 @@ export async function createSingleTypeAction(tenantSlug: string, data: any) {
       include: { schemaFields: true }
     })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { singleType }
   } catch (error) {
@@ -288,8 +288,8 @@ export async function updateSingleTypeAction(tenantSlug: string, id: string, dat
 
     const formattedFields = parseSchemaFieldOptions(updatedSingleType.schemaFields)
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types/${updatedSingleType.slug}/edit`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types/${updatedSingleType.slug}/edit`)
     revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${updatedSingleType.slug}`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)
     
@@ -349,7 +349,7 @@ export async function deleteSingleTypeAction(tenantSlug: string, id: string) {
 
     await tenantDb.singleType.delete({ where: { id } })
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)
     return { success: true }
   } catch (error) {
@@ -422,7 +422,7 @@ export async function saveSingleTypeDataAction(tenantSlug: string, singleTypeId:
       })
     }
 
-    revalidatePath(`/dashboard/${tenantSlug}/content-type-builder/single-types`)
+    revalidatePath(`/dashboard/${tenantSlug}/developer/single-types`)
     revalidatePath(`/dashboard/${tenantSlug}/cms/single-types/${singleType.slug}`)
     revalidatePath(`/dashboard/${tenantSlug}/cms`)
     

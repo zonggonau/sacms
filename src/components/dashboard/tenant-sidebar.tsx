@@ -224,39 +224,22 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       label: s.groupContent,
       items: [
         { title: s.cmsStudio, href: "/cms-redirect", icon: Sparkles, badge: "STUDIO" },
-        ...(isAdmin ? [
-          {
-            title: s.aiSchemaGenerator,
-            href: "/developer/aischema",
-            icon: Bot,
-            badge: "AI",
-            matchPrefix: true
-          },
-          {
-            title: "Server MCP (AI & IDE)",
-            href: "/developer/mcp",
-            icon: Plug,
-            badge: "AI",
-            matchPrefix: true
-          },
-        ] : []),
         ...(isEditor || userRole === "author" ? [{ title: s.mediaLibrary, href: "/media", icon: ImageIcon }] : []),
       ],
     },
     {
       label: s.groupManagement,
       items: [
-        {
-          title: s.support,
-          href: "/support",
-          icon: Headphones,
-          matchPrefix: true,
-          badge: unreadSupportCount > 0 ? `${unreadSupportCount} ${s.badgeNew}` : undefined
-        },
         ...(isAdmin ? [
-          { title: s.teamMembers, href: "/users", icon: Users },
-          { title: s.appMembers, href: "/users-permissions/members", icon: UserCheck, matchPrefix: true },
-          { title: s.memberRoles, href: "/users-permissions/roles", icon: ShieldCheck, matchPrefix: true },
+          {
+            title: "Users & Access",
+            icon: Users,
+            children: [
+              { title: s.teamMembers, href: "/users", icon: Users },
+              { title: s.appMembers, href: "/users-permissions/members", icon: UserCheck, matchPrefix: true },
+              { title: s.memberRoles, href: "/users-permissions/roles", icon: ShieldCheck, matchPrefix: true },
+            ]
+          },
         ] : []),
         ...(isAdmin || isEditor ? [{ title: s.auditLog, href: "/system/audit", icon: ClipboardList }] : []),
         ...(isAdmin && !isEnterpriseMode ? [{
@@ -269,9 +252,22 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
       ],
     },
     {
-      label: s.groupSettings,
+      label: "DEVELOPER & SYSTEM",
       items: [
         ...(isAdmin ? [
+          {
+            title: "Developer Portal",
+            icon: Code,
+            badge: "AI",
+            children: [
+              { title: "AI Schema Builder", href: "/developer/aischema", icon: Bot, matchPrefix: true },
+              { title: "Content Types", href: "/developer/content-types", icon: DatabaseIcon, matchPrefix: true },
+              { title: "Server MCP", href: "/developer/mcp", icon: Plug, matchPrefix: true },
+              { title: "API Keys & Access", href: "/developer/api-keys", icon: Key, matchPrefix: true },
+              { title: "Webhooks", href: "/developer/webhooks", icon: Webhook, matchPrefix: true },
+              { title: "API Explorer", href: "/developer/api", icon: Play, matchPrefix: true },
+            ]
+          },
           {
             title: s.infrastructure,
             href: "/infrastructure",
@@ -279,12 +275,11 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
             matchPrefix: true,
             badge: effectiveHasDedicatedInfra ? "VPS" : "VERCEL"
           },
-          { title: s.developer, href: "/developer/api-keys", icon: Code, matchPrefix: true },
           { title: s.workspaceSettings, href: "/settings", icon: Settings, matchPrefix: true },
         ] : []),
       ],
     },
-  ].filter(section => section.items.length > 0), [s, isAdmin, isEditor, isEnterpriseMode, isExpired, userRole, effectiveHasDedicatedInfra, unreadSupportCount])
+  ].filter(section => section.items.length > 0), [s, isAdmin, isEditor, isEnterpriseMode, isExpired, userRole, effectiveHasDedicatedInfra])
 
   const handleSignOut = async () => {
     await signOut({ callbackUrl: "/" })
@@ -374,8 +369,8 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
               <div className="space-y-1">
                 {section.items.map((item) => {
                   if (item.children) {
-                    const isExpanded = openMenus[item.title];
                     const isAnyChildActive = item.children.some(child => isActive(child));
+                    const isExpanded = openMenus[item.title] ?? isAnyChildActive;
                     
                     return (
                       <div key={item.title} className="space-y-1">
@@ -457,6 +452,27 @@ export function TenantSidebar({ tenantId: propId, tenantSlug, tenants, isEnterpr
 
       {/* Footer */}
       <div className="border-t p-3 space-y-2">
+        <Link
+          href={href("/support")}
+          onClick={() => setMobileOpen(false)}
+          className={cn(
+            "flex items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold transition-all group",
+            pathname?.startsWith(href("/support"))
+              ? "bg-primary text-primary-foreground font-bold shadow-xs"
+              : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+          )}
+        >
+          <Headphones className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-105", pathname?.startsWith(href("/support")) ? "text-primary-foreground" : "text-muted-foreground group-hover:text-foreground")} />
+          <span className="truncate flex-1">{s.support}</span>
+          {unreadSupportCount > 0 ? (
+            <Badge variant="destructive" className="ml-auto text-[9px] h-4 px-1.5 rounded-full font-bold">
+              {unreadSupportCount}
+            </Badge>
+          ) : (
+            <span className="text-[10px] text-muted-foreground/60 group-hover:text-muted-foreground font-normal">24/7</span>
+          )}
+        </Link>
+
         <div className="flex items-center gap-2.5 px-3 py-2 rounded-xl bg-muted/40 border border-border/60">
           <button 
             type="button"
