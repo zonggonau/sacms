@@ -1,8 +1,8 @@
 # Master SDLC Documentation - SaCMS
 
-Selamat datang di direktori dokumentasi resmi **SaCMS (v1.2.1.0)** — SaaS Headless CMS multi-tenant berbasis Next.js 16 (App Router) dengan native billing (Midtrans), AI-powered schema engine, Model Context Protocol (MCP), dan Enterprise self-hosting.
+Selamat datang di direktori dokumentasi resmi **SaCMS (v1.3.0)** — SaaS Headless CMS multi-tenant berbasis Next.js 16 (App Router) dengan native billing (Midtrans), AI-powered schema engine, Model Context Protocol (MCP), dan Enterprise self-hosting.
 
-> **Status dokumentasi:** *Living documentation*. Tersinkronisasi penuh dengan struktur codebase aktif, route handlers, database models, server actions, dan komponen UI pada **23 Agustus 2026**.
+> **Status dokumentasi:** *Living documentation*. Tersinkronisasi penuh dengan struktur codebase aktif, route handlers, database models, server actions, skrip operasional (`scripts/`), dan komponen UI.
 
 ---
 
@@ -17,13 +17,14 @@ Selamat datang di direktori dokumentasi resmi **SaCMS (v1.2.1.0)** — SaaS Head
 4. 📄 **[04-API_Specification.md](./04-API_Specification.md)**: Panduan **lengkap** endpoint (Public REST & GraphQL, Tenant Management API, MCP Transport API, AI Schema Builder, Starter Exporter, Cron, dan Webhooks). *(Tersedia juga format Swagger: **[04-openapi.yaml](./04-openapi.yaml)**)*
 
 ### 👨‍💻 Fase Pengembangan & Pengujian
-5. 📄 **[05-Development_Guidelines.md](./05-Development_Guidelines.md)**: Standar penulisan kode (TypeScript, Zod v4, *Naming Conventions*), struktur *folder*, integrasi Next.js 16 App Router, dan panduan kontribusi (*Git Workflow*).
-6. 📄 **[06-Testing_Plan.md](./06-Testing_Plan.md)**: Skenario pengujian (*Unit test* via Vitest 18 suites / 112 tests 100% PASS, dan *E2E test* via Playwright & gstack browser QA).
+5. 📄 **[05-Development_Guidelines.md](./05-Development_Guidelines.md)**: Standar penulisan kode (TypeScript, Bun, Zod v4, *Naming Conventions*), struktur *folder*, integrasi Next.js 16 App Router, dan panduan kontribusi (*Git Workflow*).
+6. 📄 **[06-Testing_Plan.md](./06-Testing_Plan.md)**: Skenario pengujian (*Unit test* via Vitest 41 suites / 307 tests 100% PASS, automated QA route auditor, dan *E2E test* via Playwright & gstack browser QA).
 
 ### 🚀 Fase Deployment, Operasional & Keamanan
 7. 📄 **[07-Deployment_Guide.md](./07-Deployment_Guide.md)**: Strategi peluncuran (Vercel, Docker Compose, Self-Hosted Enterprise), **CI/CD GitHub Actions**, daftar lengkap *Environment Variables*, dan *Database Migration*.
-8. 📄 **[08-Operations_and_Runbook.md](./08-Operations_and_Runbook.md)**: Pedoman *Troubleshooting* untuk PostgreSQL multi-tenant, Redis Edge cache, Cloudflare R2, Webhook DLQ, dan templat insiden.
+8. 📄 **[08-Operations_and_Runbook.md](./08-Operations_and_Runbook.md)**: Pedoman *Troubleshooting* untuk PostgreSQL multi-tenant, Redis Edge cache, Cloudflare R2, Webhook DLQ, templat insiden, dan automated database backup/restore.
 9. 📄 **[09-Security_Policy.md](./09-Security_Policy.md)**: Arsitektur RBAC, RSA License validation, API Token SHA-256 hashing, SQL Injection prevention, *Rate Limiting*, *Security Headers*, dan isolasi data tenant.
+10. 📄 **[scripts/README.md](../scripts/README.md)**: Arsitektur skrip operasional, CLI runner terpadu (`bun run cli`), database seeding, schema push, dan audit QA.
 
 ### 📦 Pemeliharaan & Pengguna Akhir
 10. 📄 **[10-Release_Notes.md](./10-Release_Notes.md)**: Changelog versi (v1.0.0 → v1.2.0 → v1.2.1.0) berdasarkan *Semantic Versioning*.

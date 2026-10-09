@@ -79,14 +79,16 @@ export const PATCH = withStaffAuth(
   { minRole: "admin" },
 )
 
-// DELETE: unpublish (equivalent to PATCH {published: false}) — kept as the
-// existing verb the dashboard already called.
+// DELETE: permanently removes the site AND its version history (cascades
+// via TenantStaticSiteVersion's onDelete: Cascade) — a full reset back to
+// "never created". To just hide a live site without losing anything, use
+// PATCH {published: false} instead.
 export const DELETE = withStaffAuth(
   async (_req, _context, { access }) => {
     const site = await db.tenantStaticSite.findUnique({ where: { tenantId: access.tenantId } })
     if (!site) return apiError("not_found", { message: "Website belum pernah dibuat" })
 
-    await db.tenantStaticSite.update({ where: { tenantId: access.tenantId }, data: { published: false } })
+    await db.tenantStaticSite.delete({ where: { tenantId: access.tenantId } })
     await setStaticSiteFlag(access.tenant.slug, false)
 
     return NextResponse.json({ success: true })

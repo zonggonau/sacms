@@ -76,7 +76,7 @@ Transitions not shown in this diagram are rejected by the server, even if a clie
 
 Custom roles may perform a transition when the role has the matching granular permission. The canonical permission keys are declared in `TRANSITION_PERMISSIONS` inside `src/lib/content-workflow-rules.ts`.
 
-After adding/updating workflow permissions in an environment, run the authorized seed procedure based on `scripts/seed-workflow-permissions.ts`; changing the source list alone does not insert missing `Permission` rows into an existing database.
+After adding/updating workflow permissions in an environment, run the authorized seed procedure based on `scripts/seed/seed-workflow-permissions.ts` (or via unified CLI: `bun run cli seed:workflow` / `bun run cli seed:permissions`); changing the source list alone does not insert missing `Permission` rows into an existing database.
 
 ## 6. Entry creation workflow
 

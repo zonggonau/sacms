@@ -16,7 +16,7 @@ import {
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
 import {
-  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, LayoutTemplate,
+  Sparkles, CheckCircle2, Loader2, ArrowLeft, Database, ExternalLink, Cpu, LayoutTemplate, Zap,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { FIELD_TYPES } from "@/lib/field-types"
@@ -25,14 +25,12 @@ import { FIELD_TYPES } from "@/lib/field-types"
 // covers all of these, this is just a reasonable spread of providers/price
 // points rather than dumping the full multi-hundred-model catalog on the user.
 export const SCHEMA_MODEL_OPTIONS = [
-  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Cepat & hemat — default" },
-  { value: "google/gemini-3-flash", label: "Gemini 3 Flash", hint: "Lebih baru, lebih pintar" },
-  { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", hint: "Seimbang, kualitas tinggi" },
-  { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", hint: "Paling cepat dari Claude" },
-  { value: "openai/gpt-5.4", label: "GPT-5.4", hint: "Flagship OpenAI" },
-  { value: "openai/gpt-4.1-mini", label: "GPT-4.1 Mini", hint: "Hemat" },
-  { value: "deepseek/deepseek-v3.2", label: "DeepSeek V3.2", hint: "Hemat, kuat untuk struktur data" },
-  { value: "zai/glm-4.6", label: "GLM-4.6", hint: "Alternatif hemat" },
+  { value: "google/gemini-2.5-flash", label: "Gemini 2.5 Flash", hint: "Cepat & hemat — default Vercel Gateway" },
+  { value: "google/gemini-3-flash", label: "Gemini 3 Flash", hint: "Generasi terbaru Google" },
+  { value: "openai/gpt-4o-mini", label: "GPT-4o Mini", hint: "Cepat & efisien OpenAI" },
+  { value: "openai/gpt-4o", label: "GPT-4o", hint: "Flagship multimodal OpenAI" },
+  { value: "anthropic/claude-sonnet-4.5", label: "Claude Sonnet 4.5", hint: "Arsitektur kompleks & presisi" },
+  { value: "anthropic/claude-haiku-4.5", label: "Claude Haiku 4.5", hint: "Responsif & hemat Claude" },
 ] as const
 
 export const QUICK_PROMPT_INSPIRATIONS = [
@@ -314,6 +312,11 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
           </button>
 
           <div className="text-center space-y-1.5">
+            <div className="flex items-center justify-center gap-2 mb-1">
+              <Badge variant="outline" className="text-[10px] font-bold bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 flex items-center gap-1">
+                <Zap className="h-3 w-3" /> Vercel AI Gateway
+              </Badge>
+            </div>
             <h2 className="text-xl md:text-2xl font-bold text-foreground tracking-tight">{plan.title}</h2>
             <p className="text-xs text-muted-foreground">{plan.summary}</p>
           </div>
@@ -437,6 +440,9 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
                 ))}
               </SelectContent>
             </Select>
+            <div className="ml-auto flex items-center gap-1 text-[10px] font-semibold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md">
+              <Zap className="h-2.5 w-2.5" /> Vercel AI Gateway
+            </div>
           </div>
         </div>
 
@@ -444,14 +450,14 @@ export function SchemaStep({ tenantSlug, hasSchema, existingSchemaSummary, onSch
           <Button
             onClick={handlePlanSchema}
             disabled={isPlanning || !prompt.trim()}
-            className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto"
+            className="h-10 px-6 rounded-full font-bold text-xs gap-1.5 w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white shadow-xs"
           >
             {isPlanning ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-            {isPlanning ? "Merencanakan Skema..." : isTemplateMode ? "Rencanakan Template dengan AI" : "Buat Schema dengan AI (-5 Credits)"}
+            {isPlanning ? "Merencanakan Skema via Gateway..." : isTemplateMode ? "Rencanakan Template dengan AI" : "Generate Schema via Vercel AI Gateway (-5 Credits)"}
           </Button>
           {!isTemplateMode && (
             <p className="text-[10px] text-muted-foreground">
-              Otomatis memakai template gratis jika saldo AI Credit tidak cukup.
+              Ditenagai Vercel AI Gateway. Otomatis memakai blueprint gratis jika saldo AI Credit tidak cukup.
             </p>
           )}
         </div>

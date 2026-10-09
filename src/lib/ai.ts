@@ -36,9 +36,20 @@ export async function resolveGatewayModel(overrideModel?: string): Promise<{ mod
     throw new Error("Vercel AI Gateway belum dikonfigurasi. Masukkan API Key di Admin > Pengaturan > Mesin AI.")
   }
 
+  let rawBaseUrl = config.aiGatewayBaseUrl?.trim().replace(/\/$/, "")
+  let baseURL: string | undefined = undefined
+  if (rawBaseUrl) {
+    if (rawBaseUrl.includes("ai-gateway.vercel.sh")) {
+      // Vercel AI Gateway native SDK protocol requires /v4/ai
+      baseURL = "https://ai-gateway.vercel.sh/v4/ai"
+    } else {
+      baseURL = rawBaseUrl
+    }
+  }
+
   const gateway = createGateway({
     apiKey: config.aiGatewayApiKey,
-    ...(config.aiGatewayBaseUrl ? { baseURL: config.aiGatewayBaseUrl } : {}),
+    ...(baseURL ? { baseURL } : {}),
   })
   const modelId = overrideModel || config.defaultModel
   return { model: gateway(modelId), modelId }

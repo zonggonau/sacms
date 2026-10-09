@@ -17,6 +17,10 @@ vi.mock("../../src/lib/database", () => ({
   },
 }))
 
+vi.mock("dns/promises", () => ({
+  lookup: vi.fn(async () => [{ address: "93.184.216.34", family: 4 }]),
+}))
+
 // Mock fetch globally
 const originalFetch = global.fetch
 const mockFetch = vi.fn()

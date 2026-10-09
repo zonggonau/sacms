@@ -3,7 +3,7 @@
  * Run: npx tsx scripts/seed-global.ts
  */
 
-import { PrismaClient } from "../prisma/generated-client"
+import { PrismaClient } from "@prisma/client"
 
 const db = new PrismaClient()
 

@@ -1,8 +1,6 @@
-import { PrismaClient } from "@prisma/client";
+import { db } from "@/lib/database";
 
-const prisma = new PrismaClient();
-
-async function main() {
+export async function seedPlans() {
   console.log("🌱 Seeding default Plans Configuration...");
 
   const workspacePlans = [
@@ -65,7 +63,7 @@ async function main() {
 
   // Helper function to upsert setting
   const upsertSetting = async (key: string, value: any) => {
-    await prisma.setting.upsert({
+    await db.setting.upsert({
       where: { key },
       update: { value: JSON.stringify(value) },
       create: { key, value: JSON.stringify(value) },
@@ -80,11 +78,13 @@ async function main() {
   console.log("🎉 Seeding complete!");
 }
 
-main()
-  .catch((e) => {
-    console.error(e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+if (import.meta.main) {
+  seedPlans()
+    .catch((e) => {
+      console.error(e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await db.$disconnect();
+    });
+}

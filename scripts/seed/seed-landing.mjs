@@ -1,7 +1,7 @@
 // Seed script untuk landing page SACMS
 // Jalankan: bun run scripts/seed-landing.mjs
 
-import { PrismaClient } from "../prisma/generated-client/index.js";
+import { PrismaClient } from "@prisma/client";
 
 const db = new PrismaClient();
 

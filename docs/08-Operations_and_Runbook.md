@@ -1,4 +1,4 @@
-﻿# Operations Runbook & Incident Handling
+# Operations Runbook & Incident Handling
 
 Dokumen ini adalah panduan *Operations Manual* untuk memulihkan layanan (Runbook) jika terjadi insiden teknis atau *downtime* pada infrastruktur SaCMS, beserta format pelaporan insiden (*Incident Report*).
 
@@ -67,12 +67,27 @@ Setiap terjadi *downtime* sistem > 10 menit atau kebocoran data, Tim DevOps haru
 
 ## 1. Pemeliharaan Rutin (Routine Maintenance)
 
-### 1.1. Database Backups
-Karena data adalah yang utama dalam Headless CMS, sangat direkomendasikan melakukan *Logical Backup* (misal: menggunakan `pg_dump`) setiap malam.
+### 1.1. Database Backups & Restore Automation
+SaCMS menyertakan skrip otomatisasi backup dan restore berbasis `pg_dump` dengan kompresi tingkat tinggi dan rotasi otomatis 7 hari:
+
+**Menjalankan Backup:**
 ```bash
-pg_dump -U username -h localhost dbname > sacms_backup_$(date +%F).sql
+# Jalankan via CLI terpadu
+bun run cli db:backup
+
+# Atau langsung via shell script
+DATABASE_URL="postgresql://user:pass@host:5432/sacms" bash scripts/shell/db-backup.sh ./db/backups
 ```
-Pastikan backup disimpan ke tempat terpisah (misalnya S3 / AWS Glacier) secara otomatis.
+Skrip akan membuat file dump `sacms_YYYYMMDD_HHMMSS.dump` dan secara otomatis menghapus backup yang lebih tua dari 7 hari.
+
+**Melakukan Restore Database:**
+```bash
+# Jalankan restore dari file dump
+bun run cli db:restore ./db/backups/sacms_20261008_120000.dump
+
+# Atau via shell script
+DATABASE_URL="postgresql://user:pass@host:5432/sacms" bash scripts/shell/db-restore.sh ./db/backups/sacms_20261008_120000.dump
+```
 
 ### 1.2. Clearing Cache (Upstash Redis)
 Jika terjadi inkonsistensi data antara CMS dan Front-End Anda akibat perubahan schema, Anda dapat menghapus *Cache*:
@@ -87,12 +102,20 @@ Jika terjadi inkonsistensi data antara CMS dan Front-End Anda akibat perubahan s
 - Pastikan string `DATABASE_URL` menggunakan *connection pooling* PgBouncer jika traffic Anda sangat tinggi, contoh menggunakan parameter `?connection_limit=10&pool_timeout=30`.
 - Jika Anda menggunakan Serverless Deployment (seperti Vercel), sangat dianjurkan untuk menggunakan koneksi *Accelerate* dari Prisma atau setup database yang mensupport *serverless connection pools* seperti Supabase / Neon.
 
-### 2.2. Gagal Upload Media ke Cloudflare R2
+### 2.2. Gagal Upload Media ke Cloudflare R2 & Migrasi Storage
 **Masalah:** Upload mandek atau muncul "Error 500".
 **Solusi:**
 - Cek batas `MAX_FILE_SIZE` di file konfigurasi.
 - Pastikan variabel `R2_ACCESS_KEY_ID` dan `R2_SECRET_ACCESS_KEY` valid.
-- Verifikasi bahwa Node.js memiliki izin melakukan `POST / PUT` ke Endpoint URL Cloudflare R2 Anda (CORS Policy di sisi bucket Cloudflare harus memperbolehkan origin Anda jika upload dilakukan dari client-side, namun SaCMS meng-handle via backend sehingga CORS tidak terlalu menjadi masalah).
+- Verifikasi bahwa Node.js memiliki izin melakukan `POST / PUT` ke Endpoint URL Cloudflare R2 Anda.
+- **Migrasi Media Lokal ke R2:** Jika beralih dari disk lokal (`/public/upload/`) ke object storage Cloudflare R2 / MinIO platform, jalankan utilitas migrasi otomatis:
+  ```bash
+  # Uji coba simulasi pemindahan file (Dry Run)
+  bun run cli migrate:media
+
+  # Terapkan pemindahan fisik dan update baris database
+  bun run cli migrate:media --apply
+  ```
 
 ### 2.3. Webhooks Gagal Mengirim (Dead Letter Queue)
 **Masalah:** Data sudah di-publish tapi front-end statis tidak ter-rebuild otomatis.
@@ -103,7 +126,15 @@ Jika terjadi inkonsistensi data antara CMS dan Front-End Anda akibat perubahan s
 ### 2.4. Konten Terjadwal Tidak Ter-Publish
 **Masalah:** Konten yang di-set "Scheduled Publish Date" tidak berubah menjadi "Published".
 **Solusi:**
-- Cek pemanggilan endpoint `/api/cron/publish`. Konfigurasi repository saat ini menjalankannya setiap 5 menit dengan `Authorization: Bearer <CRON_SECRET>`.
+- Cek pemanggilan endpoint `/api/cron/publish` dengan header `Authorization: Bearer <CRON_SECRET>`.
+- Jika cron serverless tidak aktif, jalankan background worker langsung dari server host/container:
+  ```bash
+  # Mode simulasi (Dry Run)
+  bun run cli cron:publish --dry-run
+
+  # Eksekusi publishing langsung
+  bun run cli cron:publish
+  ```
 
 ### 2.5. Error Tidak Terlacak di Log Server
 **Masalah:** UI menampilkan error misterius "Internal Server Error" tapi log konsol kosong.

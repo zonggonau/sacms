@@ -38,7 +38,8 @@
     "seed:global": "bun prisma/seed-global.ts",
     "seed:permissions": "bun scripts/seed-permissions.ts",
     "cron:publish": "bun scripts/scheduled-publish.ts",
-    "qa": "bun scripts/qa-runner.ts"
+    "qa": "bun scripts/qa-runner.ts",
+    "cli": "bun scripts/cli.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^4.0.68",

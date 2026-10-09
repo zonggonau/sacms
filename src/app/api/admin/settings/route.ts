@@ -11,7 +11,25 @@ import { withAdminAuth, readJson } from "@/lib/api/route-helpers"
 // server here. Use GET /api/admin/settings/reveal to fetch one real value
 // on demand (audited), for the UI's "show" toggle.
 export const GET = withAdminAuth(async () => {
-  return NextResponse.json({ settings: maskSecretSettings(await getPlatformSettings()) })
+  const settings = await getPlatformSettings()
+  const envStatus = {
+    databaseConfigured: Boolean(process.env.DATABASE_URL),
+    directUrlConfigured: Boolean(process.env.DIRECT_URL),
+    nextAuthSecretConfigured: Boolean(process.env.NEXTAUTH_SECRET && process.env.NEXTAUTH_SECRET !== "generate-a-random-secret-here"),
+    nextAuthUrl: process.env.NEXTAUTH_URL || "",
+    publicAppUrl: process.env.NEXT_PUBLIC_APP_URL || "",
+    redisConfigured: Boolean(process.env.REDIS_URL || process.env.UPSTASH_REDIS_REST_URL),
+    cronSecretConfigured: Boolean(process.env.CRON_SECRET && process.env.CRON_SECRET !== "generate-a-cron-secret"),
+    gatewayIp: process.env.PUBLIC_GATEWAY_IP || "164.68.116.79",
+    cnameTarget: process.env.PUBLIC_CNAME_TARGET || "cname.sacms.cloud",
+    selfHostMode: process.env.SELFHOST_MODE === "true",
+    nodeEnv: process.env.NODE_ENV || "development",
+    hasMinioEndpoint: Boolean(process.env.S3_ENDPOINT),
+  }
+  return NextResponse.json({ 
+    settings: maskSecretSettings(settings),
+    envStatus,
+  })
 })
 
 const updateSettingsSchema = z.object({

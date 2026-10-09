@@ -142,6 +142,7 @@ Edge proxy ([`src/proxy.ts`](file:///d:/projek/z.ai/sacms/src/proxy.ts)) membaca
 | `bun run seed:permissions` | Melakukan sinkronisasi izin RBAC bawaan |
 | `bun run cron:publish` | Mengeksekusi cron scheduled content publishing |
 | `bun run qa` | Menjalankan suite QA automation |
+| `bun run cli` | Menjalankan SaCMS CLI Runner interaktif (seeds, migrations, QA, ops) |
 
 ---
 

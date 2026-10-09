@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Dialog, DialogContent, DialogTitle } from "@/components/ui/dialog"
-import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key } from "lucide-react"
+import { Sparkles, Terminal, ArrowRight, X, Maximize2, Plug, Key, Zap } from "lucide-react"
 import { SchemaStep } from "./schema-step"
 import { SchemaDiagram } from "@/components/ai-builder/schema-diagram"
 
@@ -39,9 +39,12 @@ export function SchemaGeneratorClient({ tenantSlug, hasSchema, existingSchemaSum
             <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] font-bold px-2 py-0.5 rounded-full">
               Beta
             </Badge>
+            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+              <Zap className="h-3 w-3" /> Vercel AI Gateway
+            </Badge>
           </div>
           <p className="text-xs text-muted-foreground mt-1">
-            Jelaskan struktur bisnis atau aplikasi Anda, AI merancang Content Type &amp; relasi schema CMS. Kode frontend dibangun di IDE atau AI Agent (ChatGPT, Google Studio, Cursor) terhubung via MCP.
+            Jelaskan struktur bisnis atau aplikasi Anda. AI merancang Content Type &amp; relasi schema CMS secara otomatis via <strong>Vercel AI Gateway</strong>. Terhubung langsung ke Server MCP dan REST API untuk frontend Anda.
           </p>
         </div>
         <div className="flex items-center gap-2">

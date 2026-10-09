@@ -1,4 +1,4 @@
-import { db } from "../src/lib/database"
+import { db } from "@/lib/database"
 
 async function main() {
   console.log("🚀 Syncing 3x3 White-Label Pricing (No Vercel Branding) to CMS Database...")

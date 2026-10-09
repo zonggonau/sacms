@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/select"
 import {
   Zap, Loader2, ExternalLink, Cpu, Sparkles, Eye, UploadCloud, History,
-  RotateCcw, Copy, Check, Globe, FileCode2, ShieldCheck, Lightbulb, Clock,
+  RotateCcw, Copy, Check, Globe, FileCode2, ShieldCheck, Lightbulb, Clock, Trash2,
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
@@ -58,6 +58,7 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
   const [isToggling, setIsToggling] = useState(false)
   const [rollingBackId, setRollingBackId] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
+  const [isDeleting, setIsDeleting] = useState(false)
 
   const siteUrl = `https://${tenantSlug}.${ROOT_DOMAIN}`
   const hasSite = !!site?.html
@@ -188,6 +189,32 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
     }
   }
 
+  const handleDelete = async () => {
+    if (
+      !(await confirm({
+        title: "Hapus website ini secara permanen?",
+        description: "Konten live, draft, dan SEMUA riwayat versi akan terhapus permanen dan tidak bisa dikembalikan. Kalau cuma mau menyembunyikan sementara, pakai toggle Publish di atas.",
+        confirmLabel: "Hapus Permanen",
+        variant: "destructive",
+      }))
+    )
+      return
+
+    setIsDeleting(true)
+    try {
+      const res = await fetch(`/api/tenant/${tenantSlug}/static-site`, { method: "DELETE" })
+      if (!res.ok) throw new Error((await res.json())?.error || "Gagal menghapus website")
+      setSite(null)
+      setVersions([])
+      setPrompt("")
+      toast({ title: "Website Dihapus", description: "Semua konten dan riwayat versi sudah dihapus permanen." })
+    } catch (err: any) {
+      toast({ variant: "destructive", title: "Gagal Menghapus", description: err.message })
+    } finally {
+      setIsDeleting(false)
+    }
+  }
+
   const formatDate = (iso: string) =>
     new Date(iso).toLocaleString("id-ID", { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" })
 
@@ -253,6 +280,16 @@ export function StaticSiteView({ tenantSlug }: StaticSiteViewProps) {
                   <a href={siteUrl} target="_blank" rel="noopener noreferrer">
                     Kunjungi <ExternalLink className="h-3 w-3" />
                   </a>
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleDelete}
+                  disabled={isDeleting}
+                  title="Hapus Website Permanen"
+                  className="h-8 w-8 rounded-xl text-destructive hover:bg-destructive/10 shrink-0"
+                >
+                  {isDeleting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
                 </Button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import { db } from "../src/lib/database.ts"
+import { db } from "@/lib/database"
 import fs from "fs"
 import path from "path"
 
@@ -6,10 +6,10 @@ import path from "path"
  * Script to generate TypeScript interfaces for the SDK based on ContentTypes in the database.
  * This provides end-to-end type safety for API consumers.
  * 
- * Run: npx tsx scripts/generate-sdk-types.ts
+ * Run: bun scripts/qa/generate-sdk-types.ts
  */
 
-async function generate() {
+export async function generateSdkTypes() {
   console.log("🚀 Generating SDK types...")
 
   const contentTypes = await db.contentType.findMany({
@@ -137,6 +137,8 @@ function mapFieldToTS(type: string, relationSlug?: string | null, options?: any)
   }
 }
 
-generate()
-  .catch(console.error)
-  .finally(() => db.$disconnect())
+if (import.meta.main) {
+  generateSdkTypes()
+    .catch(console.error)
+    .finally(() => db.$disconnect())
+}

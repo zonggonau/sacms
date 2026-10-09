@@ -1,15 +1,13 @@
 /**
  * Script: Clear sacms-global seed data
  * Deletes all content entries AND content types from sacms-global tenant.
- * Run: npx tsx scripts/clear-global.ts
+ * Run: bun scripts/seed/clear-global.ts
  */
+import { db } from "@/lib/database"
 
-import { PrismaClient } from "../prisma/generated-client"
-
-const db = new PrismaClient()
 const GLOBAL_SLUG = "sacms-global"
 
-async function main() {
+export async function clearGlobalData() {
   console.log("🗑️  Clearing sacms-global seed data...\n")
 
   const tenant = await db.tenant.findUnique({ where: { slug: GLOBAL_SLUG } })
@@ -32,12 +30,14 @@ async function main() {
   })
   console.log(`✅ Deleted ${deletedTypes} content types (fields cascade-deleted)`)
 
-  console.log(`\n🧹 sacms-global is now clean. Run seed-global.ts to re-seed.`)
+  console.log(`\n🧹 sacms-global is now clean. Run seed-all-global.ts to re-seed.`)
 }
 
-main()
-  .catch((e) => {
-    console.error("❌ Clear failed:", e)
-    process.exit(1)
-  })
-  .finally(() => db.$disconnect())
+if (import.meta.main) {
+  clearGlobalData()
+    .catch((e) => {
+      console.error("❌ Clear failed:", e)
+      process.exit(1)
+    })
+    .finally(() => db.$disconnect())
+}

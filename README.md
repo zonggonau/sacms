@@ -35,18 +35,44 @@ Edge rate limiting is separate from monthly API caps:
 
 ## Getting started
 
+## Getting started
+
 ```bash
-npm install
-npm run db:generate
-npm run db:push
-npm run dev
+bun install
+bun run db:generate
+bun run db:push
+bun run dev
 ```
 
-## Useful scripts
+## Useful scripts & Developer CLI
 
-- `scripts/setup-sacms.ts` — canonical setup + pricing seed
-- `scripts/setup-startup-management-models.ts`
-- `scripts/reseed-pricing.ts` — legacy landing-page pricing seed
-- `scripts/seed-permissions.ts`
+SaCMS menyertakan antarmuka CLI terpadu untuk otomasi database, seeder, migrasi, dan QA:
 
-For the full runbook, deployment guidance, and API details, use the docs directory rather than this file.
+```bash
+# Tampilkan menu bantuan seluruh skrip
+bun run cli help
+
+# Seeding & Inisialisasi
+bun run cli seed:global         # Seed master content types, components & data
+bun run cli seed:permissions    # Seed matriks izin RBAC & default role
+bun run cli seed:workflow       # Seed izin transisi workflow (Doc 14)
+bun run cli seed:plans          # Seed tier paket workspace & langganan
+
+# Migrasi & Dedicated DB
+bun run cli migrate:tenant demo # Push skema ke database dedicated tenant
+bun run cli migrate:media       # Migrasi media lokal ke Cloudflare R2 / MinIO
+bun run cli migrate:fts         # Setup index PostgreSQL Full-Text Search
+
+# QA & Pengujian
+bun run cli qa:audit            # Audit kesehatan route & latensi real-time
+bun run cli qa:security         # Security smoke tests (SSRF, auth gates)
+bun run test                    # Jalankan test suite Vitest (307 tests 100% PASS)
+
+# Operasional & Backup
+bun run cli cron:publish        # Eksekusi scheduled publishing worker
+bun run cli db:backup           # Backup database harian dengan rotasi 7 hari
+```
+
+Panduan lengkap arsitektur skrip tersedia di [scripts/README.md](./scripts/README.md).  
+Untuk deployment guide, runbook, dan spesifikasi API, rujuk ke [docs/00-README.md](./docs/00-README.md).
+

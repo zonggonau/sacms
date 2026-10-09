@@ -142,6 +142,7 @@ export const DEFAULT_PLATFORM_SETTINGS: PlatformSettings = {
  * wins over the env var.
  */
 const SETTING_ENV_FALLBACKS: Partial<Record<keyof PlatformSettings, string>> = {
+  siteUrl: "NEXT_PUBLIC_APP_URL",
   aiGatewayApiKey: "AI_GATEWAY_API_KEY",
   aiGatewayBaseUrl: "AI_GATEWAY_BASE_URL",
   vercelAccessToken: "VERCEL_ACCESS_TOKEN",
@@ -170,9 +171,26 @@ function applyEnvFallbacks(settings: PlatformSettings): PlatformSettings {
       ;(out[field] as string) = process.env[envVar] as string
     }
   }
+  // Check NEXTAUTH_URL fallback for siteUrl if NEXT_PUBLIC_APP_URL is unset
+  if (!out.siteUrl && process.env.NEXTAUTH_URL) {
+    out.siteUrl = process.env.NEXTAUTH_URL
+  }
   // Also check VERCEL_AI_API_KEY fallback for aiGatewayApiKey
   if (!out.aiGatewayApiKey && process.env.VERCEL_AI_API_KEY) {
     out.aiGatewayApiKey = process.env.VERCEL_AI_API_KEY
+  }
+  // Also check S3_* fallbacks for object storage
+  if (!out.r2AccessKeyId && process.env.S3_ACCESS_KEY_ID) {
+    out.r2AccessKeyId = process.env.S3_ACCESS_KEY_ID
+  }
+  if (!out.r2SecretAccessKey && process.env.S3_SECRET_ACCESS_KEY) {
+    out.r2SecretAccessKey = process.env.S3_SECRET_ACCESS_KEY
+  }
+  if (!out.r2BucketName && process.env.S3_BUCKET) {
+    out.r2BucketName = process.env.S3_BUCKET
+  }
+  if (!out.r2PublicUrl && process.env.S3_PUBLIC_URL) {
+    out.r2PublicUrl = process.env.S3_PUBLIC_URL
   }
   return out
 }

@@ -104,10 +104,20 @@ export const FIELD_CATEGORIES = [
   "Advanced",
 ] as const
 
-export const VALID_FIELD_TYPES = FIELD_TYPES.map(f => f.type)
-
 export type FieldTypeValue = (typeof FIELD_TYPES)[number]["type"]
 export type FieldCategory = (typeof FIELD_CATEGORIES)[number]
+
+export const VALID_FIELD_TYPES = [
+  "text", "textarea", "richText", "markdown", "slug",
+  "number", "currency", "percent",
+  "date", "datetime", "time", "dateRange",
+  "select", "multiselect", "tags", "icon",
+  "boolean",
+  "email", "password", "url", "phone", "uid",
+  "media", "mediaMultiple", "file",
+  "relation", "component", "repeater",
+  "location", "seo", "code", "json", "color", "rating", "button", "document_template"
+] as const satisfies readonly FieldTypeValue[]
 
 export interface FieldDefinition {
   id?: string

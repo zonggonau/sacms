@@ -244,31 +244,66 @@ jobs:
 ```
 
 ## 6. Database Migration (Production)
-**JANGAN PERNAH** menjalankan `prisma migrate dev` di production. Selalu gunakan:
+**JANGAN PERNAH** menjalankan `prisma migrate dev` di production. Selalu gunakan Bun runtime:
 ```bash
-# Deploy migrasi yang sudah dicommit
-npx prisma migrate deploy
+# 1. Deploy migrasi skema yang sudah dicommit ke Database Utama
+bunx prisma migrate deploy
 
-# Regenerate Prisma client (output: prisma/generated-client/)
-npx prisma generate
+# 2. Regenerate Prisma client (output: prisma/generated-client/)
+bunx prisma generate
+
+# 3. Push skema ke database dedicated tenant aktif (Enterprise / Hybrid)
+bun run db:tenant:push <tenantSlugOrId>
+# atau via CLI terpadu:
+bun run cli migrate:tenant <tenantSlugOrId>
 ```
 
-## 7. Cron Jobs Setup
-SaCMS mengandalkan background cron jobs untuk fitur scheduled publish dan webhook retry.
+## 7. Cron Jobs Setup & Background Workers
+SaCMS mengandalkan background cron jobs untuk fitur scheduled publish, webhook retry, dan pembuatan invoice billing.
 
-| Endpoint | Interval | Header Wajib |
-|----------|----------|--------------|
-| `GET /api/cron/publish` | Setiap 5 menit pada konfigurasi repository | `Authorization: Bearer <CRON_SECRET>` |
-| `GET /api/cron/webhook-retry` | Setiap 2 menit pada konfigurasi repository | `Authorization: Bearer <CRON_SECRET>` |
-| `GET /api/cron/backup` | Belum dijadwalkan di `vercel.json` | `Authorization: Bearer <CRON_SECRET>` |
-| `GET/POST /api/admin/billing/generate-invoices` | Harian 00:00 pada konfigurasi repository | Ikuti autentikasi route admin/cron |
+| Endpoint / Command | Interval | Metode / Trigger | Deskripsi |
+|--------------------|----------|------------------|-----------|
+| `GET /api/cron/publish` | Setiap 5 menit | Vercel Cron (`Bearer <CRON_SECRET>`) | Memicu scheduled publishing via HTTP |
+| `bun run cron:publish` | Sesuai crontab | Worker lokal / Docker (`bun run cli cron:publish`) | Memproses entri SCHEDULED langsung via database |
+| `GET /api/cron/webhook-retry` | Setiap 2 menit | Vercel Cron (`Bearer <CRON_SECRET>`) | Pengiriman ulang pesan gagal di tabel DLQ |
+| `POST /api/admin/billing/generate-invoices` | Harian 00:00 | Vercel Cron / Admin session | Pembuatan invoice langganan bulanan |
+| `bun run cli db:backup` | Harian 02:00 | Linux crontab (`scripts/shell/db-backup.sh`) | Logical backup PostgreSQL dengan rotasi 7 hari |
 
-## 8. Catatan sinkronisasi Docker
+## 8. Docker & Standalone Production Build
 
-`docker-compose.yml` di repository adalah konfigurasi operasional yang berbeda dari contoh minimal di dokumen ini. Sebelum dipakai di production:
+Dalam container runtime (lihat `Dockerfile`), build production standalone dijalankan secara otomatis dengan:
+```bash
+# Build Next.js & salin standalone static assets via scripts/core/copy-standalone-assets.js
+bun run build
 
-- Ganti seluruh credential contoh/hard-coded.
-- Pastikan healthcheck PostgreSQL menggunakan user yang benar.
-- Pastikan aplikasi benar-benar membaca konfigurasi Redis yang diberikan; kode utama memakai `UPSTASH_REDIS_REST_URL/TOKEN`, bukan `REDIS_URL` biasa.
-- Pastikan image Prisma yang dibangun menggunakan versi yang sama dengan `package.json`.
-- Jangan menganggap service backup lokal menggantikan backup off-site dan uji restore.
+# Menjalankan standalone server
+bun run start
+```
+Healthcheck Docker memanfaatkan endpoint [`scripts/healthcheck.js`](../scripts/core/healthcheck.js):
+```yaml
+healthcheck:
+  test: ["CMD", "bun", "scripts/healthcheck.js"]
+  interval: 10s
+  timeout: 5s
+  retries: 5
+```
+
+## 9. Skrip Operasional & Developer CLI Terpadu
+
+Untuk memudahkan DevOps dan tim pengembang, seluruh perintah manajemen dapat dijalankan melalui CLI terpadu:
+```bash
+# Tampilkan seluruh menu bantuan
+bun run cli help
+
+# Database & Seeding
+bun run cli seed:global         # Inisialisasi skema & landing global
+bun run cli seed:permissions    # Matriks izin RBAC & role defaults
+bun run cli seed:plans          # Inisialisasi tier paket langganan
+bun run cli migrate:tenant demo # Push skema ke tenant dedicated
+bun run cli migrate:fts         # Setup index PostgreSQL FTS
+
+# Verifikasi & Keamanan
+bun run cli qa:audit            # Audit route-by-route & latency test
+bun run cli qa:security         # Security smoke tests (SSRF, auth gates)
+bun run cli db:backup           # Backup database harian
+```

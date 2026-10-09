@@ -72,13 +72,28 @@ const entry = await tenantDb.contentEntry.findUnique({
 
 ## 5. Standar Testing & Verifikasi
 
-- **Unit Testing (Vitest):** Wajib lulus 100% sebelum commit (`npm test`). Semua mock database wajib mensimulasikan Prisma client secara akurat.
-- **Type Checking (TypeScript):** `tsc --noEmit` wajib menghasilkan 0 error (`npm run typecheck`).
+- **Unit & Integration Testing (Vitest):** Wajib lulus 100% sebelum commit (`bun run test`). Semua mock database wajib mensimulasikan Prisma client secara akurat.
+- **Type Checking (TypeScript):** `tsc --noEmit` wajib menghasilkan 0 error (`bun run typecheck`).
+- **Linter (ESLint):** Bersih tanpa error (`bun run lint`).
+- **Automated Route & QA Audit:** Jalankan `bun run qa` atau `bun run cli qa:audit` untuk verifikasi live status route dan latensi.
 - **Browser QA (gstack browse):** Halaman publik dan dashboard wajib diverifikasi terhadap responsive layout dan 0 console error sebelum rilis.
 
 ---
 
-## 6. Git Workflow & Conventional Commits
+## 6. Standar Skrip Operasional & Developer CLI (`scripts/`)
+
+Semua skrip otomasi wajib diletakkan di direktori terstruktur [`scripts/`](../scripts/README.md) dan dapat diakses melalui CLI terpadu:
+- **Central Runner:** `bun run cli <command>` (contoh: `bun run cli seed:global`, `bun run cli migrate:tenant <slug>`).
+- **Core Runtime (`scripts/core/`):** Cron workers, build helpers, healthcheck, dan rotasi secret.
+- **Seeds (`scripts/seed/`):** Skrip inisialisasi skema, RBAC permissions, paket, dan template.
+- **Migrations (`scripts/migrate/`):** Skrip DDL, dedicated DB push, media migration, dan backfill.
+- **QA & Testing (`scripts/qa/`):** Endpoint audit, security smoke test, dan SDK generator.
+- **Shell (`scripts/shell/`):** Backup/restore database dan VPS deployment scripts.
+- **Rule:** Selalu gunakan Bun runtime (`bun`, `bunx`) dan import path alias `@/lib/database` alih-alih import relatif rapuh.
+
+---
+
+## 7. Git Workflow & Conventional Commits
 
 Gunakan format commit standar:
 - `feat(scope): ...` untuk penambahan fitur baru.

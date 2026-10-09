@@ -22,7 +22,7 @@ import {
   Loader2, Save, Server, RefreshCw, Copy, Database, Check,
   Shield, Image as ImageIcon,
   AlertTriangle, CreditCard, Mail, Send, Eye, EyeOff, Bot, HardDrive,
-  Cpu, Zap, Globe, Layers, Key, CheckCircle2
+  Cpu, Zap, Globe, Layers, Key, CheckCircle2, Sliders, Terminal, ExternalLink
 } from "lucide-react"
 import { useToast } from "@/hooks/use-toast"
 import { useConfirm } from "@/components/ui/confirm-dialog"
@@ -44,6 +44,20 @@ export default function AdminSettingsPage() {
   const [testEmailRecipient, setTestEmailRecipient] = useState("")
   const [copied, setCopied] = useState(false)
   const [showMasks, setShowMasks] = useState<Record<string, boolean>>({})
+  const [envStatus, setEnvStatus] = useState<{
+    databaseConfigured: boolean
+    directUrlConfigured: boolean
+    nextAuthSecretConfigured: boolean
+    nextAuthUrl: string
+    publicAppUrl: string
+    redisConfigured: boolean
+    cronSecretConfigured: boolean
+    gatewayIp: string
+    cnameTarget: string
+    selfHostMode: boolean
+    nodeEnv: string
+    hasMinioEndpoint: boolean
+  } | null>(null)
 
   const toggleMask = (field: string) => {
     setShowMasks(prev => ({ ...prev, [field]: !prev[field] }))
@@ -70,7 +84,11 @@ export default function AdminSettingsPage() {
 
   // Comprehensive Settings State with robust defaults
   const [settings, setSettings] = useState({
-    // Tab 1: Workspace & Registration
+    // Tab 1: Platform & Workspace
+    siteName: "SaCMS",
+    siteDetail: "Smart Content Management System",
+    siteTagline: "Build smarter. Manage easier. Scale faster.",
+    siteUrl: "",
     globalTenantId: "sacms-global",
     registrationMode: "open",
     defaultUserPlan: "free",
@@ -146,6 +164,9 @@ export default function AdminSettingsPage() {
         const data = await res.json()
         if (data.settings && Object.keys(data.settings).length > 0) {
           setSettings((prev) => ({ ...prev, ...data.settings }))
+        }
+        if (data.envStatus) {
+          setEnvStatus(data.envStatus)
         }
       }
     } catch (error) {
@@ -493,17 +514,17 @@ export default function AdminSettingsPage() {
                       {/* Gateway Base URL */}
                       <div className="space-y-1.5">
                         <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                          Gateway Base URL (OpenAI-Compatible Endpoint)
+                          Gateway Base URL (Vercel AI Gateway Endpoint)
                         </Label>
                         <Input 
                           type="text"
                           value={settings.aiGatewayBaseUrl}
                           onChange={e => setSettings(prev => ({ ...prev, aiGatewayBaseUrl: e.target.value }))}
-                          placeholder="https://ai-gateway.vercel.sh/v1"
+                          placeholder="https://ai-gateway.vercel.sh/v4/ai"
                           className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
                         />
                         <p className="text-[10px] text-muted-foreground">
-                          Default: <code>https://ai-gateway.vercel.sh/v1</code>. Anda juga bisa mengarahkan ke proxy gateway khusus atau Portkey/LiteLLM.
+                          Default: <code>https://ai-gateway.vercel.sh/v4/ai</code> (Protokol resmi AI SDK Gateway).
                         </p>
                       </div>
 
@@ -969,6 +990,74 @@ export default function AdminSettingsPage() {
                   </CardContent>
                 </Card>
 
+                {/* Kebijakan Upload Berkas & Media */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Sliders className="h-4 w-4 text-primary" />
+                      Kebijakan & Batasan Upload Berkas
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Batas ukuran file, format yang diizinkan, dan kompresi media.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Maks. Ukuran File (MB)</Label>
+                        <Input 
+                          type="number"
+                          value={settings.maxUploadFileSizeMb}
+                          onChange={e => setSettings(prev => ({ ...prev, maxUploadFileSizeMb: e.target.value }))}
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Kuota Default Storage (MB)</Label>
+                        <Input 
+                          type="number"
+                          value={settings.defaultStorageLimitMb}
+                          onChange={e => setSettings(prev => ({ ...prev, defaultStorageLimitMb: e.target.value }))}
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ekstensi File yang Diizinkan</Label>
+                      <Input 
+                        value={settings.allowedFileExtensions}
+                        onChange={e => setSettings(prev => ({ ...prev, allowedFileExtensions: e.target.value }))}
+                        placeholder=".jpg, .jpeg, .png, .webp, .svg, .pdf, .mp4"
+                        className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                      />
+                      <p className="text-[10px] text-muted-foreground">Pisahkan dengan koma. File di luar ekstensi ini akan ditolak otomatis.</p>
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/60 rounded-xl">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-bold text-foreground">Otomatis Konversi WebP</Label>
+                        <p className="text-[10px] text-muted-foreground">Kompresi gambar upload menjadi WebP modern</p>
+                      </div>
+                      <Switch 
+                        checked={settings.autoWebpConvert === "true"}
+                        onCheckedChange={c => setSettings(prev => ({ ...prev, autoWebpConvert: c ? "true" : "false" }))}
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between p-3 bg-muted/20 border border-border/60 rounded-xl">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs font-bold text-foreground">Generate Thumbnail Otomatis</Label>
+                        <p className="text-[10px] text-muted-foreground">Buat thumbnail responsif untuk media galeri CMS</p>
+                      </div>
+                      <Switch 
+                        checked={settings.autoGenerateThumbnails === "true"}
+                        onCheckedChange={c => setSettings(prev => ({ ...prev, autoGenerateThumbnails: c ? "true" : "false" }))}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
               </div>
             </TabsContent>
 
@@ -1062,6 +1151,53 @@ export default function AdminSettingsPage() {
                           <SelectItem value="disabled" className="text-xs rounded-lg">Nonaktifkan Custom Domain</SelectItem>
                         </SelectContent>
                       </Select>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Identitas Platform & Canonical URL */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card md:col-span-2">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <CardTitle className="text-sm font-bold flex items-center gap-2 text-foreground">
+                      <Globe className="h-4 w-4 text-primary" />
+                      Identitas Platform & Canonical Base URL
+                    </CardTitle>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Nama platform dan URL publik utama untuk pembuatan link aktivasi email, tautan reset password, dan sitemap.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Nama Platform</Label>
+                        <Input 
+                          value={settings.siteName}
+                          onChange={e => setSettings(prev => ({ ...prev, siteName: e.target.value }))}
+                          placeholder="SaCMS"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Slogan / Tagline</Label>
+                        <Input 
+                          value={settings.siteTagline}
+                          onChange={e => setSettings(prev => ({ ...prev, siteTagline: e.target.value }))}
+                          placeholder="Smart Content Management System"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80"
+                        />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                          Canonical Public URL
+                          <span className="text-[9px] text-muted-foreground font-mono font-normal ml-1">(NEXT_PUBLIC_APP_URL)</span>
+                        </Label>
+                        <Input 
+                          value={settings.siteUrl}
+                          onChange={e => setSettings(prev => ({ ...prev, siteUrl: e.target.value }))}
+                          placeholder="https://developer.sacms.cloud"
+                          className="h-9 rounded-xl text-xs bg-muted/20 border-border/80 font-mono"
+                        />
+                      </div>
                     </div>
                   </CardContent>
                 </Card>
@@ -1170,6 +1306,120 @@ export default function AdminSettingsPage() {
                       {purgingCache ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5 mr-1.5" />}
                       {purgingCache ? "Membersihkan Cache..." : "Purge All Edge & Redis Cache"}
                     </Button>
+                  </CardContent>
+                </Card>
+
+                {/* Diagnostik Konfigurasi Server (.env) */}
+                <Card className="rounded-2xl border border-border/80 shadow-xs bg-card md:col-span-2 overflow-hidden">
+                  <CardHeader className="p-5 pb-3 border-b border-border/60 bg-muted/20">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Terminal className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-sm font-bold text-foreground">
+                          Status Variabel Lingkungan Server (.env)
+                        </CardTitle>
+                      </div>
+                      <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/20 font-bold">
+                        Bootstrap Layer
+                      </Badge>
+                    </div>
+                    <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                      Pemeriksaan kesehatan variabel bootstrap level server (berasal dari file .env Docker / host).
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-5 space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                      
+                      {/* Database Status */}
+                      <div className="p-3 bg-muted/20 rounded-xl border border-border/60 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                          <span>DATABASE_URL</span>
+                          <span className={envStatus?.databaseConfigured ? "text-emerald-500 font-bold" : "text-destructive font-bold"}>
+                            {envStatus?.databaseConfigured ? "● Aktif" : "● Hilang"}
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground">
+                          {envStatus?.databaseConfigured ? "PostgreSQL 17 Terhubung" : "Belum Dikonfigurasi"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Koneksi master DB utama</p>
+                      </div>
+
+                      {/* NextAuth Secret */}
+                      <div className="p-3 bg-muted/20 rounded-xl border border-border/60 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                          <span>NEXTAUTH_SECRET</span>
+                          <span className={envStatus?.nextAuthSecretConfigured ? "text-emerald-500 font-bold" : "text-amber-500 font-bold"}>
+                            {envStatus?.nextAuthSecretConfigured ? "● Aman" : "● Default"}
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground">
+                          {envStatus?.nextAuthSecretConfigured ? "Enkripsi Sesi Siap" : "Gunakan Secret Acak"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Token otentikasi JWT</p>
+                      </div>
+
+                      {/* Redis Status */}
+                      <div className="p-3 bg-muted/20 rounded-xl border border-border/60 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                          <span>REDIS / UPSTASH</span>
+                          <span className={envStatus?.redisConfigured ? "text-emerald-500 font-bold" : "text-amber-500 font-bold"}>
+                            {envStatus?.redisConfigured ? "● Terhubung" : "● In-Memory"}
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground">
+                          {envStatus?.redisConfigured ? "Cluster Cache Aktif" : "Fallback In-Memory"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Rate limit & domain cache</p>
+                      </div>
+
+                      {/* Cron Secret */}
+                      <div className="p-3 bg-muted/20 rounded-xl border border-border/60 space-y-1">
+                        <div className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center justify-between">
+                          <span>CRON_SECRET</span>
+                          <span className={envStatus?.cronSecretConfigured ? "text-emerald-500 font-bold" : "text-muted-foreground font-bold"}>
+                            {envStatus?.cronSecretConfigured ? "● Terpasang" : "● Belum"}
+                          </span>
+                        </div>
+                        <p className="text-xs font-semibold text-foreground">
+                          {envStatus?.cronSecretConfigured ? "Otomasi Terlindungi" : "Jadwal Belum Dikunci"}
+                        </p>
+                        <p className="text-[10px] text-muted-foreground">Penerbitan terjadwal</p>
+                      </div>
+
+                    </div>
+
+                    {/* Network & Routing Diagnostic */}
+                    <div className="p-3.5 bg-muted/20 rounded-xl border border-border/60 space-y-2">
+                      <div className="text-[11px] font-bold text-foreground flex items-center gap-2">
+                        <Server className="h-3.5 w-3.5 text-primary" />
+                        Parameter Jaringan & Gateway Edge:
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
+                        <div className="p-2 bg-background rounded-lg border border-border/60">
+                          <span className="text-[10px] text-muted-foreground block">PUBLIC_GATEWAY_IP</span>
+                          <span className="font-mono font-bold text-primary">{envStatus?.gatewayIp || "164.68.116.79"}</span>
+                        </div>
+                        <div className="p-2 bg-background rounded-lg border border-border/60">
+                          <span className="text-[10px] text-muted-foreground block">PUBLIC_CNAME_TARGET</span>
+                          <span className="font-mono font-bold text-primary">{envStatus?.cnameTarget || "cname.sacms.cloud"}</span>
+                        </div>
+                        <div className="p-2 bg-background rounded-lg border border-border/60">
+                          <span className="text-[10px] text-muted-foreground block">NODE_ENV & MODE</span>
+                          <span className="font-mono font-bold text-foreground">
+                            {envStatus?.nodeEnv || "production"} {envStatus?.selfHostMode ? "(Self-Host)" : "(SaaS)"}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Catatan Perbedaan Bootstrap vs Runtime */}
+                    <div className="p-3 bg-primary/5 rounded-xl border border-primary/20 text-xs text-muted-foreground flex items-start gap-2.5">
+                      <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                      <div className="leading-relaxed">
+                        <strong className="text-foreground font-semibold">Arsitektur Hybrid .env vs Database UI:</strong> Variabel bootstrap di atas didefinisikan pada file <code className="font-mono text-primary bg-primary/10 px-1 py-0.5 rounded">.env</code> server saat container booting. Semua parameter lain (Vercel AI Gateway, Email Resend/SMTP, Payment Midtrans, Storage R2/S3) tersimpan dinamis di database & cache Redis pada UI ini tanpa perlu restart server.
+                      </div>
+                    </div>
+
                   </CardContent>
                 </Card>
 

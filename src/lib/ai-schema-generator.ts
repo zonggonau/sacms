@@ -1,21 +1,10 @@
 import { db } from "./database"
 import { z } from "zod"
 import { generateObject } from "ai"
+import { VALID_FIELD_TYPES, type FieldTypeValue, FIELD_TYPES } from "./field-types"
 
-// Use all valid types from field-types.ts
-export const VALID_FIELD_TYPES = [
-  "text", "textarea", "richText", "markdown", "slug",
-  "number", "currency", "percent",
-  "date", "datetime", "time", "dateRange",
-  "select", "multiselect", "tags", "icon",
-  "boolean",
-  "email", "password", "url", "phone", "uid",
-  "media", "mediaMultiple", "file",
-  "relation", "component", "repeater",
-  "location", "seo", "code", "json", "color", "rating", "button", "document_template"
-] as const
-
-export type FieldTypeValue = (typeof VALID_FIELD_TYPES)[number]
+// Re-export for backwards compatibility
+export { VALID_FIELD_TYPES, type FieldTypeValue }
 
 const fieldSchema = z.object({
   name: z.string(),
@@ -32,7 +21,7 @@ const modelSchema = z.object({
   slug: z.string(),
   description: z.string().optional(),
   fields: z.array(fieldSchema),
-  dummyData: z.array(z.record(z.string(), z.any())).optional().describe("An array of 3-5 highly realistic, varied dummy data objects matching the fields defined. For singleTypes, provide just 1 object.")
+  dummyData: z.array(z.record(z.string(), z.any())).optional().describe("An array of 2-3 highly realistic, varied dummy data objects matching the fields defined. For singleTypes, provide just 1 object.")
 })
 
 const systemSchema = z.object({
@@ -43,22 +32,31 @@ const systemSchema = z.object({
 
 export type GeneratedSystemSchema = z.input<typeof systemSchema>
 
+const FIELD_TYPE_DOCS = FIELD_TYPES.map(
+  (f) => `- ${f.type} (${f.category} - ${f.label}): ${f.description}`
+).join("\n")
+
 const SYSTEM_PROMPT = `You are an expert Headless CMS database architect for SaCMS.
 Given a user's description of a website they want to build, generate a complete, comprehensive multi-collection database architecture.
 Do NOT just generate a single article table. Generate 2 to 4 rich Content Types (e.g. Products/Rooms/Services, Categories, Reviews, Team/Doctors, Bookings), 1 Single Type for global settings, and reusable components.
 
-Use diverse field types from this list:
-- Basic: text, textarea, richText, markdown, slug
-- Numbers: number, currency, percent
-- Date & Time: date, datetime, time, dateRange
-- Selection & Visual: select, multiselect, tags, icon
-- Boolean: boolean
-- Validation: email, password, url, phone, uid
-- Media: media, mediaMultiple, file
-- Relations: relation, component, repeater
-- Advanced: location, seo, code, json, color, rating, button, document_template
+Use diverse field types strictly from this supported SaCMS list:
+${FIELD_TYPE_DOCS}
 
-For each collection, provide 3 to 5 realistic, detailed mock records in 'dummyData'.
+Field Selection Rules:
+- Monetary amounts & prices MUST use 'currency' (e.g. price, fee, rate, budget).
+- Discounts, taxes, & percentage values MUST use 'percent'.
+- Star reviews (1-5) MUST use 'rating'.
+- Single cover/avatar image MUST use 'media'; photo galleries MUST use 'mediaMultiple'; documents/PDFs MUST use 'file'.
+- Multi-item badges/sizes/amenities MUST use 'tags' or 'multiselect'.
+- Dropdown options MUST use 'select'.
+- Comprehensive descriptions & body text MUST use 'richText' (HTML) or 'markdown'.
+- Geolocation coordinates & address MUST use 'location'.
+- Search engine optimization MUST use 'seo'.
+- Related collections MUST use 'relation' with 'relationSlug' matching target ContentType.
+- Embedded reusable groups MUST use 'component' with 'componentSlug' matching target Component.
+
+For each collection, provide 2 to 3 realistic, concise mock records in 'dummyData'.
 For Single Types, provide 1 complete initial record in 'dummyData'.
 
 All slugs must be snake_case or kebab-case lowercase.`
@@ -80,7 +78,7 @@ async function generateWithAi(prompt: string, tenantId?: string, userId?: string
       schema: systemSchema,
       system: SYSTEM_PROMPT,
       prompt,
-      maxOutputTokens: 8000,
+      maxOutputTokens: 16000,
     })
   )
 

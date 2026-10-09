@@ -1,6 +1,6 @@
-import { db } from "../src/lib/database"
+import { db } from "@/lib/database"
 
-async function migrateDomains() {
+export async function migrateDomains() {
   console.log("Starting domain migration...")
 
   const tenantsWithDomain = await db.tenant.findMany({
@@ -41,8 +41,8 @@ async function migrateDomains() {
   }
 
   console.log("Migration completed.")
+if (import.meta.main) {
+  migrateDomains()
+    .catch(console.error)
+    .finally(() => db.$disconnect())
 }
-
-migrateDomains()
-  .catch(console.error)
-  .finally(() => process.exit(0))
