@@ -2736,66 +2736,12 @@ export default async function NewsPage() {
     // 9. FREE STATIC SITE HOSTING (VUE.JS 3 + TAILWIND, NO BUILD)
     // =========================================================================
 
-    // ── generate_static_site ─────────────────────────────────────────────────
-    server.registerTool(
-      "generate_static_site",
-      {
-        title: "Generate Website Statis Gratis (Vue.js, Tanpa Build)",
-        description: "Membuat atau memperbarui draft TAMPILAN website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build step) untuk workspace ini. Ini HANYA langkah 1 dari 3: AI merancang halaman dengan data contoh (mock) yang di-invent sendiri — TIDAK menyentuh skema CMS atau data asli sama sekali. Menghubungkan ke skema CMS dan data asli adalah langkah lanjutan opsional yang hanya tersedia lewat dashboard (Developer > AI Instant Website, atau Infrastructure > Website Gratis), bukan lewat MCP — supaya tetap ada tinjauan manusia sebelum data CMS ikut berubah. Hasilnya tersimpan sebagai DRAFT saja — tidak langsung publik; tidak ada tool MCP untuk publish langsung.",
-        inputSchema: {
-          prompt: z.string().min(1).describe("Deskripsi website yang diinginkan, mis. 'Toko kopi UMKM dengan daftar menu dan info kontak'"),
-        },
-      },
-      async ({ prompt }) => {
-        const auth = authContext.getStore()
-        if (!auth) return UNAUTHORIZED
-        if (!hasScope(auth, "write")) return permissionDenied("write")
-
-        try {
-          const { generateStaticSite } = await import("@/lib/static-site-generator")
-          const result = await generateStaticSite(prompt, auth.tenantId, auth.tenantSlug)
-
-          const site = await db.tenantStaticSite.upsert({
-            where: { tenantId: auth.tenantId },
-            update: { draftHtml: result.html, draftJs: result.js, draftPrompt: prompt, draftAt: new Date(), stage: "mock" },
-            create: {
-              tenantId: auth.tenantId,
-              html: "",
-              js: "",
-              published: false,
-              draftHtml: result.html,
-              draftJs: result.js,
-              draftPrompt: prompt,
-              draftAt: new Date(),
-              stage: "mock",
-            },
-          })
-
-          return {
-            content: [{
-              type: "text" as const,
-              text: JSON.stringify({
-                status: "draft_created",
-                siteId: site.id,
-                note: "Draft tersimpan, belum publik. Minta pemilik workspace preview & publish dari dashboard (Developer > AI Instant Website, atau Infrastructure > Website Gratis).",
-              }, null, 2)
-            }]
-          }
-        } catch (err: any) {
-          return {
-            content: [{ type: "text" as const, text: `❌ Gagal membuat website: ${err.message}` }],
-            isError: true,
-          }
-        }
-      }
-    )
-
     // ── write_static_site ────────────────────────────────────────────────────
     server.registerTool(
       "write_static_site",
       {
         title: "Simpan Website Statis Hasil Tulisan AI Agent (Vue.js, Tanpa Build)",
-        description: "Simpan `index.html` + `app.js` yang SUDAH ditulis langsung oleh AI agent ini sebagai draft website satu halaman untuk workspace ini — SaCMS TIDAK memanggil AI internalnya sendiri untuk tool ini (beda dengan 'generate_static_site' yang hanya menerima prompt teks dan men-generate sendiri). Gunakan tool ini ketika Anda (AI agent) ingin menulis kode Vue.js-nya sendiri dan langsung menyimpannya ke SaCMS.\n\nSupaya hasilnya kompatibel dengan pipeline SaCMS (preview, dan opsional lanjut ke skema CMS + publish lewat dashboard), kode WAJIB mengikuti aturan berikut:\n1. Vue.js 3 (global build via CDN `https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js`) + Tailwind CSS via CDN (`https://cdn.tailwindcss.com`) — TANPA build step, TANPA bundler.\n2. `index.html` berisi `<div id=\"app\">` sebagai mount point dan `<script src=\"app.js\"></script>` sebelum `</body>`.\n3. `app.js` HANYA berisi data MOCK yang Anda invent sendiri (realistis, lengkap, tanpa TODO/placeholder) — JANGAN panggil `fetch()` atau API apa pun, ini murni rancangan visual tanpa backend.\n4. Setiap entity data berbeda (array listing ATAU satu object profil/setting) WAJIB dibungkus marker komentar persis di sekitar deklarasi `ref()`/`reactive()`-nya: `// MOCK:<slug>` sebelum, `// /MOCK:<slug>` sesudah, dengan `<slug>` unik per entity (mis. `rooms`, `produk`, `profil_toko`). State UI biasa (currentView, loading, dll) JANGAN dibungkus marker ini. Marker ini WAJIB ada kalau nanti ingin lanjut ke skema CMS asli dari dashboard — tanpa marker, langkah itu tidak akan menemukan entity apa pun.\n5. Lindungi dari crash: jangan ada nested object yang `null`/`undefined` kalau template mengaksesnya; pakai optional chaining (`?.`) dan fallback (`|| 0`, dll).\n\nHasil tersimpan sebagai DRAFT saja — tidak langsung publik; tidak ada tool MCP untuk publish langsung (lewat dashboard: Developer > AI Instant Website, atau Infrastructure > Website Gratis).",
+        description: "Simpan `index.html` + `app.js` yang SUDAH ditulis langsung oleh AI agent ini sebagai draft website satu halaman (Vue.js 3 + Tailwind via CDN, tanpa build step) untuk workspace ini — SaCMS TIDAK memanggil AI apa pun untuk tool ini, hanya menyimpan kode yang Anda (AI agent) kirim. Ini HANYA langkah 1 dari 3: hasilnya adalah TAMPILAN dengan data contoh (mock) yang Anda invent sendiri — TIDAK menyentuh skema CMS atau data asli sama sekali. Menghubungkan ke skema CMS dan data asli adalah langkah lanjutan opsional yang hanya tersedia lewat dashboard (Developer > AI Instant Website, atau Infrastructure > Website Gratis), bukan lewat MCP — supaya tetap ada tinjauan manusia sebelum data CMS ikut berubah.\n\nSupaya hasilnya kompatibel dengan pipeline SaCMS (preview, dan opsional lanjut ke skema CMS + publish lewat dashboard), kode WAJIB mengikuti aturan berikut:\n1. Vue.js 3 (global build via CDN `https://cdn.jsdelivr.net/npm/vue@3/dist/vue.global.prod.js`) + Tailwind CSS via CDN (`https://cdn.tailwindcss.com`) — TANPA build step, TANPA bundler.\n2. `index.html` berisi `<div id=\"app\">` sebagai mount point dan `<script src=\"app.js\"></script>` sebelum `</body>`.\n3. `app.js` HANYA berisi data MOCK yang Anda invent sendiri (realistis, lengkap, tanpa TODO/placeholder) — JANGAN panggil `fetch()` atau API apa pun, ini murni rancangan visual tanpa backend.\n4. Setiap entity data berbeda (array listing ATAU satu object profil/setting) WAJIB dibungkus marker komentar persis di sekitar deklarasi `ref()`/`reactive()`-nya: `// MOCK:<slug>` sebelum, `// /MOCK:<slug>` sesudah, dengan `<slug>` unik per entity (mis. `rooms`, `produk`, `profil_toko`). State UI biasa (currentView, loading, dll) JANGAN dibungkus marker ini. Marker ini WAJIB ada kalau nanti ingin lanjut ke skema CMS asli dari dashboard — tanpa marker, langkah itu tidak akan menemukan entity apa pun.\n5. Lindungi dari crash: jangan ada nested object yang `null`/`undefined` kalau template mengaksesnya; pakai optional chaining (`?.`) dan fallback (`|| 0`, dll).\n\nHasil tersimpan sebagai DRAFT saja — tidak langsung publik; tidak ada tool MCP untuk publish langsung (lewat dashboard: Developer > AI Instant Website, atau Infrastructure > Website Gratis).",
         inputSchema: {
           html: z.string().min(1).describe("Konten lengkap index.html (Vue3 + Tailwind via CDN, ada <div id=\"app\"> dan <script src=\"app.js\"></script>)"),
           js: z.string().min(1).describe("Konten lengkap app.js (Vue 3 Composition API, data mock dibungkus marker // MOCK:<slug> ... // /MOCK:<slug>)"),
