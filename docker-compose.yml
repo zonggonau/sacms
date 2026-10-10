@@ -18,6 +18,13 @@ services:
       # credentials, those win here — this is only the fallback.
       UPSTASH_REDIS_REST_URL: ${UPSTASH_REDIS_REST_URL:-http://srh:80}
       UPSTASH_REDIS_REST_TOKEN: ${UPSTASH_REDIS_REST_TOKEN:-sacms-local-srh-token}
+    # Without a cap, the app container under heavy/runaway load (e.g. a
+    # traffic spike, a memory leak) can starve postgres/redis sharing the
+    # same VPS instead of just failing on its own. Tune to the VPS's real
+    # size via APP_MEM_LIMIT/APP_CPU_LIMIT in .env — these are conservative
+    # defaults, not a measured ceiling.
+    mem_limit: ${APP_MEM_LIMIT:-1g}
+    cpus: ${APP_CPU_LIMIT:-1.5}
     volumes:
       - ./scripts/healthcheck.js:/app/scripts/healthcheck.js:ro
       # Persist locally-stored media (used whenever R2/S3 isn't configured,
@@ -51,6 +58,8 @@ services:
       # running Postgres with a known-public default password.
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env — see .env.example}
       POSTGRES_DB: ${POSTGRES_DB:-sacms}
+    mem_limit: ${POSTGRES_MEM_LIMIT:-1g}
+    cpus: ${POSTGRES_CPU_LIMIT:-1.5}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -64,6 +73,8 @@ services:
     image: redis:7-alpine
     ports:
       - "127.0.0.1:6379:6379"
+    mem_limit: ${REDIS_MEM_LIMIT:-512m}
+    cpus: ${REDIS_CPU_LIMIT:-0.5}
     volumes:
       - redis_data:/data
     healthcheck:

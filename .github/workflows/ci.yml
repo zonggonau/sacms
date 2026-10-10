@@ -53,6 +53,13 @@ jobs:
       - name: Compile Next.js Standalone Bundle
         run: bun run build
 
+      - name: Prune devDependencies for Production Image
+        # typecheck/lint/test/build above all need the devDependencies (typescript,
+        # eslint, vitest, tailwind...) that were just installed — only AFTER they've
+        # run is it safe to drop those packages from node_modules before the
+        # Dockerfile copies it verbatim into the production image (AUD-011).
+        run: bun install --production --frozen-lockfile
+
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 

@@ -26,6 +26,18 @@ export async function verifyPassword(password: string, hashedPassword: string): 
   return bcrypt.compare(password, hashedPassword)
 }
 
+// A bcrypt hash with no corresponding real password, generated once at
+// startup — compared against when the user doesn't exist, so authorize()
+// takes roughly the same time whether or not the email is registered.
+// Without this, a missing user returns instantly while a real one takes
+// ~100ms for bcrypt.compare, a timing side-channel an attacker could use
+// to enumerate registered emails.
+const DUMMY_BCRYPT_HASH = bcrypt.hashSync(randomBytesHex(), SALT_ROUNDS)
+
+function randomBytesHex(): string {
+  return crypto.randomBytes(32).toString("hex")
+}
+
 // Legacy hash for backward compatibility - will be migrated on next login
 function legacySimpleHash(password: string): string {
   let hash = 0
@@ -132,6 +144,11 @@ export const authOptions: NextAuthOptions = {
         })
 
         if (!user || !user.password) {
+          // Run a dummy bcrypt compare so this path takes about as long as
+          // the real one below — otherwise a missing/passwordless account
+          // returns near-instantly while a real one takes ~100ms, letting
+          // an attacker enumerate registered emails by response timing.
+          await bcrypt.compare(credentials.password, DUMMY_BCRYPT_HASH)
           return null
         }
 

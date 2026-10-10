@@ -170,6 +170,7 @@ vi.mock("@/lib/audit-log", () => ({
 vi.mock("bcrypt", () => ({
   default: {
     hash: vi.fn().mockResolvedValue("$2b$12$hashedpassword"),
+    hashSync: vi.fn().mockReturnValue("$2b$12$hashedpassword"),
     compare: vi.fn().mockResolvedValue(true),
   },
 }))

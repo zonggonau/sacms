@@ -19,7 +19,12 @@ export async function GET() {
     checks.database = { status: "ok" }
   } catch (e) {
     allOk = false
-    checks.database = { status: "error", detail: (e as Error).message }
+    // This endpoint is intentionally public/unauthenticated (CI + Caddy poll
+    // it with no credentials) — log the real error server-side only, never
+    // in the response, so a DB outage doesn't hand an unauthenticated
+    // caller internal connection details.
+    console.error("[health] Database check failed:", e)
+    checks.database = { status: "error", detail: "Database unreachable" }
   }
 
   // 3. Redis connectivity — informational only, not a deploy gate. Custom
@@ -32,7 +37,8 @@ export async function GET() {
       await getRedis()?.ping()
       checks.redis = { status: "ok" }
     } catch (e) {
-      checks.redis = { status: "error", detail: (e as Error).message }
+      console.error("[health] Redis check failed:", e)
+      checks.redis = { status: "error", detail: "Redis unreachable" }
     }
   }
 

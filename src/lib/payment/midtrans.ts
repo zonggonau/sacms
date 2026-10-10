@@ -1,5 +1,6 @@
 import Midtrans from "midtrans-client"
 import { createHash } from "crypto"
+import { secureEquals } from "../secure-compare"
 import type {
   PaymentProvider,
   CreatePaymentRequest,
@@ -142,7 +143,7 @@ export class MidtransProvider implements PaymentProvider {
       .update(order_id + status_code + gross_amount + serverKey)
       .digest("hex")
 
-    const valid = expectedSignature === signature_key
+    const valid = secureEquals(expectedSignature, signature_key)
 
     return {
       valid,
