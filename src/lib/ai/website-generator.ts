@@ -5,6 +5,12 @@
  * with typed SDKs, multi-page routing, UI components, and responsive design.
  */
 
+/* eslint-disable no-restricted-syntax -- these template literals are source
+ * files for a separate, standalone Next.js site this function scaffolds for
+ * the end user (its own app/globals.css, its own CSS variables). They never
+ * run inside SaCMS's own dashboard, so SaCMS's theme tokens (bg-muted, etc.)
+ * don't exist in that app and would break its styling if substituted here. */
+
 import { SchemaPlan } from "@/lib/ai/schema-engine"
 
 export interface WebsiteGenerationParams {

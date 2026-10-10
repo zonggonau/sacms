@@ -64,7 +64,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   APPROVED:  { label: "Approved",   color: "bg-blue-500/10 text-blue-600 dark:text-blue-400 border-blue-500/20", icon: CheckCircle2 },
   SCHEDULED: { label: "Scheduled",  color: "bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20", icon: Clock },
   PUBLISHED: { label: "Published",  color: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20", icon: CheckCircle2 },
-  ARCHIVED:  { label: "Archived",   color: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20", icon: Archive },
+  ARCHIVED:  { label: "Archived",   color: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20", icon: Archive },
   REJECTED:  { label: "Rejected",   color: "bg-red-500/10 text-red-600 dark:text-red-400 border-red-500/20", icon: AlertCircle },
 }
 

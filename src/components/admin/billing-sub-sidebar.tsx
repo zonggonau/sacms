@@ -202,7 +202,7 @@ export function BillingSubSidebar() {
       {/* Mobile Backdrop */}
       {mobileOpen && (
         <div
-          className="fixed inset-0 z-40 bg-zinc-900/50 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-xs md:hidden"
           onClick={() => setMobileOpen(false)}
         />
       )}

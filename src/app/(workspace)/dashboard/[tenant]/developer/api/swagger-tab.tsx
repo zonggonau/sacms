@@ -64,7 +64,7 @@ export function SwaggerTab({ tenantSlug }: SwaggerTabProps) {
         </CardContent>
       </Card>
 
-      <div className="bg-card dark:bg-slate-950 border border-border/80 shadow-xs rounded-2xl overflow-hidden p-3 md:p-6">
+      <div className="bg-card border border-border/80 shadow-xs rounded-2xl overflow-hidden p-3 md:p-6">
         <SwaggerUI url={specUrl} />
       </div>
     </div>

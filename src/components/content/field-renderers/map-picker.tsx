@@ -60,7 +60,7 @@ export default function MapPicker({ value, onChange }: MapPickerProps) {
   }
 
   return (
-    <div className="space-y-2 border p-2 rounded-md bg-slate-50">
+    <div className="space-y-2 border p-2 rounded-md bg-muted">
       <div className="flex gap-2 mb-2">
         <Input 
           placeholder="Cari lokasi (contoh: Jakarta)" 

@@ -145,6 +145,7 @@ curl -X GET "${apiUrl}?page=1&limit=10" \\
               </TabsTrigger>
             </TabsList>
 
+            {/* eslint-disable no-restricted-syntax -- deliberate always-dark code-snippet viewers, like CodeBlock in docs-client.tsx. */}
             {/* REST Tab */}
             <TabsContent value="rest" className="mt-3 space-y-2">
               <div className="relative group">
@@ -225,6 +226,7 @@ curl -X GET "${apiUrl}?page=1&limit=10" \\
                 </Button>
               </div>
             </TabsContent>
+            {/* eslint-enable no-restricted-syntax */}
           </Tabs>
 
           <div className="flex items-center justify-between pt-3 border-t border-border/60">

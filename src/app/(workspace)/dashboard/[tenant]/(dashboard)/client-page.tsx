@@ -69,7 +69,7 @@ interface TenantStats {
 }
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; icon: React.ElementType }> = {
-  draft:     { label: "Draft",      dot: "bg-gray-400",    bg: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",         icon: FileText },
+  draft:     { label: "Draft",      dot: "bg-muted-foreground/60", bg: "bg-muted text-muted-foreground",         icon: FileText },
   in_review: { label: "In Review",  dot: "bg-yellow-500",  bg: "bg-yellow-50 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300", icon: Clock },
   approved:  { label: "Approved",   dot: "bg-blue-500",    bg: "bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300",         icon: CheckCircle2 },
   scheduled: { label: "Scheduled",  dot: "bg-purple-500",  bg: "bg-purple-50 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300", icon: CalendarClock },
@@ -437,7 +437,7 @@ export default function TenantDashboardClient({
                   if (numCount === 0 || totalEntries === 0) return null
                   const pct = (numCount / totalEntries) * 100
                   const colors: Record<string, string> = {
-                    draft: "bg-slate-400", in_review: "bg-amber-400", approved: "bg-blue-400",
+                    draft: "bg-muted-foreground/60", in_review: "bg-amber-400", approved: "bg-blue-400",
                     scheduled: "bg-purple-400", published: "bg-emerald-500", archived: "bg-orange-400",
                   }
                   return <div key={key} className={cn("h-full transition-all", colors[key])} style={{ width: `${pct}%` }} />

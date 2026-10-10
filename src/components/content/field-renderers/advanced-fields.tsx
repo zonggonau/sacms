@@ -9,8 +9,8 @@ import dynamic from "next/dynamic"
 const MapPicker = dynamic(() => import("./map-picker"), {
   ssr: false,
   loading: () => (
-    <div className="h-[300px] w-full bg-slate-100 flex items-center justify-center rounded-md border border-slate-200">
-      <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+    <div className="h-[300px] w-full bg-muted flex items-center justify-center rounded-md border border-border">
+      <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
     </div>
   )
 })
@@ -143,7 +143,7 @@ export function AdvancedField({
                   })
                 }}
                 required={required}
-                className="pl-9 bg-slate-50"
+                className="pl-9 bg-muted"
                 readOnly
               />
             </div>
@@ -162,7 +162,7 @@ export function AdvancedField({
                   })
                 }}
                 required={required}
-                className="pl-9 bg-slate-50"
+                className="pl-9 bg-muted"
                 readOnly
               />
             </div>

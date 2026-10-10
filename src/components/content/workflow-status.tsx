@@ -13,7 +13,7 @@ export const STATUS_CONFIG: Record<string, {
   text: string
   icon: React.ElementType
 }> = {
-  DRAFT:     { label: "Draft",      dot: "bg-gray-400",    bg: "bg-gray-100 dark:bg-gray-800",               text: "text-gray-700 dark:text-gray-300",    icon: FileText },
+  DRAFT:     { label: "Draft",      dot: "bg-muted-foreground/60", bg: "bg-muted",               text: "text-muted-foreground",    icon: FileText },
   IN_REVIEW: { label: "In Review",  dot: "bg-yellow-500",  bg: "bg-yellow-50 dark:bg-yellow-900/30",         text: "text-yellow-700 dark:text-yellow-300", icon: Clock },
   APPROVED:  { label: "Approved",   dot: "bg-blue-500",    bg: "bg-blue-50 dark:bg-blue-900/30",             text: "text-blue-700 dark:text-blue-300",     icon: CheckCircle2 },
   SCHEDULED: { label: "Scheduled",  dot: "bg-purple-500",  bg: "bg-purple-50 dark:bg-purple-900/30",         text: "text-purple-700 dark:text-purple-300", icon: CalendarClock },

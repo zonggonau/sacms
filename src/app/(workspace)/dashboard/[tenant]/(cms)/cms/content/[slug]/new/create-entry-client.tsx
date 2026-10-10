@@ -117,7 +117,7 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }>
   },
   ARCHIVED: { 
     label: "Archived", 
-    color: "bg-zinc-500/10 text-zinc-500 border-zinc-500/20", 
+    color: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
     icon: Archive 
   },
   REJECTED: { 

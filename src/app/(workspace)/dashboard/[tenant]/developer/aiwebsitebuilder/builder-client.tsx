@@ -1387,6 +1387,7 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
           </div>
 
           {/* TAB CONTENT: Preview */}
+          {/* eslint-disable no-restricted-syntax -- this frames the sandboxed srcDoc iframe live preview of the AI-generated site; left as-is deliberately (see AUD-010) since any visual change here can't be verified without a browser. */}
           {rightTab === "preview" ? (
             <div className="flex-1 min-h-0 bg-neutral-900/40 p-2 md:p-4 flex items-center justify-center overflow-hidden">
               {!previewSrcDoc ? (
@@ -1419,7 +1420,8 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
               )}
             </div>
           ) : (
-            /* TAB CONTENT: Code Editor */
+            // TAB CONTENT: Code Editor -- deliberate always-dark code-editor aesthetic, like CodeBlock elsewhere.
+            /* eslint-disable no-restricted-syntax */
             <div className="flex-1 flex flex-col min-h-0 bg-neutral-950 text-neutral-100 overflow-hidden font-mono text-xs">
               <div className="px-4 py-2 border-b border-neutral-800 bg-neutral-900/80 flex items-center justify-between text-[11px] text-neutral-400">
                 <span className="flex items-center gap-2">
@@ -1445,6 +1447,7 @@ export function AiWebsiteBuilderClient({ tenantSlug }: { tenantSlug: string }) {
                 />
               </div>
             </div>
+            /* eslint-enable no-restricted-syntax */
           )}
 
         </div>

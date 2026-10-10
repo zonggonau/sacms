@@ -989,6 +989,7 @@ function ApiExplorerContent() {
                     Salin cURL
                   </Button>
                 </CardHeader>
+                {/* eslint-disable-next-line no-restricted-syntax -- deliberate always-dark code snippet viewer. */}
                 <CardContent className="p-3 bg-neutral-950 text-neutral-100 rounded-b-2xl overflow-x-auto font-mono text-[11px]">
                   <pre className="whitespace-pre-wrap">{generateCurlSnippet()}</pre>
                 </CardContent>

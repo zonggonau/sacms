@@ -90,7 +90,7 @@ export function DynamicZoneField({
 
   return (
     <div className="space-y-4">
-      {label && <Label className="font-bold text-slate-700">{label}</Label>}
+      {label && <Label className="font-bold text-foreground">{label}</Label>}
       
       <div className="space-y-4">
         {items.length === 0 ? (

@@ -30,14 +30,15 @@ export function SdkTab({ tenantSlug }: SdkTabProps) {
     }
   }
 
-  const CodeBlock = ({ 
-    code, 
-    id, 
-    title 
-  }: { 
+  /* eslint-disable no-restricted-syntax -- CodeBlock renders a deliberate always-dark code window, like docs-client.tsx's CodeBlock. */
+  const CodeBlock = ({
+    code,
+    id,
+    title
+  }: {
     code: string
     id: string
-    title?: string 
+    title?: string
   }) => (
     <div className="rounded-xl border border-border/80 bg-neutral-950 text-neutral-100 overflow-hidden shadow-xs">
       {title && (
@@ -73,6 +74,7 @@ export function SdkTab({ tenantSlug }: SdkTabProps) {
       </div>
     </div>
   )
+  /* eslint-enable no-restricted-syntax */
 
   const getInstallCommand = (pm: string) => {
     switch (pm) {

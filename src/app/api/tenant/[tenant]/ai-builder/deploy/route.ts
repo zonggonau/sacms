@@ -301,6 +301,9 @@ export const POST = withStaffAuth(
       },
       {
         name: "app/layout.tsx",
+        /* eslint-disable no-restricted-syntax -- scaffolded source for the
+         * end user's own standalone deployed site, not SaCMS's dashboard UI;
+         * that site has its own styling, not SaCMS's theme tokens. */
         content: `export const metadata = { title: "${tenant.name} - Official Site" }
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -313,10 +316,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </body>
     </html>
   )
-}`
+}`,
+        /* eslint-enable no-restricted-syntax */
       },
       {
         name: "app/page.tsx",
+        /* eslint-disable no-restricted-syntax -- scaffolded source for the
+         * end user's own standalone deployed site, not SaCMS's dashboard UI. */
         content: `import { Globe, ArrowRight, Sparkles } from "lucide-react"
 
 async function getSiteData() {
@@ -359,7 +365,8 @@ export default async function HomePage() {
       </div>
     </main>
   )
-}`
+}`,
+        /* eslint-enable no-restricted-syntax */
       }
     ]
 

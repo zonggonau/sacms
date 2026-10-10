@@ -31,7 +31,7 @@ const categoryColors: Record<string, string> = {
   "Validation": "bg-rose-50 text-rose-600 border-rose-200 group-hover:bg-rose-600 group-hover:text-white",
   "Media": "bg-teal-50 text-teal-600 border-teal-200 group-hover:bg-teal-600 group-hover:text-white",
   "Relations": "bg-indigo-50 text-indigo-600 border-indigo-200 group-hover:bg-indigo-600 group-hover:text-white",
-  "Advanced": "bg-slate-100 text-slate-700 border-slate-300 group-hover:bg-slate-700 group-hover:text-white",
+  "Advanced": "bg-muted text-muted-foreground border-border group-hover:bg-foreground group-hover:text-background",
 }
 
 export function FieldTypeSelector({

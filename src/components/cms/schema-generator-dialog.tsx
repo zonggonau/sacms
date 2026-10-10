@@ -306,7 +306,7 @@ export function SchemaGeneratorDialog({
             <Button 
               onClick={handleGenerate}
               disabled={loading || !prompt}
-              className="flex-1 rounded-none bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white border border-zinc-900 dark:border-zinc-100 font-black uppercase tracking-widest h-12 transition-colors"
+              className="flex-1 rounded-none bg-foreground text-background hover:bg-orange-500 hover:text-white border border-foreground font-black uppercase tracking-widest h-12 transition-colors"
             >
               {loading ? (
                 <>

@@ -214,7 +214,7 @@ export default async function CMSDashboardPage({
             </CardHeader>
             <CardContent className="space-y-2 p-4 pt-3">
               {[
-                { label: "Draft", count: stats.entries.draft, dot: "bg-slate-400" },
+                { label: "Draft", count: stats.entries.draft, dot: "bg-muted-foreground/60" },
                 { label: "In Review", count: stats.entries.in_review, dot: "bg-amber-500" },
                 { label: "Published", count: stats.entries.published, dot: "bg-emerald-500" },
               ].map((w) => (

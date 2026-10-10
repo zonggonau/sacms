@@ -58,7 +58,7 @@ export function RatingField({
                   "h-7 w-7 transition-all duration-150",
                   star <= displayValue
                     ? "fill-amber-400 text-amber-400 drop-shadow-sm"
-                    : "fill-none text-slate-300 hover:text-amber-200"
+                    : "fill-none text-muted-foreground/40 hover:text-amber-200"
                 )}
               />
             </button>

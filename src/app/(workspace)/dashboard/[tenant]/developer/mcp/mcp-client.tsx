@@ -281,7 +281,7 @@ const PLATFORMS: PlatformInfo[] = [
     name: "Grok (xAI)",
     icon: "⬛",
     badge: "Butuh Bridge",
-    badgeColor: "bg-zinc-500/10 text-zinc-600 dark:text-zinc-400 border-zinc-500/20",
+    badgeColor: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
     configType: "url-token",
     steps: [
       "Grok belum punya dukungan MCP native yang terkonfirmasi resmi.",
@@ -295,7 +295,7 @@ const PLATFORMS: PlatformInfo[] = [
     name: "MCP Client Lainnya",
     icon: "🔌",
     badge: "Universal",
-    badgeColor: "bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20",
+    badgeColor: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/20",
     configType: "url-token",
     steps: [
       "Client apa pun yang mendukung MCP over Streamable HTTP bisa memakai Server URL di bawah.",

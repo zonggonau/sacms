@@ -612,6 +612,9 @@ export async function getSingleType<T = any>(singleTypeSlug: string): Promise<T 
     if (isHotel) {
       files.push({
         path: "app/page.tsx",
+        /* eslint-disable no-restricted-syntax -- scaffolded source for the
+         * end user's own standalone generated site, not SaCMS's dashboard
+         * UI; that site has its own styling, not SaCMS's theme tokens. */
         content: `import { getCollection } from "@/lib/sacms";
 import { Bed, Users, Star, ArrowRight, ShieldCheck, MapPin, Sparkles, Phone, Mail } from "lucide-react";
 
@@ -769,6 +772,7 @@ export default async function GeneralHomePage() {
     </main>
   );
 }`,
+        /* eslint-enable no-restricted-syntax */
       })
     }
 

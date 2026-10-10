@@ -26,7 +26,7 @@ export function SelfHostSection() {
   ]
 
   return (
-    <section id="self-host" className="py-32 relative bg-zinc-950 text-zinc-50 border-t border-zinc-900 overflow-hidden">
+    <section id="self-host" className="py-32 relative bg-background text-foreground border-t border-border overflow-hidden">
       {/* Background Gradient */}
       <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-orange-500/10 blur-[120px] rounded-full pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-blue-500/10 blur-[100px] rounded-full pointer-events-none" />
@@ -36,10 +36,10 @@ export function SelfHostSection() {
           <div className="inline-flex items-center justify-center px-4 py-1.5 mb-6 rounded-full bg-orange-500/10 border border-orange-500/20 text-orange-500 text-xs font-bold uppercase tracking-widest">
             Enterprise Self-Host
           </div>
-          <h2 className="text-4xl md:text-5xl font-black text-zinc-50 mb-6 tracking-tight">
+          <h2 className="text-4xl md:text-5xl font-black text-foreground mb-6 tracking-tight">
             Kendalikan Penuh Data Anda
           </h2>
-          <p className="text-lg text-zinc-400 max-w-2xl mx-auto font-medium">
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto font-medium">
             Deploy SaCMS secara mandiri di infrastruktur cloud perusahaan Anda. Nikmati kontrol total, keamanan maksimal, dan tanpa batasan paket bulanan SaaS.
           </p>
         </div>
@@ -49,7 +49,7 @@ export function SelfHostSection() {
           <div className="lg:col-span-5 space-y-10">
             <div>
               <h3 className="text-2xl font-bold mb-4">Mengapa Self-Hosted?</h3>
-              <p className="text-zinc-400 leading-relaxed">
+              <p className="text-muted-foreground leading-relaxed">
                 Lisensi Enterprise kami memungkinkan Anda menginstall keseluruhan sistem Headless CMS kami di server Anda (On-Premise / Private Cloud). 
                 Landing page SaaS publik akan disembunyikan dan sistem akan berjalan murni sebagai CMS internal yang siap diintegrasikan.
               </p>
@@ -58,12 +58,12 @@ export function SelfHostSection() {
             <div className="space-y-6">
               {features.map((f, i) => (
                 <div key={i} className="flex gap-4">
-                  <div className="w-12 h-12 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center shrink-0 text-orange-500">
+                  <div className="w-12 h-12 rounded-xl bg-muted border border-border flex items-center justify-center shrink-0 text-orange-500">
                     {f.icon}
                   </div>
                   <div>
-                    <h4 className="font-bold text-zinc-100">{f.title}</h4>
-                    <p className="text-sm text-zinc-400 mt-1 leading-relaxed">{f.desc}</p>
+                    <h4 className="font-bold text-foreground">{f.title}</h4>
+                    <p className="text-sm text-muted-foreground mt-1 leading-relaxed">{f.desc}</p>
                   </div>
                 </div>
               ))}
@@ -71,6 +71,7 @@ export function SelfHostSection() {
           </div>
 
           {/* Right: Terminal Instructions */}
+          {/* eslint-disable no-restricted-syntax -- deliberate always-dark terminal/code mockup, like CodeBlock elsewhere; it must stay dark in both themes to look like a real terminal. */}
           <div className="lg:col-span-7">
             <div className="bg-black border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl relative">
               <div className="flex items-center gap-2 px-4 py-3 bg-zinc-900 border-b border-zinc-800">
@@ -112,6 +113,7 @@ export function SelfHostSection() {
               </div>
             </div>
           </div>
+          {/* eslint-enable no-restricted-syntax */}
         </div>
       </div>
     </section>

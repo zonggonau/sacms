@@ -300,7 +300,7 @@ export function MediaLibraryDialog({
                 <Button
                   onClick={handleUpload}
                   disabled={!uploadFile || uploading}
-                  className="w-full h-11 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white border border-zinc-900 dark:border-zinc-100 font-bold uppercase tracking-wider rounded-none shadow-none"
+                  className="w-full h-11 bg-foreground text-background hover:bg-orange-500 hover:text-white border border-foreground font-bold uppercase tracking-wider rounded-none shadow-none"
                 >
                   {uploading ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : "Start Upload"}
                 </Button>
@@ -323,7 +323,7 @@ export function MediaLibraryDialog({
                 <Button
                   onClick={handleUrlSubmit}
                   disabled={!imageUrl.trim()}
-                  className="w-full h-11 bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white border border-zinc-900 dark:border-zinc-100 font-bold uppercase tracking-wider rounded-none"
+                  className="w-full h-11 bg-foreground text-background hover:bg-orange-500 hover:text-white border border-foreground font-bold uppercase tracking-wider rounded-none"
                 >
                   Import from URL
                 </Button>

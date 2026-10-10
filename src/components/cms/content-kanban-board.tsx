@@ -62,7 +62,7 @@ export const KANBAN_COLUMNS: {
   {
     id: "DRAFT",
     label: "Draft",
-    color: "text-zinc-600 dark:text-zinc-400",
+    color: "text-muted-foreground",
     badgeColor: "bg-muted text-muted-foreground border-border/80",
     headerBg: "bg-muted/40",
     borderColor: "border-border/60",
@@ -107,10 +107,10 @@ export const KANBAN_COLUMNS: {
   {
     id: "ARCHIVED",
     label: "Archived",
-    color: "text-zinc-500",
-    badgeColor: "bg-zinc-500/10 text-zinc-500 border-zinc-500/30",
-    headerBg: "bg-zinc-500/5",
-    borderColor: "border-zinc-500/20",
+    color: "text-muted-foreground",
+    badgeColor: "bg-muted-foreground/10 text-muted-foreground border-muted-foreground/30",
+    headerBg: "bg-muted-foreground/5",
+    borderColor: "border-muted-foreground/20",
     icon: Archive,
   },
 ]

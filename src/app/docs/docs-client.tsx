@@ -471,6 +471,9 @@ const PROMPT_RECIPES = [
   }
 ]
 
+/* eslint-disable no-restricted-syntax -- CopyButton/CodeBlock render a
+ * terminal-style code window that's deliberately dark in both themes (like a
+ * code editor), not an un-themed light-mode bug. */
 function CopyButton({ text, className = "" }: { text: string; className?: string }) {
   const [copied, setCopied] = useState(false)
 
@@ -523,6 +526,7 @@ function CodeBlock({ code, language = "bash", filename }: { code: string; langua
     </div>
   )
 }
+/* eslint-enable no-restricted-syntax */
 
 export function DocsClient() {
   const [origin, setOrigin] = useState("http://localhost:3000")
@@ -567,7 +571,7 @@ export function DocsClient() {
   return (
     <div className="min-h-screen bg-muted/40 text-foreground font-sans selection:bg-orange-500/20 selection:text-orange-500">
       {/* Top Navigation Bar */}
-      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-white/80 dark:bg-zinc-950/80 backdrop-blur-md">
+      <header className="sticky top-0 z-40 w-full border-b border-border/80 bg-background/80 backdrop-blur-md">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <Link href="/" className="flex items-center gap-2 group">
@@ -589,20 +593,20 @@ export function DocsClient() {
             </div>
             <a
               href="#mcp-overview"
-              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors flex items-center gap-1"
+              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 transition-colors flex items-center gap-1"
             >
               <Plug className="w-3.5 h-3.5 text-violet-500" />
               MCP Server
             </a>
             <a
               href="#content-api"
-              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 transition-colors hidden sm:block"
+              className="text-xs sm:text-sm font-medium text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 transition-colors hidden sm:block"
             >
               REST API
             </a>
             <Link
               href="/login"
-              className="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-zinc-900 hover:bg-zinc-800 text-white dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-900 shadow-sm transition-all hover:scale-102"
+              className="px-3.5 py-1.5 text-xs sm:text-sm font-semibold rounded-lg bg-foreground text-background hover:bg-foreground/90 shadow-sm transition-all hover:scale-102"
             >
               Dashboard
             </Link>
@@ -623,7 +627,7 @@ export function DocsClient() {
                 placeholder="Search docs & tools..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-white dark:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all placeholder:text-muted-foreground"
+                className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm rounded-lg border border-border bg-background focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 transition-all placeholder:text-muted-foreground"
               />
             </div>
 
@@ -700,7 +704,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#introduction"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Introduction
                   </a>
@@ -708,7 +712,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#authentication"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Authentication & Keys
                   </a>
@@ -716,7 +720,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#sdk"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     TypeScript SDK
                   </a>
@@ -733,7 +737,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#content-api"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Content API (Collections)
                   </a>
@@ -741,7 +745,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#filtering"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Advanced Filtering Operators
                   </a>
@@ -749,7 +753,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#single-types"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Single Types API
                   </a>
@@ -757,7 +761,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#graphql"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     GraphQL API Reference
                   </a>
@@ -774,7 +778,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#byodb"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Bring Your Own DB (BYODB)
                   </a>
@@ -782,7 +786,7 @@ export function DocsClient() {
                 <li>
                   <a
                     href="#domains"
-                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:text-zinc-400 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
+                    className="block px-2 py-1.5 rounded text-muted-foreground hover:text-orange-600 dark:hover:text-orange-400 hover:bg-muted font-medium transition-colors"
                   >
                     Custom Domains & DNS
                   </a>
@@ -837,21 +841,21 @@ export function DocsClient() {
               </p>
 
               {/* Architecture Diagram Box */}
-              <div className="rounded-xl bg-white/70 dark:bg-zinc-900/80 border border-violet-200/80 dark:border-violet-900/40 p-4 sm:p-5">
+              <div className="rounded-xl bg-card/80 border border-violet-200/80 dark:border-violet-900/40 p-4 sm:p-5">
                 <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-violet-700 dark:text-violet-300 mb-3">
                   <Cpu className="w-4 h-4 text-violet-500" />
                   How SaCMS MCP Works
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
-                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border">
                     <span className="font-bold text-violet-600 dark:text-violet-400 block mb-1">1. AI Client (Antigravity / VS Code)</span>
                     <p className="text-muted-foreground">Issues tool calls over Streamable HTTP or SSE to query content or inspect schemas.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border">
                     <span className="font-bold text-blue-600 dark:text-blue-400 block mb-1">2. SaCMS MCP Server (`/api/mcp`)</span>
                     <p className="text-muted-foreground">Authenticates via Bearer Token, resolves tenant workspace, and executes secure database operations.</p>
                   </div>
-                  <div className="p-3 rounded-lg bg-muted/40/60 border border-border">
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border">
                     <span className="font-bold text-emerald-600 dark:text-emerald-400 block mb-1">3. Live CMS Context</span>
                     <p className="text-muted-foreground">AI receives structured schema fields, single type data, or published records to build complete codebases.</p>
                   </div>
@@ -872,7 +876,7 @@ export function DocsClient() {
               </p>
 
               {/* Endpoint card */}
-              <div className="p-4 rounded-xl border border-border bg-zinc-100/70 dark:bg-zinc-900/60 space-y-3">
+              <div className="p-4 rounded-xl border border-border bg-muted/60 space-y-3">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                   <div className="flex items-center gap-2">
                     <span className="px-2 py-0.5 rounded text-xs font-bold bg-violet-600 text-white font-mono">POST / GET</span>
@@ -901,13 +905,13 @@ export function DocsClient() {
                 </p>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900">
+                  <div className="p-3 rounded-lg border border-border bg-background">
                     <span className="text-xs font-bold text-foreground block mb-1">1. HTTP Header (Recommended)</span>
                     <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-muted p-2 rounded">
                       Authorization: Bearer YOUR_API_TOKEN
                     </pre>
                   </div>
-                  <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900">
+                  <div className="p-3 rounded-lg border border-border bg-background">
                     <span className="text-xs font-bold text-foreground block mb-1">2. Query Parameter (For SSE / Web clients)</span>
                     <pre className="text-xs font-mono text-emerald-600 dark:text-emerald-400 bg-muted p-2 rounded">
                       /api/mcp?token=YOUR_API_TOKEN
@@ -943,7 +947,7 @@ export function DocsClient() {
                   return (
                     <div
                       key={tool.name}
-                      className="rounded-xl border border-border/80 bg-white dark:bg-zinc-900/90 shadow-sm overflow-hidden transition-all"
+                      className="rounded-xl border border-border/80 bg-card shadow-sm overflow-hidden transition-all"
                     >
                       {/* Header bar */}
                       <button
@@ -982,7 +986,7 @@ export function DocsClient() {
 
                       {/* Expanded tool details */}
                       {isExpanded && (
-                        <div className="p-4 sm:p-5 pt-0 border-t border-border/60 space-y-4 text-xs sm:text-sm bg-zinc-50/50 dark:bg-zinc-950/40">
+                        <div className="p-4 sm:p-5 pt-0 border-t border-border/60 space-y-4 text-xs sm:text-sm bg-muted/40">
                           <p className="text-muted-foreground pt-3">
                             {tool.description}
                           </p>
@@ -993,7 +997,7 @@ export function DocsClient() {
                               <h4 className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                                 Parameters / Arguments
                               </h4>
-                              <div className="overflow-x-auto rounded-lg border border-border bg-white dark:bg-zinc-900">
+                              <div className="overflow-x-auto rounded-lg border border-border bg-background">
                                 <table className="w-full text-left text-xs">
                                   <thead className="bg-muted/80 text-foreground/80 font-semibold border-b border-border">
                                     <tr>
@@ -1025,7 +1029,7 @@ export function DocsClient() {
                               </div>
                             </div>
                           ) : (
-                            <div className="p-2.5 rounded-lg bg-zinc-100/80 dark:bg-zinc-900/80 text-xs text-muted-foreground flex items-center gap-2">
+                            <div className="p-2.5 rounded-lg bg-muted/80 text-xs text-muted-foreground flex items-center gap-2">
                               <CheckCircle2 className="w-3.5 h-3.5 text-emerald-500" />
                               This tool takes no arguments. Simply call <code>{tool.name}()</code>.
                             </div>
@@ -1037,6 +1041,7 @@ export function DocsClient() {
                               <span>SAMPLE RESPONSE PAYLOAD (JSON)</span>
                               <CopyButton text={JSON.stringify(tool.sampleResponse, null, 2)} />
                             </div>
+                            {/* eslint-disable-next-line no-restricted-syntax -- deliberate always-dark code/terminal styling, like CodeBlock above. */}
                             <pre className="p-3 rounded-lg bg-zinc-950 text-zinc-200 text-xs font-mono overflow-x-auto max-h-64 border border-zinc-800">
                               <code>{JSON.stringify(tool.sampleResponse, null, 2)}</code>
                             </pre>
@@ -1073,8 +1078,8 @@ export function DocsClient() {
                       onClick={() => setSelectedPlatform(p.id)}
                       className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs sm:text-sm font-semibold transition-all ${
                         isActive
-                          ? "bg-white dark:bg-zinc-800 text-foreground shadow-sm border border-zinc-200/80 dark:border-zinc-700"
-                          : "text-muted-foreground hover:text-zinc-900 dark:hover:text-zinc-100"
+                          ? "bg-card text-foreground shadow-sm border border-border"
+                          : "text-muted-foreground hover:text-foreground"
                       }`}
                     >
                       <span>{p.icon}</span>
@@ -1085,7 +1090,7 @@ export function DocsClient() {
               </div>
 
               {/* Selected Platform Guide Card */}
-              <div className="p-6 rounded-2xl border border-border bg-white dark:bg-zinc-900/80 shadow-sm space-y-5">
+              <div className="p-6 rounded-2xl border border-border bg-card shadow-sm space-y-5">
                 <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/80 pb-4">
                   <div className="flex items-center gap-3">
                     <span className="text-2xl">{activePlatformData.icon}</span>
@@ -1221,7 +1226,7 @@ export function DocsClient() {
                 {PROMPT_RECIPES.map((recipe, i) => (
                   <div
                     key={i}
-                    className="p-4 rounded-xl border border-border bg-white dark:bg-zinc-900/90 shadow-sm flex flex-col justify-between gap-3 hover:border-violet-500/40 transition-colors"
+                    className="p-4 rounded-xl border border-border bg-card shadow-sm flex flex-col justify-between gap-3 hover:border-violet-500/40 transition-colors"
                   >
                     <div>
                       <div className="flex items-center justify-between gap-2 mb-2">
@@ -1394,23 +1399,23 @@ export default async function ArticlesPage() {
             </p>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs font-mono">
-              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-background flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$eq, $ne</span>
                 <span className="text-muted-foreground uppercase">Equal / Not Equal</span>
               </div>
-              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-background flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$gt, $gte, $lt, $lte</span>
                 <span className="text-muted-foreground uppercase">Comparisons</span>
               </div>
-              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-background flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$contains, $startsWith</span>
                 <span className="text-muted-foreground uppercase">Case-insensitive text match</span>
               </div>
-              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-background flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$in, $notIn</span>
                 <span className="text-muted-foreground uppercase">Array inclusion (comma separated)</span>
               </div>
-              <div className="p-3 rounded-lg border border-border bg-white dark:bg-zinc-900 flex justify-between items-center">
+              <div className="p-3 rounded-lg border border-border bg-background flex justify-between items-center">
                 <span className="text-pink-600 dark:text-pink-400 font-bold">$null, $notNull</span>
                 <span className="text-muted-foreground uppercase">Nullability check</span>
               </div>

@@ -58,6 +58,9 @@ export const POST = withStaffAuth(
       },
       {
         path: "app/layout.tsx",
+        /* eslint-disable no-restricted-syntax -- this is scaffolded source for
+         * the end user's own standalone site, not SaCMS's dashboard UI; that
+         * site has its own CSS, not SaCMS's theme tokens. */
         content: `import type { Metadata } from "next";
 import "./globals.css";
 
@@ -162,6 +165,7 @@ export default async function HomePage() {
     </main>
   );
 }`
+        /* eslint-enable no-restricted-syntax */
       }
     ]
 

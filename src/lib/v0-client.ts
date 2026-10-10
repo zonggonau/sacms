@@ -1,3 +1,7 @@
+/* eslint-disable no-restricted-syntax -- the flagged template literals here
+ * are fallback/mock site markup returned to the caller as generated code or
+ * preview HTML for a separate standalone site, not SaCMS's own dashboard UI;
+ * SaCMS's theme tokens don't exist in that context. */
 import { v0, createV0Client } from "v0"
 import { isMockAllowed, requireCredentialOutsideMock } from "./dev-mode"
 

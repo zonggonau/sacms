@@ -11,6 +11,7 @@ import type { GeneratedSystemSchema } from "./ai-schema-generator"
 // caused truncated/incomplete output. Schema generation (step 2) and real
 // API wiring (step 3) are separate, narrower, user-triggered calls with
 // their own budgets — see generateSchemaFromMockUi/connectStaticSiteToApi.
+// eslint-disable-next-line no-restricted-syntax -- example Tailwind classes mentioned in this AI prompt describe the generated site, not SaCMS's own dashboard UI.
 const UI_SYSTEM_PROMPT = `You are a world-class frontend engineer and UI designer specializing in building modern, production-grade Single Page Applications (SPA) with Vue.js 3 and Tailwind CSS.
 
 Architecture & Output Constraints:

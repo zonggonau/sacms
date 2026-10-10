@@ -32,10 +32,10 @@ import {
 } from "@/actions/admin-content"
 
 const STATUS_CONFIG: Record<string, { label: string; dot: string; bg: string; icon: any }> = {
-  DRAFT:     { label: "Draft",      dot: "bg-zinc-400",    bg: "bg-muted/30 text-foreground border-border rounded-none", icon: FileText },
-  PUBLISHED: { label: "Published",  dot: "bg-zinc-900 dark:bg-zinc-100", bg: "bg-zinc-900/10 dark:bg-zinc-100/10 text-foreground border-zinc-900/20 dark:border-zinc-100/20 rounded-none", icon: CheckCircle2 },
+  DRAFT:     { label: "Draft",      dot: "bg-muted-foreground/60", bg: "bg-muted/30 text-foreground border-border rounded-none", icon: FileText },
+  PUBLISHED: { label: "Published",  dot: "bg-foreground", bg: "bg-foreground/10 text-foreground border-foreground/20 rounded-none", icon: CheckCircle2 },
   ARCHIVED:  { label: "Archived",   dot: "bg-orange-500",  bg: "bg-orange-500/10 text-orange-600 dark:text-orange-400 border-orange-500/20 rounded-none", icon: Archive },
-  IN_REVIEW: { label: "In Review",  dot: "bg-zinc-500",    bg: "bg-muted text-muted-foreground border-border rounded-none", icon: Clock },
+  IN_REVIEW: { label: "In Review",  dot: "bg-muted-foreground", bg: "bg-muted text-muted-foreground border-border rounded-none", icon: Clock },
 }
 
 function stripHtml(html: string) {
@@ -131,7 +131,7 @@ export function AdminContentEntriesManager({
             </div>
           </div>
           <Button 
-            className="bg-zinc-900 dark:bg-zinc-100 text-zinc-100 dark:text-zinc-900 hover:bg-orange-500 hover:text-white dark:hover:bg-orange-500 dark:hover:text-white shadow-none border border-zinc-900 dark:border-zinc-100 h-11 px-6 rounded-none font-bold transition-colors" 
+            className="bg-foreground text-background hover:bg-orange-500 hover:text-white shadow-none border border-foreground h-11 px-6 rounded-none font-bold transition-colors"
             onClick={() => router.push(`/admin/cms/content/${contentTypeSlug}/new`)}
           >
             <Plus className="mr-2 h-5 w-5" /> New Entry
@@ -285,7 +285,7 @@ export function AdminContentEntriesManager({
                           <DropdownMenuContent align="center" className="w-40 rounded-none shadow-none border border-border bg-card">
                             <DropdownMenuLabel className="text-[10px] uppercase font-black opacity-50">Set Status</DropdownMenuLabel>
                             <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "DRAFT")} className="text-xs font-bold py-2 rounded-none hover:bg-muted hover:text-orange-500">
-                              <FileText className="mr-2 h-3.5 w-3.5 text-gray-400" /> Draft
+                              <FileText className="mr-2 h-3.5 w-3.5 text-muted-foreground" /> Draft
                             </DropdownMenuItem>
                             <DropdownMenuItem onClick={() => handleStatusChange(entry.id, "PUBLISHED")} className="text-xs font-bold text-foreground py-2 rounded-none hover:bg-muted hover:text-orange-500">
                               <CheckCircle2 className="mr-2 h-3.5 w-3.5 text-foreground" /> Published
